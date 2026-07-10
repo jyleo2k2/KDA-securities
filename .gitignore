@@ -1,0 +1,69 @@
+# ============================================================
+#  연금 코파일럿 — .gitignore (팀 공용, 레포 루트 적용)
+#  원칙: 비밀키·로컬설정·빌드산출물·캐시는 커밋 금지.
+#  커밋 유지할 것(여기 넣지 말 것): uv.lock, package-lock.json,
+#    .claude/settings.json(공용 하네스), data/mock/(시나리오 목데이터)
+#  주의: .gitignore 는 인라인 주석(줄 끝 #)을 지원하지 않는다. 주석은 항상 독립 줄.
+# ============================================================
+
+# ── 비밀키 / 환경변수 (가장 중요) ──
+# 템플릿(.env.example)만 커밋, 실제 .env 계열은 전부 차단
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# ── AI 도구 (Claude Code / Codex) ──
+# 개인 로컬 오버라이드만 차단, 공용 .claude/settings.json 은 커밋
+.claude/settings.local.json
+.claude/**/*.local.*
+# Codex 로컬 상태. 공용 설정을 둘 거면 아래 줄 삭제
+.codex/
+
+# ── Python (uv / FastAPI) — uv.lock 은 커밋 ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# ── Node / 프론트엔드 (PWA) — lock 파일은 커밋 ──
+node_modules/
+.vite/
+*.local
+npm-debug.log*
+yarn-error.log*
+
+# ── 빌드 산출물 ──
+dist/
+build/
+*.tsbuildinfo
+
+# ── 데이터 — 원천/캐시는 차단, 목데이터 픽스처 data/mock/ 은 커밋 ──
+data/raw/
+data/cache/
+data/*.parquet
+*.duckdb
+
+# ── 로그 ──
+*.log
+logs/
+
+# ── IDE / 에디터 ──
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS (Windows/Mac 혼합 팀) ──
+.DS_Store
+Thumbs.db
+desktop.ini
