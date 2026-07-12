@@ -177,6 +177,23 @@ LLM 역할 제한: **판단·계산은 엔진, LLM은 계산된 수치의 자연
 
 "은퇴 후 월 300만원 필요 시, 몇 살부터 어떤 계좌에서 얼마씩 꺼내는 게 세금 최소인가"를 계산해주는 서비스. 프로젝트에선 확장 로드맵으로만 언급.
 
+### 5-4. (2026-07-12 추가) 해외 벤치마크 기반 추가 차별화 후보
+
+> 평가 기준: ① 국내 제품화 부재 ② 키움 로드맵과 비겹침 ③ 규칙 엔진·설명가능성 궁합 ④ 데이터 가용성 ⑤ 규제 안전. 팀 논의로 채택 여부 확정 — `TODO: 팀 확정 필요`.
+
+| 우선 | 후보 | 해외 벤치마크 | 국내 공백 / 우리 적용 | 판정 근거 |
+|---|---|---|---|---|
+| 🥇 | **국민연금 수령 전략 최적화 (1층 전략)** | [Open Social Security](https://opensocialsecurity.com/)(미국, 오픈소스) — 수령 개시 연령·**부부 순서 조합** 최적화. T.Rowe Price 등 대형사도 유사 도구 | 국내는 예상수령액 "조회"뿐, "언제부터가 유리한가" 제품 없음. 연기 연 7.2% 증액(최대 36%)·조기 감액·부부/유족연금 중복 규칙 = 100% 규칙 기반. **시장 유일의 "1~3층 전부 전략" 서비스**가 됨(§3-5 비교표에 우리만의 칸 추가) | 국민연금은 금융투자상품이 아닌 **제도** → 투자권유 이슈 없음, §9-3 시뮬 방식 그대로. 키움 통합연금개시(자사 인출)와 비겹침. 제도 디테일(유족연금 중복 감액 등) 정확성 `TODO: 확인 필요` |
+| 🥈 | **연봉 인상 연동 자동 증액 약정 (한국판 Save More Tomorrow)** | 탈러 SMarT + 미국 **SECURE 2.0**: 2025~ 신규 401(k)에 자동가입(3~10%)+연 1%p 자동 증액(10~15%까지) **법제화** — 효과가 법이 될 만큼 검증 | 자동이체는 있어도 "연봉 인상 시 자동 증액 + 세액공제 한도(900만) 채움 추적" 약정형 넛지 제품 없음. **방치의 재발 방지** 기능 — 머니파일럿 월급 배분 입구와 결합 시 [매달 배분→인상 시 증액] 지속 루프 완성 | 사전 약정 = 유저 명시 결정(자문형 일치). 구현 저렴(규칙+알림). README "넛지·게이미피케이션" 확장 아이디어의 구체화 |
+| 🥉 | **수수료 리그테이블 + 이전 컨시어지 (실물이전 진단 강화판)** | 호주 ATO [YourSuper](https://www.ato.gov.au/calculators-and-tools/super-yoursuper-comparison-tool) — 정부가 수수료+7년 순수익률 랭킹, 2년 연속 낙제 상품 신규가입 금지. 영국 PensionBee — 연금 통합 절차 간편화 단일 가치로 상장 | 통합연금포털 공시로 사업자·상품 랭킹 → "당신 상품 하위 30%" → 이전 절감액 → 이전 진행 추적. 기존 데모 1화면(실물이전 진단)의 히어로급 승격 | **키움 실물이전 유치 목표에 최직결.** 공시 수치 그대로 → 비교 근거 무논란 |
+| 보류 | 인출 설계 고도화(규칙형 가드레일) | Schwab Intelligent Income, Guyton-Klinger 가드레일 | 키움 '통합연금개시' 로드맵과 겹침 → 히어로 금지(kiwoom-news §2) 유지. "규칙형 가드레일 인출" 차별화 각도만 기록 | 로드맵 언급 유지 |
+| 보류 | 은퇴 준비 점수 | Fidelity Retirement Score | 차별화 코어 아닌 UX 폴리시 — 여력 시 대시보드 부가 | 낮은 우선순위 |
+| 탈락 | 의료비·장수 리스크 설계 | 미국 헬스케어 비용 모델링 | 국내 공신력 데이터 부재 → "모든 수치 출처" 원칙 위반 | 탈락 |
+
+**조합 스토리**: A+B 채택 시 — *"1층은 언제 받을지, 2·3층은 어떻게 굴릴지, 매년 알아서 늘려가게"* — 토스·미래에셋·키움 로드맵 어디에도 없는 조합. 셋 다 규칙 기반+공식 데이터+자문형이라 헌장·엔진 구조 변경 없이 얹을 수 있음.
+
+출처(추가): [Open Social Security](https://opensocialsecurity.com/) · [부부 수령 전략 연구 — FPA Journal](https://www.financialplanningassociation.org/learning/publications/journal/DEC25-social-security-claiming-decision-married-couples-OPEN) · [SECURE 2.0 자동가입·증액 의무화 — Employee Fiduciary](https://www.employeefiduciary.com/blog/secure-2.0-automatic-enrollment) · [YourSuper 비교 도구 — 호주 ATO](https://www.ato.gov.au/calculators-and-tools/super-yoursuper-comparison-tool) · [호주 super 통합·성과평가 — Moneysmart](https://moneysmart.gov.au/how-super-works/choosing-a-super-fund)
+
 ## 6. 기획 확정 사항 (2026-07-08)
 
 | 항목 | 결정 |
