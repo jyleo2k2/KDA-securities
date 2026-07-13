@@ -27,6 +27,7 @@
 | 3 | **[kiwoom-pension-news.md](./docs/kiwoom-pension-news.md)** | 키움 진출 현황·차별화 기능 대조·인물·마케팅·기사 링크 | 키움 관점, "겹치는 기능" 확인 |
 | 4 | **[pension-copilot-proposal.md](./docs/pension-copilot-proposal.md)** | DC형 단일 범위였던 초기 기획 초안 | 방향 변경 이력이나 초기 아이디어를 확인할 때 |
 | 5 | **[pension-focus-rationale.md](./docs/pension-focus-rationale.md)** | 왜 연금인가 — 연금 집중 전략의 통계 근거(노후 공백·방치 실증·머니무브·설계 궁합·경쟁 공백) + 법적 리스크 비교(연금 vs 전체 자산 라우팅) + 자문업 경계("방송 vs 과외")·엔진 수치 규칙(예측 vs 시뮬) + 유저 관점 비교("왜 이 서비스를 쓰는가") | 방향 논쟁(피벗 제안) 대응, 발표 "왜 이 문제인가"·"왜 이 서비스인가"·"이거 합법이냐" 로직 설계 시 |
+| 6 | **[swot-analysis.md](./docs/swot-analysis.md)** | SWOT + TOWS 전략 — 강점/약점/기회/위협을 리서치 근거와 함께 4분면화하고, 교차(SO·WO·ST·WT)로 실행 전략 도출 | 발표 "왜 이길 수 있나"·팀 전략 정렬·리스크 대응 설계 시 |
 
 **흐름**: `기초 지식(1)` → `왜 이 시장인가(2·3)` → `무엇을 만드나(4)`
 
