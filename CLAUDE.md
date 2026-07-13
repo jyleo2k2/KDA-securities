@@ -12,7 +12,7 @@ DC형 퇴직연금 계좌를 선택했지만 운용 방법을 모르는 이용�
 2. [docs/team/_공통_AI규칙.md](./docs/team/_공통_AI규칙.md) — 헌장(모든 AI가 지킬 고정 규칙·가드레일)
 3. [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) — 시스템 구조·폴더 경계
 4. [README.md](./README.md) — 전체 문서 지도
-   - 제품 상세: [pension-copilot-proposal.md](./pension-copilot-proposal.md)(청사진) · [pension-basics.md](./pension-basics.md)(도메인·엔진 근거) · [pension-market-research.md](./pension-market-research.md) · [kiwoom-pension-news.md](./kiwoom-pension-news.md)
+   - 제품 상세: [pension-copilot-proposal.md](./docs/pension-copilot-proposal.md)(청사진) · [pension-basics.md](./docs/pension-basics.md)(도메인·엔진 근거) · [pension-market-research.md](./docs/pension-market-research.md) · [kiwoom-pension-news.md](./docs/kiwoom-pension-news.md)
 
 ## 절대 규칙 (어기면 안 됨 — 상세 근거는 헌장)
 - **교육·의사결정 지원형만**: AI는 DC형 계좌 운용 원리·비교·시뮬레이션을 설명하고, 실제 상품 선택과 실행은 이용자가 판단한다. 일임(전권 위임) 구조 금지.

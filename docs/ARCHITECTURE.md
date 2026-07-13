@@ -1,7 +1,7 @@
 # 아키텍처 설계 초안 — 연금 코파일럿
 
 > 코드/구조의 기술 SSOT. 역할을 겹치지 않게 자르기 위한 지도.
-> 근거: [pension-copilot-proposal.md](../pension-copilot-proposal.md) §7 · 단계: 구현 전 초안(값 다수 `TODO`)
+> 근거: [pension-copilot-proposal.md](./pension-copilot-proposal.md) §7 · 단계: 구현 전 초안(값 다수 `TODO`)
 
 ## 1. 컴포넌트 (의존은 단방향: 위 → 아래, 역방향 import 금지)
 

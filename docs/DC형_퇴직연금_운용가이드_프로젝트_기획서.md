@@ -474,14 +474,14 @@ LLM은 규칙 엔진 결과와 검증된 콘텐츠를 쉬운 말로 설명하며
 
 ### 프로젝트 내부 문서
 
-- [README.md](./README.md)
+- [README.md](../README.md)
 - [기존 제품 기획서](./pension-copilot-proposal.md)
 - [연금 기초·계좌 규칙](./pension-basics.md)
 - [시장·경쟁사 리서치](./pension-market-research.md)
 - [연금 집중 전략 근거](./pension-focus-rationale.md)
 - [키움증권 연금 리서치](./kiwoom-pension-news.md)
-- [기술 아키텍처](./docs/ARCHITECTURE.md)
-- [공통 AI 규칙](./docs/team/_공통_AI규칙.md)
+- [기술 아키텍처](./ARCHITECTURE.md)
+- [공통 AI 규칙](./team/_공통_AI규칙.md)
 
 ### Notion
 
