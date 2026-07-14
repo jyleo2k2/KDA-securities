@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "user-flow-diagram": {
+      "source": "owl-listener/designer-skills",
+      "sourceType": "github",
+      "skillPath": "prototyping-testing/skills/user-flow-diagram/SKILL.md",
+      "computedHash": "3b4036b869dea07f588b678874da438b602112bc05ef49f4bdc2e55a56f87ac5"
+    }
+  }
+}
