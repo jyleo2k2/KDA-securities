@@ -1,0 +1,71 @@
+{
+  "status": "PASS",
+  "errors": [],
+  "seed": 20260714,
+  "users": 10000,
+  "accounts": 18052,
+  "holdings": 85063,
+  "allowed_account_types": [
+    "DC",
+    "IRP",
+    "PENSION_SAVINGS_FUND"
+  ],
+  "scenario_counts": {
+    "DC_NEGLECT": 4000,
+    "OVERLAP_RISK": 3000,
+    "TAX_BENEFIT_IDLE": 3000
+  },
+  "age_group_counts": {
+    "20s": 1190,
+    "30s": 2906,
+    "40s": 3248,
+    "50_plus": 2656
+  },
+  "account_type_stats": {
+    "DC": {
+      "accounts": 7317,
+      "mean_balance_krw": 47078885,
+      "balance_population_sd_krw": 57395694,
+      "mean_trailing_12m_return_pct": 8.47,
+      "return_population_sd_pct": 6.56,
+      "mean_risky_asset_ratio": 0.2524
+    },
+    "IRP": {
+      "accounts": 5538,
+      "mean_balance_krw": 27560358,
+      "balance_population_sd_krw": 39305110,
+      "mean_trailing_12m_return_pct": 9.44,
+      "return_population_sd_pct": 6.9,
+      "mean_risky_asset_ratio": 0.3594
+    },
+    "PENSION_SAVINGS_FUND": {
+      "accounts": 5197,
+      "mean_balance_krw": 10463379,
+      "balance_population_sd_krw": 17204269,
+      "mean_trailing_12m_return_pct": 29.3,
+      "return_population_sd_pct": 13.21,
+      "mean_risky_asset_ratio": 0.4024
+    }
+  },
+  "age_type_mean_balance_krw": {
+    "DC": {
+      "20s": 7570047,
+      "30s": 51199962,
+      "40s": 43420008,
+      "50_plus": 64809990
+    },
+    "IRP": {
+      "20s": 4429985,
+      "30s": 29960000,
+      "40s": 25410134,
+      "50_plus": 37930000
+    },
+    "PENSION_SAVINGS_FUND": {
+      "20s": 1680096,
+      "30s": 11369906,
+      "40s": 9649929,
+      "50_plus": 14400086
+    }
+  },
+  "assumption_note": "Dispersion, account combinations, contributions, and detailed holdings are model assumptions."
+}
