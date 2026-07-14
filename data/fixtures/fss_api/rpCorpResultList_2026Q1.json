@@ -1,0 +1,1099 @@
+{
+  "code": "000",
+  "message": "정상 처리 되었습니다.",
+  "count": 42,
+  "list": [
+    {
+      "company": "KB증권",
+      "area": "증권",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 6012,
+          "dbEarnRate": 9.09,
+          "dbEarnRate3": 8.75,
+          "dbEarnRate5": 5.53,
+          "dbEarnRate7": 4.57,
+          "dbEarnRate10": 4.23,
+          "dcReserve": 12642,
+          "dcEarnRate": 25.83,
+          "dcEarnRate3": 13.06,
+          "dcEarnRate5": 6.06,
+          "dcEarnRate7": 6.84,
+          "dcEarnRate10": 5.16,
+          "irpReserve": 21785,
+          "irpEarnRate": 22.6,
+          "irpEarnRate3": 13.31,
+          "irpEarnRate5": 6.12,
+          "irpEarnRate7": 6.32,
+          "irpEarnRate10": 4.59
+        }
+      ]
+    },
+    {
+      "company": "NH투자증권",
+      "area": "증권",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 2941,
+          "dbEarnRate": 1.73,
+          "dbEarnRate3": 6.4,
+          "dbEarnRate5": 2.54,
+          "dbEarnRate7": 3.04,
+          "dbEarnRate10": 2.49,
+          "dcReserve": 18847,
+          "dcEarnRate": 24.2,
+          "dcEarnRate3": 12.88,
+          "dcEarnRate5": 6.26,
+          "dcEarnRate7": 7.03,
+          "dcEarnRate10": 5.16,
+          "irpReserve": 26936,
+          "irpEarnRate": 20.36,
+          "irpEarnRate3": 12.2,
+          "irpEarnRate5": 6.34,
+          "irpEarnRate7": 6.82,
+          "irpEarnRate10": 4.99
+        }
+      ]
+    },
+    {
+      "company": "대신증권",
+      "area": "증권",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 1061,
+          "dbEarnRate": 4.08,
+          "dbEarnRate3": 6.41,
+          "dbEarnRate5": 3.88,
+          "dbEarnRate7": 3.86,
+          "dbEarnRate10": 3.14,
+          "dcReserve": 4474,
+          "dcEarnRate": 25.8,
+          "dcEarnRate3": 12.93,
+          "dcEarnRate5": 5.94,
+          "dcEarnRate7": 6.53,
+          "dcEarnRate10": 4.91,
+          "irpReserve": 5182,
+          "irpEarnRate": 22.14,
+          "irpEarnRate3": 11.81,
+          "irpEarnRate5": 5.92,
+          "irpEarnRate7": 6.73,
+          "irpEarnRate10": 5.78
+        }
+      ]
+    },
+    {
+      "company": "미래에셋증권",
+      "area": "증권",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 11388,
+          "dbEarnRate": 7.22,
+          "dbEarnRate3": 6.04,
+          "dbEarnRate5": 3.95,
+          "dbEarnRate7": 3.68,
+          "dbEarnRate10": 3.05,
+          "dcReserve": 134684,
+          "dcEarnRate": 21.18,
+          "dcEarnRate3": 12.28,
+          "dcEarnRate5": 5.95,
+          "dcEarnRate7": 6.72,
+          "dcEarnRate10": 5.3,
+          "irpReserve": 132303,
+          "irpEarnRate": 19.4,
+          "irpEarnRate3": 11.96,
+          "irpEarnRate5": 5.79,
+          "irpEarnRate7": 6.19,
+          "irpEarnRate10": 4.94
+        }
+      ]
+    },
+    {
+      "company": "삼성증권",
+      "area": "증권",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 9215,
+          "dbEarnRate": 4.22,
+          "dbEarnRate3": 6.67,
+          "dbEarnRate5": 2.92,
+          "dbEarnRate7": 3.16,
+          "dbEarnRate10": 2.79,
+          "dcReserve": 61036,
+          "dcEarnRate": 23.63,
+          "dcEarnRate3": 11.23,
+          "dcEarnRate5": 5.64,
+          "dcEarnRate7": 4.8,
+          "dcEarnRate10": 3.87,
+          "irpReserve": 70984,
+          "irpEarnRate": 21.26,
+          "irpEarnRate3": 10.76,
+          "irpEarnRate5": 5.3,
+          "irpEarnRate7": 4.72,
+          "irpEarnRate10": 3.64
+        }
+      ]
+    },
+    {
+      "company": "신영증권",
+      "area": "증권",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 446,
+          "dbEarnRate": 11.61,
+          "dbEarnRate3": 6.79,
+          "dbEarnRate5": 2.25,
+          "dbEarnRate7": 2.95,
+          "dbEarnRate10": 2.08,
+          "dcReserve": 1321,
+          "dcEarnRate": 20.1,
+          "dcEarnRate3": 10.12,
+          "dcEarnRate5": 4.49,
+          "dcEarnRate7": 5.51,
+          "dcEarnRate10": 4.23,
+          "irpReserve": 1325,
+          "irpEarnRate": 22.46,
+          "irpEarnRate3": 11.44,
+          "irpEarnRate5": 4.99,
+          "irpEarnRate7": 6,
+          "irpEarnRate10": 4.23
+        }
+      ]
+    },
+    {
+      "company": "신한투자증권",
+      "area": "증권",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 897,
+          "dbEarnRate": 7.43,
+          "dbEarnRate3": 5.43,
+          "dbEarnRate5": 3.05,
+          "dbEarnRate7": 2.94,
+          "dbEarnRate10": 2.83,
+          "dcReserve": 14611,
+          "dcEarnRate": 27.17,
+          "dcEarnRate3": 13.25,
+          "dcEarnRate5": 6.27,
+          "dcEarnRate7": 7.03,
+          "dcEarnRate10": 5.28,
+          "irpReserve": 20629,
+          "irpEarnRate": 23.74,
+          "irpEarnRate3": 13.82,
+          "irpEarnRate5": 6.92,
+          "irpEarnRate7": 7.24,
+          "irpEarnRate10": 5.17
+        }
+      ]
+    },
+    {
+      "company": "아이엠증권",
+      "area": "증권",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 2,
+          "dbEarnRate": 3.89,
+          "dbEarnRate3": 5.45,
+          "dbEarnRate5": 2.19,
+          "dbEarnRate7": 2.76,
+          "dbEarnRate10": 2.6,
+          "dcReserve": 217,
+          "dcEarnRate": 24.44,
+          "dcEarnRate3": 12.49,
+          "dcEarnRate5": 5.45,
+          "dcEarnRate7": 8.07,
+          "dcEarnRate10": 5.65,
+          "irpReserve": 1068,
+          "irpEarnRate": 22.1,
+          "irpEarnRate3": 11.08,
+          "irpEarnRate5": 5.25,
+          "irpEarnRate7": 7.61,
+          "irpEarnRate10": 5.22
+        }
+      ]
+    },
+    {
+      "company": "우리투자증권",
+      "area": "증권",
+      "list": [
+        {
+          "division": "합계",
+          "irpReserve": 2955,
+          "irpEarnRate": 20.9,
+          "irpEarnRate3": 14.67,
+          "irpEarnRate5": 6.94
+        }
+      ]
+    },
+    {
+      "company": "유안타증권",
+      "area": "증권",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 10,
+          "dbEarnRate": 21.88,
+          "dbEarnRate3": 12.25,
+          "dbEarnRate5": 5.98,
+          "dbEarnRate7": 6.41,
+          "dbEarnRate10": 4.91,
+          "dcReserve": 476,
+          "dcEarnRate": 26.3,
+          "dcEarnRate3": 12.24,
+          "dcEarnRate5": 5.59,
+          "dcEarnRate7": 6.04,
+          "dcEarnRate10": 4.71,
+          "irpReserve": 1548,
+          "irpEarnRate": 22.85,
+          "irpEarnRate3": 13.45,
+          "irpEarnRate5": 6.4,
+          "irpEarnRate7": 6.99,
+          "irpEarnRate10": 5.22
+        }
+      ]
+    },
+    {
+      "company": "하나증권",
+      "area": "증권",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 731,
+          "dbEarnRate": 3.28,
+          "dbEarnRate3": 5.7,
+          "dbEarnRate5": 4.03,
+          "dbEarnRate7": 3.53,
+          "dbEarnRate10": 3.45,
+          "dcReserve": 1639,
+          "dcEarnRate": 24.97,
+          "dcEarnRate3": 13.23,
+          "dcEarnRate5": 6.77,
+          "dcEarnRate7": 7.69,
+          "dcEarnRate10": 6.11,
+          "irpReserve": 5133,
+          "irpEarnRate": 25.73,
+          "irpEarnRate3": 13.1,
+          "irpEarnRate5": 5.47,
+          "irpEarnRate7": 5.92,
+          "irpEarnRate10": 4.07
+        }
+      ]
+    },
+    {
+      "company": "한국투자증권",
+      "area": "증권",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 13779,
+          "dbEarnRate": 7.52,
+          "dbEarnRate3": 6.64,
+          "dbEarnRate5": 4.5,
+          "dbEarnRate7": 4.68,
+          "dbEarnRate10": 3.8,
+          "dcReserve": 41565,
+          "dcEarnRate": 21.96,
+          "dcEarnRate3": 11.8,
+          "dcEarnRate5": 5.39,
+          "dcEarnRate7": 6.17,
+          "dcEarnRate10": 4.55,
+          "irpReserve": 59425,
+          "irpEarnRate": 18.66,
+          "irpEarnRate3": 11.08,
+          "irpEarnRate5": 5.1,
+          "irpEarnRate7": 5.56,
+          "irpEarnRate10": 4.21
+        }
+      ]
+    },
+    {
+      "company": "한화투자증권",
+      "area": "증권",
+      "list": [
+        {
+          "division": "합계",
+          "dcReserve": 2672,
+          "dcEarnRate": 22.6,
+          "dcEarnRate3": 12.78,
+          "dcEarnRate5": 5.03,
+          "dcEarnRate7": 4.07,
+          "irpReserve": 3474,
+          "irpEarnRate": 23.23,
+          "irpEarnRate3": 13.46,
+          "irpEarnRate5": 6.33,
+          "irpEarnRate7": 5.64
+        }
+      ]
+    },
+    {
+      "company": "현대차증권",
+      "area": "증권",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 8599,
+          "dbEarnRate": 1.61,
+          "dbEarnRate3": 6.6,
+          "dbEarnRate5": 2.33,
+          "dbEarnRate7": 3.21,
+          "dbEarnRate10": 2.62,
+          "dcReserve": 3575,
+          "dcEarnRate": 22.51,
+          "dcEarnRate3": 17.57,
+          "dcEarnRate5": 6.53,
+          "dcEarnRate7": 7.86,
+          "dcEarnRate10": 5.32,
+          "irpReserve": 7729,
+          "irpEarnRate": 19.33,
+          "irpEarnRate3": 12.23,
+          "irpEarnRate5": 5.24,
+          "irpEarnRate7": 5.87,
+          "irpEarnRate10": 3.93
+        }
+      ]
+    },
+    {
+      "company": "DB생명보험주식회사",
+      "area": "생명보험",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 32,
+          "dbEarnRate": 33.27,
+          "dbEarnRate3": 10.05,
+          "dbEarnRate5": 5.91,
+          "dbEarnRate7": 4.19,
+          "dbEarnRate10": 3.21,
+          "dcReserve": 57,
+          "dcEarnRate": 16.59,
+          "dcEarnRate3": 6.73,
+          "dcEarnRate5": 2.82,
+          "dcEarnRate7": 3.68,
+          "dcEarnRate10": 3.21,
+          "irpReserve": 8,
+          "irpEarnRate": 16.3,
+          "irpEarnRate3": 7.34,
+          "irpEarnRate5": 3.15,
+          "irpEarnRate7": 4.27,
+          "irpEarnRate10": 2.6
+        }
+      ]
+    },
+    {
+      "company": "교보생명보험주식회사",
+      "area": "생명보험",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 9050,
+          "dbEarnRate": 10.8,
+          "dbEarnRate3": 9.26,
+          "dbEarnRate5": 3.65,
+          "dbEarnRate7": 4.58,
+          "dbEarnRate10": 3.25,
+          "dcReserve": 15283,
+          "dcEarnRate": 26.15,
+          "dcEarnRate3": 14.3,
+          "dcEarnRate5": 6.43,
+          "dcEarnRate7": 7.52,
+          "dcEarnRate10": 5.44,
+          "irpReserve": 3368,
+          "irpEarnRate": 26.35,
+          "irpEarnRate3": 13.99,
+          "irpEarnRate5": 6.17,
+          "irpEarnRate7": 6.95,
+          "irpEarnRate10": 5.23
+        }
+      ]
+    },
+    {
+      "company": "동양생명보험주식회사",
+      "area": "생명보험",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 0,
+          "dbEarnRate": 0,
+          "dbEarnRate3": 0,
+          "dbEarnRate5": 0,
+          "dbEarnRate7": 0,
+          "dbEarnRate10": 0,
+          "dcReserve": 116,
+          "dcEarnRate": 28.61,
+          "dcEarnRate3": 15.31,
+          "dcEarnRate5": 7.4,
+          "dcEarnRate7": 7.68,
+          "dcEarnRate10": 5.87,
+          "irpReserve": 17,
+          "irpEarnRate": 21.98,
+          "irpEarnRate3": 14.26,
+          "irpEarnRate5": 7.17,
+          "irpEarnRate7": 7.79,
+          "irpEarnRate10": 5.88
+        }
+      ]
+    },
+    {
+      "company": "미래에셋생명보험주식회사",
+      "area": "생명보험",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 8962,
+          "dbEarnRate": -1.01,
+          "dbEarnRate3": 4.1,
+          "dbEarnRate5": 1.55,
+          "dbEarnRate7": 1.71,
+          "dbEarnRate10": 2.26,
+          "dcReserve": 7467,
+          "dcEarnRate": 17.12,
+          "dcEarnRate3": 12.27,
+          "dcEarnRate5": 4.93,
+          "dcEarnRate7": 5.98,
+          "dcEarnRate10": 4.75,
+          "irpReserve": 2477,
+          "irpEarnRate": 13,
+          "irpEarnRate3": 11.18,
+          "irpEarnRate5": 4.29,
+          "irpEarnRate7": 4.95,
+          "irpEarnRate10": 4.09
+        }
+      ]
+    },
+    {
+      "company": "삼성생명보험주식회사",
+      "area": "생명보험",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 60211,
+          "dbEarnRate": -2.98,
+          "dbEarnRate3": 3.67,
+          "dbEarnRate5": 2.52,
+          "dbEarnRate7": 3.68,
+          "dbEarnRate10": 4.06,
+          "dcReserve": 20500,
+          "dcEarnRate": 25.17,
+          "dcEarnRate3": 13.58,
+          "dcEarnRate5": 6,
+          "dcEarnRate7": 6.83,
+          "dcEarnRate10": 5.1,
+          "irpReserve": 7103,
+          "irpEarnRate": 23.28,
+          "irpEarnRate3": 12.57,
+          "irpEarnRate5": 5.29,
+          "irpEarnRate7": 6.31,
+          "irpEarnRate10": 4.6
+        }
+      ]
+    },
+    {
+      "company": "신한라이프생명보험주식회사",
+      "area": "생명보험",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 0,
+          "dbEarnRate": 0,
+          "dbEarnRate3": 0,
+          "dbEarnRate5": 0,
+          "dbEarnRate7": 0,
+          "dbEarnRate10": 0,
+          "dcReserve": 166,
+          "dcEarnRate": 60.08,
+          "dcEarnRate3": 22.42,
+          "dcEarnRate5": 9.74,
+          "dcEarnRate7": 9.82,
+          "dcEarnRate10": 6.27,
+          "irpReserve": 8,
+          "irpEarnRate": 15.7,
+          "irpEarnRate3": 10.59,
+          "irpEarnRate5": 3.34,
+          "irpEarnRate7": 5.44,
+          "irpEarnRate10": 3.37
+        }
+      ]
+    },
+    {
+      "company": "아이비케이연금보험 주식회사",
+      "area": "생명보험",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 15,
+          "dbEarnRate": 64.93,
+          "dbEarnRate3": 22.51,
+          "dbEarnRate5": 10.96,
+          "dbEarnRate7": 0.14,
+          "dbEarnRate10": 0.46,
+          "dcReserve": 549,
+          "dcEarnRate": 32.65,
+          "dcEarnRate3": 16.12,
+          "dcEarnRate5": 6.78,
+          "dcEarnRate7": 8.02,
+          "dcEarnRate10": 4.75,
+          "irpReserve": 191,
+          "irpEarnRate": 33.6,
+          "irpEarnRate3": 15.21,
+          "irpEarnRate5": 7.4,
+          "irpEarnRate7": 7.78,
+          "irpEarnRate10": 5.63
+        }
+      ]
+    },
+    {
+      "company": "푸본현대생명보험주식회사",
+      "area": "생명보험",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 87,
+          "dbEarnRate": 4.02,
+          "dbEarnRate3": 2.73,
+          "dbEarnRate5": 2.51,
+          "dbEarnRate7": 2.4,
+          "dbEarnRate10": 1.94,
+          "dcReserve": 84,
+          "dcEarnRate": 37.14,
+          "dcEarnRate3": 16.24,
+          "dcEarnRate5": 7.35,
+          "dcEarnRate7": 7.07,
+          "dcEarnRate10": 4.95,
+          "irpReserve": 10,
+          "irpEarnRate": 26.07,
+          "irpEarnRate3": 13.26,
+          "irpEarnRate5": 5.97,
+          "irpEarnRate7": 5.31,
+          "irpEarnRate10": 4.1
+        }
+      ]
+    },
+    {
+      "company": "한화생명보험주식회사",
+      "area": "생명보험",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 3920,
+          "dbEarnRate": -4.46,
+          "dbEarnRate3": 2.55,
+          "dbEarnRate5": 1.06,
+          "dbEarnRate7": 2.46,
+          "dbEarnRate10": 2.42,
+          "dcReserve": 1465,
+          "dcEarnRate": 22.57,
+          "dcEarnRate3": 12.55,
+          "dcEarnRate5": 5.39,
+          "dcEarnRate7": 6.23,
+          "dcEarnRate10": 4.76,
+          "irpReserve": 156,
+          "irpEarnRate": 19.8,
+          "irpEarnRate3": 12.44,
+          "irpEarnRate5": 5.21,
+          "irpEarnRate7": 6.31,
+          "irpEarnRate10": 4.7
+        }
+      ]
+    },
+    {
+      "company": "흥국생명보험주식회사",
+      "area": "생명보험",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 0,
+          "dbEarnRate": 0,
+          "dbEarnRate3": 0,
+          "dbEarnRate5": 0,
+          "dbEarnRate7": 0,
+          "dbEarnRate10": 0,
+          "dcReserve": 506,
+          "dcEarnRate": 22.4,
+          "dcEarnRate3": 10.58,
+          "dcEarnRate5": 5.1,
+          "dcEarnRate7": 4.96,
+          "dcEarnRate10": 3.99,
+          "irpReserve": 16,
+          "irpEarnRate": 28.15,
+          "irpEarnRate3": 12.29,
+          "irpEarnRate5": 6.11,
+          "irpEarnRate7": 6.51,
+          "irpEarnRate10": 4.78
+        }
+      ]
+    },
+    {
+      "company": "DB손해보험주식회사",
+      "area": "손해보험",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 0,
+          "dbEarnRate": 0,
+          "dbEarnRate3": 0,
+          "dbEarnRate5": 0,
+          "dbEarnRate7": 0.01,
+          "dbEarnRate10": 0.32,
+          "dcReserve": 128,
+          "dcEarnRate": 21.38,
+          "dcEarnRate3": 10.14,
+          "dcEarnRate5": 5.01,
+          "dcEarnRate7": 5.21,
+          "dcEarnRate10": 4.14,
+          "irpReserve": 23,
+          "irpEarnRate": 33.14,
+          "irpEarnRate3": 13.25,
+          "irpEarnRate5": 6.61,
+          "irpEarnRate7": 6.67,
+          "irpEarnRate10": 5.24
+        }
+      ]
+    },
+    {
+      "company": "롯데손해보험주식회사",
+      "area": "손해보험",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 0,
+          "dcReserve": 242,
+          "dcEarnRate": 22.23,
+          "dcEarnRate3": 10.48,
+          "dcEarnRate5": 6.24,
+          "dcEarnRate7": 6.82,
+          "dcEarnRate10": 3.96,
+          "irpReserve": 11,
+          "irpEarnRate": 22.08,
+          "irpEarnRate3": 9.91,
+          "irpEarnRate5": 4.94,
+          "irpEarnRate7": 5.88,
+          "irpEarnRate10": 4.21
+        }
+      ]
+    },
+    {
+      "company": "삼성화재해상보험",
+      "area": "손해보험",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 1605,
+          "dbEarnRate": -4.97,
+          "dbEarnRate3": 6.74,
+          "dbEarnRate5": 0.24,
+          "dbEarnRate7": 0.64,
+          "dbEarnRate10": 1.85,
+          "dcReserve": 1416,
+          "dcEarnRate": 25.15,
+          "dcEarnRate3": 12.49,
+          "dcEarnRate5": 5.34,
+          "dcEarnRate7": 6.16,
+          "dcEarnRate10": 4.69,
+          "irpReserve": 361,
+          "irpEarnRate": 22.4,
+          "irpEarnRate3": 12.03,
+          "irpEarnRate5": 4.77,
+          "irpEarnRate7": 5.8,
+          "irpEarnRate10": 4.4
+        }
+      ]
+    },
+    {
+      "company": "주식회사KB손해보험",
+      "area": "손해보험",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 1571,
+          "dbEarnRate": 2.95,
+          "dbEarnRate3": 6.76,
+          "dbEarnRate5": 3.36,
+          "dbEarnRate7": 5.15,
+          "dbEarnRate10": 3.08,
+          "dcReserve": 1350,
+          "dcEarnRate": 27.95,
+          "dcEarnRate3": 12.89,
+          "dcEarnRate5": 6.32,
+          "dcEarnRate7": 6.96,
+          "dcEarnRate10": 5.58,
+          "irpReserve": 272,
+          "irpEarnRate": 21.83,
+          "irpEarnRate3": 11.82,
+          "irpEarnRate5": 5.63,
+          "irpEarnRate7": 6.39,
+          "irpEarnRate10": 4.71
+        }
+      ]
+    },
+    {
+      "company": "한화손해보험주식회사",
+      "area": "손해보험",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 0,
+          "dbEarnRate": 0,
+          "dbEarnRate3": 0,
+          "dbEarnRate5": 0,
+          "dbEarnRate7": 0,
+          "dbEarnRate10": 0,
+          "dcReserve": 0,
+          "dcEarnRate": 0,
+          "dcEarnRate3": 0,
+          "dcEarnRate5": 0,
+          "dcEarnRate7": 0,
+          "dcEarnRate10": 0,
+          "irpReserve": 0,
+          "irpEarnRate": 0,
+          "irpEarnRate3": 0,
+          "irpEarnRate5": 0,
+          "irpEarnRate7": 0,
+          "irpEarnRate10": 0
+        }
+      ]
+    },
+    {
+      "company": "현대해상화재보험",
+      "area": "손해보험",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 0,
+          "dbEarnRate": 0,
+          "dbEarnRate3": 0,
+          "dbEarnRate5": 0,
+          "dbEarnRate7": 0,
+          "dbEarnRate10": 0,
+          "dcReserve": 355,
+          "dcEarnRate": 25.1,
+          "dcEarnRate3": 14.35,
+          "dcEarnRate5": 6.62,
+          "dcEarnRate7": 7.35,
+          "dcEarnRate10": 5.59,
+          "irpReserve": 46,
+          "irpEarnRate": 26.19,
+          "irpEarnRate3": 14.88,
+          "irpEarnRate5": 6.92,
+          "irpEarnRate7": 7.33,
+          "irpEarnRate10": 5.54
+        }
+      ]
+    },
+    {
+      "company": "BNK경남은행",
+      "area": "은행",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 494,
+          "dbEarnRate": 27.03,
+          "dbEarnRate3": 11.65,
+          "dbEarnRate5": 4.97,
+          "dbEarnRate7": 5.27,
+          "dbEarnRate10": 3.9,
+          "dcReserve": 1186,
+          "dcEarnRate": 24.27,
+          "dcEarnRate3": 13.92,
+          "dcEarnRate5": 6.22,
+          "dcEarnRate7": 7.13,
+          "dcEarnRate10": 5.35,
+          "irpReserve": 1695,
+          "irpEarnRate": 23.09,
+          "irpEarnRate3": 12.85,
+          "irpEarnRate5": 5.57,
+          "irpEarnRate7": 6.59,
+          "irpEarnRate10": 4.7
+        }
+      ]
+    },
+    {
+      "company": "BNK부산은행",
+      "area": "은행",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 1501,
+          "dbEarnRate": 13.92,
+          "dbEarnRate3": 9.67,
+          "dbEarnRate5": 6,
+          "dbEarnRate7": 5.6,
+          "dbEarnRate10": 4.87,
+          "dcReserve": 1473,
+          "dcEarnRate": 24.29,
+          "dcEarnRate3": 13.44,
+          "dcEarnRate5": 5.51,
+          "dcEarnRate7": 6.58,
+          "dcEarnRate10": 5.58,
+          "irpReserve": 2441,
+          "irpEarnRate": 30.32,
+          "irpEarnRate3": 14.4,
+          "irpEarnRate5": 6.31,
+          "irpEarnRate7": 6.89,
+          "irpEarnRate10": 5.67
+        }
+      ]
+    },
+    {
+      "company": "IBK기업은행",
+      "area": "은행",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 4530,
+          "dbEarnRate": 12.98,
+          "dbEarnRate3": 8.55,
+          "dbEarnRate5": 4.11,
+          "dbEarnRate7": 4.49,
+          "dbEarnRate10": 3.53,
+          "dcReserve": 31277,
+          "dcEarnRate": 19.95,
+          "dcEarnRate3": 12.21,
+          "dcEarnRate5": 5.39,
+          "dcEarnRate7": 6.36,
+          "dcEarnRate10": 4.8,
+          "irpReserve": 10001,
+          "irpEarnRate": 20.1,
+          "irpEarnRate3": 12.06,
+          "irpEarnRate5": 5.48,
+          "irpEarnRate7": 6.43,
+          "irpEarnRate10": 4.76
+        }
+      ]
+    },
+    {
+      "company": "KB국민은행",
+      "area": "은행",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 8350,
+          "dbEarnRate": 11.37,
+          "dbEarnRate3": 8.58,
+          "dbEarnRate5": 4.85,
+          "dbEarnRate7": 4.41,
+          "dbEarnRate10": 3.76,
+          "dcReserve": 45593,
+          "dcEarnRate": 22.62,
+          "dcEarnRate3": 13.18,
+          "dcEarnRate5": 5.89,
+          "dcEarnRate7": 6.27,
+          "dcEarnRate10": 4.78,
+          "irpReserve": 73545,
+          "irpEarnRate": 22.11,
+          "irpEarnRate3": 13.19,
+          "irpEarnRate5": 5.78,
+          "irpEarnRate7": 6.2,
+          "irpEarnRate10": 4.63
+        }
+      ]
+    },
+    {
+      "company": "NH농협은행",
+      "area": "은행",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 4048,
+          "dbEarnRate": 16.32,
+          "dbEarnRate3": 9.47,
+          "dbEarnRate5": 5.06,
+          "dbEarnRate7": 4.55,
+          "dbEarnRate10": 3.78,
+          "dcReserve": 16399,
+          "dcEarnRate": 24.92,
+          "dcEarnRate3": 12.78,
+          "dcEarnRate5": 5.99,
+          "dcEarnRate7": 6.58,
+          "dcEarnRate10": 4.9,
+          "irpReserve": 23618,
+          "irpEarnRate": 24.82,
+          "irpEarnRate3": 13.32,
+          "irpEarnRate5": 6.17,
+          "irpEarnRate7": 6.38,
+          "irpEarnRate10": 4.64
+        }
+      ]
+    },
+    {
+      "company": "iM뱅크(구 대구은행)",
+      "area": "은행",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 352,
+          "dbEarnRate": 16.07,
+          "dbEarnRate3": 10.36,
+          "dbEarnRate5": 4.67,
+          "dbEarnRate7": 3.87,
+          "dbEarnRate10": 3.3,
+          "dcReserve": 1839,
+          "dcEarnRate": 25.28,
+          "dcEarnRate3": 11.39,
+          "dcEarnRate5": 4.71,
+          "dcEarnRate7": 5.8,
+          "dcEarnRate10": 4.61,
+          "irpReserve": 1563,
+          "irpEarnRate": 28.58,
+          "irpEarnRate3": 13.22,
+          "irpEarnRate5": 5.56,
+          "irpEarnRate7": 6.1,
+          "irpEarnRate10": 4.63
+        }
+      ]
+    },
+    {
+      "company": "광주은행",
+      "area": "은행",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 144,
+          "dbEarnRate": 27.35,
+          "dbEarnRate3": 11.92,
+          "dbEarnRate5": 5.15,
+          "dbEarnRate7": 5.35,
+          "dbEarnRate10": 4.02,
+          "dcReserve": 1306,
+          "dcEarnRate": 25.49,
+          "dcEarnRate3": 13.32,
+          "dcEarnRate5": 5.49,
+          "dcEarnRate7": 6.38,
+          "dcEarnRate10": 4.78,
+          "irpReserve": 922,
+          "irpEarnRate": 26.92,
+          "irpEarnRate3": 15.01,
+          "irpEarnRate5": 5.89,
+          "irpEarnRate7": 7.08,
+          "irpEarnRate10": 5.16
+        }
+      ]
+    },
+    {
+      "company": "신한은행",
+      "area": "은행",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 8025,
+          "dbEarnRate": 4.4,
+          "dbEarnRate3": 6.34,
+          "dbEarnRate5": 4.53,
+          "dbEarnRate7": 4.25,
+          "dbEarnRate10": 3.77,
+          "dcReserve": 51483,
+          "dcEarnRate": 22.14,
+          "dcEarnRate3": 12.68,
+          "dcEarnRate5": 5.82,
+          "dcEarnRate7": 6.53,
+          "dcEarnRate10": 5.17,
+          "irpReserve": 89517,
+          "irpEarnRate": 18.45,
+          "irpEarnRate3": 11.52,
+          "irpEarnRate5": 5.41,
+          "irpEarnRate7": 5.67,
+          "irpEarnRate10": 4.78
+        }
+      ]
+    },
+    {
+      "company": "우리은행",
+      "area": "은행",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 3604,
+          "dbEarnRate": 2.61,
+          "dbEarnRate3": 5.03,
+          "dbEarnRate5": 2.42,
+          "dbEarnRate7": 2.92,
+          "dbEarnRate10": 2.57,
+          "dcReserve": 24542,
+          "dcEarnRate": 23.29,
+          "dcEarnRate3": 12.7,
+          "dcEarnRate5": 5.88,
+          "dcEarnRate7": 6.43,
+          "dcEarnRate10": 4.91,
+          "irpReserve": 46817,
+          "irpEarnRate": 20.4,
+          "irpEarnRate3": 12.01,
+          "irpEarnRate5": 5.55,
+          "irpEarnRate7": 5.77,
+          "irpEarnRate10": 4.3
+        }
+      ]
+    },
+    {
+      "company": "제주은행",
+      "area": "은행",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 0,
+          "dcReserve": 0,
+          "irpReserve": 0
+        }
+      ]
+    },
+    {
+      "company": "하나은행",
+      "area": "은행",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 17030,
+          "dbEarnRate": 2.14,
+          "dbEarnRate3": 4.69,
+          "dbEarnRate5": 4.02,
+          "dbEarnRate7": 3.69,
+          "dbEarnRate10": 3.33,
+          "dcReserve": 41156,
+          "dcEarnRate": 20.64,
+          "dcEarnRate3": 13.1,
+          "dcEarnRate5": 5.93,
+          "dcEarnRate7": 6.3,
+          "dcEarnRate10": 4.72,
+          "irpReserve": 75482,
+          "irpEarnRate": 17.56,
+          "irpEarnRate3": 11.72,
+          "irpEarnRate5": 5.3,
+          "irpEarnRate7": 5.46,
+          "irpEarnRate10": 4.08
+        }
+      ]
+    },
+    {
+      "company": "한국산업은행",
+      "area": "은행",
+      "list": [
+        {
+          "division": "합계",
+          "dbReserve": 1476,
+          "dbEarnRate": 11.29,
+          "dbEarnRate3": 8.31,
+          "dbEarnRate5": 4.07,
+          "dbEarnRate7": 4.3,
+          "dbEarnRate10": 3.72,
+          "dcReserve": 927,
+          "dcEarnRate": 21.31,
+          "dcEarnRate3": 4.42,
+          "dcEarnRate5": 0.7,
+          "dcEarnRate7": 2.36,
+          "dcEarnRate10": 2.44,
+          "irpReserve": 359,
+          "irpEarnRate": 26.75,
+          "irpEarnRate3": 14.06,
+          "irpEarnRate5": 5.99,
+          "irpEarnRate7": 6.62,
+          "irpEarnRate10": 4.95
+        }
+      ]
+    }
+  ]
+}
