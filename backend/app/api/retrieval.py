@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict
@@ -19,7 +20,8 @@ class KnowledgeMatchOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     chunk_id: int
-    document_id: str
+    # SQL 함수가 uuid를 반환한다. JSON 직렬화는 문자열로 나간다.
+    document_id: UUID
     title: str
     source_url: str
     content: str
