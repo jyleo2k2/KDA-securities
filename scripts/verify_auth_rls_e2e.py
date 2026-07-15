@@ -20,9 +20,6 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
-from backend.app.settings import Settings
-
-
 def _required_secret(value, name: str) -> str:
     if value is None or not value.get_secret_value().strip():
         raise RuntimeError(f"{name} is not configured")
@@ -64,6 +61,8 @@ def _user_headers(publishable_key: str, token: str) -> dict[str, str]:
 
 
 def main() -> None:
+    from backend.app.settings import Settings
+
     settings = Settings()
     base_url = (settings.supabase_url or "").rstrip("/")
     if not base_url:
