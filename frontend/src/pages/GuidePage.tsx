@@ -176,6 +176,8 @@ function authenticatedErrorMessage(error: unknown): string {
 
 export function GuidePage() {
   const auth = useSupabaseAuth();
+  const accessToken = auth.session?.access_token;
+  const authenticatedUserId = auth.session?.user.id ?? null;
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [input, setInput] = useState("");
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
@@ -195,10 +197,40 @@ export function GuidePage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const conversationEndRef = useRef<HTMLDivElement>(null);
   const latestMessageRef = useRef<HTMLDivElement>(null);
-  const previousUserIdRef = useRef<string | null>(null);
+  const previousAuthRef = useRef<{
+    userId: string | null;
+    accessToken: string | null;
+  }>({ userId: null, accessToken: null });
+  const currentAuthRef = useRef<{
+    userId: string | null;
+    accessToken: string | null;
+  }>({ userId: authenticatedUserId, accessToken: accessToken ?? null });
+  const authGenerationRef = useRef(0);
+  const conversationGenerationRef = useRef(0);
+  const sendingRef = useRef(false);
 
-  const accessToken = auth.session?.access_token;
-  const authenticatedUserId = auth.session?.user.id ?? null;
+  currentAuthRef.current = {
+    userId: authenticatedUserId,
+    accessToken: accessToken ?? null,
+  };
+
+  function isCurrentOperation(
+    authGeneration: number,
+    userId: string | null,
+    token: string | null,
+    conversationGeneration?: number,
+  ) {
+    const currentAuth = currentAuthRef.current;
+    return (
+      authGenerationRef.current === authGeneration
+      && currentAuth.userId === userId
+      && currentAuth.accessToken === token
+      && (
+        conversationGeneration === undefined
+        || conversationGenerationRef.current === conversationGeneration
+      )
+    );
+  }
 
   const selectedScenarioData = useMemo(
     () => scenarios.find((scenario) => scenario.code === selectedScenario),
@@ -216,9 +248,23 @@ export function GuidePage() {
   }, []);
 
   useEffect(() => {
-    const userChanged = previousUserIdRef.current !== authenticatedUserId;
-    previousUserIdRef.current = authenticatedUserId;
+    const previousAuth = previousAuthRef.current;
+    const userChanged = previousAuth.userId !== authenticatedUserId;
+    const authChanged = (
+      userChanged || previousAuth.accessToken !== (accessToken ?? null)
+    );
+    previousAuthRef.current = {
+      userId: authenticatedUserId,
+      accessToken: accessToken ?? null,
+    };
+    if (authChanged) {
+      authGenerationRef.current += 1;
+      sendingRef.current = false;
+      setIsSending(false);
+      setHistoryLoading(false);
+    }
     if (userChanged) {
+      conversationGenerationRef.current += 1;
       setMessages([]);
       setActiveSessionId(null);
       setSelectedScenario("");
@@ -256,20 +302,27 @@ export function GuidePage() {
     }
   }, [messages, isSending]);
 
-  async function refreshChatSessions(token: string) {
+  async function refreshChatSessions(token: string, userId: string) {
+    const authGeneration = authGenerationRef.current;
     try {
       const sessions = await getChatSessions(token);
+      if (!isCurrentOperation(authGeneration, userId, token)) return;
       setChatSessions(sessions);
       setHistoryError(null);
     } catch (error) {
+      if (!isCurrentOperation(authGeneration, userId, token)) return;
       setHistoryError(authenticatedErrorMessage(error));
     }
   }
 
   function startNewChat() {
+    conversationGenerationRef.current += 1;
+    sendingRef.current = false;
     setMessages([]);
     setActiveSessionId(null);
     setHistoryError(null);
+    setHistoryLoading(false);
+    setIsSending(false);
     setIsSidebarOpen(false);
   }
 
@@ -291,13 +344,18 @@ export function GuidePage() {
 
   async function handleLogout() {
     if (authSubmitting) return;
+    authGenerationRef.current += 1;
+    conversationGenerationRef.current += 1;
+    sendingRef.current = false;
     setAuthSubmitting(true);
+    setMessages([]);
+    setChatSessions([]);
+    setActiveSessionId(null);
+    setHistoryError(null);
+    setHistoryLoading(false);
+    setIsSending(false);
     try {
       await auth.signOut();
-      setMessages([]);
-      setChatSessions([]);
-      setActiveSessionId(null);
-      setHistoryError(null);
     } catch (error) {
       setHistoryError(authenticatedErrorMessage(error));
     } finally {
@@ -306,11 +364,23 @@ export function GuidePage() {
   }
 
   async function loadStoredSession(sessionId: string) {
-    if (!accessToken || historyLoading) return;
+    if (!accessToken || !authenticatedUserId || historyLoading) return;
+    const requestToken = accessToken;
+    const requestUserId = authenticatedUserId;
+    const authGeneration = authGenerationRef.current;
+    const conversationGeneration = ++conversationGenerationRef.current;
+    sendingRef.current = false;
+    setIsSending(false);
     setHistoryLoading(true);
     setHistoryError(null);
     try {
-      const stored = await getStoredChatMessages(sessionId, accessToken);
+      const stored = await getStoredChatMessages(sessionId, requestToken);
+      if (!isCurrentOperation(
+        authGeneration,
+        requestUserId,
+        requestToken,
+        conversationGeneration,
+      )) return;
       const restored = stored
         .filter(
           (message): message is StoredChatMessage & {
@@ -329,15 +399,33 @@ export function GuidePage() {
       setSelectedScenario("");
       setIsSidebarOpen(false);
     } catch (error) {
+      if (!isCurrentOperation(
+        authGeneration,
+        requestUserId,
+        requestToken,
+        conversationGeneration,
+      )) return;
       setHistoryError(authenticatedErrorMessage(error));
     } finally {
-      setHistoryLoading(false);
+      if (isCurrentOperation(
+        authGeneration,
+        requestUserId,
+        requestToken,
+        conversationGeneration,
+      )) setHistoryLoading(false);
     }
   }
 
   async function submitPrompt(prompt: string) {
     const normalized = prompt.trim();
-    if (normalized.length < 2 || isSending) return;
+    if (normalized.length < 2 || sendingRef.current) return;
+
+    const requestToken = accessToken ?? null;
+    const requestUserId = authenticatedUserId;
+    const authGeneration = authGenerationRef.current;
+    const conversationGeneration = ++conversationGenerationRef.current;
+    sendingRef.current = true;
+    setHistoryLoading(false);
 
     const userMessage: ConversationMessage = {
       id: crypto.randomUUID(),
@@ -350,10 +438,10 @@ export function GuidePage() {
     setIsSending(true);
 
     try {
-      const persisted = accessToken
+      const persisted = requestToken
         ? await sendAuthenticatedChat(
             normalized,
-            accessToken,
+            requestToken,
             selectedScenario || undefined,
             activeSessionId || undefined,
           )
@@ -361,6 +449,12 @@ export function GuidePage() {
       const response = persisted
         ? persisted.response
         : await sendChat(normalized, selectedScenario || undefined);
+      if (!isCurrentOperation(
+        authGeneration,
+        requestUserId,
+        requestToken,
+        conversationGeneration,
+      )) return;
       setMessages((current) => [...current, {
         id: crypto.randomUUID(),
         role: "assistant",
@@ -370,16 +464,22 @@ export function GuidePage() {
       }]);
       if (persisted?.persisted && persisted.session_id) {
         setActiveSessionId(persisted.session_id);
-        void refreshChatSessions(accessToken!);
+        void refreshChatSessions(requestToken!, requestUserId!);
       }
       setServerReady(true);
     } catch (error) {
-      const message = accessToken
+      if (!isCurrentOperation(
+        authGeneration,
+        requestUserId,
+        requestToken,
+        conversationGeneration,
+      )) return;
+      const message = requestToken
         ? authenticatedErrorMessage(error)
         : error instanceof Error
           ? error.message
           : "서버 연결을 확인해 주세요.";
-      if (accessToken) setHistoryError(message);
+      if (requestToken) setHistoryError(message);
       setMessages((current) => [...current, {
         id: crypto.randomUUID(),
         role: "assistant",
@@ -391,8 +491,16 @@ export function GuidePage() {
         error instanceof ApiError && error.status !== 503,
       );
     } finally {
-      setIsSending(false);
-      textareaRef.current?.focus();
+      if (isCurrentOperation(
+        authGeneration,
+        requestUserId,
+        requestToken,
+        conversationGeneration,
+      )) {
+        sendingRef.current = false;
+        setIsSending(false);
+        textareaRef.current?.focus();
+      }
     }
   }
 
