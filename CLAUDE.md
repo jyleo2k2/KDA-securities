@@ -2,7 +2,7 @@
 
 > 세션 시작 시 Claude Code가 자동으로 읽는 30초 오리엔테이션. 상세는 링크 문서로.
 > ⚠️ 이 파일은 [AGENTS.md](./AGENTS.md)(Codex용)와 **내용 동기화**된다(도구끼리 서로 안 읽음). 한쪽 고치면 다른 쪽도 같이 고칠 것.
-> 최종 갱신: 2026-07-15 · 단계: **엔진 6모듈·챗봇·PWA 골격 main 통합 / 원격 Supabase 적용·실데이터 적재·E2E 완료 / 화면 데이터 연결 단계**
+> 최종 갱신: 2026-07-15(2차) · 단계: **엔진·챗봇·원격 E2E 완료 / 챗봇 pydantic-ai·검토과정 + BGE-M3 하이브리드 검색 + 홈 탭 연결(커밋·PR 대기) / 벤치마크 탭·Auth(Codex) 진행**
 
 ## 한 줄 정의
 DC형 퇴직연금·IRP·연금저축계좌를 보유했지만 계좌별 차이와 운용 방법을 모르는 이용자에게 **각 계좌의 역할·제약과 전체 자산구성을 쉽게 설명**하고, **투자 뉴스·정보·자문형 콘텐츠**를 함께 전달해 스스로 운용 결정을 내리도록 돕는 모바일 연금계좌 운용 가이드. (자문·정보 제공형 — 실제 주문 실행은 이용자, 일임 아님)
@@ -24,7 +24,7 @@ DC형 퇴직연금·IRP·연금저축계좌를 보유했지만 계좌별 차이�
 
 ## 작업 환경
 - Python: **`uv run python`** 사용 (단독 `python` 금지). 코드 변경 검증은 `uv run pytest`.
-- 확정 스택: **React + TypeScript + Vite PWA → FastAPI → Supabase PostgreSQL/pgvector**, 규칙 엔진은 Python, LLM은 Claude API 하네스로 설명·Q&A만 담당한다.
+- 확정 스택: **React + TypeScript + Vite PWA → FastAPI → Supabase PostgreSQL/pgvector**, 규칙 엔진은 Python, LLM은 pydantic-ai(Claude) 기반으로 설명·Q&A만 담당한다. RAG 임베딩은 BGE-M3(선택 그룹 `uv sync --group embeddings`).
 - 외부 데이터: 통합연금포털 OpenAPI는 FastAPI 수집기가 실호출해 원본·정규화 공시를 적재하고, NAVER 검색 API는 뉴스 제목·요약·링크·발행일 메타데이터를 제공한다.
 - 시크릿: `.env`·API 키는 **읽어서 출력·커밋 금지**. 새 환경변수는 `.env.example`에만 추가.
 - 한국어 .md는 편집도구/UTF-8로만. **PowerShell·sed 일괄치환 금지**(인코딩 깨짐).
@@ -34,7 +34,8 @@ DC형 퇴직연금·IRP·연금저축계좌를 보유했지만 계좌별 차이�
 먼저 읽어라(추측 금지) → 계획 먼저 제시·승인 → 작게 쪼개라 → 모르면 `TODO: 확인 필요`(환각 금지) → 검증하고 정직히 보고(테스트 실행 결과로).
 
 ## 현재 상태 / 다음 단계
-- **아키텍처 골격·챗봇·원격 연동 완료(main)**: 규칙 엔진 6모듈(성향 분석·계좌 규칙·계좌별 진단·통합 집계·적립 시뮬레이션·포트폴리오 예시)+전략 3함수, FastAPI 라우터(`backend/app/api/` — 엔진 도구·공시·뉴스·RAG·챗봇), React PWA 4탭 골격+연금가이드 챗 화면, CI(ruff·pytest·frontend build). `uv run pytest` 180건(시뮬레이션 골든표 28케이스 포함)·Ruff·SQL 구문 검증 통과.
-- **원격 Supabase(KDA-securities) 운영 상태**: 마이그레이션 2개·seed 적용(한국어 인코딩 손상 복구 포함), FSS 실적재(연금저축 2025Q3 88건·퇴직연금 2026Q1 42개사 126행)·NAVER 뉴스·RAG 전문검색을 실데이터 E2E로 검증했다(2026-07-15). fixture는 공시 적재에 사용하지 않는다.
+- **아키텍처 골격·챗봇·원격 연동 완료(main)**: 규칙 엔진 6모듈(성향 분석·계좌 규칙·계좌별 진단·통합 집계·적립 시뮬레이션·포트폴리오 예시)+전략 3함수, FastAPI 라우터(`backend/app/api/` — 엔진 도구·공시·뉴스·RAG·챗봇), React PWA 4탭 골격+연금가이드 챗 화면, CI(ruff·pytest·frontend build).
+- **2026-07-15 작업분(커밋·PR 대기)**: ①챗봇 내레이터 pydantic-ai 전환+검토 과정 표시(화면 "AI가 검토한 과정") ②홈 탭 목시나리오 카드 연결(`/engine/mock-scenario/{code}`) ③시나리오 엔진→통합 집계 위임·공시 SQL retrieval 통합 ④BGE-M3 임베딩 파이프라인+전문검색·벡터 하이브리드(원격 실검증, 미설치 시 전문검색 폴백) ⑤`.claude/settings.json` 자동검증 훅(.py 편집 시 ruff·턴 종료 시 pytest). `uv run pytest` 191건·Ruff 통과.
+- **원격 Supabase(KDA-securities)**: 마이그레이션 2개·seed, FSS 실적재(연금저축 2025Q3 88건·퇴직연금 2026Q1 42개사 126행)·NAVER 뉴스·RAG E2E 검증 완료(2026-07-15). BGE-M3 임베딩 실적재·하이브리드 검색 검증 완료, **차원 고정 마이그레이션은 원격 적용 대기**(`uv run python scripts/apply_embedding_migration.py` — 이재용 직접 실행, 멱등). fixture는 공시 적재에 사용하지 않는다.
 - 잠정 파라미터(`TODO: 확인 필요`, 팀 승인 대기): 성향 설문 배점, 진단 임계값(현금성 80%·편중 50%), 물가 가정 2.0%.
-- 다음: 홈(통합 원그래프·진단)·벤치마크 탭 데이터 연결 → 시나리오 엔진·공시 조회 중복 통합 → 잠정 파라미터 승인 → 실제 Auth·audited 경로 종단간 검증 → `.claude/settings.json` 자동검증 훅. 챗봇 검증 절차는 [챗봇 테스트 가이드](./docs/30_스펙/챗봇_테스트_가이드.md).
+- 다음: 작업분 브랜치 커밋·PR → 벤치마크 탭 데이터 연결 → 잠정 파라미터 승인 → RAG 지식 코퍼스 확충(현재 문서 1건) → 실제 Auth·audited 종단간 검증(별도 브랜치, Codex 담당). 챗봇 검증 절차는 [챗봇 테스트 가이드](./docs/30_스펙/챗봇_테스트_가이드.md).
