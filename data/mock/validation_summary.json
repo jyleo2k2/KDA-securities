@@ -3,8 +3,8 @@
   "errors": [],
   "seed": 20260714,
   "users": 10000,
-  "accounts": 18052,
-  "holdings": 85063,
+  "accounts": 16900,
+  "holdings": 79381,
   "allowed_account_types": [
     "DC",
     "IRP",
@@ -21,51 +21,158 @@
     "40s": 3248,
     "50_plus": 2656
   },
+  "risk_profile_counts": {
+    "ACTIVE": 620,
+    "RISK_NEUTRAL": 2120,
+    "STABLE": 2250,
+    "STABLE_SEEKING": 5010
+  },
+  "preferred_management_type_counts": {
+    "ACTIVE_INVESTMENT": 620,
+    "NEUTRAL_INVESTMENT": 2120,
+    "PRINCIPAL_GUARANTEED": 2250,
+    "STABLE_INVESTMENT": 5010
+  },
+  "retirement_fund_attitude_counts": {
+    "ACTIVE": 717,
+    "PARTIAL_INVESTMENT": 3004,
+    "STABILITY_FIRST": 6279
+  },
+  "investment_readiness_counts": {
+    "DISENGAGED": 930,
+    "INFORMED": 3360,
+    "NEEDS_GUIDANCE": 5710
+  },
+  "payout_preference_counts": {
+    "ANNUITY": 3280,
+    "LUMP_SUM": 2950,
+    "MIXED": 3770
+  },
+  "primary_outside_asset_counts": {
+    "CRYPTO": 480,
+    "DEPOSIT_SAVINGS": 3190,
+    "GOLD_FX": 1050,
+    "INSURANCE_PENSION": 1800,
+    "NONE": 300,
+    "REAL_ESTATE": 830,
+    "SECURITIES": 2350
+  },
+  "employment_type_counts": {
+    "FREELANCER": 1020,
+    "SALARIED_EMPLOYEE": 7900,
+    "SELF_EMPLOYED": 1080
+  },
+  "income_tax_credit_band_counts": {
+    "COMPREHENSIVE_INCOME_ABOVE_45M": 936,
+    "COMPREHENSIVE_INCOME_AT_OR_BELOW_45M": 1164,
+    "GROSS_SALARY_ABOVE_55M": 5368,
+    "GROSS_SALARY_AT_OR_BELOW_55M": 2532
+  },
+  "pension_tax_credit_rate_counts": {
+    "13.2%": 6304,
+    "16.5%": 3696
+  },
+  "planned_pension_start_age_counts": {
+    "55": 1237,
+    "60": 3017,
+    "65": 4502,
+    "70": 1244
+  },
+  "planned_receipt_tax_treatment_counts": {
+    "COMPREHENSIVE_OR_16_5_SEPARATE_CHOICE": 32,
+    "LOW_RATE_SEPARATE_TAX": 7018,
+    "NON_PENSION_WITHDRAWAL_REVIEW": 2950
+  },
+  "tax_credit_eligible_status_counts": {
+    "HAS_ELIGIBLE_CONTRIBUTION": 5116,
+    "NO_ELIGIBLE_CONTRIBUTION": 4884
+  },
+  "mean_gross_salary_krw": 72956914,
+  "mean_comprehensive_income_krw": 45933414,
+  "mean_tax_credit_income_amount_krw": 67281979,
+  "mean_tax_credit_eligible_contribution_krw": 2120016,
+  "mean_estimated_pension_tax_credit_krw": 301554,
+  "mean_planned_annual_total_pension_receipt_krw": 16458544,
+  "mean_planned_annual_receipt_for_pension_method_krw": 2942070,
+  "mean_planned_lump_sum_receipt_krw": 48760627,
+  "contribution_frequency_counts": {
+    "ANNUAL_LUMP_SUM": 662,
+    "MONTHLY": 4604,
+    "MONTHLY_EQUIVALENT": 6172,
+    "NONE": 4532,
+    "QUARTERLY": 930
+  },
+  "pension_receipt_eligibility_counts": {
+    "ELIGIBLE": 11950,
+    "FIVE_YEAR_REQUIREMENT_NOT_MET": 2,
+    "NOT_APPLICABLE_LUMP_SUM": 4948
+  },
+  "risk_profile_mean_risky_asset_ratio": {
+    "ACTIVE": 0.4082,
+    "RISK_NEUTRAL": 0.353,
+    "STABLE": 0.2319,
+    "STABLE_SEEKING": 0.2875
+  },
   "account_type_stats": {
     "DC": {
-      "accounts": 7317,
-      "mean_balance_krw": 47078885,
-      "balance_population_sd_krw": 57395694,
+      "accounts": 6172,
+      "mean_balance_krw": 47166461,
+      "balance_population_sd_krw": 60095477,
+      "mean_monthly_contribution_krw": 505682,
+      "active_contribution_rate": 1.0,
+      "active_mean_monthly_contribution_krw": 505682,
+      "mean_contribution_years": 13.1,
+      "mean_planned_annual_pension_receipt_krw": 15689251,
       "mean_trailing_12m_return_pct": 8.47,
-      "return_population_sd_pct": 6.56,
-      "mean_risky_asset_ratio": 0.2524
+      "return_population_sd_pct": 6.37,
+      "mean_risky_asset_ratio": 0.2112
     },
     "IRP": {
-      "accounts": 5538,
-      "mean_balance_krw": 27560358,
-      "balance_population_sd_krw": 39305110,
+      "accounts": 5609,
+      "mean_balance_krw": 27587117,
+      "balance_population_sd_krw": 39464590,
+      "mean_monthly_contribution_krw": 205976,
+      "active_contribution_rate": 0.5299,
+      "active_mean_monthly_contribution_krw": 388735,
+      "mean_contribution_years": 13.1,
+      "mean_planned_annual_pension_receipt_krw": 9058761,
       "mean_trailing_12m_return_pct": 9.44,
-      "return_population_sd_pct": 6.9,
-      "mean_risky_asset_ratio": 0.3594
+      "return_population_sd_pct": 6.93,
+      "mean_risky_asset_ratio": 0.334
     },
     "PENSION_SAVINGS_FUND": {
-      "accounts": 5197,
-      "mean_balance_krw": 10463379,
-      "balance_population_sd_krw": 17204269,
+      "accounts": 5119,
+      "mean_balance_krw": 10485777,
+      "balance_population_sd_krw": 16357234,
+      "mean_monthly_contribution_krw": 134884,
+      "active_contribution_rate": 0.6298,
+      "active_mean_monthly_contribution_krw": 214166,
+      "mean_contribution_years": 13.0,
+      "mean_planned_annual_pension_receipt_krw": 3309394,
       "mean_trailing_12m_return_pct": 29.3,
-      "return_population_sd_pct": 13.21,
-      "mean_risky_asset_ratio": 0.4024
+      "return_population_sd_pct": 13.36,
+      "mean_risky_asset_ratio": 0.3579
     }
   },
   "age_type_mean_balance_krw": {
     "DC": {
-      "20s": 7570047,
-      "30s": 51199962,
-      "40s": 43420008,
-      "50_plus": 64809990
+      "20s": 7569972,
+      "30s": 51200034,
+      "40s": 43419995,
+      "50_plus": 64809896
     },
     "IRP": {
-      "20s": 4429985,
-      "30s": 29960000,
-      "40s": 25410134,
-      "50_plus": 37930000
+      "20s": 4429880,
+      "30s": 29960012,
+      "40s": 25409995,
+      "50_plus": 37930007
     },
     "PENSION_SAVINGS_FUND": {
-      "20s": 1680096,
-      "30s": 11369906,
-      "40s": 9649929,
-      "50_plus": 14400086
+      "20s": 1680233,
+      "30s": 11370053,
+      "40s": 9650018,
+      "50_plus": 14399934
     }
   },
-  "assumption_note": "Dispersion, account combinations, contributions, and detailed holdings are model assumptions."
+  "assumption_note": "Employment mix, income dispersion, contribution activity/frequency/dispersion, account combinations, and detailed holdings are model assumptions. The KEF four-to-five profile mapping and cross-attribute relationships are also assumptions. Account tenure and planned receipt amounts are tax-scenario assumptions; estimated tax credits are not guaranteed refunds."
 }

@@ -6,8 +6,29 @@
   },
   "MOEL_FSS_RETIREMENT_2025": {
     "kind": "official_aggregate",
-    "use": "DC/IRP performance-linked shares and 2025 annual returns",
+    "use": "DC/IRP performance-linked shares, 2025 annual returns, and top/bottom return-group asset composition",
+    "reference_file": "260520_보도자료_2025년퇴직연금 투자 백서(관계부처합동) (1).pdf",
+    "pdf_pages_used": [
+      7,
+      16,
+      18
+    ],
     "url": "https://www.moel.go.kr/news/enews/report/enewsView.do?news_seq=19411"
+  },
+  "KEF_RETIREMENT_AWARENESS_2025": {
+    "kind": "employee_survey",
+    "use": "preferred management type, retirement-fund attitude, investment readiness, payout preference, and primary outside investment asset",
+    "reference_file": "[경총_보고서] 2025 직장인 퇴직연금 인식조사.pdf",
+    "survey_period": "2025-06-02/2025-06-13",
+    "sample_size": 1003,
+    "pdf_pages_used": [
+      4,
+      5,
+      6,
+      8,
+      9
+    ],
+    "url": null
   },
   "KOSTAT_RETIREMENT_2024": {
     "kind": "official_aggregate",
@@ -16,12 +37,53 @@
   },
   "FSC_FSS_PSA_2025": {
     "kind": "official_aggregate",
-    "use": "pension-savings-fund contracts, assets, and 2025 annual return",
+    "use": "pension-savings-fund contracts, assets, and 2025 annual return; all-product pension-savings contributions and participants",
     "url": "https://www.fsc.go.kr/no010101/87144"
+  },
+  "RETIREMENT_CONTRIBUTION_2024": {
+    "kind": "official_joint_whitepaper",
+    "use": "2024 DC employer and IRP participant annual contribution totals",
+    "url": "https://kiri.or.kr/PDF/weeklytrend/20250623/trend20250623_1.pdf"
+  },
+  "KIRI_PENSION_CONTRIBUTION_2022": {
+    "kind": "official_research",
+    "use": "2020 IRP and pension-savings active-contributor annual means by income band, based on National Tax Statistics",
+    "url": "https://www.kiri.or.kr/report/downloadFile.do?docId=147139"
+  },
+  "KIRI_REPLACEMENT_RATE_2023": {
+    "kind": "official_research",
+    "use": "2021 IRP active additional-contributor annual mean",
+    "url": "https://www.kiri.or.kr/report/downloadFile.do?docId=345589"
+  },
+  "NTS_PENSION_TAX_2025": {
+    "kind": "official_tax_rule",
+    "use": "pension-account tax-credit limits and gross-salary KRW 55 million / comprehensive-income KRW 45 million rate boundaries; private-pension withholding rates and KRW 15 million annual threshold",
+    "url": "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7875&mi=6596",
+    "pension_income_url": "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7888&mi=6452"
+  },
+  "INCOME_TAX_DECREE_PENSION_RECEIPT": {
+    "kind": "official_law",
+    "use": "age 55 and five-year holding requirements for pension receipt",
+    "url": "https://www.law.go.kr/lsLawLinkInfo.do?chrClsCd=010202&lsJoLnkSeq=1001059447"
   },
   "ASSUMPTION_V1": {
     "kind": "model_assumption",
     "use": "account combinations, dispersion, contributions, and within-account holdings",
+    "url": null
+  },
+  "ASSUMPTION_V2": {
+    "kind": "model_assumption",
+    "use": "map KEF four management types to the closest service risk-profile bands and apply the survey's 50s cross-tabs to ages 50-64",
+    "url": null
+  },
+  "ASSUMPTION_CONTRIBUTION_V1": {
+    "kind": "model_assumption",
+    "use": "synthetic annual-income distribution, contribution activity rates, frequency mix, dispersion, and pension-savings-fund proxy mapping",
+    "url": null
+  },
+  "ASSUMPTION_TAX_SCENARIO_V1": {
+    "kind": "model_assumption",
+    "use": "employment-type mix, gross-salary and comprehensive-income distributions, account tenure, planned pension start age and receipt period, and current-balance-only planned receipt amount; IRP source composition is not available, so tax treatment is indicative",
     "url": null
   }
 }
