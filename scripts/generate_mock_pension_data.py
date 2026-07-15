@@ -243,7 +243,9 @@ def generate_records(user_count: int, seed: int) -> tuple[list[dict], list[dict]
     accounts: list[dict] = []
     account_number = 1
 
-    for index, (age_group, scenario) in enumerate(zip(age_groups, scenarios), start=1):
+    for index, (age_group, scenario) in enumerate(
+        zip(age_groups, scenarios, strict=True), start=1
+    ):
         age = rng.randint(*AGE_RANGES[age_group])
         risk_profile = weighted_choice(
             rng, RISK_PROFILES, RISK_PROFILE_WEIGHTS[age_group]
