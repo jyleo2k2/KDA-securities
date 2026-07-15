@@ -1,3 +1,10 @@
+from .aggregation import (
+    AccountContribution,
+    AggregationEvaluation,
+    AggregationInput,
+    OverlapFinding,
+    aggregate_accounts,
+)
 from .diagnostics import (
     AccountDiagnosticsEvaluation,
     AccountHolding,
@@ -40,10 +47,13 @@ from .strategy import (
 )
 
 __all__ = [
+    "AccountContribution",
     "AccountDiagnosticsEvaluation",
     "AccountHolding",
     "AccountInput",
     "AccountType",
+    "AggregationEvaluation",
+    "AggregationInput",
     "AgeBand",
     "AllocationWeights",
     "AssetBucket",
@@ -52,6 +62,7 @@ __all__ = [
     "DiagnosticFinding",
     "HoldingInput",
     "HistoricalReturnEvaluation",
+    "OverlapFinding",
     "PortfolioInput",
     "ProfileEvaluation",
     "ProfileSurveyInput",
@@ -66,6 +77,7 @@ __all__ = [
     "RuleStatus",
     "StatutoryException",
     "SurveyAnswer",
+    "aggregate_accounts",
     "evaluate_account_diagnostics",
     "evaluate_profile",
     "evaluate_risk_cap",
