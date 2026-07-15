@@ -3,7 +3,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ..engine import PortfolioInput, RiskCapEvaluation, ScenarioEvaluation
 
@@ -39,14 +39,6 @@ class ChatRequest(BaseModel):
     scenario_code: str | None = Field(default=None, min_length=1)
     portfolio: PortfolioInput | None = None
     max_results: int = Field(default=3, ge=1, le=5)
-
-    @field_validator("message")
-    @classmethod
-    def reject_sensitive_identifier(cls, value: str) -> str:
-        normalized = value.strip()
-        if re.search(r"\b\d{6}-?[1-8]\d{6}\b", normalized):
-            raise ValueError("주민등록번호 형태의 개인정보는 입력할 수 없습니다")
-        return normalized
 
 
 class SourceEvidence(BaseModel):

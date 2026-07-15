@@ -83,6 +83,21 @@ def test_account_rule_question_returns_rag_source_and_numeric_evidence() -> None
     )
 
 
+def test_combined_accounts_are_explained_with_separate_rules() -> None:
+    response = service().ask(
+        ChatRequest(
+            message=(
+                "DC와 IRP와 연금저축을 합쳐서 위험자산 70%를 적용하면 돼?"
+            )
+        )
+    )
+
+    assert response.intent == ChatIntent.ACCOUNT_RULE
+    assert "합산해 하나의 위험자산 한도" in response.answer
+    assert "각 계좌" in response.answer
+    assert response.numeric_evidence[0].value == Decimal("70")
+
+
 def test_pension_savings_rule_does_not_apply_dc_irp_cap() -> None:
     response = service().ask(
         ChatRequest(message="연금저축펀드 위험자산 한도는 어떻게 돼?")
@@ -159,6 +174,7 @@ def test_news_response_exposes_metadata_and_original_link() -> None:
 
     assert response.intent == ChatIntent.NEWS
     assert response.sources[0].locator == "https://example.test/news/1"
+    assert response.sources[0].evidence_id == "news:news-1"
     assert response.sources[0].data_boundary == "news_metadata"
     assert "기사 본문이 아닌" in response.limitations[0]
 
