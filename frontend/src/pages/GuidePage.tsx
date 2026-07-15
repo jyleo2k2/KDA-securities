@@ -433,6 +433,7 @@ export function GuidePage() {
       text: normalized,
       createdAt: new Date(),
     };
+    const idempotencyKey = crypto.randomUUID();
     setMessages((current) => [...current, userMessage]);
     setInput("");
     setIsSending(true);
@@ -444,6 +445,7 @@ export function GuidePage() {
             requestToken,
             selectedScenario || undefined,
             activeSessionId || undefined,
+            idempotencyKey,
           )
         : null;
       const response = persisted

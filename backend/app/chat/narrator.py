@@ -14,13 +14,12 @@ from pydantic_ai.messages import ModelResponse, ThinkingPart
 from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
 from pydantic_ai.providers.anthropic import AnthropicProvider
 
-from .models import ChatIntent, ChatResponse
+from .models import ChatIntent, ChatResponse, DataBoundary
 
 NARRATABLE_INTENTS = {
     ChatIntent.ACCOUNT_RULE,
     ChatIntent.MOCK_PORTFOLIO,
     ChatIntent.PROVIDER_DISCLOSURE,
-    ChatIntent.NEWS,
 }
 
 SYSTEM_PROMPT = (
@@ -169,6 +168,14 @@ class ClaudeNarrator:
         )
 
     def narrate(self, response: ChatResponse) -> ChatResponse:
+        # NAVER titles/summaries are third-party metadata, not instructions.
+        # Keep every news response deterministic: no external text enters the
+        # narrator context, even if its wording does not match known attacks.
+        if any(
+            source.data_boundary == DataBoundary.NEWS_METADATA
+            for source in response.sources
+        ):
+            return response
         if response.intent not in NARRATABLE_INTENTS or not response.sources:
             return response
         prompt = (

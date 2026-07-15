@@ -10,6 +10,14 @@ DATA_API_MIGRATION = next(
 EMBEDDING_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob("*_fix_embedding_dimension_bge_m3.sql")
 )
+IDEMPOTENCY_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob("*_add_chat_request_idempotency.sql")
+)
+IDEMPOTENCY_POLICY_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob(
+        "*_add_chat_idempotency_deny_policy.sql"
+    )
+)
 SEED = ROOT / "supabase" / "seed.sql"
 
 
@@ -89,6 +97,17 @@ def test_embedding_migration_fixes_bge_m3_dimension() -> None:
     assert "extensions.vector(1024)" in sql
     assert "using hnsw" in sql
     assert "extensions.vector_cosine_ops" in sql
+
+
+def test_chat_idempotency_is_owner_scoped_and_denies_browser_access() -> None:
+    sql = IDEMPOTENCY_MIGRATION.read_text(encoding="utf-8").lower()
+    policy_sql = IDEMPOTENCY_POLICY_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "unique (owner_id, idempotency_key)" in sql
+    assert "chat_request_idempotency_owner_created_idx" in sql
+    assert "enable row level security" in sql
+    assert "revoke all on table public.chat_request_idempotency" in sql
+    assert "using (false)" in policy_sql
 
 
 def test_seed_contains_the_three_product_scenarios() -> None:

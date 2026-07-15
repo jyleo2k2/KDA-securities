@@ -6,7 +6,7 @@ from typing import Annotated
 from uuid import UUID
 
 import psycopg
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 
 from ..auth import require_supabase_user_id
@@ -44,6 +44,7 @@ class PersistedChatResponse(BaseModel):
     session_id: UUID | None = None
     user_message_id: UUID | None = None
     assistant_message_id: UUID | None = None
+    idempotency_replayed: bool = False
     response: ChatResponse
 
 
@@ -117,8 +118,29 @@ def chat_authenticated(
     ],
     service: Annotated[ChatService, Depends(get_chat_service)],
     narrator: Annotated[ClaudeNarrator | None, Depends(get_chat_narrator)],
+    idempotency_key: Annotated[UUID, Header(alias="Idempotency-Key")],
 ) -> PersistedChatResponse:
     """Generate first, then atomically save one verified exchange."""
+
+    if repository is not None:
+        try:
+            replayed = repository.find_idempotent_exchange(
+                owner_id=owner_id, idempotency_key=idempotency_key
+            )
+        except _DATABASE_ERRORS as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Chat database is unavailable",
+            ) from exc
+        if replayed is not None and replayed.response is not None:
+            return PersistedChatResponse(
+                persisted=True,
+                session_id=replayed.session_id,
+                user_message_id=replayed.user_message_id,
+                assistant_message_id=replayed.assistant_message_id,
+                idempotency_replayed=True,
+                response=replayed.response,
+            )
 
     chat_request = ChatRequest.model_validate(
         request.model_dump(exclude={"session_id"})
@@ -148,6 +170,7 @@ def chat_authenticated(
             question=plan.normalized_message,
             response=response,
             session_id=request.session_id,
+            idempotency_key=idempotency_key,
         )
     except ChatSessionAccessError as exc:
         raise HTTPException(
@@ -164,7 +187,8 @@ def chat_authenticated(
         session_id=saved.session_id,
         user_message_id=saved.user_message_id,
         assistant_message_id=saved.assistant_message_id,
-        response=response,
+        idempotency_replayed=saved.replayed,
+        response=saved.response or response,
     )
 
 

@@ -19,6 +19,8 @@ class SavedChatExchange:
     session_id: UUID
     user_message_id: UUID
     assistant_message_id: UUID
+    replayed: bool = False
+    response: ChatResponse | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +106,7 @@ class ChatRepository:
         question: str,
         response: ChatResponse,
         session_id: UUID | None = None,
+        idempotency_key: UUID | None = None,
     ) -> SavedChatExchange:
         """Persist both messages and relational evidence in one transaction."""
 
@@ -112,6 +115,22 @@ class ChatRepository:
             psycopg.connect(self._database_url) as connection,
             connection.cursor() as cursor,
         ):
+            if idempotency_key is not None:
+                # Serialize only retries for the same owner/key.  This prevents
+                # two concurrent HTTP retries from creating two exchanges.
+                cursor.execute(
+                    """
+                    select pg_advisory_xact_lock(
+                        hashtextextended(%s, 0)
+                    )
+                    """,
+                    (f"chat:{owner_id}:{idempotency_key}",),
+                )
+                replayed = self._find_idempotent_exchange(
+                    cursor, owner_id, idempotency_key
+                )
+                if replayed is not None:
+                    return replayed
             if session_id is None:
                 cursor.execute(
                     """
@@ -193,11 +212,76 @@ class ChatRepository:
                 """,
                 (session_id, owner_id),
             )
+            if idempotency_key is not None:
+                cursor.execute(
+                    """
+                    insert into public.chat_request_idempotency (
+                        owner_id, idempotency_key, session_id,
+                        user_message_id, assistant_message_id
+                    )
+                    values (%s, %s, %s, %s, %s)
+                    """,
+                    (
+                        owner_id,
+                        idempotency_key,
+                        session_id,
+                        user_message_id,
+                        assistant_message_id,
+                    ),
+                )
             return SavedChatExchange(
                 session_id=session_id,
                 user_message_id=user_message_id,
                 assistant_message_id=assistant_message_id,
             )
+
+    def find_idempotent_exchange(
+        self, *, owner_id: UUID, idempotency_key: UUID
+    ) -> SavedChatExchange | None:
+        """Return an already committed exchange before invoking the LLM."""
+
+        with (
+            psycopg.connect(self._database_url) as connection,
+            connection.cursor() as cursor,
+        ):
+            return self._find_idempotent_exchange(
+                cursor, owner_id, idempotency_key
+            )
+
+    @staticmethod
+    def _find_idempotent_exchange(
+        cursor: Any, owner_id: UUID, idempotency_key: UUID
+    ) -> SavedChatExchange | None:
+        cursor.execute(
+            """
+            select
+                request.session_id,
+                request.user_message_id,
+                request.assistant_message_id,
+                assistant.content
+            from public.chat_request_idempotency as request
+            join public.chat_messages as assistant
+              on assistant.id = request.assistant_message_id
+            where request.owner_id = %s
+              and request.idempotency_key = %s
+            """,
+            (owner_id, idempotency_key),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        try:
+            payload = json.loads(row[3])
+            stored_response = ChatResponse.model_validate(payload["response"])
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+            raise RuntimeError("stored idempotent chat response is invalid") from exc
+        return SavedChatExchange(
+            session_id=row[0],
+            user_message_id=row[1],
+            assistant_message_id=row[2],
+            replayed=True,
+            response=stored_response,
+        )
 
     def list_sessions(self, owner_id: UUID) -> list[ChatSessionSummary]:
         with (
