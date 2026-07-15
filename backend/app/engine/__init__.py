@@ -5,6 +5,11 @@ from .aggregation import (
     OverlapFinding,
     aggregate_accounts,
 )
+from .allocation import (
+    AllocationExampleEvaluation,
+    AllocationExampleInput,
+    build_allocation_example,
+)
 from .diagnostics import (
     AccountDiagnosticsEvaluation,
     AccountHolding,
@@ -61,6 +66,8 @@ __all__ = [
     "AccountType",
     "AggregationEvaluation",
     "AggregationInput",
+    "AllocationExampleEvaluation",
+    "AllocationExampleInput",
     "AgeBand",
     "AllocationWeights",
     "AssetBucket",
@@ -89,6 +96,7 @@ __all__ = [
     "StatutoryException",
     "SurveyAnswer",
     "aggregate_accounts",
+    "build_allocation_example",
     "evaluate_account_diagnostics",
     "evaluate_profile",
     "evaluate_risk_cap",
