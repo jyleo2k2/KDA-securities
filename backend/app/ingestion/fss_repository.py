@@ -91,6 +91,8 @@ class FssDisclosureRepository:
                     source.default_source_unit,
                     Jsonb(
                         {
+                            "data_boundary": "official_disclosure",
+                            "is_mock": False,
                             "unit_note": (
                                 "API 응답에 단위가 없어 프로젝트 검증 문서의 "
                                 "표기를 적용하고 원본 값을 함께 보존한다."
@@ -106,12 +108,22 @@ class FssDisclosureRepository:
             cursor.execute(
                 """
                     insert into public.ingestion_runs (
-                        source_id, endpoint, requested_params, status
+                        source_id, endpoint, requested_params, status, metadata
                     )
-                    values (%s, %s, %s, 'running')
+                    values (%s, %s, %s, 'running', %s)
                     returning id
                     """,
-                (source_id, source.endpoint, Jsonb(requested_params)),
+                (
+                    source_id,
+                    source.endpoint,
+                    Jsonb(requested_params),
+                    Jsonb(
+                        {
+                            "data_boundary": "official_disclosure",
+                            "is_mock": False,
+                        }
+                    ),
+                ),
             )
             run_row = cursor.fetchone()
             if run_row is None:
@@ -129,7 +141,11 @@ class FssDisclosureRepository:
                     update public.ingestion_runs
                     set status = 'failed',
                         completed_at = now(),
-                        error_message = %s
+                        error_message = %s,
+                        metadata = metadata ||
+                            '{"outcome":"failed",'
+                            '"data_boundary":"official_disclosure",'
+                            '"is_mock":false}'::jsonb
                     where id = %s and status = 'running'
                     """,
                 (safe_message, run_id),
@@ -414,7 +430,7 @@ class FssDisclosureRepository:
                 source_record_count = %s,
                 normalized_record_count = %s,
                 upserted_record_count = %s,
-                metadata = %s
+                metadata = metadata || %s
             where id = %s and status = 'running'
             """,
             (
@@ -423,7 +439,14 @@ class FssDisclosureRepository:
                 response.source_count,
                 normalized_count,
                 normalized_count,
-                Jsonb(metadata),
+                Jsonb(
+                    {
+                        **metadata,
+                        "outcome": "succeeded",
+                        "data_boundary": "official_disclosure",
+                        "is_mock": False,
+                    }
+                ),
                 run_id,
             ),
         )

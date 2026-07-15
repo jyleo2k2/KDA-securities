@@ -33,6 +33,7 @@ def run_live_ingestion(
 ) -> dict[str, Any]:
     repository = None if fetch_only else FssDisclosureRepository(database_url or "")
     result: dict[str, Any] = {"database": "not_requested" if fetch_only else "loaded"}
+    failures: dict[str, str] = {}
 
     with httpx.Client(
         timeout=httpx.Timeout(30.0),
@@ -59,15 +60,15 @@ def run_live_ingestion(
         except Exception as exc:
             if repository and ps_handle:
                 repository.fail_run(ps_handle.run_id, exc)
-            raise
-
-        result.update(
-            {
-                "pension_savings_period": f"{ps_year}Q{ps_quarter}",
-                "pension_savings_source_count": ps_response.source_count,
-                "pension_savings_normalized_count": len(ps_rows),
-            }
-        )
+            failures["pension_savings"] = type(exc).__name__
+        else:
+            result.update(
+                {
+                    "pension_savings_period": f"{ps_year}Q{ps_quarter}",
+                    "pension_savings_source_count": ps_response.source_count,
+                    "pension_savings_normalized_count": len(ps_rows),
+                }
+            )
 
         rp_params = {
             "year": rp_year,
@@ -95,16 +96,26 @@ def run_live_ingestion(
         except Exception as exc:
             if repository and rp_handle:
                 repository.fail_run(rp_handle.run_id, exc)
-            raise
-
-        result.update(
-            {
-                "retirement_period": f"{rp_year}Q{rp_quarter}",
-                "retirement_sys_type": rp_sys_type,
-                "retirement_source_company_count": rp_response.source_count,
-                "retirement_normalized_count": len(rp_rows),
-            }
-        )
+            failures["retirement"] = type(exc).__name__
+        else:
+            result.update(
+                {
+                    "retirement_period": f"{rp_year}Q{rp_quarter}",
+                    "retirement_sys_type": rp_sys_type,
+                    "retirement_source_company_count": rp_response.source_count,
+                    "retirement_normalized_count": len(rp_rows),
+                }
+            )
+    succeeded_count = 2 - len(failures)
+    result["outcome"] = (
+        "succeeded"
+        if not failures
+        else "partial"
+        if succeeded_count
+        else "failed"
+    )
+    if failures:
+        result["failures"] = failures
     return result
 
 

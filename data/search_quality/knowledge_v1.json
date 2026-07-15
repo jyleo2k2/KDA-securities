@@ -1,0 +1,32 @@
+[
+  {
+    "query": "IRP 위험자산 한도를 알려줘",
+    "relevant_source_urls": [
+      "project://docs/20_리서치/연금_기초.md"
+    ]
+  },
+  {
+    "query": "개인형 퇴직연금과 연금저축의 차이를 설명해주세요",
+    "relevant_source_urls": [
+      "project://docs/20_리서치/연금_기초.md"
+    ]
+  },
+  {
+    "query": "DC형의 원리금보장과 위험 자산 규칙이 궁금합니다",
+    "relevant_source_urls": [
+      "project://docs/20_리서치/연금_기초.md"
+    ]
+  },
+  {
+    "query": "FastAPI와 Supabase 데이터 구조를 알려줘",
+    "relevant_source_urls": [
+      "project://docs/30_스펙/아키텍처.md"
+    ]
+  },
+  {
+    "query": "규칙 엔진과 LLM 역할 분리는 어떻게 되어 있나요",
+    "relevant_source_urls": [
+      "project://docs/30_스펙/아키텍처.md"
+    ]
+  }
+]

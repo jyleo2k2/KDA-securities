@@ -25,6 +25,8 @@ class PensionSavingsProviderStat:
     fee_rate_1y: Decimal | None
     quality_flags: list[str]
     observed_at: datetime
+    source_name: str
+    source_url: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,6 +42,8 @@ class RetirementProviderStat:
     avg_earn_rate_5y: Decimal | None
     quality_flags: list[str]
     observed_at: datetime
+    source_name: str
+    source_url: str
 
 
 class DisclosureReadRepository:
@@ -53,6 +57,7 @@ class DisclosureReadRepository:
         *,
         year: int | None = None,
         quarter: int | None = None,
+        provider_name: str | None = None,
         limit: int = 100,
     ) -> list[PensionSavingsProviderStat]:
         with (
@@ -64,14 +69,25 @@ class DisclosureReadRepository:
                 select
                     year, quarter, area_name_raw, company_name_raw,
                     reserve_krw, earn_rate_1y, avg_earn_rate_3y, fee_rate_1y,
-                    quality_flags, observed_at
-                from public.pension_savings_provider_stats
+                    stats.quality_flags, stats.observed_at,
+                    source.name, source.base_url
+                from public.pension_savings_provider_stats as stats
+                join public.data_sources as source on source.id = stats.source_id
                 where (%s::smallint is null or year = %s)
                   and (%s::smallint is null or quarter = %s)
+                  and (%s::text is null or company_name_raw = %s)
                 order by year desc, quarter desc, company_name_raw
                 limit %s
                 """,
-                (year, year, quarter, quarter, max(1, min(limit, MAX_LIMIT))),
+                (
+                    year,
+                    year,
+                    quarter,
+                    quarter,
+                    provider_name,
+                    provider_name,
+                    max(1, min(limit, MAX_LIMIT)),
+                ),
             )
             return [PensionSavingsProviderStat(*row) for row in cursor]
 
@@ -81,6 +97,7 @@ class DisclosureReadRepository:
         scheme: str | None = None,
         year: int | None = None,
         quarter: int | None = None,
+        provider_name: str | None = None,
         limit: int = 100,
     ) -> list[RetirementProviderStat]:
         with (
@@ -92,11 +109,14 @@ class DisclosureReadRepository:
                 select
                     year, quarter, scheme, area_name_raw, company_name_raw,
                     reserve_krw, earn_rate_current, avg_earn_rate_3y,
-                    avg_earn_rate_5y, quality_flags, observed_at
-                from public.retirement_provider_stats
+                    stats.avg_earn_rate_5y, stats.quality_flags,
+                    stats.observed_at, source.name, source.base_url
+                from public.retirement_provider_stats as stats
+                join public.data_sources as source on source.id = stats.source_id
                 where (%s::text is null or scheme = %s)
                   and (%s::smallint is null or year = %s)
                   and (%s::smallint is null or quarter = %s)
+                  and (%s::text is null or company_name_raw = %s)
                 order by year desc, quarter desc, company_name_raw, scheme
                 limit %s
                 """,
@@ -107,6 +127,8 @@ class DisclosureReadRepository:
                     year,
                     quarter,
                     quarter,
+                    provider_name,
+                    provider_name,
                     max(1, min(limit, MAX_LIMIT)),
                 ),
             )

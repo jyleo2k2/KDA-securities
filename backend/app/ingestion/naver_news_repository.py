@@ -38,7 +38,8 @@ class NaverNewsRepository:
                 values (
                     'naver_search_news', 'NAVER API HUB 뉴스 검색',
                     'news_api', 'NAVER Cloud', %s,
-                    '{"storage_policy":"metadata_only"}'::jsonb
+                    '{"storage_policy":"metadata_only",'
+                    '"data_boundary":"news_metadata","is_mock":false}'::jsonb
                 )
                 on conflict (code) do update set
                     name = excluded.name,
@@ -134,7 +135,21 @@ class NaverNewsRepository:
                     response.display,
                     len(rows),
                     len(rows),
-                    Jsonb({"total_search_results": response.total}),
+                    Jsonb(
+                        {
+                            "total_search_results": response.total,
+                            "outcome": (
+                                "partial"
+                                if response.rejected_count
+                                else "succeeded"
+                            ),
+                            "rejected_record_count": response.rejected_count,
+                            "rejected_reasons": response.rejected_reasons,
+                            "storage_policy": "metadata_only",
+                            "data_boundary": "news_metadata",
+                            "is_mock": False,
+                        }
+                    ),
                     run_id,
                 ),
             )
@@ -149,7 +164,10 @@ class NaverNewsRepository:
             cursor.execute(
                 """
                 update public.ingestion_runs
-                set status = 'failed', completed_at = now(), error_message = %s
+                set status = 'failed', completed_at = now(), error_message = %s,
+                    metadata = metadata ||
+                        '{"outcome":"failed","data_boundary":"news_metadata",'
+                        '"is_mock":false}'::jsonb
                 where id = %s and status = 'running'
                 """,
                 (safe_message, run_id),

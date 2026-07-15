@@ -31,6 +31,8 @@ class NaverNewsResponse:
     start: int
     display: int
     items: list[NaverNewsItem]
+    rejected_count: int = 0
+    rejected_reasons: tuple[str, ...] = ()
 
 
 def _plain_text(value: Any) -> str:
@@ -95,24 +97,31 @@ def fetch_naver_news(
         raise NaverNewsApiError("NAVER news response contract is invalid")
 
     items: list[NaverNewsItem] = []
-    for raw in payload["items"]:
+    rejected_reasons: list[str] = []
+    for index, raw in enumerate(payload["items"]):
         if not isinstance(raw, dict):
-            raise NaverNewsApiError("NAVER news item must be an object")
+            rejected_reasons.append(f"item[{index}]: not_an_object")
+            continue
         original_url = _plain_text(raw.get("originallink"))
         portal_url = _plain_text(raw.get("link"))
-        if not original_url:
-            original_url = portal_url
         title = _plain_text(raw.get("title"))
-        if not title or not original_url:
-            raise NaverNewsApiError("NAVER news item is missing title or URL")
+        published_at = _published_at(raw.get("pubDate"))
+        if not title or not original_url or not portal_url or published_at is None:
+            rejected_reasons.append(f"item[{index}]: missing_required_metadata")
+            continue
+        safe_raw_metadata = {
+            key: raw[key]
+            for key in ("title", "originallink", "link", "description", "pubDate")
+            if key in raw
+        }
         items.append(
             NaverNewsItem(
                 title=title,
                 description=_plain_text(raw.get("description")) or None,
                 original_url=original_url,
-                portal_url=portal_url or None,
-                published_at=_published_at(raw.get("pubDate")),
-                raw_metadata=raw,
+                portal_url=portal_url,
+                published_at=published_at,
+                raw_metadata=safe_raw_metadata,
             )
         )
 
@@ -122,9 +131,19 @@ def fetch_naver_news(
         actual_display = int(payload.get("display", len(items)))
     except (TypeError, ValueError) as exc:
         raise NaverNewsApiError("NAVER news paging metadata is invalid") from exc
-    if actual_display != len(items):
+    received_count = len(payload["items"])
+    if actual_display != received_count:
         raise NaverNewsApiError(
             f"NAVER news display mismatch: declared={actual_display}, "
-            f"received={len(items)}"
+            f"received={received_count}"
         )
-    return NaverNewsResponse(total, actual_start, actual_display, items)
+    if received_count and not items:
+        raise NaverNewsApiError("NAVER news response has no valid metadata items")
+    return NaverNewsResponse(
+        total,
+        actual_start,
+        actual_display,
+        items,
+        len(rejected_reasons),
+        tuple(rejected_reasons),
+    )

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import disclosures, engine, retrieval, system
+from .api import chat, disclosures, engine, retrieval, system
 from .api.engine import AuditedRiskCapResponse, risk_cap, risk_cap_audited
 from .api.system import health
 from .settings import get_settings
@@ -39,6 +39,7 @@ def create_app() -> FastAPI:
     _include_eagerly(app, engine.router)
     _include_eagerly(app, retrieval.router)
     _include_eagerly(app, disclosures.router)
+    _include_eagerly(app, chat.router)
     # NOTE: chatbot-mvp 브랜치 병합 시 backend/app/api/chat.py 라우터로 이식해
     # 여기서 include한다 (main.py 인라인 엔드포인트 금지).
     return app

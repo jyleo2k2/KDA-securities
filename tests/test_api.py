@@ -1,10 +1,11 @@
 from decimal import ROUND_HALF_UP, Decimal
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from backend.app.engine.profile import QUESTIONS
 from backend.app.main import app
-from backend.app.settings import Settings, get_settings
+from backend.app.settings import get_settings
 from tests.scenario_fixtures import (
     dc_dormant_account,
     overlap_dc_account,
@@ -30,6 +31,10 @@ def test_route_paths_cover_engine_tools_and_data_reads() -> None:
         "/retrieval/news",
         "/disclosures/pension-savings",
         "/disclosures/retirement",
+        "/chat/demo",
+        "/chat",
+        "/chat/sessions",
+        "/chat/sessions/{session_id}/messages",
     }
 
 
@@ -123,10 +128,8 @@ def test_allocation_example_endpoint_returns_approved_cell() -> None:
 
 
 def test_data_read_endpoints_return_503_without_database() -> None:
-    app.dependency_overrides[get_settings] = lambda: Settings(
-        _env_file=None, database_url=None
-    )
-    try:
+    with patch.dict("os.environ", {"DATABASE_URL": ""}):
+        get_settings.cache_clear()
         for path, params in (
             ("/retrieval/knowledge", {"query": "irp"}),
             ("/retrieval/news", {"search_query": "연금"}),
@@ -135,8 +138,7 @@ def test_data_read_endpoints_return_503_without_database() -> None:
         ):
             response = client.get(path, params=params)
             assert response.status_code == 503, path
-    finally:
-        app.dependency_overrides.pop(get_settings, None)
+    get_settings.cache_clear()
 
 
 def test_cors_allows_vite_dev_origin() -> None:

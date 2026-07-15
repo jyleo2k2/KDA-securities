@@ -319,3 +319,104 @@ export interface RetirementDisclosureResponse {
   quarter: number | null;
   results: RetirementStat[];
 }
+
+// ── /chat/* ──
+export type ChatIntent =
+  | "account_rule"
+  | "mock_portfolio"
+  | "provider_disclosure"
+  | "news"
+  | "out_of_scope";
+
+export type ChatAnswerStatus = "answered" | "no_evidence" | "blocked";
+
+export interface ChatQueryPlan {
+  intent: ChatIntent;
+  account_type: AccountType | null;
+  provider_name: string | null;
+  metrics: string[];
+  period: string | null;
+  max_results: number;
+  search_query: string | null;
+  blocked_reason: string | null;
+}
+
+export interface ChatNarrative {
+  facts: string;
+  external_opinion: string;
+  service_interpretation: string;
+  limitations: string;
+}
+
+export interface ChatNumericEvidence {
+  metric: string;
+  label: string;
+  value: string;
+  unit: string;
+}
+
+export interface ChatAnswerSource {
+  title: string;
+  url: string;
+  document_id: string | null;
+  chunk_id: number | null;
+  news_item_id: string | null;
+}
+
+export interface EvidenceAnswer {
+  status: ChatAnswerStatus;
+  plan: ChatQueryPlan;
+  narrative: ChatNarrative;
+  numeric_evidence: ChatNumericEvidence[];
+  sources: ChatAnswerSource[];
+  data_boundary: string;
+  as_of_date: string | null;
+  collected_at: string | null;
+  used_llm_rewrite: boolean;
+  rewrite_discarded: boolean;
+}
+
+export interface ChatRequest {
+  question: string;
+  session_id?: string | null;
+  portfolio?: PortfolioInput | null;
+}
+
+export interface ChatResponse {
+  session_id: string;
+  user_message_id: string;
+  assistant_message_id: string;
+  answer: EvidenceAnswer;
+}
+
+export interface DemoChatResponse {
+  persisted: false;
+  answer: EvidenceAnswer;
+}
+
+export interface ChatSession {
+  session_id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatMessageEvidence {
+  document_id: string | null;
+  chunk_id: number | null;
+  news_item_id: string | null;
+  source_locator: string;
+  quote_text: string | null;
+  rank: number | null;
+}
+
+export interface ChatMessage {
+  message_id: string;
+  question_message_id: string | null;
+  role: "user" | "assistant";
+  content: string;
+  answer: EvidenceAnswer | null;
+  model_name: string | null;
+  created_at: string;
+  evidence: ChatMessageEvidence[];
+}
