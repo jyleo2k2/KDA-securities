@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -10,6 +11,10 @@ RP_CORP_ENDPOINT = "https://www.fss.or.kr/openapi/api/rpCorpResultList.json"
 
 class FssApiError(RuntimeError):
     """A sanitized FSS transport or response-contract failure."""
+
+    def __init__(self, message: str, *, code: str = "invalid_response") -> None:
+        super().__init__(message)
+        self.code = code if re.fullmatch(r"[a-z0-9_]+", code) else "invalid_response"
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,20 +72,32 @@ def _decimal(value: Any, field_name: str) -> Decimal | None:
     if value is None:
         return None
     if isinstance(value, bool):
-        raise FssApiError(f"FSS field {field_name} must be numeric or null")
+        raise FssApiError(
+            f"FSS field {field_name} must be numeric or null",
+            code="invalid_record",
+        )
     try:
         parsed = Decimal(str(value))
     except (InvalidOperation, ValueError) as exc:
-        raise FssApiError(f"FSS field {field_name} must be numeric or null") from exc
+        raise FssApiError(
+            f"FSS field {field_name} must be numeric or null",
+            code="invalid_record",
+        ) from exc
     if not parsed.is_finite():
-        raise FssApiError(f"FSS field {field_name} must be finite")
+        raise FssApiError(
+            f"FSS field {field_name} must be finite",
+            code="invalid_record",
+        )
     return parsed
 
 
 def _required_text(record: dict[str, Any], field_name: str) -> str:
     value = record.get(field_name)
     if not isinstance(value, str) or not value.strip():
-        raise FssApiError(f"FSS field {field_name} must be a non-empty string")
+        raise FssApiError(
+            f"FSS field {field_name} must be a non-empty string",
+            code="invalid_record",
+        )
     return value.strip()
 
 
@@ -96,38 +113,61 @@ def fetch_fss_response(
     try:
         response = client.get(endpoint, params={"key": api_key, **request_params})
     except httpx.HTTPError as exc:
-        raise FssApiError(f"FSS transport failed for {endpoint}") from exc
+        raise FssApiError(
+            f"FSS transport failed for {endpoint}",
+            code="transport_error",
+        ) from exc
     if response.status_code != 200:
-        raise FssApiError(f"FSS returned HTTP {response.status_code} for {endpoint}")
+        raise FssApiError(
+            f"FSS returned HTTP {response.status_code} for {endpoint}",
+            code="http_error",
+        )
     try:
         payload = response.json()
     except ValueError as exc:
-        raise FssApiError(f"FSS returned invalid JSON for {endpoint}") from exc
+        raise FssApiError(
+            f"FSS returned invalid JSON for {endpoint}",
+            code="invalid_json",
+        ) from exc
     if not isinstance(payload, dict):
-        raise FssApiError("FSS response must be a JSON object")
+        raise FssApiError(
+            "FSS response must be a JSON object",
+            code="invalid_contract",
+        )
 
     code = str(payload.get("code", ""))
-    message = str(payload.get("message", ""))
     if code != "000":
+        safe_code = code if re.fullmatch(r"[0-9]{3}", code) else "unknown"
         raise FssApiError(
-            f"FSS API rejected the request: code={code}, message={message}"
+            f"FSS API rejected the request: code={safe_code}",
+            code=f"provider_rejected_{safe_code}",
         )
 
     records = payload.get("list")
     count = payload.get("count")
     if not isinstance(records, list) or isinstance(count, bool):
-        raise FssApiError("FSS response count/list contract is invalid")
+        raise FssApiError(
+            "FSS response count/list contract is invalid",
+            code="invalid_contract",
+        )
     try:
         parsed_count = int(count)
     except (TypeError, ValueError) as exc:
-        raise FssApiError("FSS response count must be an integer") from exc
+        raise FssApiError(
+            "FSS response count must be an integer",
+            code="invalid_contract",
+        ) from exc
     if parsed_count != len(records):
         raise FssApiError(
-            f"FSS count mismatch: declared={parsed_count}, received={len(records)}"
+            f"FSS count mismatch: declared={parsed_count}, received={len(records)}",
+            code="count_mismatch",
         )
     if not all(isinstance(record, dict) for record in records):
-        raise FssApiError("FSS list entries must be JSON objects")
-    return FssResponse(code, message, parsed_count, records)
+        raise FssApiError(
+            "FSS list entries must be JSON objects",
+            code="invalid_contract",
+        )
+    return FssResponse(code, "accepted", parsed_count, records)
 
 
 def normalize_pension_savings(
@@ -200,11 +240,15 @@ def normalize_retirement(
         result_list = outer.get("list")
         if not isinstance(result_list, list) or len(result_list) != 1:
             raise FssApiError(
-                "FSS retirement company record must contain exactly one result entry"
+                "FSS retirement company record must contain exactly one result entry",
+                code="invalid_record",
             )
         result = result_list[0]
         if not isinstance(result, dict):
-            raise FssApiError("FSS retirement result entry must be an object")
+            raise FssApiError(
+                "FSS retirement result entry must be an object",
+                code="invalid_record",
+            )
         division = _required_text(result, "division")
 
         for scheme in ("db", "dc", "irp"):
