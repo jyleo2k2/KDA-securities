@@ -1,5 +1,6 @@
 import type {
   ChatCapabilities,
+  ConversationContext,
   ChatResponse,
   ChatSessionSummary,
   PersistedChatResponse,
@@ -94,11 +95,17 @@ export function getMockScenarioEvaluation(
 
 export function sendChat(
   message: string,
-  scenarioCode?: string,
+  options?: {
+    scenarioCode?: string;
+    conversationContext?: ConversationContext | null;
+  },
 ): Promise<ChatResponse> {
   return apiPost("/chat/demo", {
     message,
-    ...(scenarioCode ? { scenario_code: scenarioCode } : {}),
+    ...(options?.scenarioCode ? { scenario_code: options.scenarioCode } : {}),
+    ...(options?.conversationContext
+      ? { conversation_context: options.conversationContext }
+      : {}),
   });
 }
 
