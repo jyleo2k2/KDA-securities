@@ -1,4 +1,4 @@
-import { useState, type JSX } from "react";
+import { useEffect, useState, type JSX } from "react";
 
 import { TabBar, type TabKey } from "./components/TabBar";
 import { BenchmarkPage } from "./pages/BenchmarkPage";
@@ -14,9 +14,27 @@ const CARD_PAGES: Partial<Record<TabKey, () => JSX.Element>> = {
   profile: ProfilePage,
 };
 
+const TAB_KEYS: readonly TabKey[] = ["home", "guide", "benchmark", "profile"];
+
+function tabFromHash(): TabKey {
+  const candidate = window.location.hash.slice(1) as TabKey;
+  return TAB_KEYS.includes(candidate) ? candidate : "home";
+}
+
 export default function App(): JSX.Element {
-  const [activeTab, setActiveTab] = useState<TabKey>("home");
+  const [activeTab, setActiveTab] = useState<TabKey>(tabFromHash);
   const CardPage = CARD_PAGES[activeTab];
+
+  useEffect(() => {
+    const syncTabFromHash = () => setActiveTab(tabFromHash());
+    window.addEventListener("hashchange", syncTabFromHash);
+    return () => window.removeEventListener("hashchange", syncTabFromHash);
+  }, []);
+
+  function changeTab(tab: TabKey): void {
+    setActiveTab(tab);
+    window.history.replaceState(null, "", `#${tab}`);
+  }
 
   return (
     <>
@@ -38,7 +56,7 @@ export default function App(): JSX.Element {
           <main style={{ padding: 16 }}>{CardPage ? <CardPage /> : null}</main>
         </div>
       )}
-      <TabBar activeTab={activeTab} onChange={setActiveTab} />
+      <TabBar activeTab={activeTab} onChange={changeTab} />
     </>
   );
 }
