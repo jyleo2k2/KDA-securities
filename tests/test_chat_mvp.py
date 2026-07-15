@@ -2,11 +2,11 @@ import json
 from datetime import UTC, datetime
 from decimal import Decimal
 
-import anthropic
-import httpx
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
+from pydantic_ai.messages import ModelResponse, TextPart, ThinkingPart
+from pydantic_ai.models.function import FunctionModel
 
 from backend.app.chat.disclosures import ProviderDisclosure
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
@@ -172,54 +172,42 @@ def test_response_rejects_numbers_without_sources() -> None:
         )
 
 
-def _mock_anthropic_message(
+def _fake_narration_model(
     text: str, review_note: str = "", thinking: str | None = None
-) -> dict:
-    content: list[dict] = []
-    if thinking is not None:
-        content.append({"type": "thinking", "thinking": thinking, "signature": ""})
-    content.append(
-        {
-            "type": "text",
-            "text": json.dumps(
-                {"narration": text, "review_note": review_note}, ensure_ascii=False
-            ),
-        }
+) -> FunctionModel:
+    payload = json.dumps(
+        {"narration": text, "review_note": review_note}, ensure_ascii=False
     )
-    return {
-        "id": "msg_test",
-        "type": "message",
-        "role": "assistant",
-        "model": "test-model",
-        "content": content,
-        "stop_reason": "end_turn",
-        "stop_sequence": None,
-        "usage": {"input_tokens": 10, "output_tokens": 10},
-    }
+
+    def respond(messages, info) -> ModelResponse:
+        parts: list = []
+        if thinking is not None:
+            parts.append(ThinkingPart(content=thinking))
+        parts.append(TextPart(payload))
+        return ModelResponse(parts=parts)
+
+    return FunctionModel(respond)
 
 
-def _narrator_with_mock_response(
-    text: str, review_note: str = "", thinking: str | None = None
-) -> ClaudeNarrator:
-    def handler(_: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            200, json=_mock_anthropic_message(text, review_note, thinking)
-        )
-
-    mock_client = anthropic.Anthropic(
-        api_key="test-key",
-        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
-    )
-    return ClaudeNarrator(api_key="test-key", model="test-model", client=mock_client)
+def _narrate_with_fake(
+    base: ChatResponse,
+    text: str,
+    review_note: str = "",
+    thinking: str | None = None,
+) -> ChatResponse:
+    narrator = ClaudeNarrator(api_key="test-key", model="test-model")
+    with narrator.agent.override(
+        model=_fake_narration_model(text, review_note, thinking)
+    ):
+        return narrator.narrate(base)
 
 
 def test_claude_narrator_accepts_only_existing_numbers() -> None:
     base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
 
-    narrator = _narrator_with_mock_response(
-        "IRP 일반 위험자산 한도는 70%이며 근거를 확인하세요."
+    response = _narrate_with_fake(
+        base, "IRP 일반 위험자산 한도는 70%이며 근거를 확인하세요."
     )
-    response = narrator.narrate(base)
 
     assert response.narration_mode == "claude_verified"
     assert response.model_name == "test-model"
@@ -229,10 +217,7 @@ def test_claude_narrator_accepts_only_existing_numbers() -> None:
 def test_claude_narrator_rejects_new_numbers() -> None:
     base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
 
-    narrator = _narrator_with_mock_response(
-        "IRP 위험자산을 80%까지 운용할 수 있습니다."
-    )
-    response = narrator.narrate(base)
+    response = _narrate_with_fake(base, "IRP 위험자산을 80%까지 운용할 수 있습니다.")
 
     assert response.narration_mode == "deterministic"
     assert response.answer == base.answer
@@ -242,12 +227,12 @@ def test_claude_narrator_rejects_new_numbers() -> None:
 def test_claude_narrator_prefers_thinking_summary_over_review_note() -> None:
     base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
 
-    narrator = _narrator_with_mock_response(
+    response = _narrate_with_fake(
+        base,
         "IRP 일반 위험자산 한도는 70%이며 근거를 확인하세요.",
         review_note="검토 노트입니다.",
         thinking="검증 답변의 70% 한도를 쉬운 문장으로 바꾸는 중.",
     )
-    response = narrator.narrate(base)
 
     assert response.narration_mode == "claude_verified"
     assert response.narration_reasoning is not None
@@ -257,11 +242,11 @@ def test_claude_narrator_prefers_thinking_summary_over_review_note() -> None:
 def test_claude_narrator_falls_back_to_review_note_without_thinking() -> None:
     base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
 
-    narrator = _narrator_with_mock_response(
+    response = _narrate_with_fake(
+        base,
         "IRP 일반 위험자산 한도는 70%이며 근거를 확인하세요.",
         review_note="검증 답변의 한도 규칙을 원문 숫자 그대로 풀어썼습니다.",
     )
-    response = narrator.narrate(base)
 
     assert response.narration_mode == "claude_verified"
     assert response.narration_reasoning == (
@@ -272,11 +257,11 @@ def test_claude_narrator_falls_back_to_review_note_without_thinking() -> None:
 def test_claude_narrator_drops_reasoning_with_new_numbers() -> None:
     base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
 
-    narrator = _narrator_with_mock_response(
+    response = _narrate_with_fake(
+        base,
         "IRP 일반 위험자산 한도는 70%이며 근거를 확인하세요.",
         thinking="80%라는 새 숫자를 언급하는 검토 과정.",
     )
-    response = narrator.narrate(base)
 
     # 본문은 유지되고 검토 과정만 조용히 생략된다.
     assert response.narration_mode == "claude_verified"

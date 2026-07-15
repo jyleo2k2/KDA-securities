@@ -10,6 +10,7 @@ from ..chat.narrator import ClaudeNarrator
 from ..chat.scenarios import LocalScenarioRepository
 from ..chat.service import ChatService
 from ..engine.audit import EngineAuditRepository
+from ..ingestion.embeddings import get_query_embedder
 from ..retrieval.disclosures_repository import DisclosureReadRepository
 from ..retrieval.repository import RetrievalRepository
 from ..settings import Settings, get_settings
@@ -44,7 +45,8 @@ def get_retrieval_repository(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> RetrievalRepository:
     return RetrievalRepository(
-        _database_url_or_503(settings, detail="Database is not configured")
+        _database_url_or_503(settings, detail="Database is not configured"),
+        embedder=get_query_embedder(),
     )
 
 
@@ -65,7 +67,11 @@ def get_chat_service(
         if settings.database_url is not None
         else ""
     )
-    retrieval = RetrievalRepository(database_url) if database_url else None
+    retrieval = (
+        RetrievalRepository(database_url, embedder=get_query_embedder())
+        if database_url
+        else None
+    )
     disclosures = ChatDisclosureRepository(database_url) if database_url else None
     return ChatService(
         knowledge=LocalMarkdownKnowledgeRepository(),
