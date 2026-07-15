@@ -20,6 +20,12 @@ from .models import (
     StatutoryException,
 )
 from .portfolio import evaluate_risk_cap
+from .profile import (
+    ProfileEvaluation,
+    ProfileSurveyInput,
+    SurveyAnswer,
+    evaluate_profile,
+)
 from .strategy import (
     evaluate_historical_returns,
     evaluate_profit_lock,
@@ -36,6 +42,8 @@ __all__ = [
     "HoldingInput",
     "HistoricalReturnEvaluation",
     "PortfolioInput",
+    "ProfileEvaluation",
+    "ProfileSurveyInput",
     "ProfitLockEvaluation",
     "ProfitLockInput",
     "ReturnSubperiod",
@@ -46,6 +54,8 @@ __all__ = [
     "RiskTreatment",
     "RuleStatus",
     "StatutoryException",
+    "SurveyAnswer",
+    "evaluate_profile",
     "evaluate_risk_cap",
     "evaluate_historical_returns",
     "evaluate_profit_lock",
