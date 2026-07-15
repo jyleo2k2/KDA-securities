@@ -216,6 +216,8 @@ def _message_out(message: StoredChatMessage) -> StoredChatMessageOut:
     if message.role == "assistant":
         try:
             payload = json.loads(message.content)
+            if not isinstance(payload, dict):
+                raise TypeError("assistant payload must be a JSON object")
             if payload.get("schema_version") == 1:
                 response = ChatResponse.model_validate(payload["response"])
                 question_message_id = UUID(payload["question_message_id"])

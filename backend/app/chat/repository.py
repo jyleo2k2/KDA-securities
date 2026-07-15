@@ -51,6 +51,44 @@ class StoredChatMessage:
 
 _KNOWLEDGE_EVIDENCE_ID = re.compile(r"^knowledge:(\d+)$")
 _NEWS_EVIDENCE_ID = re.compile(r"^news:([0-9a-fA-F-]{36})$")
+_MessageRow = tuple[UUID, str, str, str | None, datetime]
+
+
+def _assistant_question_message_id(content: str) -> UUID | None:
+    try:
+        payload = json.loads(content)
+        if not isinstance(payload, dict) or payload.get("schema_version") != 1:
+            return None
+        return UUID(payload["question_message_id"])
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+        return None
+
+
+def _order_message_rows(message_rows: list[_MessageRow]) -> list[_MessageRow]:
+    """Keep each persisted assistant response beside its question."""
+
+    rows_by_id = {row[0]: row for row in message_rows}
+
+    def sort_key(
+        row: _MessageRow,
+    ) -> tuple[datetime, str, int, datetime, str]:
+        anchor = row
+        exchange_position = 0
+        if row[1] == "assistant":
+            question_id = _assistant_question_message_id(row[2])
+            question = rows_by_id.get(question_id) if question_id else None
+            if question is not None and question[1] == "user":
+                anchor = question
+                exchange_position = 1
+        return (
+            anchor[4],
+            str(anchor[0]),
+            exchange_position,
+            row[4],
+            str(row[0]),
+        )
+
+    return sorted(message_rows, key=sort_key)
 
 
 class ChatRepository:
@@ -194,7 +232,9 @@ class ChatRepository:
                 """,
                 (session_id,),
             )
-            message_rows = list(cursor)
+            # PostgreSQL now() is transaction-stable, so both halves of an
+            # exchange can share a timestamp. Pair them before returning history.
+            message_rows = _order_message_rows(list(cursor))
             message_ids = [row[0] for row in message_rows]
             evidence_by_message: dict[UUID, list[StoredMessageEvidence]] = {
                 message_id: [] for message_id in message_ids

@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import psycopg
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.api.deps import (
@@ -262,13 +263,16 @@ def test_retrieval_failure_does_not_leave_an_orphan_question() -> None:
     assert repository.saved == []
 
 
-def test_message_parser_keeps_unreadable_assistant_payload_safe() -> None:
+@pytest.mark.parametrize("content", ["not-json", "[]", '"legacy"', "1"])
+def test_message_parser_keeps_unreadable_assistant_payload_safe(
+    content: str,
+) -> None:
     from backend.app.api.chat import _message_out
 
     message = StoredChatMessage(
         message_id=uuid4(),
         role="assistant",
-        content="not-json",
+        content=content,
         model_name=None,
         created_at=datetime(2026, 7, 15, tzinfo=UTC),
         evidence=(),

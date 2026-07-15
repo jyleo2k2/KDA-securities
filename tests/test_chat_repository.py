@@ -1,5 +1,6 @@
 import json
-from uuid import uuid4
+from datetime import UTC, datetime
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -83,6 +84,57 @@ def _response() -> ChatResponse:
             ),
         ],
     )
+
+
+def test_message_order_keeps_same_timestamp_exchanges_together() -> None:
+    timestamp = datetime(2026, 7, 15, tzinfo=UTC)
+    first_user_id = UUID("00000000-0000-4000-8000-000000000001")
+    second_user_id = UUID("00000000-0000-4000-8000-000000000002")
+    first_assistant_id = UUID("ffffffff-ffff-4fff-8fff-ffffffffffff")
+    second_assistant_id = UUID("00000000-0000-4000-8000-000000000000")
+
+    def assistant_content(question_id: UUID) -> str:
+        return json.dumps(
+            {
+                "schema_version": 1,
+                "question_message_id": str(question_id),
+                "response": {},
+            }
+        )
+
+    rows = [
+        (
+            second_assistant_id,
+            "assistant",
+            assistant_content(second_user_id),
+            None,
+            timestamp,
+        ),
+        (second_user_id, "user", "second", None, timestamp),
+        (
+            first_assistant_id,
+            "assistant",
+            assistant_content(first_user_id),
+            None,
+            timestamp,
+        ),
+        (first_user_id, "user", "first", None, timestamp),
+    ]
+
+    ordered = repository_module._order_message_rows(rows)
+
+    assert [row[0] for row in ordered] == [
+        first_user_id,
+        first_assistant_id,
+        second_user_id,
+        second_assistant_id,
+    ]
+    assert [row[1] for row in ordered] == [
+        "user",
+        "assistant",
+        "user",
+        "assistant",
+    ]
 
 
 def test_save_exchange_is_one_transaction_with_relational_evidence(
