@@ -380,6 +380,12 @@ export interface AnswerSection {
   evidence_ids: string[];
 }
 
+export interface ConversationContext {
+  account_type?: "dc" | "irp" | "pension_savings" | null;
+  scenario_code?: string | null;
+  last_intent?: ChatIntent | null;
+}
+
 export interface ChatResponse {
   intent: ChatIntent;
   answer: string;
@@ -394,6 +400,7 @@ export interface ChatResponse {
   engine_results: unknown[];
   scenario_evaluation?: unknown | null;
   limitations: string[];
+  conversation_context?: ConversationContext | null;
 }
 
 export interface ScenarioSummary {

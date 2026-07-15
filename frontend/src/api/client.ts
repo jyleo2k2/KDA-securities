@@ -1,5 +1,6 @@
 import type {
   ChatCapabilities,
+  ConversationContext,
   ChatResponse,
   ChatSessionSummary,
   PersistedChatResponse,
@@ -94,11 +95,22 @@ export function getMockScenarioEvaluation(
 
 export function sendChat(
   message: string,
-  scenarioCode?: string,
+  options?: string | {
+    scenarioCode?: string;
+    conversationContext?: ConversationContext | null;
+  },
 ): Promise<ChatResponse> {
+  const requestOptions = typeof options === "string"
+    ? { scenarioCode: options }
+    : options;
   return apiPost("/chat/demo", {
     message,
-    ...(scenarioCode ? { scenario_code: scenarioCode } : {}),
+    ...(requestOptions?.scenarioCode
+      ? { scenario_code: requestOptions.scenarioCode }
+      : {}),
+    ...(requestOptions?.conversationContext
+      ? { conversation_context: requestOptions.conversationContext }
+      : {}),
   });
 }
 
@@ -108,6 +120,7 @@ export function sendAuthenticatedChat(
   scenarioCode?: string,
   sessionId?: string,
   idempotencyKey?: string,
+  conversationContext?: ConversationContext | null,
 ): Promise<PersistedChatResponse> {
   return apiPost(
     "/chat",
@@ -115,6 +128,9 @@ export function sendAuthenticatedChat(
       message,
       ...(scenarioCode ? { scenario_code: scenarioCode } : {}),
       ...(sessionId ? { session_id: sessionId } : {}),
+      ...(conversationContext
+        ? { conversation_context: conversationContext }
+        : {}),
     },
     accessToken,
     idempotencyKey,

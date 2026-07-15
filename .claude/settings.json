@@ -1,5 +1,18 @@
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(uv run python -c \"import json,sys; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('file_path') or '')\"); case \"$f\" in *CLAUDE.md|*AGENTS.md) [ -f \"$CLAUDE_PROJECT_DIR/.claude/.owner-verified\" ] && exit 0; echo '진입점 파일(CLAUDE.md/AGENTS.md)은 이재용만 수정합니다. 변경이 필요하면 이재용에게 요청하세요. (로컬 소유자 확인 파일 없음: .claude/.owner-verified)' >&2; exit 2;; esac",
+            "timeout": 30,
+            "statusMessage": "진입점 잠금 확인 중..."
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",

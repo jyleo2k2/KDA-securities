@@ -5,7 +5,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from ..engine import PortfolioInput, RiskCapEvaluation, ScenarioEvaluation
+from ..engine import AccountType, PortfolioInput, RiskCapEvaluation, ScenarioEvaluation
 
 _NUMBER_WITH_UNIT = re.compile(
     r"(?<![0-9A-Za-z_])(?P<sign>[+\-−])?"
@@ -85,6 +85,14 @@ class SectionKind(StrEnum):
     LIMITATION = "limitation"
 
 
+class ConversationContext(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_type: AccountType | None = None
+    scenario_code: str | None = Field(default=None, min_length=1)
+    last_intent: ChatIntent | None = None
+
+
 class ChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -92,6 +100,7 @@ class ChatRequest(BaseModel):
     scenario_code: str | None = Field(default=None, min_length=1)
     portfolio: PortfolioInput | None = None
     max_results: int = Field(default=3, ge=1, le=5)
+    conversation_context: ConversationContext | None = None
 
 
 class SourceEvidence(BaseModel):
@@ -141,6 +150,7 @@ class ChatResponse(BaseModel):
     engine_results: list[RiskCapEvaluation] = Field(default_factory=list)
     scenario_evaluation: ScenarioEvaluation | None = None
     limitations: list[str] = Field(default_factory=list)
+    conversation_context: ConversationContext | None = None
 
     @model_validator(mode="after")
     def verify_evidence_links(self) -> "ChatResponse":
