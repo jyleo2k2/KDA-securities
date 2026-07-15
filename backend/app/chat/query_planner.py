@@ -49,6 +49,15 @@ _PASSWORD_LABEL = r"(?:비밀\s*번호|패스\s*워드|password)"
 _PASSWORD_VALUE = r"[A-Za-z0-9!@#$%^&*_.-]{4,64}"
 _AUTH_CODE_LABEL = r"(?:O\s*T\s*P|보안\s*카드(?:\s*번호)?)"
 _AUTH_CODE_VALUE = r"(?<!\d)\d(?:[ -]?\d){3,11}(?!\d)"
+_PHONE = re.compile(r"(?<!\d)01[016789][ -]?\d{3,4}[ -]?\d{4}(?!\d)")
+_EMAIL = re.compile(
+    r"(?<![\w.+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}(?![\w.-])",
+    re.I,
+)
+_CARD_LABEL = r"(?:카드\s*(?:번호|no\.?)|card\s*(?:number|no\.?))"
+_CARD_VALUE = r"(?<!\d)\d(?:[ -]?\d){14,18}(?!\d)"
+_TOKEN_LABEL = r"(?:api\s*key|access\s*token|secret(?:\s*key)?|인증\s*키)"
+_TOKEN_VALUE = r"(?:sk|sbp?|eyJ)[A-Za-z0-9_\-\.]{12,}"
 _SENSITIVE_VALUE_PATTERNS = (
     re.compile(_ACCOUNT_LABEL + _VALUE_BINDER + _ACCOUNT_VALUE, re.I),
     re.compile(_ACCOUNT_VALUE + _VALUE_BINDER + _ACCOUNT_LABEL, re.I),
@@ -56,6 +65,10 @@ _SENSITIVE_VALUE_PATTERNS = (
     re.compile(_PASSWORD_VALUE + _VALUE_BINDER + _PASSWORD_LABEL, re.I),
     re.compile(_AUTH_CODE_LABEL + _VALUE_BINDER + _AUTH_CODE_VALUE, re.I),
     re.compile(_AUTH_CODE_VALUE + _VALUE_BINDER + _AUTH_CODE_LABEL, re.I),
+    re.compile(_CARD_LABEL + _VALUE_BINDER + _CARD_VALUE, re.I),
+    re.compile(_CARD_VALUE + _VALUE_BINDER + _CARD_LABEL, re.I),
+    re.compile(_TOKEN_LABEL + _VALUE_BINDER + _TOKEN_VALUE, re.I),
+    re.compile(_TOKEN_VALUE + _VALUE_BINDER + _TOKEN_LABEL, re.I),
 )
 _ORDER_REQUEST = re.compile(
     r"매수해|매도해|주문해|사\s*줘|팔아\s*줘|대신\s*사|대신\s*팔|자동\s*투자"
@@ -121,8 +134,13 @@ def _account_types(message: str) -> tuple[AccountType, ...]:
 
 
 def _contains_sensitive_information(message: str) -> bool:
-    return _RRN.search(message) is not None or any(
+    return (
+        _RRN.search(message) is not None
+        or _PHONE.search(message) is not None
+        or _EMAIL.search(message) is not None
+        or any(
         pattern.search(message) for pattern in _SENSITIVE_VALUE_PATTERNS
+        )
     )
 
 

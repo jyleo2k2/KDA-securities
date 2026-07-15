@@ -48,6 +48,23 @@ def test_sensitive_values_are_blocked_before_retrieval() -> None:
 @pytest.mark.parametrize(
     "message",
     (
+        "제 전화번호 010-1234-5678로 상담 내용을 보내줘",
+        "my.name@example.com 계정의 IRP를 확인해줘",
+        "카드번호 4111-1111-1111-1111로 결제해줘",
+        "api key sk-abcdefghijklmnop123456을 등록해줘",
+    ),
+)
+def test_dlp_extension_blocks_contact_payment_and_secret_values(message: str) -> None:
+    knowledge = RecordingKnowledgeRepository()
+    response = _service(knowledge).ask(ChatRequest(message=message))
+
+    assert response.data_mode == "blocked"
+    assert knowledge.queries == []
+
+
+@pytest.mark.parametrize(
+    "message",
+    (
         "IRP에서 OTP가 뭐야?",
         "보안카드 번호는 왜 필요한가요?",
         "계좌번호는 어디서 확인해?",

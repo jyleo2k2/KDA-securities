@@ -29,6 +29,7 @@ OWNER_ID = UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
 SESSION_ID = UUID("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
 USER_MESSAGE_ID = UUID("cccccccc-cccc-4ccc-8ccc-cccccccccccc")
 ASSISTANT_MESSAGE_ID = UUID("dddddddd-dddd-4ddd-8ddd-dddddddddddd")
+CHAT_HEADERS = {"Idempotency-Key": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"}
 
 
 class FakeChatRepository:
@@ -42,6 +43,9 @@ class FakeChatRepository:
             user_message_id=USER_MESSAGE_ID,
             assistant_message_id=ASSISTANT_MESSAGE_ID,
         )
+
+    def find_idempotent_exchange(self, **kwargs) -> SavedChatExchange | None:
+        return None
 
     def list_sessions(self, owner_id: UUID) -> list[ChatSessionSummary]:
         assert owner_id == OWNER_ID
@@ -112,6 +116,7 @@ def test_authenticated_chat_persists_supported_response() -> None:
             response = client.post(
                 "/chat",
                 json={"message": "IRP 위험자산 한도를 알려줘"},
+                headers=CHAT_HEADERS,
             )
     finally:
         app.dependency_overrides.clear()
@@ -123,6 +128,9 @@ def test_authenticated_chat_persists_supported_response() -> None:
     assert payload["response"]["intent"] == "account_rule"
     assert len(repository.saved) == 1
     assert repository.saved[0]["owner_id"] == OWNER_ID
+    assert repository.saved[0]["idempotency_key"] == UUID(
+        CHAT_HEADERS["Idempotency-Key"]
+    )
 
 
 def test_sensitive_query_is_not_persisted_or_echoed() -> None:
@@ -137,6 +145,7 @@ def test_sensitive_query_is_not_persisted_or_echoed() -> None:
                         "주민등록번호 900101-1234567로 IRP를 확인해줘"
                     )
                 },
+                headers=CHAT_HEADERS,
             )
     finally:
         app.dependency_overrides.clear()
@@ -154,10 +163,14 @@ def test_blocked_query_works_without_chat_database() -> None:
     try:
         with TestClient(app) as client:
             blocked = client.post(
-                "/chat", json={"message": "이 상품을 대신 매수해줘"}
+                "/chat",
+                json={"message": "이 상품을 대신 매수해줘"},
+                headers=CHAT_HEADERS,
             )
             supported = client.post(
-                "/chat", json={"message": "IRP 위험자산 한도를 알려줘"}
+                "/chat",
+                json={"message": "IRP 위험자산 한도를 알려줘"},
+                headers=CHAT_HEADERS,
             )
     finally:
         app.dependency_overrides.clear()
@@ -175,7 +188,9 @@ def test_chat_requires_bearer_authentication() -> None:
     try:
         with TestClient(app) as client:
             response = client.post(
-                "/chat", json={"message": "IRP 위험자산 한도를 알려줘"}
+                "/chat",
+                json={"message": "IRP 위험자산 한도를 알려줘"},
+                headers=CHAT_HEADERS,
             )
     finally:
         app.dependency_overrides.clear()
@@ -229,7 +244,9 @@ def test_database_failure_is_distinct_from_auth_failure() -> None:
     try:
         with TestClient(app) as client:
             response = client.post(
-                "/chat", json={"message": "IRP 위험자산 한도를 알려줘"}
+                "/chat",
+                json={"message": "IRP 위험자산 한도를 알려줘"},
+                headers=CHAT_HEADERS,
             )
     finally:
         app.dependency_overrides.clear()
@@ -253,13 +270,59 @@ def test_retrieval_failure_does_not_leave_an_orphan_question() -> None:
     try:
         with TestClient(app) as client:
             response = client.post(
-                "/chat", json={"message": "IRP 위험자산 한도를 알려줘"}
+                "/chat",
+                json={"message": "IRP 위험자산 한도를 알려줘"},
+                headers=CHAT_HEADERS,
             )
     finally:
         app.dependency_overrides.clear()
 
     assert response.status_code == 503
     assert response.json()["detail"] == "Chat data source is unavailable"
+    assert repository.saved == []
+
+
+def test_authenticated_chat_requires_a_uuid_idempotency_key() -> None:
+    repository = FakeChatRepository()
+    _override_authenticated_dependencies(repository)
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat", json={"message": "IRP 위험자산 한도를 알려줘"}
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 422
+    assert repository.saved == []
+
+
+class ReplayChatRepository(FakeChatRepository):
+    def find_idempotent_exchange(self, **kwargs) -> SavedChatExchange | None:
+        return SavedChatExchange(
+            session_id=SESSION_ID,
+            user_message_id=USER_MESSAGE_ID,
+            assistant_message_id=ASSISTANT_MESSAGE_ID,
+            replayed=True,
+            response=_service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘")),
+        )
+
+
+def test_authenticated_chat_replays_before_generating_or_persisting() -> None:
+    repository = ReplayChatRepository()
+    _override_authenticated_dependencies(repository)
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat",
+                json={"message": "IRP 위험자산 한도를 알려줘"},
+                headers=CHAT_HEADERS,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["idempotency_replayed"] is True
     assert repository.saved == []
 
 
