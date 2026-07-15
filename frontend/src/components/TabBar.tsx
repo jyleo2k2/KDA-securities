@@ -22,6 +22,7 @@ export function TabBar({ activeTab, onChange }: TabBarProps): JSX.Element {
         bottom: 0,
         left: 0,
         right: 0,
+        zIndex: 30,
         display: "flex",
         maxWidth: 480,
         margin: "0 auto",

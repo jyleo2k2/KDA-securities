@@ -6,6 +6,7 @@ from pglast import parse_sql
 
 ROOT = Path(__file__).resolve().parents[1]
 SQL_MODULES = (
+    ROOT / "backend" / "app" / "chat" / "disclosures.py",
     ROOT / "backend" / "app" / "engine" / "audit.py",
     ROOT / "backend" / "app" / "ingestion" / "fss_repository.py",
     ROOT / "backend" / "app" / "ingestion" / "naver_news_repository.py",
