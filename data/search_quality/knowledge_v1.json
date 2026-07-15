@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "irp-risk-cap",
+      "query": "IRP 위험자산 한도",
+      "expected_source_url": "project://docs/20_리서치/연금_기초.md",
+      "required_content_terms": ["IRP", "위험자산", "70"],
+      "critical_top1": true
+    },
+    {
+      "id": "irp-particle-variant",
+      "query": "IRP는 위험자산을 얼마나 담을 수 있나요",
+      "expected_source_url": "project://docs/20_리서치/연금_기초.md",
+      "required_content_terms": ["IRP", "위험자산"]
+    },
+    {
+      "id": "irp-korean-alias",
+      "query": "개인형 퇴직연금 위험자산",
+      "expected_source_url": "project://docs/20_리서치/연금_기초.md",
+      "required_content_terms": ["IRP", "위험자산", "70"],
+      "critical_top1": true
+    },
+    {
+      "id": "dc-employer-contribution",
+      "query": "DC형 회사 부담금",
+      "expected_source_url": "project://docs/20_리서치/연금_기초.md",
+      "required_content_terms": ["DC", "회사", "부담금"]
+    },
+    {
+      "id": "pension-savings-risk-rule",
+      "query": "연금저축펀드 위험자산 한도",
+      "expected_source_url": "project://docs/20_리서치/연금_기초.md",
+      "required_content_terms": ["연금저축펀드", "위험자산", "없음"],
+      "critical_top1": true
+    },
+    {
+      "id": "default-option",
+      "query": "디폴트옵션이 뭐야",
+      "expected_source_url": "project://docs/20_리서치/연금_기초.md",
+      "required_content_terms": ["디폴트옵션"]
+    },
+    {
+      "id": "tdf-exception",
+      "query": "적격 TDF 예외",
+      "expected_source_url": "project://docs/20_리서치/연금_기초.md",
+      "required_content_terms": ["TDF", "예외", "분산투자"],
+      "critical_top1": true
+    },
+    {
+      "id": "irp-early-withdrawal",
+      "query": "IRP 중도인출",
+      "expected_source_url": "project://docs/20_리서치/연금_기초.md",
+      "required_content_terms": ["IRP", "중도인출"]
+    },
+    {
+      "id": "tax-credit",
+      "query": "연금저축 세액공제",
+      "expected_source_url": "project://docs/20_리서치/연금_기초.md",
+      "required_content_terms": ["연금저축", "세액공제"]
+    },
+    {
+      "id": "dc-statement-notice",
+      "query": "DC 운용현황 통지",
+      "expected_source_url": "project://docs/20_리서치/연금_기초.md",
+      "required_content_terms": ["DC", "운용현황", "통지"]
+    }
+  ]
+}

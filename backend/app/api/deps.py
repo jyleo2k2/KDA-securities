@@ -5,8 +5,12 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 
 from ..chat.disclosures import DisclosureReadRepository as ChatDisclosureRepository
-from ..chat.knowledge import LocalMarkdownKnowledgeRepository
+from ..chat.knowledge import (
+    FallbackKnowledgeRepository,
+    LocalMarkdownKnowledgeRepository,
+)
 from ..chat.narrator import ClaudeNarrator
+from ..chat.repository import ChatRepository
 from ..chat.scenarios import LocalScenarioRepository
 from ..chat.service import ChatService
 from ..engine.audit import EngineAuditRepository
@@ -58,6 +62,25 @@ def get_disclosures_repository(
     )
 
 
+def get_chat_repository(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ChatRepository:
+    return ChatRepository(
+        _database_url_or_503(
+            settings, detail="Chat database is not configured"
+        )
+    )
+
+
+def get_optional_chat_repository(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ChatRepository | None:
+    if settings.database_url is None:
+        return None
+    database_url = settings.database_url.get_secret_value().strip()
+    return ChatRepository(database_url) if database_url else None
+
+
 def get_chat_service(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> ChatService:
@@ -73,8 +96,14 @@ def get_chat_service(
         else None
     )
     disclosures = ChatDisclosureRepository(database_url) if database_url else None
+    local_knowledge = LocalMarkdownKnowledgeRepository()
+    knowledge = (
+        FallbackKnowledgeRepository(retrieval, local_knowledge)
+        if retrieval is not None
+        else local_knowledge
+    )
     return ChatService(
-        knowledge=LocalMarkdownKnowledgeRepository(),
+        knowledge=knowledge,
         scenarios=LocalScenarioRepository(),
         disclosures=disclosures,
         news=retrieval,

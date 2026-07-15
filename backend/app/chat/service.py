@@ -16,7 +16,9 @@ from .models import (
     NumericEvidence,
     SectionKind,
     SourceEvidence,
+    extract_numeric_claims,
 )
+from .query_planner import BlockedReason, QueryPlan, plan_question
 from .scenarios import LocalScenarioRepository
 
 
@@ -40,9 +42,6 @@ class NewsSearch(Protocol):
     def latest_news(self, search_query: str, *, limit: int = 10) -> list[NewsMatch]: ...
 
 
-BLOCKED_FUTURE_TERMS = ("예상수익률", "미래 수익", "오를까", "목표가", "수익 보장")
-BLOCKED_ORDER_TERMS = ("매수해", "매도해", "주문해", "대신 사", "자동 투자")
-PRODUCT_LEVEL_TERMS = ("개별 상품", "상품 추천", "상품 비교", "판매 중인 상품")
 SCENARIO_KEYWORDS = {
     "방치": "dc_dormant",
     "세액공제": "tax_contribution_uninvested",
@@ -108,30 +107,43 @@ class ChatService:
             scenario_codes=[item.code for item in self._scenarios.list()],
         )
 
-    def ask(self, request: ChatRequest) -> ChatResponse:
-        blocked = self._blocked_response(request.message)
-        if blocked is not None:
-            return blocked
+    def plan(self, request: ChatRequest) -> QueryPlan:
+        return plan_question(
+            request.message, default_max_results=request.max_results
+        )
+
+    def ask(
+        self, request: ChatRequest, *, plan: QueryPlan | None = None
+    ) -> ChatResponse:
+        resolved_plan = plan or self.plan(request)
+        if resolved_plan.blocked_reason is not None and not (
+            resolved_plan.blocked_reason == BlockedReason.UNSUPPORTED
+            and (request.portfolio is not None or request.scenario_code is not None)
+        ):
+            return self._blocked_response(resolved_plan.blocked_reason)
+        request = request.model_copy(
+            update={
+                "message": resolved_plan.normalized_message,
+                "max_results": resolved_plan.max_results,
+            }
+        )
         if request.portfolio is not None:
             return self._custom_portfolio(request)
         scenario_code = request.scenario_code or self._scenario_code(request.message)
         if scenario_code is not None:
             return self._scenario_response(scenario_code)
-        if self._looks_like_scenario(request.message):
+        if resolved_plan.intent == ChatIntent.MOCK_PORTFOLIO:
             return self._scenario_selection_response()
-        if "뉴스" in request.message or "소식" in request.message:
-            return self._news_response(request)
-        account_type = self._disclosure_account_type(request.message)
-        if account_type is not None and any(
-            term in request.message
-            for term in ("수익률", "수수료", "적립금", "사업자", "회사")
-        ):
+        if resolved_plan.intent == ChatIntent.NEWS:
+            assert resolved_plan.news_query is not None
+            return self._news_response(
+                request, search_query=resolved_plan.news_query
+            )
+        if resolved_plan.intent == ChatIntent.PROVIDER_DISCLOSURE:
+            account_type = resolved_plan.account_types[0]
             return self._disclosure_response(request, account_type)
-        if any(
-            term in request.message.lower()
-            for term in ("dc", "irp", "연금저축", "연금", "위험자산", "tdf")
-        ):
-            return self._account_rule_response(request)
+        if resolved_plan.intent == ChatIntent.ACCOUNT_RULE:
+            return self._account_rule_response(request, resolved_plan)
         return ChatResponse(
             intent=ChatIntent.OUT_OF_SCOPE,
             answer=(
@@ -144,8 +156,20 @@ class ChatService:
         )
 
     @staticmethod
-    def _blocked_response(message: str) -> ChatResponse | None:
-        if any(term in message for term in BLOCKED_FUTURE_TERMS):
+    def _blocked_response(reason: BlockedReason) -> ChatResponse:
+        if reason == BlockedReason.SENSITIVE_INFORMATION:
+            return ChatResponse(
+                intent=ChatIntent.OUT_OF_SCOPE,
+                answer=(
+                    "개인 식별정보나 인증정보가 포함된 질문은 처리하지 않습니다. "
+                    "해당 값을 삭제한 뒤 제도나 운용 원리만 질문해 주세요."
+                ),
+                data_mode="blocked",
+                limitations=[
+                    "입력 원문은 검색이나 AI 설명 단계로 전달하지 않았습니다."
+                ],
+            )
+        if reason == BlockedReason.FUTURE_PREDICTION:
             return ChatResponse(
                 intent=ChatIntent.OUT_OF_SCOPE,
                 answer=(
@@ -156,7 +180,7 @@ class ChatService:
                 data_mode="blocked",
                 limitations=["미래 수익 예측은 MVP 범위 밖입니다."],
             )
-        if any(term in message for term in BLOCKED_ORDER_TERMS):
+        if reason == BlockedReason.ORDER_REQUEST:
             return ChatResponse(
                 intent=ChatIntent.OUT_OF_SCOPE,
                 answer=(
@@ -166,7 +190,7 @@ class ChatService:
                 data_mode="blocked",
                 limitations=["주문·자동운용은 지원하지 않습니다."],
             )
-        if any(term in message for term in PRODUCT_LEVEL_TERMS):
+        if reason == BlockedReason.PRODUCT_LEVEL_UNAVAILABLE:
             return ChatResponse(
                 intent=ChatIntent.OUT_OF_SCOPE,
                 answer=(
@@ -177,9 +201,30 @@ class ChatService:
                 data_mode="unavailable",
                 limitations=["검증된 개별 상품 식별자와 적격성 데이터가 필요합니다."],
             )
-        return None
+        if reason == BlockedReason.ACCOUNT_SELECTION_REQUIRED:
+            return ChatResponse(
+                intent=ChatIntent.OUT_OF_SCOPE,
+                answer=(
+                    "공시 수치는 계좌 제도별 항목이 달라 한 번에 섞어 비교하지 "
+                    "않습니다. DC형, IRP, 연금저축 중 하나를 지정해 주세요."
+                ),
+                data_mode="blocked",
+                limitations=["계좌별 공시 계약을 분리해 조회합니다."],
+            )
+        return ChatResponse(
+            intent=ChatIntent.OUT_OF_SCOPE,
+            answer=(
+                "현재 MVP는 연금계좌 규칙, 목계좌 진단, 과거 공시와 뉴스 "
+                "근거 조회에 답할 수 있습니다. 질문에 계좌 유형이나 진단할 "
+                "목시나리오를 포함해 주세요."
+            ),
+            data_mode="safe_fallback",
+            limitations=["범용 투자·세무·법률 상담은 지원하지 않습니다."],
+        )
 
-    def _account_rule_response(self, request: ChatRequest) -> ChatResponse:
+    def _account_rule_response(
+        self, request: ChatRequest, plan: QueryPlan
+    ) -> ChatResponse:
         matches = self._knowledge.search_knowledge(request.message, limit=3)
         sources = _knowledge_sources(matches)
         if not matches:
@@ -190,20 +235,35 @@ class ChatService:
                 limitations=["질문을 계좌 유형과 함께 더 구체적으로 입력해 주세요."],
             )
 
-        lower = request.message.lower()
         risk_question = "위험자산" in request.message or "한도" in request.message
+        has_retirement_account = bool(
+            {AccountType.DC, AccountType.IRP}.intersection(plan.account_types)
+        )
+        has_pension_savings = AccountType.PENSION_SAVINGS in plan.account_types
         numeric: list[NumericEvidence] = []
-        if (
-            risk_question
-            and "연금저축" in request.message
-            and not any(account in lower for account in ("dc", "irp"))
-        ):
+        if plan.combines_account_rules and risk_question:
+            answer = (
+                "여러 연금계좌를 합산해 하나의 위험자산 한도를 적용하지 "
+                "않습니다. DC형과 IRP는 각 계좌에서 일반 위험자산을 적립금의 "
+                "70%까지로 판정하고, 연금저축펀드에는 같은 총량 한도를 "
+                "적용하지 않아 계좌별로 따로 확인해야 합니다."
+            )
+            numeric.append(
+                NumericEvidence(
+                    label="DC형·IRP 계좌별 일반 위험자산 한도",
+                    value=Decimal("70"),
+                    unit="%",
+                    evidence_id=sources[0].evidence_id,
+                    basis="검증된 계좌별 규칙",
+                )
+            )
+        elif risk_question and has_pension_savings and not has_retirement_account:
             answer = (
                 "연금저축펀드에는 DC형·IRP와 동일한 위험자산 총량 한도를 "
                 "적용하지 않습니다. 대신 해당 계좌에서 편입 가능한 상품인지 "
                 "별도 적격성 규칙으로 확인해야 합니다."
             )
-        elif risk_question:
+        elif risk_question and has_retirement_account:
             answer = (
                 "DC형과 IRP의 일반 위험자산은 적립금의 70%까지로 판정합니다. "
                 "적격 TDF·디폴트옵션 같은 법정 예외는 적격성이 명시적으로 "
@@ -212,7 +272,7 @@ class ChatService:
             )
             numeric.append(
                 NumericEvidence(
-                    label="DC형·IRP 일반 위험자산 한도",
+                    label="DC형·IRP 계좌별 일반 위험자산 한도",
                     value=Decimal("70"),
                     unit="%",
                     evidence_id=sources[0].evidence_id,
@@ -222,6 +282,18 @@ class ChatService:
         else:
             excerpt = re.sub(r"\s+", " ", matches[0].content).strip()[:600]
             answer = f"검증 문서에서 확인한 내용입니다. {excerpt}"
+            for index, (value, unit) in enumerate(
+                sorted(extract_numeric_claims(answer)), start=1
+            ):
+                numeric.append(
+                    NumericEvidence(
+                        label=f"{matches[0].title} 답변 수치 {index}",
+                        value=value,
+                        unit=unit,
+                        evidence_id=sources[0].evidence_id,
+                        basis="검증된 지식 문서 답변 인용",
+                    )
+                )
 
         return ChatResponse(
             intent=ChatIntent.ACCOUNT_RULE,
@@ -344,6 +416,16 @@ class ChatService:
                     unit="%",
                     evidence_id="engine:scenario",
                     basis="규칙 엔진 계산",
+                )
+            )
+        for item in evaluation.asset_allocations:
+            numeric.append(
+                NumericEvidence(
+                    label=f"{item.asset_class_code} 통합 자산군 비중",
+                    value=item.allocation_percent,
+                    unit="%",
+                    evidence_id="engine:scenario",
+                    basis="목계좌 통합 집계 엔진 계산",
                 )
             )
         allocation_text = ", ".join(
@@ -487,7 +569,9 @@ class ChatService:
             ],
         )
 
-    def _news_response(self, request: ChatRequest) -> ChatResponse:
+    def _news_response(
+        self, request: ChatRequest, *, search_query: str
+    ) -> ChatResponse:
         if self._news is None:
             return ChatResponse(
                 intent=ChatIntent.NEWS,
@@ -498,12 +582,7 @@ class ChatService:
                 data_mode="unavailable",
                 limitations=["NAVER 뉴스 수집과 DATABASE_URL이 필요합니다."],
             )
-        search_query = re.sub(
-            r"(뉴스|소식|검색|알려줘|보여줘|해줘)", " ", request.message
-        ).strip()
-        matches = self._news.latest_news(
-            search_query or request.message, limit=request.max_results
-        )
+        matches = self._news.latest_news(search_query, limit=request.max_results)
         if not matches:
             return ChatResponse(
                 intent=ChatIntent.NEWS,
@@ -513,14 +592,14 @@ class ChatService:
             )
         sources = [
             SourceEvidence(
-                evidence_id=f"news:{index}",
+                evidence_id=f"news:{item.item_id}",
                 label=item.title,
                 locator=item.original_url,
                 publisher="외부 뉴스 원문",
                 as_of=item.published_at,
                 data_boundary=DataBoundary.NEWS_METADATA,
             )
-            for index, item in enumerate(matches, start=1)
+            for item in matches
         ]
         lines = [
             f"{item.title} ({item.published_at.date().isoformat()})"
@@ -553,18 +632,3 @@ class ChatService:
             (code for keyword, code in SCENARIO_KEYWORDS.items() if keyword in message),
             None,
         )
-
-    @staticmethod
-    def _looks_like_scenario(message: str) -> bool:
-        return any(term in message for term in ("내 계좌", "목계좌", "포트폴리오 진단"))
-
-    @staticmethod
-    def _disclosure_account_type(message: str) -> AccountType | None:
-        lower = message.lower()
-        if "연금저축" in message:
-            return AccountType.PENSION_SAVINGS
-        if "irp" in lower:
-            return AccountType.IRP
-        if "dc" in lower:
-            return AccountType.DC
-        return None

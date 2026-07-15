@@ -79,10 +79,29 @@ def embed_pending_chunks(
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                select id, content
-                from public.knowledge_chunks
-                where embedding is null or embedding_model is distinct from %s
-                order by id
+                select kc.id, kc.content
+                from public.knowledge_chunks as kc
+                join public.knowledge_documents as kd on kd.id = kc.document_id
+                join public.data_sources as ds on ds.id = kd.source_id
+                where (
+                    kc.embedding is null
+                    or kc.embedding_model is distinct from %s
+                )
+                  and kc.metadata ->> 'is_active' is distinct from 'false'
+                  and kd.license_status = 'permitted'
+                  and kd.document_type in ('official_guide', 'regulation', 'research')
+                  and ds.code in (
+                      'project_verified_knowledge',
+                      'retirement_pension_official_rules'
+                  )
+                  and ds.is_active
+                  and kd.metadata ->> 'data_boundary' = 'verified_knowledge'
+                  and kd.metadata ->> 'contains_personal_data' = 'false'
+                  and kd.metadata ->> 'is_mock' = 'false'
+                  and kc.metadata ->> 'data_boundary' = 'verified_knowledge'
+                  and kc.metadata ->> 'contains_personal_data' = 'false'
+                  and kc.metadata ->> 'is_mock' = 'false'
+                order by kc.id
                 """,
                 (EMBEDDING_MODEL,),
             )

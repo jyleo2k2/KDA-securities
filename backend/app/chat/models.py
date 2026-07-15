@@ -1,11 +1,64 @@
 import re
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ..engine import PortfolioInput, RiskCapEvaluation, ScenarioEvaluation
+
+_NUMBER_WITH_UNIT = re.compile(
+    r"(?<![0-9A-Za-z_])(?P<sign>[+\-−])?"
+    r"(?P<number>\d[\d,]*(?:\.\d+)?)\s*"
+    r"(?P<unit>백\s*만\s*원|천\s*만\s*원|억\s*원|만\s*원|천\s*원|"
+    r"원|KRW|퍼센트|프로|%)"
+    r"(?![0-9A-Za-z_])",
+    re.I,
+)
+_CURRENCY_MULTIPLIERS = {
+    "원": Decimal("1"),
+    "천원": Decimal("1000"),
+    "만원": Decimal("10000"),
+    "천만원": Decimal("10000000"),
+    "백만원": Decimal("1000000"),
+    "억원": Decimal("100000000"),
+    "krw": Decimal("1"),
+}
+_UNIT_ALIASES = {
+    "%": "%",
+    "퍼센트": "%",
+    "프로": "%",
+}
+
+
+def _normalize_numeric_value(
+    value: Decimal, unit: str
+) -> tuple[Decimal, str]:
+    compact_unit = re.sub(r"\s+", "", unit).casefold()
+    multiplier = _CURRENCY_MULTIPLIERS.get(compact_unit)
+    if multiplier is not None:
+        return value * multiplier, "KRW"
+    return value, _UNIT_ALIASES.get(compact_unit, compact_unit)
+
+
+def extract_numeric_claims(text: str) -> set[tuple[Decimal, str]]:
+    """Return normalized percentage and KRW claims from generated text."""
+
+    claims: set[tuple[Decimal, str]] = set()
+    for match in _NUMBER_WITH_UNIT.finditer(text):
+        raw_number = match.group("number").replace(",", "")
+        raw_sign = match.group("sign")
+        sign = "-" if raw_sign in {"-", "−"} else ""
+        try:
+            value = Decimal(sign + raw_number)
+        except InvalidOperation:
+            continue
+        claims.add(_normalize_numeric_value(value, match.group("unit")))
+    return claims
+
+
+def numeric_evidence_claim(item: "NumericEvidence") -> tuple[Decimal, str]:
+    return _normalize_numeric_value(item.value, item.unit)
 
 
 class ChatIntent(StrEnum):
@@ -39,14 +92,6 @@ class ChatRequest(BaseModel):
     scenario_code: str | None = Field(default=None, min_length=1)
     portfolio: PortfolioInput | None = None
     max_results: int = Field(default=3, ge=1, le=5)
-
-    @field_validator("message")
-    @classmethod
-    def reject_sensitive_identifier(cls, value: str) -> str:
-        normalized = value.strip()
-        if re.search(r"\b\d{6}-?[1-8]\d{6}\b", normalized):
-            raise ValueError("주민등록번호 형태의 개인정보는 입력할 수 없습니다")
-        return normalized
 
 
 class SourceEvidence(BaseModel):
@@ -109,9 +154,51 @@ class ChatResponse(BaseModel):
         missing = referenced_ids - source_ids
         if missing:
             raise ValueError(f"answer evidence is missing sources: {sorted(missing)}")
-        text = " ".join([self.answer, *(section.content for section in self.sections)])
-        if re.search(r"\d", text) and not self.sources:
+        answer_claims = extract_numeric_claims(self.answer)
+        section_claims: list[tuple[AnswerSection, set[tuple[Decimal, str]]]] = []
+        source_by_id = {source.evidence_id: source for source in self.sources}
+        for section in self.sections:
+            is_verified_excerpt = (
+                section.kind == SectionKind.FACT
+                and section.evidence_ids
+                and all(
+                    source_by_id[evidence_id].data_boundary
+                    == DataBoundary.VERIFIED_KNOWLEDGE
+                    for evidence_id in section.evidence_ids
+                )
+            )
+            # Verified RAG excerpts are verbatim, source-linked evidence rather
+            # than generated claims. Do not duplicate every excerpt value as a UI card.
+            if not is_verified_excerpt:
+                section_claims.append(
+                    (section, extract_numeric_claims(section.content))
+                )
+        numeric_claims = answer_claims.union(
+            *(claims for _, claims in section_claims)
+        )
+        if numeric_claims and not self.sources:
             raise ValueError("answers containing numbers require at least one source")
+        if self.intent != ChatIntent.NEWS:
+            all_supported_claims = {
+                numeric_evidence_claim(item) for item in self.numeric_evidence
+            }
+            unsupported_claims = answer_claims - all_supported_claims
+            for section, claims in section_claims:
+                section_supported_claims = {
+                    numeric_evidence_claim(item)
+                    for item in self.numeric_evidence
+                    if item.evidence_id in section.evidence_ids
+                }
+                unsupported_claims.update(claims - section_supported_claims)
+            if unsupported_claims:
+                formatted = sorted(
+                    f"{value.normalize()} {unit}"
+                    for value, unit in unsupported_claims
+                )
+                raise ValueError(
+                    "numeric claims require matching NumericEvidence: "
+                    f"{formatted}"
+                )
         return self
 
 

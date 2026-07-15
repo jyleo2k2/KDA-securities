@@ -1,6 +1,9 @@
+import inspect
+
 from backend.app.ingestion.embeddings import (
     EMBEDDING_DIMENSIONS,
     EMBEDDING_MODEL,
+    embed_pending_chunks,
     vector_literal,
 )
 from backend.app.retrieval.repository import KnowledgeMatch, RetrievalRepository
@@ -56,3 +59,12 @@ def test_search_without_embedder_uses_fulltext(monkeypatch) -> None:
         repository, "_search_knowledge_fulltext", lambda query, limit: sentinel
     )
     assert repository.search_knowledge("irp") is sentinel
+
+
+def test_embedding_pipeline_excludes_inactive_and_unverified_chunks() -> None:
+    source = inspect.getsource(embed_pending_chunks)
+
+    assert "kc.metadata ->> 'is_active' is distinct from 'false'" in source
+    assert "kd.metadata ->> 'data_boundary' = 'verified_knowledge'" in source
+    assert "kd.metadata ->> 'contains_personal_data' = 'false'" in source
+    assert "kc.metadata ->> 'data_boundary' = 'verified_knowledge'" in source

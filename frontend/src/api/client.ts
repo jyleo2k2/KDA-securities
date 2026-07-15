@@ -1,8 +1,11 @@
 import type {
   ChatCapabilities,
   ChatResponse,
+  ChatSessionSummary,
+  PersistedChatResponse,
   ScenarioEvaluation,
   ScenarioSummary,
+  StoredChatMessage,
 } from "./types";
 
 const API_BASE_URL: string = (
@@ -41,18 +44,33 @@ async function parseOrThrow<T>(path: string, response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`);
+function requestHeaders(accessToken?: string): HeadersInit {
+  return accessToken
+    ? { Authorization: `Bearer ${accessToken}` }
+    : {};
+}
+
+export async function apiGet<T>(
+  path: string,
+  accessToken?: string,
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: requestHeaders(accessToken),
+  });
   return parseOrThrow<T>(path, response);
 }
 
 export async function apiPost<TBody, TResult>(
   path: string,
   body: TBody,
+  accessToken?: string,
 ): Promise<TResult> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...requestHeaders(accessToken),
+    },
     body: JSON.stringify(body),
   });
   return parseOrThrow<TResult>(path, response);
@@ -80,4 +98,37 @@ export function sendChat(
     message,
     ...(scenarioCode ? { scenario_code: scenarioCode } : {}),
   });
+}
+
+export function sendAuthenticatedChat(
+  message: string,
+  accessToken: string,
+  scenarioCode?: string,
+  sessionId?: string,
+): Promise<PersistedChatResponse> {
+  return apiPost(
+    "/chat",
+    {
+      message,
+      ...(scenarioCode ? { scenario_code: scenarioCode } : {}),
+      ...(sessionId ? { session_id: sessionId } : {}),
+    },
+    accessToken,
+  );
+}
+
+export function getChatSessions(
+  accessToken: string,
+): Promise<ChatSessionSummary[]> {
+  return apiGet("/chat/sessions", accessToken);
+}
+
+export function getStoredChatMessages(
+  sessionId: string,
+  accessToken: string,
+): Promise<StoredChatMessage[]> {
+  return apiGet(
+    `/chat/sessions/${encodeURIComponent(sessionId)}/messages`,
+    accessToken,
+  );
 }

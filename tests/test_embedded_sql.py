@@ -26,7 +26,9 @@ def test_embedded_postgres_statements_parse() -> None:
             if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
                 continue
             sql = node.value.strip()
-            if not sql.lower().startswith(("delete ", "insert ", "select ", "update ")):
+            if not sql.lower().startswith(
+                ("delete ", "insert ", "select ", "update ", "with ")
+            ):
                 continue
             sql = NAMED_PLACEHOLDER.sub("null", sql).replace("%s", "null")
             parse_sql(sql)
