@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "documents": [
+    {
+      "path": "docs/20_리서치/연금_기초.md",
+      "source_code": "project_verified_knowledge",
+      "document_type": "research",
+      "title": "연금 기초 — 팀 공용 도메인 지식",
+      "publisher": "연금 코파일럿 팀",
+      "source_url": "project://docs/20_리서치/연금_기초.md",
+      "as_of_date": "2026-07-13",
+      "license_status": "permitted",
+      "data_boundary": "verified_knowledge",
+      "contains_personal_data": false,
+      "is_mock": false
+    }
+  ]
+}

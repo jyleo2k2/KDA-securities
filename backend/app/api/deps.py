@@ -74,7 +74,7 @@ def get_chat_service(
     )
     disclosures = ChatDisclosureRepository(database_url) if database_url else None
     return ChatService(
-        knowledge=LocalMarkdownKnowledgeRepository(),
+        knowledge=retrieval or LocalMarkdownKnowledgeRepository(),
         scenarios=LocalScenarioRepository(),
         disclosures=disclosures,
         news=retrieval,
