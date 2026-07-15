@@ -1,5 +1,10 @@
 from .models import (
     AccountType,
+    AgeBand,
+    AllocationWeights,
+    AssetBucket,
+    AssetClass,
+    AssumptionScenario,
     HistoricalReturnEvaluation,
     HoldingInput,
     PortfolioInput,
@@ -9,6 +14,7 @@ from .models import (
     RiskBudgetEvaluation,
     RiskBudgetInput,
     RiskCapEvaluation,
+    RiskProfile,
     RiskTreatment,
     RuleStatus,
     StatutoryException,
@@ -22,6 +28,11 @@ from .strategy import (
 
 __all__ = [
     "AccountType",
+    "AgeBand",
+    "AllocationWeights",
+    "AssetBucket",
+    "AssetClass",
+    "AssumptionScenario",
     "HoldingInput",
     "HistoricalReturnEvaluation",
     "PortfolioInput",
@@ -31,6 +42,7 @@ __all__ = [
     "RiskCapEvaluation",
     "RiskBudgetEvaluation",
     "RiskBudgetInput",
+    "RiskProfile",
     "RiskTreatment",
     "RuleStatus",
     "StatutoryException",

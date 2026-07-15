@@ -28,6 +28,74 @@ class RuleStatus(StrEnum):
     NOT_APPLICABLE = "not_applicable"
 
 
+class AssetClass(StrEnum):
+    """Asset classification codes; values match seed ``asset_classes.code``."""
+
+    CASH = "cash"
+    DEPOSIT = "deposit"
+    BOND = "bond"
+    DOMESTIC_EQUITY = "domestic_equity"
+    GLOBAL_EQUITY = "global_equity"
+    ALTERNATIVE = "alternative"
+    ELIGIBLE_TDF = "eligible_tdf"
+    DEFAULT_OPTION = "default_option"
+
+
+class AssetBucket(StrEnum):
+    """Assumption buckets from docs/30_스펙/수익률_가정_모델.md."""
+
+    GROWTH = "growth"
+    SAFE = "safe"
+    CASH = "cash"
+
+
+class RiskProfile(StrEnum):
+    """금융투자협회 5단계 투자성향.
+
+    Distinct vocabulary from seed ``mock_scenarios.risk_profile`` (3 values);
+    the mapping between the two is an open decision and must not be improvised.
+    """
+
+    STABLE = "stable"
+    STABLE_SEEKING = "stable_seeking"
+    RISK_NEUTRAL = "risk_neutral"
+    ACTIVE = "active"
+    AGGRESSIVE = "aggressive"
+
+
+class AgeBand(StrEnum):
+    """Age bands from docs/30_스펙/수익률_가정_모델.md (target age 55)."""
+
+    AGE_20S = "age_20s"
+    AGE_30S = "age_30s"
+    AGE_40S = "age_40s"
+    AGE_50_54 = "age_50_54"
+    AT_OR_ABOVE_55 = "at_or_above_55"
+
+
+class AssumptionScenario(StrEnum):
+    """Educational assumption scenarios (not forecasts)."""
+
+    LOW = "low"
+    BASE = "base"
+    HIGH = "high"
+
+
+class AllocationWeights(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    growth_percent: Decimal = Field(ge=0, le=100, allow_inf_nan=False)
+    safe_percent: Decimal = Field(ge=0, le=100, allow_inf_nan=False)
+    cash_percent: Decimal = Field(ge=0, le=100, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def require_full_allocation(self) -> "AllocationWeights":
+        total = self.growth_percent + self.safe_percent + self.cash_percent
+        if total != Decimal("100"):
+            raise ValueError("allocation weights must sum to 100 percent")
+        return self
+
+
 class HoldingInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
