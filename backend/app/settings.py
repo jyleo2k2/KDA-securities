@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     supabase_url: str | None = None
     supabase_publishable_key: SecretStr | None = None
     supabase_secret_key: SecretStr | None = None
+    cors_allow_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
 
 @lru_cache
