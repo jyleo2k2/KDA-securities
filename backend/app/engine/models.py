@@ -264,3 +264,54 @@ class ProfitLockEvaluation(BaseModel):
     recommended_transfer_krw: Decimal
     transfer_destination: str
     policy_reference: str
+
+
+class ScenarioHoldingInput(HoldingInput):
+    asset_class_code: str = Field(min_length=1)
+    instrument_name: str = Field(min_length=1)
+
+
+class ScenarioAccountInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str = Field(min_length=1)
+    account_type: AccountType
+    label: str = Field(min_length=1)
+    holdings: list[ScenarioHoldingInput] = Field(min_length=1)
+
+
+class ScenarioPortfolioInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    scenario_code: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    description: str = Field(min_length=1)
+    risk_profile: str = Field(pattern="^(conservative|balanced|growth)$")
+    investment_horizon_years: int = Field(gt=0)
+    accounts: list[ScenarioAccountInput] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def require_unique_accounts(self) -> "ScenarioPortfolioInput":
+        account_ids = [account.account_id for account in self.accounts]
+        if len(account_ids) != len(set(account_ids)):
+            raise ValueError("scenario account_id values must be unique")
+        return self
+
+
+class AssetAllocation(BaseModel):
+    asset_class_code: str
+    amount_krw: Decimal
+    allocation_percent: Decimal
+    account_count: int
+
+
+class ScenarioEvaluation(BaseModel):
+    engine_name: str
+    engine_version: str
+    scenario_code: str
+    data_boundary: str
+    total_amount_krw: Decimal
+    account_evaluations: list[RiskCapEvaluation]
+    asset_allocations: list[AssetAllocation]
+    duplicated_asset_classes: list[str]
+    source: SourceChip

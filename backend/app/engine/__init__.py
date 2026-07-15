@@ -21,6 +21,7 @@ from .models import (
     AccountType,
     AgeBand,
     AllocationWeights,
+    AssetAllocation,
     AssetBucket,
     AssetClass,
     AssumptionScenario,
@@ -36,6 +37,10 @@ from .models import (
     RiskProfile,
     RiskTreatment,
     RuleStatus,
+    ScenarioAccountInput,
+    ScenarioEvaluation,
+    ScenarioHoldingInput,
+    ScenarioPortfolioInput,
     StatutoryException,
 )
 from .portfolio import evaluate_risk_cap
@@ -45,6 +50,7 @@ from .profile import (
     SurveyAnswer,
     evaluate_profile,
 )
+from .scenario import evaluate_mock_scenario
 from .simulation import (
     BandSegment,
     ScenarioProjection,
@@ -68,6 +74,7 @@ __all__ = [
     "AggregationInput",
     "AllocationExampleEvaluation",
     "AllocationExampleInput",
+    "AssetAllocation",
     "AgeBand",
     "AllocationWeights",
     "AssetBucket",
@@ -90,6 +97,10 @@ __all__ = [
     "RiskProfile",
     "RiskTreatment",
     "RuleStatus",
+    "ScenarioAccountInput",
+    "ScenarioEvaluation",
+    "ScenarioHoldingInput",
+    "ScenarioPortfolioInput",
     "ScenarioProjection",
     "SimulationEvaluation",
     "SimulationInput",
@@ -98,6 +109,7 @@ __all__ = [
     "aggregate_accounts",
     "build_allocation_example",
     "evaluate_account_diagnostics",
+    "evaluate_mock_scenario",
     "evaluate_profile",
     "evaluate_risk_cap",
     "evaluate_historical_returns",

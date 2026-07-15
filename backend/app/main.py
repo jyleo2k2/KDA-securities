@@ -1,7 +1,8 @@
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import disclosures, engine, retrieval, system
+from .api import chat, disclosures, engine, retrieval, system
+from .api.deps import get_chat_narrator, get_chat_service
 from .api.engine import AuditedRiskCapResponse, risk_cap, risk_cap_audited
 from .api.system import health
 from .settings import get_settings
@@ -10,6 +11,8 @@ __all__ = [
     "AuditedRiskCapResponse",
     "app",
     "create_app",
+    "get_chat_narrator",
+    "get_chat_service",
     "health",
     "risk_cap",
     "risk_cap_audited",
@@ -27,20 +30,16 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Pension Copilot API", version="0.2.0")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            origin.strip()
-            for origin in settings.cors_allow_origins.split(",")
-            if origin.strip()
-        ],
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization"],
     )
     _include_eagerly(app, system.router)
     _include_eagerly(app, engine.router)
     _include_eagerly(app, retrieval.router)
     _include_eagerly(app, disclosures.router)
-    # NOTE: chatbot-mvp 브랜치 병합 시 backend/app/api/chat.py 라우터로 이식해
-    # 여기서 include한다 (main.py 인라인 엔드포인트 금지).
+    _include_eagerly(app, chat.router)
     return app
 
 

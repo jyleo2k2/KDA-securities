@@ -44,6 +44,49 @@ AI는 설명과 제안만 하며, 계산은 규칙 엔진이 담당한다. 실�
 - 모든 수치에 출처·기준일 또는 가정 표시
 - 실제 계좌 연결·주문·자동운용은 MVP 제외
 
+## 챗봇 백엔드 MVP 실행
+
+```powershell
+uv run uvicorn backend.app.main:app --reload
+```
+
+서버 실행 후 `http://127.0.0.1:8000/docs`에서 다음 API를 바로 시험할 수 있다.
+
+| API | 역할 |
+|---|---|
+| `POST /chat/demo` | 자연어 질문 → RAG·규칙 엔진·조건부 실공시/뉴스 조회 |
+| `GET /chat/demo/capabilities` | 현재 지원·조건부·미지원 기능 확인 |
+| `GET /chat/demo/scenarios` | 발표용 목계좌 시나리오 3종 확인 |
+
+`POST /chat/demo` 예시:
+
+```json
+{
+  "message": "IRP와 연금저축의 위험자산 한도 차이를 알려줘"
+}
+```
+
+- DB 없이도 검증 문서 검색과 목시나리오 규칙 엔진은 동작한다.
+- `DATABASE_URL`이 있고 원격 실적재가 끝나면 FSS 회사·사업자 공시와 저장 뉴스 조회가 활성화된다.
+- `ANTHROPIC_API_KEY`가 있으면 Claude가 검증 답변을 자연어로 다듬는다. 새 숫자가 발견되면 결정론적 원문으로 자동 복귀한다.
+- fixture는 공시 답변에 사용하지 않으며 개별 상품 비교, 미래 수익 예측, 주문은 차단한다.
+
+## 챗봇 화면 실행
+
+백엔드를 먼저 실행한 뒤, 새 터미널에서 프론트엔드를 실행한다.
+
+```powershell
+Set-Location frontend
+npm install
+npm run dev
+```
+
+브라우저에서 `http://127.0.0.1:5173`을 열면 추천 질문과 직접 입력으로 챗봇을 시험할 수 있다. 좌측 메뉴에서 목계좌 시나리오를 선택하면 질문과 함께 해당 `scenario_code`가 전달된다.
+
+- 기본 개발 환경은 Vite의 `/api` 프록시를 통해 `http://127.0.0.1:8000`에 연결한다.
+- 별도 배포 주소를 사용할 때는 프론트엔드의 `VITE_API_BASE_URL`과 서버의 `CORS_ORIGINS`를 환경에 맞게 설정한다.
+- 답변 화면은 사실·서비스 해석·한계, 수치 근거, 출처, 실/목 데이터 경계를 구분해 표시한다.
+
 ## 현재 상태와 다음 단계
 
 - 확정 스택: React + TypeScript + Vite PWA → FastAPI → Supabase PostgreSQL/pgvector.
@@ -52,13 +95,14 @@ AI는 설명과 제안만 하며, 계산은 규칙 엔진이 담당한다. 실�
   - 통합연금포털·NAVER API 수집 및 Supabase upsert 경로
   - DC형·IRP 위험자산 한도 규칙 엔진과 감사 API
   - 공시·뉴스·RAG·챗봇 데이터 구조
-- 로컬 검증: `uv run pytest` 27건, Ruff, 마이그레이션·seed·내장 SQL 구문 검사 통과.
+- 챗봇 백엔드 MVP: 검증 문서 RAG, 목시나리오 통합 진단, 조건부 실공시·뉴스 조회, 선택적 Claude 설명과 숫자 검증.
+- 로컬 검증: `uv run pytest` 41건, Ruff, 마이그레이션·seed·내장 SQL 구문 검사 통과.
 - 통합연금포털 직접 호출 검증: 연금저축 회사별 88건, 퇴직연금 42개사 × DB·DC·IRP 126건 정규화.
-- 원격 Supabase의 마이그레이션·seed·실데이터 적재·RLS·Advisor 통합 검증은 대상 프로젝트 확인 후 진행한다.
+- 원격 `KDA-securities`에 스키마·seed와 최소 Data API 권한 마이그레이션을 적용했다. 24개 테이블·36개 인덱스·RLS, 익명 차단, 인증 사용자 소유권 격리, service_role 내부 조회를 검증했다. 서버 `DATABASE_URL` 설정과 FSS·뉴스 실데이터 적재는 대기 중이다.
 - 다음 작업:
   1. 팀 역할 확정
-  2. 대상 Supabase 프로젝트 연결과 원격 통합 검증
-  3. 홈 → 챗봇 → 벤치마크 UI 골든패스 구현
+  2. 서버 `DATABASE_URL` 설정과 FSS·NAVER 원격 실데이터 적재
+  3. DB 지식 검색 연결과 한국어 검색 품질 개선
   4. 자동 검증 훅과 CI 연결
 
 미확정: 서비스명, 벤치마크 탭 위치, 리서치 이용권, 공개 포트폴리오 운영정책, 임베딩 모델.
