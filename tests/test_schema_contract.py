@@ -4,6 +4,12 @@ ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob("*_initial_data_foundation.sql")
 )
+DATA_API_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob("*_tighten_data_api_grants.sql")
+)
+EMBEDDING_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob("*_fix_embedding_dimension_bge_m3.sql")
+)
 SEED = ROOT / "supabase" / "seed.sql"
 
 
@@ -62,6 +68,27 @@ def test_authenticated_users_cannot_forge_engine_results() -> None:
     assert "and model_name is null" in sql
     assert "revoke execute on function public.search_knowledge_chunks" in sql
     assert "extensions.vector_dims(embedding) = embedding_dimensions" in sql
+
+
+def test_data_api_privileges_are_least_privilege() -> None:
+    sql = DATA_API_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "from public, anon, authenticated" in sql
+    assert "revoke all privileges on all sequences" in sql
+    assert "alter default privileges for role postgres" in sql
+    assert "grant select, insert, update, delete on table public.chat_sessions" in sql
+    assert "grant select, insert on table public.chat_messages" in sql
+    assert "grant select on table public.chat_message_evidence" in sql
+    assert "public.knowledge_chunks" in sql
+    assert "to service_role" in sql
+
+
+def test_embedding_migration_fixes_bge_m3_dimension() -> None:
+    sql = EMBEDDING_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "extensions.vector(1024)" in sql
+    assert "using hnsw" in sql
+    assert "extensions.vector_cosine_ops" in sql
 
 
 def test_seed_contains_the_three_product_scenarios() -> None:

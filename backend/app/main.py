@@ -1,7 +1,9 @@
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.routing import APIRoute, request_response
 
-from .api import disclosures, engine, retrieval, system
+from .api import chat, disclosures, engine, retrieval, system
+from .api.deps import get_chat_narrator, get_chat_service
 from .api.engine import AuditedRiskCapResponse, risk_cap, risk_cap_audited
 from .api.system import health
 from .settings import get_settings
@@ -10,6 +12,8 @@ __all__ = [
     "AuditedRiskCapResponse",
     "app",
     "create_app",
+    "get_chat_narrator",
+    "get_chat_service",
     "health",
     "risk_cap",
     "risk_cap_audited",
@@ -19,6 +23,13 @@ __all__ = [
 def _include_eagerly(app: FastAPI, router: APIRouter) -> None:
     # include_router는 이 FastAPI 버전에서 지연 등록이라 app.routes에 경로가
     # 노출되지 않는다. 계약 테스트가 app.routes의 path를 검사하므로 즉시 등록한다.
+    # 단독 생성된 APIRouter의 라우트는 overrides provider가 없어
+    # app.dependency_overrides가 무시된다. provider를 앱으로 바꾸고,
+    # 핸들러가 생성 시점에 provider를 캡처하므로 핸들러도 재빌드한다.
+    for route in router.routes:
+        if isinstance(route, APIRoute):
+            route.dependency_overrides_provider = app
+            route.app = request_response(route.get_route_handler())
     app.router.routes.extend(router.routes)
 
 
@@ -27,20 +38,16 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Pension Copilot API", version="0.2.0")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            origin.strip()
-            for origin in settings.cors_allow_origins.split(",")
-            if origin.strip()
-        ],
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization"],
     )
     _include_eagerly(app, system.router)
     _include_eagerly(app, engine.router)
     _include_eagerly(app, retrieval.router)
     _include_eagerly(app, disclosures.router)
-    # NOTE: chatbot-mvp 브랜치 병합 시 backend/app/api/chat.py 라우터로 이식해
-    # 여기서 include한다 (main.py 인라인 엔드포인트 금지).
+    _include_eagerly(app, chat.router)
     return app
 
 

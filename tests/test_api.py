@@ -1,9 +1,12 @@
 from decimal import ROUND_HALF_UP, Decimal
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from backend.app.api.deps import get_retrieval_repository
 from backend.app.engine.profile import QUESTIONS
 from backend.app.main import app
+from backend.app.retrieval.repository import KnowledgeMatch
 from backend.app.settings import Settings, get_settings
 from tests.scenario_fixtures import (
     dc_dormant_account,
@@ -26,6 +29,7 @@ def test_route_paths_cover_engine_tools_and_data_reads() -> None:
         "/engine/aggregation",
         "/engine/simulation",
         "/engine/allocation-example",
+        "/engine/mock-scenario/{scenario_code}",
         "/retrieval/knowledge",
         "/retrieval/news",
         "/disclosures/pension-savings",
@@ -122,6 +126,20 @@ def test_allocation_example_endpoint_returns_approved_cell() -> None:
     assert body["market_shock_percent"] == "-19.5"
 
 
+def test_mock_scenario_endpoint_evaluates_curated_scenario() -> None:
+    response = client.get("/engine/mock-scenario/dc_dormant")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["scenario_code"] == "dc_dormant"
+    assert body["data_boundary"] == "mock"
+    assert body["account_evaluations"][0]["evaluated_input"]["account_type"] == "dc"
+
+
+def test_mock_scenario_endpoint_returns_404_for_unknown_code() -> None:
+    response = client.get("/engine/mock-scenario/does_not_exist")
+    assert response.status_code == 404
+
+
 def test_data_read_endpoints_return_503_without_database() -> None:
     app.dependency_overrides[get_settings] = lambda: Settings(
         _env_file=None, database_url=None
@@ -137,6 +155,32 @@ def test_data_read_endpoints_return_503_without_database() -> None:
             assert response.status_code == 503, path
     finally:
         app.dependency_overrides.pop(get_settings, None)
+
+
+def test_knowledge_search_serializes_uuid_document_id() -> None:
+    match = KnowledgeMatch(
+        chunk_id=1,
+        document_id=uuid4(),
+        title="세 연금계좌의 위험자산 규칙 검증 요약",
+        source_url="project://docs/20_리서치/연금_기초.md#4-2",
+        content="DC형과 IRP는 일반 위험자산을 적립금의 70%까지 운용할 수 있다.",
+        text_rank=0.5,
+    )
+
+    class FakeRetrievalRepository:
+        def search_knowledge(self, query, *, limit=8):
+            return [match]
+
+    app.dependency_overrides[get_retrieval_repository] = FakeRetrievalRepository
+    try:
+        response = client.get(
+            "/retrieval/knowledge", params={"query": "위험자산"}
+        )
+    finally:
+        app.dependency_overrides.pop(get_retrieval_repository, None)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["results"][0]["document_id"] == str(match.document_id)
 
 
 def test_cors_allows_vite_dev_origin() -> None:

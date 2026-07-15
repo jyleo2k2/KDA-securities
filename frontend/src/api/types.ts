@@ -246,6 +246,26 @@ export interface AllocationExampleEvaluation {
   evidence: SourceChip[];
 }
 
+// ── /engine/mock-scenario ──
+export interface AssetAllocation {
+  asset_class_code: string;
+  amount_krw: string;
+  allocation_percent: string;
+  account_count: number;
+}
+
+export interface ScenarioEvaluation {
+  engine_name: string;
+  engine_version: string;
+  scenario_code: string;
+  data_boundary: string;
+  total_amount_krw: string;
+  account_evaluations: RiskCapEvaluation[];
+  asset_allocations: AssetAllocation[];
+  duplicated_asset_classes: string[];
+  source: SourceChip;
+}
+
 // ── /retrieval/* ──
 export interface KnowledgeMatch {
   chunk_id: number;
@@ -318,4 +338,75 @@ export interface RetirementDisclosureResponse {
   year: number | null;
   quarter: number | null;
   results: RetirementStat[];
+}
+
+// ── /chat/demo* (backend/app/api/chat.py) ──
+export type ChatIntent =
+  | "account_rule"
+  | "mock_portfolio"
+  | "provider_disclosure"
+  | "news"
+  | "out_of_scope";
+
+export type DataBoundary =
+  | "verified_knowledge"
+  | "official_disclosure"
+  | "news_metadata"
+  | "mock"
+  | "engine"
+  | "unavailable";
+
+export interface SourceEvidence {
+  evidence_id: string;
+  label: string;
+  locator: string;
+  data_boundary: DataBoundary;
+  publisher?: string | null;
+  as_of?: string | null;
+}
+
+export interface NumericEvidence {
+  label: string;
+  value: string | number;
+  unit: string;
+  evidence_id: string;
+  basis: string;
+}
+
+export interface AnswerSection {
+  kind: "fact" | "external_opinion" | "service_explanation" | "limitation";
+  title: string;
+  content: string;
+  evidence_ids: string[];
+}
+
+export interface ChatResponse {
+  intent: ChatIntent;
+  answer: string;
+  data_mode: string;
+  narration_mode: string;
+  model_name?: string | null;
+  /** Claude 내레이터의 검토 과정 요약(새 숫자 감지 시 서버가 생략). */
+  narration_reasoning?: string | null;
+  sections: AnswerSection[];
+  sources: SourceEvidence[];
+  numeric_evidence: NumericEvidence[];
+  engine_results: unknown[];
+  scenario_evaluation?: unknown | null;
+  limitations: string[];
+}
+
+export interface ScenarioSummary {
+  code: string;
+  name: string;
+  description: string;
+  risk_profile: string;
+  investment_horizon_years: number;
+}
+
+export interface ChatCapabilities {
+  supported: string[];
+  conditional: string[];
+  unsupported: string[];
+  scenario_codes: string[];
 }
