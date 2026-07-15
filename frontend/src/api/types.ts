@@ -410,3 +410,39 @@ export interface ChatCapabilities {
   unsupported: string[];
   scenario_codes: string[];
 }
+
+// ── authenticated /chat* history ──
+export interface PersistedChatResponse {
+  persisted: boolean;
+  session_id: string | null;
+  user_message_id: string | null;
+  assistant_message_id: string | null;
+  response: ChatResponse;
+}
+
+export interface ChatSessionSummary {
+  session_id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoredMessageEvidence {
+  document_id: string | null;
+  chunk_id: number | null;
+  news_item_id: string | null;
+  source_locator: string;
+  quote_text: string | null;
+  rank: number | null;
+}
+
+export interface StoredChatMessage {
+  message_id: string;
+  question_message_id: string | null;
+  role: "user" | "assistant" | "system" | "tool";
+  content: string;
+  response: ChatResponse | null;
+  model_name: string | null;
+  created_at: string;
+  evidence: StoredMessageEvidence[];
+}

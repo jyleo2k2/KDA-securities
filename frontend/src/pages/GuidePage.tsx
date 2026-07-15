@@ -10,13 +10,24 @@ import {
   type ReactNode,
 } from "react";
 
-import { getCapabilities, getScenarios, sendChat } from "../api/client";
+import {
+  ApiError,
+  getCapabilities,
+  getChatSessions,
+  getScenarios,
+  getStoredChatMessages,
+  sendAuthenticatedChat,
+  sendChat,
+} from "../api/client";
 import type {
   ChatCapabilities,
   ChatResponse,
+  ChatSessionSummary,
   DataBoundary,
   ScenarioSummary,
+  StoredChatMessage,
 } from "../api/types";
+import { useSupabaseAuth } from "../auth/useSupabaseAuth";
 
 interface ConversationMessage {
   id: string;
@@ -153,7 +164,18 @@ function AssistantMessage({ response, text }: { response?: ChatResponse; text: s
   );
 }
 
+function authenticatedErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && error.status === 401) {
+    return "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+  }
+  if (error instanceof ApiError && error.status === 503) {
+    return "대화 저장소에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.";
+  }
+  return error instanceof Error ? error.message : "요청을 처리하지 못했습니다.";
+}
+
 export function GuidePage() {
+  const auth = useSupabaseAuth();
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [input, setInput] = useState("");
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
@@ -162,9 +184,21 @@ export function GuidePage() {
   const [isSending, setIsSending] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [serverReady, setServerReady] = useState<boolean | null>(null);
+  const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [loginPanelOpen, setLoginPanelOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authSubmitting, setAuthSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const conversationEndRef = useRef<HTMLDivElement>(null);
   const latestMessageRef = useRef<HTMLDivElement>(null);
+  const previousUserIdRef = useRef<string | null>(null);
+
+  const accessToken = auth.session?.access_token;
+  const authenticatedUserId = auth.session?.user.id ?? null;
 
   const selectedScenarioData = useMemo(
     () => scenarios.find((scenario) => scenario.code === selectedScenario),
@@ -182,12 +216,124 @@ export function GuidePage() {
   }, []);
 
   useEffect(() => {
+    const userChanged = previousUserIdRef.current !== authenticatedUserId;
+    previousUserIdRef.current = authenticatedUserId;
+    if (userChanged) {
+      setMessages([]);
+      setActiveSessionId(null);
+      setSelectedScenario("");
+    }
+    if (!accessToken) {
+      setChatSessions([]);
+      setHistoryError(null);
+      setHistoryLoading(false);
+      return;
+    }
+
+    let active = true;
+    setHistoryLoading(true);
+    setHistoryError(null);
+    void getChatSessions(accessToken)
+      .then((sessions) => {
+        if (active) setChatSessions(sessions);
+      })
+      .catch((error: unknown) => {
+        if (active) setHistoryError(authenticatedErrorMessage(error));
+      })
+      .finally(() => {
+        if (active) setHistoryLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessToken, authenticatedUserId]);
+
+  useEffect(() => {
     if (messages.length > 0) {
       latestMessageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     } else if (isSending) {
       conversationEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, isSending]);
+
+  async function refreshChatSessions(token: string) {
+    try {
+      const sessions = await getChatSessions(token);
+      setChatSessions(sessions);
+      setHistoryError(null);
+    } catch (error) {
+      setHistoryError(authenticatedErrorMessage(error));
+    }
+  }
+
+  function startNewChat() {
+    setMessages([]);
+    setActiveSessionId(null);
+    setHistoryError(null);
+    setIsSidebarOpen(false);
+  }
+
+  async function handleLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!email.trim() || !password || authSubmitting) return;
+    setAuthSubmitting(true);
+    setHistoryError(null);
+    try {
+      await auth.signIn(email, password);
+      setPassword("");
+      setLoginPanelOpen(false);
+    } catch (error) {
+      setHistoryError(authenticatedErrorMessage(error));
+    } finally {
+      setAuthSubmitting(false);
+    }
+  }
+
+  async function handleLogout() {
+    if (authSubmitting) return;
+    setAuthSubmitting(true);
+    try {
+      await auth.signOut();
+      setMessages([]);
+      setChatSessions([]);
+      setActiveSessionId(null);
+      setHistoryError(null);
+    } catch (error) {
+      setHistoryError(authenticatedErrorMessage(error));
+    } finally {
+      setAuthSubmitting(false);
+    }
+  }
+
+  async function loadStoredSession(sessionId: string) {
+    if (!accessToken || historyLoading) return;
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const stored = await getStoredChatMessages(sessionId, accessToken);
+      const restored = stored
+        .filter(
+          (message): message is StoredChatMessage & {
+            role: "user" | "assistant";
+          } => message.role === "user" || message.role === "assistant",
+        )
+        .map<ConversationMessage>((message) => ({
+          id: message.message_id,
+          role: message.role,
+          text: message.content,
+          response: message.response ?? undefined,
+          createdAt: new Date(message.created_at),
+        }));
+      setMessages(restored);
+      setActiveSessionId(sessionId);
+      setSelectedScenario("");
+      setIsSidebarOpen(false);
+    } catch (error) {
+      setHistoryError(authenticatedErrorMessage(error));
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
 
   async function submitPrompt(prompt: string) {
     const normalized = prompt.trim();
@@ -204,7 +350,17 @@ export function GuidePage() {
     setIsSending(true);
 
     try {
-      const response = await sendChat(normalized, selectedScenario || undefined);
+      const persisted = accessToken
+        ? await sendAuthenticatedChat(
+            normalized,
+            accessToken,
+            selectedScenario || undefined,
+            activeSessionId || undefined,
+          )
+        : null;
+      const response = persisted
+        ? persisted.response
+        : await sendChat(normalized, selectedScenario || undefined);
       setMessages((current) => [...current, {
         id: crypto.randomUUID(),
         role: "assistant",
@@ -212,9 +368,18 @@ export function GuidePage() {
         response,
         createdAt: new Date(),
       }]);
+      if (persisted?.persisted && persisted.session_id) {
+        setActiveSessionId(persisted.session_id);
+        void refreshChatSessions(accessToken!);
+      }
       setServerReady(true);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "서버 연결을 확인해 주세요.";
+      const message = accessToken
+        ? authenticatedErrorMessage(error)
+        : error instanceof Error
+          ? error.message
+          : "서버 연결을 확인해 주세요.";
+      if (accessToken) setHistoryError(message);
       setMessages((current) => [...current, {
         id: crypto.randomUUID(),
         role: "assistant",
@@ -222,7 +387,9 @@ export function GuidePage() {
         failedPrompt: normalized,
         createdAt: new Date(),
       }]);
-      setServerReady(false);
+      setServerReady(
+        error instanceof ApiError && error.status !== 503,
+      );
     } finally {
       setIsSending(false);
       textareaRef.current?.focus();
@@ -249,9 +416,65 @@ export function GuidePage() {
           <div><strong>연금 코파일럿</strong><span>Pension guide</span></div>
         </div>
 
-        <button className="new-chat" type="button" onClick={() => { setMessages([]); setIsSidebarOpen(false); }}>
+        <button className="new-chat" type="button" onClick={startNewChat}>
           <span>＋</span> 새 대화
         </button>
+
+        <div className="auth-panel">
+          {auth.loading ? (
+            <p className="auth-note">로그인 상태 확인 중...</p>
+          ) : auth.session ? (
+            <>
+              <div className="auth-user">
+                <span><strong>대화 저장 중</strong><small>{auth.session.user.email ?? "인증 사용자"}</small></span>
+                <button type="button" onClick={() => void handleLogout()} disabled={authSubmitting}>로그아웃</button>
+              </div>
+              <p className="sidebar-label history-label">저장된 대화</p>
+              <div className="history-list">
+                {historyLoading && chatSessions.length === 0 ? (
+                  <p className="auth-note">대화 이력을 불러오는 중...</p>
+                ) : chatSessions.length === 0 ? (
+                  <p className="auth-note">아직 저장된 대화가 없습니다.</p>
+                ) : chatSessions.map((session) => (
+                  <button
+                    className={activeSessionId === session.session_id ? "active" : ""}
+                    type="button"
+                    key={session.session_id}
+                    onClick={() => void loadStoredSession(session.session_id)}
+                    disabled={historyLoading}
+                  >
+                    <strong>{session.title || "새 대화"}</strong>
+                    <small>{new Date(session.updated_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</small>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : auth.configured ? (
+            <>
+              <button className="login-toggle" type="button" onClick={() => setLoginPanelOpen((open) => !open)}>
+                로그인하고 대화 저장
+              </button>
+              {loginPanelOpen && (
+                <form className="login-form" onSubmit={handleLogin}>
+                  <label>
+                    <span>이메일</span>
+                    <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+                  </label>
+                  <label>
+                    <span>비밀번호</span>
+                    <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required />
+                  </label>
+                  <button type="submit" disabled={authSubmitting || !email.trim() || !password}>
+                    {authSubmitting ? "로그인 중..." : "로그인"}
+                  </button>
+                </form>
+              )}
+            </>
+          ) : (
+            <p className="auth-note">Supabase 공개 키를 설정하면 로그인과 대화 저장을 사용할 수 있습니다.</p>
+          )}
+          {(historyError || auth.error) && <p className="auth-error">{historyError || auth.error}</p>}
+        </div>
 
         <div className="sidebar-section">
           <p className="sidebar-label">목계좌 시나리오</p>
@@ -272,7 +495,7 @@ export function GuidePage() {
         <div className="sidebar-footer">
           <div className="connection-status">
             <span className={`status-dot ${serverReady === false ? "offline" : ""}`} />
-            <span>{serverReady === null ? "서버 확인 중" : serverReady ? "데모 API 연결됨" : "API 연결 필요"}</span>
+            <span>{serverReady === null ? "서버 확인 중" : serverReady ? (auth.session ? "저장 API 연결됨" : "데모 API 연결됨") : "API 연결 필요"}</span>
           </div>
           <p>실제 주문을 실행하지 않는<br />자문·정보 제공형 데모입니다.</p>
         </div>
