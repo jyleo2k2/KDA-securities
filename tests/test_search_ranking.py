@@ -1,5 +1,13 @@
+import inspect
 from uuid import uuid4
 
+import psycopg
+import pytest
+
+from backend.app.chat.knowledge import (
+    FallbackKnowledgeRepository,
+    LocalMarkdownKnowledgeRepository,
+)
 from backend.app.retrieval.repository import KnowledgeMatch, RetrievalRepository
 from backend.app.retrieval.search_ranking import (
     build_prefix_or_tsquery,
@@ -102,3 +110,67 @@ def test_repository_skips_database_for_query_without_safe_tokens(monkeypatch) ->
 
     assert repository.search_knowledge("!!!") == []
     assert called is False
+
+
+class _StaticKnowledge:
+    def __init__(self, matches: list[KnowledgeMatch]) -> None:
+        self.matches = matches
+
+    def search_knowledge(self, query: str, *, limit: int = 8):
+        return self.matches[:limit]
+
+
+class _FailingKnowledge:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    def search_knowledge(self, query: str, *, limit: int = 8):
+        raise self.error
+
+
+def test_local_fallback_uses_only_the_approved_manifest() -> None:
+    repository = LocalMarkdownKnowledgeRepository()
+
+    results = repository.search_knowledge("적격 TDF 예외", limit=3)
+
+    assert results
+    assert results[0].source_url == "project://docs/20_리서치/연금_기초.md"
+    assert all("30_스펙" not in result.source_url for result in results)
+
+
+def test_fallback_uses_local_for_empty_results_and_database_errors() -> None:
+    fallback_match = _match(
+        chunk_id=9,
+        title="IRP 위험자산 한도",
+        content="검증 근거",
+    )
+    fallback = _StaticKnowledge([fallback_match])
+
+    empty_result = FallbackKnowledgeRepository(_StaticKnowledge([]), fallback)
+    database_error = FallbackKnowledgeRepository(
+        _FailingKnowledge(psycopg.OperationalError("database unavailable")),
+        fallback,
+    )
+
+    assert empty_result.search_knowledge("IRP") == [fallback_match]
+    assert database_error.search_knowledge("IRP") == [fallback_match]
+
+
+def test_fallback_does_not_hide_non_database_programming_errors() -> None:
+    repository = FallbackKnowledgeRepository(
+        _FailingKnowledge(RuntimeError("bug")),
+        _StaticKnowledge([]),
+    )
+
+    with pytest.raises(RuntimeError, match="bug"):
+        repository.search_knowledge("IRP")
+
+
+def test_hybrid_sql_orders_candidates_before_limiting_and_filters_boundaries() -> None:
+    source = inspect.getsource(RetrievalRepository._search_knowledge_hybrid)
+
+    assert "order by text_score desc, kc.id" in source
+    assert "order by\n                        kc.embedding <=>" in source
+    assert "kd.metadata ->> 'data_boundary' = 'verified_knowledge'" in source
+    assert "kc.metadata ->> 'data_boundary' = 'verified_knowledge'" in source
+    assert "kc.metadata ->> 'is_active' is distinct from 'false'" in source

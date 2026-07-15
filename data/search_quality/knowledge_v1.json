@@ -5,7 +5,8 @@
       "id": "irp-risk-cap",
       "query": "IRP 위험자산 한도",
       "expected_source_url": "project://docs/20_리서치/연금_기초.md",
-      "required_content_terms": ["IRP", "위험자산"]
+      "required_content_terms": ["IRP", "위험자산", "70"],
+      "critical_top1": true
     },
     {
       "id": "irp-particle-variant",
@@ -17,7 +18,8 @@
       "id": "irp-korean-alias",
       "query": "개인형 퇴직연금 위험자산",
       "expected_source_url": "project://docs/20_리서치/연금_기초.md",
-      "required_content_terms": ["IRP", "위험자산"]
+      "required_content_terms": ["IRP", "위험자산", "70"],
+      "critical_top1": true
     },
     {
       "id": "dc-employer-contribution",
@@ -29,7 +31,8 @@
       "id": "pension-savings-risk-rule",
       "query": "연금저축펀드 위험자산 한도",
       "expected_source_url": "project://docs/20_리서치/연금_기초.md",
-      "required_content_terms": ["연금저축펀드", "위험자산", "한도"]
+      "required_content_terms": ["연금저축펀드", "위험자산", "없음"],
+      "critical_top1": true
     },
     {
       "id": "default-option",
@@ -41,7 +44,8 @@
       "id": "tdf-exception",
       "query": "적격 TDF 예외",
       "expected_source_url": "project://docs/20_리서치/연금_기초.md",
-      "required_content_terms": ["TDF", "예외"]
+      "required_content_terms": ["TDF", "예외", "분산투자"],
+      "critical_top1": true
     },
     {
       "id": "irp-early-withdrawal",

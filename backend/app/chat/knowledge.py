@@ -1,6 +1,11 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
+from uuid import NAMESPACE_URL, UUID, uuid5
 
+import psycopg
+
+from ..ingestion.knowledge import DEFAULT_MANIFEST, load_approved_documents
 from ..retrieval.repository import KnowledgeMatch
 from ..retrieval.search_ranking import (
     rerank_knowledge_matches,
@@ -8,64 +13,65 @@ from ..retrieval.search_ranking import (
     text_matches_any,
 )
 
-ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_KNOWLEDGE_FILES = (
-    ROOT / "docs" / "20_리서치" / "연금_기초.md",
-    ROOT / "docs" / "30_스펙" / "수익률_가정_모델.md",
-)
-
 
 @dataclass(frozen=True, slots=True)
 class _Chunk:
     chunk_id: int
-    document_id: str
+    document_id: UUID
     title: str
     source_url: str
     content: str
+    publisher: str
+    document_type: str
+
+
+class KnowledgeSearch(Protocol):
+    def search_knowledge(
+        self, query: str, *, limit: int = 8
+    ) -> list[KnowledgeMatch]: ...
+
+
+class FallbackKnowledgeRepository:
+    """Use approved local knowledge only for DB errors or an empty DB corpus."""
+
+    def __init__(
+        self,
+        primary: KnowledgeSearch,
+        fallback: KnowledgeSearch,
+    ) -> None:
+        self._primary = primary
+        self._fallback = fallback
+
+    def search_knowledge(self, query: str, *, limit: int = 8) -> list[KnowledgeMatch]:
+        try:
+            matches = self._primary.search_knowledge(query, limit=limit)
+        except psycopg.Error:
+            return self._fallback.search_knowledge(query, limit=limit)
+        return matches or self._fallback.search_knowledge(query, limit=limit)
 
 
 class LocalMarkdownKnowledgeRepository:
-    """Small local lexical RAG used before the remote Supabase index is available."""
+    """Manifest-backed lexical RAG for DB-absent and DB-unavailable operation."""
 
-    def __init__(self, paths: tuple[Path, ...] = DEFAULT_KNOWLEDGE_FILES) -> None:
-        self._chunks = self._load_chunks(paths)
+    def __init__(self, manifest_path: Path = DEFAULT_MANIFEST) -> None:
+        self._chunks = self._load_chunks(manifest_path)
 
     @staticmethod
-    def _load_chunks(paths: tuple[Path, ...]) -> tuple[_Chunk, ...]:
+    def _load_chunks(manifest_path: Path) -> tuple[_Chunk, ...]:
         chunks: list[_Chunk] = []
         next_id = 1
-        for path in paths:
-            relative = path.relative_to(ROOT).as_posix()
-            heading = path.stem
-            body: list[str] = []
-            for line in path.read_text(encoding="utf-8").splitlines():
-                if line.startswith("#"):
-                    if body:
-                        content = "\n".join(body).strip()
-                        if content:
-                            chunks.append(
-                                _Chunk(
-                                    chunk_id=next_id,
-                                    document_id=relative,
-                                    title=heading,
-                                    source_url=f"project://{relative}",
-                                    content=content,
-                                )
-                            )
-                            next_id += 1
-                    heading = line.lstrip("#").strip()
-                    body = []
-                else:
-                    body.append(line)
-            content = "\n".join(body).strip()
-            if content:
+        for document in load_approved_documents(manifest_path):
+            document_id = uuid5(NAMESPACE_URL, document.source_url)
+            for content in document.chunks:
                 chunks.append(
                     _Chunk(
                         chunk_id=next_id,
-                        document_id=relative,
-                        title=heading,
-                        source_url=f"project://{relative}",
+                        document_id=document_id,
+                        title=document.title,
+                        source_url=document.source_url,
                         content=content,
+                        publisher=document.publisher,
+                        document_type=document.document_type,
                     )
                 )
                 next_id += 1
@@ -86,9 +92,9 @@ class LocalMarkdownKnowledgeRepository:
                         source_url=chunk.source_url,
                         content=chunk.content,
                         text_rank=0.0,
-                        publisher="연금 코파일럿 팀",
-                        source_authority="검증된 프로젝트 문서",
-                        document_type="research",
+                        publisher=chunk.publisher,
+                        source_authority=chunk.publisher,
+                        document_type=chunk.document_type,
                     )
                 )
         return rerank_knowledge_matches(

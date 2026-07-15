@@ -281,11 +281,11 @@ select
     'research',
     '세 연금계좌의 위험자산 규칙 검증 요약',
     '연금 코파일럿 팀',
-    'project://docs/20_리서치/연금_기초.md#4-2',
+    'project://docs/20_리서치/연금_기초.md',
     date '2026-07-13',
     'permitted',
     'DC형과 IRP는 일반 위험자산을 적립금의 70%까지 운용할 수 있다. 적격 TDF와 디폴트옵션 등 법정 예외는 적격성을 확인해 별도 처리한다. 연금저축펀드에는 같은 위험자산 총량 70% 한도를 적용하지 않는다.',
-    '{"contains_personal_data":false,"knowledge_kind":"project_verified_summary"}'::jsonb
+    '{"contains_personal_data":false,"data_boundary":"verified_knowledge","is_mock":false,"knowledge_kind":"project_verified_document"}'::jsonb
 from public.data_sources as ds
 where ds.code = 'project_verified_knowledge'
 on conflict (source_id, source_url) do update set
@@ -303,11 +303,11 @@ select
     kd.id,
     0,
     kd.content,
-    '{"contains_personal_data":false,"knowledge_kind":"project_verified_summary"}'::jsonb
+    '{"contains_personal_data":false,"data_boundary":"verified_knowledge","is_mock":false,"is_active":true,"knowledge_kind":"project_verified_document"}'::jsonb
 from public.knowledge_documents as kd
 join public.data_sources as ds on ds.id = kd.source_id
 where ds.code = 'project_verified_knowledge'
-  and kd.source_url = 'project://docs/20_리서치/연금_기초.md#4-2'
+  and kd.source_url = 'project://docs/20_리서치/연금_기초.md'
 on conflict (document_id, chunk_index) do update set
     content = excluded.content,
     metadata = excluded.metadata;

@@ -1,26 +1,25 @@
 """Manifest-only ingestion for approved verified-knowledge Markdown."""
 
 import json
-import re
 from datetime import date
 from hashlib import sha256
 from pathlib import Path
 
+from ..retrieval.knowledge_policy import (
+    ALLOWED_KNOWLEDGE_DOCUMENT_TYPES,
+    ALLOWED_KNOWLEDGE_SOURCE_CODES,
+    canonical_project_source_url,
+    contains_sensitive_personal_data,
+)
 from ..retrieval.knowledge_repository import KnowledgeDocumentInput
 
 ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_MANIFEST = ROOT / "data" / "knowledge" / "approved_documents.json"
 DEFAULT_CHUNK_CHARS = 1800
-_ALLOWED_SOURCE_CODES = {
-    "project_verified_knowledge",
-    "retirement_pension_official_rules",
-}
-_ALLOWED_DOCUMENT_TYPES = {"official_guide", "regulation", "research"}
 _ALLOWED_ROOTS = (
     ROOT / "docs" / "20_리서치",
     ROOT / "docs" / "40_규제",
 )
-_RRN_PATTERN = re.compile(r"\b\d{6}-?[1-8]\d{6}\b")
 
 
 class KnowledgeManifestError(ValueError):
@@ -117,9 +116,9 @@ def _load_entry(entry: dict[str, object], *, max_chars: int) -> KnowledgeDocumen
     source_path = _required_text(entry, "path")
     source_url = _required_text(entry, "source_url")
 
-    if source_code not in _ALLOWED_SOURCE_CODES:
+    if source_code not in ALLOWED_KNOWLEDGE_SOURCE_CODES:
         raise KnowledgeManifestError("source_code is not approved for RAG ingestion")
-    if document_type not in _ALLOWED_DOCUMENT_TYPES:
+    if document_type not in ALLOWED_KNOWLEDGE_DOCUMENT_TYPES:
         raise KnowledgeManifestError("document_type is not approved for RAG ingestion")
     if license_status != "permitted":
         raise KnowledgeManifestError("license_status must be permitted")
@@ -129,8 +128,9 @@ def _load_entry(entry: dict[str, object], *, max_chars: int) -> KnowledgeDocumen
         raise KnowledgeManifestError("contains_personal_data must be false")
     if entry.get("is_mock") is not False:
         raise KnowledgeManifestError("is_mock must be false")
-    if not source_url.startswith("project://docs/"):
-        raise KnowledgeManifestError("source_url must point to an approved project doc")
+    expected_source_url = canonical_project_source_url(source_path)
+    if source_url != expected_source_url:
+        raise KnowledgeManifestError("source_url must match the approved document path")
 
     path = (ROOT / source_path).resolve()
     if path.suffix.lower() != ".md" or not _is_allowed_path(path):
@@ -139,11 +139,21 @@ def _load_entry(entry: dict[str, object], *, max_chars: int) -> KnowledgeDocumen
         )
     if not path.is_file():
         raise KnowledgeManifestError(f"approved document does not exist: {source_path}")
-    content = path.read_text(encoding="utf-8").strip()
-    if _RRN_PATTERN.search(content):
+    try:
+        content = path.read_text(encoding="utf-8").strip()
+    except OSError as error:
+        raise KnowledgeManifestError(
+            f"failed to read approved document: {source_path}"
+        ) from error
+    if contains_sensitive_personal_data(content):
         raise KnowledgeManifestError(
             "personal identifier detected in approved document"
         )
+
+    content_hash = sha256(content.encode("utf-8")).hexdigest()
+    approved_hash = _required_text(entry, "content_sha256").lower()
+    if approved_hash != content_hash:
+        raise KnowledgeManifestError("approved document content_sha256 does not match")
 
     as_of_text = entry.get("as_of_date")
     try:
@@ -154,7 +164,7 @@ def _load_entry(entry: dict[str, object], *, max_chars: int) -> KnowledgeDocumen
         "contains_personal_data": False,
         "data_boundary": "verified_knowledge",
         "is_mock": False,
-        "knowledge_kind": "project_verified_summary",
+        "knowledge_kind": "project_verified_document",
         "source_path": source_path,
     }
     return KnowledgeDocumentInput(
@@ -167,7 +177,7 @@ def _load_entry(entry: dict[str, object], *, max_chars: int) -> KnowledgeDocumen
         content=content,
         chunks=chunk_markdown(content, max_chars=max_chars),
         as_of_date=as_of_date,
-        content_hash=sha256(content.encode("utf-8")).hexdigest(),
+        content_hash=content_hash,
         metadata=metadata,
     )
 

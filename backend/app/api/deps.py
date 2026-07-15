@@ -5,7 +5,10 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 
 from ..chat.disclosures import DisclosureReadRepository as ChatDisclosureRepository
-from ..chat.knowledge import LocalMarkdownKnowledgeRepository
+from ..chat.knowledge import (
+    FallbackKnowledgeRepository,
+    LocalMarkdownKnowledgeRepository,
+)
 from ..chat.narrator import ClaudeNarrator
 from ..chat.scenarios import LocalScenarioRepository
 from ..chat.service import ChatService
@@ -73,8 +76,14 @@ def get_chat_service(
         else None
     )
     disclosures = ChatDisclosureRepository(database_url) if database_url else None
+    local_knowledge = LocalMarkdownKnowledgeRepository()
+    knowledge = (
+        FallbackKnowledgeRepository(retrieval, local_knowledge)
+        if retrieval is not None
+        else local_knowledge
+    )
     return ChatService(
-        knowledge=retrieval or LocalMarkdownKnowledgeRepository(),
+        knowledge=knowledge,
         scenarios=LocalScenarioRepository(),
         disclosures=disclosures,
         news=retrieval,

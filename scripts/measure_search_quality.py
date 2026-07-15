@@ -1,6 +1,7 @@
 """Measure Hit@5 and MRR@5 against the approved Korean RAG benchmark."""
 
 import argparse
+import math
 import sys
 from pathlib import Path
 
@@ -26,6 +27,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--benchmark", type=Path, default=DEFAULT_BENCHMARK)
     parser.add_argument("--limit", type=int, default=5)
     parser.add_argument("--min-hit-at-k", type=float, default=1.0)
+    parser.add_argument("--min-hit-at-1", type=float, default=1.0)
     parser.add_argument("--min-mrr-at-k", type=float, default=0.8)
     return parser
 
@@ -37,6 +39,13 @@ def main(argv: list[str] | None = None) -> int:
     except QualityBenchmarkError as error:
         print(f"benchmark 검증 실패: {error}", file=sys.stderr)
         return 1
+    thresholds = (args.min_hit_at_k, args.min_hit_at_1, args.min_mrr_at_k)
+    if any(
+        not math.isfinite(value) or value < 0 or value > 1
+        for value in thresholds
+    ):
+        print("품질 임계값은 0과 1 사이여야 합니다.", file=sys.stderr)
+        return 1
     settings = get_settings()
     if settings.database_url is None:
         print("DATABASE_URL이 설정되지 않았습니다 (.env 확인)", file=sys.stderr)
@@ -45,15 +54,17 @@ def main(argv: list[str] | None = None) -> int:
     if not database_url:
         print("DATABASE_URL이 비어 있습니다 (.env 확인)", file=sys.stderr)
         return 1
-    repository = RetrievalRepository(database_url, embedder=get_query_embedder())
+    embedder = get_query_embedder()
+    mode = "hybrid" if embedder is not None else "fulltext"
+    repository = RetrievalRepository(database_url, embedder=embedder)
     try:
         report = measure_search_quality(repository, cases, limit=args.limit)
     except psycopg.Error as error:
         print(f"검색 품질 측정 실패: {type(error).__name__}", file=sys.stderr)
         return 1
     print(
-        f"Hit@{args.limit}={report.hit_at_k:.3f}, "
-        f"MRR@{args.limit}={report.mrr_at_k:.3f} "
+        f"mode={mode}, Hit@{report.k}={report.hit_at_k:.3f}, "
+        f"Hit@1={report.hit_at_1:.3f}, MRR@{report.k}={report.mrr_at_k:.3f} "
         f"({report.hit_count}/{report.case_count})"
     )
     if report.failed_case_ids:
@@ -61,8 +72,17 @@ def main(argv: list[str] | None = None) -> int:
             f"실패 케이스: {', '.join(report.failed_case_ids)}",
             file=sys.stderr,
         )
+    if report.critical_top1_failed_case_ids:
+        print(
+            "critical top-1 실패: "
+            + ", ".join(report.critical_top1_failed_case_ids),
+            file=sys.stderr,
+        )
     return int(
-        report.hit_at_k < args.min_hit_at_k or report.mrr_at_k < args.min_mrr_at_k
+        report.hit_at_k < args.min_hit_at_k
+        or report.hit_at_1 < args.min_hit_at_1
+        or report.mrr_at_k < args.min_mrr_at_k
+        or bool(report.critical_top1_failed_case_ids)
     )
 
 

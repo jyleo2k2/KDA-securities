@@ -134,6 +134,13 @@ def text_matches_any(query_tokens: tuple[str, ...], text: str) -> bool:
     return any(_matches(token, document_tokens) for token in query_tokens)
 
 
+def text_matches_all(query_tokens: tuple[str, ...], text: str) -> bool:
+    document_tokens = set(search_tokens(text, max_tokens=10000))
+    return bool(query_tokens) and all(
+        _matches(token, document_tokens) for token in query_tokens
+    )
+
+
 def _score(match: "KnowledgeMatch", query_tokens: tuple[str, ...]) -> float:
     fields = {
         "title": set(search_tokens(match.title, max_tokens=200)),

@@ -11,7 +11,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from backend.app.ingestion.knowledge import (
     DEFAULT_CHUNK_CHARS,
     DEFAULT_MANIFEST,
-    KnowledgeManifestError,
     load_approved_documents,
 )
 from backend.app.retrieval.knowledge_repository import KnowledgeWriteRepository
@@ -34,7 +33,7 @@ def main(argv: list[str] | None = None) -> int:
         documents = load_approved_documents(
             args.manifest.resolve(), max_chars=args.max_chars
         )
-    except KnowledgeManifestError as error:
+    except ValueError as error:
         print(f"manifest 검증 실패: {error}", file=sys.stderr)
         return 1
     chunk_count = sum(len(document.chunks) for document in documents)

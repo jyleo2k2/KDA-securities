@@ -278,6 +278,17 @@ uv run ruff check .
 - 원격 적용: 없음.
 - 다음: 진행 중 임베딩 작업 소유자 확인 후 DB-00과 DB-01을 분리해 리뷰.
 
+### 2026-07-15 18:29 KST
+
+- 작업자/브랜치: Codex / `codex/rag-retrieval-foundation`.
+- 시작 상태: PR1 커밋 이후 review 수정, `origin/main` 대비 ahead 1·behind 3. 루트가 후속 stacked rebase를 관리한다.
+- 변경 내용: 지식 문서 URL을 fragment 없는 canonical 값으로 통일하고, 청크 재적재를 삭제 대신 동일 ID upsert로 변경했다. 변경 청크의 embedding은 비우고 제거된 후행 청크는 metadata `is_active=false`로 비활성화한다.
+- 결정 및 근거: 신규 컬럼·migration 없이 기존 JSON metadata 계약으로 soft-deactivate한다. 검색과 embedding 대상은 허가 출처·문서 유형·`verified_knowledge`·비개인·비목데이터·active 청크로 제한한다.
+- 로컬 검증: `uv run pytest` 216 passed, `uv run ruff check .` 통과, `git diff --check` 통과. 로컬 승인 코퍼스는 Hit@5·Hit@1·MRR@5 모두 1.000이다.
+- 원격 적용 여부: 없음. migration history 변경 없음. `supabase/seed.sql`의 로컬 reset용 URL·metadata만 동기화했다.
+- 남은 위험: 원격에 canonical URL과 legacy fragment URL이 동시에 존재하면 자동 병합하지 않고 적재를 실패시킨다. 중복이 확인될 경우 참조 건수를 먼저 확인한 뒤 별도 정리한다.
+- 다음 작업: PR 리뷰 후 승인된 적재 명령 실행, 변경 청크 BGE-M3 재임베딩, 원격 검색 품질 재측정.
+
 ## 15. 작업 로그 템플릿
 
 ```markdown
