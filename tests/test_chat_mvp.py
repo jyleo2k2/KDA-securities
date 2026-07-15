@@ -10,7 +10,16 @@ from pydantic_ai.models.function import FunctionModel
 
 from backend.app.chat.disclosures import ProviderDisclosure
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
-from backend.app.chat.models import ChatIntent, ChatRequest, ChatResponse
+from backend.app.chat.models import (
+    AnswerSection,
+    ChatIntent,
+    ChatRequest,
+    ChatResponse,
+    DataBoundary,
+    NumericEvidence,
+    SectionKind,
+    SourceEvidence,
+)
 from backend.app.chat.narrator import ClaudeNarrator
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService
@@ -77,6 +86,7 @@ def test_account_rule_question_returns_rag_source_and_numeric_evidence() -> None
     assert response.intent == ChatIntent.ACCOUNT_RULE
     assert "70%" in response.answer
     assert response.sources
+    assert len(response.numeric_evidence) == 1
     assert response.numeric_evidence[0].value == Decimal("70")
     assert all(
         source.data_boundary == "verified_knowledge" for source in response.sources
@@ -188,6 +198,150 @@ def test_response_rejects_numbers_without_sources() -> None:
         )
 
 
+def _source(evidence_id: str = "test:source") -> SourceEvidence:
+    return SourceEvidence(
+        evidence_id=evidence_id,
+        label="테스트 근거",
+        locator="https://example.test/source",
+        data_boundary=DataBoundary.ENGINE,
+    )
+
+
+def test_response_rejects_financial_claim_without_numeric_evidence() -> None:
+    with pytest.raises(ValidationError, match="matching NumericEvidence"):
+        ChatResponse(
+            intent=ChatIntent.ACCOUNT_RULE,
+            answer="근거 문서가 있어도 한도는 70%라고만 쓰면 안 됩니다.",
+            data_mode="invalid",
+            sources=[_source()],
+        )
+
+
+def test_response_rejects_wrong_sign_and_unit_in_generated_section() -> None:
+    with pytest.raises(ValidationError, match="matching NumericEvidence"):
+        ChatResponse(
+            intent=ChatIntent.MOCK_PORTFOLIO,
+            answer="진단 결과입니다.",
+            data_mode="invalid",
+            sections=[
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title="수익률",
+                    content="과거 수익률은 -5%입니다.",
+                    evidence_ids=["test:source"],
+                )
+            ],
+            sources=[_source()],
+            numeric_evidence=[
+                NumericEvidence(
+                    label="잘못된 부호",
+                    value=Decimal("5"),
+                    unit="%",
+                    evidence_id="test:source",
+                    basis="테스트",
+                )
+            ],
+        )
+
+
+def test_generated_section_numeric_evidence_must_use_its_linked_source() -> None:
+    with pytest.raises(ValidationError, match="matching NumericEvidence"):
+        ChatResponse(
+            intent=ChatIntent.MOCK_PORTFOLIO,
+            answer="진단 결과입니다.",
+            data_mode="invalid",
+            sections=[
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title="한도",
+                    content="위험자산 한도는 70%입니다.",
+                    evidence_ids=["test:section"],
+                )
+            ],
+            sources=[_source(), _source("test:section")],
+            numeric_evidence=[
+                NumericEvidence(
+                    label="다른 출처의 한도",
+                    value=Decimal("70"),
+                    unit="%",
+                    evidence_id="test:source",
+                    basis="테스트",
+                )
+            ],
+        )
+
+
+def test_response_accepts_signed_percent_and_equivalent_krw_evidence() -> None:
+    response = ChatResponse(
+        intent=ChatIntent.MOCK_PORTFOLIO,
+        answer="과거 수익률은 -5%이고 평가액은 1억원입니다.",
+        data_mode="engine",
+        sources=[_source()],
+        numeric_evidence=[
+            NumericEvidence(
+                label="과거 수익률",
+                value=Decimal("-5"),
+                unit="%",
+                evidence_id="test:source",
+                basis="테스트",
+            ),
+            NumericEvidence(
+                label="평가액",
+                value=Decimal("100000000"),
+                unit="KRW",
+                evidence_id="test:source",
+                basis="테스트",
+            ),
+        ],
+    )
+
+    assert len(response.numeric_evidence) == 2
+
+
+def test_verified_fact_excerpt_keeps_direct_source_link_without_extra_cards() -> None:
+    response = ChatResponse(
+        intent=ChatIntent.ACCOUNT_RULE,
+        answer="검증 문서 원문을 확인해 주세요.",
+        data_mode="verified_knowledge",
+        sections=[
+            AnswerSection(
+                kind=SectionKind.FACT,
+                title="검증 문서",
+                content="원문에는 위험자산 70% 한도가 기재되어 있습니다.",
+                evidence_ids=["knowledge:1"],
+            )
+        ],
+        sources=[
+            SourceEvidence(
+                evidence_id="knowledge:1",
+                label="검증 문서",
+                locator="knowledge://1",
+                data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
+            )
+        ],
+    )
+
+    assert response.numeric_evidence == []
+
+
+def test_news_title_date_does_not_require_numeric_evidence() -> None:
+    response = ChatResponse(
+        intent=ChatIntent.NEWS,
+        answer="연금 제도 발표 (2026-07-14)",
+        data_mode="news_metadata",
+        sources=[
+            SourceEvidence(
+                evidence_id="news:1",
+                label="연금 제도 발표",
+                locator="https://example.test/news/1",
+                data_boundary=DataBoundary.NEWS_METADATA,
+            )
+        ],
+    )
+
+    assert response.numeric_evidence == []
+
+
 def _fake_narration_model(
     text: str, review_note: str = "", thinking: str | None = None
 ) -> FunctionModel:
@@ -238,6 +392,60 @@ def test_claude_narrator_rejects_new_numbers() -> None:
     assert response.narration_mode == "deterministic"
     assert response.answer == base.answer
     assert "새로운 숫자" in response.limitations[-1]
+
+
+@pytest.mark.parametrize(
+    ("source_answer", "source_value", "candidate"),
+    (
+        ("과거 수익률은 -5%입니다.", Decimal("-5"), "과거 수익률은 5%입니다."),
+        ("한도는 70%입니다.", Decimal("70"), "한도는 70입니다."),
+        ("증감률은 +5%입니다.", Decimal("5"), "증감률은 5%입니다."),
+    ),
+)
+def test_claude_narrator_preserves_sign_and_percent_semantics(
+    source_answer: str,
+    source_value: Decimal,
+    candidate: str,
+) -> None:
+    base = ChatResponse(
+        intent=ChatIntent.ACCOUNT_RULE,
+        answer=source_answer,
+        data_mode="engine",
+        sources=[_source()],
+        numeric_evidence=[
+            NumericEvidence(
+                label="테스트 수치",
+                value=source_value,
+                unit="%",
+                evidence_id="test:source",
+                basis="테스트",
+            )
+        ],
+    )
+
+    response = _narrate_with_fake(base, candidate)
+
+    assert response.narration_mode == "deterministic"
+    assert response.answer == source_answer
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    (
+        "앞으로 수익이 오르고 70%는 보장됩니다.",
+        "IRP 매수를 추천합니다. 한도는 70%입니다.",
+        "IRP 일반 위험자산 한도는 칠십 퍼센트입니다.",
+    ),
+)
+def test_claude_narrator_rejects_new_investment_claims_and_korean_numbers(
+    candidate: str,
+) -> None:
+    base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
+
+    response = _narrate_with_fake(base, candidate)
+
+    assert response.narration_mode == "deterministic"
+    assert response.answer == base.answer
 
 
 def test_claude_narrator_prefers_thinking_summary_over_review_note() -> None:

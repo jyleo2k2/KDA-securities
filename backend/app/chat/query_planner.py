@@ -42,21 +42,20 @@ class QueryPlan(BaseModel):
 
 
 _RRN = re.compile(r"(?<!\d)\d{6}[ -]?[1-8]\d{6}(?!\d)")
-_ACCOUNT_NUMBER = re.compile(
-    r"(?:계좌\s*번호|account\s*(?:number|no\.?))"
-    r"\s*(?:은|는|:|=)?\s*(?:\d[ -]?){8,20}",
-    re.I,
-)
-_SECRET_AFTER_LABEL = re.compile(
-    r"(?:비밀번호|패스워드|password)\s*(?:은|는|:|=)\s*"
-    r"[A-Za-z0-9!@#$%^&*_.-]{4,}"
-    r"|(?:OTP|보안카드(?:\s*번호)?)\s*(?:은|는|:|=)?\s*\d{4,}",
-    re.I,
-)
-_SECRET_BEFORE_LABEL = re.compile(
-    r"[A-Za-z0-9!@#$%^&*_.-]{4,}\s*(?:이|가|은|는)\s*"
-    r"(?:비밀번호|패스워드|password|OTP|보안카드(?:\s*번호)?)",
-    re.I,
+_VALUE_BINDER = r"\s*(?:(?:은|는|이|가)\s*)?(?::|=)?\s*"
+_ACCOUNT_LABEL = r"(?:계좌\s*번호|account\s*(?:number|no\.?))"
+_ACCOUNT_VALUE = r"(?<!\d)\d(?:[ -]?\d){7,19}(?!\d)"
+_PASSWORD_LABEL = r"(?:비밀\s*번호|패스\s*워드|password)"
+_PASSWORD_VALUE = r"[A-Za-z0-9!@#$%^&*_.-]{4,64}"
+_AUTH_CODE_LABEL = r"(?:O\s*T\s*P|보안\s*카드(?:\s*번호)?)"
+_AUTH_CODE_VALUE = r"(?<!\d)\d(?:[ -]?\d){3,11}(?!\d)"
+_SENSITIVE_VALUE_PATTERNS = (
+    re.compile(_ACCOUNT_LABEL + _VALUE_BINDER + _ACCOUNT_VALUE, re.I),
+    re.compile(_ACCOUNT_VALUE + _VALUE_BINDER + _ACCOUNT_LABEL, re.I),
+    re.compile(_PASSWORD_LABEL + _VALUE_BINDER + _PASSWORD_VALUE, re.I),
+    re.compile(_PASSWORD_VALUE + _VALUE_BINDER + _PASSWORD_LABEL, re.I),
+    re.compile(_AUTH_CODE_LABEL + _VALUE_BINDER + _AUTH_CODE_VALUE, re.I),
+    re.compile(_AUTH_CODE_VALUE + _VALUE_BINDER + _AUTH_CODE_LABEL, re.I),
 )
 _ORDER_REQUEST = re.compile(
     r"매수해|매도해|주문해|사\s*줘|팔아\s*줘|대신\s*사|대신\s*팔|자동\s*투자"
@@ -67,9 +66,14 @@ _FUTURE_PREDICTION = re.compile(
     r"|(?:수익률|가격).{0,15}(?:예측|보장|확정)|목표가"
 )
 _PRODUCT_LEVEL = re.compile(r"개별\s*상품|상품\s*추천|상품\s*비교|판매\s*중인\s*상품")
+_COMBINE_WORDS = (
+    r"(?:합쳐(?:서)?|합산(?:해서)?|통합(?:해서)?|묶어(?:서)?|"
+    r"전체(?:로)?|한꺼번에|둘을\s*같이|같이\s*묶어)"
+)
+_COMBINED_RULE_WORDS = r"(?:위험\s*자산|한도|70\s*%|규칙|적용|계산)"
 _COMBINED_ACCOUNT_RULE = re.compile(
-    r"(?:합쳐|합산|통합).{0,20}(?:위험자산|한도|70\s*%)"
-    r"|(?:위험자산|한도|70\s*%).{0,20}(?:합쳐|합산|통합)"
+    rf"{_COMBINE_WORDS}.{{0,25}}{_COMBINED_RULE_WORDS}"
+    rf"|{_COMBINED_RULE_WORDS}.{{0,25}}{_COMBINE_WORDS}"
 )
 _DISCLOSURE_TERMS = re.compile(r"공시|수익률|수수료|적립금|준비금|사업자|회사")
 _NEWS_TERMS = re.compile(r"뉴스|기사|소식")
@@ -87,9 +91,19 @@ _KOREAN_COUNT = (
     (re.compile(r"(?:네\s*(?:개|건)|넷)(?:만)?"), 4),
     (re.compile(r"(?:다섯\s*(?:개|건))(?:만)?"), 5),
 )
-_NEWS_REQUEST_WORDS = re.compile(
-    r"가장|최신|최근|뉴스|기사|소식|네이버|검색(?:해\s*줘)?|"
-    r"찾아\s*줘|알려\s*줘|보여\s*줘|해\s*줘"
+_WORD_EDGE_LEFT = r"(?<![0-9A-Za-z가-힣])"
+_WORD_EDGE_RIGHT = r"(?![0-9A-Za-z가-힣])"
+_NEWS_REQUEST_PHRASES = re.compile(
+    _WORD_EDGE_LEFT
+    + r"(?:네이버\s*뉴스|가장\s*최신|가장\s*최근|최신\s*뉴스|최근\s*뉴스|"
+    r"검색\s*해\s*줘|찾아\s*줘|알려\s*줘|보여\s*줘|해\s*줘)(?:요)?"
+    + _WORD_EDGE_RIGHT
+)
+_NEWS_REQUEST_TOKENS = re.compile(
+    _WORD_EDGE_LEFT
+    + r"(?:가장|최신|최근|뉴스|기사|소식|네이버|검색|좀)"
+    r"(?:을|를|로|에서)?"
+    + _WORD_EDGE_RIGHT
 )
 
 
@@ -107,14 +121,8 @@ def _account_types(message: str) -> tuple[AccountType, ...]:
 
 
 def _contains_sensitive_information(message: str) -> bool:
-    return any(
-        pattern.search(message)
-        for pattern in (
-            _RRN,
-            _ACCOUNT_NUMBER,
-            _SECRET_AFTER_LABEL,
-            _SECRET_BEFORE_LABEL,
-        )
+    return _RRN.search(message) is not None or any(
+        pattern.search(message) for pattern in _SENSITIVE_VALUE_PATTERNS
     )
 
 
@@ -132,8 +140,9 @@ def _news_query(message: str) -> str:
     query = _COUNT.sub(" ", message)
     for pattern, _ in _KOREAN_COUNT:
         query = pattern.sub(" ", query)
-    query = _NEWS_REQUEST_WORDS.sub(" ", query)
-    return normalize_search_text(query)[:200].rstrip() or "연금"
+    query = _NEWS_REQUEST_PHRASES.sub(" ", query)
+    query = _NEWS_REQUEST_TOKENS.sub(" ", query)
+    return normalize_search_text(query).strip(" ?!.,")[:200].rstrip() or "연금"
 
 
 def _blocked(message: str, reason: BlockedReason, max_results: int) -> QueryPlan:

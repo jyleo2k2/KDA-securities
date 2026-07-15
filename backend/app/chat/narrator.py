@@ -45,14 +45,105 @@ class NarrationOutput(BaseModel):
     )
 
 
-def _number_tokens(text: str) -> set[Decimal]:
-    values: set[Decimal] = set()
-    for token in re.findall(r"(?<![a-zA-Z])\d[\d,]*(?:\.\d+)?", text):
+_ARABIC_NUMBER = re.compile(
+    r"(?<![0-9A-Za-z_])(?P<sign>[+\-−])?"
+    r"(?P<number>\d[\d,]*(?:\.\d+)?)\s*"
+    r"(?P<unit>백\s*만\s*원|천\s*만\s*원|억\s*원|만\s*원|천\s*원|"
+    r"KRW|퍼센트|프로|%|년|개월|월|분기|일|배|개|건|명|회|차|층)?"
+    r"(?![0-9A-Za-z_])",
+    re.I,
+)
+_KOREAN_NUMBER = re.compile(
+    r"(?P<sign>마이너스|플러스)?\s*"
+    r"(?P<number>(?:하나|다섯|여섯|일곱|여덟|아홉|영|공|일|이|삼|"
+    r"사|오|육|칠|팔|구|십|백|천|만|억|한|두|둘|세|셋|네|넷|열)+)\s*"
+    r"(?P<unit>퍼센트|프로|백\s*만\s*원|천\s*만\s*원|억\s*원|"
+    r"만\s*원|천\s*원|원|년|개월|배|개|건|명|회|번|계좌)"
+)
+_UNSAFE_CLAIM_PATTERNS = (
+    (
+        "future_outlook",
+        re.compile(
+            r"(?:앞으로|향후|내년|미래|다음\s*분기).{0,30}"
+            r"(?:수익(?:률)?|가격|주가).{0,20}"
+            r"(?:오르|상승|하락|내리|증가|감소|전망|예상)"
+            r"|(?:수익(?:률)?|가격|주가).{0,20}"
+            r"(?:앞으로|향후|내년|미래).{0,20}"
+            r"(?:오르|상승|하락|내리|증가|감소)"
+            r"|(?:수익(?:률)?|가격|주가).{0,12}"
+            r"(?:오를|내릴|상승할|하락할|증가할|감소할|전망|예상)"
+        ),
+    ),
+    (
+        "guarantee",
+        re.compile(
+            r"(?:\d[\d,.]*\s*(?:%|퍼센트|프로)|%|퍼센트|프로|"
+            r"수익(?:률)?|원금|손실).{0,15}(?:보장|확정|확실)"
+        ),
+    ),
+    (
+        "recommendation",
+        re.compile(
+            r"(?:매수|매도|상품|투자).{0,20}(?:추천|권유)"
+            r"|(?:추천|권유).{0,20}(?:매수|매도|상품|투자)"
+            r"|(?:매수|매도).{0,15}(?:좋|유리)"
+            r"|(?:사는|파는)\s*게\s*(?:좋|유리)"
+            r"|(?:사세요|파세요|매수하세요|매도하세요|투자하세요)"
+        ),
+    ),
+)
+_NEGATION = re.compile(r"않|아니|없|금지|못|제공하지|의미하지|하지\s*마")
+
+
+def _number_tokens(text: str) -> set[tuple[Decimal, str, str]]:
+    values: set[tuple[Decimal, str, str]] = set()
+    for match in _ARABIC_NUMBER.finditer(text):
+        raw_sign = match.group("sign")
+        sign = "-" if raw_sign in {"-", "−"} else ""
+        sign_kind = (
+            "negative"
+            if raw_sign in {"-", "−"}
+            else "positive"
+            if raw_sign == "+"
+            else "unsigned"
+        )
         try:
-            values.add(Decimal(token.replace(",", "")))
+            value = Decimal(sign + match.group("number").replace(",", ""))
         except InvalidOperation:
             continue
+        unit = re.sub(r"\s+", "", match.group("unit") or "number").casefold()
+        values.add((value, unit, sign_kind))
     return values
+
+
+def _korean_number_tokens(text: str) -> set[tuple[str, str, str]]:
+    values: set[tuple[str, str, str]] = set()
+    for match in _KOREAN_NUMBER.finditer(text):
+        sign = match.group("sign") or "부호없음"
+        number = re.sub(r"\s+", "", match.group("number"))
+        unit = re.sub(r"\s+", "", match.group("unit"))
+        values.add((number, unit, sign))
+    return values
+
+
+def _unsafe_claims(text: str) -> set[str]:
+    claims: set[str] = set()
+    for category, pattern in _UNSAFE_CLAIM_PATTERNS:
+        for match in pattern.finditer(text):
+            context = text[max(0, match.start() - 8) : match.end() + 18]
+            if _NEGATION.search(context) is None:
+                claims.add(category)
+    return claims
+
+
+def _adds_unverified_content(candidate: str, source: str) -> bool:
+    return (
+        not _number_tokens(candidate).issubset(_number_tokens(source))
+        or not _korean_number_tokens(candidate).issubset(
+            _korean_number_tokens(source)
+        )
+        or not _unsafe_claims(candidate).issubset(_unsafe_claims(source))
+    )
 
 
 class ClaudeNarrator:
@@ -97,11 +188,11 @@ class ClaudeNarrator:
                 "Claude 설명 호출 실패로 검증 원문을 표시합니다.",
             )
 
-        allowed_numbers = _number_tokens(response.answer)
-        if not _number_tokens(candidate).issubset(allowed_numbers):
+        if _adds_unverified_content(candidate, response.answer):
             return self._fallback(
                 response,
-                "Claude 설명에서 새로운 숫자를 감지해 검증 원문으로 되돌렸습니다.",
+                "Claude 설명에서 새로운 숫자·전망·보장·추천 주장을 감지해 "
+                "검증 원문으로 되돌렸습니다.",
             )
         thinking = next(
             (
@@ -120,20 +211,18 @@ class ClaudeNarrator:
                 "narration_mode": "claude_verified",
                 "model_name": self._model,
                 "narration_reasoning": self._safe_reasoning(
-                    thinking or output.review_note.strip(), allowed_numbers
+                    thinking or output.review_note.strip(), response.answer
                 ),
             }
         )
         return ChatResponse.model_validate(data)
 
     @staticmethod
-    def _safe_reasoning(
-        reasoning: str, allowed_numbers: set[Decimal]
-    ) -> str | None:
+    def _safe_reasoning(reasoning: str, source: str) -> str | None:
         """본문과 달리 보조 설명은 새 숫자 감지 시 이 필드만 조용히 생략한다."""
         if not reasoning or len(reasoning) > 2000:
             return None
-        if not _number_tokens(reasoning).issubset(allowed_numbers):
+        if _adds_unverified_content(reasoning, source):
             return None
         return reasoning
 

@@ -16,6 +16,7 @@ from .models import (
     NumericEvidence,
     SectionKind,
     SourceEvidence,
+    extract_numeric_claims,
 )
 from .query_planner import BlockedReason, QueryPlan, plan_question
 from .scenarios import LocalScenarioRepository
@@ -281,6 +282,18 @@ class ChatService:
         else:
             excerpt = re.sub(r"\s+", " ", matches[0].content).strip()[:600]
             answer = f"검증 문서에서 확인한 내용입니다. {excerpt}"
+            for index, (value, unit) in enumerate(
+                sorted(extract_numeric_claims(answer)), start=1
+            ):
+                numeric.append(
+                    NumericEvidence(
+                        label=f"{matches[0].title} 답변 수치 {index}",
+                        value=value,
+                        unit=unit,
+                        evidence_id=sources[0].evidence_id,
+                        basis="검증된 지식 문서 답변 인용",
+                    )
+                )
 
         return ChatResponse(
             intent=ChatIntent.ACCOUNT_RULE,
@@ -403,6 +416,16 @@ class ChatService:
                     unit="%",
                     evidence_id="engine:scenario",
                     basis="규칙 엔진 계산",
+                )
+            )
+        for item in evaluation.asset_allocations:
+            numeric.append(
+                NumericEvidence(
+                    label=f"{item.asset_class_code} 통합 자산군 비중",
+                    value=item.allocation_percent,
+                    unit="%",
+                    evidence_id="engine:scenario",
+                    basis="목계좌 통합 집계 엔진 계산",
                 )
             )
         allocation_text = ", ".join(
