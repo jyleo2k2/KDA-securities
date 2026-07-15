@@ -21,11 +21,27 @@ DC = "DC"
 IRP = "IRP"
 PENSION_SAVINGS_FUND = "PENSION_SAVINGS_FUND"
 ALLOWED_ACCOUNT_TYPES = (DC, IRP, PENSION_SAVINGS_FUND)
+SALARIED_EMPLOYEE = "SALARIED_EMPLOYEE"
+SELF_EMPLOYED = "SELF_EMPLOYED"
+FREELANCER = "FREELANCER"
 
 SCENARIO_WEIGHTS = {
     "DC_NEGLECT": 0.40,
     "TAX_BENEFIT_IDLE": 0.30,
     "OVERLAP_RISK": 0.30,
+}
+EMPLOYMENT_TYPE_WEIGHTS_BY_SCENARIO = {
+    "DC_NEGLECT": {SALARIED_EMPLOYEE: 1.00},
+    "TAX_BENEFIT_IDLE": {
+        SALARIED_EMPLOYEE: 0.65,
+        SELF_EMPLOYED: 0.18,
+        FREELANCER: 0.17,
+    },
+    "OVERLAP_RISK": {
+        SALARIED_EMPLOYEE: 0.65,
+        SELF_EMPLOYED: 0.18,
+        FREELANCER: 0.17,
+    },
 }
 AGE_GROUP_WEIGHTS = {
     "20s": 0.1190,
@@ -73,36 +89,136 @@ RISKY_MEAN = {
 RETURN_MEAN_PCT = {DC: 8.47, IRP: 9.44, PENSION_SAVINGS_FUND: 29.30}
 RETURN_SD_ASSUMPTION = {DC: 5.69, IRP: 6.00, PENSION_SAVINGS_FUND: 12.00}
 
-MONTHLY_CONTRIBUTION_MEAN_KRW = {
-    DC: {"20s": 400_000, "30s": 600_000, "40s": 750_000, "50_plus": 800_000},
-    IRP: {"20s": 150_000, "30s": 250_000, "40s": 300_000, "50_plus": 250_000},
-    PENSION_SAVINGS_FUND: {
-        "20s": 200_000,
-        "30s": 350_000,
-        "40s": 400_000,
-        "50_plus": 350_000,
+# Annual income is a synthetic driver, not an observed customer attribute. The
+# age means are calibrated so that DC's legal monthly equivalent (income / 144)
+# is close to the 2024 aggregate benchmark of KRW 511,000.
+GROSS_SALARY_MEAN_KRW = {
+    "20s": 42_000_000,
+    "30s": 64_000_000,
+    "40s": 80_000_000,
+    "50_plus": 88_000_000,
+}
+COMPREHENSIVE_INCOME_MEAN_KRW = {
+    SELF_EMPLOYED: {
+        "20s": 30_000_000,
+        "30s": 45_000_000,
+        "40s": 55_000_000,
+        "50_plus": 60_000_000,
+    },
+    FREELANCER: {
+        "20s": 24_000_000,
+        "30s": 36_000_000,
+        "40s": 45_000_000,
+        "50_plus": 50_000_000,
     },
 }
+INCOME_LOG_SIGMA = 0.38
 
-RISK_PROFILES = (
-    "CONSERVATIVE",
-    "STABLE_GROWTH",
-    "BALANCED",
-    "GROWTH",
-    "AGGRESSIVE",
-)
-RISK_PROFILE_WEIGHTS = {
-    "20s": (0.10, 0.20, 0.30, 0.25, 0.15),
-    "30s": (0.12, 0.23, 0.32, 0.23, 0.10),
-    "40s": (0.18, 0.30, 0.30, 0.17, 0.05),
-    "50_plus": (0.30, 0.35, 0.22, 0.10, 0.03),
+# 2020 National Tax Statistics-based active-contributor monthly equivalents.
+# Pension-savings figures cover all pension-savings products and are used as a
+# proxy for pension-savings-fund because a fund-only contribution cross-tab is
+# not publicly available.
+ACTIVE_CONTRIBUTION_MEAN_KRW = {
+    IRP: (
+        (20_000_000, 56_000),
+        (40_000_000, 153_000),
+        (60_000_000, 214_000),
+        (80_000_000, 263_000),
+        (100_000_000, 300_000),
+        (math.inf, 331_000),
+    ),
+    PENSION_SAVINGS_FUND: (
+        (20_000_000, 65_000),
+        (40_000_000, 166_000),
+        (60_000_000, 207_000),
+        (80_000_000, 244_000),
+        (100_000_000, 264_000),
+        (math.inf, 227_000),
+    ),
 }
+CONTRIBUTION_ACTIVE_RATE = {IRP: 0.52, PENSION_SAVINGS_FUND: 0.63}
+# The IRP scale reconciles the income-band pattern with the separate 2021
+# active additional-contributor mean of about KRW 421,000 per month.
+ACTIVE_CONTRIBUTION_SCALE = {IRP: 1.65, PENSION_SAVINGS_FUND: 1.00}
+CONTRIBUTION_FREQUENCY_WEIGHTS = {
+    "MONTHLY": 0.75,
+    "QUARTERLY": 0.15,
+    "ANNUAL_LUMP_SUM": 0.10,
+}
+
+TAX_YEAR = 2025
+GROSS_SALARY_TAX_CREDIT_THRESHOLD_KRW = 55_000_000
+COMPREHENSIVE_INCOME_TAX_CREDIT_THRESHOLD_KRW = 45_000_000
+TAX_CREDIT_RATE_WITH_LOCAL = {"LOWER_INCOME": 0.165, "HIGHER_INCOME": 0.132}
+PENSION_SAVINGS_TAX_CREDIT_LIMIT_KRW = 6_000_000
+COMBINED_PENSION_TAX_CREDIT_LIMIT_KRW = 9_000_000
+PRIVATE_PENSION_SEPARATE_TAX_THRESHOLD_KRW = 15_000_000
+
 PROFILE_RISK_TARGET = {
-    "CONSERVATIVE": 0.15,
-    "STABLE_GROWTH": 0.30,
-    "BALANCED": 0.45,
-    "GROWTH": 0.60,
+    "STABLE": 0.15,
+    "STABLE_SEEKING": 0.30,
+    "RISK_NEUTRAL": 0.45,
+    "ACTIVE": 0.60,
     "AGGRESSIVE": 0.80,
+}
+
+# KEF's 2025 employee survey reports four preferred retirement-fund management
+# types. They are preserved as their own field and mapped to the closest four
+# bands of the service's five-band RiskProfile vocabulary. The survey has no
+# separate "aggressive" category, so it is not synthesized from unsupported data.
+PREFERRED_MANAGEMENT_WEIGHTS = {
+    "PRINCIPAL_GUARANTEED": 0.225,
+    "STABLE_INVESTMENT": 0.501,
+    "NEUTRAL_INVESTMENT": 0.212,
+    "ACTIVE_INVESTMENT": 0.062,
+}
+PREFERRED_MANAGEMENT_TO_RISK_PROFILE = {
+    "PRINCIPAL_GUARANTEED": "STABLE",
+    "STABLE_INVESTMENT": "STABLE_SEEKING",
+    "NEUTRAL_INVESTMENT": "RISK_NEUTRAL",
+    "ACTIVE_INVESTMENT": "ACTIVE",
+}
+RETIREMENT_FUND_ATTITUDE_WEIGHTS = {
+    "20s": {
+        "STABILITY_FIRST": 0.616,
+        "PARTIAL_INVESTMENT": 0.320,
+        "ACTIVE": 0.064,
+    },
+    "30s": {
+        "STABILITY_FIRST": 0.524,
+        "PARTIAL_INVESTMENT": 0.369,
+        "ACTIVE": 0.107,
+    },
+    "40s": {
+        "STABILITY_FIRST": 0.636,
+        "PARTIAL_INVESTMENT": 0.292,
+        "ACTIVE": 0.072,
+    },
+    "50_plus": {
+        "STABILITY_FIRST": 0.737,
+        "PARTIAL_INVESTMENT": 0.227,
+        "ACTIVE": 0.036,
+    },
+}
+INVESTMENT_READINESS_WEIGHTS = {
+    "NEEDS_GUIDANCE": 0.571,
+    "INFORMED": 0.336,
+    "DISENGAGED": 0.093,
+}
+PAYOUT_PREFERENCE_WEIGHTS = {
+    "20s": {"MIXED": 0.396, "ANNUITY": 0.272, "LUMP_SUM": 0.332},
+    "30s": {"MIXED": 0.425, "ANNUITY": 0.293, "LUMP_SUM": 0.282},
+    "40s": {"MIXED": 0.404, "ANNUITY": 0.300, "LUMP_SUM": 0.296},
+    "50_plus": {"MIXED": 0.283, "ANNUITY": 0.426, "LUMP_SUM": 0.291},
+}
+PRIMARY_OUTSIDE_ASSET_WEIGHTS = {
+    "DEPOSIT_SAVINGS": 0.319,
+    "SECURITIES": 0.235,
+    "INSURANCE_PENSION": 0.180,
+    "GOLD_FX": 0.105,
+    "REAL_ESTATE": 0.083,
+    "CRYPTO": 0.048,
+    "NONE": 0.030,
 }
 
 SOURCES = {
@@ -113,8 +229,27 @@ SOURCES = {
     },
     "MOEL_FSS_RETIREMENT_2025": {
         "kind": "official_aggregate",
-        "use": "DC/IRP performance-linked shares and 2025 annual returns",
+        "use": (
+            "DC/IRP performance-linked shares, 2025 annual returns, and "
+            "top/bottom return-group asset composition"
+        ),
+        "reference_file": (
+            "260520_보도자료_2025년퇴직연금 투자 백서(관계부처합동) (1).pdf"
+        ),
+        "pdf_pages_used": [7, 16, 18],
         "url": "https://www.moel.go.kr/news/enews/report/enewsView.do?news_seq=19411",
+    },
+    "KEF_RETIREMENT_AWARENESS_2025": {
+        "kind": "employee_survey",
+        "use": (
+            "preferred management type, retirement-fund attitude, investment "
+            "readiness, payout preference, and primary outside investment asset"
+        ),
+        "reference_file": "[경총_보고서] 2025 직장인 퇴직연금 인식조사.pdf",
+        "survey_period": "2025-06-02/2025-06-13",
+        "sample_size": 1003,
+        "pdf_pages_used": [4, 5, 6, 8, 9],
+        "url": None,
     },
     "KOSTAT_RETIREMENT_2024": {
         "kind": "official_aggregate",
@@ -123,14 +258,78 @@ SOURCES = {
     },
     "FSC_FSS_PSA_2025": {
         "kind": "official_aggregate",
-        "use": "pension-savings-fund contracts, assets, and 2025 annual return",
+        "use": (
+            "pension-savings-fund contracts, assets, and 2025 annual return; "
+            "all-product pension-savings contributions and participants"
+        ),
         "url": "https://www.fsc.go.kr/no010101/87144",
+    },
+    "RETIREMENT_CONTRIBUTION_2024": {
+        "kind": "official_joint_whitepaper",
+        "use": "2024 DC employer and IRP participant annual contribution totals",
+        "url": "https://kiri.or.kr/PDF/weeklytrend/20250623/trend20250623_1.pdf",
+    },
+    "KIRI_PENSION_CONTRIBUTION_2022": {
+        "kind": "official_research",
+        "use": (
+            "2020 IRP and pension-savings active-contributor annual means by "
+            "income band, based on National Tax Statistics"
+        ),
+        "url": "https://www.kiri.or.kr/report/downloadFile.do?docId=147139",
+    },
+    "KIRI_REPLACEMENT_RATE_2023": {
+        "kind": "official_research",
+        "use": "2021 IRP active additional-contributor annual mean",
+        "url": "https://www.kiri.or.kr/report/downloadFile.do?docId=345589",
+    },
+    "NTS_PENSION_TAX_2025": {
+        "kind": "official_tax_rule",
+        "use": (
+            "pension-account tax-credit limits and gross-salary KRW 55 million / "
+            "comprehensive-income KRW 45 million rate boundaries; private-pension "
+            "withholding rates and KRW 15 million annual threshold"
+        ),
+        "url": "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7875&mi=6596",
+        "pension_income_url": (
+            "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7888&mi=6452"
+        ),
+    },
+    "INCOME_TAX_DECREE_PENSION_RECEIPT": {
+        "kind": "official_law",
+        "use": "age 55 and five-year holding requirements for pension receipt",
+        "url": "https://www.law.go.kr/lsLawLinkInfo.do?chrClsCd=010202&lsJoLnkSeq=1001059447",
     },
     "ASSUMPTION_V1": {
         "kind": "model_assumption",
         "use": (
             "account combinations, dispersion, contributions, "
             "and within-account holdings"
+        ),
+        "url": None,
+    },
+    "ASSUMPTION_V2": {
+        "kind": "model_assumption",
+        "use": (
+            "map KEF four management types to the closest service risk-profile "
+            "bands and apply the survey's 50s cross-tabs to ages 50-64"
+        ),
+        "url": None,
+    },
+    "ASSUMPTION_CONTRIBUTION_V1": {
+        "kind": "model_assumption",
+        "use": (
+            "synthetic annual-income distribution, contribution activity rates, "
+            "frequency mix, dispersion, and pension-savings-fund proxy mapping"
+        ),
+        "url": None,
+    },
+    "ASSUMPTION_TAX_SCENARIO_V1": {
+        "kind": "model_assumption",
+        "use": (
+            "employment-type mix, gross-salary and comprehensive-income "
+            "distributions, account tenure, planned pension start age and receipt "
+            "period, and current-balance-only planned receipt amount; IRP source "
+            "composition is not available, so tax treatment is indicative"
         ),
         "url": None,
     },
@@ -147,10 +346,16 @@ def allocate_counts(total: int, weights: dict[str, float]) -> dict[str, int]:
     return counts
 
 
-def weighted_choice(
-    rng: random.Random, values: tuple[str, ...], weights: tuple[float, ...]
-) -> str:
-    return rng.choices(values, weights=weights, k=1)[0]
+def shuffled_labels(
+    rng: random.Random, total: int, weights: dict[str, float]
+) -> list[str]:
+    labels = [
+        label
+        for label, count in allocate_counts(total, weights).items()
+        for _ in range(count)
+    ]
+    rng.shuffle(labels)
+    return labels
 
 
 def account_types_for_scenario(rng: random.Random, scenario: str) -> list[str]:
@@ -198,18 +403,27 @@ def sample_allocation(
 ) -> tuple[float, float, float]:
     baseline = RISKY_MEAN[account_type][age_group]
     max_risky = 0.70 if account_type in (DC, IRP) else 0.95
+    profile_adjusted_mean = (
+        baseline + PROFILE_RISK_TARGET[risk_profile]
+    ) / 2.0
 
     if scenario == "DC_NEGLECT" and account_type == DC:
-        risky_mean = baseline * 0.35
+        risky_mean = profile_adjusted_mean * 0.35
         cash_ratio = rng.uniform(0.12, 0.30)
     elif scenario == "TAX_BENEFIT_IDLE" and account_type in (IRP, PENSION_SAVINGS_FUND):
-        risky_mean = baseline * 0.35
+        risky_mean = profile_adjusted_mean * 0.35
         cash_ratio = rng.uniform(0.45, 0.70)
     elif scenario == "OVERLAP_RISK":
-        risky_mean = max(baseline, PROFILE_RISK_TARGET[risk_profile])
+        risky_mean = min(
+            max(
+                profile_adjusted_mean * 1.25,
+                PROFILE_RISK_TARGET[risk_profile],
+            ),
+            max_risky,
+        )
         cash_ratio = rng.uniform(0.01, 0.05)
     else:
-        risky_mean = baseline
+        risky_mean = profile_adjusted_mean
         cash_ratio = rng.uniform(0.05, 0.15)
 
     risky_ratio = min(sample_beta(rng, risky_mean), max_risky, 1.0 - cash_ratio)
@@ -224,46 +438,356 @@ def lognormal_with_mean(
     return rng.lognormvariate(mu, sigma)
 
 
+def round_to_10k(value: float) -> int:
+    return int(round(value / 10_000) * 10_000)
+
+
+def income_band_contribution_mean(account_type: str, annual_income: int) -> int:
+    for upper_bound, monthly_mean in ACTIVE_CONTRIBUTION_MEAN_KRW[account_type]:
+        if annual_income <= upper_bound:
+            return monthly_mean
+    raise ValueError(f"no contribution income band: {annual_income}")
+
+
+def sample_contribution(
+    rng: random.Random, account_type: str, annual_income: int
+) -> tuple[int, int, str, str]:
+    if account_type == DC:
+        monthly_equivalent = round_to_10k(annual_income / 144)
+        return (
+            monthly_equivalent,
+            monthly_equivalent * 12,
+            "ACTIVE",
+            "MONTHLY_EQUIVALENT",
+        )
+
+    if rng.random() >= CONTRIBUTION_ACTIVE_RATE[account_type]:
+        return 0, 0, "INACTIVE", "NONE"
+
+    active_mean = (
+        income_band_contribution_mean(account_type, annual_income)
+        * ACTIVE_CONTRIBUTION_SCALE[account_type]
+    )
+    monthly_equivalent = max(
+        10_000, round_to_10k(lognormal_with_mean(rng, active_mean, 0.45))
+    )
+    frequency = rng.choices(
+        population=tuple(CONTRIBUTION_FREQUENCY_WEIGHTS),
+        weights=tuple(CONTRIBUTION_FREQUENCY_WEIGHTS.values()),
+        k=1,
+    )[0]
+    return monthly_equivalent, monthly_equivalent * 12, "ACTIVE", frequency
+
+
+def tax_credit_rate(income_basis: str, income_amount: int) -> float:
+    threshold = (
+        GROSS_SALARY_TAX_CREDIT_THRESHOLD_KRW
+        if income_basis == "GROSS_SALARY"
+        else COMPREHENSIVE_INCOME_TAX_CREDIT_THRESHOLD_KRW
+    )
+    income_band = (
+        "LOWER_INCOME"
+        if income_amount <= threshold
+        else "HIGHER_INCOME"
+    )
+    return TAX_CREDIT_RATE_WITH_LOCAL[income_band]
+
+
+def planned_pension_tax_rate(planned_start_age: int) -> float:
+    if planned_start_age < 70:
+        return 5.5
+    if planned_start_age < 80:
+        return 4.4
+    return 3.3
+
+
+def sample_planned_receipt(
+    rng: random.Random, age: int, payout_preference: str
+) -> tuple[int, int]:
+    start_age_choices = {
+        "ANNUITY": ((60, 65, 70), (0.20, 0.60, 0.20)),
+        "MIXED": ((60, 65, 70), (0.35, 0.50, 0.15)),
+        "LUMP_SUM": ((55, 60, 65), (0.50, 0.40, 0.10)),
+    }
+    receipt_year_choices = {
+        "ANNUITY": ((20, 25, 30), (0.30, 0.50, 0.20)),
+        "MIXED": ((10, 15, 20), (0.30, 0.50, 0.20)),
+        "LUMP_SUM": ((1,), (1.0,)),
+    }
+    ages, age_weights = start_age_choices[payout_preference]
+    planned_start_age = rng.choices(ages, weights=age_weights, k=1)[0]
+    next_five_year_age = max(55, math.ceil((age + 1) / 5) * 5)
+    planned_start_age = max(planned_start_age, next_five_year_age)
+    years, year_weights = receipt_year_choices[payout_preference]
+    planned_receipt_years = rng.choices(years, weights=year_weights, k=1)[0]
+    return planned_start_age, planned_receipt_years
+
+
+def apply_tax_scenarios(
+    users: list[dict], accounts: list[dict], rng: random.Random
+) -> None:
+    users_by_id = {user["user_id"]: user for user in users}
+    accounts_by_user: dict[str, list[dict]] = defaultdict(list)
+
+    for account in accounts:
+        user = users_by_id[account["user_id"]]
+        max_years = max(1, min(40, user["age"] - 19))
+        contribution_years = max(
+            1,
+            round(rng.triangular(1, max_years, max(1, max_years * 0.65))),
+        )
+        account["contribution_years"] = contribution_years
+        account["account_open_year"] = TAX_YEAR - contribution_years + 1
+        account["tax_credit_eligible_contribution_krw"] = 0
+        account["estimated_tax_credit_krw"] = 0
+        accounts_by_user[account["user_id"]].append(account)
+
+    for user in users:
+        planned_start_age, planned_receipt_years = sample_planned_receipt(
+            rng, user["age"], user["payout_preference"]
+        )
+        user["tax_year"] = TAX_YEAR
+        user["pension_tax_credit_rate_pct"] = round(
+            tax_credit_rate(
+                user["tax_credit_income_basis"],
+                user["tax_credit_income_amount_krw"],
+            )
+            * 100,
+            1,
+        )
+        user["planned_pension_start_age"] = planned_start_age
+        user["planned_receipt_years"] = planned_receipt_years
+        user["planned_low_rate_pension_tax_pct"] = planned_pension_tax_rate(
+            planned_start_age
+        )
+
+        user_accounts = accounts_by_user[user["user_id"]]
+        pension_savings_accounts = [
+            account
+            for account in user_accounts
+            if account["account_type"] == PENSION_SAVINGS_FUND
+        ]
+        irp_accounts = [
+            account for account in user_accounts if account["account_type"] == IRP
+        ]
+
+        remaining_limit = COMBINED_PENSION_TAX_CREDIT_LIMIT_KRW
+        for account in pension_savings_accounts:
+            eligible = min(
+                account["annual_contribution_krw"],
+                PENSION_SAVINGS_TAX_CREDIT_LIMIT_KRW,
+                remaining_limit,
+            )
+            account["tax_credit_eligible_contribution_krw"] = eligible
+            remaining_limit -= eligible
+        for account in irp_accounts:
+            eligible = min(account["annual_contribution_krw"], remaining_limit)
+            account["tax_credit_eligible_contribution_krw"] = eligible
+            remaining_limit -= eligible
+
+        rate = tax_credit_rate(
+            user["tax_credit_income_basis"],
+            user["tax_credit_income_amount_krw"],
+        )
+        for account in user_accounts:
+            eligible = account["tax_credit_eligible_contribution_krw"]
+            account["estimated_tax_credit_krw"] = round(eligible * rate)
+            years_at_receipt = account["contribution_years"] + (
+                planned_start_age - user["age"]
+            )
+            account["planned_contribution_years_at_receipt"] = years_at_receipt
+            if user["payout_preference"] == "LUMP_SUM":
+                receipt_eligibility = "NOT_APPLICABLE_LUMP_SUM"
+            elif years_at_receipt >= 5:
+                receipt_eligibility = "ELIGIBLE"
+            elif account["account_type"] == DC:
+                receipt_eligibility = "DEFERRED_RETIREMENT_EXCEPTION_REVIEW"
+            else:
+                receipt_eligibility = "FIVE_YEAR_REQUIREMENT_NOT_MET"
+            account["pension_receipt_eligibility"] = receipt_eligibility
+            if user["payout_preference"] == "LUMP_SUM":
+                planned_receipt = account["balance_krw"]
+            else:
+                planned_receipt = round_to_10k(
+                    account["balance_krw"] / planned_receipt_years
+                )
+            account["planned_annual_pension_receipt_krw"] = planned_receipt
+
+        personal_receipt = sum(
+            account["planned_annual_pension_receipt_krw"]
+            for account in user_accounts
+            if account["account_type"] in (IRP, PENSION_SAVINGS_FUND)
+        )
+        total_receipt = sum(
+            account["planned_annual_pension_receipt_krw"]
+            for account in user_accounts
+        )
+        if user["payout_preference"] == "LUMP_SUM":
+            treatment = "NON_PENSION_WITHDRAWAL_REVIEW"
+        elif personal_receipt <= PRIVATE_PENSION_SEPARATE_TAX_THRESHOLD_KRW:
+            treatment = "LOW_RATE_SEPARATE_TAX"
+        else:
+            treatment = "COMPREHENSIVE_OR_16_5_SEPARATE_CHOICE"
+
+        user["total_tax_credit_eligible_contribution_krw"] = sum(
+            account["tax_credit_eligible_contribution_krw"]
+            for account in user_accounts
+        )
+        user["estimated_pension_tax_credit_krw"] = sum(
+            account["estimated_tax_credit_krw"] for account in user_accounts
+        )
+        user["planned_annual_total_pension_receipt_krw"] = total_receipt
+        user["planned_annual_personal_pension_receipt_krw"] = personal_receipt
+        user["planned_receipt_tax_treatment"] = treatment
+
+        for account in user_accounts:
+            if account["account_type"] == DC:
+                account["planned_receipt_tax_treatment"] = (
+                    "DEFERRED_RETIREMENT_INCOME_RULE"
+                )
+            else:
+                account["planned_receipt_tax_treatment"] = treatment
+
+
 def generate_records(user_count: int, seed: int) -> tuple[list[dict], list[dict]]:
     rng = random.Random(seed)
+    attribute_rng = random.Random(seed + 1)
+    tax_rng = random.Random(seed + 2)
+    age_group_counts = allocate_counts(user_count, AGE_GROUP_WEIGHTS)
     age_groups = [
         group
-        for group, count in allocate_counts(user_count, AGE_GROUP_WEIGHTS).items()
+        for group, count in age_group_counts.items()
         for _ in range(count)
     ]
+    scenario_counts = allocate_counts(user_count, SCENARIO_WEIGHTS)
     scenarios = [
         scenario
-        for scenario, count in allocate_counts(user_count, SCENARIO_WEIGHTS).items()
+        for scenario, count in scenario_counts.items()
         for _ in range(count)
     ]
     rng.shuffle(age_groups)
     rng.shuffle(scenarios)
 
+    preferred_management_types = shuffled_labels(
+        attribute_rng, user_count, PREFERRED_MANAGEMENT_WEIGHTS
+    )
+    investment_readiness = shuffled_labels(
+        attribute_rng, user_count, INVESTMENT_READINESS_WEIGHTS
+    )
+    primary_outside_assets = shuffled_labels(
+        attribute_rng, user_count, PRIMARY_OUTSIDE_ASSET_WEIGHTS
+    )
+    employment_types_by_scenario = {
+        scenario: shuffled_labels(
+            attribute_rng,
+            scenario_counts[scenario],
+            EMPLOYMENT_TYPE_WEIGHTS_BY_SCENARIO[scenario],
+        )
+        for scenario in SCENARIO_WEIGHTS
+    }
+    retirement_fund_attitudes = {
+        group: shuffled_labels(
+            attribute_rng,
+            age_group_counts[group],
+            RETIREMENT_FUND_ATTITUDE_WEIGHTS[group],
+        )
+        for group in AGE_GROUP_WEIGHTS
+    }
+    payout_preferences = {
+        group: shuffled_labels(
+            attribute_rng, age_group_counts[group], PAYOUT_PREFERENCE_WEIGHTS[group]
+        )
+        for group in AGE_GROUP_WEIGHTS
+    }
+
     users: list[dict] = []
     accounts: list[dict] = []
     account_number = 1
 
-    for index, (age_group, scenario) in enumerate(
-        zip(age_groups, scenarios, strict=True), start=1
+    for index, (
+        age_group,
+        scenario,
+        preferred_management_type,
+        readiness,
+        outside_asset,
+    ) in enumerate(
+        zip(
+            age_groups,
+            scenarios,
+            preferred_management_types,
+            investment_readiness,
+            primary_outside_assets,
+            strict=True,
+        ),
+        start=1,
     ):
         age = rng.randint(*AGE_RANGES[age_group])
-        risk_profile = weighted_choice(
-            rng, RISK_PROFILES, RISK_PROFILE_WEIGHTS[age_group]
-        )
+        risk_profile = PREFERRED_MANAGEMENT_TO_RISK_PROFILE[
+            preferred_management_type
+        ]
         user_id = f"USR{index:05d}"
+        employment_type = employment_types_by_scenario[scenario].pop()
+        if employment_type == SALARIED_EMPLOYEE:
+            gross_salary = max(
+                12_000_000,
+                round_to_10k(
+                    lognormal_with_mean(
+                        rng,
+                        GROSS_SALARY_MEAN_KRW[age_group],
+                        INCOME_LOG_SIGMA,
+                    )
+                ),
+            )
+            comprehensive_income = None
+            tax_credit_income_basis = "GROSS_SALARY"
+            tax_credit_income_amount = gross_salary
+        else:
+            gross_salary = None
+            comprehensive_income = max(
+                8_000_000,
+                round_to_10k(
+                    lognormal_with_mean(
+                        rng,
+                        COMPREHENSIVE_INCOME_MEAN_KRW[employment_type][age_group],
+                        INCOME_LOG_SIGMA,
+                    )
+                ),
+            )
+            tax_credit_income_basis = "COMPREHENSIVE_INCOME"
+            tax_credit_income_amount = comprehensive_income
         users.append(
             {
                 "user_id": user_id,
                 "age": age,
                 "age_group": age_group,
+                "employment_type": employment_type,
+                "gross_salary_krw": gross_salary,
+                "comprehensive_income_krw": comprehensive_income,
+                "tax_credit_income_basis": tax_credit_income_basis,
+                "tax_credit_income_amount_krw": tax_credit_income_amount,
                 "risk_profile": risk_profile,
+                "preferred_management_type": preferred_management_type,
+                "retirement_fund_attitude": retirement_fund_attitudes[age_group].pop(),
+                "investment_readiness": readiness,
+                "payout_preference": payout_preferences[age_group].pop(),
+                "primary_outside_asset": outside_asset,
                 "mock_scenario": scenario,
                 "data_kind": "MOCK",
-                "source_ids": "KIRI_2025_20|ASSUMPTION_V1",
+                "source_ids": (
+                    "KIRI_2025_20|KEF_RETIREMENT_AWARENESS_2025|"
+                    "NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|"
+                    "ASSUMPTION_V1|ASSUMPTION_V2|ASSUMPTION_CONTRIBUTION_V1|"
+                    "ASSUMPTION_TAX_SCENARIO_V1"
+                ),
             }
         )
 
-        for account_type in account_types_for_scenario(rng, scenario):
+        account_types = account_types_for_scenario(rng, scenario)
+        if employment_type != SALARIED_EMPLOYEE:
+            account_types = [
+                account_type for account_type in account_types if account_type != DC
+            ]
+        for account_type in account_types:
             risky_ratio, safe_ratio, cash_ratio = sample_allocation(
                 rng, account_type, age_group, risk_profile, scenario
             )
@@ -271,8 +795,12 @@ def generate_records(user_count: int, seed: int) -> tuple[list[dict], list[dict]
             raw_balance = lognormal_with_mean(
                 rng, target_balance, BALANCE_LOG_SIGMA[account_type]
             )
-            contribution_mean = MONTHLY_CONTRIBUTION_MEAN_KRW[account_type][age_group]
-            monthly_contribution = lognormal_with_mean(rng, contribution_mean, 0.45)
+            (
+                monthly_contribution,
+                annual_contribution,
+                contribution_status,
+                contribution_frequency,
+            ) = sample_contribution(rng, account_type, tax_credit_income_amount)
             return_sensitivity = 18.0 if account_type in (DC, IRP) else 25.0
             raw_return = (
                 RETURN_MEAN_PCT[account_type]
@@ -288,9 +816,10 @@ def generate_records(user_count: int, seed: int) -> tuple[list[dict], list[dict]
                     "age_group": age_group,
                     "raw_balance": raw_balance,
                     "balance_krw": 0,
-                    "monthly_contribution_krw": int(
-                        round(monthly_contribution / 10_000) * 10_000
-                    ),
+                    "monthly_contribution_krw": monthly_contribution,
+                    "annual_contribution_krw": annual_contribution,
+                    "contribution_status": contribution_status,
+                    "contribution_frequency": contribution_frequency,
                     "risky_asset_ratio": risky_ratio,
                     "safe_asset_ratio": safe_ratio,
                     "cash_ratio": cash_ratio,
@@ -304,15 +833,32 @@ def generate_records(user_count: int, seed: int) -> tuple[list[dict], list[dict]
 
     calibrate_balances(accounts)
     calibrate_returns(accounts)
+    apply_tax_scenarios(users, accounts, tax_rng)
     return users, accounts
 
 
 def account_source_ids(account_type: str) -> str:
     if account_type == DC:
-        return "KIRI_2025_20|MOEL_FSS_RETIREMENT_2025|ASSUMPTION_V1"
+        return (
+            "KIRI_2025_20|MOEL_FSS_RETIREMENT_2025|"
+            "RETIREMENT_CONTRIBUTION_2024|ASSUMPTION_V1|"
+            "NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|"
+            "ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+        )
     if account_type == IRP:
-        return "KOSTAT_RETIREMENT_2024|MOEL_FSS_RETIREMENT_2025|ASSUMPTION_V1"
-    return "FSC_FSS_PSA_2025|ASSUMPTION_V1"
+        return (
+            "KOSTAT_RETIREMENT_2024|MOEL_FSS_RETIREMENT_2025|"
+            "RETIREMENT_CONTRIBUTION_2024|KIRI_PENSION_CONTRIBUTION_2022|"
+            "KIRI_REPLACEMENT_RATE_2023|ASSUMPTION_V1|"
+            "NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|"
+            "ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+        )
+    return (
+        "FSC_FSS_PSA_2025|KIRI_PENSION_CONTRIBUTION_2022|"
+        "NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|"
+        "ASSUMPTION_V1|ASSUMPTION_CONTRIBUTION_V1|"
+        "ASSUMPTION_TAX_SCENARIO_V1"
+    )
 
 
 def calibrate_balances(accounts: list[dict]) -> None:
@@ -410,6 +956,14 @@ def validate_and_summarize(
     if len(users) != expected_users or len(user_ids) != expected_users:
         errors.append("user count or uniqueness mismatch")
 
+    for user in users:
+        expected_profile = PREFERRED_MANAGEMENT_TO_RISK_PROFILE.get(
+            user["preferred_management_type"]
+        )
+        if user["risk_profile"] != expected_profile:
+            errors.append(f"risk-profile mapping mismatch: {user['user_id']}")
+            break
+
     account_count_by_user = Counter(account["user_id"] for account in accounts)
     missing_accounts = user_ids - set(account_count_by_user)
     if missing_accounts:
@@ -424,7 +978,115 @@ def validate_and_summarize(
     if invalid_types:
         errors.append(f"invalid account types: {invalid_types}")
 
+    tax_income_by_user = {
+        user["user_id"]: user["tax_credit_income_amount_krw"] for user in users
+    }
+    gross_salary_by_user = {
+        user["user_id"]: user["gross_salary_krw"] for user in users
+    }
+    user_record_by_id = {user["user_id"]: user for user in users}
+    account_rows_by_user: dict[str, list[dict]] = defaultdict(list)
     for account in accounts:
+        account_rows_by_user[account["user_id"]].append(account)
+
+    for user in users:
+        user_accounts = account_rows_by_user[user["user_id"]]
+        is_salaried = user["employment_type"] == SALARIED_EMPLOYEE
+        if is_salaried != (user["gross_salary_krw"] is not None):
+            errors.append(f"gross-salary basis mismatch: {user['user_id']}")
+            break
+        if is_salaried == (user["comprehensive_income_krw"] is not None):
+            errors.append(f"comprehensive-income basis mismatch: {user['user_id']}")
+            break
+        if not is_salaried and any(
+            account["account_type"] == DC for account in user_accounts
+        ):
+            errors.append(f"non-employee owns DC account: {user['user_id']}")
+            break
+        eligible_total = sum(
+            account["tax_credit_eligible_contribution_krw"]
+            for account in user_accounts
+        )
+        pension_savings_eligible = sum(
+            account["tax_credit_eligible_contribution_krw"]
+            for account in user_accounts
+            if account["account_type"] == PENSION_SAVINGS_FUND
+        )
+        if eligible_total > COMBINED_PENSION_TAX_CREDIT_LIMIT_KRW:
+            errors.append(f"combined tax-credit limit exceeded: {user['user_id']}")
+            break
+        if pension_savings_eligible > PENSION_SAVINGS_TAX_CREDIT_LIMIT_KRW:
+            errors.append(
+                f"pension-savings tax-credit limit exceeded: {user['user_id']}"
+            )
+            break
+        if user["total_tax_credit_eligible_contribution_krw"] != eligible_total:
+            errors.append(f"user tax-credit total mismatch: {user['user_id']}")
+            break
+        if user["estimated_pension_tax_credit_krw"] != sum(
+            account["estimated_tax_credit_krw"] for account in user_accounts
+        ):
+            errors.append(f"user estimated tax-credit mismatch: {user['user_id']}")
+            break
+        if user["planned_annual_total_pension_receipt_krw"] != sum(
+            account["planned_annual_pension_receipt_krw"]
+            for account in user_accounts
+        ):
+            errors.append(f"user planned receipt mismatch: {user['user_id']}")
+            break
+
+    for account in accounts:
+        monthly_contribution = account["monthly_contribution_krw"]
+        if account["annual_contribution_krw"] != monthly_contribution * 12:
+            errors.append(
+                f"annual/monthly contribution mismatch: {account['account_id']}"
+            )
+            break
+        is_active = account["contribution_status"] == "ACTIVE"
+        if is_active != (monthly_contribution > 0):
+            errors.append(f"contribution status mismatch: {account['account_id']}")
+            break
+        if (account["contribution_frequency"] == "NONE") == is_active:
+            errors.append(f"contribution frequency mismatch: {account['account_id']}")
+            break
+        if account["account_type"] == DC:
+            expected_dc_monthly = round_to_10k(
+                gross_salary_by_user[account["user_id"]] / 144
+            )
+            if monthly_contribution != expected_dc_monthly:
+                errors.append(f"DC income formula mismatch: {account['account_id']}")
+                break
+            if account["tax_credit_eligible_contribution_krw"] != 0:
+                errors.append(
+                    "DC employer contribution received tax credit: "
+                    f"{account['account_id']}"
+                )
+                break
+        if account["account_open_year"] != TAX_YEAR - account["contribution_years"] + 1:
+            errors.append(f"account tenure mismatch: {account['account_id']}")
+            break
+        expected_years_at_receipt = account["contribution_years"] + (
+            user_record_by_id[account["user_id"]]["planned_pension_start_age"]
+            - user_record_by_id[account["user_id"]]["age"]
+        )
+        if (
+            account["planned_contribution_years_at_receipt"]
+            != expected_years_at_receipt
+        ):
+            errors.append(f"planned receipt tenure mismatch: {account['account_id']}")
+            break
+        expected_credit = round(
+            account["tax_credit_eligible_contribution_krw"]
+            * tax_credit_rate(
+                user_record_by_id[account["user_id"]]["tax_credit_income_basis"],
+                tax_income_by_user[account["user_id"]],
+            )
+        )
+        if account["estimated_tax_credit_krw"] != expected_credit:
+            errors.append(
+                f"account estimated tax-credit mismatch: {account['account_id']}"
+            )
+            break
         if (
             account["account_type"] in (DC, IRP)
             and account["risky_asset_ratio"] > 0.7000001
@@ -480,10 +1142,33 @@ def validate_and_summarize(
         ]
         balances = [account["balance_krw"] for account in group]
         returns = [account["trailing_12m_return_pct"] for account in group]
+        monthly_contributions = [
+            account["monthly_contribution_krw"] for account in group
+        ]
+        active_contributions = [value for value in monthly_contributions if value > 0]
         type_stats[account_type] = {
             "accounts": len(group),
             "mean_balance_krw": round(statistics.fmean(balances)),
             "balance_population_sd_krw": round(statistics.pstdev(balances)),
+            "mean_monthly_contribution_krw": round(
+                statistics.fmean(monthly_contributions)
+            ),
+            "active_contribution_rate": round(
+                len(active_contributions) / len(group), 4
+            ),
+            "active_mean_monthly_contribution_krw": round(
+                statistics.fmean(active_contributions)
+            ),
+            "mean_contribution_years": round(
+                statistics.fmean(account["contribution_years"] for account in group),
+                1,
+            ),
+            "mean_planned_annual_pension_receipt_krw": round(
+                statistics.fmean(
+                    account["planned_annual_pension_receipt_krw"]
+                    for account in group
+                )
+            ),
             "mean_trailing_12m_return_pct": round(statistics.fmean(returns), 2),
             "return_population_sd_pct": round(statistics.pstdev(returns), 2),
             "mean_risky_asset_ratio": round(
@@ -505,6 +1190,20 @@ def validate_and_summarize(
                 statistics.fmean(account["balance_krw"] for account in group)
             )
 
+    risk_profile_by_user = {
+        user["user_id"]: user["risk_profile"] for user in users
+    }
+    risk_profile_mean_risky_asset_ratio = {}
+    for risk_profile in sorted(set(risk_profile_by_user.values())):
+        group = [
+            account
+            for account in accounts
+            if risk_profile_by_user[account["user_id"]] == risk_profile
+        ]
+        risk_profile_mean_risky_asset_ratio[risk_profile] = round(
+            statistics.fmean(account["risky_asset_ratio"] for account in group), 4
+        )
+
     return {
         "status": "PASS" if not errors else "FAIL",
         "errors": errors,
@@ -519,11 +1218,150 @@ def validate_and_summarize(
         "age_group_counts": dict(
             sorted(Counter(user["age_group"] for user in users).items())
         ),
+        "risk_profile_counts": dict(
+            sorted(Counter(user["risk_profile"] for user in users).items())
+        ),
+        "preferred_management_type_counts": dict(
+            sorted(
+                Counter(user["preferred_management_type"] for user in users).items()
+            )
+        ),
+        "retirement_fund_attitude_counts": dict(
+            sorted(
+                Counter(user["retirement_fund_attitude"] for user in users).items()
+            )
+        ),
+        "investment_readiness_counts": dict(
+            sorted(Counter(user["investment_readiness"] for user in users).items())
+        ),
+        "payout_preference_counts": dict(
+            sorted(Counter(user["payout_preference"] for user in users).items())
+        ),
+        "primary_outside_asset_counts": dict(
+            sorted(Counter(user["primary_outside_asset"] for user in users).items())
+        ),
+        "employment_type_counts": dict(
+            sorted(Counter(user["employment_type"] for user in users).items())
+        ),
+        "income_tax_credit_band_counts": dict(
+            sorted(
+                Counter(
+                    (
+                        "GROSS_SALARY_AT_OR_BELOW_55M"
+                        if user["tax_credit_income_amount_krw"]
+                        <= GROSS_SALARY_TAX_CREDIT_THRESHOLD_KRW
+                        else "GROSS_SALARY_ABOVE_55M"
+                    )
+                    if user["tax_credit_income_basis"] == "GROSS_SALARY"
+                    else (
+                        "COMPREHENSIVE_INCOME_AT_OR_BELOW_45M"
+                        if user["tax_credit_income_amount_krw"]
+                        <= COMPREHENSIVE_INCOME_TAX_CREDIT_THRESHOLD_KRW
+                        else "COMPREHENSIVE_INCOME_ABOVE_45M"
+                    )
+                    for user in users
+                ).items()
+            )
+        ),
+        "pension_tax_credit_rate_counts": dict(
+            sorted(
+                Counter(
+                    f"{user['pension_tax_credit_rate_pct']:.1f}%" for user in users
+                ).items()
+            )
+        ),
+        "planned_pension_start_age_counts": dict(
+            sorted(Counter(user["planned_pension_start_age"] for user in users).items())
+        ),
+        "planned_receipt_tax_treatment_counts": dict(
+            sorted(
+                Counter(
+                    user["planned_receipt_tax_treatment"] for user in users
+                ).items()
+            )
+        ),
+        "tax_credit_eligible_status_counts": dict(
+            sorted(
+                Counter(
+                    "HAS_ELIGIBLE_CONTRIBUTION"
+                    if user["total_tax_credit_eligible_contribution_krw"] > 0
+                    else "NO_ELIGIBLE_CONTRIBUTION"
+                    for user in users
+                ).items()
+            )
+        ),
+        "mean_gross_salary_krw": round(
+            statistics.fmean(
+                user["gross_salary_krw"]
+                for user in users
+                if user["gross_salary_krw"] is not None
+            )
+        ),
+        "mean_comprehensive_income_krw": round(
+            statistics.fmean(
+                user["comprehensive_income_krw"]
+                for user in users
+                if user["comprehensive_income_krw"] is not None
+            )
+        ),
+        "mean_tax_credit_income_amount_krw": round(
+            statistics.fmean(
+                user["tax_credit_income_amount_krw"] for user in users
+            )
+        ),
+        "mean_tax_credit_eligible_contribution_krw": round(
+            statistics.fmean(
+                user["total_tax_credit_eligible_contribution_krw"] for user in users
+            )
+        ),
+        "mean_estimated_pension_tax_credit_krw": round(
+            statistics.fmean(
+                user["estimated_pension_tax_credit_krw"] for user in users
+            )
+        ),
+        "mean_planned_annual_total_pension_receipt_krw": round(
+            statistics.fmean(
+                user["planned_annual_total_pension_receipt_krw"] for user in users
+            )
+        ),
+        "mean_planned_annual_receipt_for_pension_method_krw": round(
+            statistics.fmean(
+                user["planned_annual_total_pension_receipt_krw"]
+                for user in users
+                if user["payout_preference"] != "LUMP_SUM"
+            )
+        ),
+        "mean_planned_lump_sum_receipt_krw": round(
+            statistics.fmean(
+                user["planned_annual_total_pension_receipt_krw"]
+                for user in users
+                if user["payout_preference"] == "LUMP_SUM"
+            )
+        ),
+        "contribution_frequency_counts": dict(
+            sorted(
+                Counter(
+                    account["contribution_frequency"] for account in accounts
+                ).items()
+            )
+        ),
+        "pension_receipt_eligibility_counts": dict(
+            sorted(
+                Counter(
+                    account["pension_receipt_eligibility"] for account in accounts
+                ).items()
+            )
+        ),
+        "risk_profile_mean_risky_asset_ratio": risk_profile_mean_risky_asset_ratio,
         "account_type_stats": type_stats,
         "age_type_mean_balance_krw": age_type_mean_balance,
         "assumption_note": (
-            "Dispersion, account combinations, contributions, and detailed holdings "
-            "are model assumptions."
+            "Employment mix, income dispersion, contribution activity/frequency/"
+            "dispersion, account combinations, and detailed holdings are model "
+            "assumptions. The KEF "
+            "four-to-five profile mapping and cross-attribute relationships are also "
+            "assumptions. Account tenure and planned receipt amounts are tax-scenario "
+            "assumptions; estimated tax credits are not guaranteed refunds."
         ),
     }
 
@@ -552,7 +1390,27 @@ def generate(output_dir: Path, user_count: int = 10_000, seed: int = 20260714) -
             "user_id",
             "age",
             "age_group",
+            "employment_type",
+            "gross_salary_krw",
+            "comprehensive_income_krw",
+            "tax_credit_income_basis",
+            "tax_credit_income_amount_krw",
+            "tax_year",
+            "pension_tax_credit_rate_pct",
+            "total_tax_credit_eligible_contribution_krw",
+            "estimated_pension_tax_credit_krw",
+            "planned_pension_start_age",
+            "planned_receipt_years",
+            "planned_annual_total_pension_receipt_krw",
+            "planned_annual_personal_pension_receipt_krw",
+            "planned_low_rate_pension_tax_pct",
+            "planned_receipt_tax_treatment",
             "risk_profile",
+            "preferred_management_type",
+            "retirement_fund_attitude",
+            "investment_readiness",
+            "payout_preference",
+            "primary_outside_asset",
             "mock_scenario",
             "data_kind",
             "source_ids",
@@ -567,6 +1425,17 @@ def generate(output_dir: Path, user_count: int = 10_000, seed: int = 20260714) -
             "account_type",
             "balance_krw",
             "monthly_contribution_krw",
+            "annual_contribution_krw",
+            "contribution_status",
+            "contribution_frequency",
+            "account_open_year",
+            "contribution_years",
+            "planned_contribution_years_at_receipt",
+            "pension_receipt_eligibility",
+            "tax_credit_eligible_contribution_krw",
+            "estimated_tax_credit_krw",
+            "planned_annual_pension_receipt_krw",
+            "planned_receipt_tax_treatment",
             "risky_asset_ratio",
             "safe_asset_ratio",
             "cash_ratio",
