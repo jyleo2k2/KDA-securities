@@ -1,0 +1,27 @@
+{
+  "KIRI_2025_20": {
+    "kind": "official_research_survey",
+    "use": "age weights, DC balance and asset-allocation age pattern",
+    "url": "https://www.kiri.or.kr/report/downloadFile.do?docId=782989"
+  },
+  "MOEL_FSS_RETIREMENT_2025": {
+    "kind": "official_aggregate",
+    "use": "DC/IRP performance-linked shares and 2025 annual returns",
+    "url": "https://www.moel.go.kr/news/enews/report/enewsView.do?news_seq=19411"
+  },
+  "KOSTAT_RETIREMENT_2024": {
+    "kind": "official_aggregate",
+    "use": "IRP participants and assets for derived mean balance",
+    "url": "https://www.kostat.go.kr/board.es?act=view&bid=11816&list_no=442406&mid=a10301060100"
+  },
+  "FSC_FSS_PSA_2025": {
+    "kind": "official_aggregate",
+    "use": "pension-savings-fund contracts, assets, and 2025 annual return",
+    "url": "https://www.fsc.go.kr/no010101/87144"
+  },
+  "ASSUMPTION_V1": {
+    "kind": "model_assumption",
+    "use": "account combinations, dispersion, contributions, and within-account holdings",
+    "url": null
+  }
+}
