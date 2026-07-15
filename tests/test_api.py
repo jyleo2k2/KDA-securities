@@ -1,9 +1,12 @@
 from decimal import ROUND_HALF_UP, Decimal
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from backend.app.api.deps import get_retrieval_repository
 from backend.app.engine.profile import QUESTIONS
 from backend.app.main import app
+from backend.app.retrieval.repository import KnowledgeMatch
 from backend.app.settings import Settings, get_settings
 from tests.scenario_fixtures import (
     dc_dormant_account,
@@ -137,6 +140,32 @@ def test_data_read_endpoints_return_503_without_database() -> None:
             assert response.status_code == 503, path
     finally:
         app.dependency_overrides.pop(get_settings, None)
+
+
+def test_knowledge_search_serializes_uuid_document_id() -> None:
+    match = KnowledgeMatch(
+        chunk_id=1,
+        document_id=uuid4(),
+        title="세 연금계좌의 위험자산 규칙 검증 요약",
+        source_url="project://docs/20_리서치/연금_기초.md#4-2",
+        content="DC형과 IRP는 일반 위험자산을 적립금의 70%까지 운용할 수 있다.",
+        text_rank=0.5,
+    )
+
+    class FakeRetrievalRepository:
+        def search_knowledge(self, query, *, limit=8):
+            return [match]
+
+    app.dependency_overrides[get_retrieval_repository] = FakeRetrievalRepository
+    try:
+        response = client.get(
+            "/retrieval/knowledge", params={"query": "위험자산"}
+        )
+    finally:
+        app.dependency_overrides.pop(get_retrieval_repository, None)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["results"][0]["document_id"] == str(match.document_id)
 
 
 def test_cors_allows_vite_dev_origin() -> None:

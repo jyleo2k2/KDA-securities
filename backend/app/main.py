@@ -1,5 +1,6 @@
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.routing import APIRoute, request_response
 
 from .api import chat, disclosures, engine, retrieval, system
 from .api.deps import get_chat_narrator, get_chat_service
@@ -22,6 +23,13 @@ __all__ = [
 def _include_eagerly(app: FastAPI, router: APIRouter) -> None:
     # include_router는 이 FastAPI 버전에서 지연 등록이라 app.routes에 경로가
     # 노출되지 않는다. 계약 테스트가 app.routes의 path를 검사하므로 즉시 등록한다.
+    # 단독 생성된 APIRouter의 라우트는 overrides provider가 없어
+    # app.dependency_overrides가 무시된다. provider를 앱으로 바꾸고,
+    # 핸들러가 생성 시점에 provider를 캡처하므로 핸들러도 재빌드한다.
+    for route in router.routes:
+        if isinstance(route, APIRoute):
+            route.dependency_overrides_provider = app
+            route.app = request_response(route.get_route_handler())
     app.router.routes.extend(router.routes)
 
 

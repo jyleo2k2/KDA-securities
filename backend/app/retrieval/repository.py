@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from uuid import UUID
 
 import psycopg
 
@@ -7,7 +8,7 @@ import psycopg
 @dataclass(frozen=True, slots=True)
 class KnowledgeMatch:
     chunk_id: int
-    document_id: str
+    document_id: UUID
     title: str
     source_url: str
     content: str
