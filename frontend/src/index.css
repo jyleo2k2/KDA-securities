@@ -131,3 +131,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* 4탭 골격(App.tsx) 안에서 하단 탭바(약 46px)를 가리지 않도록 챗 화면 높이를 제한한다. */
+.guide-tab .app-shell { min-height: 0; height: calc(100dvh - 46px); }
+.guide-tab .chat-main { min-height: 0; height: calc(100dvh - 46px); }
+.guide-tab .sidebar { inset: 0 auto 46px 0; }
