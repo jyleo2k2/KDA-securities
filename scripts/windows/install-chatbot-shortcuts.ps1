@@ -1,11 +1,16 @@
 [CmdletBinding()]
 param(
-    [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")),
-    [switch]$Quiet
+    [string]$RepoRoot,
+    [switch]$Quiet,
+    [switch]$IncludeDevelopmentShortcut
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
+    $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+}
 
 $RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
 $StartScript = Join-Path $RepoRoot "scripts\windows\start-chatbot.ps1"
@@ -30,13 +35,14 @@ function New-ChatbotShortcut {
         [string]$Name,
         [string]$ScriptPath,
         [string]$Description,
-        [string]$IconLocation
+        [string]$IconLocation,
+        [string]$AdditionalArguments = ""
     )
 
     $shortcutPath = Join-Path $Desktop "$Name.lnk"
     $shortcut = $shell.CreateShortcut($shortcutPath)
     $shortcut.TargetPath = $PowerShell
-    $shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`""
+    $shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`"$AdditionalArguments"
     $shortcut.WorkingDirectory = $RepoRoot
     $shortcut.Description = $Description
     $shortcut.IconLocation = $IconLocation
@@ -55,9 +61,18 @@ New-ChatbotShortcut `
     -Description "Stop the Pension Copilot servers started by the launcher." `
     -IconLocation "$shellIcon,131"
 
+if ($IncludeDevelopmentShortcut) {
+    New-ChatbotShortcut `
+        -Name "Pension Copilot Chatbot DEV" `
+        -ScriptPath $StartScript `
+        -Description "Test the Pension Copilot chatbot from a non-main development branch." `
+        -IconLocation "$shellIcon,220" `
+        -AdditionalArguments " -AllowNonMain"
+}
+
 if (-not $Quiet) {
     [void]$shell.Popup(
-        "Pension Copilot start and stop shortcuts were created on the Desktop.",
+        "Pension Copilot shortcuts were created on the Desktop.",
         0,
         "Pension Copilot",
         0x40

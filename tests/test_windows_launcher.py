@@ -8,6 +8,17 @@ def _read(name: str) -> str:
     return (_WINDOWS_SCRIPTS / name).read_text(encoding="utf-8")
 
 
+def test_repo_root_is_resolved_after_parameter_binding_for_windows_powershell() -> None:
+    for name in (
+        "start-chatbot.ps1",
+        "stop-chatbot.ps1",
+        "install-chatbot-shortcuts.ps1",
+    ):
+        script = _read(name)
+        assert '[string]$RepoRoot = (Resolve-Path' not in script
+        assert "if ([string]::IsNullOrWhiteSpace($RepoRoot))" in script
+
+
 def test_start_launcher_is_local_main_only_and_hides_server_windows() -> None:
     script = _read("start-chatbot.ps1")
 
@@ -17,6 +28,7 @@ def test_start_launcher_is_local_main_only_and_hides_server_windows() -> None:
     assert "WindowStyle Hidden" in script
     assert "DATABASE_URL" in script
     assert 'ChatUrl = "$FrontendUrl/#guide"' in script
+    assert 'LauncherErrorLog = Join-Path $LogRoot "launcher-error.log"' in script
 
 
 def test_stop_launcher_only_uses_recorded_pid_and_start_time() -> None:
@@ -29,10 +41,14 @@ def test_stop_launcher_only_uses_recorded_pid_and_start_time() -> None:
     assert "Get-Process -Id" in script
 
 
-def test_shortcut_installer_uses_actual_windows_desktop() -> None:
+def test_shortcut_installer_keeps_non_main_access_explicitly_development_only() -> None:
     script = _read("install-chatbot-shortcuts.ps1")
 
     assert '[Environment]::GetFolderPath("Desktop")' in script
     assert "Pension Copilot Chatbot" in script
     assert "Pension Copilot Stop" in script
-    assert "AllowNonMain" not in script
+    assert "Pension Copilot Chatbot DEV" in script
+    assert "[switch]$IncludeDevelopmentShortcut" in script
+    assert "if ($IncludeDevelopmentShortcut)" in script
+    assert '-AdditionalArguments " -AllowNonMain"' in script
+    assert script.count("AllowNonMain") == 1

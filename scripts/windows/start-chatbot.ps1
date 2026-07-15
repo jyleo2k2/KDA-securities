@@ -1,11 +1,15 @@
 [CmdletBinding()]
 param(
-    [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")),
+    [string]$RepoRoot,
     [switch]$AllowNonMain
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
+    $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+}
 
 $BackendUrl = "http://127.0.0.1:8000"
 $FrontendUrl = "http://127.0.0.1:5173"
@@ -17,6 +21,7 @@ $BackendLog = Join-Path $LogRoot "backend.log"
 $BackendErrorLog = Join-Path $LogRoot "backend-error.log"
 $FrontendLog = Join-Path $LogRoot "frontend.log"
 $FrontendErrorLog = Join-Path $LogRoot "frontend-error.log"
+$LauncherErrorLog = Join-Path $LogRoot "launcher-error.log"
 $CreatedPidFile = $false
 
 function Show-Message {
@@ -181,6 +186,8 @@ try {
     Start-Process $ChatUrl
 }
 catch {
+    New-Item -ItemType Directory -Path $LogRoot -Force | Out-Null
+    $_.Exception.Message | Set-Content -LiteralPath $LauncherErrorLog -Encoding UTF8
     if ($CreatedPidFile -and (Test-Path -LiteralPath $PidFile)) {
         # The stop script validates each recorded PID and start time before cleanup.
         & (Join-Path $PSScriptRoot "stop-chatbot.ps1") -RepoRoot $RepoRoot -Quiet
