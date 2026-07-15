@@ -64,12 +64,14 @@ export async function apiPost<TBody, TResult>(
   path: string,
   body: TBody,
   accessToken?: string,
+  idempotencyKey?: string,
 ): Promise<TResult> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...requestHeaders(accessToken),
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
     },
     body: JSON.stringify(body),
   });
@@ -105,6 +107,7 @@ export function sendAuthenticatedChat(
   accessToken: string,
   scenarioCode?: string,
   sessionId?: string,
+  idempotencyKey?: string,
 ): Promise<PersistedChatResponse> {
   return apiPost(
     "/chat",
@@ -114,6 +117,7 @@ export function sendAuthenticatedChat(
       ...(sessionId ? { session_id: sessionId } : {}),
     },
     accessToken,
+    idempotencyKey,
   );
 }
 

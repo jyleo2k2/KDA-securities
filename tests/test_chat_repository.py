@@ -209,6 +209,78 @@ def test_existing_session_is_locked_with_owner_id(monkeypatch) -> None:
     assert lock_params == (session_id, owner_id)
 
 
+def test_idempotency_key_is_saved_in_the_same_transaction(monkeypatch) -> None:
+    session_id, user_message_id, assistant_message_id = (
+        uuid4(),
+        uuid4(),
+        uuid4(),
+    )
+    cursor = FakeCursor(
+        [None, (session_id,), (user_message_id,), (assistant_message_id,)]
+    )
+    connection = FakeConnection(cursor)
+    monkeypatch.setattr(
+        repository_module.psycopg,
+        "connect",
+        lambda database_url: connection,
+    )
+
+    saved = ChatRepository("postgresql://test").save_exchange(
+        owner_id=uuid4(),
+        question="IRP 규칙",
+        response=_response(),
+        idempotency_key=uuid4(),
+    )
+
+    assert saved.replayed is False
+    assert any("pg_advisory_xact_lock" in query for query, _ in cursor.executed)
+    assert any(
+        "insert into public.chat_request_idempotency" in query
+        for query, _ in cursor.executed
+    )
+
+
+def test_existing_idempotency_key_replays_the_saved_response(monkeypatch) -> None:
+    session_id, user_message_id, assistant_message_id = (
+        uuid4(),
+        uuid4(),
+        uuid4(),
+    )
+    response = _response()
+    cursor = FakeCursor(
+        [
+            (
+                session_id,
+                user_message_id,
+                assistant_message_id,
+                json.dumps(
+                    {"schema_version": 1, "response": response.model_dump(mode="json")}
+                ),
+            )
+        ]
+    )
+    connection = FakeConnection(cursor)
+    monkeypatch.setattr(
+        repository_module.psycopg,
+        "connect",
+        lambda database_url: connection,
+    )
+
+    saved = ChatRepository("postgresql://test").save_exchange(
+        owner_id=uuid4(),
+        question="IRP 규칙",
+        response=response,
+        idempotency_key=uuid4(),
+    )
+
+    assert saved.replayed is True
+    assert saved.response == response
+    assert not any(
+        "insert into public.chat_messages" in query
+        for query, _ in cursor.executed
+    )
+
+
 def test_foreign_session_fails_before_message_insert(monkeypatch) -> None:
     cursor = FakeCursor([None])
     connection = FakeConnection(cursor)
