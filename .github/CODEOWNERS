@@ -1,0 +1,3 @@
+# 모든 PR은 이재용(@jyleo2k2) 승인 필요 — 헌장(docs/team/_공통_AI규칙.md) §5 머지 승인 규칙.
+# GitHub branch protection에서 "Require review from Code Owners"를 켜면 승인 없는 머지가 차단됨.
+* @jyleo2k2
