@@ -40,6 +40,13 @@ from .profile import (
     SurveyAnswer,
     evaluate_profile,
 )
+from .simulation import (
+    BandSegment,
+    ScenarioProjection,
+    SimulationEvaluation,
+    SimulationInput,
+    simulate_accumulation,
+)
 from .strategy import (
     evaluate_historical_returns,
     evaluate_profit_lock,
@@ -59,6 +66,7 @@ __all__ = [
     "AssetBucket",
     "AssetClass",
     "AssumptionScenario",
+    "BandSegment",
     "DiagnosticFinding",
     "HoldingInput",
     "HistoricalReturnEvaluation",
@@ -75,6 +83,9 @@ __all__ = [
     "RiskProfile",
     "RiskTreatment",
     "RuleStatus",
+    "ScenarioProjection",
+    "SimulationEvaluation",
+    "SimulationInput",
     "StatutoryException",
     "SurveyAnswer",
     "aggregate_accounts",
@@ -84,4 +95,5 @@ __all__ = [
     "evaluate_historical_returns",
     "evaluate_profit_lock",
     "evaluate_risk_budget",
+    "simulate_accumulation",
 ]
