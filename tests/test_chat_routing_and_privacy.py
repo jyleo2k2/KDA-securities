@@ -2,6 +2,8 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
+import psycopg
+
 from backend.app.chat.disclosures import ProviderDisclosure
 from backend.app.chat.knowledge import FallbackKnowledgeRepository
 from backend.app.chat.models import ChatIntent, ChatRequest, ConversationContext
@@ -18,7 +20,7 @@ class EmptyKnowledgeRepository:
 
 class FailingKnowledgeRepository:
     def search_knowledge(self, query: str, *, limit: int = 8) -> list[KnowledgeMatch]:
-        raise RuntimeError("remote index unavailable")
+        raise psycopg.OperationalError("remote index unavailable")
 
 
 class LocalKnowledgeFallback:
@@ -99,12 +101,10 @@ def test_follow_up_disclosure_question_uses_prior_account_context() -> None:
     assert response.conversation_context.account_type is AccountType.IRP
 
 
-def test_direct_identifiers_are_masked_before_chat_processing() -> None:
-    request = ChatRequest(
+def test_direct_identifiers_are_blocked_before_chat_processing() -> None:
+    response = _service().ask(ChatRequest(
         message="메일 user@example.com, 전화 010-1234-5678, 카드 1234-5678-1234-5678"
-    )
+    ))
 
-    assert "user@example.com" not in request.message
-    assert "010-1234-5678" not in request.message
-    assert "1234-5678-1234-5678" not in request.message
-    assert request.redacted_pii_types == ["email", "card_number", "phone_number"]
+    assert response.intent is ChatIntent.OUT_OF_SCOPE
+    assert response.data_mode == "blocked"

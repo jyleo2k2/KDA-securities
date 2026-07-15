@@ -12,6 +12,7 @@ from .models import (
     ChatIntent,
     ChatRequest,
     ChatResponse,
+    ConversationContext,
     DataBoundary,
     NumericEvidence,
     SectionKind,
@@ -19,6 +20,7 @@ from .models import (
     extract_numeric_claims,
 )
 from .query_planner import BlockedReason, QueryPlan, plan_question
+from .routing import IntentRouter
 from .scenarios import LocalScenarioRepository
 
 
@@ -82,11 +84,13 @@ class ChatService:
         scenarios: LocalScenarioRepository,
         disclosures: DisclosureSearch | None = None,
         news: NewsSearch | None = None,
+        router: IntentRouter | None = None,
     ) -> None:
         self._knowledge = knowledge
         self._scenarios = scenarios
         self._disclosures = disclosures
         self._news = news
+        self._router = router or IntentRouter()
 
     def capabilities(self) -> ChatCapabilities:
         return ChatCapabilities(
@@ -108,51 +112,88 @@ class ChatService:
         )
 
     def plan(self, request: ChatRequest) -> QueryPlan:
-        return plan_question(
+        direct_plan = plan_question(
             request.message, default_max_results=request.max_results
+        )
+        if direct_plan.blocked_reason != BlockedReason.UNSUPPORTED:
+            return direct_plan
+        contextual_message = self._router.contextual_message(request)
+        if contextual_message == request.message:
+            return direct_plan
+        return plan_question(
+            contextual_message, default_max_results=request.max_results
         )
 
     def ask(
         self, request: ChatRequest, *, plan: QueryPlan | None = None
     ) -> ChatResponse:
+        original_request = request
         resolved_plan = plan or self.plan(request)
         if resolved_plan.blocked_reason is not None and not (
             resolved_plan.blocked_reason == BlockedReason.UNSUPPORTED
             and (request.portfolio is not None or request.scenario_code is not None)
         ):
-            return self._blocked_response(resolved_plan.blocked_reason)
-        request = request.model_copy(
-            update={
-                "message": resolved_plan.normalized_message,
-                "max_results": resolved_plan.max_results,
-            }
-        )
-        if request.portfolio is not None:
-            return self._custom_portfolio(request)
-        scenario_code = request.scenario_code or self._scenario_code(request.message)
-        if scenario_code is not None:
-            return self._scenario_response(scenario_code)
-        if resolved_plan.intent == ChatIntent.MOCK_PORTFOLIO:
-            return self._scenario_selection_response()
-        if resolved_plan.intent == ChatIntent.NEWS:
-            assert resolved_plan.news_query is not None
-            return self._news_response(
-                request, search_query=resolved_plan.news_query
+            response = self._blocked_response(resolved_plan.blocked_reason)
+        else:
+            request = request.model_copy(
+                update={
+                    "message": resolved_plan.normalized_message,
+                    "max_results": resolved_plan.max_results,
+                }
             )
-        if resolved_plan.intent == ChatIntent.PROVIDER_DISCLOSURE:
-            account_type = resolved_plan.account_types[0]
-            return self._disclosure_response(request, account_type)
-        if resolved_plan.intent == ChatIntent.ACCOUNT_RULE:
-            return self._account_rule_response(request, resolved_plan)
-        return ChatResponse(
-            intent=ChatIntent.OUT_OF_SCOPE,
-            answer=(
-                "현재 MVP는 연금계좌 규칙, 목계좌 진단, 과거 공시와 뉴스 "
-                "근거 조회에 답할 수 있습니다. 질문에 계좌 유형이나 진단할 "
-                "목시나리오를 포함해 주세요."
-            ),
-            data_mode="safe_fallback",
-            limitations=["범용 투자·세무·법률 상담은 지원하지 않습니다."],
+            if request.portfolio is not None:
+                response = self._custom_portfolio(request)
+            elif resolved_plan.intent == ChatIntent.MOCK_PORTFOLIO:
+                scenario_code = request.scenario_code or self._scenario_code(
+                    request.message
+                )
+                response = (
+                    self._scenario_response(scenario_code)
+                    if scenario_code is not None
+                    else self._scenario_selection_response()
+                )
+            elif resolved_plan.intent == ChatIntent.NEWS:
+                assert resolved_plan.news_query is not None
+                response = self._news_response(
+                    request, search_query=resolved_plan.news_query
+                )
+            elif resolved_plan.intent == ChatIntent.PROVIDER_DISCLOSURE:
+                account_type = resolved_plan.account_types[0]
+                response = self._disclosure_response(request, account_type)
+            elif resolved_plan.intent == ChatIntent.ACCOUNT_RULE:
+                response = self._account_rule_response(request, resolved_plan)
+            else:
+                response = self._blocked_response(BlockedReason.UNSUPPORTED)
+        return self._with_context(
+            response, original_request, resolved_plan
+        )
+
+    @staticmethod
+    def _with_context(
+        response: ChatResponse, request: ChatRequest, plan: QueryPlan
+    ) -> ChatResponse:
+        previous = request.conversation_context
+        account_type = (
+            plan.account_types[0]
+            if len(plan.account_types) == 1
+            else request.portfolio.account_type
+            if request.portfolio is not None
+            else previous.account_type
+            if previous is not None
+            else None
+        )
+        scenario_code = (
+            request.scenario_code
+            or (previous.scenario_code if previous is not None else None)
+        )
+        return response.model_copy(
+            update={
+                "conversation_context": ConversationContext(
+                    account_type=account_type,
+                    scenario_code=scenario_code,
+                    last_intent=response.intent,
+                )
+            }
         )
 
     @staticmethod

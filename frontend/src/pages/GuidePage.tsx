@@ -21,6 +21,7 @@ import {
 } from "../api/client";
 import type {
   ChatCapabilities,
+  ConversationContext,
   ChatResponse,
   ChatSessionSummary,
   DataBoundary,
@@ -188,6 +189,8 @@ export function GuidePage() {
   const [serverReady, setServerReady] = useState<boolean | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [conversationContext, setConversationContext] =
+    useState<ConversationContext | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loginPanelOpen, setLoginPanelOpen] = useState(false);
@@ -267,6 +270,7 @@ export function GuidePage() {
       conversationGenerationRef.current += 1;
       setMessages([]);
       setActiveSessionId(null);
+      setConversationContext(null);
       setSelectedScenario("");
     }
     if (!accessToken) {
@@ -320,6 +324,7 @@ export function GuidePage() {
     sendingRef.current = false;
     setMessages([]);
     setActiveSessionId(null);
+    setConversationContext(null);
     setHistoryError(null);
     setHistoryLoading(false);
     setIsSending(false);
@@ -348,9 +353,10 @@ export function GuidePage() {
     conversationGenerationRef.current += 1;
     sendingRef.current = false;
     setAuthSubmitting(true);
-    setMessages([]);
-    setChatSessions([]);
-    setActiveSessionId(null);
+      setMessages([]);
+      setChatSessions([]);
+      setActiveSessionId(null);
+      setConversationContext(null);
     setHistoryError(null);
     setHistoryLoading(false);
     setIsSending(false);
@@ -396,6 +402,11 @@ export function GuidePage() {
         }));
       setMessages(restored);
       setActiveSessionId(sessionId);
+      const lastContext = [...restored]
+        .reverse()
+        .find((message) => message.response?.conversation_context)
+        ?.response?.conversation_context;
+      setConversationContext(lastContext ?? null);
       setSelectedScenario("");
       setIsSidebarOpen(false);
     } catch (error) {
@@ -446,11 +457,15 @@ export function GuidePage() {
             selectedScenario || undefined,
             activeSessionId || undefined,
             idempotencyKey,
+            conversationContext,
           )
         : null;
       const response = persisted
         ? persisted.response
-        : await sendChat(normalized, selectedScenario || undefined);
+        : await sendChat(normalized, {
+            scenarioCode: selectedScenario || undefined,
+            conversationContext,
+          });
       if (!isCurrentOperation(
         authGeneration,
         requestUserId,
@@ -464,6 +479,9 @@ export function GuidePage() {
         response,
         createdAt: new Date(),
       }]);
+      setConversationContext(
+        response.conversation_context ?? conversationContext,
+      );
       if (persisted?.persisted && persisted.session_id) {
         setActiveSessionId(persisted.session_id);
         void refreshChatSessions(requestToken!, requestUserId!);

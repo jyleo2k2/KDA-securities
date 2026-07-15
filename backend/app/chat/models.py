@@ -6,7 +6,6 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ..engine import AccountType, PortfolioInput, RiskCapEvaluation, ScenarioEvaluation
-from .privacy import redact_sensitive_text
 
 _NUMBER_WITH_UNIT = re.compile(
     r"(?<![0-9A-Za-z_])(?P<sign>[+\-−])?"
@@ -102,15 +101,6 @@ class ChatRequest(BaseModel):
     portfolio: PortfolioInput | None = None
     max_results: int = Field(default=3, ge=1, le=5)
     conversation_context: ConversationContext | None = None
-    redacted_pii_types: list[str] = Field(default_factory=list, exclude=True)
-
-    @model_validator(mode="before")
-    @classmethod
-    def redact_sensitive_identifiers(cls, value: object) -> object:
-        if not isinstance(value, dict) or not isinstance(value.get("message"), str):
-            return value
-        message, redactions = redact_sensitive_text(value["message"].strip())
-        return {**value, "message": message, "redacted_pii_types": redactions}
 
 
 class SourceEvidence(BaseModel):
