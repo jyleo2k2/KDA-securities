@@ -1,58 +1,47 @@
-from typing import Annotated
-from uuid import UUID
+from fastapi import APIRouter, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from fastapi import Depends, FastAPI, HTTPException, status
-from pydantic import BaseModel
+from .api import disclosures, engine, retrieval, system
+from .api.engine import AuditedRiskCapResponse, risk_cap, risk_cap_audited
+from .api.system import health
+from .settings import get_settings
 
-from .auth import require_supabase_user_id
-from .engine import PortfolioInput, RiskCapEvaluation
-from .engine.audit import EngineAuditRepository
-from .engine.portfolio import evaluate_risk_cap
-from .settings import Settings, get_settings
-
-app = FastAPI(title="Pension Copilot API", version="0.1.0")
-
-
-class AuditedRiskCapResponse(BaseModel):
-    run_id: UUID
-    evaluation: RiskCapEvaluation
+__all__ = [
+    "AuditedRiskCapResponse",
+    "app",
+    "create_app",
+    "health",
+    "risk_cap",
+    "risk_cap_audited",
+]
 
 
-def get_engine_audit_repository(
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> EngineAuditRepository:
-    if settings.database_url is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Engine audit database is not configured",
-        )
-    database_url = settings.database_url.get_secret_value().strip()
-    if not database_url:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Engine audit database is not configured",
-        )
-    return EngineAuditRepository(database_url)
+def _include_eagerly(app: FastAPI, router: APIRouter) -> None:
+    # include_router는 이 FastAPI 버전에서 지연 등록이라 app.routes에 경로가
+    # 노출되지 않는다. 계약 테스트가 app.routes의 path를 검사하므로 즉시 등록한다.
+    app.router.routes.extend(router.routes)
 
 
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def create_app() -> FastAPI:
+    settings = get_settings()
+    app = FastAPI(title="Pension Copilot API", version="0.2.0")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            origin.strip()
+            for origin in settings.cors_allow_origins.split(",")
+            if origin.strip()
+        ],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    _include_eagerly(app, system.router)
+    _include_eagerly(app, engine.router)
+    _include_eagerly(app, retrieval.router)
+    _include_eagerly(app, disclosures.router)
+    # NOTE: chatbot-mvp 브랜치 병합 시 backend/app/api/chat.py 라우터로 이식해
+    # 여기서 include한다 (main.py 인라인 엔드포인트 금지).
+    return app
 
 
-@app.post("/engine/risk-cap", response_model=RiskCapEvaluation)
-def risk_cap(portfolio: PortfolioInput) -> RiskCapEvaluation:
-    """Unauthenticated demo calculation. It intentionally performs no DB write."""
-
-    return evaluate_risk_cap(portfolio)
-
-
-@app.post("/engine/risk-cap/audited", response_model=AuditedRiskCapResponse)
-def risk_cap_audited(
-    portfolio: PortfolioInput,
-    owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
-    recorder: Annotated[EngineAuditRepository, Depends(get_engine_audit_repository)],
-) -> AuditedRiskCapResponse:
-    evaluation = evaluate_risk_cap(portfolio)
-    run_id = recorder.record(evaluation, owner_id=owner_id)
-    return AuditedRiskCapResponse(run_id=run_id, evaluation=evaluation)
+app = create_app()

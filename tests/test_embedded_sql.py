@@ -9,6 +9,7 @@ SQL_MODULES = (
     ROOT / "backend" / "app" / "engine" / "audit.py",
     ROOT / "backend" / "app" / "ingestion" / "fss_repository.py",
     ROOT / "backend" / "app" / "ingestion" / "naver_news_repository.py",
+    ROOT / "backend" / "app" / "retrieval" / "disclosures_repository.py",
     ROOT / "backend" / "app" / "retrieval" / "knowledge_repository.py",
     ROOT / "backend" / "app" / "retrieval" / "repository.py",
 )
