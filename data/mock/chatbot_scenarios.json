@@ -1,0 +1,142 @@
+[
+  {
+    "scenario_code": "dc_dormant",
+    "name": "DC형 방치",
+    "description": "DC 적립금이 원리금보장 상품에만 머문 설명용 시나리오",
+    "risk_profile": "balanced",
+    "investment_horizon_years": 20,
+    "accounts": [
+      {
+        "account_id": "dc_dormant_dc",
+        "account_type": "dc",
+        "label": "회사 DC",
+        "holdings": [
+          {
+            "holding_id": "deposit",
+            "instrument_name": "원리금보장 모형",
+            "asset_class_code": "deposit",
+            "amount_krw": "60000000",
+            "risk_treatment": "capital_preservation"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "scenario_code": "tax_contribution_uninvested",
+    "name": "세액공제 후 미운용",
+    "description": "세액공제를 위해 납입했지만 IRP·연금저축 자금이 현금성 자산에 머문 설명용 시나리오",
+    "risk_profile": "balanced",
+    "investment_horizon_years": 25,
+    "accounts": [
+      {
+        "account_id": "tax_irp",
+        "account_type": "irp",
+        "label": "개인 IRP",
+        "holdings": [
+          {
+            "holding_id": "irp_cash",
+            "instrument_name": "IRP 현금성 모형",
+            "asset_class_code": "cash",
+            "amount_krw": "30000000",
+            "risk_treatment": "capital_preservation"
+          }
+        ]
+      },
+      {
+        "account_id": "tax_pension_savings",
+        "account_type": "pension_savings",
+        "label": "연금저축펀드",
+        "holdings": [
+          {
+            "holding_id": "pension_cash",
+            "instrument_name": "연금저축 현금성 모형",
+            "asset_class_code": "cash",
+            "amount_krw": "20000000",
+            "risk_treatment": "capital_preservation"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "scenario_code": "overlap_risk_concentration",
+    "name": "계좌별 중복·위험 편중",
+    "description": "세 계좌에 같은 글로벌 주식 노출이 반복되고 위험자산 비중이 높은 설명용 시나리오",
+    "risk_profile": "growth",
+    "investment_horizon_years": 28,
+    "accounts": [
+      {
+        "account_id": "overlap_dc",
+        "account_type": "dc",
+        "label": "회사 DC",
+        "holdings": [
+          {
+            "holding_id": "dc_global_equity",
+            "instrument_name": "글로벌주식형 모형",
+            "asset_class_code": "global_equity",
+            "amount_krw": "60000000",
+            "risk_treatment": "general_risky"
+          },
+          {
+            "holding_id": "dc_tdf",
+            "instrument_name": "적격 TDF 모형",
+            "asset_class_code": "eligible_tdf",
+            "amount_krw": "20000000",
+            "risk_treatment": "statutory_exception",
+            "statutory_exception": "eligible_tdf"
+          },
+          {
+            "holding_id": "dc_deposit",
+            "instrument_name": "원리금보장 모형",
+            "asset_class_code": "deposit",
+            "amount_krw": "20000000",
+            "risk_treatment": "capital_preservation"
+          }
+        ]
+      },
+      {
+        "account_id": "overlap_irp",
+        "account_type": "irp",
+        "label": "개인 IRP",
+        "holdings": [
+          {
+            "holding_id": "irp_global_equity",
+            "instrument_name": "글로벌주식형 모형",
+            "asset_class_code": "global_equity",
+            "amount_krw": "34000000",
+            "risk_treatment": "general_risky"
+          },
+          {
+            "holding_id": "irp_bond",
+            "instrument_name": "채권형 모형",
+            "asset_class_code": "bond",
+            "amount_krw": "16000000",
+            "risk_treatment": "capital_preservation"
+          }
+        ]
+      },
+      {
+        "account_id": "overlap_pension_savings",
+        "account_type": "pension_savings",
+        "label": "연금저축펀드",
+        "holdings": [
+          {
+            "holding_id": "pension_global_equity",
+            "instrument_name": "글로벌주식형 모형",
+            "asset_class_code": "global_equity",
+            "amount_krw": "36000000",
+            "risk_treatment": "general_risky"
+          },
+          {
+            "holding_id": "pension_cash",
+            "instrument_name": "현금성 모형",
+            "asset_class_code": "cash",
+            "amount_krw": "4000000",
+            "risk_treatment": "capital_preservation"
+          }
+        ]
+      }
+    ]
+  }
+]
