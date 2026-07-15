@@ -26,14 +26,19 @@ from .fss_repository import (
 _EXPECTED_INGESTION_ERRORS = (FssApiError, FssRepositoryError, psycopg.Error)
 
 
+def _public_error_code(error: Exception) -> str:
+    if isinstance(error, FssApiError):
+        return error.code
+    if isinstance(error, psycopg.Error):
+        return "database_error"
+    return "repository_error"
+
+
 def _failure_result(error: Exception) -> dict[str, Any]:
-    message = (
-        "database operation failed" if isinstance(error, psycopg.Error) else str(error)
-    )
     return {
         "outcome": "failed",
         "error_type": type(error).__name__,
-        "error": message,
+        "error_code": _public_error_code(error),
     }
 
 
@@ -45,10 +50,9 @@ def _record_failure(
     if repository is None or handle is None:
         return False
     try:
-        repository.fail_run(handle.run_id, error)
+        return repository.fail_run(handle.run_id, error)
     except psycopg.Error:
         return False
-    return True
 
 
 def run_live_ingestion(

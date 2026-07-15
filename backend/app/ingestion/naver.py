@@ -9,7 +9,11 @@ import psycopg
 from backend.app.settings import get_settings
 from backend.app.text_normalization import normalize_search_text
 
-from .naver_news import NaverNewsApiError, fetch_naver_news
+from .naver_news import (
+    NaverNewsAllItemsRejectedError,
+    NaverNewsApiError,
+    fetch_naver_news,
+)
 from .naver_news_repository import NaverNewsRepository, NaverNewsRepositoryError
 
 _EXPECTED_INGESTION_ERRORS = (
@@ -27,10 +31,9 @@ def _record_failure(
     if repository is None or run_id is None:
         return False
     try:
-        repository.fail_run(run_id, error)
+        return repository.fail_run(run_id, error)
     except psycopg.Error:
         return False
-    return True
 
 
 def run_live_ingestion(
@@ -86,7 +89,7 @@ def run_live_ingestion(
         message = (
             "database operation failed" if isinstance(exc, psycopg.Error) else str(exc)
         )
-        return {
+        result = {
             "database": "not_requested" if fetch_only else "failed",
             "query": canonical_query,
             "sort": sort,
@@ -95,6 +98,17 @@ def run_live_ingestion(
             "error": message,
             "failure_recorded": _record_failure(repository, run_id, exc),
         }
+        if isinstance(exc, NaverNewsAllItemsRejectedError):
+            result.update(
+                {
+                    "total": exc.total,
+                    "raw_received": exc.raw_item_count,
+                    "received": 0,
+                    "rejected": exc.rejected_count,
+                    "rejection_reasons": list(exc.rejected_reasons),
+                }
+            )
+        return result
 
     return {
         "database": "not_requested" if fetch_only else "loaded",

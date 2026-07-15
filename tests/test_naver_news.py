@@ -8,13 +8,52 @@ import pytest
 from pydantic import SecretStr
 
 from backend.app.ingestion import naver as naver_ingestion
+from backend.app.ingestion import naver_news_repository as naver_repository_module
 from backend.app.ingestion.naver_news import (
+    NaverNewsAllItemsRejectedError,
     NaverNewsApiError,
     NaverNewsItem,
     NaverNewsResponse,
     fetch_naver_news,
 )
+from backend.app.ingestion.naver_news_repository import (
+    NaverNewsRepository,
+    NaverNewsRepositoryError,
+)
 from backend.app.text_normalization import normalize_search_text
+
+
+class _TransitionCursor:
+    def __init__(self, rowcount: int) -> None:
+        self.rowcount = rowcount
+        self.last_params: tuple[object, ...] | None = None
+
+    def __enter__(self) -> "_TransitionCursor":
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        return None
+
+    def execute(self, _: str, params: tuple[object, ...]) -> None:
+        self.last_params = params
+
+    def executemany(self, _: str, __: list[dict[str, object]]) -> None:
+        return None
+
+
+class _TransitionConnection:
+    def __init__(self, cursor: _TransitionCursor) -> None:
+        self._cursor = cursor
+        self.rolled_back = False
+
+    def __enter__(self) -> "_TransitionConnection":
+        return self
+
+    def __exit__(self, exc_type: object, *_: object) -> None:
+        self.rolled_back = exc_type is not None
+
+    def cursor(self) -> _TransitionCursor:
+        return self._cursor
 
 
 def _client(payload: dict[str, object], status_code: int = 200) -> httpx.Client:
@@ -31,10 +70,10 @@ def test_naver_news_normalizes_metadata_without_article_body() -> None:
         "display": 1,
         "items": [
             {
-                "title": "<b>연금</b> 시장 소식",
+                "title": "&lt;b&gt;연금&lt;/b&gt; 시장 소식",
                 "originallink": "https://publisher.example/article/1",
                 "link": "https://n.news.naver.com/article/1",
-                "description": "&quot;연금&quot; 관련 요약",
+                "description": "&lt;i&gt;&quot;연금&quot;&lt;/i&gt; 관련 요약",
                 "pubDate": "Tue, 14 Jul 2026 10:00:00 +0900",
                 "articleBody": "저장하면 안 되는 기사 본문",
             }
@@ -135,7 +174,7 @@ def test_naver_news_rejects_response_when_all_items_are_invalid() -> None:
 
     with (
         _client(payload) as client,
-        pytest.raises(NaverNewsApiError, match="no valid items") as error,
+        pytest.raises(NaverNewsAllItemsRejectedError) as error,
     ):
         fetch_naver_news(
             client,
@@ -145,8 +184,43 @@ def test_naver_news_rejects_response_when_all_items_are_invalid() -> None:
             display=2,
         )
 
-    assert "missing_url" in str(error.value)
-    assert "invalid_pub_date" in str(error.value)
+    assert error.value.total == 2
+    assert error.value.raw_item_count == 2
+    assert error.value.rejected_count == 2
+    assert error.value.rejected_reasons == ("missing_url", "invalid_pub_date")
+
+
+def test_naver_all_invalid_result_preserves_structured_rejection_counts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    error = NaverNewsAllItemsRejectedError(
+        total=2,
+        raw_item_count=2,
+        rejected_reasons=("missing_url", "invalid_pub_date"),
+    )
+
+    def fake_fetch(*_: object, **__: object) -> NaverNewsResponse:
+        raise error
+
+    monkeypatch.setattr(naver_ingestion, "fetch_naver_news", fake_fetch)
+
+    result = naver_ingestion.run_live_ingestion(
+        client_id="not-logged",
+        client_secret="not-logged",
+        database_url=None,
+        fetch_only=True,
+        query="연금",
+        display=2,
+        start=1,
+        sort="date",
+    )
+
+    assert result["outcome"] == "failed"
+    assert result["total"] == 2
+    assert result["raw_received"] == 2
+    assert result["received"] == 0
+    assert result["rejected"] == 2
+    assert result["rejection_reasons"] == ["missing_url", "invalid_pub_date"]
 
 
 def test_naver_news_normalizes_query_before_api_request() -> None:
@@ -259,3 +333,58 @@ def test_naver_cli_exit_code_reflects_full_success_only(
     )
 
     assert naver_ingestion.main() == exit_code
+
+
+def test_naver_completion_requires_one_running_row_and_rolls_back(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cursor = _TransitionCursor(rowcount=0)
+    connection = _TransitionConnection(cursor)
+    monkeypatch.setattr(
+        naver_repository_module.psycopg,
+        "connect",
+        lambda _: connection,
+    )
+    repository = NaverNewsRepository("postgresql://example.invalid/db")
+
+    with pytest.raises(NaverNewsRepositoryError, match="not running"):
+        repository.complete_run(
+            run_id=UUID("00000000-0000-0000-0000-000000000001"),
+            source_id=1,
+            query="연금",
+            response=NaverNewsResponse(0, 1, 0, 0, [], ()),
+        )
+
+    assert connection.rolled_back is True
+
+
+@pytest.mark.parametrize(("rowcount", "expected"), [(1, True), (0, False)])
+def test_naver_fail_run_returns_exact_result_and_preserves_rejections(
+    monkeypatch: pytest.MonkeyPatch,
+    rowcount: int,
+    expected: bool,
+) -> None:
+    cursor = _TransitionCursor(rowcount=rowcount)
+    connection = _TransitionConnection(cursor)
+    monkeypatch.setattr(
+        naver_repository_module.psycopg,
+        "connect",
+        lambda _: connection,
+    )
+    repository = NaverNewsRepository("postgresql://example.invalid/db")
+
+    changed = repository.fail_run(
+        UUID("00000000-0000-0000-0000-000000000001"),
+        NaverNewsAllItemsRejectedError(
+            total=2,
+            raw_item_count=2,
+            rejected_reasons=("missing_url", "invalid_pub_date"),
+        ),
+    )
+
+    assert changed is expected
+    assert cursor.last_params is not None
+    metadata = cursor.last_params[1].obj
+    assert metadata["raw_record_count"] == 2
+    assert metadata["rejected_record_count"] == 2
+    assert metadata["rejection_reasons"] == ["missing_url", "invalid_pub_date"]

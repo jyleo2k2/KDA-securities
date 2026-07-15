@@ -1,11 +1,13 @@
 from decimal import Decimal
 from types import SimpleNamespace
+from uuid import UUID
 
 import httpx
 import pytest
 from pydantic import SecretStr
 
 from backend.app.ingestion import fss as fss_ingestion
+from backend.app.ingestion import fss_repository as fss_repository_module
 from backend.app.ingestion.fss_client import (
     FssApiError,
     FssResponse,
@@ -13,6 +15,44 @@ from backend.app.ingestion.fss_client import (
     normalize_pension_savings,
     normalize_retirement,
 )
+from backend.app.ingestion.fss_repository import (
+    FssDisclosureRepository,
+    FssRepositoryError,
+    RunHandle,
+)
+
+
+class _TransitionCursor:
+    def __init__(self, rowcount: int) -> None:
+        self.rowcount = rowcount
+        self.last_params: tuple[object, ...] | None = None
+
+    def __enter__(self) -> "_TransitionCursor":
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        return None
+
+    def execute(self, _: str, params: tuple[object, ...]) -> None:
+        self.last_params = params
+
+    def executemany(self, _: str, __: list[dict[str, object]]) -> None:
+        return None
+
+
+class _TransitionConnection:
+    def __init__(self, cursor: _TransitionCursor) -> None:
+        self._cursor = cursor
+        self.rolled_back = False
+
+    def __enter__(self) -> "_TransitionConnection":
+        return self
+
+    def __exit__(self, exc_type: object, *_: object) -> None:
+        self.rolled_back = exc_type is not None
+
+    def cursor(self) -> _TransitionCursor:
+        return self._cursor
 
 
 def _client(payload: dict[str, object], status_code: int = 200) -> httpx.Client:
@@ -25,7 +65,7 @@ def _client(payload: dict[str, object], status_code: int = 200) -> httpx.Client:
 def test_fetch_validates_success_code_and_count() -> None:
     payload = {
         "code": "000",
-        "message": "정상",
+        "message": "remote-success-message",
         "count": 1,
         "list": [{"company": "테스트"}],
     }
@@ -39,6 +79,8 @@ def test_fetch_validates_success_code_and_count() -> None:
 
     assert response.source_count == 1
     assert response.records == [{"company": "테스트"}]
+    assert response.message == "accepted"
+    assert "remote-success-message" not in repr(response)
 
 
 def test_fetch_rejects_count_mismatch() -> None:
@@ -53,7 +95,12 @@ def test_fetch_rejects_count_mismatch() -> None:
 
 
 def test_api_error_does_not_echo_key() -> None:
-    payload = {"code": "100", "message": "인증 실패", "count": 0, "list": []}
+    payload = {
+        "code": "100",
+        "message": "never-print-this-key",
+        "count": 0,
+        "list": [],
+    }
     with _client(payload) as client, pytest.raises(FssApiError) as error:
         fetch_fss_response(
             client,
@@ -63,6 +110,35 @@ def test_api_error_does_not_echo_key() -> None:
         )
 
     assert "never-print-this-key" not in str(error.value)
+    assert error.value.code == "provider_rejected_100"
+
+
+def test_live_ingestion_exposes_only_safe_fss_error_code_and_type(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    secret = "remote-message-with-api-key"
+
+    def fake_fetch(*_: object, **__: object) -> FssResponse:
+        raise FssApiError(secret, code="provider_rejected_100")
+
+    monkeypatch.setattr(fss_ingestion, "fetch_fss_response", fake_fetch)
+
+    result = fss_ingestion.run_live_ingestion(
+        api_key="not-logged",
+        database_url=None,
+        fetch_only=True,
+        ps_year=2025,
+        ps_quarter=3,
+        rp_year=2026,
+        rp_quarter=1,
+        rp_sys_type=3,
+    )
+
+    endpoint = result["endpoints"]["pension_savings"]
+    assert endpoint["error_type"] == "FssApiError"
+    assert endpoint["error_code"] == "provider_rejected_100"
+    assert "error" not in endpoint
+    assert secret not in repr(result)
 
 
 def test_pension_savings_fee_rate_one_is_stored_as_one_year_rate() -> None:
@@ -232,3 +308,62 @@ def test_fss_cli_exit_code_reflects_full_success_only(
     )
 
     assert fss_ingestion.main() == exit_code
+
+
+def test_fss_completion_requires_one_running_row_and_rolls_back(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cursor = _TransitionCursor(rowcount=0)
+    connection = _TransitionConnection(cursor)
+    monkeypatch.setattr(
+        fss_repository_module.psycopg,
+        "connect",
+        lambda _: connection,
+    )
+    repository = FssDisclosureRepository("postgresql://example.invalid/db")
+
+    with pytest.raises(FssRepositoryError, match="not running"):
+        repository.complete_pension_savings(
+            handle=RunHandle(
+                run_id=UUID("00000000-0000-0000-0000-000000000001"),
+                source_id=1,
+            ),
+            response=FssResponse("000", "remote-secret-message", 0, []),
+            rows=[],
+            year=2025,
+            quarter=3,
+        )
+
+    assert connection.rolled_back is True
+    assert cursor.last_params is not None
+    assert cursor.last_params[1] == "accepted"
+    assert "remote-secret-message" not in repr(cursor.last_params)
+
+
+@pytest.mark.parametrize(("rowcount", "expected"), [(1, True), (0, False)])
+def test_fss_fail_run_returns_exact_transition_result_and_stores_safe_error(
+    monkeypatch: pytest.MonkeyPatch,
+    rowcount: int,
+    expected: bool,
+) -> None:
+    cursor = _TransitionCursor(rowcount=rowcount)
+    connection = _TransitionConnection(cursor)
+    monkeypatch.setattr(
+        fss_repository_module.psycopg,
+        "connect",
+        lambda _: connection,
+    )
+    repository = FssDisclosureRepository("postgresql://example.invalid/db")
+
+    changed = repository.fail_run(
+        UUID("00000000-0000-0000-0000-000000000001"),
+        FssApiError(
+            "remote-message-with-api-key",
+            code="provider_rejected_100",
+        ),
+    )
+
+    assert changed is expected
+    assert cursor.last_params is not None
+    assert cursor.last_params[0] == "FssApiError:provider_rejected_100"
+    assert "remote-message-with-api-key" not in repr(cursor.last_params)

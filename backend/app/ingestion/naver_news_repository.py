@@ -5,7 +5,11 @@ from psycopg.types.json import Jsonb
 
 from backend.app.text_normalization import normalize_search_text
 
-from .naver_news import NAVER_NEWS_ENDPOINT, NaverNewsResponse
+from .naver_news import (
+    NAVER_NEWS_ENDPOINT,
+    NaverNewsAllItemsRejectedError,
+    NaverNewsResponse,
+)
 
 
 class NaverNewsRepositoryError(RuntimeError):
@@ -174,13 +178,31 @@ class NaverNewsRepository:
                     run_id,
                 ),
             )
+            if cursor.rowcount != 1:
+                raise NaverNewsRepositoryError(
+                    "NAVER ingestion run was not running during completion"
+                )
         return len(rows)
 
-    def fail_run(self, run_id: UUID, error: Exception) -> None:
+    def fail_run(self, run_id: UUID, error: Exception) -> bool:
         if isinstance(error, psycopg.Error):
             safe_message = f"{type(error).__name__}: database operation failed"
         else:
             safe_message = f"{type(error).__name__}: {error}"[:1000]
+        failure_metadata: dict[str, object] = {
+            "outcome": "failed",
+            "data_boundary": "news_metadata",
+            "is_mock": False,
+        }
+        if isinstance(error, NaverNewsAllItemsRejectedError):
+            failure_metadata.update(
+                {
+                    "total_search_results": error.total,
+                    "raw_record_count": error.raw_item_count,
+                    "rejected_record_count": error.rejected_count,
+                    "rejection_reasons": list(error.rejected_reasons),
+                }
+            )
         with (
             psycopg.connect(self._database_url) as connection,
             connection.cursor() as cursor,
@@ -196,13 +218,8 @@ class NaverNewsRepository:
                 """,
                 (
                     safe_message,
-                    Jsonb(
-                        {
-                            "outcome": "failed",
-                            "data_boundary": "news_metadata",
-                            "is_mock": False,
-                        }
-                    ),
+                    Jsonb(failure_metadata),
                     run_id,
                 ),
             )
+            return cursor.rowcount == 1

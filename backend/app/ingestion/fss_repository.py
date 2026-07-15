@@ -8,6 +8,7 @@ from psycopg import Connection
 from psycopg.types.json import Jsonb
 
 from .fss_client import (
+    FssApiError,
     FssResponse,
     PensionSavingsProviderRow,
     RetirementProviderRow,
@@ -124,11 +125,14 @@ class FssDisclosureRepository:
                 raise FssRepositoryError("failed to create FSS ingestion run")
             return RunHandle(run_id=run_row[0], source_id=source_id)
 
-    def fail_run(self, run_id: UUID, error: Exception) -> None:
-        if isinstance(error, psycopg.Error):
-            safe_message = f"{type(error).__name__}: database operation failed"
+    def fail_run(self, run_id: UUID, error: Exception) -> bool:
+        if isinstance(error, FssApiError):
+            error_code = error.code
+        elif isinstance(error, psycopg.Error):
+            error_code = "database_error"
         else:
-            safe_message = f"{type(error).__name__}: {error}"[:1000]
+            error_code = "repository_error"
+        safe_message = f"{type(error).__name__}:{error_code}"
         with (
             psycopg.connect(self._database_url) as connection,
             connection.cursor() as cursor,
@@ -154,6 +158,7 @@ class FssDisclosureRepository:
                     run_id,
                 ),
             )
+            return cursor.rowcount == 1
 
     def complete_pension_savings(
         self,
@@ -445,7 +450,7 @@ class FssDisclosureRepository:
             """,
             (
                 response.api_code,
-                response.message,
+                "accepted",
                 response.source_count,
                 normalized_count,
                 normalized_count,
@@ -453,3 +458,7 @@ class FssDisclosureRepository:
                 run_id,
             ),
         )
+        if cursor.rowcount != 1:
+            raise FssRepositoryError(
+                "FSS ingestion run was not running during completion"
+            )
