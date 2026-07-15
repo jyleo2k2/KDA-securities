@@ -146,6 +146,12 @@ class SourceChip(BaseModel):
     as_of: date
 
 
+class AssetClassWeight(BaseModel):
+    asset_class: AssetClass
+    amount_krw: Decimal
+    weight_percent: Decimal
+
+
 class RiskCapEvidence(BaseModel):
     rule_code: str
     rule_version: str

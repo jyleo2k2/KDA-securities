@@ -1,3 +1,10 @@
+from .diagnostics import (
+    AccountDiagnosticsEvaluation,
+    AccountHolding,
+    AccountInput,
+    DiagnosticFinding,
+    evaluate_account_diagnostics,
+)
 from .models import (
     AccountType,
     AgeBand,
@@ -33,12 +40,16 @@ from .strategy import (
 )
 
 __all__ = [
+    "AccountDiagnosticsEvaluation",
+    "AccountHolding",
+    "AccountInput",
     "AccountType",
     "AgeBand",
     "AllocationWeights",
     "AssetBucket",
     "AssetClass",
     "AssumptionScenario",
+    "DiagnosticFinding",
     "HoldingInput",
     "HistoricalReturnEvaluation",
     "PortfolioInput",
@@ -55,6 +66,7 @@ __all__ = [
     "RuleStatus",
     "StatutoryException",
     "SurveyAnswer",
+    "evaluate_account_diagnostics",
     "evaluate_profile",
     "evaluate_risk_cap",
     "evaluate_historical_returns",
