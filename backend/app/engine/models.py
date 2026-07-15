@@ -102,3 +102,91 @@ class RiskCapEvaluation(BaseModel):
     within_limit: bool | None
     status: RuleStatus
     evidence: list[RiskCapEvidence]
+
+
+class ReturnSubperiod(BaseModel):
+    """A valuation interval with no external cash flow inside the interval."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    period_start: date
+    period_end: date
+    beginning_value_krw: Decimal = Field(
+        gt=0,
+        max_digits=20,
+        decimal_places=2,
+        allow_inf_nan=False,
+    )
+    ending_value_before_flow_krw: Decimal = Field(
+        ge=0,
+        max_digits=20,
+        decimal_places=2,
+        allow_inf_nan=False,
+    )
+
+    @model_validator(mode="after")
+    def require_positive_interval(self) -> "ReturnSubperiod":
+        if self.period_end <= self.period_start:
+            raise ValueError("period_end must be after period_start")
+        return self
+
+
+class HistoricalReturnEvaluation(BaseModel):
+    engine_name: str
+    engine_version: str
+    method: str
+    subperiod_returns_percent: list[Decimal]
+    cumulative_return_percent: Decimal
+    annualized_volatility_percent: Decimal
+    maximum_drawdown_percent: Decimal
+    periods_per_year: int
+    policy_reference: str
+
+
+class RiskBudgetInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_type: AccountType
+    current_value_krw: Decimal = Field(gt=0, allow_inf_nan=False)
+    minimum_target_at_55_krw: Decimal = Field(gt=0, allow_inf_nan=False)
+    years_to_55: int = Field(ge=0, le=55)
+    safe_rate_assumption_percent: Decimal = Field(gt=-100, allow_inf_nan=False)
+    risk_multiplier: Decimal = Field(ge=0, allow_inf_nan=False)
+    suitability_limit_percent: Decimal = Field(ge=0, le=100, allow_inf_nan=False)
+
+
+class RiskBudgetEvaluation(BaseModel):
+    preservation_floor_krw: Decimal
+    cushion_krw: Decimal
+    account_limit_percent: Decimal
+    suitability_limit_percent: Decimal
+    cushion_limit_percent: Decimal
+    allowed_risky_percent: Decimal
+    assumption_notice: str
+    policy_reference: str
+
+
+class ProfitLockInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    age: int = Field(ge=18, le=100)
+    total_value_krw: Decimal = Field(gt=0, allow_inf_nan=False)
+    tactical_value_krw: Decimal = Field(ge=0, allow_inf_nan=False)
+    tactical_checkpoint_krw: Decimal = Field(gt=0, allow_inf_nan=False)
+    tactical_target_percent: Decimal = Field(ge=0, le=100, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def keep_tactical_value_within_total(self) -> "ProfitLockInput":
+        if self.tactical_value_krw > self.total_value_krw:
+            raise ValueError("tactical_value_krw cannot exceed total_value_krw")
+        return self
+
+
+class ProfitLockEvaluation(BaseModel):
+    tactical_weight_percent: Decimal
+    checkpoint_return_percent: Decimal
+    overweight_triggered: bool
+    checkpoint_triggered: bool
+    recommended_transfer_krw: Decimal
+    transfer_destination: str
+    policy_reference: str
