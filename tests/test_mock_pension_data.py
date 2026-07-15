@@ -3,7 +3,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 SCRIPT_PATH = Path(__file__).parents[1] / "scripts" / "generate_mock_pension_data.py"
 SPEC = importlib.util.spec_from_file_location("mock_generator", SCRIPT_PATH)
 mock_generator = importlib.util.module_from_spec(SPEC)
@@ -13,9 +12,16 @@ SPEC.loader.exec_module(mock_generator)
 
 class MockPensionDataTest(unittest.TestCase):
     def test_generation_is_valid_and_reproducible(self):
-        with tempfile.TemporaryDirectory() as first, tempfile.TemporaryDirectory() as second:
-            first_summary = mock_generator.generate(Path(first), user_count=300, seed=77)
-            second_summary = mock_generator.generate(Path(second), user_count=300, seed=77)
+        with (
+            tempfile.TemporaryDirectory() as first,
+            tempfile.TemporaryDirectory() as second,
+        ):
+            first_summary = mock_generator.generate(
+                Path(first), user_count=300, seed=77
+            )
+            second_summary = mock_generator.generate(
+                Path(second), user_count=300, seed=77
+            )
 
             self.assertEqual(first_summary["status"], "PASS")
             self.assertEqual(first_summary, second_summary)
@@ -40,11 +46,14 @@ class MockPensionDataTest(unittest.TestCase):
         for account in accounts:
             if account["account_type"] in (mock_generator.DC, mock_generator.IRP):
                 self.assertLessEqual(account["risky_asset_ratio"], 0.70)
-        account_types = {account["account_id"]: account["account_type"] for account in accounts}
+        account_types = {
+            account["account_id"]: account["account_type"] for account in accounts
+        }
         self.assertFalse(
             any(
                 holding["asset_class"] == "PRINCIPAL_GUARANTEED"
-                and account_types[holding["account_id"]] == mock_generator.PENSION_SAVINGS_FUND
+                and account_types[holding["account_id"]]
+                == mock_generator.PENSION_SAVINGS_FUND
                 for holding in holdings
             )
         )

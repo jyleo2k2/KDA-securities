@@ -17,7 +17,6 @@ import statistics
 from collections import Counter, defaultdict
 from pathlib import Path
 
-
 DC = "DC"
 IRP = "IRP"
 PENSION_SAVINGS_FUND = "PENSION_SAVINGS_FUND"
@@ -46,7 +45,12 @@ AGE_RANGES = {
 # observed DC age pattern because their public age cross-tabs are unavailable.
 BALANCE_MEAN_KRW = {
     DC: {"20s": 7_570_000, "30s": 51_200_000, "40s": 43_420_000, "50_plus": 64_810_000},
-    IRP: {"20s": 4_430_000, "30s": 29_960_000, "40s": 25_410_000, "50_plus": 37_930_000},
+    IRP: {
+        "20s": 4_430_000,
+        "30s": 29_960_000,
+        "40s": 25_410_000,
+        "50_plus": 37_930_000,
+    },
     PENSION_SAVINGS_FUND: {
         "20s": 1_680_000,
         "30s": 11_370_000,
@@ -124,7 +128,10 @@ SOURCES = {
     },
     "ASSUMPTION_V1": {
         "kind": "model_assumption",
-        "use": "account combinations, dispersion, contributions, and within-account holdings",
+        "use": (
+            "account combinations, dispersion, contributions, "
+            "and within-account holdings"
+        ),
         "url": None,
     },
 }
@@ -140,7 +147,9 @@ def allocate_counts(total: int, weights: dict[str, float]) -> dict[str, int]:
     return counts
 
 
-def weighted_choice(rng: random.Random, values: tuple[str, ...], weights: tuple[float, ...]) -> str:
+def weighted_choice(
+    rng: random.Random, values: tuple[str, ...], weights: tuple[float, ...]
+) -> str:
     return rng.choices(values, weights=weights, k=1)[0]
 
 
@@ -208,7 +217,9 @@ def sample_allocation(
     return risky_ratio, safe_ratio, cash_ratio
 
 
-def lognormal_with_mean(rng: random.Random, arithmetic_mean: float, sigma: float) -> float:
+def lognormal_with_mean(
+    rng: random.Random, arithmetic_mean: float, sigma: float
+) -> float:
     mu = math.log(arithmetic_mean) - (sigma**2) / 2.0
     return rng.lognormvariate(mu, sigma)
 
@@ -234,7 +245,9 @@ def generate_records(user_count: int, seed: int) -> tuple[list[dict], list[dict]
 
     for index, (age_group, scenario) in enumerate(zip(age_groups, scenarios), start=1):
         age = rng.randint(*AGE_RANGES[age_group])
-        risk_profile = weighted_choice(rng, RISK_PROFILES, RISK_PROFILE_WEIGHTS[age_group])
+        risk_profile = weighted_choice(
+            rng, RISK_PROFILES, RISK_PROFILE_WEIGHTS[age_group]
+        )
         user_id = f"USR{index:05d}"
         users.append(
             {
@@ -253,13 +266,16 @@ def generate_records(user_count: int, seed: int) -> tuple[list[dict], list[dict]
                 rng, account_type, age_group, risk_profile, scenario
             )
             target_balance = BALANCE_MEAN_KRW[account_type][age_group]
-            raw_balance = lognormal_with_mean(rng, target_balance, BALANCE_LOG_SIGMA[account_type])
+            raw_balance = lognormal_with_mean(
+                rng, target_balance, BALANCE_LOG_SIGMA[account_type]
+            )
             contribution_mean = MONTHLY_CONTRIBUTION_MEAN_KRW[account_type][age_group]
             monthly_contribution = lognormal_with_mean(rng, contribution_mean, 0.45)
             return_sensitivity = 18.0 if account_type in (DC, IRP) else 25.0
             raw_return = (
                 RETURN_MEAN_PCT[account_type]
-                + return_sensitivity * (risky_ratio - RISKY_MEAN[account_type][age_group])
+                + return_sensitivity
+                * (risky_ratio - RISKY_MEAN[account_type][age_group])
                 + rng.gauss(0.0, RETURN_SD_ASSUMPTION[account_type])
             )
             accounts.append(
@@ -270,7 +286,9 @@ def generate_records(user_count: int, seed: int) -> tuple[list[dict], list[dict]
                     "age_group": age_group,
                     "raw_balance": raw_balance,
                     "balance_krw": 0,
-                    "monthly_contribution_krw": int(round(monthly_contribution / 10_000) * 10_000),
+                    "monthly_contribution_krw": int(
+                        round(monthly_contribution / 10_000) * 10_000
+                    ),
                     "risky_asset_ratio": risky_ratio,
                     "safe_asset_ratio": safe_ratio,
                     "cash_ratio": cash_ratio,
@@ -304,7 +322,9 @@ def calibrate_balances(accounts: list[dict]) -> None:
         raw_mean = statistics.fmean(account["raw_balance"] for account in group)
         scale = BALANCE_MEAN_KRW[account_type][age_group] / raw_mean
         for account in group:
-            account["balance_krw"] = max(10_000, int(round(account["raw_balance"] * scale / 10_000) * 10_000))
+            account["balance_krw"] = max(
+                10_000, int(round(account["raw_balance"] * scale / 10_000) * 10_000)
+            )
             del account["raw_balance"]
 
 
@@ -335,7 +355,12 @@ def build_holdings(accounts: list[dict]) -> list[dict]:
         weights = [
             ("EQUITY_KR", risky * (1.0 - global_share)),
             ("EQUITY_GLOBAL", risky * global_share),
-            ("BOND", safe if account["account_type"] == PENSION_SAVINGS_FUND else safe * 0.30),
+            (
+                "BOND",
+                safe
+                if account["account_type"] == PENSION_SAVINGS_FUND
+                else safe * 0.30,
+            ),
         ]
         if account["account_type"] in (DC, IRP):
             weights.append(("PRINCIPAL_GUARANTEED", safe * 0.70))
@@ -372,7 +397,11 @@ def build_holdings(accounts: list[dict]) -> list[dict]:
 
 
 def validate_and_summarize(
-    users: list[dict], accounts: list[dict], holdings: list[dict], expected_users: int, seed: int
+    users: list[dict],
+    accounts: list[dict],
+    holdings: list[dict],
+    expected_users: int,
+    seed: int,
 ) -> dict:
     errors: list[str] = []
     user_ids = {user["user_id"] for user in users}
@@ -387,16 +416,23 @@ def validate_and_summarize(
     if unknown_users:
         errors.append(f"accounts with unknown users: {len(unknown_users)}")
 
-    invalid_types = sorted({account["account_type"] for account in accounts} - set(ALLOWED_ACCOUNT_TYPES))
+    invalid_types = sorted(
+        {account["account_type"] for account in accounts} - set(ALLOWED_ACCOUNT_TYPES)
+    )
     if invalid_types:
         errors.append(f"invalid account types: {invalid_types}")
 
     for account in accounts:
-        if account["account_type"] in (DC, IRP) and account["risky_asset_ratio"] > 0.7000001:
+        if (
+            account["account_type"] in (DC, IRP)
+            and account["risky_asset_ratio"] > 0.7000001
+        ):
             errors.append(f"risk cap exceeded: {account['account_id']}")
             break
         ratio_sum = (
-            account["risky_asset_ratio"] + account["safe_asset_ratio"] + account["cash_ratio"]
+            account["risky_asset_ratio"]
+            + account["safe_asset_ratio"]
+            + account["cash_ratio"]
         )
         if not math.isclose(ratio_sum, 1.0, abs_tol=1e-9):
             errors.append(f"account ratios do not sum to 1: {account['account_id']}")
@@ -408,7 +444,9 @@ def validate_and_summarize(
     account_ids = {account["account_id"] for account in accounts}
     unknown_holding_accounts = set(holdings_by_account) - account_ids
     if unknown_holding_accounts:
-        errors.append(f"holdings with unknown accounts: {len(unknown_holding_accounts)}")
+        errors.append(
+            f"holdings with unknown accounts: {len(unknown_holding_accounts)}"
+        )
     for account in accounts:
         rows = holdings_by_account[account["account_id"]]
         if not rows:
@@ -417,18 +455,27 @@ def validate_and_summarize(
         if account["account_type"] == PENSION_SAVINGS_FUND and any(
             row["asset_class"] == "PRINCIPAL_GUARANTEED" for row in rows
         ):
-            errors.append(f"principal-guaranteed holding in pension savings fund: {account['account_id']}")
+            errors.append(
+                "principal-guaranteed holding in pension savings fund: "
+                f"{account['account_id']}"
+            )
             break
-        if not math.isclose(sum(float(row["weight"]) for row in rows), 1.0, abs_tol=1e-6):
+        if not math.isclose(
+            sum(float(row["weight"]) for row in rows), 1.0, abs_tol=1e-6
+        ):
             errors.append(f"holding weights do not sum to 1: {account['account_id']}")
             break
         if sum(row["amount_krw"] for row in rows) != account["balance_krw"]:
-            errors.append(f"holding amounts do not match balance: {account['account_id']}")
+            errors.append(
+                f"holding amounts do not match balance: {account['account_id']}"
+            )
             break
 
     type_stats = {}
     for account_type in ALLOWED_ACCOUNT_TYPES:
-        group = [account for account in accounts if account["account_type"] == account_type]
+        group = [
+            account for account in accounts if account["account_type"] == account_type
+        ]
         balances = [account["balance_krw"] for account in group]
         returns = [account["trailing_12m_return_pct"] for account in group]
         type_stats[account_type] = {
@@ -449,7 +496,8 @@ def validate_and_summarize(
             group = [
                 account
                 for account in accounts
-                if account["account_type"] == account_type and account["age_group"] == age_group
+                if account["account_type"] == account_type
+                and account["age_group"] == age_group
             ]
             age_type_mean_balance[account_type][age_group] = round(
                 statistics.fmean(account["balance_krw"] for account in group)
@@ -463,11 +511,18 @@ def validate_and_summarize(
         "accounts": len(accounts),
         "holdings": len(holdings),
         "allowed_account_types": list(ALLOWED_ACCOUNT_TYPES),
-        "scenario_counts": dict(sorted(Counter(user["mock_scenario"] for user in users).items())),
-        "age_group_counts": dict(sorted(Counter(user["age_group"] for user in users).items())),
+        "scenario_counts": dict(
+            sorted(Counter(user["mock_scenario"] for user in users).items())
+        ),
+        "age_group_counts": dict(
+            sorted(Counter(user["age_group"] for user in users).items())
+        ),
         "account_type_stats": type_stats,
         "age_type_mean_balance_krw": age_type_mean_balance,
-        "assumption_note": "Dispersion, account combinations, contributions, and detailed holdings are model assumptions.",
+        "assumption_note": (
+            "Dispersion, account combinations, contributions, and detailed holdings "
+            "are model assumptions."
+        ),
     }
 
 
@@ -484,12 +539,22 @@ def generate(output_dir: Path, user_count: int = 10_000, seed: int = 20260714) -
     holdings = build_holdings(accounts)
     summary = validate_and_summarize(users, accounts, holdings, user_count, seed)
     if summary["status"] != "PASS":
-        raise ValueError("Generated data failed validation: " + "; ".join(summary["errors"]))
+        raise ValueError(
+            "Generated data failed validation: " + "; ".join(summary["errors"])
+        )
 
     write_csv(
         output_dir / "users.csv",
         users,
-        ["user_id", "age", "age_group", "risk_profile", "mock_scenario", "data_kind", "source_ids"],
+        [
+            "user_id",
+            "age",
+            "age_group",
+            "risk_profile",
+            "mock_scenario",
+            "data_kind",
+            "source_ids",
+        ],
     )
     write_csv(
         output_dir / "accounts.csv",
@@ -512,7 +577,14 @@ def generate(output_dir: Path, user_count: int = 10_000, seed: int = 20260714) -
     write_csv(
         output_dir / "holdings.csv",
         holdings,
-        ["account_id", "asset_class", "weight", "amount_krw", "data_kind", "source_ids"],
+        [
+            "account_id",
+            "asset_class",
+            "weight",
+            "amount_krw",
+            "data_kind",
+            "source_ids",
+        ],
     )
     (output_dir / "sources.json").write_text(
         json.dumps(SOURCES, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
