@@ -89,6 +89,13 @@ function AssistantMessage({ response, text }: { response?: ChatResponse; text: s
       </div>
       <p className="message-copy">{response.answer}</p>
 
+      {response.narration_reasoning && (
+        <details className="answer-section section-service_explanation">
+          <summary><span>AI가 검토한 과정</span><small>내용 보기</small></summary>
+          <p>{response.narration_reasoning}</p>
+        </details>
+      )}
+
       {response.sections.map((section, index) => (
         <details className={`answer-section section-${section.kind}`} key={`${section.title}-${index}`} open={section.kind === "limitation"}>
           <summary><span>{section.title}</span><small>내용 보기</small></summary>

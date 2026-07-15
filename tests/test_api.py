@@ -29,6 +29,7 @@ def test_route_paths_cover_engine_tools_and_data_reads() -> None:
         "/engine/aggregation",
         "/engine/simulation",
         "/engine/allocation-example",
+        "/engine/mock-scenario/{scenario_code}",
         "/retrieval/knowledge",
         "/retrieval/news",
         "/disclosures/pension-savings",
@@ -123,6 +124,20 @@ def test_allocation_example_endpoint_returns_approved_cell() -> None:
     assert body["weights"]["growth_percent"] == "60"
     assert body["display_net_return_percent_by_scenario"]["base"] == "5.2"
     assert body["market_shock_percent"] == "-19.5"
+
+
+def test_mock_scenario_endpoint_evaluates_curated_scenario() -> None:
+    response = client.get("/engine/mock-scenario/dc_dormant")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["scenario_code"] == "dc_dormant"
+    assert body["data_boundary"] == "mock"
+    assert body["account_evaluations"][0]["evaluated_input"]["account_type"] == "dc"
+
+
+def test_mock_scenario_endpoint_returns_404_for_unknown_code() -> None:
+    response = client.get("/engine/mock-scenario/does_not_exist")
+    assert response.status_code == 404
 
 
 def test_data_read_endpoints_return_503_without_database() -> None:

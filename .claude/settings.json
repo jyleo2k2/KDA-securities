@@ -1,0 +1,29 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(uv run python -c \"import json,sys; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('file_path') or '')\"); case \"$f\" in *.py) cd \"$CLAUDE_PROJECT_DIR\" && uv run ruff check \"$f\" >&2 || exit 2;; esac",
+            "timeout": 60,
+            "statusMessage": "ruff 검사 중..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" || exit 0; uv run python -c \"import json,sys; sys.exit(1 if json.load(sys.stdin).get('stop_hook_active') else 0)\" || exit 0; git status --porcelain | grep -q '\\.py$' || exit 0; uv run pytest -q >&2 || exit 2",
+            "timeout": 180,
+            "statusMessage": "pytest 회귀 검증 중..."
+          }
+        ]
+      }
+    ]
+  }
+}

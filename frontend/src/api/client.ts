@@ -1,4 +1,9 @@
-import type { ChatCapabilities, ChatResponse, ScenarioSummary } from "./types";
+import type {
+  ChatCapabilities,
+  ChatResponse,
+  ScenarioEvaluation,
+  ScenarioSummary,
+} from "./types";
 
 const API_BASE_URL: string = (
   import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000"
@@ -59,6 +64,12 @@ export function getCapabilities(): Promise<ChatCapabilities> {
 
 export function getScenarios(): Promise<ScenarioSummary[]> {
   return apiGet("/chat/demo/scenarios");
+}
+
+export function getMockScenarioEvaluation(
+  scenarioCode: string,
+): Promise<ScenarioEvaluation> {
+  return apiGet(`/engine/mock-scenario/${scenarioCode}`);
 }
 
 export function sendChat(

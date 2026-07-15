@@ -246,6 +246,26 @@ export interface AllocationExampleEvaluation {
   evidence: SourceChip[];
 }
 
+// ── /engine/mock-scenario ──
+export interface AssetAllocation {
+  asset_class_code: string;
+  amount_krw: string;
+  allocation_percent: string;
+  account_count: number;
+}
+
+export interface ScenarioEvaluation {
+  engine_name: string;
+  engine_version: string;
+  scenario_code: string;
+  data_boundary: string;
+  total_amount_krw: string;
+  account_evaluations: RiskCapEvaluation[];
+  asset_allocations: AssetAllocation[];
+  duplicated_asset_classes: string[];
+  source: SourceChip;
+}
+
 // ── /retrieval/* ──
 export interface KnowledgeMatch {
   chunk_id: number;
@@ -366,6 +386,8 @@ export interface ChatResponse {
   data_mode: string;
   narration_mode: string;
   model_name?: string | null;
+  /** Claude 내레이터의 검토 과정 요약(새 숫자 감지 시 서버가 생략). */
+  narration_reasoning?: string | null;
   sections: AnswerSection[];
   sources: SourceEvidence[];
   numeric_evidence: NumericEvidence[];

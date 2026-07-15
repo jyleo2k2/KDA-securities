@@ -8,10 +8,11 @@ the database.
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from ..auth import require_supabase_user_id
+from ..chat.scenarios import LocalScenarioRepository
 from ..engine import (
     AccountDiagnosticsEvaluation,
     AccountInput,
@@ -23,11 +24,13 @@ from ..engine import (
     ProfileEvaluation,
     ProfileSurveyInput,
     RiskCapEvaluation,
+    ScenarioEvaluation,
     SimulationEvaluation,
     SimulationInput,
     aggregate_accounts,
     build_allocation_example,
     evaluate_account_diagnostics,
+    evaluate_mock_scenario,
     evaluate_profile,
     evaluate_risk_cap,
     simulate_accumulation,
@@ -98,3 +101,21 @@ def allocation_example(
     """Return the approved asset-class example for the profile and account."""
 
     return build_allocation_example(inputs)
+
+
+@router.get("/engine/mock-scenario/{scenario_code}", response_model=ScenarioEvaluation)
+def mock_scenario(scenario_code: str) -> ScenarioEvaluation:
+    """Evaluate a curated mock scenario (data/mock/chatbot_scenarios.json).
+
+    Frontend용 시연 데이터 연결 지점. 실계좌 연동 전까지 홈 화면은 이 엔드포인트로
+    목시나리오를 엔진에 태워 표시한다(실/목 경계는 응답의
+    evidence/data_boundary로 표시).
+    """
+
+    scenario = LocalScenarioRepository().get(scenario_code)
+    if scenario is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Unknown scenario_code: {scenario_code}",
+        )
+    return evaluate_mock_scenario(scenario)

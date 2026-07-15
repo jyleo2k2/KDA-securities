@@ -87,6 +87,9 @@ class ChatResponse(BaseModel):
     data_mode: str
     narration_mode: str = "deterministic"
     model_name: str | None = None
+    # Claude 내레이터의 thinking 요약(검증 답변을 어떻게 풀어썼는지의 근거 설명).
+    # 새 숫자가 감지되면 본문과 달리 이 필드만 생략한다.
+    narration_reasoning: str | None = None
     sections: list[AnswerSection] = Field(default_factory=list)
     sources: list[SourceEvidence] = Field(default_factory=list)
     numeric_evidence: list[NumericEvidence] = Field(default_factory=list)
