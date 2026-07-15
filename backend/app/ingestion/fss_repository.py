@@ -32,6 +32,10 @@ class RunHandle:
     source_id: int
 
 
+class FssRepositoryError(RuntimeError):
+    """A repository contract failure safe to expose in ingestion output."""
+
+
 PS_SOURCE = SourceDefinition(
     code=PS_SOURCE_CODE,
     name="통합연금포털 연금저축 회사별 수익률·수수료율",
@@ -79,7 +83,7 @@ class FssDisclosureRepository:
                         name = excluded.name,
                         base_url = excluded.base_url,
                         default_source_unit = excluded.default_source_unit,
-                        metadata = excluded.metadata,
+                        metadata = data_sources.metadata || excluded.metadata,
                         is_active = true,
                         updated_at = now()
                     returning id
@@ -91,17 +95,19 @@ class FssDisclosureRepository:
                     source.default_source_unit,
                     Jsonb(
                         {
+                            "data_boundary": "official_disclosure",
+                            "is_mock": False,
                             "unit_note": (
                                 "API 응답에 단위가 없어 프로젝트 검증 문서의 "
                                 "표기를 적용하고 원본 값을 함께 보존한다."
-                            )
+                            ),
                         }
                     ),
                 ),
             )
             source_row = cursor.fetchone()
             if source_row is None:
-                raise RuntimeError("failed to resolve FSS data source")
+                raise FssRepositoryError("failed to resolve FSS data source")
             source_id = int(source_row[0])
             cursor.execute(
                 """
@@ -115,11 +121,14 @@ class FssDisclosureRepository:
             )
             run_row = cursor.fetchone()
             if run_row is None:
-                raise RuntimeError("failed to create FSS ingestion run")
+                raise FssRepositoryError("failed to create FSS ingestion run")
             return RunHandle(run_id=run_row[0], source_id=source_id)
 
     def fail_run(self, run_id: UUID, error: Exception) -> None:
-        safe_message = f"{type(error).__name__}: {error}"[:1000]
+        if isinstance(error, psycopg.Error):
+            safe_message = f"{type(error).__name__}: database operation failed"
+        else:
+            safe_message = f"{type(error).__name__}: {error}"[:1000]
         with (
             psycopg.connect(self._database_url) as connection,
             connection.cursor() as cursor,
@@ -129,10 +138,21 @@ class FssDisclosureRepository:
                     update public.ingestion_runs
                     set status = 'failed',
                         completed_at = now(),
-                        error_message = %s
+                        error_message = %s,
+                        metadata = metadata || %s
                     where id = %s and status = 'running'
                     """,
-                (safe_message, run_id),
+                (
+                    safe_message,
+                    Jsonb(
+                        {
+                            "outcome": "failed",
+                            "data_boundary": "official_disclosure",
+                            "is_mock": False,
+                        }
+                    ),
+                    run_id,
+                ),
             )
 
     def complete_pension_savings(
@@ -402,8 +422,14 @@ class FssDisclosureRepository:
         run_id: UUID,
         response: FssResponse,
         normalized_count: int,
-        metadata: dict[str, str],
+        metadata: dict[str, Any],
     ) -> None:
+        run_metadata = {
+            **metadata,
+            "outcome": "succeeded",
+            "data_boundary": "official_disclosure",
+            "is_mock": False,
+        }
         cursor.execute(
             """
             update public.ingestion_runs
@@ -414,7 +440,7 @@ class FssDisclosureRepository:
                 source_record_count = %s,
                 normalized_record_count = %s,
                 upserted_record_count = %s,
-                metadata = %s
+                metadata = metadata || %s
             where id = %s and status = 'running'
             """,
             (
@@ -423,7 +449,7 @@ class FssDisclosureRepository:
                 response.source_count,
                 normalized_count,
                 normalized_count,
-                Jsonb(metadata),
+                Jsonb(run_metadata),
                 run_id,
             ),
         )

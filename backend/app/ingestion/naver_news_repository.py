@@ -3,7 +3,13 @@ from uuid import UUID
 import psycopg
 from psycopg.types.json import Jsonb
 
+from backend.app.text_normalization import normalize_search_text
+
 from .naver_news import NAVER_NEWS_ENDPOINT, NaverNewsResponse
+
+
+class NaverNewsRepositoryError(RuntimeError):
+    """A repository contract failure safe to expose in ingestion output."""
 
 
 class NaverNewsRepository:
@@ -20,6 +26,9 @@ class NaverNewsRepository:
         start: int,
         sort: str,
     ) -> tuple[UUID, int]:
+        query = normalize_search_text(query)
+        if not query:
+            raise ValueError("query must not be empty")
         requested_params = {
             "query": query,
             "display": display,
@@ -38,20 +47,32 @@ class NaverNewsRepository:
                 values (
                     'naver_search_news', 'NAVER API HUB 뉴스 검색',
                     'news_api', 'NAVER Cloud', %s,
-                    '{"storage_policy":"metadata_only"}'::jsonb
+                    %s
                 )
                 on conflict (code) do update set
                     name = excluded.name,
                     base_url = excluded.base_url,
+                    metadata = data_sources.metadata || excluded.metadata,
                     is_active = true,
                     updated_at = now()
                 returning id
                 """,
-                (NAVER_NEWS_ENDPOINT,),
+                (
+                    NAVER_NEWS_ENDPOINT,
+                    Jsonb(
+                        {
+                            "storage_policy": "metadata_only",
+                            "data_boundary": "news_metadata",
+                            "is_mock": False,
+                        }
+                    ),
+                ),
             )
             source_row = cursor.fetchone()
             if source_row is None:
-                raise RuntimeError("failed to resolve NAVER news data source")
+                raise NaverNewsRepositoryError(
+                    "failed to resolve NAVER news data source"
+                )
             source_id = int(source_row[0])
             cursor.execute(
                 """
@@ -65,7 +86,9 @@ class NaverNewsRepository:
             )
             run_row = cursor.fetchone()
             if run_row is None:
-                raise RuntimeError("failed to create NAVER news ingestion run")
+                raise NaverNewsRepositoryError(
+                    "failed to create NAVER news ingestion run"
+                )
             return run_row[0], source_id
 
     def complete_run(
@@ -76,6 +99,9 @@ class NaverNewsRepository:
         query: str,
         response: NaverNewsResponse,
     ) -> int:
+        query = normalize_search_text(query)
+        if not query:
+            raise ValueError("query must not be empty")
         rows = [
             {
                 "source_id": source_id,
@@ -94,6 +120,7 @@ class NaverNewsRepository:
             psycopg.connect(self._database_url) as connection,
             connection.cursor() as cursor,
         ):
+            # TODO: add news_item_query_links so one URL can retain every query match.
             cursor.executemany(
                 """
                 insert into public.news_items (
@@ -127,21 +154,33 @@ class NaverNewsRepository:
                     source_record_count = %s,
                     normalized_record_count = %s,
                     upserted_record_count = %s,
-                    metadata = %s
+                    metadata = metadata || %s
                 where id = %s and status = 'running'
                 """,
                 (
-                    response.display,
+                    response.raw_item_count,
                     len(rows),
                     len(rows),
-                    Jsonb({"total_search_results": response.total}),
+                    Jsonb(
+                        {
+                            "total_search_results": response.total,
+                            "rejected_record_count": response.rejected_count,
+                            "rejection_reasons": list(response.rejected_reasons),
+                            "outcome": response.outcome,
+                            "data_boundary": "news_metadata",
+                            "is_mock": False,
+                        }
+                    ),
                     run_id,
                 ),
             )
         return len(rows)
 
     def fail_run(self, run_id: UUID, error: Exception) -> None:
-        safe_message = f"{type(error).__name__}: {error}"[:1000]
+        if isinstance(error, psycopg.Error):
+            safe_message = f"{type(error).__name__}: database operation failed"
+        else:
+            safe_message = f"{type(error).__name__}: {error}"[:1000]
         with (
             psycopg.connect(self._database_url) as connection,
             connection.cursor() as cursor,
@@ -149,8 +188,21 @@ class NaverNewsRepository:
             cursor.execute(
                 """
                 update public.ingestion_runs
-                set status = 'failed', completed_at = now(), error_message = %s
+                set status = 'failed',
+                    completed_at = now(),
+                    error_message = %s,
+                    metadata = metadata || %s
                 where id = %s and status = 'running'
                 """,
-                (safe_message, run_id),
+                (
+                    safe_message,
+                    Jsonb(
+                        {
+                            "outcome": "failed",
+                            "data_boundary": "news_metadata",
+                            "is_mock": False,
+                        }
+                    ),
+                    run_id,
+                ),
             )

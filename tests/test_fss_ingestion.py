@@ -1,10 +1,14 @@
 from decimal import Decimal
+from types import SimpleNamespace
 
 import httpx
 import pytest
+from pydantic import SecretStr
 
+from backend.app.ingestion import fss as fss_ingestion
 from backend.app.ingestion.fss_client import (
     FssApiError,
+    FssResponse,
     fetch_fss_response,
     normalize_pension_savings,
     normalize_retirement,
@@ -120,3 +124,111 @@ def test_retirement_expands_company_to_three_schemes_and_preserves_null() -> Non
     assert rows[0].reserve_source_value is None
     assert "reserve_missing" in rows[0].quality_flags
     assert rows[1].reserve_source_value == Decimal("100")
+
+
+@pytest.mark.parametrize(
+    ("failed_endpoints", "expected_outcome"),
+    [
+        (set(), "succeeded"),
+        ({"pension_savings"}, "partial"),
+        ({"pension_savings", "retirement"}, "failed"),
+    ],
+)
+def test_live_ingestion_attempts_endpoints_independently(
+    monkeypatch: pytest.MonkeyPatch,
+    failed_endpoints: set[str],
+    expected_outcome: str,
+) -> None:
+    attempted: list[str] = []
+
+    def fake_fetch(
+        _: httpx.Client,
+        *,
+        endpoint: str,
+        api_key: str,
+        request_params: dict[str, int],
+    ) -> FssResponse:
+        del api_key, request_params
+        name = (
+            "pension_savings"
+            if endpoint == fss_ingestion.PS_CORP_ENDPOINT
+            else "retirement"
+        )
+        attempted.append(name)
+        if name in failed_endpoints:
+            raise FssApiError(f"{name} unavailable")
+        return FssResponse("000", "정상", 0, [])
+
+    monkeypatch.setattr(fss_ingestion, "fetch_fss_response", fake_fetch)
+
+    result = fss_ingestion.run_live_ingestion(
+        api_key="not-logged",
+        database_url=None,
+        fetch_only=True,
+        ps_year=2025,
+        ps_quarter=3,
+        rp_year=2026,
+        rp_quarter=1,
+        rp_sys_type=3,
+    )
+
+    assert attempted == ["pension_savings", "retirement"]
+    assert result["outcome"] == expected_outcome
+    assert result["database"] == "not_requested"
+
+
+def test_live_ingestion_does_not_hide_unexpected_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_unexpected(*_: object, **__: object) -> FssResponse:
+        raise ValueError("programming error")
+
+    monkeypatch.setattr(fss_ingestion, "fetch_fss_response", fail_unexpected)
+
+    with pytest.raises(ValueError, match="programming error"):
+        fss_ingestion.run_live_ingestion(
+            api_key="not-logged",
+            database_url=None,
+            fetch_only=True,
+            ps_year=2025,
+            ps_quarter=3,
+            rp_year=2026,
+            rp_quarter=1,
+            rp_sys_type=3,
+        )
+
+
+@pytest.mark.parametrize(
+    ("outcome", "exit_code"),
+    [("succeeded", 0), ("partial", 1), ("failed", 1)],
+)
+def test_fss_cli_exit_code_reflects_full_success_only(
+    monkeypatch: pytest.MonkeyPatch,
+    outcome: str,
+    exit_code: int,
+) -> None:
+    args = SimpleNamespace(
+        fetch_only=True,
+        ps_year=2025,
+        ps_quarter=3,
+        rp_year=2026,
+        rp_quarter=1,
+        rp_sys_type=3,
+    )
+    settings = SimpleNamespace(
+        pension_portal_api_key=SecretStr("not-logged"),
+        database_url=None,
+    )
+    monkeypatch.setattr(
+        fss_ingestion,
+        "_parser",
+        lambda: SimpleNamespace(parse_args=lambda: args),
+    )
+    monkeypatch.setattr(fss_ingestion, "get_settings", lambda: settings)
+    monkeypatch.setattr(
+        fss_ingestion,
+        "run_live_ingestion",
+        lambda **_: {"outcome": outcome},
+    )
+
+    assert fss_ingestion.main() == exit_code
