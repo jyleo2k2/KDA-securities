@@ -5,6 +5,7 @@ from uuid import UUID
 import psycopg
 
 from ..ingestion.embeddings import QueryEmbedder, vector_literal
+from ..text_normalization import normalize_search_text
 from .search_ranking import (
     build_prefix_or_tsquery,
     rerank_knowledge_matches,
@@ -13,6 +14,17 @@ from .search_ranking import (
 
 # RRF(reciprocal rank fusion) 상수 — 관행값 60, 순위 융합의 완만함을 조절한다.
 RRF_K = 60
+
+_NEWS_QUERY_ALIASES: dict[str, tuple[str, ...]] = {
+    "irp": ("IRP", "개인형 퇴직연금"),
+    "개인형 퇴직연금": ("개인형 퇴직연금", "IRP"),
+    "퇴직연금": ("퇴직연금", "IRP", "개인형 퇴직연금", "확정기여형"),
+    "연금저축": ("연금저축",),
+    "디폴트옵션": ("디폴트옵션", "사전지정운용제도"),
+    "사전지정운용제도": ("사전지정운용제도", "디폴트옵션"),
+    "tdf": ("TDF", "타깃데이트펀드", "타깃 데이트 펀드"),
+    "타깃데이트펀드": ("타깃데이트펀드", "TDF", "타깃 데이트 펀드"),
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -242,6 +254,10 @@ class RetrievalRepository:
             return [KnowledgeMatch(*row) for row in cursor]
 
     def latest_news(self, search_query: str, *, limit: int = 10) -> list[NewsMatch]:
+        normalized_query = normalize_search_text(search_query)
+        if not normalized_query:
+            return []
+        bounded_limit = max(1, min(limit, 100))
         with (
             psycopg.connect(self._database_url) as connection,
             connection.cursor() as cursor,
@@ -256,7 +272,26 @@ class RetrievalRepository:
                 order by published_at desc nulls last, fetched_at desc
                 limit %s
                 """,
-                (search_query, max(1, min(limit, 100))),
+                (normalized_query, bounded_limit),
+            )
+            exact_matches = [NewsMatch(*row) for row in cursor]
+            if exact_matches:
+                return exact_matches
+
+            terms = _news_search_terms(normalized_query)
+            patterns = [f"%{term}%" for term in terms]
+            cursor.execute(
+                """
+                select
+                    id::text, title, description, original_url,
+                    portal_url, published_at
+                from public.news_items
+                where title ilike any(%s::text[])
+                   or coalesce(description, '') ilike any(%s::text[])
+                order by published_at desc nulls last, fetched_at desc
+                limit %s
+                """,
+                (patterns, patterns, bounded_limit),
             )
             return [NewsMatch(*row) for row in cursor]
 
@@ -290,3 +325,11 @@ class RetrievalRepository:
                 ),
             )
             return [NewsMatch(*row) for row in cursor]
+
+
+def _news_search_terms(search_query: str) -> tuple[str, ...]:
+    normalized_query = normalize_search_text(search_query)
+    if not normalized_query:
+        return ()
+    aliases = _NEWS_QUERY_ALIASES.get(normalized_query.casefold(), ())
+    return tuple(dict.fromkeys((normalized_query, *aliases)))

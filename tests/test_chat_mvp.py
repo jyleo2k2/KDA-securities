@@ -131,6 +131,19 @@ def test_pension_savings_rule_does_not_apply_dc_irp_cap() -> None:
     assert response.numeric_evidence == []
 
 
+def test_pension_savings_eligibility_answer_is_concise_and_source_linked() -> None:
+    response = service().ask(
+        ChatRequest(message="연금저축에서 편입 가능한 상품은 어떻게 확인해?")
+    )
+
+    assert response.intent == ChatIntent.ACCOUNT_RULE
+    assert "상품별 적격성" in response.answer
+    assert "공식 상품 식별자" in response.answer
+    assert "|" not in response.answer
+    assert len(response.answer) < 200
+    assert response.sources
+
+
 def test_mock_overlap_scenario_runs_engine_and_keeps_mock_boundary() -> None:
     response = service().ask(
         ChatRequest(
@@ -200,6 +213,7 @@ def test_news_response_exposes_metadata_and_original_link() -> None:
     assert response.sources[0].locator == "https://example.test/news/1"
     assert response.sources[0].evidence_id == "news:news-1"
     assert response.sources[0].data_boundary == "news_metadata"
+    assert "검색 API 메타데이터 요약" in response.answer
     assert "기사 본문이 아닌" in response.limitations[0]
 
 

@@ -115,15 +115,15 @@ def test_chunk_markdown_keeps_headings_and_max_size() -> None:
 def test_approved_manifest_loads_only_verified_non_mock_documents() -> None:
     documents = load_approved_documents()
 
-    assert len(documents) == 1
-    document = documents[0]
-    assert document.license_status == "permitted"
-    assert document.metadata["data_boundary"] == "verified_knowledge"
-    assert document.metadata["contains_personal_data"] is False
-    assert document.metadata["is_mock"] is False
-    assert document.content_hash is not None
-    assert len(document.content_hash) == 64
-    assert all(len(chunk) <= 1800 for chunk in document.chunks)
+    assert len(documents) == 2
+    for document in documents:
+        assert document.license_status == "permitted"
+        assert document.metadata["data_boundary"] == "verified_knowledge"
+        assert document.metadata["contains_personal_data"] is False
+        assert document.metadata["is_mock"] is False
+        assert document.content_hash is not None
+        assert len(document.content_hash) == 64
+        assert all(len(chunk) <= 800 for chunk in document.chunks)
 
 
 def test_seed_uses_the_same_canonical_knowledge_url_and_boundary() -> None:

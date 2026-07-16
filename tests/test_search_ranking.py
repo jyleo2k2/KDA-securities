@@ -8,7 +8,11 @@ from backend.app.chat.knowledge import (
     FallbackKnowledgeRepository,
     LocalMarkdownKnowledgeRepository,
 )
-from backend.app.retrieval.repository import KnowledgeMatch, RetrievalRepository
+from backend.app.retrieval.repository import (
+    KnowledgeMatch,
+    RetrievalRepository,
+    _news_search_terms,
+)
 from backend.app.retrieval.search_ranking import (
     build_prefix_or_tsquery,
     rerank_knowledge_matches,
@@ -110,6 +114,21 @@ def test_repository_skips_database_for_query_without_safe_tokens(monkeypatch) ->
 
     assert repository.search_knowledge("!!!") == []
     assert called is False
+
+
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    (
+        ("IRP", ("IRP", "개인형 퇴직연금")),
+        ("개인형 퇴직연금", ("개인형 퇴직연금", "IRP")),
+        ("디폴트옵션", ("디폴트옵션", "사전지정운용제도")),
+        ("일반 연금", ("일반 연금",)),
+    ),
+)
+def test_news_fallback_terms_are_limited_to_topic_aliases(
+    query: str, expected: tuple[str, ...]
+) -> None:
+    assert _news_search_terms(query) == expected
 
 
 class _StaticKnowledge:
