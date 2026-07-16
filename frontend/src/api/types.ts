@@ -502,7 +502,7 @@ export interface ChatResponse {
   sources: SourceEvidence[];
   numeric_evidence: NumericEvidence[];
   engine_results: unknown[];
-  scenario_evaluation?: unknown | null;
+  scenario_evaluation?: ScenarioEvaluation | null;
   pension_tax_result?: PensionTaxToolResult | null;
   limitations: string[];
   conversation_context?: ConversationContext | null;

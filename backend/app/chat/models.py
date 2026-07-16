@@ -22,6 +22,9 @@ _NUMBER_WITH_UNIT = re.compile(
     r"(?![0-9A-Za-z_])",
     re.I,
 )
+_LEGAL_FRACTION = re.compile(
+    r"(?P<denominator>\d[\d,]*)\s*분의\s*(?P<numerator>\d[\d,]*(?:\.\d+)?)"
+)
 _CURRENCY_MULTIPLIERS = {
     "원": Decimal("1"),
     "천원": Decimal("1000"),
@@ -52,7 +55,14 @@ def extract_numeric_claims(text: str) -> set[tuple[Decimal, str]]:
     """Return normalized percentage and KRW claims from generated text."""
 
     claims: set[tuple[Decimal, str]] = set()
-    for match in _NUMBER_WITH_UNIT.finditer(text):
+    # 법령 원문의 "100분의 15"는 재서술문의 "15%"와 같은 주장이다.
+    # narrator의 숫자 가드와 같은 규칙을 써야 두 층이 어긋나지 않는다.
+    for match in _LEGAL_FRACTION.finditer(text):
+        denominator = Decimal(match.group("denominator").replace(",", ""))
+        numerator = Decimal(match.group("numerator").replace(",", ""))
+        if denominator:
+            claims.add((numerator / denominator * 100, "%"))
+    for match in _NUMBER_WITH_UNIT.finditer(_LEGAL_FRACTION.sub(" ", text)):
         raw_number = match.group("number").replace(",", "")
         raw_sign = match.group("sign")
         sign = "-" if raw_sign in {"-", "−"} else ""

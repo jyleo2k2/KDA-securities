@@ -5,6 +5,7 @@
 """
 
 import json
+import logging
 import re
 from decimal import Decimal, InvalidOperation
 
@@ -19,6 +20,8 @@ from ..engine import PensionTaxScenarioInput
 from .models import ChatIntent, ChatResponse, DataBoundary
 from .pension_tax_parser import resolve_pension_tax_inputs
 from .tools import CHAT_AGENT_TOOLS, PENSION_TAX_CLOSING_NOTICE
+
+logger = logging.getLogger(__name__)
 
 NARRATABLE_INTENTS = {
     ChatIntent.ACCOUNT_RULE,
@@ -60,6 +63,9 @@ _ARABIC_NUMBER = re.compile(
     r"KRW|퍼센트|프로|%|년|개월|월|분기|일|배|개|건|명|회|차|층)?"
     r"(?![0-9A-Za-z_])",
     re.I,
+)
+_LEGAL_FRACTION = re.compile(
+    r"(?P<denominator>\d[\d,]*)\s*분의\s*(?P<numerator>\d[\d,]*(?:\.\d+)?)"
 )
 _KOREAN_NUMBER = re.compile(
     r"(?P<sign>마이너스|플러스)?\s*"
@@ -105,7 +111,15 @@ _NEGATION = re.compile(r"않|아니|없|금지|못|제공하지|의미하지|하
 
 def _number_tokens(text: str) -> set[tuple[Decimal, str, str]]:
     values: set[tuple[Decimal, str, str]] = set()
-    for match in _ARABIC_NUMBER.finditer(text):
+    # 법령 원문은 비율을 "100분의 15"로 쓰고 내레이터는 "15%"로 재서술한다.
+    # 같은 수치이므로 같은 토큰으로 맞춘다. 구성 숫자(100·15)를 따로 남기면
+    # 재서술이 그 숫자를 안 써서 오히려 어긋나므로 원 표기는 걷어낸다.
+    for match in _LEGAL_FRACTION.finditer(text):
+        denominator = Decimal(match.group("denominator").replace(",", ""))
+        numerator = Decimal(match.group("numerator").replace(",", ""))
+        if denominator:
+            values.add((numerator / denominator * 100, "%", "unsigned"))
+    for match in _ARABIC_NUMBER.finditer(_LEGAL_FRACTION.sub(" ", text)):
         raw_sign = match.group("sign")
         sign = "-" if raw_sign in {"-", "−"} else ""
         sign_kind = (
@@ -214,6 +228,7 @@ class ClaudeNarrator:
                     return self._fallback(
                         response,
                         "Claude Tool 입력을 재구성하지 못해 검증 원문을 표시합니다.",
+                        reason="tax_input_unresolved",
                     )
                 tool_payload["tax_credit"] = (
                     resolved_tax_inputs.tax_credit.model_dump(mode="json")
@@ -223,6 +238,7 @@ class ClaudeNarrator:
                     return self._fallback(
                         response,
                         "Claude Tool 입력을 재구성하지 못해 검증 원문을 표시합니다.",
+                        reason="tax_input_unresolved",
                     )
                 tool_payload["withdrawal"] = (
                     resolved_tax_inputs.withdrawal.model_dump(mode="json")
@@ -243,6 +259,7 @@ class ClaudeNarrator:
             return self._fallback(
                 response,
                 "Claude 설명 호출 실패로 검증 원문을 표시합니다.",
+                reason="agent_error",
             )
 
         if resolved_tax_inputs is not None:
@@ -264,6 +281,7 @@ class ClaudeNarrator:
                     response,
                     "Claude가 필요한 연금세액 Tool을 호출하지 않아 검증 원문을 "
                     "표시합니다.",
+                    reason="required_tool_not_called",
                 )
 
         elif required_tool_names:
@@ -289,6 +307,7 @@ class ClaudeNarrator:
                 response,
                 "Claude 설명에서 새로운 숫자·전망·보장·추천 주장을 감지해 "
                 "검증 원문으로 되돌렸습니다.",
+                reason="unverified_content",
             )
         thinking = next(
             (
@@ -323,7 +342,16 @@ class ClaudeNarrator:
         return reasoning
 
     @staticmethod
-    def _fallback(response: ChatResponse, limitation: str) -> ChatResponse:
+    def _fallback(
+        response: ChatResponse, limitation: str, *, reason: str
+    ) -> ChatResponse:
+        # reason은 집계용 고정 코드다. 한국어 제한사항 문구는 사용자용이라
+        # 바뀔 수 있으므로 측정·모니터링은 이 코드로만 한다.
+        logger.warning(
+            "narration_fallback reason=%s intent=%s",
+            reason,
+            response.intent.value,
+        )
         data = response.model_dump()
         data["limitations"] = [*response.limitations, limitation]
         return ChatResponse.model_validate(data)

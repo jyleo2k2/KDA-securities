@@ -75,8 +75,8 @@ def test_natural_language_tax_credit_question_runs_without_form_input() -> None:
     assert response.pension_tax_result is not None
     assert response.pension_tax_result.tax_credit is not None
     assert response.pension_tax_result.withdrawal is None
-    assert "9,000,000원" in response.answer
-    assert "1,485,000원" in response.answer
+    assert "900만 원" in response.answer
+    assert "148.5만 원" in response.answer
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
 
 
@@ -95,8 +95,8 @@ def test_natural_language_max_withdrawal_question_runs_without_form_input() -> N
     assert response.pension_tax_result is not None
     assert response.pension_tax_result.withdrawal is not None
     assert response.pension_tax_result.withdrawal.status == "estimated"
-    assert "80,000,000원" in response.answer
-    assert "13,200,000원" in response.answer
+    assert "8,000만 원" in response.answer
+    assert "1,320만 원" in response.answer
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
 
 
@@ -133,8 +133,8 @@ def test_combined_tax_question_uses_engine_results_and_evidence() -> None:
     assert response.pension_tax_result is not None
     assert response.pension_tax_result.tax_credit is not None
     assert response.pension_tax_result.withdrawal is not None
-    assert "1,485,000원" in response.answer
-    assert "11,715,000원" in response.answer
+    assert "148.5만 원" in response.answer
+    assert "1,171.5만 원" in response.answer
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
     assert {source.data_boundary for source in response.sources} >= {
         DataBoundary.USER_INPUT,
@@ -178,8 +178,8 @@ def test_chatbot_reproduces_the_eighty_million_won_max_example() -> None:
         )
     )
 
-    assert "80,000,000원" in response.answer
-    assert "13,200,000원" in response.answer
+    assert "8,000만 원" in response.answer
+    assert "1,320만 원" in response.answer
     assert any("이연퇴직소득" in item for item in response.limitations)
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
 

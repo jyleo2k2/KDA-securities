@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import UTC, datetime
 from decimal import Decimal
 
@@ -19,8 +20,9 @@ from backend.app.chat.models import (
     NumericEvidence,
     SectionKind,
     SourceEvidence,
+    extract_numeric_claims,
 )
-from backend.app.chat.narrator import ClaudeNarrator
+from backend.app.chat.narrator import ClaudeNarrator, _adds_unverified_content
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService
 from backend.app.engine import AccountType
@@ -98,6 +100,9 @@ def test_account_rule_question_returns_rag_source_and_numeric_evidence() -> None
 
     assert response.intent == ChatIntent.ACCOUNT_RULE
     assert "70%" in response.answer
+    assert "위험자산을 계좌 돈의 70%까지만 담을 수 있습니다." in response.answer
+    assert "위험자산은 주식처럼 가격이 오르내릴 수 있는 자산입니다." in response.answer
+    assert "판정합니다" not in response.answer
     assert response.sources
     assert len(response.numeric_evidence) == 1
     assert response.numeric_evidence[0].value == Decimal("70")
@@ -162,6 +167,9 @@ def test_mock_overlap_scenario_runs_engine_and_keeps_mock_boundary() -> None:
         item.allocation_percent
         for item in response.scenario_evaluation.asset_allocations
     ) == Decimal("100.00")
+    assert "global_equity" not in response.answer
+    assert "pension_savings" not in response.answer
+    assert "글로벌 주식형 자산" in response.answer
 
 
 def test_individual_product_comparison_is_blocked_until_data_exists() -> None:
@@ -456,6 +464,40 @@ def test_claude_narrator_rejects_new_numbers() -> None:
     assert response.narration_mode == "deterministic"
     assert response.answer == base.answer
     assert "새로운 숫자" in response.limitations[-1]
+
+
+def test_numeric_claims_read_korean_legal_fraction_as_percent() -> None:
+    # 응답 계약도 가드와 같은 규칙을 써야 한다. 한쪽만 알면 재서술이 가드를
+    # 통과한 뒤 NumericEvidence 누락으로 터진다.
+    claims = extract_numeric_claims("납입한 금액의 100분의 15를 공제한다.")
+
+    assert claims == {(Decimal("15"), "%")}
+
+
+def test_guard_reads_korean_legal_fraction_as_percent() -> None:
+    # 소득세법은 "100분의 15"로 쓰고 내레이터는 "15%"로 재서술한다. 같은 수치다.
+    source = "납입한 금액의 100분의 15에 해당하는 금액을 공제한다."
+
+    assert not _adds_unverified_content("납입액의 15%를 공제받습니다.", source)
+
+
+def test_guard_still_rejects_percent_absent_from_legal_fraction_source() -> None:
+    source = "납입한 금액의 100분의 15에 해당하는 금액을 공제한다."
+
+    assert _adds_unverified_content("납입액의 20%를 공제받습니다.", source)
+
+
+def test_narration_fallback_logs_stable_reason_code(caplog) -> None:
+    # 폴백 분기를 한국어 문구 대신 안정적인 코드로 집계하기 위한 관측 지점.
+    base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
+
+    with caplog.at_level(logging.WARNING, logger="backend.app.chat.narrator"):
+        response = _narrate_with_fake(
+            base, "IRP 위험자산을 80%까지 운용할 수 있습니다."
+        )
+
+    assert response.narration_mode == "deterministic"
+    assert "unverified_content" in caplog.text
 
 
 @pytest.mark.parametrize(

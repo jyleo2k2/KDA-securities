@@ -71,6 +71,19 @@ SCENARIO_KEYWORDS = {
 }
 VERIFIED_AS_OF = date(2026, 7, 13)
 
+_ACCOUNT_TYPE_LABELS = {
+    "dc": "DC",
+    "irp": "IRP",
+    "pension_savings": "연금저축펀드",
+}
+_ASSET_CLASS_LABELS = {
+    "deposit": "원리금보장형 자산",
+    "cash": "현금성 자산",
+    "bond": "채권형 자산",
+    "global_equity": "글로벌 주식형 자산",
+    "eligible_tdf": "적격 TDF",
+}
+
 
 def _news_metadata_line(item: NewsMatch) -> str:
     headline = (
@@ -410,22 +423,27 @@ class ChatService:
 
     @staticmethod
     def _krw(value: Decimal) -> str:
+        if value >= 10_000:
+            in_man = value / Decimal("10000")
+            text = f"{in_man:,.4f}".rstrip("0").rstrip(".")
+            return f"{text}만 원"
         return f"{value:,.0f}원"
 
     @classmethod
     def _tax_credit_text(cls, result: PensionTaxCreditEvaluation) -> str:
         base = (
-            "당해연도 납입액은 연금저축 "
+            "세액공제 대상은 총 "
+            f"{cls._krw(result.total_eligible_contribution_krw)}입니다. "
+            "입력한 납입액은 연금저축 "
             f"{cls._krw(result.pension_savings_contribution_krw)}, IRP "
-            f"{cls._krw(result.irp_contribution_krw)}이며 세액공제 대상 합계는 "
-            f"{cls._krw(result.total_eligible_contribution_krw)}입니다."
+            f"{cls._krw(result.irp_contribution_krw)}입니다."
         )
         if result.rate_determined:
             scenario = result.rate_scenarios[0]
             return (
-                f"{base} 지방소득세 효과를 포함한 표시율 "
-                f"{_decimal_text(scenario.local_inclusive_display_rate_percent)}%를 "
-                "적용한 예상 세액공제액은 "
+                f"{base} 표시율 "
+                f"{_decimal_text(scenario.local_inclusive_display_rate_percent)}% 기준 "
+                "예상 세액공제액은 "
                 f"{cls._krw(scenario.estimated_tax_credit_krw)}입니다."
             )
         ordered = sorted(
@@ -590,11 +608,7 @@ class ChatService:
         if reason == BlockedReason.FUTURE_PREDICTION:
             return ChatResponse(
                 intent=ChatIntent.OUT_OF_SCOPE,
-                answer=(
-                    "미래 수익률·목표가·수익 보장은 제공하지 않습니다. "
-                    "승인된 가정 시나리오 엔진이 구현되기 전에는 과거 공시와 "
-                    "손실 가능성만 설명합니다."
-                ),
+                answer="미래 수익률은 제공하지 않습니다.",
                 data_mode="blocked",
                 limitations=["미래 수익 예측은 MVP 범위 밖입니다."],
             )
@@ -683,10 +697,11 @@ class ChatService:
             )
         elif risk_question and has_retirement_account:
             answer = (
-                "DC형과 IRP의 일반 위험자산은 적립금의 70%까지로 판정합니다. "
-                "적격 TDF·디폴트옵션 같은 법정 예외는 적격성이 명시적으로 "
-                "확인된 경우에만 일반 위험자산과 분리합니다. 연금저축펀드에는 "
-                "같은 총량 한도를 적용하지 않습니다."
+                "DC와 IRP에서는 위험자산을 계좌 돈의 70%까지만 담을 수 "
+                "있습니다. 위험자산은 주식처럼 가격이 오르내릴 수 있는 "
+                "자산입니다. 적격 TDF와 일부 "
+                "디폴트옵션은 별도 기준이 적용될 수 있습니다. 연금저축펀드에는 "
+                "이 비율 제한이 없지만, 담을 수 있는 상품인지는 확인이 필요합니다."
             )
             numeric.append(
                 NumericEvidence(
@@ -828,14 +843,20 @@ class ChatService:
             )
         ]
         for result in evaluation.account_evaluations:
-            account_name = result.evaluated_input.account_type.value
-            ratio = _decimal_text(result.general_risky_ratio_percent)
+            account_code = result.evaluated_input.account_type.value
+            account_name = _ACCOUNT_TYPE_LABELS[account_code]
             if result.limit_percent is None:
-                account_lines.append(f"{account_name}: 일반 위험자산 {ratio}%")
-            else:
-                status_text = "이내" if result.within_limit else "초과"
                 account_lines.append(
-                    f"{account_name}: 일반 위험자산 {ratio}%로 한도 {status_text}"
+                    f"{account_name} 계좌는 담을 수 있는 상품을 별도로 확인합니다"
+                )
+            else:
+                status_text = (
+                    "기준 안에 있습니다"
+                    if result.within_limit
+                    else "기준을 넘었습니다"
+                )
+                account_lines.append(
+                    f"{account_name} 계좌의 위험자산 비중은 {status_text}"
                 )
             numeric.append(
                 NumericEvidence(
@@ -847,29 +868,33 @@ class ChatService:
                 )
             )
         for item in evaluation.asset_allocations:
+            asset_name = _ASSET_CLASS_LABELS[item.asset_class_code]
             numeric.append(
                 NumericEvidence(
-                    label=f"{item.asset_class_code} 통합 자산군 비중",
+                    label=f"{asset_name} 통합 자산 비중",
                     value=item.allocation_percent,
                     unit="%",
                     evidence_id="engine:scenario",
                     basis="목계좌 통합 집계 엔진 계산",
                 )
             )
-        allocation_text = ", ".join(
-            f"{item.asset_class_code} {_decimal_text(item.allocation_percent)}%"
-            for item in evaluation.asset_allocations
-        )
         duplicate_text = (
-            ", ".join(evaluation.duplicated_asset_classes)
+            ", ".join(
+                _ASSET_CLASS_LABELS[asset]
+                for asset in evaluation.duplicated_asset_classes
+            )
             if evaluation.duplicated_asset_classes
-            else "계좌 간 반복 자산군 없음"
+            else None
+        )
+        account_summary = ". ".join(account_lines)
+        duplicate_summary = (
+            f"여러 계좌에 {duplicate_text}이 겹쳐 있는 점을 먼저 확인해 보세요."
+            if duplicate_text
+            else "계좌 간 같은 자산군의 중복은 확인되지 않았습니다."
         )
         answer = (
-            f"'{scenario.name}' 목시나리오를 규칙 엔진으로 진단했습니다. "
-            + " / ".join(account_lines)
-            + f". 통합 자산군은 {allocation_text}이며, 중복 확인 결과는 "
-            + f"{duplicate_text}입니다."
+            f"현재 계좌 상태를 살펴봤습니다. {account_summary}. "
+            f"자산별 비중은 아래 그래프로 확인해 주세요. {duplicate_summary}"
         )
         return ChatResponse(
             intent=ChatIntent.MOCK_PORTFOLIO,
@@ -878,14 +903,14 @@ class ChatService:
             sections=[
                 AnswerSection(
                     kind=SectionKind.SERVICE_EXPLANATION,
-                    title="계좌별 위험자산 판정",
-                    content=" / ".join(account_lines),
+                    title="계좌별 확인",
+                    content=account_summary,
                     evidence_ids=["engine:scenario"],
                 ),
                 AnswerSection(
                     kind=SectionKind.SERVICE_EXPLANATION,
-                    title="통합 자산군과 중복",
-                    content=f"{allocation_text}; {duplicate_text}",
+                    title="자산 구성 그래프 안내",
+                    content=duplicate_summary,
                     evidence_ids=["mock:scenario", "engine:scenario"],
                 ),
             ],
