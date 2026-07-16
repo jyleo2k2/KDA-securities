@@ -88,6 +88,10 @@ SCENARIO_KEYWORDS = {
     "중복": "overlap_risk_concentration",
     "편중": "overlap_risk_concentration",
 }
+_SELECTED_SCENARIO_DIAGNOSIS_TERMS = re.compile(
+    r"(?:내|나의)\s*(?:연금|계좌|자산).{0,20}(?:관리|상태|구성|확인|어떻게)"
+    r"|지금\s*(?:뭘|무엇을).{0,20}(?:먼저\s*)?확인"
+)
 VERIFIED_AS_OF = date(2026, 7, 13)
 
 _ASSET_CLASS_LABELS = {
@@ -331,6 +335,12 @@ class ChatService:
         direct_plan = plan_question(
             request.message, default_max_results=request.max_results
         )
+        if self._is_selected_scenario_diagnosis_request(request, direct_plan):
+            return QueryPlan(
+                normalized_message=direct_plan.normalized_message,
+                intent=ChatIntent.MOCK_PORTFOLIO,
+                max_results=direct_plan.max_results,
+            )
         if direct_plan.blocked_reason != BlockedReason.UNSUPPORTED:
             return direct_plan
         contextual_message = self._router.contextual_message(request)
@@ -338,6 +348,17 @@ class ChatService:
             return direct_plan
         return plan_question(
             contextual_message, default_max_results=request.max_results
+        )
+
+    @staticmethod
+    def _is_selected_scenario_diagnosis_request(
+        request: ChatRequest, plan: QueryPlan
+    ) -> bool:
+        return (
+            request.scenario_code is not None
+            and plan.intent
+            in (ChatIntent.ACCOUNT_RULE, ChatIntent.OUT_OF_SCOPE)
+            and _SELECTED_SCENARIO_DIAGNOSIS_TERMS.search(request.message) is not None
         )
 
     def ask(
