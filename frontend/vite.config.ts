@@ -3,6 +3,9 @@ import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  // envDir: ".." → 레포 루트의 단일 .env 를 참조한다. Vite 는 VITE_ 접두사 변수만
+  // 브라우저 번들에 노출하므로, 루트 .env 의 서버 비밀키는 절대 클라이언트로 새지 않는다.
+  envDir: "..",
   // host: true → 127.0.0.1·LAN 모두 바인딩(기본값은 IPv6 localhost만). 폰 PWA 테스트도 가능.
   server: { host: true },
   plugins: [

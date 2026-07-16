@@ -19,6 +19,10 @@ uv run uvicorn backend.app.main:app --reload
 
 빌드 검증: `npm run build` (tsc 타입검사 + vite build).
 
+환경변수는 **레포 루트의 단일 `.env`** 를 참조한다(`vite.config.ts`의 `envDir:".."`).
+프론트 전용 `.env`는 두지 않으며, 브라우저에 노출되는 값은 `VITE_` 접두사만 사용한다
+(`VITE_API_BASE_URL`·`VITE_SUPABASE_URL`·`VITE_SUPABASE_PUBLISHABLE_KEY`). 템플릿: 루트 `.env.example`.
+
 ## 구조·의도
 
 - `src/api/types.ts` — FastAPI REST 계약 타입. **백엔드 Decimal 필드는 JSON
