@@ -486,6 +486,14 @@ export interface AnswerSection {
   evidence_ids: string[];
 }
 
+export interface ChatNewsItem {
+  evidence_id: string;
+  title: string;
+  description?: string | null;
+  original_url: string;
+  published_at?: string | null;
+}
+
 export interface BenchmarkDistribution {
   code: string;
   count: number;
@@ -556,6 +564,7 @@ export interface ChatResponse {
   /** Claude 내레이터의 검토 과정 요약(새 숫자 감지 시 서버가 생략). */
   narration_reasoning?: string | null;
   sections: AnswerSection[];
+  news_items: ChatNewsItem[];
   visualizations: ChatVisualization[];
   sources: SourceEvidence[];
   numeric_evidence: NumericEvidence[];
