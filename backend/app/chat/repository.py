@@ -1,11 +1,14 @@
 import json
 import re
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 from uuid import UUID
 
 import psycopg
+from psycopg_pool import ConnectionPool
 
 from .models import ChatResponse, DataBoundary
 
@@ -94,10 +97,22 @@ def _order_message_rows(message_rows: list[_MessageRow]) -> list[_MessageRow]:
 
 
 class ChatRepository:
-    def __init__(self, database_url: str) -> None:
+    def __init__(
+        self, database_url: str, *, pool: ConnectionPool | None = None
+    ) -> None:
         if not database_url:
             raise ValueError("database_url is required")
         self._database_url = database_url
+        self._pool = pool
+
+    @contextmanager
+    def _connection(self) -> Iterator[psycopg.Connection]:
+        if self._pool is None:
+            with psycopg.connect(self._database_url) as connection:
+                yield connection
+            return
+        with self._pool.connection() as connection:
+            yield connection
 
     def save_exchange(
         self,
@@ -112,7 +127,7 @@ class ChatRepository:
 
         title = question.strip()[:80]
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connection() as connection,
             connection.cursor() as cursor,
         ):
             if idempotency_key is not None:
@@ -241,7 +256,7 @@ class ChatRepository:
         """Return an already committed exchange before invoking the LLM."""
 
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connection() as connection,
             connection.cursor() as cursor,
         ):
             return self._find_idempotent_exchange(
@@ -285,7 +300,7 @@ class ChatRepository:
 
     def list_sessions(self, owner_id: UUID) -> list[ChatSessionSummary]:
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connection() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
@@ -303,7 +318,7 @@ class ChatRepository:
         self, *, owner_id: UUID, session_id: UUID
     ) -> list[StoredChatMessage]:
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connection() as connection,
             connection.cursor() as cursor,
         ):
             self._require_owned_session(cursor, session_id, owner_id)

@@ -8,6 +8,7 @@ sentence-transformers는 선택 의존성 그룹(embeddings)이라 미설치 환
 """
 
 from functools import lru_cache
+from threading import RLock
 from typing import Protocol
 
 import psycopg
@@ -26,6 +27,8 @@ class BgeM3Embedder:
     def __init__(self, model_name: str = EMBEDDING_MODEL) -> None:
         self._model_name = model_name
         self._model = None
+        self._query_cache: dict[str, list[float]] = {}
+        self._query_cache_lock = RLock()
 
     def _load(self):
         if self._model is None:
@@ -41,7 +44,30 @@ class BgeM3Embedder:
         return [vector.tolist() for vector in vectors]
 
     def embed_query(self, text: str) -> list[float]:
-        return self.embed([text])[0]
+        key = " ".join(text.split())
+        with self._query_cache_lock:
+            cached = self._query_cache.get(key)
+        if cached is not None:
+            return cached
+        vector = self.embed([text])[0]
+        with self._query_cache_lock:
+            self._query_cache[key] = vector
+        return vector
+
+    def prewarm_queries(self, texts: tuple[str, ...]) -> None:
+        """Load the model once and cache vectors for fixed UI prompts."""
+
+        missing = tuple(
+            text
+            for text in texts
+            if " ".join(text.split()) not in self._query_cache
+        )
+        if not missing:
+            return
+        vectors = self.embed(list(missing))
+        with self._query_cache_lock:
+            for text, vector in zip(missing, vectors, strict=True):
+                self._query_cache[" ".join(text.split())] = vector
 
 
 @lru_cache(maxsize=1)

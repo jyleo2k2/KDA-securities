@@ -1,8 +1,11 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
 import psycopg
+from psycopg_pool import ConnectionPool
 
 from ..ingestion.embeddings import QueryEmbedder, vector_literal
 from ..text_normalization import normalize_search_text
@@ -54,12 +57,26 @@ class RetrievalRepository:
     """Keep verified-knowledge search separate from latest-news lookup."""
 
     def __init__(
-        self, database_url: str, *, embedder: QueryEmbedder | None = None
+        self,
+        database_url: str,
+        *,
+        embedder: QueryEmbedder | None = None,
+        pool: ConnectionPool | None = None,
     ) -> None:
         if not database_url:
             raise ValueError("database_url is required")
         self._database_url = database_url
         self._embedder = embedder
+        self._pool = pool
+
+    @contextmanager
+    def _connection(self) -> Iterator[psycopg.Connection]:
+        if self._pool is None:
+            with psycopg.connect(self._database_url) as connection:
+                yield connection
+            return
+        with self._pool.connection() as connection:
+            yield connection
 
     def search_knowledge(self, query: str, *, limit: int = 8) -> list[KnowledgeMatch]:
         tokens = search_tokens(query)
@@ -86,7 +103,7 @@ class RetrievalRepository:
         self, tsquery: str, *, limit: int
     ) -> list[KnowledgeMatch]:
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connection() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
@@ -137,7 +154,7 @@ class RetrievalRepository:
     ) -> list[KnowledgeMatch]:
         """Fuse full-text and vector ranks with RRF; text_rank carries the score."""
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connection() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
@@ -259,7 +276,7 @@ class RetrievalRepository:
             return []
         bounded_limit = max(1, min(limit, 100))
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connection() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
@@ -303,7 +320,7 @@ class RetrievalRepository:
         limit: int = 3,
     ) -> list[NewsMatch]:
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connection() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(

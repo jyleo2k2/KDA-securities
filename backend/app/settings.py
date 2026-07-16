@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     pension_portal_api_key: SecretStr | None = None
     anthropic_api_key: SecretStr | None = None
     anthropic_model: str = "claude-sonnet-5"
+    enable_claude_narration: bool = False
     krx_api_key: SecretStr | None = None
     kis_app_key: SecretStr | None = None
     kis_app_secret: SecretStr | None = None
