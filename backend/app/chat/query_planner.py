@@ -174,6 +174,8 @@ def _max_results(message: str, default: int) -> int:
 
 
 def _news_query(message: str) -> str:
+    if "연금" in message:
+        return "연금"
     query = _COUNT.sub(" ", message)
     for pattern, _ in _KOREAN_COUNT:
         query = pattern.sub(" ", query)
@@ -231,12 +233,13 @@ def plan_question(message: str, *, default_max_results: int = 3) -> QueryPlan:
             requests_withdrawal_tax=requests_withdrawal_tax,
         )
     if _NEWS_TERMS.search(normalized):
+        news_query = "연금" if account_types else _news_query(normalized)
         return QueryPlan(
             normalized_message=normalized,
             intent=ChatIntent.NEWS,
             account_types=account_types,
-            news_query=_news_query(normalized),
-            max_results=max_results,
+            news_query=news_query,
+            max_results=3 if news_query == "연금" else max_results,
         )
     if _DISCLOSURE_TERMS.search(normalized) and account_types:
         if len(account_types) > 1:

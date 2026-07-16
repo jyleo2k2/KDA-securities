@@ -1,0 +1,37 @@
+name: Daily NAVER pension news ingestion
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+      timezone: "Asia/Seoul"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: naver-pension-news-ingestion
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      NAVER_API_HUB_CLIENT_ID: ${{ secrets.NAVER_API_HUB_CLIENT_ID }}
+      NAVER_API_HUB_CLIENT_SECRET: ${{ secrets.NAVER_API_HUB_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: Ingest recent pension news metadata
+        run: >-
+          uv run python -m backend.app.ingestion.naver
+          --query "연금"
+          --display 100
+          --start 1
+          --sort date
+          --max-pages 10
+          --max-age-days 7

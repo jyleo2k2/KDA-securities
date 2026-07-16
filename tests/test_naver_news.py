@@ -1,5 +1,5 @@
 import unicodedata
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from uuid import UUID
 
@@ -17,6 +17,7 @@ from backend.app.ingestion.naver_news import (
     fetch_naver_news,
 )
 from backend.app.ingestion.naver_news_repository import (
+    NaverNewsLoadResult,
     NaverNewsRepository,
     NaverNewsRepositoryError,
 )
@@ -54,6 +55,27 @@ class _TransitionConnection:
 
     def cursor(self) -> _TransitionCursor:
         return self._cursor
+
+
+class _CompletionCursor(_TransitionCursor):
+    def __init__(self, inserted_count: int) -> None:
+        super().__init__(rowcount=0)
+        self.inserted_count = inserted_count
+        self.statements: list[str] = []
+        self.metadata: dict[str, object] | None = None
+
+    def execute(self, statement: str, params: tuple[object, ...]) -> None:
+        self.statements.append(statement)
+        self.last_params = params
+        self.rowcount = 1
+        if "update public.ingestion_runs" in statement:
+            self.metadata = params[3].obj
+
+    def executemany(
+        self, statement: str, _: list[dict[str, object]]
+    ) -> None:
+        self.statements.append(statement)
+        self.rowcount = self.inserted_count
 
 
 def _client(payload: dict[str, object], status_code: int = 200) -> httpx.Client:
@@ -261,9 +283,9 @@ def test_naver_ingestion_uses_one_canonical_query_for_api_and_storage(
             observed_queries.append(query)
             return run_id, 1
 
-        def complete_run(self, *, query: str, **_: object) -> int:
+        def complete_run(self, *, query: str, **_: object) -> NaverNewsLoadResult:
             observed_queries.append(query)
-            return 1
+            return NaverNewsLoadResult(inserted_count=1, duplicate_count=0)
 
         def fail_run(self, _: UUID, __: Exception) -> None:
             raise AssertionError("failure path must not run")
@@ -299,6 +321,55 @@ def test_naver_ingestion_uses_one_canonical_query_for_api_and_storage(
     assert result["outcome"] == "succeeded"
 
 
+def test_naver_ingestion_pages_until_age_cutoff_and_filters_old_items(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    starts: list[int] = []
+    now = datetime(2026, 7, 16, 12, tzinfo=UTC)
+    recent = NaverNewsItem(
+        title="최근 기사",
+        description=None,
+        original_url="https://publisher.example/recent",
+        portal_url=None,
+        published_at=now - timedelta(days=1),
+        raw_metadata={},
+    )
+    old = NaverNewsItem(
+        title="오래된 기사",
+        description=None,
+        original_url="https://publisher.example/old",
+        portal_url=None,
+        published_at=now - timedelta(days=8),
+        raw_metadata={},
+    )
+
+    def fake_fetch(*_: object, start: int, **__: object) -> NaverNewsResponse:
+        starts.append(start)
+        items = [recent] * 100 if start == 1 else [recent] * 99 + [old]
+        return NaverNewsResponse(250, start, 100, 100, items, ())
+
+    monkeypatch.setattr(naver_ingestion, "fetch_naver_news", fake_fetch)
+
+    result = naver_ingestion.run_live_ingestion(
+        client_id="not-logged",
+        client_secret="not-logged",
+        database_url=None,
+        fetch_only=True,
+        query="연금",
+        display=100,
+        start=1,
+        sort="date",
+        max_pages=10,
+        max_age_days=7,
+        now=now,
+    )
+
+    assert starts == [1, 101]
+    assert result["pages_fetched"] == 2
+    assert result["raw_received"] == 200
+    assert result["received"] == 199
+
+
 @pytest.mark.parametrize(
     ("outcome", "exit_code"),
     [("succeeded", 0), ("partial", 1), ("failed", 1)],
@@ -313,6 +384,8 @@ def test_naver_cli_exit_code_reflects_full_success_only(
         display=1,
         start=1,
         sort="date",
+        max_pages=1,
+        max_age_days=None,
         fetch_only=True,
     )
     settings = SimpleNamespace(
@@ -356,6 +429,48 @@ def test_naver_completion_requires_one_running_row_and_rolls_back(
         )
 
     assert connection.rolled_back is True
+
+
+def test_naver_completion_inserts_only_new_urls_and_records_duplicates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cursor = _CompletionCursor(inserted_count=1)
+    connection = _TransitionConnection(cursor)
+    monkeypatch.setattr(
+        naver_repository_module.psycopg,
+        "connect",
+        lambda _: connection,
+    )
+    repository = NaverNewsRepository("postgresql://example.invalid/db")
+    published_at = datetime(2026, 7, 16, 10, tzinfo=UTC)
+    items = [
+        NaverNewsItem(
+            title=f"기사 {index}",
+            description=None,
+            original_url=f"https://publisher.example/{index}",
+            portal_url=None,
+            published_at=published_at - timedelta(hours=index),
+            raw_metadata={},
+        )
+        for index in range(2)
+    ]
+
+    result = repository.complete_run(
+        run_id=UUID("00000000-0000-0000-0000-000000000001"),
+        source_id=1,
+        query="연금",
+        response=NaverNewsResponse(2, 1, 2, 2, items, (), pages_fetched=1),
+    )
+
+    assert result == NaverNewsLoadResult(inserted_count=1, duplicate_count=1)
+    assert any(
+        "on conflict (source_id, original_url) do nothing" in statement
+        for statement in cursor.statements
+    )
+    assert cursor.metadata is not None
+    assert cursor.metadata["inserted_record_count"] == 1
+    assert cursor.metadata["duplicate_record_count"] == 1
+    assert cursor.metadata["pages_fetched"] == 1
 
 
 @pytest.mark.parametrize(("rowcount", "expected"), [(1, True), (0, False)])

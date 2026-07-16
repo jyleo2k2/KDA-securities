@@ -1,5 +1,6 @@
 import argparse
 import json
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -12,9 +13,14 @@ from backend.app.text_normalization import normalize_search_text
 from .naver_news import (
     NaverNewsAllItemsRejectedError,
     NaverNewsApiError,
+    NaverNewsResponse,
     fetch_naver_news,
 )
-from .naver_news_repository import NaverNewsRepository, NaverNewsRepositoryError
+from .naver_news_repository import (
+    NaverNewsLoadResult,
+    NaverNewsRepository,
+    NaverNewsRepositoryError,
+)
 
 _EXPECTED_INGESTION_ERRORS = (
     NaverNewsApiError,
@@ -46,6 +52,9 @@ def run_live_ingestion(
     display: int,
     start: int,
     sort: str,
+    max_pages: int = 1,
+    max_age_days: int | None = None,
+    now: datetime | None = None,
 ) -> dict[str, Any]:
     canonical_query = normalize_search_text(query)
     if not canonical_query:
@@ -56,10 +65,17 @@ def run_live_ingestion(
         raise ValueError("start must be between 1 and 1000")
     if sort not in {"date", "sim"}:
         raise ValueError("sort must be date or sim")
+    if not 1 <= max_pages <= 10:
+        raise ValueError("max_pages must be between 1 and 10")
+    if max_age_days is not None and not 1 <= max_age_days <= 365:
+        raise ValueError("max_age_days must be between 1 and 365")
+    if max_age_days is not None and sort != "date":
+        raise ValueError("max_age_days requires date sorting")
 
     repository = None if fetch_only else NaverNewsRepository(database_url or "")
     run_id = None
     source_id = None
+    load_result = NaverNewsLoadResult(inserted_count=0, duplicate_count=0)
     try:
         if repository:
             run_id, source_id = repository.start_run(
@@ -67,19 +83,63 @@ def run_live_ingestion(
                 display=display,
                 start=start,
                 sort=sort,
+                max_pages=max_pages,
+                max_age_days=max_age_days,
             )
         with httpx.Client(timeout=30.0) as client:
-            response = fetch_naver_news(
-                client,
-                client_id=client_id,
-                client_secret=client_secret,
-                query=canonical_query,
-                display=display,
+            current_start = start
+            cutoff = (
+                (now or datetime.now(UTC)) - timedelta(days=max_age_days)
+                if max_age_days is not None
+                else None
+            )
+            items = []
+            rejected_reasons: list[str] = []
+            raw_item_count = 0
+            total = 0
+            pages_fetched = 0
+            for _ in range(max_pages):
+                page = fetch_naver_news(
+                    client,
+                    client_id=client_id,
+                    client_secret=client_secret,
+                    query=canonical_query,
+                    display=display,
+                    start=current_start,
+                    sort=sort,
+                )
+                pages_fetched += 1
+                total = max(total, page.total)
+                raw_item_count += page.raw_item_count
+                rejected_reasons.extend(page.rejected_reasons)
+                reached_cutoff = cutoff is not None and any(
+                    item.published_at < cutoff for item in page.items
+                )
+                items.extend(
+                    item
+                    for item in page.items
+                    if cutoff is None or item.published_at >= cutoff
+                )
+                next_start = current_start + display
+                if (
+                    reached_cutoff
+                    or page.raw_item_count < display
+                    or next_start > 1000
+                    or next_start > page.total
+                ):
+                    break
+                current_start = next_start
+            response = NaverNewsResponse(
+                total=total,
                 start=start,
-                sort=sort,
+                display=raw_item_count,
+                raw_item_count=raw_item_count,
+                items=items,
+                rejected_reasons=tuple(rejected_reasons),
+                pages_fetched=pages_fetched,
             )
         if repository and run_id is not None and source_id is not None:
-            repository.complete_run(
+            load_result = repository.complete_run(
                 run_id=run_id,
                 source_id=source_id,
                 query=canonical_query,
@@ -116,8 +176,11 @@ def run_live_ingestion(
         "total": response.total,
         "raw_received": response.raw_item_count,
         "received": len(response.items),
+        "inserted": load_result.inserted_count,
+        "duplicates": load_result.duplicate_count,
         "rejected": response.rejected_count,
         "rejection_reasons": list(response.rejected_reasons),
+        "pages_fetched": response.pages_fetched,
         "sort": sort,
         "outcome": response.outcome,
     }
@@ -131,6 +194,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--display", type=int, default=10)
     parser.add_argument("--start", type=int, default=1)
     parser.add_argument("--sort", choices=("date", "sim"), default="date")
+    parser.add_argument("--max-pages", type=int, default=1)
+    parser.add_argument("--max-age-days", type=int)
     parser.add_argument("--fetch-only", action="store_true")
     return parser
 
@@ -165,6 +230,8 @@ def main() -> int:
         display=args.display,
         start=args.start,
         sort=args.sort,
+        max_pages=args.max_pages,
+        max_age_days=args.max_age_days,
     )
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
     return 0 if result["outcome"] == "succeeded" else 1
