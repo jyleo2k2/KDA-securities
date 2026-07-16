@@ -3,6 +3,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 import psycopg
+import pytest
 
 from backend.app.chat.disclosures import ProviderDisclosure
 from backend.app.chat.knowledge import FallbackKnowledgeRepository
@@ -75,6 +76,26 @@ def test_selected_scenario_does_not_hijack_account_rule_question() -> None:
     assert response.intent is ChatIntent.ACCOUNT_RULE
     assert response.conversation_context is not None
     assert response.conversation_context.scenario_code == "dc_dormant"
+
+
+@pytest.mark.parametrize(
+    "message",
+    (
+        "내 연금은 어떻게 관리하면 좋을까?",
+        "내 계좌 상태 알려줘",
+        "지금 뭘 먼저 확인해야 해?",
+    ),
+)
+def test_selected_scenario_routes_natural_management_questions_to_diagnosis(
+    message: str,
+) -> None:
+    response = _service().ask(
+        ChatRequest(message=message, scenario_code="dc_dormant")
+    )
+
+    assert response.intent is ChatIntent.MOCK_PORTFOLIO
+    assert response.data_mode == "mock_scenario"
+    assert response.scenario_evaluation is not None
 
 
 def test_remote_knowledge_empty_or_failed_falls_back_to_local_documents() -> None:
