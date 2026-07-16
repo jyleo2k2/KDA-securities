@@ -3,8 +3,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute, request_response
 
 from .api import chat, disclosures, engine, retrieval, system
-from .api.deps import get_chat_narrator, get_chat_service
-from .api.engine import AuditedRiskCapResponse, risk_cap, risk_cap_audited
+from .api.deps import (
+    get_chat_narrator,
+    get_chat_service,
+    get_krx_market_evidence_repository,
+    get_portfolio_universe_repository,
+)
+from .api.engine import (
+    AuditedRiskCapResponse,
+    educational_portfolio,
+    etf_planning_assessment,
+    etf_planning_return,
+    risk_cap,
+    risk_cap_audited,
+)
 from .api.system import health
 from .settings import get_settings
 
@@ -12,8 +24,13 @@ __all__ = [
     "AuditedRiskCapResponse",
     "app",
     "create_app",
+    "educational_portfolio",
+    "etf_planning_assessment",
+    "etf_planning_return",
     "get_chat_narrator",
     "get_chat_service",
+    "get_krx_market_evidence_repository",
+    "get_portfolio_universe_repository",
     "health",
     "risk_cap",
     "risk_cap_audited",

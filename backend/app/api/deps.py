@@ -1,5 +1,6 @@
-"""Shared dependencies for API routers (503 when the database is absent)."""
+"""Shared dependencies for API routers."""
 
+from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
@@ -14,7 +15,10 @@ from ..chat.repository import ChatRepository
 from ..chat.scenarios import LocalScenarioRepository
 from ..chat.service import ChatService
 from ..engine.audit import EngineAuditRepository
+from ..engine.models import AccountType
 from ..ingestion.embeddings import get_query_embedder
+from ..market_evidence_repository import KrxMarketEvidenceRepository
+from ..portfolio_universe_repository import PortfolioUniverseRepository
 from ..retrieval.disclosures_repository import DisclosureReadRepository
 from ..retrieval.repository import RetrievalRepository
 from ..settings import Settings, get_settings
@@ -43,6 +47,23 @@ def get_engine_audit_repository(
             settings, detail="Engine audit database is not configured"
         )
     )
+
+
+def get_krx_market_evidence_repository() -> KrxMarketEvidenceRepository:
+    try:
+        return KrxMarketEvidenceRepository.from_latest_cache()
+    except (FileNotFoundError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Current KRX market evidence is not available",
+        ) from exc
+
+
+@lru_cache(maxsize=3)
+def get_portfolio_universe_repository(
+    account_type: AccountType,
+) -> PortfolioUniverseRepository:
+    return PortfolioUniverseRepository.from_latest_cache(account_type)
 
 
 def get_retrieval_repository(

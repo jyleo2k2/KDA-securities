@@ -11,6 +11,7 @@
 .env
 .env.*
 !.env.example
+env
 *.pem
 *.key
 secrets/
@@ -29,6 +30,7 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
+.uv-cache/
 venv/
 .pytest_cache/
 .ruff_cache/
