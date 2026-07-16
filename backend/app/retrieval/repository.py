@@ -259,3 +259,34 @@ class RetrievalRepository:
                 (search_query, max(1, min(limit, 100))),
             )
             return [NewsMatch(*row) for row in cursor]
+
+    def random_recent_news(
+        self,
+        search_query: str,
+        *,
+        days: int = 5,
+        limit: int = 3,
+    ) -> list[NewsMatch]:
+        with (
+            psycopg.connect(self._database_url) as connection,
+            connection.cursor() as cursor,
+        ):
+            cursor.execute(
+                """
+                select
+                    id::text, title, description, original_url,
+                    portal_url, published_at
+                from public.news_items
+                where search_query = %s
+                  and published_at >= now() - make_interval(days => %s)
+                  and published_at <= now()
+                order by random()
+                limit %s
+                """,
+                (
+                    search_query,
+                    max(1, min(days, 365)),
+                    max(1, min(limit, 100)),
+                ),
+            )
+            return [NewsMatch(*row) for row in cursor]

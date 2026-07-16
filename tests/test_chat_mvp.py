@@ -52,17 +52,30 @@ class FakeDisclosureRepository:
 
 class FakeNewsRepository:
     def latest_news(self, search_query, *, limit=10):
+        raise AssertionError("연금 뉴스는 최신순 조회를 사용하면 안 됩니다")
+
+    def random_recent_news(self, search_query, *, days=5, limit=3):
         assert search_query == "연금"
+        assert days == 5
+        assert limit == 3
         return [
             NewsMatch(
-                item_id="news-1",
-                title="연금 제도 관련 공식 발표",
-                description="검색 API 메타데이터 요약",
-                original_url="https://example.test/news/1",
+                item_id=f"news-{index}",
+                title=f"연금 제도 관련 공식 발표 {index}",
+                description=f"검색 API 메타데이터 요약 {index}",
+                original_url=f"https://example.test/news/{index}",
                 portal_url=None,
                 published_at=datetime(2026, 7, 14, tzinfo=UTC),
             )
-        ][:limit]
+            for index in range(1, 4)
+        ]
+
+
+class SparseNewsRepository(FakeNewsRepository):
+    def random_recent_news(self, search_query, *, days=5, limit=3):
+        return super().random_recent_news(
+            search_query, days=days, limit=limit
+        )[:2]
 
 
 def service(
@@ -183,10 +196,20 @@ def test_news_response_exposes_metadata_and_original_link() -> None:
     )
 
     assert response.intent == ChatIntent.NEWS
+    assert len(response.sources) == 3
     assert response.sources[0].locator == "https://example.test/news/1"
     assert response.sources[0].evidence_id == "news:news-1"
     assert response.sources[0].data_boundary == "news_metadata"
     assert "기사 본문이 아닌" in response.limitations[0]
+
+
+def test_news_response_explains_when_fewer_than_three_recent_items_exist() -> None:
+    response = service(news=SparseNewsRepository()).ask(
+        ChatRequest(message="IRP 뉴스 알려줘")
+    )
+
+    assert len(response.sources) == 2
+    assert "세 건 미만" in response.limitations[-1]
 
 
 def test_response_rejects_numbers_without_sources() -> None:

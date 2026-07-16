@@ -161,12 +161,21 @@ def test_multiple_account_disclosures_require_one_account_at_a_time() -> None:
 
 def test_news_topic_and_requested_count_are_canonical() -> None:
     samsung = plan_question("삼성전자 가장 최근 뉴스 하나 찾아줘")
-    pension = plan_question("퇴직연금 최신 뉴스 3건 알려줘")
+    pension = plan_question("퇴직연금 최신 뉴스 5건 알려줘")
 
     assert samsung.news_query == "삼성전자"
     assert samsung.max_results == 1
-    assert pension.news_query == "퇴직연금"
+    assert pension.news_query == "연금"
     assert pension.max_results == 3
+
+
+@pytest.mark.parametrize("message", ("IRP 뉴스", "DC형 뉴스", "연금저축 뉴스"))
+def test_pension_account_news_uses_pension_news_policy(message: str) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent == ChatIntent.NEWS
+    assert plan.news_query == "연금"
+    assert plan.max_results == 3
 
 
 def test_news_command_removal_keeps_words_that_contain_news_terms() -> None:

@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from uuid import UUID
 
 import psycopg
@@ -16,6 +17,12 @@ class NaverNewsRepositoryError(RuntimeError):
     """A repository contract failure safe to expose in ingestion output."""
 
 
+@dataclass(frozen=True, slots=True)
+class NaverNewsLoadResult:
+    inserted_count: int
+    duplicate_count: int
+
+
 class NaverNewsRepository:
     def __init__(self, database_url: str) -> None:
         if not database_url:
@@ -29,6 +36,8 @@ class NaverNewsRepository:
         display: int,
         start: int,
         sort: str,
+        max_pages: int,
+        max_age_days: int | None,
     ) -> tuple[UUID, int]:
         query = normalize_search_text(query)
         if not query:
@@ -38,6 +47,8 @@ class NaverNewsRepository:
             "display": display,
             "start": start,
             "sort": sort,
+            "max_pages": max_pages,
+            "max_age_days": max_age_days,
         }
         with (
             psycopg.connect(self._database_url) as connection,
@@ -102,7 +113,7 @@ class NaverNewsRepository:
         source_id: int,
         query: str,
         response: NaverNewsResponse,
-    ) -> int:
+    ) -> NaverNewsLoadResult:
         query = normalize_search_text(query)
         if not query:
             raise ValueError("query must not be empty")
@@ -124,30 +135,27 @@ class NaverNewsRepository:
             psycopg.connect(self._database_url) as connection,
             connection.cursor() as cursor,
         ):
-            # TODO: add news_item_query_links so one URL can retain every query match.
-            cursor.executemany(
-                """
-                insert into public.news_items (
-                    source_id, ingestion_run_id, search_query, title, description,
-                    original_url, portal_url, published_at, raw_metadata
+            if rows:
+                cursor.executemany(
+                    """
+                    insert into public.news_items (
+                        source_id, ingestion_run_id, search_query, title, description,
+                        original_url, portal_url, published_at, raw_metadata
+                    )
+                    values (
+                        %(source_id)s, %(ingestion_run_id)s, %(search_query)s,
+                        %(title)s, %(description)s, %(original_url)s,
+                        %(portal_url)s, %(published_at)s, %(raw_metadata)s
+                    )
+                    on conflict (source_id, original_url) do nothing
+                    """,
+                    rows,
                 )
-                values (
-                    %(source_id)s, %(ingestion_run_id)s, %(search_query)s,
-                    %(title)s, %(description)s, %(original_url)s,
-                    %(portal_url)s, %(published_at)s, %(raw_metadata)s
-                )
-                on conflict (source_id, original_url) do update set
-                    ingestion_run_id = excluded.ingestion_run_id,
-                    search_query = excluded.search_query,
-                    title = excluded.title,
-                    description = excluded.description,
-                    portal_url = excluded.portal_url,
-                    published_at = excluded.published_at,
-                    fetched_at = now(),
-                    raw_metadata = excluded.raw_metadata
-                """,
-                rows,
-            )
+                inserted_count = max(cursor.rowcount, 0)
+            else:
+                inserted_count = 0
+            duplicate_count = len(rows) - inserted_count
+            published_times = [item.published_at for item in response.items]
             cursor.execute(
                 """
                 update public.ingestion_runs
@@ -170,6 +178,19 @@ class NaverNewsRepository:
                             "total_search_results": response.total,
                             "rejected_record_count": response.rejected_count,
                             "rejection_reasons": list(response.rejected_reasons),
+                            "inserted_record_count": inserted_count,
+                            "duplicate_record_count": duplicate_count,
+                            "pages_fetched": response.pages_fetched,
+                            "newest_published_at": (
+                                max(published_times).isoformat()
+                                if published_times
+                                else None
+                            ),
+                            "oldest_published_at": (
+                                min(published_times).isoformat()
+                                if published_times
+                                else None
+                            ),
                             "outcome": response.outcome,
                             "data_boundary": "news_metadata",
                             "is_mock": False,
@@ -182,7 +203,10 @@ class NaverNewsRepository:
                 raise NaverNewsRepositoryError(
                     "NAVER ingestion run was not running during completion"
                 )
-        return len(rows)
+        return NaverNewsLoadResult(
+            inserted_count=inserted_count,
+            duplicate_count=duplicate_count,
+        )
 
     def fail_run(self, run_id: UUID, error: Exception) -> bool:
         if isinstance(error, psycopg.Error):

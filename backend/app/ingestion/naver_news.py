@@ -62,6 +62,7 @@ class NaverNewsResponse:
     raw_item_count: int
     items: list[NaverNewsItem]
     rejected_reasons: tuple[str, ...]
+    pages_fetched: int = 1
 
     @property
     def rejected_count(self) -> int:

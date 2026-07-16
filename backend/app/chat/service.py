@@ -57,6 +57,10 @@ class DisclosureSearch(Protocol):
 class NewsSearch(Protocol):
     def latest_news(self, search_query: str, *, limit: int = 10) -> list[NewsMatch]: ...
 
+    def random_recent_news(
+        self, search_query: str, *, days: int = 5, limit: int = 3
+    ) -> list[NewsMatch]: ...
+
 
 SCENARIO_KEYWORDS = {
     "방치": "dc_dormant",
@@ -984,11 +988,20 @@ class ChatService:
                 data_mode="unavailable",
                 limitations=["NAVER 뉴스 수집과 DATABASE_URL이 필요합니다."],
             )
-        matches = self._news.latest_news(search_query, limit=request.max_results)
+        is_pension_news = search_query == "연금"
+        matches = (
+            self._news.random_recent_news(search_query, days=5, limit=3)
+            if is_pension_news
+            else self._news.latest_news(search_query, limit=request.max_results)
+        )
         if not matches:
             return ChatResponse(
                 intent=ChatIntent.NEWS,
-                answer="해당 검색어로 저장된 뉴스 메타데이터를 찾지 못했습니다.",
+                answer=(
+                    "최근 닷새간 저장된 연금 뉴스 메타데이터를 찾지 못했습니다."
+                    if is_pension_news
+                    else "해당 검색어로 저장된 뉴스 메타데이터를 찾지 못했습니다."
+                ),
                 data_mode="news_metadata",
                 limitations=["기사 본문을 임의로 생성하지 않습니다."],
             )
@@ -1009,6 +1022,14 @@ class ChatService:
             else item.title
             for item in matches
         ]
+        limitations = [
+            "기사 본문이 아닌 제목·요약·원문 링크 메타데이터입니다.",
+            "뉴스 사실과 외부 의견은 원문에서 다시 확인해야 합니다.",
+        ]
+        if is_pension_news and len(matches) < 3:
+            limitations.append(
+                "최근 닷새간 저장된 기사가 세 건 미만이라 조회된 기사만 제공합니다."
+            )
         return ChatResponse(
             intent=ChatIntent.NEWS,
             answer=" / ".join(lines),
@@ -1016,16 +1037,17 @@ class ChatService:
             sections=[
                 AnswerSection(
                     kind=SectionKind.EXTERNAL_OPINION,
-                    title="뉴스 검색 메타데이터",
+                    title=(
+                        "최근 닷새 연금 뉴스 메타데이터"
+                        if is_pension_news
+                        else "뉴스 검색 메타데이터"
+                    ),
                     content=" / ".join(lines),
                     evidence_ids=_source_ids(sources),
                 )
             ],
             sources=sources,
-            limitations=[
-                "기사 본문이 아닌 제목·요약·원문 링크 메타데이터입니다.",
-                "뉴스 사실과 외부 의견은 원문에서 다시 확인해야 합니다.",
-            ],
+            limitations=limitations,
         )
 
     @staticmethod
