@@ -77,6 +77,29 @@ def test_reranker_prioritizes_title_and_full_query_coverage() -> None:
     assert results[0].text_rank > results[1].text_rank
 
 
+def test_reranker_prioritizes_all_exact_content_terms_over_partial_title() -> None:
+    partial_title = _match(
+        chunk_id=1,
+        title="TDF 예외 안내",
+        content="관련 제도를 설명합니다.",
+        text_rank=0.9,
+    )
+    exact_content = _match(
+        chunk_id=2,
+        title="연금 제도 안내",
+        content="적격 TDF 예외는 분산투자 요건을 충족해야 합니다.",
+        text_rank=0.1,
+    )
+
+    results = rerank_knowledge_matches(
+        [partial_title, exact_content],
+        search_tokens("적격 TDF 예외"),
+        limit=2,
+    )
+
+    assert results[0].chunk_id == exact_content.chunk_id
+
+
 def test_repository_expands_candidates_and_uses_prefix_or_query(monkeypatch) -> None:
     repository = RetrievalRepository("postgresql://test")
     captured: dict[str, object] = {}

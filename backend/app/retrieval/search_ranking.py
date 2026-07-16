@@ -149,6 +149,7 @@ def _score(match: "KnowledgeMatch", query_tokens: tuple[str, ...]) -> float:
         "authority": set(search_tokens(match.source_authority or "", max_tokens=50)),
     }
     matched_any: set[str] = set()
+    exact_content_matches: set[str] = set()
     score = 0.0
     for token in query_tokens:
         if _matches(token, fields["title"]):
@@ -157,6 +158,8 @@ def _score(match: "KnowledgeMatch", query_tokens: tuple[str, ...]) -> float:
         if _matches(token, fields["content"]):
             score += 1.5
             matched_any.add(token)
+        if token in fields["content"]:
+            exact_content_matches.add(token)
         if _matches(token, fields["publisher"]):
             score += 2.0
             matched_any.add(token)
@@ -165,6 +168,10 @@ def _score(match: "KnowledgeMatch", query_tokens: tuple[str, ...]) -> float:
             matched_any.add(token)
     if query_tokens:
         score += 6.0 * len(matched_any) / len(query_tokens)
+        if len(query_tokens) >= 3 and len(exact_content_matches) == len(query_tokens):
+            # Short Korean prefix tokens are permissive. A chunk containing every
+            # query token exactly is more specific than a title-only partial hit.
+            score += 6.0
     score += _DOCUMENT_TYPE_BOOST.get(match.document_type or "", 0.0)
     score += max(0.0, min(float(match.text_rank), 1.0))
     return score
