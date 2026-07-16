@@ -53,14 +53,14 @@
 | `retirement_provider_stats` | 126 |
 | `financial_institutions` | 102 |
 | `news_items` | 10 |
-| `knowledge_documents` | 1 |
-| `knowledge_chunks` | 1 |
+| `knowledge_documents` | 2 |
+| `knowledge_chunks` | 31 |
 | `mock_scenarios` | 3 |
 | `mock_accounts` | 6 |
 | `mock_holdings` | 10 |
 | `auth.users` | 0 |
 
-`knowledge_chunks` 1건은 이미 `embedding_dimensions=1024`이며 embedding 값도 존재한다.
+`knowledge_chunks` 31건 모두 `embedding_dimensions=1024`이며 embedding 값이 존재한다.
 
 ### 현재 36개 테이블의 역할
 
@@ -258,6 +258,17 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-16 11:35 KST
+
+- 작업자: Claude, 사용자(이재용) 요청에 따른 RAG 지식 코퍼스 실적재.
+- 변경 범위: `knowledge_documents`/`knowledge_chunks`만 다룬다. 같은 시점 반영된 `20260716001737` 사용자·성향·계좌 도메인 작업과는 무관하다.
+- 변경 내용: 청크 사이즈 `DEFAULT_CHUNK_CHARS` 1800→800자(`backend/app/ingestion/knowledge.py`). 세액공제 신규 문서(`docs/40_규제/연금계좌_세액공제.md`, 소득세법 제59조의3·국세청 공식 안내를 WebFetch로 원문 대조 확인 후 작성) 추가. `연금_기초.md:155`에 프로젝트 공식 용어 "적격 TDF"를 반영(사실관계 변경 없음, 검색 신호 보강).
+- 원격 적용: `scripts/ingest_knowledge.py`, `scripts/embed_knowledge_chunks.py` 실행. `knowledge_documents` 1→2건, `knowledge_chunks` 1→31건(전건 BGE-M3 1024차원 embedding 보유).
+- 검증: 원격 하이브리드 검색 실측(이번이 최초의 다중 문서 기준 실측) `mode=hybrid, Hit@5=1.000, Hit@1=1.000, MRR@5=1.000 (10/10)`. 로컬 `uv run pytest` 347 passed, `uv run ruff check .` 통과.
+- 발견 및 조치: 청크 사이즈 축소 직후 1차 실측에서 `critical_top1` 케이스(`tdf-exception`) 실패(Hit@1=0.900)를 확인했다. 원인은 청크 크기가 아니라 원문에 "적격"이라는 정확한 용어가 없어 무관 청크와 오매칭된 것이었다. 용어 보강 후 재적재·재임베딩으로 해결을 확인했다(추측 없이 실제 top-5 결과를 조회해 원인 특정).
+- 벤치마크 갱신: `data/search_quality/knowledge_v1.json`의 `tax-credit` 케이스 정답 문서를 신규 세액공제 문서로 갱신(문서 유형 부스트로 regulation 문서가 우선하는 것이 의도된 동작).
+- 다음 작업: 벤치마크 쿼리를 10개→50개 이상으로 확충(문서가 2개 이상이 된 지금부터 유의미), 나머지 후보 문서(퇴직연금감독규정 등) 순차 추가.
 
 ### 2026-07-16 10:59 KST
 
