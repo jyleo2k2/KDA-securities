@@ -1,5 +1,13 @@
 @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap");
 
+@font-face {
+  font-family: "Cafe24SsurroundAir";
+  src: url("./assets/fonts/Cafe24SsurroundAir.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   font-family: "Noto Sans KR", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #17251f;
@@ -186,7 +194,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 
 /* 챗봇 디자인 ZIP의 모바일 화면을 실제 GuidePage 기능에 적용한다. */
 .guide-tab { background: #e8e8dd; }
-.guide-tab .app-shell { position: relative; width: min(100%, 480px); margin: 0 auto; background: #fff; }
+.guide-tab .app-shell { position: relative; width: min(100%, 480px); margin: 0 auto; background: #fff; font-family: "Cafe24SsurroundAir", "Noto Sans KR", sans-serif; }
 .guide-tab .sidebar { z-index: 40; transform: translateX(-100%); transition: transform .24s ease; }
 .guide-tab .sidebar.sidebar-open { transform: translateX(0); }
 .guide-tab .chat-main { margin-left: 0; background: #fff; }
