@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .models import SourceChip
 
 ENGINE_NAME = "historical_etf_evidence"
-ENGINE_VERSION = "2026-07-15.1"
+ENGINE_VERSION = "2026-07-16.1"
 TRADING_DAYS_PER_YEAR = Decimal("252")
 PERCENT_QUANTUM = Decimal("0.0001")
 MONEY_QUANTUM = Decimal("0.01")
@@ -156,6 +156,9 @@ def _max_drawdown(values: list[Decimal]) -> Decimal:
 
 def calculate_historical_etf_metrics(
     observations: list[EtfObservation],
+    *,
+    source: SourceChip | None = None,
+    additional_warnings: list[str] | None = None,
 ) -> HistoricalEtfMetrics:
     """Calculate historical evidence only; this is not a return forecast."""
 
@@ -223,6 +226,7 @@ def calculate_historical_etf_metrics(
         warnings.append("tracking_error_proxy_insufficient")
     warnings.append("distribution_and_fee_data_not_in_krx_daily_api")
     warnings.append("account_eligibility_requires_separate_verified_master")
+    warnings.extend(additional_warnings or [])
 
     return HistoricalEtfMetrics(
         engine_name=ENGINE_NAME,
@@ -245,12 +249,13 @@ def calculate_historical_etf_metrics(
             else None
         ),
         tracking_error_proxy_percent=tracking_error,
-        source=SourceChip(
+        source=source
+        or SourceChip(
             label="KRX ETF 일별매매정보",
             reference="https://data-dbg.krx.co.kr/svc/apis/etp/etf_bydd_trd",
             as_of=ordered[-1].as_of,
         ),
-        warnings=warnings,
+        warnings=sorted(set(warnings)),
     )
 
 

@@ -12,11 +12,10 @@ KIND_BASE_URL = "https://kind.krx.co.kr"
 KIND_ETF_DISCLOSURE_ENDPOINT = "/disclosure/disclosurebystocktype.do"
 KIND_VIEWER_ENDPOINT = "/common/disclsviewer.do"
 KIND_REPORT_NAME = "ETF이익금분배 신고"
+KIND_EX_DATE_REPORT_NAME = "ETF 분배락 기준가격 안내"
 RECEIPT_PATTERN = re.compile(r"openDisclsViewer\('([0-9]{14})'")
 ISSUE_PATTERN = re.compile(r"etfisusummary_open\('([0-9A-Z]{1,6})'")
-SET_PATH_PATTERN = re.compile(
-    r"parent\.setPath\([^,]*,\s*'([^']+)'", re.DOTALL
-)
+SET_PATH_PATTERN = re.compile(r"parent\.setPath\([^,]*,\s*'([^']+)'", re.DOTALL)
 ISIN_PATTERN = re.compile(r"KR7([0-9A-Z]{6})[0-9]{3}")
 
 
@@ -51,6 +50,19 @@ class KindDistributionEvent:
     source_url: str
 
 
+@dataclass(frozen=True, slots=True)
+class KindDistributionExDateEvent:
+    isu_code: str
+    isu_name: str
+    effective_date: date
+    reference_price_krw: Decimal
+    reason: str
+    legal_basis: str
+    receipt_number: str
+    submitted_at: datetime
+    source_url: str
+
+
 def decode_kind_html(raw_content: bytes) -> str:
     for encoding in ("utf-8", "cp949"):
         try:
@@ -69,6 +81,11 @@ def _normalize_issue_code(raw: str) -> str:
     return value.zfill(6) if value.isdigit() else value
 
 
+def _kind_etf_issue_id_to_short_code(raw: str) -> str:
+    issue_id = _normalize_issue_code(raw).zfill(6)
+    return f"{issue_id}0"[-6:]
+
+
 class _SearchResultParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -82,9 +99,7 @@ class _SearchResultParser(HTMLParser):
         self._issue_name = ""
         self._report_title = ""
 
-    def handle_starttag(
-        self, tag: str, attrs: list[tuple[str, str | None]]
-    ) -> None:
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = dict(attrs)
         if tag == "tr":
             self._in_row = True
@@ -136,9 +151,7 @@ class _MainDocumentParser(HTMLParser):
         self._in_main_select = False
         self.doc_numbers: list[str] = []
 
-    def handle_starttag(
-        self, tag: str, attrs: list[tuple[str, str | None]]
-    ) -> None:
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = dict(attrs)
         if tag == "select" and attributes.get("id") == "mainDoc":
             self._in_main_select = True
@@ -162,9 +175,7 @@ class _TableParser(HTMLParser):
         self._row: list[str] | None = None
         self._cell_parts: list[str] | None = None
 
-    def handle_starttag(
-        self, tag: str, attrs: list[tuple[str, str | None]]
-    ) -> None:
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         del attrs
         if tag == "table":
             if self._table_depth == 0:
@@ -273,11 +284,7 @@ def parse_distribution_events(
             continue
         header = table[header_index]
         code_index = next(
-            (
-                index
-                for index, cell in enumerate(header)
-                if "종목코드" in cell
-            ),
+            (index for index, cell in enumerate(header) if "종목코드" in cell),
             None,
         )
         name_index = next(
@@ -339,6 +346,45 @@ def parse_distribution_events(
     return events
 
 
+def parse_distribution_ex_date_event(
+    html: str,
+    *,
+    isu_code: str,
+    isu_name: str,
+    receipt_number: str,
+    submitted_at: datetime,
+    source_url: str,
+) -> KindDistributionExDateEvent:
+    parser = _TableParser()
+    parser.feed(html)
+    for table in parser.tables:
+        fields: dict[str, str] = {}
+        for row in table:
+            if len(row) < 2:
+                continue
+            label = re.sub(r"^\d+\.\s*", "", row[0]).strip()
+            fields[label] = row[1].strip()
+        effective_date = _date_value(fields.get("적용일", ""))
+        reference_price = _amount(fields.get("기준가격(원)", ""))
+        reason = fields.get("사유", "")
+        if effective_date is None or reference_price is None or "분배락" not in reason:
+            continue
+        return KindDistributionExDateEvent(
+            isu_code=_kind_etf_issue_id_to_short_code(isu_code),
+            isu_name=fields.get("종목명") or isu_name,
+            effective_date=effective_date,
+            reference_price_krw=reference_price,
+            reason=reason,
+            legal_basis=fields.get("근거규정", ""),
+            receipt_number=receipt_number,
+            submitted_at=submitted_at,
+            source_url=source_url,
+        )
+    raise KindDisclosureError(
+        "KIND ex-distribution document has no valid effective date"
+    )
+
+
 def _request(
     client: httpx.Client,
     method: str,
@@ -366,12 +412,13 @@ def fetch_disclosure_search(
     end_date: date,
     page_index: int,
     page_size: int = 3000,
+    report_name: str = KIND_REPORT_NAME,
 ) -> bytes:
     response = _request(
         client,
         "POST",
         KIND_ETF_DISCLOSURE_ENDPOINT,
-        operation="ETF distribution search",
+        operation=f"ETF disclosure search ({report_name})",
         data={
             "method": "searchDisclosureByStockTypeEtfSub",
             "forward": "disclosurebystocktype_etf_sub",
@@ -383,7 +430,7 @@ def fetch_disclosure_search(
             "reportCd": "",
             "reportTmp": "",
             "etfIsuSrtNm": "",
-            "reportNm": KIND_REPORT_NAME,
+            "reportNm": report_name,
             "fromDate": start_date.isoformat(),
             "toDate": end_date.isoformat(),
         },

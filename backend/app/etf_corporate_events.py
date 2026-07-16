@@ -1,0 +1,400 @@
+import argparse
+import json
+import re
+from collections import Counter, defaultdict
+from datetime import UTC, date, datetime
+from decimal import Decimal, InvalidOperation
+from pathlib import Path
+from typing import Any
+
+MAX_EX_DATE_LINK_DAYS = 7
+
+
+def _load(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"JSON root must be an object: {path}")
+    return payload
+
+
+def _latest(root: Path, pattern: str) -> Path:
+    candidates = sorted(root.glob(pattern))
+    if not candidates:
+        raise FileNotFoundError(f"no files matching {pattern} under {root}")
+    return candidates[-1]
+
+
+def _latest_adjusted_price_root(root: Path) -> Path:
+    candidates = sorted(path for path in root.iterdir() if path.is_dir())
+    if not candidates:
+        raise FileNotFoundError(f"no adjusted-price date directories under {root}")
+    return candidates[-1]
+
+
+def _widest_ex_date_report(root: Path) -> Path | None:
+    candidates = sorted(root.glob("etf_distribution_ex_dates_*.json"))
+    if not candidates:
+        return None
+
+    def coverage(path: Path) -> tuple[int, str]:
+        payload = _load(path)
+        start = date.fromisoformat(str(payload["coverage_start"]))
+        end = date.fromisoformat(str(payload["coverage_end"]))
+        return (end - start).days, str(payload.get("generated_at") or "")
+
+    return max(candidates, key=coverage)
+
+
+def _events(payload: dict[str, Any], *, label: str) -> list[dict[str, Any]]:
+    events = payload.get("events")
+    if not isinstance(events, list):
+        raise ValueError(f"{label} report must contain events")
+    if not all(isinstance(event, dict) for event in events):
+        raise ValueError(f"{label} events must be objects")
+    return events
+
+
+def _decimal_text(value: object) -> str | None:
+    if value in {None, "", "-"}:
+        return None
+    try:
+        parsed = Decimal(str(value).replace(",", ""))
+    except (InvalidOperation, ValueError):
+        return None
+    if not parsed.is_finite():
+        return None
+    return format(parsed, "f")
+
+
+def _name_key(value: object) -> str:
+    return re.sub(r"\s+", "", str(value or "")).upper()
+
+
+def _cash_distribution_events(
+    distribution_report: dict[str, Any],
+    ex_date_report: dict[str, Any] | None,
+) -> tuple[list[dict[str, Any]], set[tuple[str, str]]]:
+    ex_dates_by_code: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    ex_dates_by_name: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    if ex_date_report is not None:
+        for event in _events(ex_date_report, label="KIND ex-date"):
+            code = event.get("isu_code")
+            effective_date = event.get("effective_date")
+            if isinstance(code, str) and isinstance(effective_date, str):
+                ex_dates_by_code[code].append(event)
+                ex_dates_by_name[_name_key(event.get("isu_name"))].append(event)
+    for code in ex_dates_by_code:
+        ex_dates_by_code[code].sort(key=lambda event: event["effective_date"])
+    for name in ex_dates_by_name:
+        ex_dates_by_name[name].sort(key=lambda event: event["effective_date"])
+
+    used_ex_dates: set[tuple[str, str]] = set()
+    output = []
+    distributions = sorted(
+        _events(distribution_report, label="KIND distribution"),
+        key=lambda event: (str(event["record_date"]), str(event["isu_code"])),
+    )
+    for event in distributions:
+        code = str(event["isu_code"])
+        record_date = date.fromisoformat(str(event["record_date"]))
+        candidate_events: dict[str, dict[str, Any]] = {}
+        for ex_event in [
+            *ex_dates_by_code.get(code, []),
+            *ex_dates_by_name.get(_name_key(event.get("isu_name")), []),
+        ]:
+            candidate_events[str(ex_event.get("receipt_number"))] = ex_event
+        candidates = []
+        for ex_event in candidate_events.values():
+            ex_date = date.fromisoformat(str(ex_event["effective_date"]))
+            ex_code = str(ex_event["isu_code"])
+            key = (ex_code, ex_date.isoformat())
+            days = (record_date - ex_date).days
+            if key not in used_ex_dates and 0 <= days <= MAX_EX_DATE_LINK_DAYS:
+                candidates.append((days, ex_date, ex_event))
+        exact = (
+            min(candidates, key=lambda item: (item[0], item[1])) if candidates else None
+        )
+        source_evidence = [
+            {
+                "source_type": "krx_kind_distribution_disclosure",
+                "receipt_number": event.get("receipt_number"),
+                "source_url": event.get("source_url"),
+            }
+        ]
+        if exact is None:
+            effective_date = record_date
+            timing_basis = "record_date_fallback"
+            confidence = "medium"
+            reference_price = None
+        else:
+            _, ex_date, ex_event = exact
+            used_ex_dates.add((str(ex_event["isu_code"]), ex_date.isoformat()))
+            effective_date = ex_date
+            timing_basis = "exact_kind_ex_distribution_date"
+            confidence = "high"
+            reference_price = _decimal_text(ex_event.get("reference_price_krw"))
+            source_evidence.append(
+                {
+                    "source_type": "krx_kind_ex_distribution_disclosure",
+                    "receipt_number": ex_event.get("receipt_number"),
+                    "source_url": ex_event.get("source_url"),
+                    "reference_price_krw": reference_price,
+                    "linkage_method": (
+                        "same_etf_name_and_nearest_prior_effective_date"
+                    ),
+                }
+            )
+        output.append(
+            {
+                "isu_code": code,
+                "isu_name": event.get("isu_name"),
+                "event_type": "cash_distribution",
+                "effective_date": effective_date.isoformat(),
+                "record_date": record_date.isoformat(),
+                "payment_date": event.get("payment_date"),
+                "cash_per_share_krw": _decimal_text(
+                    event.get("distribution_per_share_krw")
+                ),
+                "ratio": None,
+                "timing_basis": timing_basis,
+                "confidence": confidence,
+                "status": "confirmed_cash_flow",
+                "source_evidence": source_evidence,
+                "ex_distribution_reference_price_krw": reference_price,
+            }
+        )
+    return output, used_ex_dates
+
+
+def _unmatched_ex_date_events(
+    ex_date_report: dict[str, Any] | None,
+    used: set[tuple[str, str]],
+) -> list[dict[str, Any]]:
+    if ex_date_report is None:
+        return []
+    output = []
+    for event in _events(ex_date_report, label="KIND ex-date"):
+        code = str(event["isu_code"])
+        effective_date = str(event["effective_date"])
+        if (code, effective_date) in used:
+            continue
+        output.append(
+            {
+                "isu_code": code,
+                "isu_name": event.get("isu_name"),
+                "event_type": "distribution_ex_date_unmatched",
+                "effective_date": effective_date,
+                "record_date": None,
+                "payment_date": None,
+                "cash_per_share_krw": None,
+                "ratio": None,
+                "timing_basis": "exact_kind_ex_distribution_date",
+                "confidence": "high",
+                "status": "cash_disclosure_link_required",
+                "source_evidence": [
+                    {
+                        "source_type": "krx_kind_ex_distribution_disclosure",
+                        "receipt_number": event.get("receipt_number"),
+                        "source_url": event.get("source_url"),
+                        "reference_price_krw": _decimal_text(
+                            event.get("reference_price_krw")
+                        ),
+                    }
+                ],
+            }
+        )
+    return output
+
+
+def _kis_event_type(reason: str) -> str:
+    compact = reason.replace(" ", "")
+    if "병합" in compact:
+        return "reverse_split"
+    if "합병" in compact:
+        return "merger"
+    if "분할" in compact:
+        return "split"
+    return "price_adjustment_unclassified"
+
+
+def _kis_adjustment_events(adjusted_price_root: Path) -> list[dict[str, Any]]:
+    output = []
+    for path in sorted(adjusted_price_root.glob("*.json")):
+        product = _load(path)
+        observations = product.get("observations")
+        if not isinstance(observations, list):
+            raise ValueError(f"KIS adjusted-price cache has no observations: {path}")
+        for observation in observations:
+            if not isinstance(observation, dict):
+                raise ValueError(f"KIS observation must be an object: {path}")
+            reason = str(observation.get("revaluation_reason") or "").strip()
+            ratio = observation.get("split_rate")
+            modified = str(observation.get("modified") or "").upper() == "Y"
+            if not modified and not reason:
+                continue
+            event_type = _kis_event_type(reason)
+            classified = event_type != "price_adjustment_unclassified"
+            output.append(
+                {
+                    "isu_code": product.get("isu_code"),
+                    "isu_name": product.get("isu_name"),
+                    "event_type": event_type,
+                    "effective_date": observation.get("date"),
+                    "record_date": None,
+                    "payment_date": None,
+                    "cash_per_share_krw": None,
+                    "ratio": _decimal_text(ratio),
+                    "timing_basis": "kis_adjusted_price_event_field",
+                    "confidence": "high" if classified and reason else "low",
+                    "status": (
+                        "confirmed_from_explicit_reason"
+                        if classified and reason
+                        else "issuer_verification_required"
+                    ),
+                    "source_evidence": [
+                        {
+                            "source_type": "kis_adjusted_daily_itemchartprice",
+                            "endpoint": product.get("endpoint"),
+                            "FID_ORG_ADJ_PRC": "0",
+                            "mod_yn": observation.get("modified"),
+                            "prtt_rate": observation.get("split_rate"),
+                            "revl_issu_reas": reason,
+                            "cache_path": path.as_posix(),
+                        }
+                    ],
+                }
+            )
+    return output
+
+
+def build_etf_corporate_event_master(
+    *,
+    distribution_report: dict[str, Any],
+    ex_date_report: dict[str, Any] | None,
+    adjusted_price_root: Path,
+    source_files: dict[str, str],
+    as_of: date,
+) -> dict[str, Any]:
+    cash_events, used_ex_dates = _cash_distribution_events(
+        distribution_report, ex_date_report
+    )
+    unmatched_ex_dates = _unmatched_ex_date_events(ex_date_report, used_ex_dates)
+    kis_events = _kis_adjustment_events(adjusted_price_root)
+    events = sorted(
+        [*cash_events, *unmatched_ex_dates, *kis_events],
+        key=lambda event: (
+            str(event.get("effective_date") or ""),
+            str(event.get("isu_code") or ""),
+            str(event.get("event_type") or ""),
+        ),
+    )
+    timing_counts = Counter(
+        event["timing_basis"]
+        for event in cash_events
+        if isinstance(event.get("timing_basis"), str)
+    )
+    event_type_counts = Counter(str(event["event_type"]) for event in events)
+    ex_date_failures = (
+        int(ex_date_report.get("failure_count", 0))
+        if ex_date_report is not None
+        else None
+    )
+    return {
+        "report_type": "pension_eligible_etf_corporate_event_master",
+        "algorithm_input": True,
+        "as_of": as_of.isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
+        "engine_name": "etf_corporate_event_evidence",
+        "engine_version": "2026-07-16.1",
+        "source_files": source_files,
+        "event_count": len(events),
+        "event_type_counts": dict(sorted(event_type_counts.items())),
+        "cash_distribution_count": len(cash_events),
+        "exact_ex_date_link_count": timing_counts.get(
+            "exact_kind_ex_distribution_date", 0
+        ),
+        "record_date_fallback_count": timing_counts.get("record_date_fallback", 0),
+        "unmatched_exact_ex_date_count": len(unmatched_ex_dates),
+        "kis_adjustment_event_count": len(kis_events),
+        "kind_ex_date_failure_count": ex_date_failures,
+        "policies": {
+            "cash_distribution": (
+                "Use the exact KIND ex-distribution effective date when it can be "
+                "uniquely linked to a cash disclosure; otherwise retain the record "
+                "date as an explicit fallback."
+            ),
+            "split_merger": (
+                "Classify split, reverse split, or merger only when the KIS adjusted "
+                "price reason explicitly names the event."
+            ),
+            "no_price_jump_inference": True,
+        },
+        "limitations": [
+            "A record-date fallback is not an exact ex-distribution date.",
+            "Unclassified KIS adjustments require issuer disclosure verification.",
+            "Adjusted prices are not assumed to include cash distributions.",
+        ],
+        "events": events,
+    }
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Build the ETF corporate-event master."
+    )
+    parser.add_argument("--distributions", type=Path)
+    parser.add_argument("--ex-dates", type=Path)
+    parser.add_argument("--adjusted-prices", type=Path)
+    parser.add_argument("--output", type=Path, default=Path("data/cache/events"))
+    parser.add_argument("--as-of", type=date.fromisoformat, default=date.today())
+    return parser
+
+
+def main() -> int:
+    args = _parser().parse_args()
+    distribution_path = args.distributions or _latest(
+        Path("data/cache/kind"), "etf_distributions_*.json"
+    )
+    ex_date_path = args.ex_dates
+    if ex_date_path is None:
+        ex_date_path = _widest_ex_date_report(Path("data/cache/kind"))
+    adjusted_price_root = args.adjusted_prices or _latest_adjusted_price_root(
+        Path("data/cache/kis/adjusted_prices")
+    )
+    source_files = {
+        "kind_distributions": distribution_path.as_posix(),
+        "kis_adjusted_prices": adjusted_price_root.as_posix(),
+    }
+    if ex_date_path is not None:
+        source_files["kind_distribution_ex_dates"] = ex_date_path.as_posix()
+    report = build_etf_corporate_event_master(
+        distribution_report=_load(distribution_path),
+        ex_date_report=_load(ex_date_path) if ex_date_path is not None else None,
+        adjusted_price_root=adjusted_price_root,
+        source_files=source_files,
+        as_of=args.as_of,
+    )
+    args.output.mkdir(parents=True, exist_ok=True)
+    output_path = args.output / f"etf_corporate_events_{args.as_of}.json"
+    temporary = output_path.with_suffix(".json.tmp")
+    temporary.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    temporary.replace(output_path)
+    print(
+        json.dumps(
+            {
+                key: value
+                for key, value in report.items()
+                if key not in {"events", "limitations", "policies"}
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
