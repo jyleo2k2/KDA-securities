@@ -28,6 +28,7 @@ import type {
   IncomeBasis,
   IrpDeferredIncomeStatus,
   PensionTaxScenarioInput,
+  ScenarioEvaluation,
   ScenarioSummary,
   StoredChatMessage,
   WithdrawalReason,
@@ -72,6 +73,14 @@ const BOUNDARY_LABELS: Record<DataBoundary, string> = {
 
 const PENSION_TAX_PROMPT = /세액\s*공제|중도\s*해지|연금\s*외\s*수령|16\.5\s*%/;
 
+const ASSET_CLASS_LABELS: Record<string, string> = {
+  deposit: "원리금보장형 자산",
+  cash: "현금성 자산",
+  bond: "채권형 자산",
+  global_equity: "글로벌 주식형 자산",
+  eligible_tdf: "적격 TDF",
+};
+
 function numericText(value: string | number, unit: string): string {
   if (unit.toUpperCase() === "KRW") {
     return `${Number(value).toLocaleString("ko-KR")}원`;
@@ -104,6 +113,28 @@ function SourceLink({ locator, children }: { locator: string; children: ReactNod
   return <a href={locator} target="_blank" rel="noreferrer">{children}</a>;
 }
 
+function AssetAllocationChart({ evaluation }: { evaluation: ScenarioEvaluation }) {
+  return (
+    <section className="allocation-chart" aria-label="전체 자산 구성 그래프">
+      <h3>전체 자산 구성</h3>
+      {evaluation.asset_allocations.map((item) => {
+        const percent = Number(item.allocation_percent);
+        return (
+          <div className="allocation-row" key={item.asset_class_code}>
+            <div>
+              <span>{ASSET_CLASS_LABELS[item.asset_class_code] ?? "기타 자산"}</span>
+              <strong>{percent}%</strong>
+            </div>
+            <div className="allocation-track" role="img" aria-label={`${ASSET_CLASS_LABELS[item.asset_class_code] ?? "기타 자산"} ${percent}%`}>
+              <span style={{ width: `${percent}%` }} />
+            </div>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
 function AssistantMessage({ response, text }: { response?: ChatResponse; text: string }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -116,6 +147,10 @@ function AssistantMessage({ response, text }: { response?: ChatResponse; text: s
         <span>{response.narration_mode === "deterministic" ? "검증 답변" : "AI 서술"}</span>
       </div>
       <p className="message-copy">{response.answer}</p>
+
+      {response.scenario_evaluation && (
+        <AssetAllocationChart evaluation={response.scenario_evaluation} />
+      )}
 
       {response.narration_reasoning && (
         <details className="answer-section section-service_explanation">
@@ -131,7 +166,7 @@ function AssistantMessage({ response, text }: { response?: ChatResponse; text: s
         </details>
       ))}
 
-      {response.numeric_evidence.length > 0 && (
+      {response.intent !== "mock_portfolio" && response.numeric_evidence.length > 0 && (
         <div className="number-grid" aria-label="수치 근거">
           {response.numeric_evidence.map((item, index) => (
             <div className="number-card" key={`${item.evidence_id}-${index}`}>

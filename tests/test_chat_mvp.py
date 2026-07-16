@@ -98,6 +98,9 @@ def test_account_rule_question_returns_rag_source_and_numeric_evidence() -> None
 
     assert response.intent == ChatIntent.ACCOUNT_RULE
     assert "70%" in response.answer
+    assert "위험자산을 계좌 돈의 70%까지만 담을 수 있습니다." in response.answer
+    assert "위험자산은 주식처럼 가격이 오르내릴 수 있는 자산입니다." in response.answer
+    assert "판정합니다" not in response.answer
     assert response.sources
     assert len(response.numeric_evidence) == 1
     assert response.numeric_evidence[0].value == Decimal("70")
@@ -162,6 +165,9 @@ def test_mock_overlap_scenario_runs_engine_and_keeps_mock_boundary() -> None:
         item.allocation_percent
         for item in response.scenario_evaluation.asset_allocations
     ) == Decimal("100.00")
+    assert "global_equity" not in response.answer
+    assert "pension_savings" not in response.answer
+    assert "글로벌 주식형 자산" in response.answer
 
 
 def test_individual_product_comparison_is_blocked_until_data_exists() -> None:
