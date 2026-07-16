@@ -9,8 +9,29 @@ KIS_COMPONENT_ENDPOINT = (
     "/uapi/etfetn/v1/quotations/inquire-component-stock-price"
 )
 KIS_PRICE_ENDPOINT = "/uapi/etfetn/v1/quotations/inquire-price"
+KIS_ADJUSTED_DAILY_PRICE_ENDPOINT = (
+    "/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice"
+)
 KIS_COMPONENT_TR_ID = "FHKST121600C0"
 KIS_PRICE_TR_ID = "FHPST02400000"
+KIS_ADJUSTED_DAILY_PRICE_TR_ID = "FHKST03010100"
+KIS_ADJUSTED_DAILY_PRICE_REQUIRED_FIELDS = frozenset(
+    {
+        "stck_bsop_date",
+        "stck_clpr",
+        "stck_oprc",
+        "stck_hgpr",
+        "stck_lwpr",
+        "acml_vol",
+        "acml_tr_pbmn",
+        "flng_cls_code",
+        "prtt_rate",
+        "mod_yn",
+        "prdy_vrss_sign",
+        "prdy_vrss",
+        "revl_issu_reas",
+    }
+)
 
 
 class KisApiError(RuntimeError):
@@ -195,3 +216,78 @@ def fetch_etf_price(
     if not isinstance(response.payload.get("output"), dict):
         raise KisApiError("KIS ETF price response has an invalid schema")
     return response
+
+
+def parse_adjusted_daily_price_payload(
+    payload: Any,
+    *,
+    raw_content: bytes = b"",
+) -> KisApiResponse:
+    if not isinstance(payload, dict):
+        raise KisApiError("KIS adjusted daily price payload must be an object")
+    if payload.get("rt_cd") != "0":
+        raise KisApiError("KIS adjusted daily price payload is not successful")
+    output1 = payload.get("output1")
+    output2 = payload.get("output2")
+    if not isinstance(output1, dict) or not isinstance(output2, list):
+        raise KisApiError("KIS adjusted daily price response has an invalid schema")
+    previous_date: str | None = None
+    for position, row in enumerate(output2):
+        if not isinstance(row, dict):
+            raise KisApiError(
+                f"KIS adjusted daily price row {position} must be an object"
+            )
+        missing = KIS_ADJUSTED_DAILY_PRICE_REQUIRED_FIELDS.difference(row)
+        if missing:
+            fields = ",".join(sorted(missing))
+            raise KisApiError(
+                f"KIS adjusted daily price row {position} is missing: {fields}"
+            )
+        if not all(isinstance(value, str) for value in row.values()):
+            raise KisApiError(
+                f"KIS adjusted daily price row {position} fields must be strings"
+            )
+        business_date = row["stck_bsop_date"]
+        if len(business_date) != 8 or not business_date.isdigit():
+            raise KisApiError(
+                f"KIS adjusted daily price row {position} has an invalid date"
+            )
+        if previous_date is not None and business_date >= previous_date:
+            raise KisApiError(
+                "KIS adjusted daily price rows must be unique and descending"
+            )
+        previous_date = business_date
+    return KisApiResponse(payload=payload, raw_content=raw_content)
+
+
+def fetch_adjusted_daily_item_prices(
+    client: httpx.Client,
+    *,
+    app_key: str,
+    app_secret: str,
+    access_token: str,
+    isu_code: str,
+    start_date: str,
+    end_date: str,
+) -> KisApiResponse:
+    response = _fetch(
+        client,
+        app_key=app_key,
+        app_secret=app_secret,
+        access_token=access_token,
+        endpoint=KIS_ADJUSTED_DAILY_PRICE_ENDPOINT,
+        tr_id=KIS_ADJUSTED_DAILY_PRICE_TR_ID,
+        params={
+            "FID_COND_MRKT_DIV_CODE": "J",
+            "FID_INPUT_ISCD": isu_code,
+            "FID_INPUT_DATE_1": start_date,
+            "FID_INPUT_DATE_2": end_date,
+            "FID_PERIOD_DIV_CODE": "D",
+            "FID_ORG_ADJ_PRC": "0",
+        },
+        operation="adjusted daily item chart price",
+    )
+    return parse_adjusted_daily_price_payload(
+        response.payload,
+        raw_content=response.raw_content,
+    )

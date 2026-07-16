@@ -1,5 +1,6 @@
 import argparse
 import json
+from collections import Counter
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -29,18 +30,23 @@ def build_portfolio_examples(
     *,
     return_root: Path,
     krx_root: Path,
+    adjusted_price_root: Path,
     as_of: date,
 ) -> dict[str, Any]:
     scenarios = []
     account_counts = {}
     cap_violation_count = 0
     missing_candidate_sleeves = []
+    universe_history_source_counts: Counter[str] = Counter()
+    candidate_history_source_counts: Counter[str] = Counter()
     for account in AccountType:
         repository = PortfolioUniverseRepository.from_latest_cache(
             account,
             return_root=return_root,
             krx_root=krx_root,
+            adjusted_price_root=adjusted_price_root,
         )
+        universe_history_source_counts.update(repository.history_sources.values())
         account_scenarios = 0
         for age in REPRESENTATIVE_AGES:
             for profile in RiskProfile:
@@ -55,13 +61,14 @@ def build_portfolio_examples(
                     products=repository.products,
                     histories=repository.histories,
                     source_as_of=repository.as_of,
+                    history_sources=repository.history_sources,
                 )
-                target_sleeves = {
-                    item.sleeve for item in evaluation.target_sleeves
-                }
-                candidate_sleeves = {
-                    item.sleeve for item in evaluation.candidates
-                }
+                candidate_history_source_counts.update(
+                    candidate.price_history_source
+                    for candidate in evaluation.candidates
+                )
+                target_sleeves = {item.sleeve for item in evaluation.target_sleeves}
+                candidate_sleeves = {item.sleeve for item in evaluation.candidates}
                 missing = sorted(target_sleeves.difference(candidate_sleeves))
                 if missing:
                     missing_candidate_sleeves.append(
@@ -72,11 +79,10 @@ def build_portfolio_examples(
                             "sleeves": missing,
                         }
                     )
-                if (
-                    account in {AccountType.DC, AccountType.IRP}
-                    and evaluation.final_general_risk_target_percent
-                    > Decimal("70")
-                ):
+                if account in {
+                    AccountType.DC,
+                    AccountType.IRP,
+                } and evaluation.final_general_risk_target_percent > Decimal("70"):
                     cap_violation_count += 1
                 scenarios.append(evaluation.model_dump(mode="json"))
                 account_scenarios += 1
@@ -87,7 +93,7 @@ def build_portfolio_examples(
         "as_of": as_of.isoformat(),
         "generated_at": datetime.now(UTC).isoformat(),
         "engine_name": "educational_pension_portfolio",
-        "engine_version": "2026-07-16.1",
+        "engine_version": "2026-07-16.2",
         "representative_ages": REPRESENTATIVE_AGES,
         "risk_profiles": [profile.value for profile in RiskProfile],
         "account_types": [account.value for account in AccountType],
@@ -96,10 +102,17 @@ def build_portfolio_examples(
         "risk_cap_violation_count": cap_violation_count,
         "missing_candidate_sleeve_count": len(missing_candidate_sleeves),
         "missing_candidate_sleeves": missing_candidate_sleeves,
+        "universe_history_source_counts": dict(
+            sorted(universe_history_source_counts.items())
+        ),
+        "candidate_history_source_counts": dict(
+            sorted(candidate_history_source_counts.items())
+        ),
         "limitations": [
             "These are educational examples, not individualized advice.",
             "Historical returns are excluded from ETF candidate ranking.",
-            "Correlation uses price returns and is not holdings overlap.",
+            "Correlation uses KIS adjusted closes with KRX close fallback and is "
+            "not holdings overlap.",
             "No expected return is calculated without approved CMA inputs.",
             "No trade order or automatic rebalancing is produced.",
         ],
@@ -122,13 +135,14 @@ def _parser() -> argparse.ArgumentParser:
         description="Build age, risk-style, and account educational portfolios."
     )
     parser.add_argument("--as-of", type=date.fromisoformat, default=date.today())
-    parser.add_argument(
-        "--return-root", type=Path, default=Path("data/cache/returns")
-    )
+    parser.add_argument("--return-root", type=Path, default=Path("data/cache/returns"))
     parser.add_argument("--krx-root", type=Path, default=Path("data/raw/krx"))
     parser.add_argument(
-        "--output", type=Path, default=Path("data/cache/portfolios")
+        "--adjusted-price-root",
+        type=Path,
+        default=Path("data/cache/kis/adjusted_prices"),
     )
+    parser.add_argument("--output", type=Path, default=Path("data/cache/portfolios"))
     return parser
 
 
@@ -137,25 +151,26 @@ def main() -> int:
     report = build_portfolio_examples(
         return_root=args.return_root,
         krx_root=args.krx_root,
+        adjusted_price_root=args.adjusted_price_root,
         as_of=args.as_of,
     )
-    output_path = args.output / (
-        f"educational_portfolio_examples_{args.as_of}.json"
-    )
+    output_path = args.output / (f"educational_portfolio_examples_{args.as_of}.json")
     _write_json(output_path, report)
     print(
         json.dumps(
             {
                 "as_of": report["as_of"],
                 "scenario_count": report["scenario_count"],
-                "scenario_counts_by_account": report[
-                    "scenario_counts_by_account"
-                ],
-                "risk_cap_violation_count": report[
-                    "risk_cap_violation_count"
-                ],
+                "scenario_counts_by_account": report["scenario_counts_by_account"],
+                "risk_cap_violation_count": report["risk_cap_violation_count"],
                 "missing_candidate_sleeve_count": report[
                     "missing_candidate_sleeve_count"
+                ],
+                "universe_history_source_counts": report[
+                    "universe_history_source_counts"
+                ],
+                "candidate_history_source_counts": report[
+                    "candidate_history_source_counts"
                 ],
                 "output_path": output_path.as_posix(),
             },

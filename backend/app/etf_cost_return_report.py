@@ -80,9 +80,9 @@ def _sample_std(values: list[Decimal]) -> Decimal | None:
     if len(values) < 2:
         return None
     mean = sum(values, Decimal("0")) / Decimal(len(values))
-    variance = sum(
-        ((value - mean) ** 2 for value in values), Decimal("0")
-    ) / Decimal(len(values) - 1)
+    variance = sum(((value - mean) ** 2 for value in values), Decimal("0")) / Decimal(
+        len(values) - 1
+    )
     return variance.sqrt()
 
 
@@ -118,9 +118,7 @@ def _load_krx_histories(
                     "net_assets": _decimal(
                         row["INVSTASST_NETASST_TOTAMT"], positive=True
                     ),
-                    "benchmark_close": _decimal(
-                        row["OBJ_STKPRC_IDX"], positive=True
-                    ),
+                    "benchmark_close": _decimal(row["OBJ_STKPRC_IDX"], positive=True),
                     "benchmark_name": row["IDX_IND_NM"],
                 }
             )
@@ -132,26 +130,47 @@ def _load_krx_histories(
 
 def _events_by_code(
     distribution_report: dict[str, Any],
+    corporate_event_report: dict[str, Any] | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
-    events = distribution_report.get("events")
+    events = (
+        corporate_event_report.get("events")
+        if corporate_event_report is not None
+        else distribution_report.get("events")
+    )
     if not isinstance(events, list):
-        raise ValueError("KIND distribution report must contain events")
+        raise ValueError("distribution event source must contain events")
     result: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for event in events:
         if not isinstance(event, dict):
-            raise ValueError("KIND distribution event must be an object")
+            raise ValueError("distribution event must be an object")
+        if (
+            corporate_event_report is not None
+            and event.get("event_type") != "cash_distribution"
+        ):
+            continue
         code = event.get("isu_code")
         if not isinstance(code, str):
-            raise ValueError("KIND distribution event has no ETF code")
+            raise ValueError("distribution event has no ETF code")
+        record_date = date.fromisoformat(str(event["record_date"]))
+        application_date = date.fromisoformat(
+            str(event.get("effective_date") or event["record_date"])
+        )
+        amount_field = (
+            "cash_per_share_krw"
+            if corporate_event_report is not None
+            else "distribution_per_share_krw"
+        )
         result[code].append(
             {
                 **event,
-                "record_date": date.fromisoformat(str(event["record_date"])),
-                "amount": Decimal(str(event["distribution_per_share_krw"])),
+                "record_date": record_date,
+                "application_date": application_date,
+                "amount": Decimal(str(event[amount_field])),
+                "timing_basis": event.get("timing_basis", "record_date_fallback"),
             }
         )
     for code in result:
-        result[code].sort(key=lambda item: item["record_date"])
+        result[code].sort(key=lambda item: item["application_date"])
     return result
 
 
@@ -176,11 +195,11 @@ def _period_result(
     relevant_events = [
         event
         for event in events
-        if start["date"] < event["record_date"] <= end["date"]
+        if start["date"] < event["application_date"] <= end["date"]
     ]
     distributions: dict[date, Decimal] = defaultdict(Decimal)
     for event in relevant_events:
-        index = bisect_left(dates, event["record_date"])
+        index = bisect_left(dates, event["application_date"])
         if index < len(dates):
             distributions[dates[index]] += event["amount"]
 
@@ -194,12 +213,9 @@ def _period_result(
     if start["nav"] is not None and end["nav"] is not None:
         nav_return = end["nav"] / start["nav"] - Decimal("1")
     benchmark_return = None
-    if (
-        start["benchmark_close"] is not None
-        and end["benchmark_close"] is not None
-    ):
-        benchmark_return = (
-            end["benchmark_close"] / start["benchmark_close"] - Decimal("1")
+    if start["benchmark_close"] is not None and end["benchmark_close"] is not None:
+        benchmark_return = end["benchmark_close"] / start["benchmark_close"] - Decimal(
+            "1"
         )
     if start["date"] < coverage_start:
         status = "distribution_coverage_insufficient"
@@ -220,14 +236,19 @@ def _period_result(
             nav_return * Decimal("100") if nav_return is not None else None
         ),
         "benchmark_return_percent": _percent(
-            benchmark_return * Decimal("100")
-            if benchmark_return is not None
-            else None
+            benchmark_return * Decimal("100") if benchmark_return is not None else None
         ),
         "distribution_reinvested_total_return_percent": _percent(
             total_return * Decimal("100") if total_return is not None else None
         ),
         "distribution_event_count": len(relevant_events),
+        "exact_ex_date_event_count": sum(
+            event["timing_basis"] == "exact_kind_ex_distribution_date"
+            for event in relevant_events
+        ),
+        "record_date_fallback_event_count": sum(
+            event["timing_basis"] == "record_date_fallback" for event in relevant_events
+        ),
         "distribution_per_share_sum_krw": format(
             sum(
                 (event["amount"] for event in relevant_events),
@@ -243,21 +264,14 @@ def _implementation_metrics(
 ) -> dict[str, Any]:
     window = observations[-253:]
     trading_values = [
-        item["trading_value"]
-        for item in window
-        if item["trading_value"] is not None
+        item["trading_value"] for item in window if item["trading_value"] is not None
     ]
-    volumes = [
-        item["volume"] for item in window if item["volume"] is not None
-    ]
+    volumes = [item["volume"] for item in window if item["volume"] is not None]
     net_assets = [
-        item["net_assets"]
-        for item in window
-        if item["net_assets"] is not None
+        item["net_assets"] for item in window if item["net_assets"] is not None
     ]
     nav_divergences = [
-        (item["close"] / item["nav"] - Decimal("1")).copy_abs()
-        * Decimal("100")
+        (item["close"] / item["nav"] - Decimal("1")).copy_abs() * Decimal("100")
         for item in window
         if item["nav"] is not None
     ]
@@ -274,10 +288,9 @@ def _implementation_metrics(
         ):
             continue
         nav_return = current["nav"] / previous["nav"] - Decimal("1")
-        benchmark_return = (
-            current["benchmark_close"] / previous["benchmark_close"]
-            - Decimal("1")
-        )
+        benchmark_return = current["benchmark_close"] / previous[
+            "benchmark_close"
+        ] - Decimal("1")
         active_returns.append(nav_return - benchmark_return)
     active_std = _sample_std(active_returns)
     tracking_error = (
@@ -295,9 +308,7 @@ def _implementation_metrics(
             format(latest["nav"], "f") if latest["nav"] is not None else None
         ),
         "latest_net_assets_krw": (
-            int(latest["net_assets"])
-            if latest["net_assets"] is not None
-            else None
+            int(latest["net_assets"]) if latest["net_assets"] is not None else None
         ),
         "latest_trading_volume": (
             int(latest["volume"]) if latest["volume"] is not None else None
@@ -307,18 +318,12 @@ def _implementation_metrics(
             if latest["trading_value"] is not None
             else None
         ),
-        "median_daily_trading_volume": (
-            int(_median(volumes)) if volumes else None
-        ),
+        "median_daily_trading_volume": (int(_median(volumes)) if volumes else None),
         "median_daily_trading_value_krw": (
             int(_median(trading_values)) if trading_values else None
         ),
-        "median_net_assets_krw": (
-            int(_median(net_assets)) if net_assets else None
-        ),
-        "median_abs_premium_discount_percent": _percent(
-            _median(nav_divergences)
-        ),
+        "median_net_assets_krw": (int(_median(net_assets)) if net_assets else None),
+        "median_abs_premium_discount_percent": _percent(_median(nav_divergences)),
         "tracking_error_proxy_percent": _percent(tracking_error),
         "benchmark_name": latest["benchmark_name"],
     }
@@ -333,6 +338,7 @@ def build_etf_cost_return_report(
     krx_raw_root: Path,
     source_files: dict[str, str],
     as_of: date,
+    corporate_event_report: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     products = eligibility_report.get("products")
     if not isinstance(products, list):
@@ -341,7 +347,7 @@ def build_etf_cost_return_report(
         product["isu_code"] for product in products if isinstance(product, dict)
     }
     histories, market_as_of = _load_krx_histories(krx_raw_root, eligible_codes)
-    events_by_code = _events_by_code(distribution_report)
+    events_by_code = _events_by_code(distribution_report, corporate_event_report)
     coverage_start = date.fromisoformat(distribution_report["coverage_start"])
     coverage_end = date.fromisoformat(distribution_report["coverage_end"])
     source_complete = distribution_report.get("failure_count") == 0
@@ -387,9 +393,7 @@ def build_etf_cost_return_report(
                 "observation_count": len(observations),
                 "cost": {
                     "kis_total_expense_ratio_percent": fee,
-                    "kis_cost_as_of": eligibility_report.get(
-                        "eligibility_as_of"
-                    ),
+                    "kis_cost_as_of": eligibility_report.get("eligibility_as_of"),
                     "effective_total_cost_percent": None,
                     "effective_total_cost_status": (
                         "issuer_or_fund_disclosure_required"
@@ -402,6 +406,14 @@ def build_etf_cost_return_report(
                 },
                 "distribution": {
                     "kind_event_count": len(events),
+                    "exact_ex_date_event_count": sum(
+                        event["timing_basis"] == "exact_kind_ex_distribution_date"
+                        for event in events
+                    ),
+                    "record_date_fallback_event_count": sum(
+                        event["timing_basis"] == "record_date_fallback"
+                        for event in events
+                    ),
                     "kind_event_coverage_start": coverage_start.isoformat(),
                     "kind_event_coverage_end": coverage_end.isoformat(),
                     "monthly_distribution_target": (
@@ -412,7 +424,9 @@ def build_etf_cost_return_report(
                     "kis_distribution_cycle_code": price.get("etf_dvdn_cycl"),
                     "calculation_assumption": (
                         "Each cash distribution is reinvested at the first KRX "
-                        "closing price observed on or after its record date."
+                        "closing price on or after the exact KIND ex-distribution "
+                        "date when linked; otherwise the record date is used as "
+                        "an explicit fallback."
                     ),
                 },
                 "returns": {
@@ -462,7 +476,7 @@ def build_etf_cost_return_report(
         "market_data_as_of": market_as_of.isoformat(),
         "generated_at": datetime.now(UTC).isoformat(),
         "engine_name": "pension_etf_cost_return_evidence",
-        "engine_version": "2026-07-16.1",
+        "engine_version": "2026-07-16.2",
         "product_scope": "eligible_in_at_least_one_pension_account",
         "source_files": source_files,
         "eligible_source_product_count": len(products),
@@ -473,8 +487,8 @@ def build_etf_cost_return_report(
         "period_definitions_trading_days": PERIODS,
         "limitations": [
             "Historical returns are evidence, not future return forecasts.",
-            "Total return timing uses the first trading close on or after the "
-            "distribution record date; an ex-date series would be more exact.",
+            "Total return timing uses exact KIND ex-distribution dates where "
+            "available; remaining events explicitly use record-date fallback.",
             "KIS total fee is preserved as provider-reported reference data; "
             "effective investor burden cost is unavailable in current APIs.",
             "Brokerage costs, bid-ask spread, taxes, and account-specific order "
@@ -529,12 +543,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--as-of", type=date.fromisoformat, default=date.today())
     parser.add_argument("--eligibility", type=Path)
     parser.add_argument("--distributions", type=Path)
+    parser.add_argument("--corporate-events", type=Path)
     parser.add_argument("--kis-retirement-list", type=Path)
     parser.add_argument("--kis-snapshot", type=Path)
     parser.add_argument("--krx-raw-root", type=Path, default=Path("data/raw/krx"))
-    parser.add_argument(
-        "--output", type=Path, default=Path("data/cache/returns")
-    )
+    parser.add_argument("--output", type=Path, default=Path("data/cache/returns"))
     return parser
 
 
@@ -547,6 +560,12 @@ def main() -> int:
     distribution_path = args.distributions or _latest(
         Path("data/cache/kind"), "etf_distributions_*.json"
     )
+    corporate_event_path = args.corporate_events
+    if corporate_event_path is None:
+        candidates = sorted(
+            Path("data/cache/events").glob("etf_corporate_events_*.json")
+        )
+        corporate_event_path = candidates[-1] if candidates else None
     kis_retirement_path = args.kis_retirement_list or _latest(
         Path("data/raw/kis"), "retirement_etf_list_*.xlsx"
     )
@@ -560,6 +579,8 @@ def main() -> int:
         "kis_snapshot": kis_snapshot_path.as_posix(),
         "krx_raw_root": args.krx_raw_root.as_posix(),
     }
+    if corporate_event_path is not None:
+        source_files["corporate_events"] = corporate_event_path.as_posix()
     report = build_etf_cost_return_report(
         eligibility_report=_load(eligibility_path),
         distribution_report=_load(distribution_path),
@@ -568,10 +589,11 @@ def main() -> int:
         krx_raw_root=args.krx_raw_root,
         source_files=source_files,
         as_of=args.as_of,
+        corporate_event_report=(
+            _load(corporate_event_path) if corporate_event_path is not None else None
+        ),
     )
-    union_path = args.output / (
-        f"pension_etf_cost_return_master_{args.as_of}.json"
-    )
+    union_path = args.output / (f"pension_etf_cost_return_master_{args.as_of}.json")
     _write_json(union_path, report)
     account_paths = {}
     for account in ACCOUNT_TYPES:
@@ -585,9 +607,7 @@ def main() -> int:
                 "market_data_as_of": report["market_data_as_of"],
                 "product_count": report["product_count"],
                 "missing_history_count": report["missing_history_count"],
-                "distribution_source_complete": report[
-                    "distribution_source_complete"
-                ],
+                "distribution_source_complete": report["distribution_source_complete"],
                 "output_path": union_path.as_posix(),
                 "account_output_paths": account_paths,
             },
