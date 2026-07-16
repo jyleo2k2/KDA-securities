@@ -104,6 +104,13 @@ def _sse(event: str, payload: dict[str, object]) -> str:
     return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
+def _answer_delta_events(answer: str, *, chunk_size: int = 24) -> list[str]:
+    return [
+        _sse("answer_delta", {"delta": answer[index : index + chunk_size]})
+        for index in range(0, len(answer), chunk_size)
+    ]
+
+
 def _log_stream_latency(
     *,
     intent: ChatIntent,
@@ -158,6 +165,8 @@ async def _stream_answer(
         started_at=started_at,
     )
     yield _sse("phase", {"message": "답변 검증을 완료했습니다."})
+    for event in _answer_delta_events(response.answer):
+        yield event
     yield _sse("response", {"response": response.model_dump(mode="json")})
 
 
@@ -487,6 +496,8 @@ async def chat_authenticated_stream(
             return
         final_response = saved.response or response
         yield _sse("phase", {"message": "답변 검증을 완료했습니다."})
+        for event in _answer_delta_events(final_response.answer):
+            yield event
         yield _sse(
             "response",
             {

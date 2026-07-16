@@ -311,6 +311,7 @@ export function GuidePage({
   const [capabilities, setCapabilities] = useState<ChatCapabilities | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [sendingStage, setSendingStage] = useState("답변을 준비하고 있습니다.");
+  const [streamingAnswer, setStreamingAnswer] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [serverReady, setServerReady] = useState<boolean | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
@@ -651,6 +652,16 @@ export function GuidePage({
     setInput("");
     setIsSending(true);
     setSendingStage("질문을 확인하고 있습니다.");
+    setStreamingAnswer("");
+
+    const appendAnswerDelta = (delta: string) => {
+      if (isCurrentOperation(
+        authGeneration,
+        requestUserId,
+        requestToken,
+        conversationGeneration,
+      )) setStreamingAnswer((current) => current + delta);
+    };
 
     const taxInput = !requestToken && PENSION_TAX_PROMPT.test(normalized)
       ? pensionTaxInput
@@ -662,6 +673,7 @@ export function GuidePage({
             normalized,
             requestToken,
             setSendingStage,
+            appendAnswerDelta,
             undefined,
             activeSessionId || undefined,
             idempotencyKey,
@@ -669,7 +681,7 @@ export function GuidePage({
             taxInput,
             surveyProfile,
           )
-        : await sendChatStream(normalized, setSendingStage, {
+        : await sendChatStream(normalized, setSendingStage, appendAnswerDelta, {
             scenarioCode: selectedScenario || undefined,
             conversationContext,
             pensionTax: taxInput,
@@ -730,6 +742,7 @@ export function GuidePage({
       )) {
         sendingRef.current = false;
         setIsSending(false);
+        setStreamingAnswer("");
         textareaRef.current?.focus();
       }
     }
@@ -980,9 +993,15 @@ export function GuidePage({
               {isSending && (
                 <div className="message-row assistant">
                   <div className="assistant-avatar"><Icon name="spark" size={16} /></div>
-                  <div className="message-bubble typing" aria-label={sendingStage}>
-                    <span /><span /><span /><small>{sendingStage}</small>
-                  </div>
+                  {streamingAnswer ? (
+                    <div className="message-bubble" aria-live="polite">
+                      <AssistantMessage text={streamingAnswer} />
+                    </div>
+                  ) : (
+                    <div className="message-bubble typing" aria-label={sendingStage}>
+                      <span /><span /><span /><small>{sendingStage}</small>
+                    </div>
+                  )}
                 </div>
               )}
               <div ref={conversationEndRef} />

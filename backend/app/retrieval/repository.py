@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 import psycopg
@@ -41,6 +41,7 @@ class KnowledgeMatch:
     publisher: str | None = None
     source_authority: str | None = None
     document_type: str | None = None
+    as_of_date: date | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -120,7 +121,8 @@ class RetrievalRepository:
                     ts_rank_cd(kc.search_vector, prepared_query.ts_query)::real,
                     kd.publisher,
                     ds.authority,
-                    kd.document_type
+                    kd.document_type,
+                    kd.as_of_date
                 from public.knowledge_chunks as kc
                 join public.knowledge_documents as kd on kd.id = kc.document_id
                 join public.data_sources as ds on ds.id = kd.source_id
@@ -251,7 +253,8 @@ class RetrievalRepository:
                     )::real as fused_rank,
                     kd.publisher,
                     ds.authority,
-                    kd.document_type
+                    kd.document_type,
+                    kd.as_of_date
                 from text_hits as th
                 full outer join vector_hits as vh on th.id = vh.id
                 join public.knowledge_chunks as kc

@@ -92,8 +92,6 @@ _SELECTED_SCENARIO_DIAGNOSIS_TERMS = re.compile(
     r"(?:내|나의)\s*(?:연금|계좌|자산).{0,20}(?:관리|상태|구성|확인|어떻게)"
     r"|지금\s*(?:뭘|무엇을).{0,20}(?:먼저\s*)?확인"
 )
-VERIFIED_AS_OF = date(2026, 7, 13)
-
 _ASSET_CLASS_LABELS = {
     "deposit": "원리금보장형 자산",
     "cash": "현금성 자산",
@@ -280,7 +278,7 @@ def _knowledge_sources(matches: list[KnowledgeMatch]) -> list[SourceEvidence]:
             label=match.title,
             locator=match.source_url,
             publisher="연금 코파일럿 검증 지식",
-            as_of=VERIFIED_AS_OF,
+            as_of=match.as_of_date,
             data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
         )
         for match in matches

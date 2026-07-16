@@ -148,8 +148,20 @@ def test_demo_chat_streams_progress_before_final_response() -> None:
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
     assert "근거를 검색하고 있습니다." in response.text
+    assert "event: answer_delta" in response.text
     assert "event: response" in response.text
     assert '"intent": "account_rule"' in response.text
+    blocks = response.text.strip().split("\n\n")
+    deltas = [
+        json.loads(block.split("data: ", 1)[1])["delta"]
+        for block in blocks
+        if block.startswith("event: answer_delta")
+    ]
+    final_block = next(
+        block for block in blocks if block.startswith("event: response")
+    )
+    final = json.loads(final_block.split("data: ", 1)[1])
+    assert "".join(deltas) == final["response"]["answer"]
 
 
 def test_authenticated_chat_stream_persists_final_response() -> None:
