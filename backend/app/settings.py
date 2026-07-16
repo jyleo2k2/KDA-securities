@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     )
 
     pension_portal_api_key: SecretStr | None = None
+    krx_api_key: SecretStr | None = None
+    kis_app_key: SecretStr | None = None
+    kis_app_secret: SecretStr | None = None
+    law_open_api_key: SecretStr | None = None
+    fsc_fund_product_api_key: SecretStr | None = None
     naver_api_hub_client_id: SecretStr | None = None
     naver_api_hub_client_secret: SecretStr | None = None
     database_url: SecretStr | None = None
