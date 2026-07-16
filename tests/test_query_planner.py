@@ -123,6 +123,14 @@ def test_named_mock_scenario_wins_over_tax_credit_word() -> None:
 
 
 @pytest.mark.parametrize(
+    "message",
+    ("현재 나의 포트폴리오 보여줘", "내 연금 포트폴리오를 진단해줘"),
+)
+def test_my_portfolio_wording_selects_mock_portfolio_intent(message: str) -> None:
+    assert plan_question(message).intent == ChatIntent.MOCK_PORTFOLIO
+
+
+@pytest.mark.parametrize(
     ("message", "expected_intent"),
     (
         ("세액공제 후 미운용 시나리오 최신 뉴스", ChatIntent.MOCK_PORTFOLIO),
