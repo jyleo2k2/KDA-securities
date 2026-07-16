@@ -138,6 +138,14 @@ _NEWS_REQUEST_TOKENS = re.compile(
     + _WORD_EDGE_RIGHT
 )
 
+_INTENT_PRIORITY = (
+    ChatIntent.MOCK_PORTFOLIO,
+    ChatIntent.PENSION_TAX,
+    ChatIntent.NEWS,
+    ChatIntent.PROVIDER_DISCLOSURE,
+    ChatIntent.ACCOUNT_RULE,
+)
+
 
 def _account_types(message: str) -> tuple[AccountType, ...]:
     found: list[AccountType] = []
@@ -198,32 +206,51 @@ def plan_question(message: str, *, default_max_results: int = 3) -> QueryPlan:
     max_results = _max_results(normalized, default_max_results)
     if not normalized:
         return _blocked("질문 없음", BlockedReason.UNSUPPORTED, max_results)
-    if _contains_sensitive_information(normalized):
-        return _blocked(
-            normalized, BlockedReason.SENSITIVE_INFORMATION, max_results
-        )
-    if _ORDER_REQUEST.search(normalized):
-        return _blocked(normalized, BlockedReason.ORDER_REQUEST, max_results)
-    if _FUTURE_PREDICTION.search(normalized):
-        return _blocked(normalized, BlockedReason.FUTURE_PREDICTION, max_results)
-    if _PRODUCT_LEVEL.search(normalized):
-        return _blocked(
-            normalized, BlockedReason.PRODUCT_LEVEL_UNAVAILABLE, max_results
-        )
+    blocking_rules = (
+        (
+            _contains_sensitive_information(normalized),
+            BlockedReason.SENSITIVE_INFORMATION,
+        ),
+        (_ORDER_REQUEST.search(normalized) is not None, BlockedReason.ORDER_REQUEST),
+        (
+            _FUTURE_PREDICTION.search(normalized) is not None,
+            BlockedReason.FUTURE_PREDICTION,
+        ),
+        (
+            _PRODUCT_LEVEL.search(normalized) is not None,
+            BlockedReason.PRODUCT_LEVEL_UNAVAILABLE,
+        ),
+    )
+    for matched, reason in blocking_rules:
+        if matched:
+            return _blocked(normalized, reason, max_results)
 
     account_types = _account_types(normalized)
-    # "세액공제 후 미운용"은 세액공제 계산 요청이 아니라 기존 목시나리오명이다.
-    # 명시적인 시나리오·진단 표현이 있으면 개인화 세금 도구보다 먼저 분류한다.
-    if _SCENARIO_TERMS.search(normalized):
+    requests_tax_credit = _TAX_CREDIT_TERMS.search(normalized) is not None
+    requests_withdrawal_tax = _WITHDRAWAL_TAX_TERMS.search(normalized) is not None
+    intent_matches = {
+        ChatIntent.MOCK_PORTFOLIO: _SCENARIO_TERMS.search(normalized) is not None,
+        ChatIntent.PENSION_TAX: requests_tax_credit or requests_withdrawal_tax,
+        ChatIntent.NEWS: _NEWS_TERMS.search(normalized) is not None,
+        ChatIntent.PROVIDER_DISCLOSURE: bool(account_types)
+        and _DISCLOSURE_TERMS.search(normalized) is not None,
+        ChatIntent.ACCOUNT_RULE: bool(
+            account_types or _RULE_TERMS.search(normalized)
+        ),
+    }
+    intent = next(
+        (candidate for candidate in _INTENT_PRIORITY if intent_matches[candidate]),
+        None,
+    )
+
+    if intent == ChatIntent.MOCK_PORTFOLIO:
         return QueryPlan(
             normalized_message=normalized,
             intent=ChatIntent.MOCK_PORTFOLIO,
             account_types=account_types,
             max_results=max_results,
         )
-    requests_tax_credit = _TAX_CREDIT_TERMS.search(normalized) is not None
-    requests_withdrawal_tax = _WITHDRAWAL_TAX_TERMS.search(normalized) is not None
-    if requests_tax_credit or requests_withdrawal_tax:
+    if intent == ChatIntent.PENSION_TAX:
         return QueryPlan(
             normalized_message=normalized,
             intent=ChatIntent.PENSION_TAX,
@@ -232,7 +259,7 @@ def plan_question(message: str, *, default_max_results: int = 3) -> QueryPlan:
             requests_tax_credit=requests_tax_credit,
             requests_withdrawal_tax=requests_withdrawal_tax,
         )
-    if _NEWS_TERMS.search(normalized):
+    if intent == ChatIntent.NEWS:
         news_query = "연금" if account_types else _news_query(normalized)
         return QueryPlan(
             normalized_message=normalized,
@@ -241,7 +268,7 @@ def plan_question(message: str, *, default_max_results: int = 3) -> QueryPlan:
             news_query=news_query,
             max_results=3 if news_query == "연금" else max_results,
         )
-    if _DISCLOSURE_TERMS.search(normalized) and account_types:
+    if intent == ChatIntent.PROVIDER_DISCLOSURE:
         if len(account_types) > 1:
             return _blocked(
                 normalized,
@@ -254,7 +281,7 @@ def plan_question(message: str, *, default_max_results: int = 3) -> QueryPlan:
             account_types=account_types,
             max_results=max_results,
         )
-    if account_types or _RULE_TERMS.search(normalized):
+    if intent == ChatIntent.ACCOUNT_RULE:
         return QueryPlan(
             normalized_message=normalized,
             intent=ChatIntent.ACCOUNT_RULE,

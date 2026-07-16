@@ -122,6 +122,22 @@ def test_named_mock_scenario_wins_over_tax_credit_word() -> None:
     assert plan.intent == ChatIntent.MOCK_PORTFOLIO
 
 
+@pytest.mark.parametrize(
+    ("message", "expected_intent"),
+    (
+        ("세액공제 후 미운용 시나리오 최신 뉴스", ChatIntent.MOCK_PORTFOLIO),
+        ("연금저축 세액공제 뉴스를 알려줘", ChatIntent.PENSION_TAX),
+        ("IRP 사업자 수익률 뉴스를 알려줘", ChatIntent.NEWS),
+        ("IRP 사업자 수익률 한도를 알려줘", ChatIntent.PROVIDER_DISCLOSURE),
+    ),
+)
+def test_intent_conflicts_follow_explicit_priority(
+    message: str,
+    expected_intent: ChatIntent,
+) -> None:
+    assert plan_question(message).intent == expected_intent
+
+
 def test_combined_cap_request_is_marked_for_account_separation() -> None:
     plan = plan_question(
         "DC와 IRP와 연금저축을 합쳐서 위험자산 70%를 적용하면 돼?"
