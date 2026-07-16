@@ -184,3 +184,19 @@ def test_portfolio_uses_full_allocation_products_for_defensive_sleeves() -> None
         candidate.price_history_source == "kis_adjusted_close"
         for candidate in result.candidates
     )
+    assert result.portfolio_risk.status == "complete"
+    assert result.portfolio_risk.is_return_forecast is False
+    assert result.planning_return.is_forecast is False
+    assert result.planning_return.historical_performance_used is False
+    assert result.planning_horizon_years == 3
+
+
+def test_retirement_start_age_changes_horizon_and_glidepath() -> None:
+    early_request = _request(age=52, profile=RiskProfile.ACTIVE, loss="40")
+    later_request = early_request.model_copy(update={"retirement_start_age": 60})
+
+    _, early = calculate_target_allocation(early_request)
+    _, later = calculate_target_allocation(later_request)
+
+    assert later["raw_risk"] > early["raw_risk"]
+    assert later_request.retirement_start_age - later_request.age == 8

@@ -33,6 +33,7 @@ __pycache__/
 .uv-cache/
 venv/
 .pytest_cache/
+.pytest-tmp-transfer-full/
 .ruff_cache/
 .mypy_cache/
 .coverage

@@ -137,6 +137,7 @@ def educational_portfolio(
         products=repository.products,
         histories=repository.histories,
         source_as_of=repository.as_of,
+        history_sources=repository.history_sources,
     )
 
 

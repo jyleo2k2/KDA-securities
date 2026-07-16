@@ -21,6 +21,7 @@ import {
 } from "../api/client";
 import type {
   ChatCapabilities,
+  CompletedSurveyProfile,
   ConversationContext,
   ChatResponse,
   ChatSessionSummary,
@@ -47,7 +48,7 @@ interface ConversationMessage {
 const SUGGESTED_PROMPTS = [
   "IRP와 연금저축의 위험자산 한도 차이를 알려줘",
   "DC형 방치 시나리오를 진단해줘",
-  "내년 예상수익률을 알려줘",
+  "내 연금 운용 전략을 세워줘",
   "연금 뉴스 알려줘",
   "연금저축과 IRP 세액공제 혜택과 중도해지 세금을 알려줘",
 ];
@@ -58,6 +59,7 @@ const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   provider_disclosure: "공식 공시",
   news: "연금 뉴스",
   pension_tax: "세액공제·중도해지",
+  educational_portfolio: "연금 운용전략",
   out_of_scope: "지원 범위 안내",
 };
 
@@ -211,7 +213,7 @@ function AssistantMessage({ response, text }: { response?: ChatResponse; text: s
       )}
 
       {response.sections.map((section, index) => (
-        <details className={`answer-section section-${section.kind}`} key={`${section.title}-${index}`} open={section.kind === "limitation"}>
+        <details className={`answer-section section-${section.kind}`} key={`${section.title}-${index}`} open={response.intent === "educational_portfolio" || section.kind === "limitation"}>
           <summary><span>{section.title}</span><small>내용 보기</small></summary>
           <p>{section.content}</p>
         </details>
@@ -277,7 +279,11 @@ function authenticatedErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "요청을 처리하지 못했습니다.";
 }
 
-export function GuidePage() {
+export function GuidePage({
+  surveyProfile,
+}: {
+  surveyProfile: CompletedSurveyProfile | null;
+}) {
   const auth = useSupabaseAuth();
   const accessToken = auth.session?.access_token;
   const authenticatedUserId = auth.session?.user.id ?? null;
@@ -630,11 +636,13 @@ export function GuidePage() {
             idempotencyKey,
             conversationContext,
             taxInput,
+            surveyProfile,
           )
         : await sendChatStream(normalized, setSendingStage, {
             scenarioCode: selectedScenario || undefined,
             conversationContext,
             pensionTax: taxInput,
+            surveyProfile,
           });
       const persisted = streamed.persisted ? streamed : null;
       const response = streamed.response;

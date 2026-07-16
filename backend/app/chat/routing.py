@@ -1,5 +1,5 @@
 from ..engine import AccountType
-from .models import ChatRequest
+from .models import ChatIntent, ChatRequest
 
 CONTEXTUAL_FOLLOW_UP_TERMS = ("그럼", "그러면", "해당", "이 경우", "그 계좌")
 
@@ -12,6 +12,11 @@ class IntentRouter:
         if cls.account_type(request.message) is not None:
             return request.message
         context = request.conversation_context
+        if (
+            context is not None
+            and context.last_intent == ChatIntent.EDUCATIONAL_PORTFOLIO
+        ):
+            return f"연금 운용 전략 {request.message}"
         if (
             context is None
             or context.account_type is None

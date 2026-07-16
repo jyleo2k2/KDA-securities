@@ -55,6 +55,7 @@ def test_repository_prefers_kis_adjusted_close_and_keeps_253_rows(tmp_path) -> N
         return_root=return_root,
         adjusted_price_root=adjusted_root,
         krx_root=tmp_path / "krx-not-needed",
+        event_root=tmp_path / "events-not-needed",
     )
 
     assert len(repository.histories["069500"]) == 253
@@ -74,4 +75,5 @@ def test_repository_rejects_non_adjusted_kis_history(tmp_path) -> None:
             return_root=return_root,
             adjusted_price_root=adjusted_root,
             krx_root=tmp_path / "krx-not-needed",
+            event_root=tmp_path / "events-not-needed",
         )

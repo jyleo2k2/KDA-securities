@@ -50,6 +50,13 @@ BAND_UPPER_BOUNDS_PERCENT: dict[RiskProfile, Decimal | None] = {
     RiskProfile.ACTIVE: Decimal("80"),
     RiskProfile.AGGRESSIVE: None,
 }
+LOSS_TOLERANCE_PERCENT_BY_SCORE = {
+    1: Decimal("5"),
+    2: Decimal("10"),
+    3: Decimal("20"),
+    4: Decimal("30"),
+    5: Decimal("40"),
+}
 
 
 class SurveyAnswer(BaseModel):
@@ -86,6 +93,7 @@ class ProfileEvaluation(BaseModel):
     max_score: int
     score_percent: Decimal
     risk_profile: RiskProfile
+    loss_tolerance_percent: Decimal
     band_upper_bounds_percent: dict[RiskProfile, Decimal | None]
     evidence: list[SourceChip]
 
@@ -107,6 +115,11 @@ def evaluate_profile(survey: ProfileSurveyInput) -> ProfileEvaluation:
         if upper_bound is None or exact_percent < upper_bound:
             risk_profile = band
             break
+    loss_tolerance_score = next(
+        answer.selected_score
+        for answer in survey.answers
+        if answer.question_code == "loss_tolerance"
+    )
 
     return ProfileEvaluation(
         engine_name=ENGINE_NAME,
@@ -118,6 +131,9 @@ def evaluate_profile(survey: ProfileSurveyInput) -> ProfileEvaluation:
         max_score=max_score,
         score_percent=exact_percent.quantize(PERCENT_QUANTUM, rounding=ROUND_HALF_UP),
         risk_profile=risk_profile,
+        loss_tolerance_percent=LOSS_TOLERANCE_PERCENT_BY_SCORE[
+            loss_tolerance_score
+        ],
         band_upper_bounds_percent=BAND_UPPER_BOUNDS_PERCENT,
         evidence=[PROFILE_SOURCE],
     )
