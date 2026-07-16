@@ -19,7 +19,7 @@ from pydantic_ai.providers.anthropic import AnthropicProvider
 from ..engine import PensionTaxScenarioInput
 from .models import ChatIntent, ChatResponse, DataBoundary
 from .pension_tax_parser import resolve_pension_tax_inputs
-from .tools import PENSION_TAX_AGENT_TOOLS, PENSION_TAX_CLOSING_NOTICE
+from .tools import CHAT_AGENT_TOOLS, PENSION_TAX_CLOSING_NOTICE
 
 logger = logging.getLogger(__name__)
 
@@ -182,7 +182,7 @@ class ClaudeNarrator:
             ),
             output_type=NativeOutput(NarrationOutput),
             instructions=SYSTEM_PROMPT,
-            tools=PENSION_TAX_AGENT_TOOLS,
+            tools=CHAT_AGENT_TOOLS,
             model_settings=AnthropicModelSettings(
                 # thinking과 검토 노트가 출력 토큰을 함께 소모하므로 여유를 둔다.
                 max_tokens=1500,
@@ -197,6 +197,7 @@ class ClaudeNarrator:
         *,
         pension_tax_input: PensionTaxScenarioInput | None = None,
         pension_tax_message: str | None = None,
+        required_tool_names: frozenset[str] = frozenset(),
     ) -> ChatResponse:
         # NAVER titles/summaries are third-party metadata, not instructions.
         # Keep every news response deterministic: no external text enters the
@@ -262,7 +263,7 @@ class ClaudeNarrator:
             )
 
         if resolved_tax_inputs is not None:
-            required_tools: set[str] = set()
+            required_tools: set[str] = set(required_tool_names)
             tax_result = response.pension_tax_result
             if tax_result is not None and tax_result.tax_credit is not None:
                 required_tools.add("calculate_pension_tax_credit_tool")
@@ -281,6 +282,20 @@ class ClaudeNarrator:
                     "Claude가 필요한 연금세액 Tool을 호출하지 않아 검증 원문을 "
                     "표시합니다.",
                     reason="required_tool_not_called",
+                )
+
+        elif required_tool_names:
+            called_tools = {
+                part.tool_name
+                for message in result.all_messages()
+                if isinstance(message, ModelResponse)
+                for part in message.parts
+                if isinstance(part, ToolCallPart)
+            }
+            if not required_tool_names.issubset(called_tools):
+                return self._fallback(
+                    response,
+                    "Claude가 필요한 Tool을 호출하지 않아 검증 원문을 표시합니다.",
                 )
 
         if response.intent == ChatIntent.PENSION_TAX:
