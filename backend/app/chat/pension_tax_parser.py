@@ -64,11 +64,19 @@ def _account_contribution(
         return _amount(before, prefix)
     after = re.search(
         rf"{account}\s*(?:에|에는)?\s*{_amount_pattern(prefix)}"
-        rf".{{0,18}}?납입",
+        rf".{{0,18}}?(?:납입|넣|불입|적립|가입|납부)",
         message,
         re.I,
     )
-    return _amount(after, prefix) if after is not None else None
+    if after is not None:
+        return _amount(after, prefix)
+    direct = re.search(
+        rf"{account}\s*(?:에|에는)?\s*{_amount_pattern(prefix)}"
+        rf"(?!\s*(?:잔액|평가액|보유))",
+        message,
+        re.I,
+    )
+    return _amount(direct, prefix) if direct is not None else None
 
 
 def _paired_contributions(message: str) -> tuple[Decimal | None, Decimal | None]:
@@ -163,10 +171,10 @@ def parse_pension_tax_inputs(message: str) -> ParsedPensionTaxInputs:
         )
     income_basis, income_amount = _income(message)
     missing_credit: list[str] = []
-    if pension_contribution is None:
-        missing_credit.append("연금저축 당해연도 납입액")
-    if irp_contribution is None:
-        missing_credit.append("IRP 당해연도 납입액")
+    if pension_contribution is None and irp_contribution is None:
+        missing_credit.extend(("연금저축 당해연도 납입액", "IRP 당해연도 납입액"))
+    pension_contribution = pension_contribution or Decimal("0")
+    irp_contribution = irp_contribution or Decimal("0")
     tax_credit = (
         PensionTaxCreditInput(
             income_basis=income_basis,
