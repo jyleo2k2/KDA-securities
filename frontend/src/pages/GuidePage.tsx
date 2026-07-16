@@ -220,12 +220,8 @@ function AssistantMessage({ response, text }: { response?: ChatResponse; text: s
         />
       ))}
 
-      {response.narration_reasoning && (
-        <details className="answer-section section-service_explanation">
-          <summary><span>AI가 검토한 과정</span><small>내용 보기</small></summary>
-          <p>{response.narration_reasoning}</p>
-        </details>
-      )}
+      {/* narration_reasoning은 thinking 요약이라 대부분 영어로 나와 화면에 노출하지 않는다.
+          응답 필드는 그대로 유지해 디버깅·로그에서 확인한다. */}
 
       {response.sections.map((section, index) => (
         <details className={`answer-section section-${section.kind}`} key={`${section.title}-${index}`} open={response.intent === "educational_portfolio" || section.kind === "limitation"}>

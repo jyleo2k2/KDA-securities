@@ -48,16 +48,14 @@ SYSTEM_PROMPT = (
 
 
 class NarrationOutput(BaseModel):
-    """구조화 출력 계약: 재서술 본문과 검토 노트를 분리해 받는다."""
+    """구조화 출력 계약: 재서술 본문만 받는다.
+
+    검토 과정은 thinking 요약(anthropic_thinking)이 담당한다. 별도 검토 노트를
+    함께 생성하면 출력 토큰만 늘고 thinking이 있을 때 버려지므로 두지 않는다.
+    """
 
     narration: str = Field(
         description="검증 답변을 쉬운 한국어 한 문단으로 다시 쓴 본문"
-    )
-    review_note: str = Field(
-        description=(
-            "검증 답변을 어떻게 검토·재서술했는지 1~2문장 설명 "
-            "(원문에 없는 숫자 금지)"
-        )
     )
 
 
@@ -189,9 +187,8 @@ class ClaudeNarrator:
             instructions=SYSTEM_PROMPT,
             tools=CHAT_AGENT_TOOLS,
             model_settings=AnthropicModelSettings(
-                # thinking과 검토 노트가 출력 토큰을 함께 소모하므로 여유를 둔다.
                 max_tokens=1500,
-                # 모델이 실제로 생각한 경우 요약을 검토 과정으로 우선 노출한다.
+                # 검토 과정은 이 thinking 요약만 사용한다(NarrationOutput 참고).
                 anthropic_thinking={"type": "adaptive", "display": "summarized"},
             ),
         )
@@ -331,15 +328,19 @@ class ClaudeNarrator:
                 "narration_mode": "claude_verified",
                 "model_name": self._model,
                 "narration_reasoning": self._safe_reasoning(
-                    thinking or output.review_note.strip(), response.answer
+                    thinking, response.answer
                 ),
             }
         )
         return ChatResponse.model_validate(data)
 
     @staticmethod
-    def _safe_reasoning(reasoning: str, source: str) -> str | None:
-        """본문과 달리 보조 설명은 새 숫자 감지 시 이 필드만 조용히 생략한다."""
+    def _safe_reasoning(reasoning: str | None, source: str) -> str | None:
+        """본문과 달리 보조 설명은 새 숫자 감지 시 이 필드만 조용히 생략한다.
+
+        모델이 thinking을 내지 않으면 reasoning이 None이고, 그때는 검토 과정
+        없이 본문만 남긴다(본문 자체는 숫자 가드를 이미 통과한 상태다).
+        """
         if not reasoning or len(reasoning) > 2000:
             return None
         if _adds_unverified_content(reasoning, source):
