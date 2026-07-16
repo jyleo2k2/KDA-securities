@@ -484,6 +484,25 @@ export interface AnswerSection {
   evidence_ids: string[];
 }
 
+export type VisualizationKind = "asset_allocation" | "risk_cap" | "tax_summary";
+export type VisualizationDatumRole = "segment" | "current" | "limit" | "value";
+
+export interface VisualizationDatum {
+  label: string;
+  value: string | number;
+  unit: string;
+  role: VisualizationDatumRole;
+}
+
+export interface ChatVisualization {
+  kind: VisualizationKind;
+  title: string;
+  description: string;
+  data_boundary: DataBoundary;
+  evidence_ids: string[];
+  items: VisualizationDatum[];
+}
+
 export interface ConversationContext {
   account_type?: "dc" | "irp" | "pension_savings" | null;
   scenario_code?: string | null;
@@ -499,6 +518,7 @@ export interface ChatResponse {
   /** Claude 내레이터의 검토 과정 요약(새 숫자 감지 시 서버가 생략). */
   narration_reasoning?: string | null;
   sections: AnswerSection[];
+  visualizations: ChatVisualization[];
   sources: SourceEvidence[];
   numeric_evidence: NumericEvidence[];
   engine_results: unknown[];
