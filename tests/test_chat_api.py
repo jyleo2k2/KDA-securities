@@ -133,6 +133,44 @@ def test_authenticated_chat_persists_supported_response() -> None:
     )
 
 
+def test_demo_chat_streams_progress_before_final_response() -> None:
+    app.dependency_overrides[get_chat_service] = _service
+    app.dependency_overrides[get_chat_narrator] = lambda: None
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/demo/stream",
+                json={"message": "IRP 위험자산 한도를 알려줘"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert "근거를 검색하고 있습니다." in response.text
+    assert "event: response" in response.text
+    assert '"intent": "account_rule"' in response.text
+
+
+def test_authenticated_chat_stream_persists_final_response() -> None:
+    repository = FakeChatRepository()
+    _override_authenticated_dependencies(repository)
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={"message": "IRP 위험자산 한도를 알려줘"},
+                headers=CHAT_HEADERS,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert "대화 기록을 저장하고 있습니다." in response.text
+    assert '"persisted": true' in response.text
+    assert len(repository.saved) == 1
+
+
 def test_authenticated_pension_tax_keeps_context_and_idempotency() -> None:
     repository = FakeChatRepository()
     _override_authenticated_dependencies(repository)
