@@ -48,11 +48,21 @@ interface ConversationMessage {
 }
 
 const SUGGESTED_PROMPTS = [
-  "IRP와 연금저축의 위험자산 한도 차이를 알려줘",
-  "DC형 방치 시나리오를 진단해줘",
-  "내 연금 운용 전략을 세워줘",
-  "연금 뉴스 알려줘",
-  "연금저축과 IRP 세액공제 혜택과 중도해지 세금을 알려줘",
+  {
+    category: "든든한 노후 설계",
+    prompt: "내 나이에 맞는 연금 저축 전략을 알려줘.",
+    icon: "sun" as const,
+  },
+  {
+    category: "한눈에 보는 자산",
+    prompt: "내 IRP·연금저축 수익률을 진단해 줄래?",
+    icon: "chart" as const,
+  },
+  {
+    category: "놓치기 쉬운 혜택",
+    prompt: "올해 받을 수 있는 연금 세액공제가 궁금해.",
+    icon: "star" as const,
+  },
 ];
 
 const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
@@ -88,7 +98,7 @@ function Icon({
   name,
   size = 20,
 }: {
-  name: "spark" | "send" | "book" | "database" | "chevron" | "shield" | "refresh";
+  name: "spark" | "send" | "book" | "database" | "chevron" | "shield" | "refresh" | "sun" | "chart" | "star";
   size?: number;
 }) {
   const paths = {
@@ -99,6 +109,9 @@ function Icon({
     chevron: <path d="m9 18 6-6-6-6" />,
     shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Zm-3-10 2 2 4-4" />,
     refresh: <path d="M20 11a8.1 8.1 0 1 0 2 5M20 4v7h-7" />,
+    sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" /></>,
+    chart: <><path d="M4 20V4M4 20h16" /><path d="m8 15 3-4 3 2 5-6" /></>,
+    star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />,
   };
   return <svg aria-hidden="true" viewBox="0 0 24 24" width={size} height={size}>{paths[name]}</svg>;
 }
@@ -904,22 +917,23 @@ export function GuidePage({
       {isSidebarOpen && <button className="sidebar-backdrop" type="button" aria-label="메뉴 닫기" onClick={() => setIsSidebarOpen(false)} />}
 
       <main className="chat-main">
-        <header className="topbar">
+        <header className="topbar design-topbar">
           <button className="menu-button" type="button" aria-label="메뉴 열기" onClick={() => setIsSidebarOpen(true)}><span /><span /><span /></button>
-          <div className="topbar-title">
-            <strong>연금가이드</strong>
-            <span>{userContext ? `${userContext.nickname} · DB 목데이터` : selectedScenarioData ? `${selectedScenarioData.name} · 목데이터` : "검증된 근거로 답변해요"}</span>
+          <button className="design-new-chat" type="button" onClick={startNewChat}><span>+</span> 새 대화</button>
+          <div className="design-topbar-actions">
+            <Icon name="database" size={25} />
+            <span className="design-avatar">연</span>
           </div>
-          <div className="trust-label"><Icon name="shield" size={16} /> 근거 검증</div>
         </header>
 
         <div className="conversation" aria-live="polite">
           {messages.length === 0 ? (
-            <div className="welcome">
-              <div className="welcome-icon"><Icon name="spark" size={30} /></div>
-              <p className="eyebrow">PENSION COPILOT</p>
-              <h1>연금계좌, 무엇이든<br />쉽게 물어보세요.</h1>
-              <p className="welcome-copy">DC형·IRP·연금저축의 차이부터 목계좌 진단까지,<br className="desktop-break" /> 규칙 엔진과 확인된 출처를 바탕으로 설명해 드려요.</p>
+            <div className="welcome design-welcome">
+              <div className="design-brand">
+                <span className="design-brand-mark">연</span>
+                <strong>연금 <em>도우미</em></strong>
+              </div>
+              <h1>막막한 노후 준비, <em>연금 도우미</em>와<br />대화하며 풀어보세요.</h1>
 
               {(userContext || selectedScenarioData) && (
                 <div className="selected-scenario-card">
@@ -931,17 +945,16 @@ export function GuidePage({
                 </div>
               )}
 
-              <div className="prompt-grid">
-                {SUGGESTED_PROMPTS.map((prompt, index) => (
+              <div className="prompt-grid design-prompt-grid">
+                {SUGGESTED_PROMPTS.map(({ category, prompt, icon }) => (
                   <button type="button" key={prompt} onClick={() => void submitPrompt(prompt)}>
-                    <span className={`prompt-number prompt-${index + 1}`}>0{index + 1}</span>
-                    <span>{prompt}</span>
-                    <Icon name="chevron" size={17} />
+                    <span className="design-prompt-icon"><Icon name={icon} size={27} /></span>
+                    <span className="design-prompt-copy"><small>{category}</small><strong>{prompt}</strong></span>
                   </button>
                 ))}
               </div>
 
-              {capabilities && <p className="capability-note">현재 {capabilities.supported.length}가지 질문 유형 지원 · 실데이터 기능은 연결 상태에 따라 달라집니다.</p>}
+              {capabilities && <p className="capability-note">연금 도우미는 참고용 정보를 제공하며, 실제 투자·가입 결정은 본인의 판단과 전문가 상담을 거쳐 주세요.</p>}
             </div>
           ) : (
             <div className="message-list">
@@ -984,7 +997,7 @@ export function GuidePage({
               value={input}
               onChange={(event) => setInput(event.target.value.slice(0, 1000))}
               onKeyDown={handleKeyDown}
-              placeholder="연금계좌에 대해 질문해 보세요"
+              placeholder="연금에 대해 무엇이든 물어보세요"
               rows={1}
               aria-label="질문 입력"
               disabled={isSending}
