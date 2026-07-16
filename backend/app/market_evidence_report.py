@@ -10,6 +10,8 @@ from backend.app.engine.market_evidence import (
     EtfObservation,
     calculate_historical_etf_metrics,
 )
+from backend.app.engine.models import SourceChip
+from backend.app.ingestion.kis_client import KIS_ADJUSTED_DAILY_PRICE_ENDPOINT
 from backend.app.ingestion.krx_client import parse_krx_etf_payload
 
 MAX_OBSERVATIONS = 253
@@ -29,7 +31,78 @@ def _decimal(value: object, *, positive: bool = False) -> Decimal | None:
     return parsed
 
 
-def build_market_evidence_report(raw_root: Path) -> dict[str, Any]:
+def _load_adjusted_closes(
+    cache_root: Path,
+    *,
+    snapshot_date: date,
+    code: str,
+) -> dict[date, Decimal] | None:
+    path = (
+        cache_root
+        / "adjusted_prices"
+        / snapshot_date.isoformat()
+        / f"{code}.json"
+    )
+    if not path.exists():
+        return None
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    policy = payload.get("price_policy")
+    rows = payload.get("observations")
+    if not isinstance(policy, dict) or policy.get("FID_ORG_ADJ_PRC") != "0":
+        raise ValueError(f"KIS adjusted price policy is invalid: {path}")
+    if not isinstance(rows, list):
+        raise ValueError(f"KIS adjusted price observations are invalid: {path}")
+    closes = {}
+    for position, row in enumerate(rows):
+        if not isinstance(row, dict):
+            raise ValueError(f"KIS adjusted price row {position} must be an object")
+        try:
+            business_date = date.fromisoformat(row["date"])
+            close = Decimal(str(row["adjusted_close"]).replace(",", ""))
+        except (KeyError, InvalidOperation, TypeError, ValueError) as exc:
+            raise ValueError(
+                f"KIS adjusted price row {position} is invalid"
+            ) from exc
+        if not close.is_finite() or close <= 0:
+            raise ValueError(
+                f"KIS adjusted price row {position} close must be positive"
+            )
+        closes[business_date] = close
+    return closes
+
+
+def _latest_adjusted_snapshot(cache_root: Path) -> date | None:
+    root = cache_root / "adjusted_prices"
+    candidates = []
+    if root.exists():
+        for path in root.iterdir():
+            if not path.is_dir():
+                continue
+            try:
+                candidates.append(date.fromisoformat(path.name))
+            except ValueError:
+                continue
+    return max(candidates) if candidates else None
+
+
+def _overlay_adjusted_closes(
+    observations: list[EtfObservation],
+    adjusted_closes: dict[date, Decimal],
+) -> list[EtfObservation] | None:
+    if not observations or any(
+        observation.as_of not in adjusted_closes for observation in observations
+    ):
+        return None
+    return [
+        observation.model_copy(update={"close": adjusted_closes[observation.as_of]})
+        for observation in observations
+    ]
+
+
+def build_market_evidence_report(
+    raw_root: Path,
+    kis_adjusted_cache_root: Path = Path("data/cache/kis"),
+) -> dict[str, Any]:
     histories: dict[str, deque[EtfObservation]] = defaultdict(
         lambda: deque(maxlen=MAX_OBSERVATIONS)
     )
@@ -87,6 +160,11 @@ def build_market_evidence_report(raw_root: Path) -> dict[str, Any]:
 
     products: list[dict[str, Any]] = []
     excluded_not_currently_listed_count = 0
+    kis_adjusted_price_product_count = 0
+    krx_close_fallback_product_count = 0
+    adjusted_snapshot_date = _latest_adjusted_snapshot(
+        kis_adjusted_cache_root
+    )
     for code, observations in sorted(histories.items()):
         if code not in latest_universe_codes:
             excluded_not_currently_listed_count += 1
@@ -97,7 +175,42 @@ def build_market_evidence_report(raw_root: Path) -> dict[str, Any]:
         ):
             continue
         product_metadata = metadata[code]
-        metrics = calculate_historical_etf_metrics(list(observations))
+        metric_observations = list(observations)
+        adjusted_closes = (
+            _load_adjusted_closes(
+                kis_adjusted_cache_root,
+                snapshot_date=adjusted_snapshot_date,
+                code=code,
+            )
+            if adjusted_snapshot_date is not None
+            else None
+        )
+        adjusted_observations = (
+            _overlay_adjusted_closes(metric_observations, adjusted_closes)
+            if adjusted_closes is not None
+            else None
+        )
+        if adjusted_observations is not None:
+            metric_observations = adjusted_observations
+            kis_adjusted_price_product_count += 1
+            source = SourceChip(
+                label="한투 수정주가 + KRX ETF 일별매매정보",
+                reference=KIS_ADJUSTED_DAILY_PRICE_ENDPOINT,
+                as_of=latest_date,
+            )
+            warnings = [
+                "price_returns_use_kis_adjusted_close_fid_org_adj_prc_0",
+                "cash_distributions_not_assumed_in_kis_adjusted_close",
+            ]
+        else:
+            krx_close_fallback_product_count += 1
+            source = None
+            warnings = ["kis_adjusted_price_unavailable_krx_close_fallback"]
+        metrics = calculate_historical_etf_metrics(
+            metric_observations,
+            source=source,
+            additional_warnings=warnings,
+        )
         name_upper = product_metadata["isu_name"].upper()
         usable_on_report_date = metrics.history_end == latest_date
         products.append(
@@ -118,7 +231,7 @@ def build_market_evidence_report(raw_root: Path) -> dict[str, Any]:
 
     return {
         "report_type": "current_listed_historical_market_evidence",
-        "source": "KRX statistical information",
+        "source": "KIS adjusted prices joined to KRX statistical information",
         "as_of": latest_date.isoformat() if latest_date else None,
         "raw_file_count": len(files),
         "nonempty_trading_dates": nonempty_dates,
@@ -132,6 +245,18 @@ def build_market_evidence_report(raw_root: Path) -> dict[str, Any]:
         ),
         "minimum_candidate_observations": MIN_CANDIDATE_OBSERVATIONS,
         "metric_window_max_observations": MAX_OBSERVATIONS,
+        "kis_adjusted_price_product_count": kis_adjusted_price_product_count,
+        "krx_close_fallback_product_count": krx_close_fallback_product_count,
+        "kis_adjusted_snapshot_date": (
+            adjusted_snapshot_date.isoformat()
+            if adjusted_snapshot_date is not None
+            else None
+        ),
+        "price_policy": {
+            "preferred_source": "KIS inquire-daily-itemchartprice",
+            "FID_ORG_ADJ_PRC": "0",
+            "fallback_source": "KRX ETF daily close",
+        },
         "limitations": [
             "historical evidence only; no future return forecast",
             "KRX daily API does not provide product fees or distributions",
@@ -139,6 +264,7 @@ def build_market_evidence_report(raw_root: Path) -> dict[str, Any]:
             "name-pattern blocking is a quarantine signal, not eligibility proof",
             "listed status and a usable closing-price observation are separate",
             "products with fewer than 253 usable observations are excluded",
+            "KIS adjusted close is not treated as cash-distribution total return",
         ],
         "products": products,
     }
@@ -149,13 +275,21 @@ def _parser() -> argparse.ArgumentParser:
         description="Build deterministic historical ETF evidence from KRX raw files."
     )
     parser.add_argument("--raw-root", type=Path, default=Path("data/raw/krx"))
+    parser.add_argument(
+        "--kis-adjusted-cache-root",
+        type=Path,
+        default=Path("data/cache/kis"),
+    )
     parser.add_argument("--output", type=Path, default=Path("data/cache/krx"))
     return parser
 
 
 def main() -> int:
     args = _parser().parse_args()
-    report = build_market_evidence_report(args.raw_root)
+    report = build_market_evidence_report(
+        args.raw_root,
+        args.kis_adjusted_cache_root,
+    )
     as_of = report["as_of"] or "unknown"
     output_path = args.output / f"etf_market_evidence_{as_of}.json"
     output_path.parent.mkdir(parents=True, exist_ok=True)

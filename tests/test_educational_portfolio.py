@@ -166,6 +166,9 @@ def test_portfolio_uses_full_allocation_products_for_defensive_sleeves() -> None
         products=products,
         histories=histories,
         source_as_of=date(2026, 7, 16),
+        history_sources={
+            product["isu_code"]: "kis_adjusted_close" for product in products
+        },
     )
 
     codes = {candidate.isu_code for candidate in result.candidates}
@@ -175,5 +178,9 @@ def test_portfolio_uses_full_allocation_products_for_defensive_sleeves() -> None
     assert result.rebalancing.sell_instruction_produced is False
     assert all(
         "historical_return_not_used_for_ranking" in candidate.reasons
+        for candidate in result.candidates
+    )
+    assert all(
+        candidate.price_history_source == "kis_adjusted_close"
         for candidate in result.candidates
     )

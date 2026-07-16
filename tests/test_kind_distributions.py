@@ -3,6 +3,7 @@ from datetime import datetime
 from backend.app.ingestion.kind_distribution_client import (
     parse_disclosure_search,
     parse_distribution_events,
+    parse_distribution_ex_date_event,
     parse_document_url,
     parse_main_document_number,
 )
@@ -82,3 +83,28 @@ def test_kind_distribution_parser_supports_historical_name_header() -> None:
 
     assert len(events) == 1
     assert events[0].isu_code == "069500"
+
+
+def test_kind_ex_distribution_parser_uses_official_effective_date() -> None:
+    filing_html = """
+    <table>
+      <tr><td>1. 종목명</td><td>KODEX 200</td></tr>
+      <tr><td>2. 기준가격(원)</td><td>31,245</td></tr>
+      <tr><td>3. 사유</td><td>분배락</td></tr>
+      <tr><td>4. 적용일</td><td>2026-04-29</td></tr>
+      <tr><td>5. 근거규정</td><td>업무규정시행세칙 제30조</td></tr>
+    </table>
+    """
+
+    event = parse_distribution_ex_date_event(
+        filing_html,
+        isu_code="6950",
+        isu_name="KODEX 200",
+        receipt_number="20260428000001",
+        submitted_at=datetime(2026, 4, 28, 18, 30),
+        source_url="https://kind.krx.co.kr/external/ex-date.htm",
+    )
+
+    assert event.isu_code == "069500"
+    assert event.effective_date.isoformat() == "2026-04-29"
+    assert str(event.reference_price_krw) == "31245"

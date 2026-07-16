@@ -4,6 +4,7 @@ from decimal import Decimal
 import pytest
 
 from backend.app.engine import EtfObservation, calculate_historical_etf_metrics
+from backend.app.market_evidence_report import _overlay_adjusted_closes
 
 
 def _observation(
@@ -66,3 +67,22 @@ def test_duplicate_dates_and_single_observation_are_rejected() -> None:
         calculate_historical_etf_metrics([observation])
     with pytest.raises(ValueError, match="unique"):
         calculate_historical_etf_metrics([observation, observation])
+
+
+def test_kis_adjusted_close_overlay_preserves_krx_implementation_fields() -> None:
+    observations = [
+        _observation(0, "100", nav="99", benchmark="100", trading_value="500"),
+        _observation(1, "50", nav="100", benchmark="101", trading_value="600"),
+    ]
+    adjusted = {
+        observations[0].as_of: Decimal("100"),
+        observations[1].as_of: Decimal("100"),
+    }
+
+    overlaid = _overlay_adjusted_closes(observations, adjusted)
+
+    assert overlaid is not None
+    assert overlaid[1].close == Decimal("100")
+    assert overlaid[1].nav == Decimal("100")
+    assert overlaid[1].trading_value_krw == Decimal("600")
+    assert _overlay_adjusted_closes(observations, {}) is None

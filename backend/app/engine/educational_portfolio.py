@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .models import AccountType, SourceChip
 
 ENGINE_NAME = "educational_pension_portfolio"
-ENGINE_VERSION = "2026-07-16.1"
+ENGINE_VERSION = "2026-07-16.2"
 POLICY_VERSION = "2026-07-16"
 PERCENT_QUANTUM = Decimal("0.0001")
 DRIFT_THRESHOLD_PERCENT = Decimal("5")
@@ -50,9 +50,11 @@ class EducationalPortfolioInput(BaseModel):
     def require_a_portfolio_value_for_rebalancing(
         self,
     ) -> "EducationalPortfolioInput":
-        if self.current_holdings and sum(
-            (item.amount_krw for item in self.current_holdings), Decimal("0")
-        ) <= 0:
+        if (
+            self.current_holdings
+            and sum((item.amount_krw for item in self.current_holdings), Decimal("0"))
+            <= 0
+        ):
             raise ValueError("current holdings must have a positive total")
         return self
 
@@ -83,6 +85,7 @@ class EducationalEtfCandidate(BaseModel):
     region: str | None
     strategy: str | None
     max_correlation_with_selected: Decimal | None
+    price_history_source: str
     account_eligibility: dict[str, Any]
     reasons: list[str]
 
@@ -190,9 +193,7 @@ def _allocation_for_risk(
     real_assets = min(Decimal("7"), risk_percent * Decimal("0.10"))
     core_equity = max(Decimal("0"), risk_percent - tactical - real_assets)
     defensive = Decimal("100") - risk_percent
-    retirement_cash_addition = max(
-        Decimal("0"), Decimal(age - 45) * Decimal("0.5")
-    )
+    retirement_cash_addition = max(Decimal("0"), Decimal(age - 45) * Decimal("0.5"))
     cash = min(
         defensive,
         Decimal(policy["cash"]) + retirement_cash_addition,
@@ -324,8 +325,7 @@ def _percentile(
     if target is None or not values:
         return Decimal("0")
     favorable = sum(
-        value <= target if higher_is_better else value >= target
-        for value in values
+        value <= target if higher_is_better else value >= target for value in values
     )
     return Decimal(favorable) / Decimal(len(values)) * Decimal("100")
 
@@ -350,11 +350,7 @@ def _score_candidates(
 ) -> list[tuple[dict[str, Any], CandidateQuality]]:
     inputs = {product["isu_code"]: _quality_inputs(product) for product in products}
     columns = {
-        key: [
-            value[key]
-            for value in inputs.values()
-            if value[key] is not None
-        ]
+        key: [value[key] for value in inputs.values() if value[key] is not None]
         for key in ("fee", "liquidity", "size", "nav", "tracking")
     }
     scored = []
@@ -364,17 +360,14 @@ def _score_candidates(
         liquidity = _percentile(
             values["liquidity"], columns["liquidity"], higher_is_better=True
         )
-        size = _percentile(
-            values["size"], columns["size"], higher_is_better=True
-        )
+        size = _percentile(values["size"], columns["size"], higher_is_better=True)
         nav = _percentile(values["nav"], columns["nav"], higher_is_better=False)
         tracking = _percentile(
             values["tracking"], columns["tracking"], higher_is_better=False
         )
         history = min(
             Decimal("100"),
-            (values["history"] or Decimal("0")) / Decimal("756")
-            * Decimal("100"),
+            (values["history"] or Decimal("0")) / Decimal("756") * Decimal("100"),
         )
         total = (
             fee * Decimal("0.20")
@@ -448,9 +441,7 @@ def calculate_return_correlation(
     return covariance / denominator
 
 
-def _candidate_counts(
-    sleeves: dict[str, Decimal], max_etfs: int
-) -> dict[str, int]:
+def _candidate_counts(sleeves: dict[str, Decimal], max_etfs: int) -> dict[str, int]:
     active_sleeves = [
         sleeve for sleeve, weight in sleeves.items() if weight > Decimal("0.01")
     ]
@@ -459,11 +450,7 @@ def _candidate_counts(
     if remaining > 0 and "core_equity" in counts:
         counts["core_equity"] += 1
         remaining -= 1
-    if (
-        remaining > 0
-        and "tactical" in counts
-        and sleeves["tactical"] >= Decimal("10")
-    ):
+    if remaining > 0 and "tactical" in counts and sleeves["tactical"] >= Decimal("10"):
         counts["tactical"] += 1
     return counts
 
@@ -474,7 +461,9 @@ def select_educational_candidates(
     histories: dict[str, dict[date, Decimal]],
     sleeves: dict[str, Decimal],
     request: EducationalPortfolioInput,
+    history_sources: dict[str, str] | None = None,
 ) -> list[EducationalEtfCandidate]:
+    history_sources = history_sources or {}
     counts = _candidate_counts(sleeves, request.max_etfs)
     selected: list[tuple[dict[str, Any], CandidateQuality]] = []
     output: list[EducationalEtfCandidate] = []
@@ -490,8 +479,7 @@ def select_educational_candidates(
             if (
                 request.account_type in {AccountType.DC, AccountType.IRP}
                 and sleeve in {"fixed_income", "cash"}
-                and eligibility.get("allocation_bucket")
-                != "full_allocation_eligible"
+                and eligibility.get("allocation_bucket") != "full_allocation_eligible"
             ):
                 continue
             pool.append(product)
@@ -515,8 +503,7 @@ def select_educational_candidates(
                 ]
                 maximum = max(correlations) if correlations else None
                 penalty = (
-                    max(Decimal("0"), maximum - Decimal("0.75"))
-                    * Decimal("60")
+                    max(Decimal("0"), maximum - Decimal("0.75")) * Decimal("60")
                     if maximum is not None
                     else Decimal("0")
                 )
@@ -543,6 +530,10 @@ def select_educational_candidates(
                 "quality_score_uses_cost_liquidity_size_nav_tracking_only",
                 "historical_return_not_used_for_ranking",
             ]
+            history_source = history_sources.get(
+                product["isu_code"], "provided_price_history"
+            )
+            reasons.append(f"correlation_price_source_{history_source}")
             if maximum is not None:
                 reasons.append("correlation_penalty_applied_above_0_75")
             output.append(
@@ -559,6 +550,7 @@ def select_educational_candidates(
                         if maximum is not None
                         else None
                     ),
+                    price_history_source=history_source,
                     account_eligibility=product["account_eligibility"],
                     reasons=reasons,
                 )
@@ -610,9 +602,7 @@ def calculate_rebalancing_guidance(
         for sleeve, percent in sleeves.items()
     }
     deficits = {
-        sleeve: max(
-            Decimal("0"), target - current_by_sleeve.get(sleeve, Decimal("0"))
-        )
+        sleeve: max(Decimal("0"), target - current_by_sleeve.get(sleeve, Decimal("0")))
         for sleeve, target in targets.items()
     }
     total_deficit = sum(deficits.values(), Decimal("0"))
@@ -659,9 +649,7 @@ def calculate_rebalancing_guidance(
     if unclassified:
         warnings.append("unclassified_existing_holdings_require_review")
     return RebalancingGuidance(
-        status=(
-            "partial_unclassified_holdings" if unclassified else "calculated"
-        ),
+        status=("partial_unclassified_holdings" if unclassified else "calculated"),
         current_total_krw=current_total,
         new_contribution_krw=request.new_contribution_krw,
         projected_total_krw=projected_total,
@@ -679,6 +667,7 @@ def build_educational_portfolio(
     products: list[dict[str, Any]],
     histories: dict[str, dict[date, Decimal]],
     source_as_of: date,
+    history_sources: dict[str, str] | None = None,
 ) -> EducationalPortfolioEvaluation:
     sleeves, policy = calculate_target_allocation(request)
     candidates = select_educational_candidates(
@@ -686,6 +675,7 @@ def build_educational_portfolio(
         histories=histories,
         sleeves=sleeves,
         request=request,
+        history_sources=history_sources,
     )
     target_sleeves = [
         SleeveTarget(
@@ -743,11 +733,22 @@ def build_educational_portfolio(
                 reference="data/cache/law_open",
                 as_of=source_as_of,
             ),
+            SourceChip(
+                label="한국투자증권 ETF 수정주가",
+                reference="data/cache/kis/adjusted_prices",
+                as_of=source_as_of,
+            ),
+            SourceChip(
+                label="KRX ETF 일별매매정보 대체값",
+                reference="data/raw/krx/etf_bydd_trd",
+                as_of=source_as_of,
+            ),
         ],
         warnings=[
             "educational_example_not_personalized_investment_advice",
             "no_order_or_automatic_rebalancing",
             "historical_returns_excluded_from_candidate_ranking",
+            "correlation_uses_kis_adjusted_close_with_krx_fallback",
             "correlation_is_price_return_proxy_not_holdings_overlap",
             "holdings_overlap_unavailable_until_pdf_data_is_complete",
             "planning_return_not_calculated_without_approved_cma_inputs",
