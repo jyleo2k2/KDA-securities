@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-15 17:21 KST
-> 확인 기준: `main` / `bccaae3` / dirty worktree
+> 최종 확인: 2026-07-16 09:21 KST
+> 확인 기준: `codex/db-handoff-integration` / 최신 `main` `f01934e` 위 DB 통합 변경
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -31,18 +31,19 @@
 
 ## 3. 현재 원격 상태
 
-2026-07-15 17:12 KST에 `.env`의 URL을 출력하지 않고 읽기 전용 SQL로 확인했다.
+2026-07-16 KST에 연결된 Supabase 프로젝트를 읽기 전용으로 재확인했다.
 
 | 항목 | 원격 상태 |
 |---|---|
-| public 기본 테이블 | 24개 |
-| 적용 마이그레이션 | `20260715005435`, `20260715021243` |
-| RLS | 24/24 활성화 |
+| public 기본 테이블 | 25개 |
+| 적용 마이그레이션 | `20260715005435`, `20260715021243`, `20260715103332`, `20260715103542`, `20260715165614` |
+| RLS | 25/25 활성화 |
 | `anon` 테이블 권한 | 없음 |
 | `authenticated` 권한 | 사용자 소유 엔진 결과·채팅 관련 5개 테이블 |
-| `service_role` 권한 | 24개 테이블 |
-| `knowledge_chunks.embedding` 타입 | 차원 미고정 `vector` |
-| HNSW 인덱스 | 없음 |
+| `service_role` 권한 | 25개 테이블 |
+| `knowledge_chunks.embedding` 타입 | `vector(1024)` |
+| HNSW 인덱스 | `knowledge_chunks_embedding_hnsw_idx` 존재 |
+| PostgreSQL / 프로젝트 상태 | 17.6 / `ACTIVE_HEALTHY` |
 
 ### 원격 주요 행 수
 
@@ -60,7 +61,7 @@
 
 `knowledge_chunks` 1건은 이미 `embedding_dimensions=1024`이며 embedding 값도 존재한다.
 
-### 현재 24개 테이블의 역할
+### 현재 25개 테이블의 역할
 
 | 영역 | 테이블 |
 |---|---|
@@ -70,40 +71,23 @@
 | 목 벤치마크 | `mock_public_profiles`, `mock_public_portfolios`, `mock_public_portfolio_holdings` |
 | 규칙·감사 | `rule_sets`, `pension_rules`, `engine_runs`, `engine_run_evidence` |
 | RAG·뉴스 | `knowledge_documents`, `knowledge_chunks`, `news_items`, `curated_contents` |
-| 채팅 | `chat_sessions`, `chat_messages`, `chat_message_evidence` |
+| 채팅 | `chat_sessions`, `chat_messages`, `chat_message_evidence`, `chat_request_idempotency` |
 
 ## 4. 현재 작업트리의 진행 중 작업
 
-다음 변경은 이 핸드오프 문서를 만든 작업이 아니라 다른 팀원의 진행 중 작업이다. 소유자를 확인하기 전 수정·삭제·되돌리기 금지.
+`codex/db-handoff-integration`에서 다음 범위만 작업한다.
 
-### 수정 파일
-
-- `backend/app/api/deps.py`
-- `backend/app/chat/narrator.py`
-- `backend/app/retrieval/repository.py`
-- `docs/30_스펙/아키텍처.md`
-- `pyproject.toml`
-- `tests/test_embedded_sql.py`
-- `tests/test_chat_mvp.py`
-- `tests/test_schema_contract.py`
-- `uv.lock`
-
-### 신규 파일
-
-- `backend/app/ingestion/embeddings.py`
-- `scripts/apply_embedding_migration.py`
-- `scripts/embed_knowledge_chunks.py`
-- `supabase/migrations/20260715165614_fix_embedding_dimension_bge_m3.sql`
-- `tests/test_embeddings.py`
+- 최신 `main`의 `20260715103332`, `20260715103542` 파일이 원격 migration history와 일치하는지 유지·검증한다.
+- `20260716001737_add_user_pension_domain.sql`에 승인된 사용자·성향·계좌 도메인을 additive DDL로 추가한다.
+- 기존 `mock_accounts`, `mock_holdings`, 목시나리오, 공시·RAG·채팅 데이터는 수정하거나 삭제하지 않는다.
+- 신규 도메인 마이그레이션은 로컬 검증과 PR까지만 진행한다. 원격 적용은 이재용 승인 후 별도 수행한다.
 
 ### 임베딩 마이그레이션 주의사항
 
-- 로컬 마이그레이션 `20260715165614_fix_embedding_dimension_bge_m3.sql`은 원격에 아직 적용되지 않았다.
-- 원격 컬럼은 차원 미고정 `vector`이고 HNSW 인덱스가 없다.
-- 원격에는 이미 1024차원 embedding 1건이 있다. 마이그레이션의 "기존 embedding 값은 전부 null" 주석은 현재 원격 사실과 다르다.
-- 적용 전 모든 non-null embedding의 차원이 1024인지 검사하고, 잘못된 주석을 소유자와 협의해 수정해야 한다.
-- `scripts/apply_embedding_migration.py`는 SQL을 직접 실행하고 `supabase_migrations.schema_migrations`를 수동 기록한다. 이재용 직접 실행용으로 명시돼 있으므로 소유자 승인과 SQL·history 기록 검토 없이 실행하지 않는다.
-- 이 임베딩 변경과 사용자 계좌 도메인 변경은 서로 다른 PR·마이그레이션으로 유지한다.
+- `20260715165614_fix_embedding_dimension_bge_m3.sql`은 이미 원격 적용됐다.
+- 원격 non-null embedding은 1건이고 1024차원이며, HNSW 인덱스도 존재한다.
+- 적용된 파일의 "기존 embedding 값은 전부 null" 주석은 원격 적용 직전 사실과 달랐지만, 적용 이력 파일은 수정하지 않는다. 이 문서에 사실 차이만 기록한다.
+- 현재 원격 상태는 `vector(1024)` 1건, 비정상 차원 0건이다.
 
 ## 5. PDF 설계 검토 결론
 
@@ -123,7 +107,7 @@ PDF는 사용자·투자성향·연금계좌·보유상품·커뮤니티를 분�
 
 ## 6. 제안 스키마
 
-아래 이름과 분할은 구현 권장안이다. DDL 작성 전 담당자와 이재용의 승인이 필요하다.
+아래 이름과 분할은 2026-07-16 사용자 승인에 따라 구현 범위로 확정했다. `community_reviews`는 후속으로 보류한다.
 
 | 테이블 | 역할 | 핵심 계약 |
 |---|---|---|
@@ -138,7 +122,7 @@ PDF는 사용자·투자성향·연금계좌·보유상품·커뮤니티를 분�
 | `account_cash_flows` | 외부 현금흐름 | 납입·인출·이체 금액과 발생일, 과거 수익률 계산 입력 |
 | `financial_products` | 상품 마스터 | 기관·외부코드·상품종류·자산군·위험처리·법정예외·출처 |
 | `account_holding_snapshots` | 기준일 보유내역 | snapshot FK, product FK 또는 raw name, 평가액·위험처리 스냅샷 |
-| `community_reviews` | 공개 포트폴리오 리뷰 | owner, portfolio FK, rating 1~5, `deleted_at` soft delete |
+| `community_reviews` | 공개 포트폴리오 리뷰 | 이번 마이그레이션 제외. owner·portfolio FK·신고·보존 정책 승인 후 별도 구현 |
 
 ### 계좌 소유 제약 권장안
 
@@ -193,16 +177,18 @@ PDF는 사용자·투자성향·연금계좌·보유상품·커뮤니티를 분�
 
 ## 9. 마이그레이션 절차
 
-1. 현재 dirty 파일의 소유자와 임베딩 PR 상태를 확인한다. 소유자 확인 전 해당 변경을 건드리지 않는다.
+1. 작업 시작 시 최신 `main`, dirty 파일, 원격 migration history를 확인한다.
 2. Supabase 최신 changelog와 관련 공식 문서를 확인한다.
-3. CLI를 사용할 경우 `supabase --help`로 실제 명령을 확인한다. 현재 이 셸에는 Supabase CLI가 설치되어 있지 않았다.
-4. 새 마이그레이션 파일은 CLI의 `supabase migration new <name>`으로 생성한다. 적용된 두 마이그레이션은 수정하지 않는다.
+3. 로컬 전역 CLI가 없으면 `npx.cmd --yes supabase`를 사용하고 실제 명령 도움말을 확인한다.
+4. 새 마이그레이션 파일은 CLI의 `supabase migration new <name>`으로 생성한다. 적용된 다섯 마이그레이션은 수정하지 않는다.
 5. 첫 PR은 additive DDL, 인덱스, RLS, GRANT, reference seed만 포함한다.
 6. backfill은 사전 건수·합계 기록, 트랜잭션, 사후 동등성 검증을 포함한다.
 7. 저장소를 dual-read 또는 fallback 방식으로 연결하고 기존·신규 결과를 비교한다.
 8. 원격 적용 전 SQL 구문·테스트·보안 정책·advisors를 확인하고 이재용 승인을 받는다.
 9. 원격 적용 후 migration history, 테이블·정책·권한·인덱스·행 수·API E2E를 다시 조회한다.
 10. 삭제는 별도 cleanup PR과 마이그레이션으로 수행한다.
+
+공식 기준: [Database migrations](https://supabase.com/docs/guides/deployment/database-migrations), [Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security).
 
 ## 10. 보안·데이터 계약
 
@@ -246,25 +232,37 @@ uv run ruff check .
 
 | ID | 작업 | 상태 | 완료 조건 | 다음 행동 |
 |---|---|---|---|---|
-| DB-00 | BGE-M3 1024차원·HNSW 마이그레이션 | `LOCAL-DRAFT` | 소유자 확인, 주석·원격 데이터 사전검사, 테스트, 원격 적용 | 진행 중 변경 소유자 확인 |
-| DB-01 | PDF 기반 사용자·성향·계좌 스키마 승인 | `PROPOSED` | 테이블명·범위·open decision 승인 | 이재용·백엔드·엔진 담당 리뷰 |
-| DB-02 | Additive domain migration | `NOT-STARTED` | DDL·RLS·GRANT·인덱스·계약 테스트 통과 | DB-01 후 생성 |
-| DB-03 | 문항·목계좌 backfill | `NOT-STARTED` | 3/6/10 및 금액·엔진 결과 동등 | DB-02 후 수행 |
-| DB-04 | Postgres repository·API 연결 | `NOT-STARTED` | DB 우선·JSON fallback·E2E 통과 | DB-03 후 수행 |
-| DB-05 | 기존 mock account tables 정리 | `NOT-STARTED` | 코드·SQL 참조 0, 별도 승인·복구 계획 | DB-04 안정화 후 수행 |
-| DB-06 | 커뮤니티 리뷰 | `DEFERRED` | 포트폴리오 FK·RLS·soft delete 승인 | 핵심 계좌 연동 후 검토 |
+| DB-00 | BGE-M3 1024차원·HNSW 마이그레이션 | `REMOTE-APPLIED` | 원격 1024차원·HNSW·migration history 확인 | 적용 파일 수정 금지 |
+| DB-01 | 사용자·성향·계좌 스키마 승인 | `LOCAL-VERIFIED` | `user_profiles`, 현금흐름 포함, 커뮤니티 제외, 매핑 보류 확정 | PR 리뷰 |
+| DB-02 | Additive domain migration | `LOCAL-VERIFIED` | DDL·RLS·GRANT·인덱스·계약 테스트 통과 | 이재용 승인 후 원격 적용 |
+| DB-03 | 문항·목계좌 backfill | `LOCAL-DRAFT` | 3/6/10 및 금액·엔진 결과 동등 | 별도 migration 작성 |
+| DB-04 | Postgres repository·API 연결 | `LOCAL-DRAFT` | DB 우선·JSON fallback·E2E 통과 | DB-03 후 구현 |
+| DB-05 | 기존 mock account tables 정리 | `BLOCKED` | 코드·SQL 참조 0, 별도 승인·복구 계획 | DB-04 안정화 전 삭제 금지 |
+| DB-06 | 커뮤니티 리뷰 | `BLOCKED` | 포트폴리오 FK·RLS·신고·보존 정책 승인 | 핵심 계좌 연동 후 검토 |
 
 ## 13. 미결정 사항
 
 - DB 작업의 실명 담당자와 폴더 소유권: `TODO: 확인 필요`.
-- `user_profiles`와 `customers` 중 최종 명칭: `user_profiles` 권장, 승인 필요.
+- 사용자 프로필 명칭은 `user_profiles`로 확정.
 - 실제 계좌 연동 방식과 provider import 원천: `TODO: 확인 필요`. 현재 사용자 계좌는 목데이터만 허용된다.
 - 3단계 목시나리오 성향과 5단계 진단 성향 매핑: 팀 승인 전 미구현.
-- `account_cash_flows`를 첫 스키마에 포함할지 실계좌 연동 시점으로 미룰지: 현재 수익률 엔진 정합성상 포함 권장.
+- `account_cash_flows`는 과거 수익률 계산의 현금흐름 입력을 위해 첫 스키마에 포함.
 - 상품 마스터를 제공할 공식 product-level API: 현재 FSS 데이터는 provider-level이므로 별도 확인 필요.
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-16 09:21 KST
+
+- 작업자/브랜치/커밋: Codex / `codex/db-handoff-integration` / 시작 HEAD `a39e883`.
+- 시작 상태: 깨끗한 브랜치. 원격 DB 25개 테이블·RLS 25/25·적용 마이그레이션 5개를 재확인.
+- 변경 내용: 작업 시작 시 원격 적용 이력에서 Git에 빠졌던 채팅 멱등성 마이그레이션 2개를 원문 복원했다. PR 생성 시 최신 `main` `f01934e`에 동일 파일이 이미 포함된 것을 확인해 리베이스했고, 최종 PR에는 중복 파일 없이 `20260716001737_add_user_pension_domain.sql`과 관련 문서·테스트만 남겼다. 신규 migration에는 사용자 프로필·5단계 성향·DC/IRP/연금저축계좌·스냅샷·현금흐름·상품·보유내역의 additive DDL, RLS, service-role-only GRANT, FK 인덱스, 잠정 설문 reference data를 추가.
+- 결정 및 근거: `user_profiles` 사용, `account_cash_flows` 포함, 기존 목테이블 유지, `community_reviews` 보류, 3단계 목성향과 5단계 진단성향 매핑 금지. FastAPI 경유 원칙 때문에 신규 테이블의 `anon`·`authenticated` 권한은 회수하고 소유권 RLS를 방어 계층으로 유지.
+- 원격 사실 보정: embedding은 `vector(1024)`, HNSW 존재, non-null 1건·비정상 차원 0건. 채팅 멱등성 `session_id` FK 인덱스 누락은 신규 마이그레이션에서 보완.
+- 로컬 검증: 최신 `main` 리베이스 후 SQL 계약 테스트 13 passed, 전체 `uv run pytest -p no:cacheprovider` 308 passed(기존 DeprecationWarning 1건), `uv run ruff check .` 통과.
+- 원격 적용 여부: 신규 `20260716001737`은 적용하지 않음. 이재용 승인 전 원격 적용 금지.
+- 남은 위험: 잠정 성향 설문의 실제 문구·배점 승인, 목계좌 3/6/10 backfill과 엔진 동등성, 실제 Auth 경로 E2E가 후속 필요.
+- 다음 작업: Draft PR 리뷰 후 이재용 승인 시 원격 migration 적용·재검증, 이후 승인된 별도 backfill 작업.
 
 ### 2026-07-15 17:21 KST
 
