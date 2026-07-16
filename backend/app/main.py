@@ -1,13 +1,20 @@
+import asyncio
+import logging
+import os
+from contextlib import asynccontextmanager
+
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute, request_response
 
 from .api import chat, disclosures, engine, retrieval, system
 from .api.deps import (
+    clear_chat_dependencies,
     get_chat_narrator,
     get_chat_service,
     get_krx_market_evidence_repository,
     get_portfolio_universe_repository,
+    warm_chat_dependencies,
 )
 from .api.engine import (
     AuditedRiskCapResponse,
@@ -18,7 +25,10 @@ from .api.engine import (
     risk_cap_audited,
 )
 from .api.system import health
+from .database import close_pool, get_database_pool
 from .settings import get_settings
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "AuditedRiskCapResponse",
@@ -50,9 +60,33 @@ def _include_eagerly(app: FastAPI, router: APIRouter) -> None:
     app.router.routes.extend(router.routes)
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    settings = get_settings()
+    pool = None
+    if settings.database_url is not None:
+        database_url = settings.database_url.get_secret_value().strip()
+        if database_url:
+            pool = get_database_pool(database_url)
+            pool.open(wait=False)
+    if "PYTEST_CURRENT_TEST" not in os.environ:
+        try:
+            await asyncio.to_thread(warm_chat_dependencies, settings)
+        except Exception:
+            logger.warning(
+                "Chat embedding prewarm failed; full-text search remains available"
+            )
+    try:
+        yield
+    finally:
+        clear_chat_dependencies()
+        close_pool(pool)
+        get_database_pool.cache_clear()
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="Pension Copilot API", version="0.2.0")
+    app = FastAPI(title="Pension Copilot API", version="0.2.0", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

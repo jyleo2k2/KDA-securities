@@ -3,6 +3,7 @@ import inspect
 from backend.app.ingestion.embeddings import (
     EMBEDDING_DIMENSIONS,
     EMBEDDING_MODEL,
+    BgeM3Embedder,
     embed_pending_chunks,
     vector_literal,
 )
@@ -68,3 +69,19 @@ def test_embedding_pipeline_excludes_inactive_and_unverified_chunks() -> None:
     assert "kd.metadata ->> 'data_boundary' = 'verified_knowledge'" in source
     assert "kd.metadata ->> 'contains_personal_data' = 'false'" in source
     assert "kc.metadata ->> 'data_boundary' = 'verified_knowledge'" in source
+
+
+def test_prewarmed_query_uses_cached_embedding(monkeypatch) -> None:
+    embedder = BgeM3Embedder()
+    calls: list[list[str]] = []
+
+    def fake_embed(texts: list[str]) -> list[list[float]]:
+        calls.append(texts)
+        return [[float(index)] for index, _ in enumerate(texts, start=1)]
+
+    monkeypatch.setattr(embedder, "embed", fake_embed)
+
+    embedder.prewarm_queries(("IRP 위험자산", "연금 뉴스"))
+
+    assert embedder.embed_query("IRP   위험자산") == [1.0]
+    assert calls == [["IRP 위험자산", "연금 뉴스"]]

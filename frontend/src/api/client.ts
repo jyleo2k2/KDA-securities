@@ -24,6 +24,15 @@ export class ApiError extends Error {
   }
 }
 
+export interface ChatStreamResult {
+  response: ChatResponse;
+  persisted?: boolean;
+  session_id?: string | null;
+  user_message_id?: string | null;
+  assistant_message_id?: string | null;
+  idempotency_replayed?: boolean;
+}
+
 async function parseOrThrow<T>(path: string, response: Response): Promise<T> {
   if (!response.ok) {
     let detail = `${path} 요청 실패 (${response.status})`;
@@ -80,6 +89,57 @@ export async function apiPost<TBody, TResult>(
   return parseOrThrow<TResult>(path, response);
 }
 
+async function apiPostStream<TBody>(
+  path: string,
+  body: TBody,
+  onPhase: (message: string) => void,
+  accessToken?: string,
+  idempotencyKey?: string,
+): Promise<ChatStreamResult> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+      ...requestHeaders(accessToken),
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) return parseOrThrow(path, response);
+  if (!response.body) throw new Error("스트리밍 응답을 받을 수 없습니다.");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result: ChatStreamResult | null = null;
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    let boundary = buffer.indexOf("\n\n");
+    while (boundary >= 0) {
+      const block = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+      const event = block.match(/^event: (.+)$/m)?.[1];
+      const data = block.match(/^data: (.+)$/m)?.[1];
+      if (event && data) {
+        const payload = JSON.parse(data) as Record<string, unknown>;
+        if (event === "phase" && typeof payload.message === "string") {
+          onPhase(payload.message);
+        } else if (event === "error" && typeof payload.detail === "string") {
+          throw new Error(payload.detail);
+        } else if (event === "response") {
+          result = payload as unknown as ChatStreamResult;
+        }
+      }
+      boundary = buffer.indexOf("\n\n");
+    }
+    if (done) break;
+  }
+  if (result === null) throw new Error("최종 챗봇 응답을 받지 못했습니다.");
+  return result;
+}
+
 export function getCapabilities(): Promise<ChatCapabilities> {
   return apiGet("/chat/demo/capabilities");
 }
@@ -119,6 +179,36 @@ export function sendChat(
   });
 }
 
+export function sendChatStream(
+  message: string,
+  onPhase: (message: string) => void,
+  options?: string | {
+    scenarioCode?: string;
+    conversationContext?: ConversationContext | null;
+    pensionTax?: PensionTaxScenarioInput;
+  },
+): Promise<ChatStreamResult> {
+  const requestOptions = typeof options === "string"
+    ? { scenarioCode: options }
+    : options;
+  return apiPostStream(
+    "/chat/demo/stream",
+    {
+      message,
+      ...(requestOptions?.scenarioCode
+        ? { scenario_code: requestOptions.scenarioCode }
+        : {}),
+      ...(requestOptions?.conversationContext
+        ? { conversation_context: requestOptions.conversationContext }
+        : {}),
+      ...(requestOptions?.pensionTax
+        ? { pension_tax: requestOptions.pensionTax }
+        : {}),
+    },
+    onPhase,
+  );
+}
+
 export function sendAuthenticatedChat(
   message: string,
   accessToken: string,
@@ -139,6 +229,33 @@ export function sendAuthenticatedChat(
         : {}),
       ...(pensionTax ? { pension_tax: pensionTax } : {}),
     },
+    accessToken,
+    idempotencyKey,
+  );
+}
+
+export function sendAuthenticatedChatStream(
+  message: string,
+  accessToken: string,
+  onPhase: (message: string) => void,
+  scenarioCode?: string,
+  sessionId?: string,
+  idempotencyKey?: string,
+  conversationContext?: ConversationContext | null,
+  pensionTax?: PensionTaxScenarioInput,
+): Promise<ChatStreamResult> {
+  return apiPostStream(
+    "/chat/stream",
+    {
+      message,
+      ...(scenarioCode ? { scenario_code: scenarioCode } : {}),
+      ...(sessionId ? { session_id: sessionId } : {}),
+      ...(conversationContext
+        ? { conversation_context: conversationContext }
+        : {}),
+      ...(pensionTax ? { pension_tax: pensionTax } : {}),
+    },
+    onPhase,
     accessToken,
     idempotencyKey,
   );
