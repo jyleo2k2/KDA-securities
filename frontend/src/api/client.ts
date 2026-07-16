@@ -1,5 +1,6 @@
 import type {
   ChatCapabilities,
+  BenchmarkSummary,
   ConversationContext,
   ChatResponse,
   ChatSessionSummary,
@@ -142,6 +143,10 @@ async function apiPostStream<TBody>(
 
 export function getCapabilities(): Promise<ChatCapabilities> {
   return apiGet("/chat/demo/capabilities");
+}
+
+export function getBenchmarkSummary(): Promise<BenchmarkSummary> {
+  return apiGet("/benchmark/summary");
 }
 
 export function getScenarios(): Promise<ScenarioSummary[]> {
