@@ -484,6 +484,31 @@ export interface AnswerSection {
   evidence_ids: string[];
 }
 
+export interface BenchmarkDistribution {
+  code: string;
+  count: number;
+}
+
+export interface BenchmarkAccountTypeStat {
+  account_type: string;
+  account_count: number;
+  mean_balance_krw: string;
+  mean_monthly_contribution_krw: string;
+  mean_risky_asset_ratio_percent: string;
+}
+
+export interface BenchmarkSummary {
+  data_boundary: "mock";
+  source_label: string;
+  notice: string;
+  user_count: number;
+  account_count: number;
+  holding_count: number;
+  age_groups: BenchmarkDistribution[];
+  risk_profiles: BenchmarkDistribution[];
+  account_type_stats: BenchmarkAccountTypeStat[];
+}
+
 export type VisualizationKind = "asset_allocation" | "risk_cap" | "tax_summary";
 export type VisualizationDatumRole = "segment" | "current" | "limit" | "value";
 

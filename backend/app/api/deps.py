@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from psycopg_pool import ConnectionPool
 
+from ..benchmark_repository import BenchmarkRepository
 from ..chat.disclosures import DisclosureReadRepository as ChatDisclosureRepository
 from ..chat.knowledge import (
     FallbackKnowledgeRepository,
@@ -88,6 +89,15 @@ def get_disclosures_repository(
     return DisclosureReadRepository(
         _database_url_or_503(settings, detail="Database is not configured")
     )
+
+
+def get_benchmark_repository(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> BenchmarkRepository:
+    database_url = _database_url_or_503(
+        settings, detail="Benchmark database is not configured"
+    )
+    return BenchmarkRepository(database_url, pool=get_database_pool(database_url))
 
 
 def get_chat_repository(
