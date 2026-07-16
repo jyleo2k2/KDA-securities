@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-16 09:21 KST
-> 확인 기준: `codex/db-handoff-integration` / 최신 `main` `f01934e` 위 DB 통합 변경
+> 최종 확인: 2026-07-16 10:12 KST
+> 확인 기준: `codex/db-handoff-post-deploy` / `main` 머지 `7757a29` / 원격 적용 후 검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -35,12 +35,12 @@
 
 | 항목 | 원격 상태 |
 |---|---|
-| public 기본 테이블 | 25개 |
-| 적용 마이그레이션 | `20260715005435`, `20260715021243`, `20260715103332`, `20260715103542`, `20260715165614` |
-| RLS | 25/25 활성화 |
+| public 기본 테이블 | 36개 |
+| 적용 마이그레이션 | `20260715005435`, `20260715021243`, `20260715103332`, `20260715103542`, `20260715165614`, `20260716001737` |
+| RLS | 36/36 활성화 |
 | `anon` 테이블 권한 | 없음 |
 | `authenticated` 권한 | 사용자 소유 엔진 결과·채팅 관련 5개 테이블 |
-| `service_role` 권한 | 25개 테이블 |
+| `service_role` 권한 | 36개 테이블 |
 | `knowledge_chunks.embedding` 타입 | `vector(1024)` |
 | HNSW 인덱스 | `knowledge_chunks_embedding_hnsw_idx` 존재 |
 | PostgreSQL / 프로젝트 상태 | 17.6 / `ACTIVE_HEALTHY` |
@@ -61,7 +61,7 @@
 
 `knowledge_chunks` 1건은 이미 `embedding_dimensions=1024`이며 embedding 값도 존재한다.
 
-### 현재 25개 테이블의 역할
+### 현재 36개 테이블의 역할
 
 | 영역 | 테이블 |
 |---|---|
@@ -72,15 +72,17 @@
 | 규칙·감사 | `rule_sets`, `pension_rules`, `engine_runs`, `engine_run_evidence` |
 | RAG·뉴스 | `knowledge_documents`, `knowledge_chunks`, `news_items`, `curated_contents` |
 | 채팅 | `chat_sessions`, `chat_messages`, `chat_message_evidence`, `chat_request_idempotency` |
+| 사용자·성향·계좌 | `user_profiles`, `profile_question_sets`, `profile_questions`, `profile_question_options`, `investment_profile_assessments`, `investment_profile_answers`, `pension_accounts`, `account_snapshots`, `account_cash_flows`, `financial_products`, `account_holding_snapshots` |
 
 ## 4. 현재 작업트리의 진행 중 작업
 
 `codex/db-handoff-integration`에서 다음 범위만 작업한다.
 
 - 최신 `main`의 `20260715103332`, `20260715103542` 파일이 원격 migration history와 일치하는지 유지·검증한다.
-- `20260716001737_add_user_pension_domain.sql`에 승인된 사용자·성향·계좌 도메인을 additive DDL로 추가한다.
+- `20260716001737_add_user_pension_domain.sql`은 PR #22 머지 후 원격 적용·검증을 완료했다.
+- 성능 Advisor의 복합 FK 인덱스 지적은 `20260716011137_add_profile_answer_fk_index.sql` 후속 migration으로 보완하고, 승인 전 원격 적용하지 않는다.
 - 기존 `mock_accounts`, `mock_holdings`, 목시나리오, 공시·RAG·채팅 데이터는 수정하거나 삭제하지 않는다.
-- 신규 도메인 마이그레이션은 로컬 검증과 PR까지만 진행한다. 원격 적용은 이재용 승인 후 별도 수행한다.
+- 기존 적용 migration은 수정하지 않으며 후속 인덱스는 별도 PR·migration으로 유지한다.
 
 ### 임베딩 마이그레이션 주의사항
 
@@ -234,7 +236,8 @@ uv run ruff check .
 |---|---|---|---|---|
 | DB-00 | BGE-M3 1024차원·HNSW 마이그레이션 | `REMOTE-APPLIED` | 원격 1024차원·HNSW·migration history 확인 | 적용 파일 수정 금지 |
 | DB-01 | 사용자·성향·계좌 스키마 승인 | `LOCAL-VERIFIED` | `user_profiles`, 현금흐름 포함, 커뮤니티 제외, 매핑 보류 확정 | PR 리뷰 |
-| DB-02 | Additive domain migration | `LOCAL-VERIFIED` | DDL·RLS·GRANT·인덱스·계약 테스트 통과 | 이재용 승인 후 원격 적용 |
+| DB-02 | Additive domain migration | `REMOTE-APPLIED` | `20260716001737`, 11개 테이블·RLS·정책·권한·행 수 재검증 | 적용 파일 수정 금지 |
+| DB-02A | 성향 답변 복합 FK 인덱스 | `LOCAL-VERIFIED` | `(option_id, question_id)` covering index·계약 테스트 | 후속 PR 승인 후 원격 적용 |
 | DB-03 | 문항·목계좌 backfill | `LOCAL-DRAFT` | 3/6/10 및 금액·엔진 결과 동등 | 별도 migration 작성 |
 | DB-04 | Postgres repository·API 연결 | `LOCAL-DRAFT` | DB 우선·JSON fallback·E2E 통과 | DB-03 후 구현 |
 | DB-05 | 기존 mock account tables 정리 | `BLOCKED` | 코드·SQL 참조 0, 별도 승인·복구 계획 | DB-04 안정화 전 삭제 금지 |
@@ -251,6 +254,19 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-16 10:12 KST
+
+- 작업자/브랜치/커밋: Codex / `codex/db-handoff-post-deploy` / 기준 `main` `7757a29`.
+- 승인·머지: 사용자에게 이재용 팀장 승인을 전달받아 PR #22를 ready 전환 후 `main`에 머지했다. 머지 커밋은 `7757a29`이다.
+- 원격 적용: `20260716001737_add_user_pension_domain.sql` 적용 완료. CLI의 `--dry-run` 호출이 실제 적용 로그를 출력해 즉시 중단·재실행 없이 migration history와 카탈로그로 실제 적용을 확인했다.
+- 원격 검증: migration 6개, public 테이블 36개, RLS 36/36. 신규 도메인 11개 테이블·RLS 11/11, 소유권 정책 28개, 명시 인덱스 24개, `anon`·`authenticated` 신규 테이블 권한 0개, `service_role` 11개 테이블 권한을 확인했다.
+- reference data: 성향 설문 세트 1개, 질문 6개, 선택지 30개. 사용자 프로필·진단·계좌·스냅샷·현금흐름·상품·보유내역은 backfill 전이므로 모두 0건이다.
+- 기존 데이터 보존: 목시나리오 3개·목계좌 6개·목보유 10개, 연금저축 공시 88개, 퇴직연금 공시 126개, knowledge chunk 1개로 적용 전과 동일하다.
+- Advisor: 보안 INFO는 클라이언트 GRANT가 없는 서버 전용 reference 테이블의 의도된 RLS deny-by-default 상태다. 성능 Advisor가 `investment_profile_answers(option_id, question_id)` 복합 FK의 covering index 1건을 지적해 `20260716011137_add_profile_answer_fk_index.sql`로 별도 보완했다. 신규 테이블의 unused-index INFO는 데이터·트래픽이 없는 초기 상태라 삭제하지 않는다.
+- 로컬 검증: 후속 migration 포함 SQL 계약 테스트 14 passed, 전체 pytest 339 passed(기존 DeprecationWarning 1건), Ruff 통과, `git diff --check` 통과.
+- 원격 미적용: 후속 `20260716011137`은 별도 PR 승인 전 적용하지 않는다.
+- 다음 작업: 후속 인덱스 PR 승인·적용 후 성능 Advisor 재검증, 이후 DB-03 목데이터 3/6/10 backfill.
 
 ### 2026-07-16 09:21 KST
 
