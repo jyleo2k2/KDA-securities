@@ -22,7 +22,10 @@ FRONTEND = ROOT / "frontend"
 API_PORT = 8000
 WEB_PORT = 5173
 WEB_URL = f"http://localhost:{WEB_PORT}"
-READY_TIMEOUT_SECONDS = 90
+# 프론트는 마운트 때 capabilities를 딱 한 번 부르고 실패하면 "API 연결 필요"로
+# 굳는다(재시도 없음). 그래서 vite가 아니라 이 엔드포인트가 살아난 뒤에 연다.
+API_READY_URL = f"http://127.0.0.1:{API_PORT}/chat/demo/capabilities"
+READY_TIMEOUT_SECONDS = 120
 
 
 def format_output_line(tag: str, raw: bytes) -> str:
@@ -154,11 +157,12 @@ def main() -> int:
         threading.Thread(target=_pump, args=(process.stdout, tag), daemon=True).start()
 
     try:
-        if _wait_until_ready(WEB_URL):
+        _say("서버 준비를 기다립니다 (임베더 로딩에 10초 남짓 걸립니다)...")
+        if _wait_until_ready(API_READY_URL) and _wait_until_ready(WEB_URL):
             _say(f"첫 화면을 엽니다 → {WEB_URL}")
             webbrowser.open(WEB_URL)
         else:
-            _say("프론트가 시간 안에 뜨지 않았습니다. 위 로그를 확인해 주세요.")
+            _say("서버가 시간 안에 준비되지 않았습니다. 위 로그를 확인해 주세요.")
         while all(process.poll() is None for process, _ in servers):
             time.sleep(0.3)
         for process, tag in servers:
