@@ -3,6 +3,7 @@ import type {
   ConversationContext,
   ChatResponse,
   ChatSessionSummary,
+  DemoUserFinancialContext,
   PersistedChatResponse,
   PensionTaxScenarioInput,
   ScenarioEvaluation,
@@ -265,6 +266,12 @@ export function getChatSessions(
   accessToken: string,
 ): Promise<ChatSessionSummary[]> {
   return apiGet("/chat/sessions", accessToken);
+}
+
+export function getMyPensionContext(
+  accessToken: string,
+): Promise<DemoUserFinancialContext> {
+  return apiGet("/me/pension-context", accessToken);
 }
 
 export function getStoredChatMessages(

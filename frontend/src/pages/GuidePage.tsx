@@ -14,6 +14,7 @@ import {
   ApiError,
   getCapabilities,
   getChatSessions,
+  getMyPensionContext,
   getScenarios,
   getStoredChatMessages,
   sendAuthenticatedChatStream,
@@ -25,6 +26,7 @@ import type {
   ChatResponse,
   ChatSessionSummary,
   DataBoundary,
+  DemoUserFinancialContext,
   IncomeBasis,
   IrpDeferredIncomeStatus,
   PensionTaxScenarioInput,
@@ -234,6 +236,8 @@ export function GuidePage() {
   const [input, setInput] = useState("");
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
   const [selectedScenario, setSelectedScenario] = useState("");
+  const [userContext, setUserContext] =
+    useState<DemoUserFinancialContext | null>(null);
   const [capabilities, setCapabilities] = useState<ChatCapabilities | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [sendingStage, setSendingStage] = useState("답변을 준비하고 있습니다.");
@@ -367,9 +371,11 @@ export function GuidePage() {
       setActiveSessionId(null);
       setConversationContext(null);
       setSelectedScenario("");
+      setUserContext(null);
     }
     if (!accessToken) {
       setChatSessions([]);
+      setUserContext(null);
       setHistoryError(null);
       setHistoryLoading(false);
       return;
@@ -387,6 +393,17 @@ export function GuidePage() {
       })
       .finally(() => {
         if (active) setHistoryLoading(false);
+      });
+    void getMyPensionContext(accessToken)
+      .then((context) => {
+        if (!active) return;
+        setUserContext(context);
+        setSelectedScenario(context.scenario_code);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setUserContext(null);
+        setHistoryError(authenticatedErrorMessage(error));
       });
     return () => {
       active = false;
@@ -452,6 +469,7 @@ export function GuidePage() {
       setChatSessions([]);
       setActiveSessionId(null);
       setConversationContext(null);
+      setUserContext(null);
     setHistoryError(null);
     setHistoryLoading(false);
     setIsSending(false);
@@ -502,7 +520,7 @@ export function GuidePage() {
         .find((message) => message.response?.conversation_context)
         ?.response?.conversation_context;
       setConversationContext(lastContext ?? null);
-      setSelectedScenario("");
+      setSelectedScenario(userContext?.scenario_code ?? "");
       setIsSidebarOpen(false);
     } catch (error) {
       if (!isCurrentOperation(
@@ -545,7 +563,7 @@ export function GuidePage() {
     setIsSending(true);
     setSendingStage("질문을 확인하고 있습니다.");
 
-    const taxInput = PENSION_TAX_PROMPT.test(normalized)
+    const taxInput = !requestToken && PENSION_TAX_PROMPT.test(normalized)
       ? pensionTaxInput
       : undefined;
 
@@ -555,7 +573,7 @@ export function GuidePage() {
             normalized,
             requestToken,
             setSendingStage,
-            selectedScenario || undefined,
+            undefined,
             activeSessionId || undefined,
             idempotencyKey,
             conversationContext,
@@ -708,7 +726,17 @@ export function GuidePage() {
 
         <div className="sidebar-section">
           <p className="sidebar-label">목계좌 시나리오</p>
-          <div className="scenario-list">
+          {userContext ? (
+            <div className="user-context-card">
+              <strong>{userContext.nickname}</strong>
+              <span>{userContext.scenario_name} · 가상 목데이터</span>
+              <small>
+                총 연금자산 {Number(userContext.total_pension_balance_krw).toLocaleString("ko-KR")}원
+                <br />기준일 {userContext.as_of_date}
+              </small>
+            </div>
+          ) : (
+            <div className="scenario-list">
             <button className={!selectedScenario ? "active" : ""} type="button" onClick={() => setSelectedScenario("")}>
               <span className="scenario-icon"><Icon name="book" size={17} /></span>
               <span><strong>선택 안 함</strong><small>일반 제도 질문</small></span>
@@ -719,10 +747,11 @@ export function GuidePage() {
                 <span><strong>{scenario.name}</strong><small>{scenario.age_band} · {scenario.investment_horizon_years}년 · {scenario.risk_profile}</small></span>
               </button>
             ))}
-          </div>
+            </div>
+          )}
         </div>
 
-        <details className="tax-input-panel">
+        {!userContext && <details className="tax-input-panel">
           <summary>세액공제·중도해지 선택 입력</summary>
           <div className="tax-input-fields">
             <label>
@@ -783,7 +812,7 @@ export function GuidePage() {
                 : "금액과 사유를 질문에 직접 적어도 자동 인식합니다. 필요할 때만 이 패널을 사용하고 계좌번호·인증정보는 입력하지 마세요."}
             </p>
           </div>
-        </details>
+        </details>}
 
         <div className="sidebar-footer">
           <div className="connection-status">
@@ -801,7 +830,7 @@ export function GuidePage() {
           <button className="menu-button" type="button" aria-label="메뉴 열기" onClick={() => setIsSidebarOpen(true)}><span /><span /><span /></button>
           <div className="topbar-title">
             <strong>연금가이드</strong>
-            <span>{selectedScenarioData ? `${selectedScenarioData.name} · 목데이터` : "검증된 근거로 답변해요"}</span>
+            <span>{userContext ? `${userContext.nickname} · DB 목데이터` : selectedScenarioData ? `${selectedScenarioData.name} · 목데이터` : "검증된 근거로 답변해요"}</span>
           </div>
           <div className="trust-label"><Icon name="shield" size={16} /> 근거 검증</div>
         </header>
@@ -814,10 +843,13 @@ export function GuidePage() {
               <h1>연금계좌, 무엇이든<br />쉽게 물어보세요.</h1>
               <p className="welcome-copy">DC형·IRP·연금저축의 차이부터 목계좌 진단까지,<br className="desktop-break" /> 규칙 엔진과 확인된 출처를 바탕으로 설명해 드려요.</p>
 
-              {selectedScenarioData && (
+              {(userContext || selectedScenarioData) && (
                 <div className="selected-scenario-card">
                   <div><Icon name="database" size={19} /></div>
-                  <span><strong>{selectedScenarioData.name}</strong><small>{selectedScenarioData.description}</small></span>
+                  <span>
+                    <strong>{userContext?.nickname ?? selectedScenarioData?.name}</strong>
+                    <small>{userContext?.customer_context ?? selectedScenarioData?.description}</small>
+                  </span>
                 </div>
               )}
 

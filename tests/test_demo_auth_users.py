@@ -3,7 +3,11 @@ from pathlib import Path
 
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.engine.scenario import evaluate_mock_scenario
-from scripts.provision_demo_auth_users import load_manifest, prepare_credentials
+from scripts.provision_demo_auth_users import (
+    _sync_demo_financial_context,
+    load_manifest,
+    prepare_credentials,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "data" / "mock" / "demo_scenario_users.json"
@@ -35,6 +39,55 @@ def test_prepare_credentials_generates_unique_passwords_once(tmp_path: Path) -> 
     assert len(first) == 6
     assert len({item["password"] for item in first}) == 6
     assert all(len(item["password"]) >= 20 for item in first)
+
+
+def test_financial_context_sync_maps_all_users_without_overwriting_amounts(
+    monkeypatch,
+) -> None:
+    users = load_manifest(MANIFEST)
+
+    class FakeCursor:
+        def __init__(self) -> None:
+            self.rows = []
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args) -> None:
+            return None
+
+        def executemany(self, query, rows) -> None:
+            assert "gross_salary_krw" not in query
+            assert "irp_contribution_krw" not in query
+            self.rows = list(rows)
+
+        def execute(self, query, params) -> None:
+            assert "select count(*)" in query
+            assert len(params[0]) == len(self.rows)
+
+        def fetchone(self):
+            return (len(self.rows),)
+
+    cursor = FakeCursor()
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args) -> None:
+            return None
+
+        def cursor(self):
+            return cursor
+
+    monkeypatch.setattr(
+        "scripts.provision_demo_auth_users.psycopg.connect",
+        lambda _: FakeConnection(),
+    )
+
+    _sync_demo_financial_context("postgresql://test", users)
+
+    assert len(cursor.rows) == 6
 
 
 def test_lifecycle_scenarios_have_expected_totals_and_respect_account_caps() -> None:

@@ -53,6 +53,11 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .scenario-list strong, .scenario-list small { display: block; }
 .scenario-list strong { margin-bottom: 2px; font-size: 13px; font-weight: 600; }
 .scenario-list small { color: #86a398; font-size: 10px; }
+.user-context-card { display: grid; gap: 4px; padding: 12px; border: 1px solid rgba(223,240,108,.3); border-radius: 11px; background: rgba(223,240,108,.08); color: #f4f8f5; }
+.user-context-card strong, .user-context-card span, .user-context-card small { display: block; }
+.user-context-card strong { font-size: 13px; }
+.user-context-card span { color: #dff06c; font-size: 10px; }
+.user-context-card small { color: #9fb7ac; font-size: 10px; line-height: 1.55; }
 .scenario-icon { flex: 0 0 auto; width: 31px; height: 31px; display: grid; place-items: center; border-radius: 9px; background: rgba(255,255,255,.07); }
 .tax-input-panel { flex: 0 0 auto; max-height: 280px; margin-top: 12px; padding: 10px; overflow-y: auto; border: 1px solid rgba(255,255,255,.09); border-radius: 11px; background: rgba(255,255,255,.035); }
 .tax-input-panel summary { color: #dff06c; font-size: 10px; font-weight: 700; cursor: pointer; }

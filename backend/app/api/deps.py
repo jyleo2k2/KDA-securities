@@ -13,9 +13,10 @@ from ..chat.knowledge import (
 )
 from ..chat.narrator import ClaudeNarrator
 from ..chat.repository import ChatRepository
-from ..chat.scenarios import LocalScenarioRepository
+from ..chat.scenarios import LocalScenarioRepository, PostgresScenarioRepository
 from ..chat.service import ChatService
 from ..chat.suggested_prompts import SUGGESTED_CHAT_PROMPTS
+from ..chat.user_context import DemoUserContextRepository
 from ..database import get_database_pool
 from ..engine.audit import EngineAuditRepository
 from ..engine.models import AccountType
@@ -112,6 +113,34 @@ def get_optional_chat_repository(
     )
 
 
+def get_demo_user_context_repository(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> DemoUserContextRepository:
+    database_url = _database_url_or_503(
+        settings, detail="User pension context database is not configured"
+    )
+    return DemoUserContextRepository(
+        database_url,
+        pool=get_database_pool(database_url),
+    )
+
+
+def get_optional_demo_user_context_repository(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> DemoUserContextRepository | None:
+    if settings.database_url is None:
+        return None
+    database_url = settings.database_url.get_secret_value().strip()
+    return (
+        DemoUserContextRepository(
+            database_url,
+            pool=get_database_pool(database_url),
+        )
+        if database_url
+        else None
+    )
+
+
 @lru_cache(maxsize=1)
 def _chat_service(database_url: str) -> ChatService:
     pool: ConnectionPool | None = (
@@ -135,7 +164,11 @@ def _chat_service(database_url: str) -> ChatService:
     )
     return ChatService(
         knowledge=knowledge,
-        scenarios=LocalScenarioRepository(),
+        scenarios=(
+            PostgresScenarioRepository(database_url, pool=pool)
+            if database_url
+            else LocalScenarioRepository()
+        ),
         disclosures=disclosures,
         news=retrieval,
     )

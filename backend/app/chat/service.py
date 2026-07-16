@@ -30,7 +30,7 @@ from .models import (
 from .pension_tax_parser import resolve_pension_tax_inputs
 from .query_planner import BlockedReason, QueryPlan, plan_question
 from .routing import IntentRouter
-from .scenarios import LocalScenarioRepository
+from .scenarios import ScenarioRepository
 from .tools import (
     PENSION_TAX_CLOSING_NOTICE,
     calculate_pension_tax_credit_tool,
@@ -124,7 +124,7 @@ class ChatService:
         self,
         *,
         knowledge: KnowledgeSearch,
-        scenarios: LocalScenarioRepository,
+        scenarios: ScenarioRepository,
         disclosures: DisclosureSearch | None = None,
         news: NewsSearch | None = None,
         router: IntentRouter | None = None,
@@ -170,7 +170,11 @@ class ChatService:
         )
 
     def ask(
-        self, request: ChatRequest, *, plan: QueryPlan | None = None
+        self,
+        request: ChatRequest,
+        *,
+        plan: QueryPlan | None = None,
+        prefer_structured_pension_tax: bool = False,
     ) -> ChatResponse:
         original_request = request
         resolved_plan = plan or self.plan(request)
@@ -189,7 +193,11 @@ class ChatService:
             if request.portfolio is not None:
                 response = self._custom_portfolio(request)
             elif resolved_plan.intent == ChatIntent.PENSION_TAX:
-                response = self._pension_tax_response(request, resolved_plan)
+                response = self._pension_tax_response(
+                    request,
+                    resolved_plan,
+                    prefer_structured=prefer_structured_pension_tax,
+                )
             elif resolved_plan.intent == ChatIntent.MOCK_PORTFOLIO:
                 scenario_code = request.scenario_code or self._scenario_code(
                     request.message
@@ -244,10 +252,16 @@ class ChatService:
         )
 
     def _pension_tax_response(
-        self, request: ChatRequest, plan: QueryPlan
+        self,
+        request: ChatRequest,
+        plan: QueryPlan,
+        *,
+        prefer_structured: bool = False,
     ) -> ChatResponse:
         resolved_inputs = resolve_pension_tax_inputs(
-            request.message, request.pension_tax
+            request.message,
+            request.pension_tax,
+            prefer_structured=prefer_structured,
         )
         missing: list[str] = []
         if plan.requests_tax_credit and resolved_inputs.tax_credit is None:

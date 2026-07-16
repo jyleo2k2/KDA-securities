@@ -8,6 +8,7 @@ Remote provisioning requires server-only Supabase keys in ``.env``.
 from __future__ import annotations
 
 import argparse
+from datetime import date
 import json
 import secrets
 import sys
@@ -17,6 +18,7 @@ from typing import Any
 from uuid import UUID
 
 import httpx
+import psycopg
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if str(REPOSITORY_ROOT) not in sys.path:
@@ -24,6 +26,7 @@ if str(REPOSITORY_ROOT) not in sys.path:
 
 DEFAULT_MANIFEST_PATH = REPOSITORY_ROOT / "data" / "mock" / "demo_scenario_users.json"
 DEFAULT_CREDENTIALS_PATH = REPOSITORY_ROOT / "secrets" / "demo_scenario_auth.json"
+DEMO_CONTEXT_AS_OF_DATE = date(2026, 7, 16)
 
 
 def load_manifest(path: Path = DEFAULT_MANIFEST_PATH) -> list[dict[str, Any]]:
@@ -228,6 +231,68 @@ def _verify_sign_in(
         raise RuntimeError("demo login returned an unexpected scenario mapping")
 
 
+def _sync_demo_financial_context(
+    database_url: str,
+    users: list[dict[str, Any]],
+) -> None:
+    rows = [
+        (
+            str(user["auth_user_id"]),
+            str(user["nickname"]),
+            int(user["representative_age"]),
+            str(user["customer_context"]),
+            DEMO_CONTEXT_AS_OF_DATE,
+            str(user["scenario_code"]),
+        )
+        for user in users
+    ]
+    with psycopg.connect(database_url) as connection, connection.cursor() as cursor:
+        cursor.executemany(
+            """
+            insert into public.demo_user_financial_context (
+                auth_user_id,
+                scenario_id,
+                nickname,
+                representative_age,
+                customer_context,
+                tax_year,
+                as_of_date
+            )
+            select
+                %s::uuid,
+                scenario.id,
+                %s,
+                %s,
+                %s,
+                2026,
+                %s
+            from public.mock_scenarios as scenario
+            where scenario.code = %s
+            on conflict (auth_user_id) do update set
+                scenario_id = excluded.scenario_id,
+                nickname = excluded.nickname,
+                representative_age = excluded.representative_age,
+                customer_context = excluded.customer_context,
+                tax_year = excluded.tax_year,
+                as_of_date = excluded.as_of_date,
+                data_kind = 'mock',
+                updated_at = now()
+            """,
+            rows,
+        )
+        cursor.execute(
+            """
+            select count(*)
+            from public.demo_user_financial_context
+            where auth_user_id = any(%s::uuid[])
+            """,
+            ([row[0] for row in rows],),
+        )
+        result = cursor.fetchone()
+        if result is None or result[0] != len(rows):
+            raise RuntimeError("demo financial context mapping is incomplete")
+
+
 def provision_users(
     users: list[dict[str, Any]],
     credentials: list[dict[str, str]],
@@ -246,6 +311,7 @@ def provision_users(
     service_key = _required_secret(
         settings.supabase_secret_key, "SUPABASE_SECRET_KEY"
     )
+    database_url = _required_secret(settings.database_url, "DATABASE_URL")
 
     credentials_by_scenario = {
         item["scenario_code"]: item for item in credentials
@@ -292,6 +358,7 @@ def provision_users(
                 publishable_key=publishable_key,
                 credential=credential,
             )
+    _sync_demo_financial_context(database_url, users)
 
 
 def _parser() -> argparse.ArgumentParser:

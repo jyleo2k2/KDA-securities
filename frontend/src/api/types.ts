@@ -525,6 +525,30 @@ export interface ChatCapabilities {
 }
 
 // ── authenticated /chat* history ──
+export interface DemoUserFinancialContext {
+  auth_user_id: string;
+  nickname: string;
+  representative_age: number;
+  customer_context: string;
+  scenario_code: string;
+  scenario_name: string;
+  age_band: string;
+  risk_profile: string;
+  investment_horizon_years: number;
+  tax_year: number;
+  income_basis: IncomeBasis;
+  income_amount_krw: string;
+  dc_balance_krw: string;
+  irp_balance_krw: string;
+  pension_savings_balance_krw: string;
+  total_pension_balance_krw: string;
+  irp_contribution_krw: string;
+  pension_savings_contribution_krw: string;
+  as_of_date: string;
+  data_kind: "mock";
+  defaulted_fields: string[];
+}
+
 export interface PersistedChatResponse {
   persisted: boolean;
   session_id: string | null;

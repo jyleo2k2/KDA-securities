@@ -55,9 +55,17 @@ Git에 커밋하지 않고 아래 명령으로 `secrets/demo_scenario_auth.json`
 uv run python scripts/provision_demo_auth_users.py --prepare-only
 ```
 
-팀장 승인과 서버 전용 `SUPABASE_SECRET_KEY` 설정 후 같은 스크립트를 옵션 없이
-실행하면 Supabase Auth에 계정을 만들고 6개 로그인을 검증한다. 시나리오 코드는
+팀장 승인과 서버 전용 `SUPABASE_SECRET_KEY`·`DATABASE_URL` 설정 후 같은
+스크립트를 옵션 없이 실행하면 Supabase Auth에 계정을 만들고 6개 로그인과 금융
+컨텍스트 연결을 검증한다. 시나리오 코드는
 사용자가 수정할 수 없는 Auth `app_metadata`에 연결하며 비밀번호는 출력하지 않는다.
+
+로그인 후 FastAPI는 Auth UUID로 `demo_user_financial_context`를 조회한다. 계좌
+잔액은 연결된 `mock_accounts`에서 합산하고, 총급여·종합소득금액과 당해연도
+IRP·연금저축 납입액은 DB 컬럼에 값이 없으면 발표용 승인 기준에 따라 0원으로
+정규화한다. 이 컨텍스트는 `GET /me/pension-context`와 인증된 `POST /chat`에서만
+사용하며 브라우저가 보낸 `scenario_code`나 세액공제 입력값보다 서버 조회값을
+우선한다. 사용자 계좌 컨텍스트는 RAG·임베딩 코퍼스에 넣지 않는다.
 
 ## 설문 기반 고객 특성
 
