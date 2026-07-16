@@ -249,7 +249,9 @@ def test_news_response_exposes_metadata_and_original_link() -> None:
     assert response.sources[0].locator == "https://example.test/news/1"
     assert response.sources[0].evidence_id == "news:news-1"
     assert response.sources[0].data_boundary == "news_metadata"
-    assert "검색 API 메타데이터 요약" in response.answer
+    assert response.news_items[0].title == "연금 제도 관련 공식 발표 1"
+    assert response.news_items[0].description == "검색 API 메타데이터 요약 1"
+    assert response.news_items[0].original_url == "https://example.test/news/1"
     assert "기사 본문이 아닌" in response.limitations[0]
 
 

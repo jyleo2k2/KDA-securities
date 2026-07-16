@@ -22,6 +22,7 @@ from .models import (
     AnswerSection,
     ChatCapabilities,
     ChatIntent,
+    ChatNewsItem,
     ChatRequest,
     ChatResponse,
     ChatVisualization,
@@ -1843,7 +1844,6 @@ class ChatService:
             )
             for item in matches
         ]
-        lines = [_news_metadata_line(item) for item in matches]
         limitations = [
             "기사 본문이 아닌 제목·요약·원문 링크 메타데이터입니다.",
             "뉴스 사실과 외부 의견은 원문에서 다시 확인해야 합니다.",
@@ -1854,19 +1854,20 @@ class ChatService:
             )
         return ChatResponse(
             intent=ChatIntent.NEWS,
-            answer=" / ".join(lines),
+            answer=(
+                "기사 제목과 요약을 카드로 정리했어요. "
+                "관심 있는 기사는 원문에서 다시 확인해 보세요."
+            ),
             data_mode="news_metadata",
-            sections=[
-                AnswerSection(
-                    kind=SectionKind.EXTERNAL_OPINION,
-                    title=(
-                        "최근 닷새 연금 뉴스 메타데이터"
-                        if is_pension_news
-                        else "뉴스 검색 메타데이터"
-                    ),
-                    content=" / ".join(lines),
-                    evidence_ids=_source_ids(sources),
+            news_items=[
+                ChatNewsItem(
+                    evidence_id=f"news:{item.item_id}",
+                    title=item.title,
+                    description=item.description,
+                    original_url=item.original_url,
+                    published_at=item.published_at,
                 )
+                for item in matches
             ],
             sources=sources,
             limitations=limitations,

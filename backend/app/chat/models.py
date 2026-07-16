@@ -213,6 +213,16 @@ class AnswerSection(BaseModel):
     evidence_ids: list[str] = Field(default_factory=list)
 
 
+class ChatNewsItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    evidence_id: str
+    title: str
+    description: str | None = None
+    original_url: str
+    published_at: datetime | None = None
+
+
 class VisualizationDatum(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -245,6 +255,7 @@ class ChatResponse(BaseModel):
     # 새 숫자가 감지되면 본문과 달리 이 필드만 생략한다.
     narration_reasoning: str | None = None
     sections: list[AnswerSection] = Field(default_factory=list)
+    news_items: list[ChatNewsItem] = Field(default_factory=list)
     visualizations: list[ChatVisualization] = Field(default_factory=list)
     sources: list[SourceEvidence] = Field(default_factory=list)
     numeric_evidence: list[NumericEvidence] = Field(default_factory=list)
@@ -271,6 +282,7 @@ class ChatResponse(BaseModel):
             for visualization in self.visualizations
             for evidence_id in visualization.evidence_ids
         )
+        referenced_ids.update(item.evidence_id for item in self.news_items)
         referenced_ids.update(item.evidence_id for item in self.numeric_evidence)
         missing = referenced_ids - source_ids
         if missing:

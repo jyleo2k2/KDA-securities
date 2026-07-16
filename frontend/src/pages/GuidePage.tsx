@@ -94,6 +94,14 @@ function numericText(value: string | number, unit: string): string {
   return `${value}${unit}`;
 }
 
+function displayText(value: string): string {
+  return value.replace(/\*\*/g, "").replace(/\s+\/\s+/g, " ");
+}
+
+function newsDate(value?: string | null): string | null {
+  return value ? new Date(value).toLocaleDateString("ko-KR") : null;
+}
+
 function Icon({
   name,
   size = 20,
@@ -200,6 +208,33 @@ function VisualizationCard({ visualization }: { visualization: ChatVisualization
   );
 }
 
+function NewsCards({ response }: { response: ChatResponse }) {
+  const items = response.news_items ?? [];
+  if (items.length === 0) return null;
+
+  return (
+    <section className="news-card-list" aria-label="뉴스 목록">
+      {items.map((item) => (
+        <a
+          className="news-card"
+          href={item.original_url}
+          key={item.evidence_id}
+          rel="noreferrer"
+          target="_blank"
+        >
+          <div className="news-card-meta">
+            <span>뉴스 메타데이터</span>
+            {newsDate(item.published_at) && <time>{newsDate(item.published_at)}</time>}
+          </div>
+          <strong>{displayText(item.title)}</strong>
+          {item.description && <p>{displayText(item.description)}</p>}
+          <small>원문 보기 <Icon name="chevron" size={13} /></small>
+        </a>
+      ))}
+    </section>
+  );
+}
+
 function AssistantMessage({ response, text }: { response?: ChatResponse; text: string }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -211,28 +246,7 @@ function AssistantMessage({ response, text }: { response?: ChatResponse; text: s
         <span className={`intent-pill intent-${response.intent}`}>{INTENT_LABELS[response.intent]}</span>
         <span>{response.narration_mode === "deterministic" ? "검증 답변" : "AI 서술"}</span>
       </div>
-      <p className="message-copy">{response.answer}</p>
-
-      {response.visualizations.map((visualization, index) => (
-        <VisualizationCard
-          visualization={visualization}
-          key={`${visualization.kind}-${index}`}
-        />
-      ))}
-
-      {response.narration_reasoning && (
-        <details className="answer-section section-service_explanation">
-          <summary><span>AI가 검토한 과정</span><small>내용 보기</small></summary>
-          <p>{response.narration_reasoning}</p>
-        </details>
-      )}
-
-      {response.sections.map((section, index) => (
-        <details className={`answer-section section-${section.kind}`} key={`${section.title}-${index}`} open={response.intent === "educational_portfolio" || section.kind === "limitation"}>
-          <summary><span>{section.title}</span><small>내용 보기</small></summary>
-          <p>{section.content}</p>
-        </details>
-      ))}
+      <p className="message-copy">{displayText(response.answer)}</p>
 
       {response.intent !== "mock_portfolio" && response.numeric_evidence.length > 0 && (
         <div className="number-grid" aria-label="수치 근거">
@@ -245,6 +259,29 @@ function AssistantMessage({ response, text }: { response?: ChatResponse; text: s
           ))}
         </div>
       )}
+
+      <NewsCards response={response} />
+
+      {response.visualizations.map((visualization, index) => (
+        <VisualizationCard
+          visualization={visualization}
+          key={`${visualization.kind}-${index}`}
+        />
+      ))}
+
+      {response.narration_reasoning && (
+        <details className="answer-section section-service_explanation">
+          <summary><span>AI가 검토한 과정</span><small>내용 보기</small></summary>
+          <p>{displayText(response.narration_reasoning)}</p>
+        </details>
+      )}
+
+      {response.sections.map((section, index) => (
+        <details className={`answer-section section-${section.kind}`} key={`${section.title}-${index}`} open={response.intent === "educational_portfolio" || section.kind === "limitation"}>
+          <summary><span>{section.title}</span><small>내용 보기</small></summary>
+          <p>{displayText(section.content)}</p>
+        </details>
+      ))}
 
       {response.limitations.length > 0 && (
         <div className="limitation-box">
