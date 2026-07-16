@@ -189,3 +189,24 @@ def test_order_and_future_requests_do_not_reach_retrieval() -> None:
     assert future.data_mode == "blocked"
     assert order.data_mode == "blocked"
     assert knowledge.queries == []
+
+
+def test_company_name_with_future_word_is_not_blocked_as_prediction() -> None:
+    plan = plan_question("미래에셋증권 IRP 수익률 공시를 알려줘")
+
+    assert plan.intent == ChatIntent.PROVIDER_DISCLOSURE
+    assert plan.blocked_reason is None
+
+
+@pytest.mark.parametrize(
+    "message",
+    (
+        "미래 수익률을 알려줘",
+        "미래의 IRP 수익률 전망을 알려줘",
+    ),
+)
+def test_future_phrases_remain_blocked(message: str) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent == ChatIntent.OUT_OF_SCOPE
+    assert plan.blocked_reason == BlockedReason.FUTURE_PREDICTION

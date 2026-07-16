@@ -15,7 +15,7 @@ from ..retrieval.knowledge_repository import KnowledgeDocumentInput
 
 ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_MANIFEST = ROOT / "data" / "knowledge" / "approved_documents.json"
-DEFAULT_CHUNK_CHARS = 1800
+DEFAULT_CHUNK_CHARS = 800
 _ALLOWED_ROOTS = (
     ROOT / "docs" / "20_리서치",
     ROOT / "docs" / "40_규제",

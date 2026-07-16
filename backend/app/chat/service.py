@@ -68,6 +68,18 @@ SCENARIO_KEYWORDS = {
 VERIFIED_AS_OF = date(2026, 7, 13)
 
 
+def _news_metadata_line(item: NewsMatch) -> str:
+    headline = (
+        f"{item.title} ({item.published_at.date().isoformat()})"
+        if item.published_at is not None
+        else item.title
+    )
+    if item.description is None:
+        return headline
+    summary = re.sub(r"\s+", " ", item.description).strip()[:180]
+    return f"{headline} — {summary}" if summary else headline
+
+
 def _decimal_text(value: Decimal) -> str:
     return format(value.normalize(), "f")
 
@@ -681,6 +693,12 @@ class ChatService:
                     basis="검증된 계좌 규칙",
                 )
             )
+        elif has_pension_savings and self._is_eligibility_question(request.message):
+            answer = (
+                "연금저축에서는 특정 상품을 편입할 수 있는지 상품별 적격성으로 "
+                "확인해야 합니다. 현재 챗봇에는 공식 상품 식별자·적격성 데이터가 "
+                "없어 개별 상품의 편입 가능 여부를 확정하지 않습니다."
+            )
         else:
             excerpt = re.sub(r"\s+", " ", matches[0].content).strip()[:600]
             answer = f"검증 문서에서 확인한 내용입니다. {excerpt}"
@@ -714,6 +732,10 @@ class ChatService:
             numeric_evidence=numeric,
             limitations=["상품별 적격성은 공식 상품 데이터로 별도 확인해야 합니다."],
         )
+
+    @staticmethod
+    def _is_eligibility_question(message: str) -> bool:
+        return any(term in message for term in ("편입", "적격", "가능한 상품"))
 
     def _custom_portfolio(self, request: ChatRequest) -> ChatResponse:
         assert request.portfolio is not None
@@ -1003,12 +1025,7 @@ class ChatService:
             )
             for item in matches
         ]
-        lines = [
-            f"{item.title} ({item.published_at.date().isoformat()})"
-            if item.published_at is not None
-            else item.title
-            for item in matches
-        ]
+        lines = [_news_metadata_line(item) for item in matches]
         return ChatResponse(
             intent=ChatIntent.NEWS,
             answer=" / ".join(lines),

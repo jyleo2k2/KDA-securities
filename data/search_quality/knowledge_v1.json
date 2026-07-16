@@ -56,7 +56,7 @@
     {
       "id": "tax-credit",
       "query": "연금저축 세액공제",
-      "expected_source_url": "project://docs/20_리서치/연금_기초.md",
+      "expected_source_url": "project://docs/40_규제/연금계좌_세액공제.md",
       "required_content_terms": ["연금저축", "세액공제"]
     },
     {
