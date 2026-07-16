@@ -94,6 +94,19 @@ class SectionKind(StrEnum):
     LIMITATION = "limitation"
 
 
+class VisualizationKind(StrEnum):
+    ASSET_ALLOCATION = "asset_allocation"
+    RISK_CAP = "risk_cap"
+    TAX_SUMMARY = "tax_summary"
+
+
+class VisualizationDatumRole(StrEnum):
+    SEGMENT = "segment"
+    CURRENT = "current"
+    LIMIT = "limit"
+    VALUE = "value"
+
+
 class ConversationContext(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -143,6 +156,26 @@ class AnswerSection(BaseModel):
     evidence_ids: list[str] = Field(default_factory=list)
 
 
+class VisualizationDatum(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label: str
+    value: Decimal
+    unit: str
+    role: VisualizationDatumRole
+
+
+class ChatVisualization(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: VisualizationKind
+    title: str
+    description: str
+    data_boundary: DataBoundary
+    evidence_ids: list[str] = Field(default_factory=list)
+    items: list[VisualizationDatum] = Field(min_length=1)
+
+
 class ChatResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -155,6 +188,7 @@ class ChatResponse(BaseModel):
     # 새 숫자가 감지되면 본문과 달리 이 필드만 생략한다.
     narration_reasoning: str | None = None
     sections: list[AnswerSection] = Field(default_factory=list)
+    visualizations: list[ChatVisualization] = Field(default_factory=list)
     sources: list[SourceEvidence] = Field(default_factory=list)
     numeric_evidence: list[NumericEvidence] = Field(default_factory=list)
     engine_results: list[RiskCapEvaluation] = Field(default_factory=list)
@@ -171,6 +205,11 @@ class ChatResponse(BaseModel):
             for section in self.sections
             for evidence_id in section.evidence_ids
         }
+        referenced_ids.update(
+            evidence_id
+            for visualization in self.visualizations
+            for evidence_id in visualization.evidence_ids
+        )
         referenced_ids.update(item.evidence_id for item in self.numeric_evidence)
         missing = referenced_ids - source_ids
         if missing:
@@ -197,13 +236,20 @@ class ChatResponse(BaseModel):
         numeric_claims = answer_claims.union(
             *(claims for _, claims in section_claims)
         )
+        visualization_claims = {
+            _normalize_numeric_value(item.value, item.unit)
+            for visualization in self.visualizations
+            for item in visualization.items
+        }
         if numeric_claims and not self.sources:
             raise ValueError("answers containing numbers require at least one source")
         if self.intent != ChatIntent.NEWS:
             all_supported_claims = {
                 numeric_evidence_claim(item) for item in self.numeric_evidence
             }
-            unsupported_claims = answer_claims - all_supported_claims
+            unsupported_claims = (
+                answer_claims | visualization_claims
+            ) - all_supported_claims
             for section, claims in section_claims:
                 section_supported_claims = {
                     numeric_evidence_claim(item)

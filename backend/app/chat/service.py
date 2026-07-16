@@ -20,11 +20,15 @@ from .models import (
     ChatIntent,
     ChatRequest,
     ChatResponse,
+    ChatVisualization,
     ConversationContext,
     DataBoundary,
     NumericEvidence,
     SectionKind,
     SourceEvidence,
+    VisualizationDatum,
+    VisualizationDatumRole,
+    VisualizationKind,
     extract_numeric_claims,
 )
 from .pension_tax_parser import resolve_pension_tax_inputs
@@ -212,8 +216,100 @@ class ChatService:
             else:
                 response = self._blocked_response(BlockedReason.UNSUPPORTED)
         return self._with_context(
-            response, original_request, resolved_plan
+            self._attach_visualizations(response), original_request, resolved_plan
         )
+
+    @staticmethod
+    def _attach_visualizations(response: ChatResponse) -> ChatResponse:
+        """Attach only views backed by the response's existing engine evidence."""
+
+        if response.scenario_evaluation is not None:
+            evaluation = response.scenario_evaluation
+            visualization = ChatVisualization(
+                kind=VisualizationKind.ASSET_ALLOCATION,
+                title="전체 자산 구성",
+                description="계좌를 합쳐 어떤 자산에 얼마나 담겼는지 보여줘요.",
+                data_boundary=DataBoundary.MOCK,
+                evidence_ids=["mock:scenario", "engine:scenario"],
+                items=[
+                    VisualizationDatum(
+                        label=_ASSET_CLASS_LABELS[item.asset_class_code],
+                        value=item.allocation_percent,
+                        unit="%",
+                        role=VisualizationDatumRole.SEGMENT,
+                    )
+                    for item in evaluation.asset_allocations
+                ],
+            )
+            return response.model_copy(update={"visualizations": [visualization]})
+
+        tax_credit = (
+            response.pension_tax_result.tax_credit
+            if response.pension_tax_result is not None
+            else None
+        )
+        if tax_credit is not None and tax_credit.rate_determined:
+            rate = tax_credit.rate_scenarios[0]
+            visualization = ChatVisualization(
+                kind=VisualizationKind.TAX_SUMMARY,
+                title="세액공제 요약",
+                description="입력한 납입액과 규칙 엔진 계산 결과를 함께 보여줘요.",
+                data_boundary=DataBoundary.ENGINE,
+                evidence_ids=[
+                    "user:pension_tax",
+                    "engine:pension_tax",
+                    "rule:pension_tax:credit",
+                ],
+                items=[
+                    VisualizationDatum(
+                        label="세액공제 대상 납입액",
+                        value=tax_credit.total_eligible_contribution_krw,
+                        unit="KRW",
+                        role=VisualizationDatumRole.VALUE,
+                    ),
+                    VisualizationDatum(
+                        label="예상 세액공제액",
+                        value=rate.estimated_tax_credit_krw,
+                        unit="KRW",
+                        role=VisualizationDatumRole.VALUE,
+                    ),
+                ],
+            )
+            return response.model_copy(update={"visualizations": [visualization]})
+
+        risk_items = [
+            item
+            for item in response.numeric_evidence
+            if "위험자산 비중" in item.label or "위험자산 한도" in item.label
+        ]
+        if not risk_items:
+            return response
+        visualization_items = [
+            VisualizationDatum(
+                label=item.label,
+                value=item.value,
+                unit=item.unit,
+                role=(
+                    VisualizationDatumRole.CURRENT
+                    if "비중" in item.label
+                    else VisualizationDatumRole.LIMIT
+                ),
+            )
+            for item in risk_items
+        ]
+        visualization = ChatVisualization(
+            kind=VisualizationKind.RISK_CAP,
+            title="위험자산 기준",
+            description="현재 비중과 계좌 기준을 한눈에 비교해 보세요.",
+            data_boundary=(
+                DataBoundary.ENGINE
+                if any(item.evidence_id.startswith("engine:") for item in risk_items)
+                else DataBoundary.VERIFIED_KNOWLEDGE
+            ),
+            evidence_ids=list(dict.fromkeys(item.evidence_id for item in risk_items)),
+            items=visualization_items,
+        )
+        return response.model_copy(update={"visualizations": [visualization]})
 
     @staticmethod
     def _with_context(
@@ -675,10 +771,10 @@ class ChatService:
         numeric: list[NumericEvidence] = []
         if plan.combines_account_rules and risk_question:
             answer = (
-                "여러 연금계좌를 합산해 하나의 위험자산 한도를 적용하지 "
-                "않습니다. DC형과 IRP는 각 계좌에서 일반 위험자산을 적립금의 "
-                "70%까지로 판정하고, 연금저축펀드에는 같은 총량 한도를 "
-                "적용하지 않아 계좌별로 따로 확인해야 합니다."
+                "계좌가 여러 개면 헷갈릴 수 있어요. 위험자산 기준은 여러 "
+                "연금계좌를 합쳐서 보지 않고, 계좌마다 따로 확인해요. DC와 "
+                "IRP는 각 계좌에서 위험자산을 계좌 돈의 70%까지만 담을 수 "
+                "있고, 연금저축펀드에는 같은 비율 제한이 없어요."
             )
             numeric.append(
                 NumericEvidence(
@@ -691,9 +787,8 @@ class ChatService:
             )
         elif risk_question and has_pension_savings and not has_retirement_account:
             answer = (
-                "연금저축펀드에는 DC형·IRP와 동일한 위험자산 총량 한도를 "
-                "적용하지 않습니다. 대신 해당 계좌에서 편입 가능한 상품인지 "
-                "별도 적격성 규칙으로 확인해야 합니다."
+                "연금저축펀드는 DC와 IRP처럼 위험자산 비율을 제한하지 않아요. "
+                "대신 원하는 상품을 담을 수 있는지는 따로 확인해야 해요."
             )
         elif risk_question and has_retirement_account:
             answer = (
@@ -893,8 +988,8 @@ class ChatService:
             else "계좌 간 같은 자산군의 중복은 확인되지 않았습니다."
         )
         answer = (
-            f"현재 계좌 상태를 살펴봤습니다. {account_summary}. "
-            f"자산별 비중은 아래 그래프로 확인해 주세요. {duplicate_summary}"
+            f"좋아요, 하나씩 같이 볼게요. {account_summary}. "
+            f"자산별 비중은 아래 그래프로 확인해 보세요. {duplicate_summary}"
         )
         return ChatResponse(
             intent=ChatIntent.MOCK_PORTFOLIO,

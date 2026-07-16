@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 
 from fastapi.testclient import TestClient
 from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
@@ -77,6 +78,9 @@ def test_natural_language_tax_credit_question_runs_without_form_input() -> None:
     assert response.pension_tax_result.withdrawal is None
     assert "900만 원" in response.answer
     assert "148.5만 원" in response.answer
+    assert response.visualizations[0].kind == "tax_summary"
+    assert response.visualizations[0].items[0].value == Decimal("9000000")
+    assert response.visualizations[0].items[1].value == Decimal("1485000")
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
 
 
