@@ -23,6 +23,13 @@ class NaverNewsLoadResult:
     duplicate_count: int
 
 
+@dataclass(frozen=True, slots=True)
+class PendingNewsSummary:
+    item_id: UUID
+    title: str
+    original_url: str
+
+
 class NaverNewsRepository:
     def __init__(self, database_url: str) -> None:
         if not database_url:
@@ -76,8 +83,9 @@ class NaverNewsRepository:
                     NAVER_NEWS_ENDPOINT,
                     Jsonb(
                         {
-                            "storage_policy": "metadata_only",
-                            "data_boundary": "news_metadata",
+                            "storage_policy": "metadata_and_derived_summary",
+                            "article_body_storage": "transient_only",
+                            "data_boundary": "news_metadata_and_summary",
                             "is_mock": False,
                         }
                     ),
@@ -172,7 +180,7 @@ class NaverNewsRepository:
                 (
                     response.raw_item_count,
                     len(rows),
-                    len(rows),
+                    inserted_count,
                     Jsonb(
                         {
                             "total_search_results": response.total,
@@ -207,6 +215,158 @@ class NaverNewsRepository:
             inserted_count=inserted_count,
             duplicate_count=duplicate_count,
         )
+
+    def claim_summary_items(
+        self,
+        *,
+        limit: int,
+        lookback_days: int = 7,
+        max_attempts: int = 3,
+        retry_after_minutes: int = 30,
+    ) -> list[PendingNewsSummary]:
+        if not 1 <= limit <= 1000:
+            raise ValueError("limit must be between 1 and 1000")
+        if not 1 <= lookback_days <= 30:
+            raise ValueError("lookback_days must be between 1 and 30")
+        if not 1 <= max_attempts <= 10:
+            raise ValueError("max_attempts must be between 1 and 10")
+        if not 1 <= retry_after_minutes <= 1440:
+            raise ValueError("retry_after_minutes must be between 1 and 1440")
+        with (
+            psycopg.connect(self._database_url) as connection,
+            connection.cursor() as cursor,
+        ):
+            cursor.execute(
+                """
+                with candidates as (
+                    select id
+                    from public.news_items
+                    where published_at >= now() - make_interval(days => %s)
+                      and summary_attempt_count < %s
+                      and (
+                          summary_status = 'pending'
+                          or (
+                              summary_status in (
+                                  'fetch_failed', 'model_failed',
+                                  'validation_failed'
+                              )
+                              and summary_claimed_at < now()
+                                  - make_interval(mins => %s)
+                          )
+                          or (
+                              summary_status = 'processing'
+                              and summary_claimed_at < now()
+                                  - make_interval(mins => %s)
+                          )
+                      )
+                    order by published_at desc, id
+                    limit %s
+                    for update skip locked
+                )
+                update public.news_items as news
+                set summary_status = 'processing',
+                    summary_attempt_count = news.summary_attempt_count + 1,
+                    summary_claimed_at = now(),
+                    summary_error_code = null,
+                    summary_lines = array[]::text[]
+                from candidates
+                where news.id = candidates.id
+                returning news.id, news.title, news.original_url
+                """,
+                (
+                    lookback_days,
+                    max_attempts,
+                    retry_after_minutes,
+                    retry_after_minutes,
+                    limit,
+                ),
+            )
+            return [PendingNewsSummary(*row) for row in cursor]
+
+    def save_summary(
+        self,
+        *,
+        item_id: UUID,
+        summary_lines: tuple[str, str, str],
+        model: str,
+        prompt_version: str,
+        content_sha256: str,
+    ) -> None:
+        if len(summary_lines) != 3 or any(not line.strip() for line in summary_lines):
+            raise ValueError("summary_lines must contain exactly three non-empty lines")
+        if not model or not prompt_version:
+            raise ValueError("model and prompt_version are required")
+        if len(content_sha256) != 64 or any(
+            character not in "0123456789abcdef" for character in content_sha256
+        ):
+            raise ValueError("content_sha256 must be a SHA-256 hex digest")
+        with (
+            psycopg.connect(self._database_url) as connection,
+            connection.cursor() as cursor,
+        ):
+            cursor.execute(
+                """
+                update public.news_items
+                set summary_lines = %s,
+                    summary_status = 'succeeded',
+                    summary_source_kind = 'article_body',
+                    summary_model = %s,
+                    summary_prompt_version = %s,
+                    source_content_sha256 = %s,
+                    summarized_at = now(),
+                    summary_error_code = null,
+                    summary_claimed_at = null,
+                    license_status = 'review_required'
+                where id = %s and summary_status = 'processing'
+                """,
+                (
+                    list(summary_lines),
+                    model,
+                    prompt_version,
+                    content_sha256,
+                    item_id,
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise NaverNewsRepositoryError(
+                    "news summary item was not processing during completion"
+                )
+
+    def fail_summary(
+        self,
+        *,
+        item_id: UUID,
+        status: str,
+        error_code: str,
+    ) -> None:
+        allowed_statuses = {"fetch_failed", "model_failed", "validation_failed"}
+        if status not in allowed_statuses:
+            raise ValueError(f"unsupported summary failure status: {status}")
+        if not error_code or len(error_code) > 100:
+            raise ValueError("error_code must contain between 1 and 100 characters")
+        with (
+            psycopg.connect(self._database_url) as connection,
+            connection.cursor() as cursor,
+        ):
+            cursor.execute(
+                """
+                update public.news_items
+                set summary_lines = array[]::text[],
+                    summary_status = %s,
+                    summary_source_kind = null,
+                    summary_model = null,
+                    summary_prompt_version = null,
+                    source_content_sha256 = null,
+                    summarized_at = null,
+                    summary_error_code = %s
+                where id = %s and summary_status = 'processing'
+                """,
+                (status, error_code, item_id),
+            )
+            if cursor.rowcount != 1:
+                raise NaverNewsRepositoryError(
+                    "news summary item was not processing during failure handling"
+                )
 
     def fail_run(self, run_id: UUID, error: Exception) -> bool:
         if isinstance(error, psycopg.Error):

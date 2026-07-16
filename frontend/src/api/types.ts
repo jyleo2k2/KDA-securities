@@ -490,6 +490,7 @@ export interface ChatNewsItem {
   evidence_id: string;
   title: string;
   description?: string | null;
+  summary_lines?: string[];
   original_url: string;
   published_at?: string | null;
 }

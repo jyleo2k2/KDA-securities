@@ -37,7 +37,7 @@
     {
       "id": "default-option",
       "query": "디폴트옵션이 뭐야",
-      "expected_source_url": "project://docs/20_리서치/연금_기초.md",
+      "expected_source_url": "project://docs/40_규제/사전지정운용제도_디폴트옵션.md",
       "required_content_terms": ["디폴트옵션"]
     },
     {
@@ -50,7 +50,7 @@
     {
       "id": "irp-early-withdrawal",
       "query": "IRP 중도인출",
-      "expected_source_url": "project://docs/20_리서치/연금_기초.md",
+      "expected_source_url": "project://docs/40_규제/퇴직연금_수령_중도인출.md",
       "required_content_terms": ["IRP", "중도인출"]
     },
     {

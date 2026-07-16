@@ -95,6 +95,7 @@ class DataBoundary(StrEnum):
     VERIFIED_KNOWLEDGE = "verified_knowledge"
     OFFICIAL_DISCLOSURE = "official_disclosure"
     NEWS_METADATA = "news_metadata"
+    NEWS_SUMMARY = "news_summary"
     MOCK = "mock"
     ENGINE = "engine"
     USER_INPUT = "user_input"
@@ -219,8 +220,17 @@ class ChatNewsItem(BaseModel):
     evidence_id: str
     title: str
     description: str | None = None
+    summary_lines: list[str] = Field(default_factory=list)
     original_url: str
     published_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def validate_summary_lines(self) -> "ChatNewsItem":
+        if len(self.summary_lines) not in {0, 3}:
+            raise ValueError("news summary must contain exactly three lines")
+        if any(not line.strip() for line in self.summary_lines):
+            raise ValueError("news summary lines must not be blank")
+        return self
 
 
 class VisualizationDatum(BaseModel):

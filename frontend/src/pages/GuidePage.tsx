@@ -210,11 +210,12 @@ function VisualizationCard({ visualization }: { visualization: ChatVisualization
 
 function NewsCards({ response }: { response: ChatResponse }) {
   const items = response.news_items ?? [];
+  const ordinals = ["첫 번째", "두 번째", "세 번째"];
   if (items.length === 0) return null;
 
   return (
     <section className="news-card-list" aria-label="뉴스 목록">
-      {items.map((item) => (
+      {items.map((item, index) => (
         <a
           className="news-card"
           href={item.original_url}
@@ -223,11 +224,25 @@ function NewsCards({ response }: { response: ChatResponse }) {
           target="_blank"
         >
           <div className="news-card-meta">
-            <span>뉴스 메타데이터</span>
+            <span>
+              {item.summary_lines?.length === 3
+                ? `${ordinals[index] ?? `${index + 1}번째`} 뉴스 · 3줄 요약`
+                : "뉴스 메타데이터"}
+            </span>
             {newsDate(item.published_at) && <time>{newsDate(item.published_at)}</time>}
           </div>
           <strong>{displayText(item.title)}</strong>
-          {item.description && <p>{displayText(item.description)}</p>}
+          {item.summary_lines?.length === 3 ? (
+            <ol className="news-card-summary">
+              {item.summary_lines.map((line, lineIndex) => (
+                <li key={`${item.evidence_id}-summary-${lineIndex}`}>
+                  {displayText(line)}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            item.description && <p>{displayText(item.description)}</p>
+          )}
           <small>원문 보기 <Icon name="chevron" size={13} /></small>
         </a>
       ))}
@@ -246,7 +261,9 @@ function AssistantMessage({ response, text }: { response?: ChatResponse; text: s
         <span className={`intent-pill intent-${response.intent}`}>{INTENT_LABELS[response.intent]}</span>
         <span>{response.narration_mode === "deterministic" ? "검증 답변" : "AI 서술"}</span>
       </div>
-      <p className="message-copy">{displayText(response.answer)}</p>
+      {(response.data_mode !== "news_summary" || response.news_items.length === 0) && (
+        <p className="message-copy">{displayText(response.answer)}</p>
+      )}
 
       {response.intent !== "mock_portfolio" && response.numeric_evidence.length > 0 && (
         <div className="number-grid" aria-label="수치 근거">

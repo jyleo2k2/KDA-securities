@@ -115,7 +115,7 @@ def test_chunk_markdown_keeps_headings_and_max_size() -> None:
 def test_approved_manifest_loads_only_verified_non_mock_documents() -> None:
     documents = load_approved_documents()
 
-    assert len(documents) == 2
+    assert len(documents) == 5
     for document in documents:
         assert document.license_status == "permitted"
         assert document.metadata["data_boundary"] == "verified_knowledge"

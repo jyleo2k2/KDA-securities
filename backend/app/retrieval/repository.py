@@ -52,6 +52,7 @@ class NewsMatch:
     original_url: str
     portal_url: str | None
     published_at: datetime | None
+    summary_lines: tuple[str, ...] = ()
 
 
 class RetrievalRepository:
@@ -286,7 +287,7 @@ class RetrievalRepository:
                 """
                 select
                     id::text, title, description, original_url,
-                    portal_url, published_at
+                    portal_url, published_at, summary_lines
                 from public.news_items
                 where search_query = %s
                 order by published_at desc nulls last, fetched_at desc
@@ -304,7 +305,7 @@ class RetrievalRepository:
                 """
                 select
                     id::text, title, description, original_url,
-                    portal_url, published_at
+                    portal_url, published_at, summary_lines
                 from public.news_items
                 where title ilike any(%s::text[])
                    or coalesce(description, '') ilike any(%s::text[])
@@ -330,11 +331,13 @@ class RetrievalRepository:
                 """
                 select
                     id::text, title, description, original_url,
-                    portal_url, published_at
+                    portal_url, published_at, summary_lines
                 from public.news_items
                 where search_query = %s
                   and published_at >= now() - make_interval(days => %s)
                   and published_at <= now()
+                  and summary_status = 'succeeded'
+                  and cardinality(summary_lines) = 3
                 order by random()
                 limit %s
                 """,

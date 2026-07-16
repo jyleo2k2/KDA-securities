@@ -471,6 +471,8 @@ def test_naver_completion_inserts_only_new_urls_and_records_duplicates(
     assert cursor.metadata["inserted_record_count"] == 1
     assert cursor.metadata["duplicate_record_count"] == 1
     assert cursor.metadata["pages_fetched"] == 1
+    assert cursor.last_params is not None
+    assert cursor.last_params[2] == 1
 
 
 @pytest.mark.parametrize(("rowcount", "expected"), [(1, True), (0, False)])

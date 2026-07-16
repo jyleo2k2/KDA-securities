@@ -16,11 +16,14 @@ concurrency:
 jobs:
   ingest:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 120
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       NAVER_API_HUB_CLIENT_ID: ${{ secrets.NAVER_API_HUB_CLIENT_ID }}
       NAVER_API_HUB_CLIENT_SECRET: ${{ secrets.NAVER_API_HUB_CLIENT_SECRET }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      NEWS_SUMMARY_MODEL: claude-sonnet-5
+      NEWS_SUMMARY_PROMPT_VERSION: news-summary-v1
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -35,3 +38,11 @@ jobs:
           --sort date
           --max-pages 10
           --max-age-days 7
+      - name: Summarize pending pension news articles
+        run: >-
+          uv run python -m backend.app.ingestion.naver_summaries
+          --limit 1000
+          --concurrency 5
+          --lookback-days 7
+          --max-attempts 3
+          --retry-after-minutes 30

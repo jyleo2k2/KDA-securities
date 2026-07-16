@@ -26,6 +26,9 @@ USER_PENSION_MIGRATION = next(
 PROFILE_ANSWER_FK_INDEX_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob("*_add_profile_answer_fk_index.sql")
 )
+NEWS_SUMMARY_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob("*_add_news_article_summaries.sql")
+)
 LIFECYCLE_SCENARIOS_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob("*_add_lifecycle_demo_scenarios.sql")
 )
@@ -124,6 +127,21 @@ def test_chat_idempotency_is_owner_scoped_and_denies_browser_access() -> None:
 def test_all_migrations_parse_as_postgres_sql() -> None:
     for migration in sorted((ROOT / "supabase" / "migrations").glob("*.sql")):
         parse_sql(migration.read_text(encoding="utf-8"))
+
+
+def test_news_summary_schema_is_additive_and_enforces_ready_contract() -> None:
+    sql = NEWS_SUMMARY_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "alter table public.news_items" in sql
+    assert "summary_lines text[]" in sql
+    assert "summary_status text" in sql
+    assert "source_content_sha256 text" in sql
+    assert "cardinality(summary_lines) = 3" in sql
+    assert "news_items_summary_failure_contract_check" in sql
+    assert "summary_status = 'succeeded'" in sql
+    assert "news_items_ready_summary_idx" in sql
+    assert "drop table" not in sql
+    assert "grant " not in sql
 
 
 def test_user_pension_domain_is_additive_and_rls_protected() -> None:

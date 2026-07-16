@@ -75,7 +75,7 @@ _STOP_WORDS = {
     "비교",
 }
 _DOCUMENT_TYPE_BOOST = {
-    "regulation": 1.0,
+    "regulation": 0.5,
     "official_guide": 0.8,
     "research": 0.5,
     "product_disclosure": 0.2,
