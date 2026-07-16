@@ -131,6 +131,13 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .number-card span { color: #748076; font-size: 9px; }.number-card strong { margin: 3px 0; color: #234435; font-size: 16px; }.number-card small { color: #919c94; font-size: 8px; line-height: 1.4; }
 .allocation-chart { margin-top: 14px; padding: 13px; border-radius: 10px; background: #f5f8f1; }
 .allocation-chart h3 { margin: 0 0 10px; color: #2d493b; font-size: 11px; }
+.visualization-description { margin: -4px 0 10px; color: #748076; font-size: 10px; line-height: 1.5; }
+.tax-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }.tax-summary-grid > div { padding: 10px; border-radius: 9px; background: #eaf2e4; }.tax-summary-grid span, .tax-summary-grid strong { display: block; }.tax-summary-grid span { color: #748076; font-size: 9px; }.tax-summary-grid strong { margin-top: 4px; color: #234435; font-size: 16px; }
+.allocation-pie-layout { display: flex; align-items: center; gap: 14px; }
+.allocation-donut { display: grid; width: 126px; height: 126px; flex: 0 0 auto; place-items: center; border-radius: 50%; }
+.allocation-donut::before { grid-area: 1 / 1; width: 78px; height: 78px; border-radius: 50%; background: #f5f8f1; content: ""; }
+.allocation-donut > span { z-index: 1; grid-area: 1 / 1; color: #748076; text-align: center; font-size: 10px; line-height: 1.35; }.allocation-donut strong { color: #234435; font-size: 17px; }
+.allocation-legend { display: grid; min-width: 0; flex: 1; gap: 6px; margin: 0; padding: 0; list-style: none; }.allocation-legend li { display: flex; align-items: center; gap: 5px; min-width: 0; color: #586b60; font-size: 9px; }.allocation-legend i { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; }.allocation-legend span { overflow: hidden; flex: 1; text-overflow: ellipsis; white-space: nowrap; }.allocation-legend strong { color: #234435; font-size: 9px; }
 .allocation-row + .allocation-row { margin-top: 9px; }
 .allocation-row > div:first-child { display: flex; justify-content: space-between; gap: 12px; color: #586b60; font-size: 10px; }
 .allocation-row strong { color: #234435; font-weight: 700; }

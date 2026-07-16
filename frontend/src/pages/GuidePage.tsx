@@ -25,12 +25,12 @@ import type {
   ConversationContext,
   ChatResponse,
   ChatSessionSummary,
+  ChatVisualization,
   DataBoundary,
   DemoUserFinancialContext,
   IncomeBasis,
   IrpDeferredIncomeStatus,
   PensionTaxScenarioInput,
-  ScenarioEvaluation,
   ScenarioSummary,
   StoredChatMessage,
   WithdrawalReason,
@@ -75,14 +75,6 @@ const BOUNDARY_LABELS: Record<DataBoundary, string> = {
 
 const PENSION_TAX_PROMPT = /세액\s*공제|중도\s*해지|연금\s*외\s*수령|16\.5\s*%/;
 
-const ASSET_CLASS_LABELS: Record<string, string> = {
-  deposit: "원리금보장형 자산",
-  cash: "현금성 자산",
-  bond: "채권형 자산",
-  global_equity: "글로벌 주식형 자산",
-  eligible_tdf: "적격 TDF",
-};
-
 function numericText(value: string | number, unit: string): string {
   if (unit.toUpperCase() === "KRW") {
     return `${Number(value).toLocaleString("ko-KR")}원`;
@@ -115,24 +107,80 @@ function SourceLink({ locator, children }: { locator: string; children: ReactNod
   return <a href={locator} target="_blank" rel="noreferrer">{children}</a>;
 }
 
-function AssetAllocationChart({ evaluation }: { evaluation: ScenarioEvaluation }) {
-  return (
-    <section className="allocation-chart" aria-label="전체 자산 구성 그래프">
-      <h3>전체 자산 구성</h3>
-      {evaluation.asset_allocations.map((item) => {
-        const percent = Number(item.allocation_percent);
-        return (
-          <div className="allocation-row" key={item.asset_class_code}>
-            <div>
-              <span>{ASSET_CLASS_LABELS[item.asset_class_code] ?? "기타 자산"}</span>
-              <strong>{percent}%</strong>
+function VisualizationCard({ visualization }: { visualization: ChatVisualization }) {
+  if (visualization.kind === "tax_summary") {
+    return (
+      <section className="allocation-chart tax-visualization" aria-label={visualization.title}>
+        <h3>{visualization.title}</h3>
+        <p className="visualization-description">{visualization.description}</p>
+        <div className="tax-summary-grid">
+          {visualization.items.map((item) => (
+            <div key={item.label}>
+              <span>{item.label}</span>
+              <strong>{numericText(item.value, item.unit)}</strong>
             </div>
-            <div className="allocation-track" role="img" aria-label={`${ASSET_CLASS_LABELS[item.asset_class_code] ?? "기타 자산"} ${percent}%`}>
-              <span style={{ width: `${percent}%` }} />
-            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (visualization.kind === "risk_cap") {
+    const current = visualization.items.find((item) => item.role === "current");
+    const limit = visualization.items.find((item) => item.role === "limit");
+    const displayed = current ?? limit;
+    const percent = Math.min(Number(displayed?.value ?? 0), 100);
+    const summary = current && limit
+      ? `${numericText(current.value, current.unit)} / 기준 ${numericText(limit.value, limit.unit)}`
+      : `최대 ${numericText(limit?.value ?? 0, limit?.unit ?? "%")}`;
+
+    return (
+      <section className="allocation-chart" aria-label={visualization.title}>
+        <h3>{visualization.title}</h3>
+        <p className="visualization-description">{visualization.description}</p>
+        <div className="allocation-row">
+          <div><span>위험자산</span><strong>{summary}</strong></div>
+          <div className="allocation-track" role="img" aria-label={`위험자산 ${summary}`}>
+            <span style={{ width: `${percent}%` }} />
           </div>
-        );
-      })}
+        </div>
+      </section>
+    );
+  }
+
+  const colors = ["#4f8a70", "#84ad67", "#d8a45e", "#7183b1", "#bf7d70"];
+  let start = 0;
+  const gradientStops = visualization.items.map((item, index) => {
+    const end = start + Number(item.value);
+    const color = colors[index % colors.length];
+    const stop = `${color} ${start}% ${end}%`;
+    start = end;
+    return stop;
+  });
+
+  return (
+    <section className="allocation-chart" aria-label={visualization.title}>
+      <h3>{visualization.title}</h3>
+      <p className="visualization-description">{visualization.description}</p>
+      <div className="allocation-pie-layout">
+        <div
+          aria-label={visualization.items.map((item) => `${item.label} ${item.value}%`).join(", ")}
+          className="allocation-donut"
+          role="img"
+          style={{ background: `conic-gradient(${gradientStops.join(", ")})` }}
+        >
+          <span>전체<br /><strong>100%</strong></span>
+        </div>
+        <ul className="allocation-legend">
+          {visualization.items.map((item, index) => (
+            <li key={item.label}>
+              <i style={{ backgroundColor: colors[index % colors.length] }} />
+              <span>{item.label}</span>
+              <strong>{item.value}%</strong>
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
   );
 }
@@ -150,9 +198,12 @@ function AssistantMessage({ response, text }: { response?: ChatResponse; text: s
       </div>
       <p className="message-copy">{response.answer}</p>
 
-      {response.scenario_evaluation && (
-        <AssetAllocationChart evaluation={response.scenario_evaluation} />
-      )}
+      {response.visualizations.map((visualization, index) => (
+        <VisualizationCard
+          visualization={visualization}
+          key={`${visualization.kind}-${index}`}
+        />
+      ))}
 
       {response.narration_reasoning && (
         <details className="answer-section section-service_explanation">
@@ -340,13 +391,32 @@ export function GuidePage() {
   ]);
 
   useEffect(() => {
-    Promise.all([getScenarios(), getCapabilities()])
-      .then(([scenarioData, capabilityData]) => {
-        setScenarios(scenarioData);
-        setCapabilities(capabilityData);
-        setServerReady(true);
-      })
-      .catch(() => setServerReady(false));
+    // 백엔드는 임베더 로딩 때문에 프론트보다 늦게 뜨고, --reload로 잠깐 끊기기도
+    // 한다. 한 번 실패하고 포기하면 서버가 살아나도 "API 연결 필요"로 굳으므로
+    // 연결될 때까지 다시 시도한다.
+    let cancelled = false;
+    let retryTimer: number | undefined;
+
+    const check = () => {
+      Promise.all([getScenarios(), getCapabilities()])
+        .then(([scenarioData, capabilityData]) => {
+          if (cancelled) return;
+          setScenarios(scenarioData);
+          setCapabilities(capabilityData);
+          setServerReady(true);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setServerReady(false);
+          retryTimer = window.setTimeout(check, 3000);
+        });
+    };
+
+    check();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(retryTimer);
+    };
   }, []);
 
   useEffect(() => {

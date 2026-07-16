@@ -7,7 +7,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute, request_response
 
-from .api import chat, disclosures, engine, retrieval, system
+from .api import benchmark, chat, disclosures, engine, retrieval, system
 from .api.deps import (
     clear_chat_dependencies,
     get_chat_narrator,
@@ -98,6 +98,7 @@ def create_app() -> FastAPI:
     _include_eagerly(app, engine.router)
     _include_eagerly(app, retrieval.router)
     _include_eagerly(app, disclosures.router)
+    _include_eagerly(app, benchmark.router)
     _include_eagerly(app, chat.router)
     return app
 

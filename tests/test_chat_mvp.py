@@ -106,6 +106,8 @@ def test_account_rule_question_returns_rag_source_and_numeric_evidence() -> None
     assert response.sources
     assert len(response.numeric_evidence) == 1
     assert response.numeric_evidence[0].value == Decimal("70")
+    assert response.visualizations[0].kind == "risk_cap"
+    assert response.visualizations[0].items[0].value == Decimal("70")
     assert all(
         source.data_boundary == "verified_knowledge" for source in response.sources
     )
@@ -121,8 +123,8 @@ def test_combined_accounts_are_explained_with_separate_rules() -> None:
     )
 
     assert response.intent == ChatIntent.ACCOUNT_RULE
-    assert "합산해 하나의 위험자산 한도" in response.answer
-    assert "각 계좌" in response.answer
+    assert "여러 연금계좌를 합쳐서 보지 않고" in response.answer
+    assert "계좌마다 따로 확인해요" in response.answer
     assert response.numeric_evidence[0].value == Decimal("70")
 
 
@@ -132,7 +134,7 @@ def test_pension_savings_rule_does_not_apply_dc_irp_cap() -> None:
     )
 
     assert response.intent == ChatIntent.ACCOUNT_RULE
-    assert "동일한 위험자산 총량 한도" in response.answer
+    assert "위험자산 비율을 제한하지 않아요" in response.answer
     assert response.numeric_evidence == []
 
 
@@ -162,6 +164,11 @@ def test_mock_overlap_scenario_runs_engine_and_keeps_mock_boundary() -> None:
     assert response.scenario_evaluation.data_boundary == "mock"
     assert response.scenario_evaluation.total_amount_krw == Decimal("190000000.00")
     assert response.scenario_evaluation.duplicated_asset_classes == ["global_equity"]
+    assert response.visualizations[0].kind == "asset_allocation"
+    assert (
+        sum(item.value for item in response.visualizations[0].items)
+        == Decimal("100.00")
+    )
     assert len(response.engine_results) == 3
     assert sum(
         item.allocation_percent
@@ -170,6 +177,7 @@ def test_mock_overlap_scenario_runs_engine_and_keeps_mock_boundary() -> None:
     assert "global_equity" not in response.answer
     assert "pension_savings" not in response.answer
     assert "글로벌 주식형 자산" in response.answer
+    assert response.answer.startswith("좋아요, 하나씩 같이 볼게요.")
 
 
 def test_individual_product_comparison_is_blocked_until_data_exists() -> None:

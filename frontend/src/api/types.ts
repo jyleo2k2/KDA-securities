@@ -484,6 +484,50 @@ export interface AnswerSection {
   evidence_ids: string[];
 }
 
+export interface BenchmarkDistribution {
+  code: string;
+  count: number;
+}
+
+export interface BenchmarkAccountTypeStat {
+  account_type: string;
+  account_count: number;
+  mean_balance_krw: string;
+  mean_monthly_contribution_krw: string;
+  mean_risky_asset_ratio_percent: string;
+}
+
+export interface BenchmarkSummary {
+  data_boundary: "mock";
+  source_label: string;
+  notice: string;
+  user_count: number;
+  account_count: number;
+  holding_count: number;
+  age_groups: BenchmarkDistribution[];
+  risk_profiles: BenchmarkDistribution[];
+  account_type_stats: BenchmarkAccountTypeStat[];
+}
+
+export type VisualizationKind = "asset_allocation" | "risk_cap" | "tax_summary";
+export type VisualizationDatumRole = "segment" | "current" | "limit" | "value";
+
+export interface VisualizationDatum {
+  label: string;
+  value: string | number;
+  unit: string;
+  role: VisualizationDatumRole;
+}
+
+export interface ChatVisualization {
+  kind: VisualizationKind;
+  title: string;
+  description: string;
+  data_boundary: DataBoundary;
+  evidence_ids: string[];
+  items: VisualizationDatum[];
+}
+
 export interface ConversationContext {
   account_type?: "dc" | "irp" | "pension_savings" | null;
   scenario_code?: string | null;
@@ -499,6 +543,7 @@ export interface ChatResponse {
   /** Claude 내레이터의 검토 과정 요약(새 숫자 감지 시 서버가 생략). */
   narration_reasoning?: string | null;
   sections: AnswerSection[];
+  visualizations: ChatVisualization[];
   sources: SourceEvidence[];
   numeric_evidence: NumericEvidence[];
   engine_results: unknown[];
