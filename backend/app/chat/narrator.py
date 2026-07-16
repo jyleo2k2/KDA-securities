@@ -4,23 +4,28 @@
 숫자 가드·결정론 폴백은 프레임워크 밖에서 유지한다(Explainable by Design).
 """
 
+import json
 import re
 from decimal import Decimal, InvalidOperation
 
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, NativeOutput
 from pydantic_ai.exceptions import AgentRunError
-from pydantic_ai.messages import ModelResponse, ThinkingPart
+from pydantic_ai.messages import ModelResponse, ThinkingPart, ToolCallPart
 from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
 from pydantic_ai.providers.anthropic import AnthropicProvider
 
+from ..engine import PensionTaxScenarioInput
 from .models import ChatIntent, ChatResponse
+from .pension_tax_parser import resolve_pension_tax_inputs
+from .tools import PENSION_TAX_AGENT_TOOLS, PENSION_TAX_CLOSING_NOTICE
 
 NARRATABLE_INTENTS = {
     ChatIntent.ACCOUNT_RULE,
     ChatIntent.MOCK_PORTFOLIO,
     ChatIntent.PROVIDER_DISCLOSURE,
     ChatIntent.NEWS,
+    ChatIntent.PENSION_TAX,
 }
 
 SYSTEM_PROMPT = (
@@ -28,6 +33,10 @@ SYSTEM_PROMPT = (
     "수치·상품·전망·매매의견을 만들지 않는다. 제공된 검증 답변의 "
     "사실만 쉬운 한국어로 한 문단에 다시 쓴다. 사실·외부 의견·서비스 "
     "해석의 경계를 유지하고 숫자와 단위는 원문 그대로 둔다."
+    " 연금세액 Tool 입력이 제공되면 검증 답변을 쓰기 전에 요청된 "
+    "calculate_pension_tax_credit_tool 또는 "
+    "estimate_non_pension_withdrawal_tax_tool을 반드시 호출한다. Tool 결과의 "
+    "숫자를 바꾸거나 Tool 밖에서 다시 계산하지 않는다."
 )
 
 
@@ -160,6 +169,7 @@ class ClaudeNarrator:
             ),
             output_type=NativeOutput(NarrationOutput),
             instructions=SYSTEM_PROMPT,
+            tools=PENSION_TAX_AGENT_TOOLS,
             model_settings=AnthropicModelSettings(
                 # thinking과 검토 노트가 출력 토큰을 함께 소모하므로 여유를 둔다.
                 max_tokens=1500,
@@ -168,7 +178,13 @@ class ClaudeNarrator:
             ),
         )
 
-    def narrate(self, response: ChatResponse) -> ChatResponse:
+    def narrate(
+        self,
+        response: ChatResponse,
+        *,
+        pension_tax_input: PensionTaxScenarioInput | None = None,
+        pension_tax_message: str | None = None,
+    ) -> ChatResponse:
         if response.intent not in NARRATABLE_INTENTS or not response.sources:
             return response
         prompt = (
@@ -176,6 +192,39 @@ class ClaudeNarrator:
             f"{response.answer}\n\n"
             "제한사항:\n" + "\n".join(response.limitations)
         )
+        resolved_tax_inputs = None
+        if response.intent == ChatIntent.PENSION_TAX and (
+            pension_tax_input is not None or pension_tax_message is not None
+        ):
+            resolved_tax_inputs = resolve_pension_tax_inputs(
+                pension_tax_message or "", pension_tax_input
+            )
+            tax_result = response.pension_tax_result
+            tool_payload: dict[str, object] = {}
+            if tax_result is not None and tax_result.tax_credit is not None:
+                if resolved_tax_inputs.tax_credit is None:
+                    return self._fallback(
+                        response,
+                        "Claude Tool 입력을 재구성하지 못해 검증 원문을 표시합니다.",
+                    )
+                tool_payload["tax_credit"] = (
+                    resolved_tax_inputs.tax_credit.model_dump(mode="json")
+                )
+            if tax_result is not None and tax_result.withdrawal is not None:
+                if resolved_tax_inputs.withdrawal is None:
+                    return self._fallback(
+                        response,
+                        "Claude Tool 입력을 재구성하지 못해 검증 원문을 표시합니다.",
+                    )
+                tool_payload["withdrawal"] = (
+                    resolved_tax_inputs.withdrawal.model_dump(mode="json")
+                )
+            prompt += (
+                "\n\n연금세액 Tool 입력(JSON):\n"
+                + json.dumps(tool_payload, ensure_ascii=False)
+                + "\n위 입력을 임의로 수정하지 말고 검증 답변에 포함된 계산 "
+                "종류의 Tool을 반드시 호출하세요."
+            )
         try:
             result = self.agent.run_sync(prompt)
             output = result.output
@@ -187,6 +236,31 @@ class ClaudeNarrator:
                 response,
                 "Claude 설명 호출 실패로 검증 원문을 표시합니다.",
             )
+
+        if resolved_tax_inputs is not None:
+            required_tools: set[str] = set()
+            tax_result = response.pension_tax_result
+            if tax_result is not None and tax_result.tax_credit is not None:
+                required_tools.add("calculate_pension_tax_credit_tool")
+            if tax_result is not None and tax_result.withdrawal is not None:
+                required_tools.add("estimate_non_pension_withdrawal_tax_tool")
+            called_tools = {
+                part.tool_name
+                for message in result.all_messages()
+                if isinstance(message, ModelResponse)
+                for part in message.parts
+                if isinstance(part, ToolCallPart)
+            }
+            if not required_tools.issubset(called_tools):
+                return self._fallback(
+                    response,
+                    "Claude가 필요한 연금세액 Tool을 호출하지 않아 검증 원문을 "
+                    "표시합니다.",
+                )
+
+        if response.intent == ChatIntent.PENSION_TAX:
+            candidate = candidate.replace(PENSION_TAX_CLOSING_NOTICE, "").rstrip()
+            candidate += f"\n{PENSION_TAX_CLOSING_NOTICE}"
 
         if _adds_unverified_content(candidate, response.answer):
             return self._fallback(

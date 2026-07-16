@@ -20,6 +20,10 @@ from ..engine import (
     AggregationInput,
     AllocationExampleEvaluation,
     AllocationExampleInput,
+    NonPensionWithdrawalEvaluation,
+    NonPensionWithdrawalInput,
+    PensionTaxCreditEvaluation,
+    PensionTaxCreditInput,
     PortfolioInput,
     ProfileEvaluation,
     ProfileSurveyInput,
@@ -29,6 +33,8 @@ from ..engine import (
     SimulationInput,
     aggregate_accounts,
     build_allocation_example,
+    calculate_pension_tax_credit,
+    estimate_non_pension_withdrawal_tax,
     evaluate_account_diagnostics,
     evaluate_mock_scenario,
     evaluate_profile,
@@ -101,6 +107,30 @@ def allocation_example(
     """Return the approved asset-class example for the profile and account."""
 
     return build_allocation_example(inputs)
+
+
+@router.post(
+    "/engine/pension-tax-credit",
+    response_model=PensionTaxCreditEvaluation,
+)
+def pension_tax_credit(
+    inputs: PensionTaxCreditInput,
+) -> PensionTaxCreditEvaluation:
+    """Calculate a 2026 educational tax-credit estimate without a DB write."""
+
+    return calculate_pension_tax_credit(inputs)
+
+
+@router.post(
+    "/engine/non-pension-withdrawal-estimate",
+    response_model=NonPensionWithdrawalEvaluation,
+)
+def non_pension_withdrawal_estimate(
+    inputs: NonPensionWithdrawalInput,
+) -> NonPensionWithdrawalEvaluation:
+    """Estimate only the 16.5% other-income portion of a non-pension withdrawal."""
+
+    return estimate_non_pension_withdrawal_tax(inputs)
 
 
 @router.get("/engine/mock-scenario/{scenario_code}", response_model=ScenarioEvaluation)

@@ -3,6 +3,7 @@ import type {
   ChatResponse,
   ChatSessionSummary,
   PersistedChatResponse,
+  PensionTaxScenarioInput,
   ScenarioEvaluation,
   ScenarioSummary,
   StoredChatMessage,
@@ -93,10 +94,12 @@ export function getMockScenarioEvaluation(
 export function sendChat(
   message: string,
   scenarioCode?: string,
+  pensionTax?: PensionTaxScenarioInput,
 ): Promise<ChatResponse> {
   return apiPost("/chat/demo", {
     message,
     ...(scenarioCode ? { scenario_code: scenarioCode } : {}),
+    ...(pensionTax ? { pension_tax: pensionTax } : {}),
   });
 }
 
@@ -105,6 +108,7 @@ export function sendAuthenticatedChat(
   accessToken: string,
   scenarioCode?: string,
   sessionId?: string,
+  pensionTax?: PensionTaxScenarioInput,
 ): Promise<PersistedChatResponse> {
   return apiPost(
     "/chat",
@@ -112,6 +116,7 @@ export function sendAuthenticatedChat(
       message,
       ...(scenarioCode ? { scenario_code: scenarioCode } : {}),
       ...(sessionId ? { session_id: sessionId } : {}),
+      ...(pensionTax ? { pension_tax: pensionTax } : {}),
     },
     accessToken,
   );

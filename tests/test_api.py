@@ -30,6 +30,8 @@ def test_route_paths_cover_engine_tools_and_data_reads() -> None:
         "/engine/simulation",
         "/engine/allocation-example",
         "/engine/mock-scenario/{scenario_code}",
+        "/engine/pension-tax-credit",
+        "/engine/non-pension-withdrawal-estimate",
         "/retrieval/knowledge",
         "/retrieval/news",
         "/disclosures/pension-savings",
