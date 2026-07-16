@@ -112,6 +112,9 @@ export function HomePage() {
             {evaluation.source.as_of}
           </p>
           <h2 style={{ fontSize: 16, margin: "4px 0" }}>{scenario.name}</h2>
+          <p style={{ color: "#666666", fontSize: 12, margin: "2px 0" }}>
+            대표 연령대 {scenario.age_band}
+          </p>
           <p style={{ color: "#555555", fontSize: 13, lineHeight: 1.5 }}>
             {scenario.description}
           </p>

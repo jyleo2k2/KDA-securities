@@ -286,6 +286,7 @@ class ScenarioPortfolioInput(BaseModel):
     scenario_code: str = Field(min_length=1)
     name: str = Field(min_length=1)
     description: str = Field(min_length=1)
+    age_band: str = Field(min_length=1)
     risk_profile: str = Field(pattern="^(conservative|balanced|growth)$")
     investment_horizon_years: int = Field(gt=0)
     accounts: list[ScenarioAccountInput] = Field(min_length=1)

@@ -34,6 +34,31 @@ DB형, 연금저축보험, 연금저축신탁은 생성하지 않는다. 연금�
 
 세 유형의 비중과 계좌 조합은 공개 교차통계가 없어 `ASSUMPTION_V1`로 관리한다.
 
+## 앱 시연용 대표 고객 6명
+
+합성 고객 10,000명은 통계·벤치마크용이며 Auth 사용자가 아니다. 앱에서 직접
+로그인해 시연하는 대표 고객은 기존 행동형 3명과 생애주기형 3명으로 분리한다.
+
+| 시나리오 코드 | 대표 고객 | 연령대 | 로그인 ID | 대표 상황 |
+|---|---|---|---|---|
+| `dc_dormant` | 박준호(가상) | 40대 | `demo.dc-dormant@kda-demo.invalid` | DC 적립금이 원리금보장 상품에 머문 방치형 |
+| `tax_contribution_uninvested` | 이서연(가상) | 30대 | `demo.tax-idle@kda-demo.invalid` | 세액공제를 위해 납입했지만 자금을 운용하지 않은 유형 |
+| `overlap_risk_concentration` | 정민재(가상) | 30대 | `demo.overlap-risk@kda-demo.invalid` | 여러 연금계좌에 같은 위험자산이 중복된 유형 |
+| `young_retirement_distance` | 김하린(가상) | 20~39세 | `demo.young@kda-demo.invalid` | 노후가 멀게 느껴져 연금 운용의 우선순위가 낮은 유형 |
+| `family_budget_pressure` | 최지훈(가상) | 40~54세 | `demo.family@kda-demo.invalid` | 자녀·주거비로 납입이 빠듯하지만 노후를 걱정하기 시작한 유형 |
+| `pension_payout_transition` | 윤정희(가상) | 55세 이상 | `demo.payout@kda-demo.invalid` | 연금 수령을 시작했거나 수령 직전인 유형 |
+
+로그인 ID와 고객 매핑은 `demo_scenario_users.json`에 저장한다. 실제 비밀번호는
+Git에 커밋하지 않고 아래 명령으로 `secrets/demo_scenario_auth.json`에 생성한다.
+
+```powershell
+uv run python scripts/provision_demo_auth_users.py --prepare-only
+```
+
+팀장 승인과 서버 전용 `SUPABASE_SECRET_KEY` 설정 후 같은 스크립트를 옵션 없이
+실행하면 Supabase Auth에 계정을 만들고 6개 로그인을 검증한다. 시나리오 코드는
+사용자가 수정할 수 없는 Auth `app_metadata`에 연결하며 비밀번호는 출력하지 않는다.
+
 ## 설문 기반 고객 특성
 
 한국경영자총협회 「2025 직장인 퇴직연금 인식조사」(퇴직연금 가입 직장인 1,003명)의 응답 비율을 10,000명 합성 고객에 맞춰 배분했다.
