@@ -387,13 +387,32 @@ export function GuidePage() {
   ]);
 
   useEffect(() => {
-    Promise.all([getScenarios(), getCapabilities()])
-      .then(([scenarioData, capabilityData]) => {
-        setScenarios(scenarioData);
-        setCapabilities(capabilityData);
-        setServerReady(true);
-      })
-      .catch(() => setServerReady(false));
+    // 백엔드는 임베더 로딩 때문에 프론트보다 늦게 뜨고, --reload로 잠깐 끊기기도
+    // 한다. 한 번 실패하고 포기하면 서버가 살아나도 "API 연결 필요"로 굳으므로
+    // 연결될 때까지 다시 시도한다.
+    let cancelled = false;
+    let retryTimer: number | undefined;
+
+    const check = () => {
+      Promise.all([getScenarios(), getCapabilities()])
+        .then(([scenarioData, capabilityData]) => {
+          if (cancelled) return;
+          setScenarios(scenarioData);
+          setCapabilities(capabilityData);
+          setServerReady(true);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setServerReady(false);
+          retryTimer = window.setTimeout(check, 3000);
+        });
+    };
+
+    check();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(retryTimer);
+    };
   }, []);
 
   useEffect(() => {
