@@ -3,6 +3,7 @@
     "scenario_code": "dc_dormant",
     "name": "DC형 방치",
     "description": "DC 적립금이 원리금보장 상품에만 머문 설명용 시나리오",
+    "age_band": "40대",
     "risk_profile": "balanced",
     "investment_horizon_years": 20,
     "accounts": [
@@ -26,6 +27,7 @@
     "scenario_code": "tax_contribution_uninvested",
     "name": "세액공제 후 미운용",
     "description": "세액공제를 위해 납입했지만 IRP·연금저축 자금이 현금성 자산에 머문 설명용 시나리오",
+    "age_band": "30대",
     "risk_profile": "balanced",
     "investment_horizon_years": 25,
     "accounts": [
@@ -63,6 +65,7 @@
     "scenario_code": "overlap_risk_concentration",
     "name": "계좌별 중복·위험 편중",
     "description": "세 계좌에 같은 글로벌 주식 노출이 반복되고 위험자산 비중이 높은 설명용 시나리오",
+    "age_band": "30대",
     "risk_profile": "growth",
     "investment_horizon_years": 28,
     "accounts": [
@@ -134,6 +137,197 @@
             "asset_class_code": "cash",
             "amount_krw": "4000000",
             "risk_treatment": "capital_preservation"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "scenario_code": "young_retirement_distance",
+    "name": "연금이 멀게 느껴지는 청년층",
+    "description": "20~39세로 노후가 멀게 느껴져 연금 운용과 추가 납입의 우선순위가 낮은 설명용 시나리오",
+    "age_band": "20~39세",
+    "risk_profile": "balanced",
+    "investment_horizon_years": 35,
+    "accounts": [
+      {
+        "account_id": "young_dc",
+        "account_type": "dc",
+        "label": "초기 직장 DC",
+        "holdings": [
+          {
+            "holding_id": "young_dc_deposit",
+            "instrument_name": "초기 DC 원리금보장 모형",
+            "asset_class_code": "deposit",
+            "amount_krw": "15000000",
+            "risk_treatment": "capital_preservation"
+          },
+          {
+            "holding_id": "young_dc_cash",
+            "instrument_name": "초기 DC 현금성 모형",
+            "asset_class_code": "cash",
+            "amount_krw": "3000000",
+            "risk_treatment": "capital_preservation"
+          }
+        ]
+      },
+      {
+        "account_id": "young_pension_savings",
+        "account_type": "pension_savings",
+        "label": "소액 연금저축펀드",
+        "holdings": [
+          {
+            "holding_id": "young_pension_cash",
+            "instrument_name": "연금저축 현금성 모형",
+            "asset_class_code": "cash",
+            "amount_krw": "3600000",
+            "risk_treatment": "capital_preservation"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "scenario_code": "family_budget_pressure",
+    "name": "가계지출로 납입이 빠듯한 중년층",
+    "description": "40~54세로 자녀·주거비 때문에 추가 납입은 빠듯하지만 노후 준비를 걱정하기 시작한 설명용 시나리오",
+    "age_band": "40~54세",
+    "risk_profile": "balanced",
+    "investment_horizon_years": 13,
+    "accounts": [
+      {
+        "account_id": "family_dc",
+        "account_type": "dc",
+        "label": "회사 DC",
+        "holdings": [
+          {
+            "holding_id": "family_dc_deposit",
+            "instrument_name": "중년층 DC 원리금보장 모형",
+            "asset_class_code": "deposit",
+            "amount_krw": "35000000",
+            "risk_treatment": "capital_preservation"
+          },
+          {
+            "holding_id": "family_dc_global_equity",
+            "instrument_name": "중년층 글로벌주식형 모형",
+            "asset_class_code": "global_equity",
+            "amount_krw": "20000000",
+            "risk_treatment": "general_risky"
+          },
+          {
+            "holding_id": "family_dc_bond",
+            "instrument_name": "중년층 채권형 모형",
+            "asset_class_code": "bond",
+            "amount_krw": "10000000",
+            "risk_treatment": "capital_preservation"
+          }
+        ]
+      },
+      {
+        "account_id": "family_irp",
+        "account_type": "irp",
+        "label": "개인 IRP",
+        "holdings": [
+          {
+            "holding_id": "family_irp_deposit",
+            "instrument_name": "중년층 IRP 원리금보장 모형",
+            "asset_class_code": "deposit",
+            "amount_krw": "8000000",
+            "risk_treatment": "capital_preservation"
+          },
+          {
+            "holding_id": "family_irp_cash",
+            "instrument_name": "중년층 IRP 현금성 모형",
+            "asset_class_code": "cash",
+            "amount_krw": "4000000",
+            "risk_treatment": "capital_preservation"
+          }
+        ]
+      },
+      {
+        "account_id": "family_pension_savings",
+        "account_type": "pension_savings",
+        "label": "연금저축펀드",
+        "holdings": [
+          {
+            "holding_id": "family_pension_global_equity",
+            "instrument_name": "중년층 연금저축 글로벌주식형 모형",
+            "asset_class_code": "global_equity",
+            "amount_krw": "5000000",
+            "risk_treatment": "general_risky"
+          },
+          {
+            "holding_id": "family_pension_bond",
+            "instrument_name": "중년층 연금저축 채권형 모형",
+            "asset_class_code": "bond",
+            "amount_krw": "4000000",
+            "risk_treatment": "capital_preservation"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "scenario_code": "pension_payout_transition",
+    "name": "연금 수령을 시작하는 55세 이상",
+    "description": "55세 이상으로 연금 수령을 시작했거나 수령 직전이라 수령 기간·세금·자산 안정성을 실제로 검토하는 설명용 시나리오",
+    "age_band": "55세 이상",
+    "risk_profile": "conservative",
+    "investment_horizon_years": 1,
+    "accounts": [
+      {
+        "account_id": "payout_irp",
+        "account_type": "irp",
+        "label": "수령기 IRP",
+        "holdings": [
+          {
+            "holding_id": "payout_irp_deposit",
+            "instrument_name": "수령기 IRP 원리금보장 모형",
+            "asset_class_code": "deposit",
+            "amount_krw": "60000000",
+            "risk_treatment": "capital_preservation"
+          },
+          {
+            "holding_id": "payout_irp_bond",
+            "instrument_name": "수령기 IRP 채권형 모형",
+            "asset_class_code": "bond",
+            "amount_krw": "30000000",
+            "risk_treatment": "capital_preservation"
+          },
+          {
+            "holding_id": "payout_irp_cash",
+            "instrument_name": "수령기 IRP 현금성 모형",
+            "asset_class_code": "cash",
+            "amount_krw": "20000000",
+            "risk_treatment": "capital_preservation"
+          }
+        ]
+      },
+      {
+        "account_id": "payout_pension_savings",
+        "account_type": "pension_savings",
+        "label": "수령기 연금저축펀드",
+        "holdings": [
+          {
+            "holding_id": "payout_pension_bond",
+            "instrument_name": "수령기 연금저축 채권형 모형",
+            "asset_class_code": "bond",
+            "amount_krw": "25000000",
+            "risk_treatment": "capital_preservation"
+          },
+          {
+            "holding_id": "payout_pension_cash",
+            "instrument_name": "수령기 연금저축 현금성 모형",
+            "asset_class_code": "cash",
+            "amount_krw": "15000000",
+            "risk_treatment": "capital_preservation"
+          },
+          {
+            "holding_id": "payout_pension_global_equity",
+            "instrument_name": "수령기 연금저축 글로벌주식형 모형",
+            "asset_class_code": "global_equity",
+            "amount_krw": "5000000",
+            "risk_treatment": "general_risky"
           }
         ]
       }

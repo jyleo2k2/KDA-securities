@@ -679,7 +679,7 @@ export function GuidePage() {
             {scenarios.map((scenario) => (
               <button className={selectedScenario === scenario.code ? "active" : ""} type="button" key={scenario.code} onClick={() => { setSelectedScenario(scenario.code); setIsSidebarOpen(false); }}>
                 <span className="scenario-icon"><Icon name="database" size={17} /></span>
-                <span><strong>{scenario.name}</strong><small>{scenario.investment_horizon_years}년 · {scenario.risk_profile}</small></span>
+                <span><strong>{scenario.name}</strong><small>{scenario.age_band} · {scenario.investment_horizon_years}년 · {scenario.risk_profile}</small></span>
               </button>
             ))}
           </div>

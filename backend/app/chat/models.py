@@ -227,6 +227,7 @@ class ScenarioSummary(BaseModel):
     code: str
     name: str
     description: str
+    age_band: str
     risk_profile: str
     investment_horizon_years: int
 

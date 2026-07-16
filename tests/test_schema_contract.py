@@ -26,6 +26,9 @@ USER_PENSION_MIGRATION = next(
 PROFILE_ANSWER_FK_INDEX_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob("*_add_profile_answer_fk_index.sql")
 )
+LIFECYCLE_SCENARIOS_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob("*_add_lifecycle_demo_scenarios.sql")
+)
 SEED = ROOT / "supabase" / "seed.sql"
 
 
@@ -210,7 +213,7 @@ def test_profile_answer_composite_fk_has_a_covering_index() -> None:
     assert "(option_id, question_id)" in sql
 
 
-def test_seed_contains_the_three_product_scenarios() -> None:
+def test_seed_contains_all_six_demo_scenarios() -> None:
     sql = SEED.read_text(encoding="utf-8")
 
     assert "dc_dormant" in sql
@@ -219,3 +222,19 @@ def test_seed_contains_the_three_product_scenarios() -> None:
     assert "DC형 방치" in sql
     assert "세액공제 후 미운용" in sql
     assert "계좌별 중복·위험 편중" in sql
+    assert "young_retirement_distance" in sql
+    assert "family_budget_pressure" in sql
+    assert "pension_payout_transition" in sql
+    assert "연금이 멀게 느껴지는 청년층" in sql
+    assert "가계지출로 납입이 빠듯한 중년층" in sql
+    assert "연금 수령을 시작하는 55세 이상" in sql
+
+
+def test_lifecycle_scenarios_are_additive_mock_data_only() -> None:
+    sql = LIFECYCLE_SCENARIOS_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "insert into public.mock_scenarios" in sql
+    assert "insert into public.mock_accounts" in sql
+    assert "insert into public.mock_holdings" in sql
+    assert "auth.users" not in sql
+    assert "drop table" not in sql

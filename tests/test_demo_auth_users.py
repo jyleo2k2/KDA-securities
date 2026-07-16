@@ -1,0 +1,56 @@
+import json
+from pathlib import Path
+
+from backend.app.chat.scenarios import LocalScenarioRepository
+from backend.app.engine.scenario import evaluate_mock_scenario
+from scripts.provision_demo_auth_users import load_manifest, prepare_credentials
+
+ROOT = Path(__file__).resolve().parents[1]
+MANIFEST = ROOT / "data" / "mock" / "demo_scenario_users.json"
+SCENARIOS = ROOT / "data" / "mock" / "chatbot_scenarios.json"
+
+
+def test_demo_manifest_maps_six_unique_users_to_six_scenarios() -> None:
+    users = load_manifest(MANIFEST)
+    scenario_codes = {
+        item["scenario_code"]
+        for item in json.loads(SCENARIOS.read_text(encoding="utf-8"))
+    }
+
+    assert len(users) == 6
+    assert {item["scenario_code"] for item in users} == scenario_codes
+    assert len({item["login_id"] for item in users}) == 6
+    assert all(item["login_id"].endswith("@kda-demo.invalid") for item in users)
+    assert "password" not in MANIFEST.read_text(encoding="utf-8").lower()
+
+
+def test_prepare_credentials_generates_unique_passwords_once(tmp_path: Path) -> None:
+    users = load_manifest(MANIFEST)
+    credentials_path = tmp_path / "demo_auth.json"
+
+    first = prepare_credentials(users, credentials_path)
+    second = prepare_credentials(users, credentials_path)
+
+    assert first == second
+    assert len(first) == 6
+    assert len({item["password"] for item in first}) == 6
+    assert all(len(item["password"]) >= 20 for item in first)
+
+
+def test_lifecycle_scenarios_have_expected_totals_and_respect_account_caps() -> None:
+    repository = LocalScenarioRepository()
+    expected_totals = {
+        "young_retirement_distance": "21600000.00",
+        "family_budget_pressure": "86000000.00",
+        "pension_payout_transition": "155000000.00",
+    }
+
+    for scenario_code, total in expected_totals.items():
+        scenario = repository.get(scenario_code)
+        assert scenario is not None
+        evaluation = evaluate_mock_scenario(scenario)
+        assert str(evaluation.total_amount_krw) == total
+        assert all(
+            account.within_limit is not False
+            for account in evaluation.account_evaluations
+        )

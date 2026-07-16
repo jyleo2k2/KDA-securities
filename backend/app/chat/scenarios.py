@@ -32,6 +32,7 @@ class LocalScenarioRepository:
                 code=scenario.scenario_code,
                 name=scenario.name,
                 description=scenario.description,
+                age_band=scenario.age_band,
                 risk_profile=scenario.risk_profile,
                 investment_horizon_years=scenario.investment_horizon_years,
             )

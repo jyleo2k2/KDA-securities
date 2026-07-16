@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-16 10:12 KST
-> 확인 기준: `codex/db-handoff-post-deploy` / `main` 머지 `7757a29` / 원격 적용 후 검증
+> 최종 확인: 2026-07-16 10:59 KST
+> 확인 기준: `codex/lifecycle-scenario-auth` / `main` `eea2b4e` / 원격 읽기 검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -36,7 +36,7 @@
 | 항목 | 원격 상태 |
 |---|---|
 | public 기본 테이블 | 36개 |
-| 적용 마이그레이션 | `20260715005435`, `20260715021243`, `20260715103332`, `20260715103542`, `20260715165614`, `20260716001737` |
+| 적용 마이그레이션 | `20260715005435`, `20260715021243`, `20260715103332`, `20260715103542`, `20260715165614`, `20260716001737`, `20260716011137` |
 | RLS | 36/36 활성화 |
 | `anon` 테이블 권한 | 없음 |
 | `authenticated` 권한 | 사용자 소유 엔진 결과·채팅 관련 5개 테이블 |
@@ -58,6 +58,7 @@
 | `mock_scenarios` | 3 |
 | `mock_accounts` | 6 |
 | `mock_holdings` | 10 |
+| `auth.users` | 0 |
 
 `knowledge_chunks` 1건은 이미 `embedding_dimensions=1024`이며 embedding 값도 존재한다.
 
@@ -76,11 +77,13 @@
 
 ## 4. 현재 작업트리의 진행 중 작업
 
-`codex/db-handoff-integration`에서 다음 범위만 작업한다.
+`codex/lifecycle-scenario-auth`에서 다음 범위만 작업한다.
 
 - 최신 `main`의 `20260715103332`, `20260715103542` 파일이 원격 migration history와 일치하는지 유지·검증한다.
 - `20260716001737_add_user_pension_domain.sql`은 PR #22 머지 후 원격 적용·검증을 완료했다.
-- 성능 Advisor의 복합 FK 인덱스 지적은 `20260716011137_add_profile_answer_fk_index.sql` 후속 migration으로 보완하고, 승인 전 원격 적용하지 않는다.
+- 성능 Advisor의 복합 FK 인덱스 지적은 `20260716011137_add_profile_answer_fk_index.sql`로 원격 보완됐다.
+- `20260716015043_add_lifecycle_demo_scenarios.sql`로 생애주기형 대표 고객 3명을 추가한다. 기존 행동형 3명은 유지한다.
+- 대표 고객 6명의 로그인 ID는 추적 가능한 manifest에 두고, 비밀번호는 `secrets/`의 Git 제외 파일에서만 관리한다. Auth 생성은 PR·팀장 승인 전 실행하지 않는다.
 - 기존 `mock_accounts`, `mock_holdings`, 목시나리오, 공시·RAG·채팅 데이터는 수정하거나 삭제하지 않는다.
 - 기존 적용 migration은 수정하지 않으며 후속 인덱스는 별도 PR·migration으로 유지한다.
 
@@ -237,8 +240,9 @@ uv run ruff check .
 | DB-00 | BGE-M3 1024차원·HNSW 마이그레이션 | `REMOTE-APPLIED` | 원격 1024차원·HNSW·migration history 확인 | 적용 파일 수정 금지 |
 | DB-01 | 사용자·성향·계좌 스키마 승인 | `LOCAL-VERIFIED` | `user_profiles`, 현금흐름 포함, 커뮤니티 제외, 매핑 보류 확정 | PR 리뷰 |
 | DB-02 | Additive domain migration | `REMOTE-APPLIED` | `20260716001737`, 11개 테이블·RLS·정책·권한·행 수 재검증 | 적용 파일 수정 금지 |
-| DB-02A | 성향 답변 복합 FK 인덱스 | `LOCAL-VERIFIED` | `(option_id, question_id)` covering index·계약 테스트 | 후속 PR 승인 후 원격 적용 |
+| DB-02A | 성향 답변 복합 FK 인덱스 | `REMOTE-APPLIED` | `(option_id, question_id)` covering index·Advisor 미인덱스 FK 0건 | 적용 파일 수정 금지 |
 | DB-03 | 문항·목계좌 backfill | `LOCAL-DRAFT` | 3/6/10 및 금액·엔진 결과 동등 | 별도 migration 작성 |
+| DB-03A | 생애주기 대표 고객·Auth 준비 | `LOCAL-DRAFT` | 시나리오 6·계좌 13·보유 26, Auth 6개 로그인 검증 | PR·팀장 승인 후 원격 적용 |
 | DB-04 | Postgres repository·API 연결 | `LOCAL-DRAFT` | DB 우선·JSON fallback·E2E 통과 | DB-03 후 구현 |
 | DB-05 | 기존 mock account tables 정리 | `BLOCKED` | 코드·SQL 참조 0, 별도 승인·복구 계획 | DB-04 안정화 전 삭제 금지 |
 | DB-06 | 커뮤니티 리뷰 | `BLOCKED` | 포트폴리오 FK·RLS·신고·보존 정책 승인 | 핵심 계좌 연동 후 검토 |
@@ -254,6 +258,15 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-16 10:59 KST
+
+- 작업자/브랜치/기준: Codex / `codex/lifecycle-scenario-auth` / `main` `eea2b4e`.
+- 원격 사전 확인: migration 7개(`20260716011137` 포함), 목시나리오 3개·목계좌 6개·목보유 10개, Auth 사용자 0명.
+- 로컬 변경: 기존 행동형 3명을 유지하고 `young_retirement_distance`, `family_budget_pressure`, `pension_payout_transition` 생애주기형 3명을 추가했다. 적용 후 목표 건수는 6/13/26이다.
+- Auth 준비: 대표 고객 6명의 고정 UUID v4·로그인 ID·시나리오 매핑 manifest와 서버 전용 생성/검증 스크립트를 추가했다. 실제 비밀번호 6개는 Git 제외 `secrets/demo_scenario_auth.json`에 서로 다른 무작위 값으로 준비했으며 출력·커밋하지 않았다.
+- 원격 미적용: 신규 migration과 Auth 계정은 PR·이재용 승인 전이므로 원격에 적용하지 않았다.
+- 로컬 중간 검증: 관련 테스트 46건 통과. Windows 기본 임시 폴더 권한 문제는 쓰기 가능한 `--basetemp` 지정으로 재실행했으며 코드 실패가 아니었다.
 
 ### 2026-07-16 10:12 KST
 

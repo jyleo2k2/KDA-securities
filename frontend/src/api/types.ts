@@ -512,6 +512,7 @@ export interface ScenarioSummary {
   code: string;
   name: string;
   description: string;
+  age_band: string;
   risk_profile: string;
   investment_horizon_years: number;
 }

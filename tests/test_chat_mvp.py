@@ -538,8 +538,16 @@ def test_fastapi_exposes_chat_mvp_golden_path() -> None:
     assert response.json()["intent"] == "account_rule"
     assert capabilities.status_code == 200
     assert "dc_dormant" in capabilities.json()["scenario_codes"]
+    assert "young_retirement_distance" in capabilities.json()["scenario_codes"]
+    assert "family_budget_pressure" in capabilities.json()["scenario_codes"]
+    assert "pension_payout_transition" in capabilities.json()["scenario_codes"]
     assert scenarios.status_code == 200
-    assert len(scenarios.json()) == 3
+    assert len(scenarios.json()) == 6
+    assert {item["age_band"] for item in scenarios.json()} >= {
+        "20~39세",
+        "40~54세",
+        "55세 이상",
+    }
 
 
 def test_root_redirects_browser_to_api_docs() -> None:
