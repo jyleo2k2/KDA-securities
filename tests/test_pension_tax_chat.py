@@ -8,6 +8,7 @@ from pydantic_ai.models.function import FunctionModel
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
 from backend.app.chat.models import ChatIntent, ChatRequest, DataBoundary
 from backend.app.chat.narrator import ClaudeNarrator
+from backend.app.chat.pension_tax_parser import parse_pension_tax_inputs
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService
 from backend.app.engine import PensionTaxScenarioInput
@@ -82,6 +83,49 @@ def test_natural_language_tax_credit_question_runs_without_form_input() -> None:
     assert response.visualizations[0].items[0].value == Decimal("9000000")
     assert response.visualizations[0].items[1].value == Decimal("1485000")
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
+
+
+def test_single_account_contribution_defaults_other_account_to_zero() -> None:
+    parsed = parse_pension_tax_inputs("연금저축에 600만원 넣으면 세액공제 얼마야?")
+
+    assert parsed.tax_credit is not None
+    assert parsed.tax_credit.pension_savings_contribution_krw == Decimal("6000000")
+    assert parsed.tax_credit.irp_contribution_krw == Decimal("0")
+
+
+def test_direct_account_amount_is_a_contribution_fact() -> None:
+    parsed = parse_pension_tax_inputs("연금저축 600만원 세액공제 계산해줘")
+
+    assert parsed.tax_credit is not None
+    assert parsed.tax_credit.pension_savings_contribution_krw == Decimal("6000000")
+    assert parsed.tax_credit.irp_contribution_krw == Decimal("0")
+
+
+def test_single_irp_contribution_defaults_pension_savings_to_zero() -> None:
+    parsed = parse_pension_tax_inputs("IRP에 300만원 납입 세액공제")
+
+    assert parsed.tax_credit is not None
+    assert parsed.tax_credit.pension_savings_contribution_krw == Decimal("0")
+    assert parsed.tax_credit.irp_contribution_krw == Decimal("3000000")
+
+
+def test_tax_parser_keeps_income_and_both_explicit_contributions() -> None:
+    parsed = parse_pension_tax_inputs(
+        "총급여 5000만원이고 연금저축에 600만원, IRP에 300만원 납입했어 "
+        "세액공제 얼마야?"
+    )
+
+    assert parsed.tax_credit is not None
+    assert parsed.tax_credit.income_amount_krw == Decimal("50000000")
+    assert parsed.tax_credit.pension_savings_contribution_krw == Decimal("6000000")
+    assert parsed.tax_credit.irp_contribution_krw == Decimal("3000000")
+
+
+def test_tax_parser_requires_input_when_no_contribution_is_stated() -> None:
+    parsed = parse_pension_tax_inputs("연금저축 세액공제 얼마야?")
+
+    assert parsed.tax_credit is None
+    assert parsed.missing_tax_credit
 
 
 def test_natural_language_max_withdrawal_question_runs_without_form_input() -> None:
