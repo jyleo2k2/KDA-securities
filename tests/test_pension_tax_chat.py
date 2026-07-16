@@ -381,10 +381,7 @@ def test_narrator_must_call_both_tax_tools_before_rephrasing() -> None:
         )
     )
     output = json.dumps(
-        {
-            "narration": base.answer.rsplit("\n", maxsplit=1)[0],
-            "review_note": "검증 답변을 유지했습니다.",
-        },
+        {"narration": base.answer.rsplit("\n", maxsplit=1)[0]},
         ensure_ascii=False,
     )
     turn = 0
@@ -435,10 +432,7 @@ def test_narrator_falls_back_when_tax_tool_is_skipped() -> None:
             pension_tax=inputs,
         )
     )
-    output = json.dumps(
-        {"narration": base.answer, "review_note": "검증 답변을 유지했습니다."},
-        ensure_ascii=False,
-    )
+    output = json.dumps({"narration": base.answer}, ensure_ascii=False)
 
     def respond(messages, info) -> ModelResponse:
         return ModelResponse(parts=[TextPart(output)])
@@ -458,10 +452,7 @@ def test_narrator_uses_tool_input_extracted_from_natural_question() -> None:
         "세액공제액을 알려줘."
     )
     base = _service().ask(ChatRequest(message=message))
-    output = json.dumps(
-        {"narration": base.answer, "review_note": "Tool 결과를 유지했습니다."},
-        ensure_ascii=False,
-    )
+    output = json.dumps({"narration": base.answer}, ensure_ascii=False)
     turn = 0
 
     def respond(messages, info) -> ModelResponse:
