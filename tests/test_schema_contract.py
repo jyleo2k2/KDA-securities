@@ -23,6 +23,9 @@ IDEMPOTENCY_POLICY_MIGRATION = next(
 USER_PENSION_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob("*_add_user_pension_domain.sql")
 )
+PROFILE_ANSWER_FK_INDEX_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob("*_add_profile_answer_fk_index.sql")
+)
 SEED = ROOT / "supabase" / "seed.sql"
 
 
@@ -198,6 +201,13 @@ def test_user_owned_tables_have_update_with_check_policies() -> None:
         assert "for update to authenticated" in policy_sql
         assert "using (" in policy_sql
         assert "with check (" in policy_sql
+
+
+def test_profile_answer_composite_fk_has_a_covering_index() -> None:
+    sql = PROFILE_ANSWER_FK_INDEX_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "investment_profile_answers_option_question_idx" in sql
+    assert "(option_id, question_id)" in sql
 
 
 def test_seed_contains_the_three_product_scenarios() -> None:
