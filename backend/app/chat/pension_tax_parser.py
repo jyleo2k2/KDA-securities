@@ -253,12 +253,19 @@ def parse_pension_tax_inputs(message: str) -> ParsedPensionTaxInputs:
 def resolve_pension_tax_inputs(
     message: str,
     structured: PensionTaxScenarioInput | None,
+    *,
+    prefer_structured: bool = False,
 ) -> ParsedPensionTaxInputs:
     """Prefer explicit form/API input, otherwise parse narrow natural slots."""
 
     parsed = parse_pension_tax_inputs(message)
     if structured is None:
         return parsed
+    if prefer_structured:
+        return ParsedPensionTaxInputs(
+            tax_credit=structured.to_tax_credit_input(),
+            withdrawal=structured.to_withdrawal_input(),
+        )
     return ParsedPensionTaxInputs(
         # A complete value explicitly written in the latest question wins over
         # potentially stale sidebar values.  The form fills only missing Tools.

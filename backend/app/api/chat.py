@@ -18,6 +18,7 @@ from ..auth import require_supabase_user_id
 from ..chat import ChatRequest, ChatResponse, ChatService
 from ..chat.models import ChatCapabilities, ChatIntent, ScenarioSummary
 from ..chat.narrator import ClaudeNarrator
+from ..chat.query_planner import BlockedReason, QueryPlan
 from ..chat.repository import (
     ChatRepository,
     ChatSessionAccessError,
@@ -26,17 +27,77 @@ from ..chat.repository import (
     StoredMessageEvidence,
 )
 from ..chat.scenarios import LocalScenarioRepository
+from ..chat.user_context import (
+    DemoUserContextRepository,
+    DemoUserFinancialContext,
+    apply_demo_context_evidence,
+)
 from .deps import (
     get_chat_narrator,
     get_chat_repository,
     get_chat_service,
+    get_demo_user_context_repository,
     get_optional_chat_repository,
+    get_optional_demo_user_context_repository,
 )
 
 router = APIRouter(tags=["chat"])
 logger = logging.getLogger("uvicorn.error")
 
 _DATABASE_ERRORS = (psycopg.Error, ConnectionError)
+
+
+def _load_demo_context(
+    repository: DemoUserContextRepository | None,
+    owner_id: UUID,
+) -> DemoUserFinancialContext | None:
+    if repository is None:
+        return None
+    return repository.get(owner_id)
+
+
+def _authenticated_request(
+    request: "AuthenticatedChatRequest",
+    context: DemoUserFinancialContext | None,
+) -> ChatRequest:
+    payload = request.model_dump(exclude={"session_id"})
+    if context is not None:
+        payload.update(
+            {
+                "scenario_code": context.scenario_code,
+                "pension_tax": context.to_pension_tax_input(),
+            }
+        )
+    return ChatRequest.model_validate(payload)
+
+
+def _authenticated_response(
+    *,
+    request: ChatRequest,
+    plan: QueryPlan,
+    service: ChatService,
+    context: DemoUserFinancialContext | None,
+) -> tuple[ChatResponse, bool]:
+    direct_context = (
+        context is not None
+        and context.answers_directly(request.message)
+        and plan.intent != ChatIntent.PENSION_TAX
+        and plan.blocked_reason in (None, BlockedReason.UNSUPPORTED)
+    )
+    if direct_context:
+        return context.direct_response(), False
+    response = (
+        service.ask(
+            request,
+            plan=plan,
+            prefer_structured_pension_tax=True,
+        )
+        if context is not None
+        else service.ask(request, plan=plan)
+    )
+    if context is not None:
+        response = apply_demo_context_evidence(response, context)
+    return response, True
 
 
 def _sse(event: str, payload: dict[str, object]) -> str:
@@ -158,6 +219,31 @@ def chat_scenarios() -> list[ScenarioSummary]:
     return LocalScenarioRepository().list()
 
 
+@router.get(
+    "/me/pension-context",
+    response_model=DemoUserFinancialContext,
+)
+def get_my_pension_context(
+    owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
+    repository: Annotated[
+        DemoUserContextRepository, Depends(get_demo_user_context_repository)
+    ],
+) -> DemoUserFinancialContext:
+    try:
+        context = repository.get(owner_id)
+    except _DATABASE_ERRORS as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="User pension context database is unavailable",
+        ) from exc
+    if context is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User pension context was not found",
+        )
+    return context
+
+
 @router.post("/chat/demo", response_model=ChatResponse)
 def chat_demo(
     request: ChatRequest,
@@ -208,6 +294,10 @@ def chat_authenticated(
     ],
     service: Annotated[ChatService, Depends(get_chat_service)],
     narrator: Annotated[ClaudeNarrator | None, Depends(get_chat_narrator)],
+    context_repository: Annotated[
+        DemoUserContextRepository | None,
+        Depends(get_optional_demo_user_context_repository),
+    ],
     idempotency_key: Annotated[UUID, Header(alias="Idempotency-Key")],
 ) -> PersistedChatResponse:
     """Generate first, then atomically save one verified exchange."""
@@ -232,18 +322,25 @@ def chat_authenticated(
                 response=replayed.response,
             )
 
-    chat_request = ChatRequest.model_validate(
-        request.model_dump(exclude={"session_id"})
-    )
+    try:
+        context = _load_demo_context(context_repository, owner_id)
+    except _DATABASE_ERRORS:
+        context = None
+    chat_request = _authenticated_request(request, context)
     plan = service.plan(chat_request)
     try:
-        response = service.ask(chat_request, plan=plan)
+        response, allow_narration = _authenticated_response(
+            request=chat_request,
+            plan=plan,
+            service=service,
+            context=context,
+        )
     except _DATABASE_ERRORS as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Chat data source is unavailable",
         ) from exc
-    if narrator is not None:
+    if narrator is not None and allow_narration:
         response = narrator.narrate(
             response,
             pension_tax_input=chat_request.pension_tax,
@@ -295,6 +392,10 @@ async def chat_authenticated_stream(
     ],
     service: Annotated[ChatService, Depends(get_chat_service)],
     narrator: Annotated[ClaudeNarrator | None, Depends(get_chat_narrator)],
+    context_repository: Annotated[
+        DemoUserContextRepository | None,
+        Depends(get_optional_demo_user_context_repository),
+    ],
     idempotency_key: Annotated[UUID, Header(alias="Idempotency-Key")],
 ) -> StreamingResponse:
     """Authenticated variant that persists the final validated response."""
@@ -327,19 +428,31 @@ async def chat_authenticated_stream(
             )
             return
 
-        chat_request = ChatRequest.model_validate(
-            request.model_dump(exclude={"session_id"})
-        )
+        try:
+            context = await asyncio.to_thread(
+                _load_demo_context,
+                context_repository,
+                owner_id,
+            )
+        except _DATABASE_ERRORS:
+            context = None
+        chat_request = _authenticated_request(request, context)
         started_at = perf_counter()
         plan = service.plan(chat_request)
         yield _sse("phase", {"message": "근거를 검색하고 있습니다."})
         answer_started_at = perf_counter()
         try:
-            response = await asyncio.to_thread(service.ask, chat_request, plan=plan)
+            response, allow_narration = await asyncio.to_thread(
+                _authenticated_response,
+                request=chat_request,
+                plan=plan,
+                service=service,
+                context=context,
+            )
         except _DATABASE_ERRORS:
             yield _sse("error", {"detail": "Chat data source is unavailable"})
             return
-        if narrator is not None:
+        if narrator is not None and allow_narration:
             yield _sse("phase", {"message": "검증된 설명을 생성하고 있습니다."})
             narration_started_at = perf_counter()
             response = await asyncio.to_thread(
