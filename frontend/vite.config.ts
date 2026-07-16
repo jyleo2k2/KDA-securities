@@ -3,6 +3,8 @@ import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  // host: true → 127.0.0.1·LAN 모두 바인딩(기본값은 IPv6 localhost만). 폰 PWA 테스트도 가능.
+  server: { host: true },
   plugins: [
     react(),
     VitePWA({

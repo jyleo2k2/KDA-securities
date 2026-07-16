@@ -1,7 +1,8 @@
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
+from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
@@ -24,10 +25,10 @@ from backend.app.chat.models import (
 )
 from backend.app.chat.narrator import ClaudeNarrator, _adds_unverified_content
 from backend.app.chat.scenarios import LocalScenarioRepository
-from backend.app.chat.service import ChatService
+from backend.app.chat.service import ChatService, _knowledge_sources
 from backend.app.engine import AccountType
 from backend.app.main import app, get_chat_narrator, get_chat_service
-from backend.app.retrieval.repository import NewsMatch
+from backend.app.retrieval.repository import KnowledgeMatch, NewsMatch
 
 
 class FakeDisclosureRepository:
@@ -111,6 +112,25 @@ def test_account_rule_question_returns_rag_source_and_numeric_evidence() -> None
     assert all(
         source.data_boundary == "verified_knowledge" for source in response.sources
     )
+
+
+def test_knowledge_source_uses_document_as_of_date() -> None:
+    expected = date(2026, 7, 16)
+    source = _knowledge_sources(
+        [
+            KnowledgeMatch(
+                chunk_id=1,
+                document_id=UUID("11111111-1111-4111-8111-111111111111"),
+                title="연금계좌 세액공제",
+                source_url="project://tax-credit",
+                content="세액공제 검증 내용",
+                text_rank=1.0,
+                as_of_date=expected,
+            )
+        ]
+    )[0]
+
+    assert source.as_of == expected
 
 
 def test_combined_accounts_are_explained_with_separate_rules() -> None:

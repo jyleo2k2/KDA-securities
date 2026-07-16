@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Protocol
 from uuid import NAMESPACE_URL, UUID, uuid5
@@ -23,6 +24,7 @@ class _Chunk:
     content: str
     publisher: str
     document_type: str
+    as_of_date: date | None
 
 
 class KnowledgeSearch(Protocol):
@@ -72,6 +74,7 @@ class LocalMarkdownKnowledgeRepository:
                         content=content,
                         publisher=document.publisher,
                         document_type=document.document_type,
+                        as_of_date=document.as_of_date,
                     )
                 )
                 next_id += 1
@@ -95,6 +98,7 @@ class LocalMarkdownKnowledgeRepository:
                         publisher=chunk.publisher,
                         source_authority=chunk.publisher,
                         document_type=chunk.document_type,
+                        as_of_date=chunk.as_of_date,
                     )
                 )
         return rerank_knowledge_matches(

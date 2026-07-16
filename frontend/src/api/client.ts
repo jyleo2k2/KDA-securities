@@ -98,6 +98,7 @@ async function apiPostStream<TBody>(
   path: string,
   body: TBody,
   onPhase: (message: string) => void,
+  onAnswerDelta: (delta: string) => void,
   accessToken?: string,
   idempotencyKey?: string,
 ): Promise<ChatStreamResult> {
@@ -131,6 +132,10 @@ async function apiPostStream<TBody>(
         const payload = JSON.parse(data) as Record<string, unknown>;
         if (event === "phase" && typeof payload.message === "string") {
           onPhase(payload.message);
+        } else if (
+          event === "answer_delta" && typeof payload.delta === "string"
+        ) {
+          onAnswerDelta(payload.delta);
         } else if (event === "error" && typeof payload.detail === "string") {
           throw new Error(payload.detail);
         } else if (event === "response") {
@@ -201,6 +206,7 @@ export function sendChat(
 export function sendChatStream(
   message: string,
   onPhase: (message: string) => void,
+  onAnswerDelta: (delta: string) => void,
   options?: string | {
     scenarioCode?: string;
     conversationContext?: ConversationContext | null;
@@ -229,6 +235,7 @@ export function sendChatStream(
         : {}),
     },
     onPhase,
+    onAnswerDelta,
   );
 }
 
@@ -263,6 +270,7 @@ export function sendAuthenticatedChatStream(
   message: string,
   accessToken: string,
   onPhase: (message: string) => void,
+  onAnswerDelta: (delta: string) => void,
   scenarioCode?: string,
   sessionId?: string,
   idempotencyKey?: string,
@@ -283,6 +291,7 @@ export function sendAuthenticatedChatStream(
       ...(surveyProfile ? { survey_profile: surveyProfile } : {}),
     },
     onPhase,
+    onAnswerDelta,
     accessToken,
     idempotencyKey,
   );
