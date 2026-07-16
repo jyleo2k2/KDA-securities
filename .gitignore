@@ -49,6 +49,7 @@ yarn-error.log*
 # ── 빌드 산출물 ──
 dist/
 build/
+output/
 *.tsbuildinfo
 
 # ── 데이터 — 원천/캐시는 차단, 목데이터 픽스처 data/mock/ 은 커밋 ──
