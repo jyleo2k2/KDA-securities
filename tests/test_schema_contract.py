@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from pglast import parse_sql
+
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob("*_initial_data_foundation.sql")
@@ -17,6 +19,9 @@ IDEMPOTENCY_POLICY_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob(
         "*_add_chat_idempotency_deny_policy.sql"
     )
+)
+USER_PENSION_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob("*_add_user_pension_domain.sql")
 )
 SEED = ROOT / "supabase" / "seed.sql"
 
@@ -108,6 +113,91 @@ def test_chat_idempotency_is_owner_scoped_and_denies_browser_access() -> None:
     assert "enable row level security" in sql
     assert "revoke all on table public.chat_request_idempotency" in sql
     assert "using (false)" in policy_sql
+
+
+def test_all_migrations_parse_as_postgres_sql() -> None:
+    for migration in sorted((ROOT / "supabase" / "migrations").glob("*.sql")):
+        parse_sql(migration.read_text(encoding="utf-8"))
+
+
+def test_user_pension_domain_is_additive_and_rls_protected() -> None:
+    sql = USER_PENSION_MIGRATION.read_text(encoding="utf-8").lower()
+    new_tables = {
+        "user_profiles",
+        "profile_question_sets",
+        "profile_questions",
+        "profile_question_options",
+        "investment_profile_assessments",
+        "investment_profile_answers",
+        "pension_accounts",
+        "account_snapshots",
+        "account_cash_flows",
+        "financial_products",
+        "account_holding_snapshots",
+    }
+
+    for table in new_tables:
+        assert f"create table public.{table}" in sql
+        assert f"alter table public.{table} enable row level security" in sql
+
+    assert "drop table" not in sql
+    assert "alter table public.mock_accounts" not in sql
+    assert "alter table public.mock_holdings" not in sql
+    assert "create table public.community_reviews" not in sql
+    assert "from public, anon, authenticated" in sql
+    assert "to service_role" in sql
+
+
+def test_user_pension_domain_matches_engine_contracts() -> None:
+    sql = USER_PENSION_MIGRATION.read_text(encoding="utf-8").lower()
+
+    for account_type in ("dc", "irp", "pension_savings"):
+        assert f"'{account_type}'" in sql
+    for risk_profile in (
+        "stable",
+        "stable_seeking",
+        "risk_neutral",
+        "active",
+        "aggressive",
+    ):
+        assert f"'{risk_profile}'" in sql
+    for question_code in (
+        "investment_horizon",
+        "investment_experience",
+        "financial_knowledge",
+        "risky_asset_share",
+        "loss_tolerance",
+        "income_stability",
+    ):
+        assert f"'{question_code}'" in sql
+
+    assert "'conservative', 'balanced', 'growth'" not in sql
+    assert "extensions.gen_random_uuid()" in sql
+    assert "chat_request_idempotency_session_idx" in sql
+    assert "financial_products_institution_idx" in sql
+    assert "data_kind = 'real' and owner_id is not null and scenario_id is null" in sql
+    assert "data_kind = 'mock' and owner_id is null and scenario_id is not null" in sql
+    assert "coalesce(length(btrim(raw_instrument_name)), 0) > 0" in sql
+
+
+def test_user_owned_tables_have_update_with_check_policies() -> None:
+    sql = USER_PENSION_MIGRATION.read_text(encoding="utf-8").lower()
+
+    for policy in (
+        "user_profiles_update_own",
+        "investment_profile_assessments_update_own",
+        "investment_profile_answers_update_own",
+        "pension_accounts_update_own",
+        "account_snapshots_update_own",
+        "account_cash_flows_update_own",
+        "account_holding_snapshots_update_own",
+    ):
+        policy_start = sql.index(f"create policy {policy}")
+        policy_end = sql.index(";", policy_start)
+        policy_sql = sql[policy_start:policy_end]
+        assert "for update to authenticated" in policy_sql
+        assert "using (" in policy_sql
+        assert "with check (" in policy_sql
 
 
 def test_seed_contains_the_three_product_scenarios() -> None:
