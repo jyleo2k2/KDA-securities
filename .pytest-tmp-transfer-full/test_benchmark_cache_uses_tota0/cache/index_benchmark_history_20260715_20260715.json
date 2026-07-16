@@ -1,0 +1,149 @@
+{
+  "benchmark_count": 8,
+  "benchmarks": [
+    {
+      "asset_class": "equity",
+      "benchmark_id": "krx:KRX 300",
+      "history_end": "2026-07-15",
+      "history_start": "2026-07-15",
+      "index_name": "KRX 300",
+      "observation_count": 1,
+      "observations": [
+        {
+          "close_index": "550.12",
+          "date": "2026-07-15",
+          "market_cap_krw": "9000",
+          "trading_value_krw": "5678",
+          "trading_volume": "1234"
+        }
+      ],
+      "portfolio_role": "domestic_equity_broad",
+      "return_basis": "price_index",
+      "series": "krx"
+    },
+    {
+      "asset_class": "equity",
+      "benchmark_id": "kospi:코스피",
+      "history_end": null,
+      "history_start": null,
+      "index_name": "코스피",
+      "observation_count": 0,
+      "observations": [],
+      "portfolio_role": "domestic_equity_broad",
+      "return_basis": "price_index",
+      "series": "kospi"
+    },
+    {
+      "asset_class": "equity",
+      "benchmark_id": "kospi:코스피 200",
+      "history_end": "2026-07-15",
+      "history_start": "2026-07-15",
+      "index_name": "코스피 200",
+      "observation_count": 1,
+      "observations": [
+        {
+          "close_index": "550.12",
+          "date": "2026-07-15",
+          "market_cap_krw": "9000",
+          "trading_value_krw": "5678",
+          "trading_volume": "1234"
+        }
+      ],
+      "portfolio_role": "domestic_large_cap",
+      "return_basis": "price_index",
+      "series": "kospi"
+    },
+    {
+      "asset_class": "equity",
+      "benchmark_id": "kosdaq:코스닥",
+      "history_end": null,
+      "history_start": null,
+      "index_name": "코스닥",
+      "observation_count": 0,
+      "observations": [],
+      "portfolio_role": "domestic_growth_equity",
+      "return_basis": "price_index",
+      "series": "kosdaq"
+    },
+    {
+      "asset_class": "equity",
+      "benchmark_id": "kosdaq:코스닥 150",
+      "history_end": "2026-07-15",
+      "history_start": "2026-07-15",
+      "index_name": "코스닥 150",
+      "observation_count": 1,
+      "observations": [
+        {
+          "close_index": "550.12",
+          "date": "2026-07-15",
+          "market_cap_krw": "9000",
+          "trading_value_krw": "5678",
+          "trading_volume": "1234"
+        }
+      ],
+      "portfolio_role": "domestic_growth_large_cap",
+      "return_basis": "price_index",
+      "series": "kosdaq"
+    },
+    {
+      "asset_class": "fixed_income",
+      "benchmark_id": "bond:KRX 채권지수",
+      "history_end": null,
+      "history_start": null,
+      "index_name": "KRX 채권지수",
+      "observation_count": 0,
+      "observations": [],
+      "portfolio_role": "domestic_bond_broad",
+      "return_basis": "total_return_index",
+      "series": "bond"
+    },
+    {
+      "asset_class": "fixed_income",
+      "benchmark_id": "bond:KTB 지수",
+      "history_end": "2026-07-15",
+      "history_start": "2026-07-15",
+      "index_name": "KTB 지수",
+      "observation_count": 1,
+      "observations": [
+        {
+          "average_convexity": "64.00",
+          "average_duration": "7.20",
+          "average_yield_percent": "2.80",
+          "date": "2026-07-15",
+          "market_price_index": "101.00",
+          "net_price_index": "102.00",
+          "total_return_index": "15933.47"
+        }
+      ],
+      "portfolio_role": "domestic_government_bond",
+      "return_basis": "total_return_index",
+      "series": "bond"
+    },
+    {
+      "asset_class": "fixed_income",
+      "benchmark_id": "bond:국고채프라임지수",
+      "history_end": null,
+      "history_start": null,
+      "index_name": "국고채프라임지수",
+      "observation_count": 0,
+      "observations": [],
+      "portfolio_role": "domestic_government_bond_prime",
+      "return_basis": "total_return_index",
+      "series": "bond"
+    }
+  ],
+  "generated_at": "2026-07-16T06:01:50.086068+00:00",
+  "missing_raw_request_count": 0,
+  "prohibited_usage": [
+    "direct future return forecast",
+    "automatic ETF eligibility determination"
+  ],
+  "report_type": "krx_portfolio_benchmark_history",
+  "requested_from": "2026-07-15",
+  "requested_to": "2026-07-15",
+  "source": "KRX statistical information",
+  "usage": [
+    "historical volatility and correlation evidence",
+    "domestic equity and domestic bond stress calibration"
+  ]
+}

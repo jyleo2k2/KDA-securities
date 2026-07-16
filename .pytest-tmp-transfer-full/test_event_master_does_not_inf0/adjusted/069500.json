@@ -1,0 +1,1 @@
+{"isu_code": "069500", "isu_name": "KODEX 200", "endpoint": "/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice", "observations": [{"date": "2026-07-10", "modified": "N", "split_rate": "200.00", "revaluation_reason": ""}]}

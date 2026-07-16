@@ -11,6 +11,7 @@ from backend.app.ingestion.krx_client import parse_krx_etf_payload
 DEFAULT_RETURN_ROOT = Path("data/cache/returns")
 DEFAULT_KRX_ROOT = Path("data/raw/krx")
 DEFAULT_ADJUSTED_PRICE_ROOT = Path("data/cache/kis/adjusted_prices")
+DEFAULT_EVENT_ROOT = Path("data/cache/events")
 HISTORY_OBSERVATIONS = 253
 HISTORY_FILE_LOOKBACK = 330
 
@@ -41,6 +42,7 @@ class PortfolioUniverseRepository:
         return_root: Path = DEFAULT_RETURN_ROOT,
         krx_root: Path = DEFAULT_KRX_ROOT,
         adjusted_price_root: Path = DEFAULT_ADJUSTED_PRICE_ROOT,
+        event_root: Path = DEFAULT_EVENT_ROOT,
     ) -> "PortfolioUniverseRepository":
         paths = sorted(
             return_root.glob(f"{account_type.value}_etf_cost_return_*.json")
@@ -61,8 +63,19 @@ class PortfolioUniverseRepository:
             if isinstance(product, dict)
             and isinstance(product.get("isu_code"), str)
         }
-        histories = _load_adjusted_histories(adjusted_price_root, codes)
-        history_sources = {code: "kis_adjusted_close" for code in histories}
+        histories, total_return_codes = _load_adjusted_histories(
+            adjusted_price_root,
+            codes,
+            event_root=event_root,
+        )
+        history_sources = {
+            code: (
+                "kis_adjusted_close_plus_kind_cash_distribution"
+                if code in total_return_codes
+                else "kis_adjusted_close"
+            )
+            for code in histories
+        }
         missing_codes = codes.difference(histories)
         if missing_codes:
             krx_histories = _load_recent_histories(krx_root, missing_codes)
@@ -134,13 +147,67 @@ def _latest_adjusted_price_directory(root: Path) -> Path | None:
     return candidates[-1] if candidates else None
 
 
-def _load_adjusted_histories(
-    adjusted_price_root: Path, codes: set[str]
+def _cash_distributions_by_code(
+    event_root: Path,
+    codes: set[str],
 ) -> dict[str, dict[date, Decimal]]:
+    paths = sorted(event_root.glob("etf_corporate_events_*.json"))
+    if not paths:
+        return {}
+    payload = json.loads(paths[-1].read_text(encoding="utf-8"))
+    events = payload.get("events")
+    if not isinstance(events, list):
+        raise ValueError("ETF corporate-event cache must contain events")
+    distributions: dict[str, dict[date, Decimal]] = defaultdict(dict)
+    for event in events:
+        if (
+            not isinstance(event, dict)
+            or event.get("event_type") != "cash_distribution"
+            or event.get("status") != "confirmed_cash_flow"
+            or event.get("isu_code") not in codes
+        ):
+            continue
+        amount = _close(str(event.get("cash_per_share_krw") or ""))
+        if amount is None:
+            continue
+        effective_date = date.fromisoformat(str(event["effective_date"]))
+        code = str(event["isu_code"])
+        distributions[code][effective_date] = (
+            distributions[code].get(effective_date, Decimal("0")) + amount
+        )
+    return dict(distributions)
+
+
+def _total_return_history(
+    prices: list[tuple[date, Decimal]],
+    distributions: dict[date, Decimal],
+) -> dict[date, Decimal]:
+    selected = sorted(prices)[-HISTORY_OBSERVATIONS:]
+    if not selected:
+        return {}
+    index_value = Decimal("100")
+    history = {selected[0][0]: index_value}
+    previous_price = selected[0][1]
+    for observed_on, price in selected[1:]:
+        distribution = distributions.get(observed_on, Decimal("0"))
+        index_value *= (price + distribution) / previous_price
+        history[observed_on] = index_value
+        previous_price = price
+    return history
+
+
+def _load_adjusted_histories(
+    adjusted_price_root: Path,
+    codes: set[str],
+    *,
+    event_root: Path,
+) -> tuple[dict[str, dict[date, Decimal]], set[str]]:
     source_root = _latest_adjusted_price_directory(adjusted_price_root)
     if source_root is None:
-        return {}
+        return {}, set()
+    distributions_by_code = _cash_distributions_by_code(event_root, codes)
     histories: dict[str, dict[date, Decimal]] = {}
+    total_return_codes: set[str] = set()
     for code in sorted(codes):
         path = source_root / f"{code}.json"
         if not path.exists():
@@ -164,5 +231,10 @@ def _load_adjusted_histories(
                 continue
             parsed.append((date.fromisoformat(str(observation["date"])), value))
         if parsed:
-            histories[code] = dict(sorted(parsed)[-HISTORY_OBSERVATIONS:])
-    return histories
+            histories[code] = _total_return_history(
+                parsed,
+                distributions_by_code.get(code, {}),
+            )
+            if code in distributions_by_code:
+                total_return_codes.add(code)
+    return histories, total_return_codes

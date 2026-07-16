@@ -138,6 +138,7 @@ def _chat_service(database_url: str) -> ChatService:
         scenarios=LocalScenarioRepository(),
         disclosures=disclosures,
         news=retrieval,
+        portfolio_universe_loader=get_portfolio_universe_repository,
     )
 
 

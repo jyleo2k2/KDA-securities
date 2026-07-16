@@ -96,3 +96,21 @@ def test_evaluation_is_deterministic_and_marked_provisional() -> None:
     assert first == second
     assert first["provisional"] is True
     assert "provisional" in first["rule_version"]
+
+
+def test_loss_tolerance_answer_becomes_engine_input_percent() -> None:
+    evaluation = evaluate_profile(survey_with_total(18))
+    loss_answer = next(
+        answer
+        for answer in survey_with_total(18).answers
+        if answer.question_code == "loss_tolerance"
+    )
+    expected = {
+        1: Decimal("5"),
+        2: Decimal("10"),
+        3: Decimal("20"),
+        4: Decimal("30"),
+        5: Decimal("40"),
+    }[loss_answer.selected_score]
+
+    assert evaluation.loss_tolerance_percent == expected

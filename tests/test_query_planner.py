@@ -235,3 +235,20 @@ def test_future_phrases_remain_blocked(message: str) -> None:
 
     assert plan.intent == ChatIntent.OUT_OF_SCOPE
     assert plan.blocked_reason == BlockedReason.FUTURE_PREDICTION
+
+
+@pytest.mark.parametrize(
+    "message",
+    (
+        "IRP 연금 운용 전략을 알려줘",
+        "내 연금 포트폴리오를 구성해줘",
+        "퇴직연금 자산배분을 도와줘",
+    ),
+)
+def test_educational_portfolio_questions_reach_input_collection(
+    message: str,
+) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent == ChatIntent.EDUCATIONAL_PORTFOLIO
+    assert plan.blocked_reason is None

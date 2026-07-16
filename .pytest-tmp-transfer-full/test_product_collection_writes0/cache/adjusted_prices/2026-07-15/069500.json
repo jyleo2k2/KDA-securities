@@ -1,0 +1,59 @@
+{
+  "endpoint": "/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice",
+  "history_end": "2026-07-15",
+  "history_start": "2026-07-14",
+  "isu_code": "069500",
+  "isu_name": "KODEX 200",
+  "limitations": [
+    "Adjusted prices must not be assumed to include cash distributions.",
+    "KIND distribution events remain the total-return cash-flow source.",
+    "KRX remains the exchange-level listing and raw-market audit source."
+  ],
+  "modified_observation_count": 1,
+  "observation_count": 2,
+  "observations": [
+    {
+      "adjusted_close": "10000",
+      "adjusted_high": "10100",
+      "adjusted_low": "9800",
+      "adjusted_open": "9900",
+      "date": "2026-07-14",
+      "modified": "Y",
+      "revaluation_reason": "분할",
+      "split_rate": "0.00",
+      "trading_value_krw": "5678",
+      "volume": "1234"
+    },
+    {
+      "adjusted_close": "10000",
+      "adjusted_high": "10100",
+      "adjusted_low": "9800",
+      "adjusted_open": "9900",
+      "date": "2026-07-15",
+      "modified": "N",
+      "revaluation_reason": "",
+      "split_rate": "0.00",
+      "trading_value_krw": "5678",
+      "volume": "1234"
+    }
+  ],
+  "page_evidence": [
+    {
+      "raw_path": "C:/Users/KDA 38/KDA-securities/.pytest-tmp-transfer-full/test_product_collection_writes0/raw/adjusted_daily_itemchartprice/069500/20260715.json",
+      "requested_end": "2026-07-15",
+      "row_count": 2,
+      "sha256": "6d4ef41970be45da9304d07818c0786ea7332b7a80887de88b3871fbceb25909",
+      "status": "fetched"
+    }
+  ],
+  "price_policy": {
+    "FID_COND_MRKT_DIV_CODE": "J",
+    "FID_ORG_ADJ_PRC": "0",
+    "FID_PERIOD_DIV_CODE": "D",
+    "meaning": "adjusted_price"
+  },
+  "requested_from": "2026-07-01",
+  "requested_to": "2026-07-15",
+  "return_basis": "adjusted_close_price_not_total_return",
+  "source": "Korea Investment & Securities Open Trading API"
+}

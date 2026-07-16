@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "users": [
+    {
+      "auth_user_id": "0d3a8c4f-3d6e-4e2e-91a0-7d11a2b71c01",
+      "scenario_code": "dc_dormant",
+      "login_id": "demo.dc-dormant@kda-demo.invalid",
+      "password": "KdaDemo!6tbwoXyiYOhN8ls7sdSoS7aDH7MdckDL"
+    },
+    {
+      "auth_user_id": "1e4b9d50-4e7f-4f3f-a2b1-8e22b3c82d02",
+      "scenario_code": "tax_contribution_uninvested",
+      "login_id": "demo.tax-idle@kda-demo.invalid",
+      "password": "KdaDemo!2u2V4DIbcoevTVXvY9hwsodNX2fF2Zc9"
+    },
+    {
+      "auth_user_id": "2f5cae61-5f80-4040-b3c2-9f33c4d93e03",
+      "scenario_code": "overlap_risk_concentration",
+      "login_id": "demo.overlap-risk@kda-demo.invalid",
+      "password": "KdaDemo!xJ7hFH1c60zA8mof7gasqn87Sp5BlDB4"
+    },
+    {
+      "auth_user_id": "306dbf72-6091-4141-84d3-a044d5ea4f04",
+      "scenario_code": "young_retirement_distance",
+      "login_id": "demo.young@kda-demo.invalid",
+      "password": "KdaDemo!sf1jE1550Dr0093Uz9DM3MlMeni3kHnX"
+    },
+    {
+      "auth_user_id": "417ec083-71a2-4242-95e4-b155e6fb5005",
+      "scenario_code": "family_budget_pressure",
+      "login_id": "demo.family@kda-demo.invalid",
+      "password": "KdaDemo!fbuJxLtpxtpcZQjyCw1uNCyAtKieg2UZ"
+    },
+    {
+      "auth_user_id": "528fd194-82b3-4343-a6f5-c266f70c6106",
+      "scenario_code": "pension_payout_transition",
+      "login_id": "demo.payout@kda-demo.invalid",
+      "password": "KdaDemo!q2cmbCHuJogiFuNP-sfg6GPU-45HricI"
+    }
+  ]
+}

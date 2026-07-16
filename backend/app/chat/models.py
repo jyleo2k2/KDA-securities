@@ -7,6 +7,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ..engine import (
     AccountType,
+    EducationalPortfolioEvaluation,
+    EducationalPortfolioInput,
+    EducationalRiskProfile,
     PensionTaxScenarioInput,
     PensionTaxToolResult,
     PortfolioInput,
@@ -84,6 +87,7 @@ class ChatIntent(StrEnum):
     PROVIDER_DISCLOSURE = "provider_disclosure"
     NEWS = "news"
     PENSION_TAX = "pension_tax"
+    EDUCATIONAL_PORTFOLIO = "educational_portfolio"
     OUT_OF_SCOPE = "out_of_scope"
 
 
@@ -104,12 +108,42 @@ class SectionKind(StrEnum):
     LIMITATION = "limitation"
 
 
+class CompletedSurveyProfile(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_type: AccountType
+    account_types: list[AccountType] = Field(default_factory=list, max_length=3)
+    current_age: int = Field(ge=20, le=54)
+    retirement_start_age: int = Field(ge=55, le=60)
+    risk_profile: EducationalRiskProfile
+    loss_tolerance_percent: Decimal = Field(
+        ge=Decimal("1"),
+        le=Decimal("50"),
+        allow_inf_nan=False,
+    )
+
+    @model_validator(mode="after")
+    def retirement_must_follow_current_age(self) -> "CompletedSurveyProfile":
+        if self.retirement_start_age <= self.current_age:
+            raise ValueError("retirement_start_age must be greater than current_age")
+        if len(set(self.account_types)) != len(self.account_types):
+            raise ValueError("account_types must not contain duplicates")
+        if self.account_types and self.account_type not in self.account_types:
+            raise ValueError("account_type must be included in account_types")
+        return self
+
+    def portfolio_account_types(self) -> tuple[AccountType, ...]:
+        return tuple(self.account_types or [self.account_type])
+
+
 class ConversationContext(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     account_type: AccountType | None = None
     scenario_code: str | None = Field(default=None, min_length=1)
     last_intent: ChatIntent | None = None
+    survey_profile: CompletedSurveyProfile | None = None
+    selected_risk_profile: EducationalRiskProfile | None = None
 
 
 class ChatRequest(BaseModel):
@@ -118,9 +152,22 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=2, max_length=1000)
     scenario_code: str | None = Field(default=None, min_length=1)
     portfolio: PortfolioInput | None = None
+    educational_portfolio: EducationalPortfolioInput | None = None
+    survey_profile: CompletedSurveyProfile | None = None
     pension_tax: PensionTaxScenarioInput | None = None
     max_results: int = Field(default=3, ge=1, le=5)
     conversation_context: ConversationContext | None = None
+
+    @model_validator(mode="after")
+    def allow_one_structured_calculation(self) -> "ChatRequest":
+        structured = (
+            self.portfolio,
+            self.educational_portfolio,
+            self.pension_tax,
+        )
+        if sum(item is not None for item in structured) > 1:
+            raise ValueError("only one structured calculation input is allowed")
+        return self
 
 
 class SourceEvidence(BaseModel):
@@ -170,6 +217,10 @@ class ChatResponse(BaseModel):
     engine_results: list[RiskCapEvaluation] = Field(default_factory=list)
     scenario_evaluation: ScenarioEvaluation | None = None
     pension_tax_result: PensionTaxToolResult | None = None
+    educational_portfolio_evaluation: EducationalPortfolioEvaluation | None = None
+    educational_portfolio_evaluations: list[EducationalPortfolioEvaluation] = Field(
+        default_factory=list
+    )
     limitations: list[str] = Field(default_factory=list)
     conversation_context: ConversationContext | None = None
 

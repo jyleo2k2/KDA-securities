@@ -1,0 +1,1 @@
+{"report_type": "pension_account_eligible_etfs_by_account", "algorithm_input": true, "product_scope": "account_eligible_only", "account_type": "dc", "as_of": "2026-07-15", "product_count": 1, "products": [{"isu_code": "000001", "classification": {"asset_class": "equity", "leverage_type": "leveraged"}, "account_eligibility": {"eligible": true}}]}

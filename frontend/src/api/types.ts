@@ -122,6 +122,7 @@ export interface ProfileEvaluation {
   max_score: number;
   score_percent: string;
   risk_profile: RiskProfile;
+  loss_tolerance_percent: string;
   band_upper_bounds_percent: Record<RiskProfile, string | null>;
   evidence: SourceChip[];
 }
@@ -449,6 +450,7 @@ export type ChatIntent =
   | "provider_disclosure"
   | "news"
   | "pension_tax"
+  | "educational_portfolio"
   | "out_of_scope";
 
 export type DataBoundary =
@@ -484,10 +486,21 @@ export interface AnswerSection {
   evidence_ids: string[];
 }
 
+export interface CompletedSurveyProfile {
+  account_type: AccountType;
+  account_types?: AccountType[];
+  current_age: number;
+  retirement_start_age: number;
+  risk_profile: RiskProfile;
+  loss_tolerance_percent: string | number;
+}
+
 export interface ConversationContext {
-  account_type?: "dc" | "irp" | "pension_savings" | null;
+  account_type?: AccountType | null;
   scenario_code?: string | null;
   last_intent?: ChatIntent | null;
+  survey_profile?: CompletedSurveyProfile | null;
+  selected_risk_profile?: RiskProfile | null;
 }
 
 export interface ChatResponse {
@@ -504,6 +517,8 @@ export interface ChatResponse {
   engine_results: unknown[];
   scenario_evaluation?: ScenarioEvaluation | null;
   pension_tax_result?: PensionTaxToolResult | null;
+  educational_portfolio_evaluation?: unknown | null;
+  educational_portfolio_evaluations?: unknown[];
   limitations: string[];
   conversation_context?: ConversationContext | null;
 }

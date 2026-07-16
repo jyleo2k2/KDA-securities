@@ -108,6 +108,12 @@ _SCENARIO_TERMS = re.compile(
     r"목\s*계좌|모의\s*계좌|내\s*계좌|포트폴리오\s*진단|계좌\s*진단|"
     r"시나리오|미\s*운용|방치|편중|중복"
 )
+_EDUCATIONAL_PORTFOLIO_TERMS = re.compile(
+    r"연금\s*(?:운용|투자)\s*(?:전략)?|운용\s*전략|투자\s*전략|"
+    r"포트폴리오|자산\s*배분|투자\s*(?:성향|스타일)|"
+    r"안정\s*추구형|위험\s*중립형|적극\s*투자형|"
+    r"공격\s*투자형|안정형"
+)
 _TAX_CREDIT_TERMS = re.compile(
     r"세액\s*공제|절세\s*혜택|공제\s*혜택|공제\s*한도"
 )
@@ -142,6 +148,7 @@ _INTENT_PRIORITY = (
     ChatIntent.MOCK_PORTFOLIO,
     ChatIntent.PENSION_TAX,
     ChatIntent.NEWS,
+    ChatIntent.EDUCATIONAL_PORTFOLIO,
     ChatIntent.PROVIDER_DISCLOSURE,
     ChatIntent.ACCOUNT_RULE,
 )
@@ -232,6 +239,9 @@ def plan_question(message: str, *, default_max_results: int = 3) -> QueryPlan:
         ChatIntent.MOCK_PORTFOLIO: _SCENARIO_TERMS.search(normalized) is not None,
         ChatIntent.PENSION_TAX: requests_tax_credit or requests_withdrawal_tax,
         ChatIntent.NEWS: _NEWS_TERMS.search(normalized) is not None,
+        ChatIntent.EDUCATIONAL_PORTFOLIO: (
+            _EDUCATIONAL_PORTFOLIO_TERMS.search(normalized) is not None
+        ),
         ChatIntent.PROVIDER_DISCLOSURE: bool(account_types)
         and _DISCLOSURE_TERMS.search(normalized) is not None,
         ChatIntent.ACCOUNT_RULE: bool(
@@ -267,6 +277,13 @@ def plan_question(message: str, *, default_max_results: int = 3) -> QueryPlan:
             account_types=account_types,
             news_query=news_query,
             max_results=3 if news_query == "연금" else max_results,
+        )
+    if intent == ChatIntent.EDUCATIONAL_PORTFOLIO:
+        return QueryPlan(
+            normalized_message=normalized,
+            intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+            account_types=account_types,
+            max_results=max_results,
         )
     if intent == ChatIntent.PROVIDER_DISCLOSURE:
         if len(account_types) > 1:

@@ -1,14 +1,18 @@
 import re
 from datetime import date
-from decimal import Decimal
-from typing import Protocol
+from decimal import ROUND_HALF_UP, Decimal
+from typing import Any, Protocol
 
 from ..engine import (
     AccountType,
+    EducationalPortfolioEvaluation,
+    EducationalPortfolioInput,
+    EducationalRiskProfile,
     NonPensionWithdrawalEvaluation,
     PensionTaxCreditEvaluation,
     PensionTaxToolResult,
     WithdrawalCalculationStatus,
+    build_educational_portfolio,
     evaluate_mock_scenario,
     evaluate_risk_cap,
 )
@@ -62,6 +66,17 @@ class NewsSearch(Protocol):
     ) -> list[NewsMatch]: ...
 
 
+class PortfolioUniverse(Protocol):
+    products: list[dict[str, Any]]
+    histories: dict[str, dict[date, Decimal]]
+    history_sources: dict[str, str]
+    as_of: date
+
+
+class PortfolioUniverseLoader(Protocol):
+    def __call__(self, account_type: AccountType) -> PortfolioUniverse: ...
+
+
 SCENARIO_KEYWORDS = {
     "방치": "dc_dormant",
     "세액공제": "tax_contribution_uninvested",
@@ -71,11 +86,6 @@ SCENARIO_KEYWORDS = {
 }
 VERIFIED_AS_OF = date(2026, 7, 13)
 
-_ACCOUNT_TYPE_LABELS = {
-    "dc": "DC",
-    "irp": "IRP",
-    "pension_savings": "연금저축펀드",
-}
 _ASSET_CLASS_LABELS = {
     "deposit": "원리금보장형 자산",
     "cash": "현금성 자산",
@@ -99,6 +109,160 @@ def _news_metadata_line(item: NewsMatch) -> str:
 
 def _decimal_text(value: Decimal) -> str:
     return format(value.normalize(), "f")
+
+
+def _one_decimal(value: Decimal) -> Decimal:
+    return value.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+
+
+_RISK_PROFILE_LABELS = {
+    "stable": "안정형",
+    "stable_seeking": "안정추구형",
+    "risk_neutral": "위험중립형",
+    "active": "적극투자형",
+    "aggressive": "공격투자형",
+}
+_ACCOUNT_TYPE_LABELS = {
+    AccountType.DC: "DC형",
+    AccountType.IRP: "IRP",
+    AccountType.PENSION_SAVINGS: "연금저축펀드",
+}
+_RISK_PROFILE_RANKS = {
+    EducationalRiskProfile.STABLE: 0,
+    EducationalRiskProfile.STABLE_SEEKING: 1,
+    EducationalRiskProfile.RISK_NEUTRAL: 2,
+    EducationalRiskProfile.ACTIVE: 3,
+    EducationalRiskProfile.AGGRESSIVE: 4,
+}
+_RISK_PROFILE_PATTERNS = (
+    (re.compile(r"안정\s*추구형"), EducationalRiskProfile.STABLE_SEEKING),
+    (re.compile(r"위험\s*중립형"), EducationalRiskProfile.RISK_NEUTRAL),
+    (re.compile(r"적극\s*투자형"), EducationalRiskProfile.ACTIVE),
+    (re.compile(r"공격\s*투자형"), EducationalRiskProfile.AGGRESSIVE),
+    (re.compile(r"안정형"), EducationalRiskProfile.STABLE),
+)
+_RISK_PROFILE_GUIDE_PATTERNS = (
+    re.compile(
+        r"투자\s*(?:성향|스타일).{0,24}"
+        r"(?:뭐|무엇|어떤|종류|구분|알려|설명|모르|선택지)"
+    ),
+    re.compile(
+        r"(?:뭐|무엇|어떤|종류|구분|알려|설명|모르|선택지).{0,24}"
+        r"투자\s*(?:성향|스타일)"
+    ),
+)
+_RISK_PROFILE_PORTFOLIO_REQUEST = re.compile(
+    r"포트폴리오|자산\s*배분|연금\s*(?:운용|투자)\s*전략|"
+    r"운용\s*전략|투자\s*전략|수익률|설계"
+)
+_STRATEGY_LABELS = {
+    "capital_preservation_core": "자본보전 중심 전략",
+    "defensive_diversified_core": "방어적 분산 전략",
+    "balanced_core_satellite": "코어·위성 전략",
+    "growth_core_satellite": "성장 코어·위성 전략",
+    "barbell_growth_tactical": "바벨형 성장·전술 전략",
+}
+_SLEEVE_LABELS = {
+    "core_equity": "주식",
+    "real_assets": "실물자산",
+    "tactical": "전술자산",
+    "fixed_income": "채권",
+    "cash": "현금",
+}
+_ROLE_SENTENCES = {
+    "long_term_growth_core": "주식 ETF를 장기 성장 핵심자산으로 둡니다.",
+    "inflation_and_diversification": (
+        "실물자산은 인플레이션 대응과 분산 역할을 맡습니다."
+    ),
+    "capped_tactical_satellite": (
+        "전술자산은 한도가 정해진 위성자산으로만 활용합니다."
+    ),
+    "drawdown_buffer": "채권은 하락 위험을 완충하는 역할을 맡습니다.",
+    "liquidity_and_rebalancing_reserve": (
+        "현금은 유동성과 리밸런싱 여력을 확보합니다."
+    ),
+}
+
+
+def _selected_risk_profile(message: str) -> EducationalRiskProfile | None:
+    for pattern, profile in _RISK_PROFILE_PATTERNS:
+        if pattern.search(message):
+            return profile
+    return None
+
+
+def _requests_risk_profile_guide(message: str) -> bool:
+    if _selected_risk_profile(message) is not None:
+        return False
+    if _RISK_PROFILE_PORTFOLIO_REQUEST.search(message):
+        return False
+    return any(pattern.search(message) for pattern in _RISK_PROFILE_GUIDE_PATTERNS)
+
+
+def _strategy_summary(evaluation: EducationalPortfolioEvaluation) -> str:
+    profile = _RISK_PROFILE_LABELS[evaluation.evaluated_input.risk_profile.value]
+    strategy = _STRATEGY_LABELS[evaluation.strategy_label]
+    role_sentences = [
+        _ROLE_SENTENCES[target.role] for target in evaluation.target_sleeves
+    ]
+    return (
+        f"{evaluation.planning_horizon_years}년의 장기 운용기간을 고려한 "
+        f"{profile} {strategy}입니다. " + " ".join(role_sentences)
+    )
+
+
+def _target_portfolio_summary(
+    evaluation: EducationalPortfolioEvaluation,
+) -> str:
+    candidates_by_sleeve: dict[str, list[str]] = {}
+    for candidate in evaluation.candidates:
+        candidates_by_sleeve.setdefault(candidate.sleeve, []).append(
+            candidate.isu_name
+        )
+    lines = []
+    for target in evaluation.target_sleeves:
+        label = _SLEEVE_LABELS[target.sleeve]
+        percent = _decimal_text(_one_decimal(target.target_percent))
+        names = " · ".join(candidates_by_sleeve.get(target.sleeve, []))
+        candidate_text = f" (엔진 편입 후보: {names})" if names else ""
+        lines.append(f"{label} 약 {percent}%{candidate_text}")
+    risk_target = _decimal_text(
+        _one_decimal(evaluation.final_general_risk_target_percent)
+    )
+    return (
+        ",\n".join(lines)
+        + f"\n일반 위험자산 목표비중은 전체의 약 {risk_target}%입니다."
+    )
+
+
+def _rebalancing_summary(evaluation: EducationalPortfolioEvaluation) -> str:
+    rebalancing = evaluation.rebalancing
+    threshold = _decimal_text(
+        _one_decimal(rebalancing.drift_threshold_percent_points)
+    )
+    parts = [
+        f"목표비중에서 {threshold}%포인트를 초과해 벗어난 자산군은 "
+        "리밸런싱 점검 대상으로 봅니다."
+    ]
+    if rebalancing.contribution_first:
+        parts.append("매도보다 신규 납입금을 부족한 자산에 먼저 배분합니다.")
+    if not rebalancing.sell_instruction_produced:
+        parts.append("자동 매도 지시는 만들지 않습니다.")
+    if rebalancing.status == "not_requested":
+        parts.append("보유자산 입력이 없어 현재 이탈폭 계산은 생략했습니다.")
+    else:
+        review = [
+            _SLEEVE_LABELS[item.sleeve]
+            for item in rebalancing.sleeves
+            if item.status != "within_drift_band"
+        ]
+        if review:
+            parts.append(f"현재 입력에서는 {' · '.join(review)}을(를) 점검합니다.")
+        else:
+            parts.append("현재 입력에서는 모든 자산군이 허용 범위 안입니다.")
+        if rebalancing.status == "partial_unclassified_holdings":
+            parts.append("분류되지 않은 보유자산은 별도 확인이 필요합니다.")
+    return " ".join(parts)
 
 
 def _knowledge_sources(matches: list[KnowledgeMatch]) -> list[SourceEvidence]:
@@ -127,12 +291,14 @@ class ChatService:
         scenarios: LocalScenarioRepository,
         disclosures: DisclosureSearch | None = None,
         news: NewsSearch | None = None,
+        portfolio_universe_loader: PortfolioUniverseLoader | None = None,
         router: IntentRouter | None = None,
     ) -> None:
         self._knowledge = knowledge
         self._scenarios = scenarios
         self._disclosures = disclosures
         self._news = news
+        self._portfolio_universe_loader = portfolio_universe_loader
         self._router = router or IntentRouter()
 
     def capabilities(self) -> ChatCapabilities:
@@ -140,6 +306,7 @@ class ChatService:
             supported=[
                 "DC형·IRP·연금저축 계좌 규칙 근거 Q&A",
                 "목계좌 시나리오 위험자산 한도와 통합 자산군 진단",
+                "연령·성향·수령개시연령별 교육용 포트폴리오 위험·계획가정",
                 "연금저축·IRP 당해연도 납입액 세액공제 간이 계산",
                 "연금저축·IRP 연금외수령 16.5% 간이 추정",
                 "근거·기준일·실데이터/목데이터 경계 표시",
@@ -150,7 +317,7 @@ class ChatService:
             ],
             unsupported=[
                 "DC·IRP 개별 상품 비교",
-                "미래 수익률·목표가 예측",
+                "LLM의 미래 수익률·목표가 직접 예측",
                 "주문·자동운용",
             ],
             scenario_codes=[item.code for item in self._scenarios.list()],
@@ -176,7 +343,11 @@ class ChatService:
         resolved_plan = plan or self.plan(request)
         if resolved_plan.blocked_reason is not None and not (
             resolved_plan.blocked_reason == BlockedReason.UNSUPPORTED
-            and (request.portfolio is not None or request.scenario_code is not None)
+            and (
+                request.portfolio is not None
+                or request.educational_portfolio is not None
+                or request.scenario_code is not None
+            )
         ):
             response = self._blocked_response(resolved_plan.blocked_reason)
         else:
@@ -188,6 +359,76 @@ class ChatService:
             )
             if request.portfolio is not None:
                 response = self._custom_portfolio(request)
+            elif request.educational_portfolio is not None:
+                response = self._educational_portfolio(request.educational_portfolio)
+            elif resolved_plan.intent == ChatIntent.EDUCATIONAL_PORTFOLIO:
+                survey_profile = (
+                    original_request.survey_profile
+                    or (
+                        original_request.conversation_context.survey_profile
+                        if original_request.conversation_context is not None
+                        else None
+                    )
+                )
+                if _requests_risk_profile_guide(original_request.message):
+                    response = self._risk_profile_selection_guide()
+                elif survey_profile is None:
+                    response = self._completed_survey_required()
+                else:
+                    previous_selection = (
+                        original_request.conversation_context.selected_risk_profile
+                        if original_request.conversation_context is not None
+                        else None
+                    )
+                    selected_profile = (
+                        _selected_risk_profile(original_request.message)
+                        or previous_selection
+                        or survey_profile.risk_profile
+                    )
+                    if (
+                        _RISK_PROFILE_RANKS[selected_profile]
+                        > _RISK_PROFILE_RANKS[survey_profile.risk_profile]
+                    ):
+                        response = self._risk_profile_guardrail(
+                            assessed_profile=survey_profile.risk_profile,
+                            requested_profile=selected_profile,
+                        )
+                        selected_profile = (
+                            previous_selection
+                            if previous_selection is not None
+                            and _RISK_PROFILE_RANKS[previous_selection]
+                            <= _RISK_PROFILE_RANKS[survey_profile.risk_profile]
+                            else survey_profile.risk_profile
+                        )
+                    else:
+                        response = self._educational_portfolios(
+                            [
+                                EducationalPortfolioInput(
+                                    account_type=account_type,
+                                    age=survey_profile.current_age,
+                                    retirement_start_age=(
+                                        survey_profile.retirement_start_age
+                                    ),
+                                    risk_profile=selected_profile,
+                                    loss_tolerance_percent=(
+                                        survey_profile.loss_tolerance_percent
+                                    ),
+                                )
+                                for account_type in (
+                                    survey_profile.portfolio_account_types()
+                                )
+                            ]
+                        )
+                    response = response.model_copy(
+                        update={
+                            "conversation_context": ConversationContext(
+                                account_type=survey_profile.account_type,
+                                last_intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+                                survey_profile=survey_profile,
+                                selected_risk_profile=selected_profile,
+                            )
+                        }
+                    )
             elif resolved_plan.intent == ChatIntent.PENSION_TAX:
                 response = self._pension_tax_response(request, resolved_plan)
             elif resolved_plan.intent == ChatIntent.MOCK_PORTFOLIO:
@@ -220,17 +461,47 @@ class ChatService:
         response: ChatResponse, request: ChatRequest, plan: QueryPlan
     ) -> ChatResponse:
         previous = request.conversation_context
+        response_context = response.conversation_context
+        survey_profile = (
+            request.survey_profile
+            or (
+                response_context.survey_profile
+                if response_context is not None
+                else None
+            )
+            or (previous.survey_profile if previous is not None else None)
+        )
+        selected_risk_profile = (
+            response_context.selected_risk_profile
+            if response_context is not None
+            and response_context.selected_risk_profile is not None
+            else previous.selected_risk_profile
+            if previous is not None
+            else None
+        )
         account_type = (
-            plan.account_types[0]
+            response_context.account_type
+            if response_context is not None
+            and response_context.account_type is not None
+            else plan.account_types[0]
             if len(plan.account_types) == 1
             else request.portfolio.account_type
             if request.portfolio is not None
+            else request.educational_portfolio.account_type
+            if request.educational_portfolio is not None
+            else survey_profile.account_type
+            if survey_profile is not None
             else previous.account_type
             if previous is not None
             else None
         )
         scenario_code = (
             request.scenario_code
+            or (
+                response_context.scenario_code
+                if response_context is not None
+                else None
+            )
             or (previous.scenario_code if previous is not None else None)
         )
         return response.model_copy(
@@ -239,6 +510,8 @@ class ChatService:
                     account_type=account_type,
                     scenario_code=scenario_code,
                     last_intent=response.intent,
+                    survey_profile=survey_profile,
+                    selected_risk_profile=selected_risk_profile,
                 )
             }
         )
@@ -608,9 +881,16 @@ class ChatService:
         if reason == BlockedReason.FUTURE_PREDICTION:
             return ChatResponse(
                 intent=ChatIntent.OUT_OF_SCOPE,
-                answer="미래 수익률은 제공하지 않습니다.",
+                answer=(
+                    "미래 수익률·목표가·수익 보장은 제공하지 않습니다. "
+                    "구조화된 포트폴리오 입력이 있으면 규칙 엔진이 계산한 "
+                    "CMA 기반 장기 계획가정과 과거 위험지표만 설명합니다."
+                ),
                 data_mode="blocked",
-                limitations=["미래 수익 예측은 MVP 범위 밖입니다."],
+                limitations=[
+                    "LLM의 미래 수익 예측은 지원하지 않습니다.",
+                    "계획가정은 예측이나 보장 수익률이 아닙니다.",
+                ],
             )
         if reason == BlockedReason.ORDER_REQUEST:
             return ChatResponse(
@@ -807,6 +1087,378 @@ class ChatService:
             numeric_evidence=numeric,
             engine_results=[evaluation],
             limitations=["입력 포트폴리오는 실제 계좌가 아닌 목데이터로 처리했습니다."],
+        )
+
+    @staticmethod
+    def _completed_survey_required() -> ChatResponse:
+        return ChatResponse(
+            intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+            answer=(
+                "완료된 투자성향 설문 결과를 찾지 못했습니다. "
+                "프로필에서 설문을 완료한 뒤 투자전략을 다시 요청해 주세요."
+            ),
+            data_mode="survey_required",
+            limitations=[
+                "챗봇 대화에서는 나이와 수령 나이를 다시 수집하지 않습니다.",
+                "설문 결과가 연결되기 전에는 규칙 엔진을 호출하지 않습니다.",
+            ],
+        )
+
+    @staticmethod
+    def _risk_profile_selection_guide() -> ChatResponse:
+        return ChatResponse(
+            intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+            answer=(
+                "투자성향은 안정형, 안정추구형, 위험중립형, 적극투자형, "
+                "공격투자형의 다섯 유형으로 구분합니다. 원하는 유형을 하나 "
+                "선택해 말해 주세요."
+            ),
+            data_mode="risk_profile_selection",
+            sections=[
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title="투자성향 선택",
+                    content=(
+                        "안정형: 원금 보전과 낮은 변동성을 우선합니다.\n"
+                        "안정추구형: 채권 중심으로 운용하되 제한적으로 "
+                        "위험자산을 활용합니다.\n"
+                        "위험중립형: 성장성과 안정성의 균형을 추구합니다.\n"
+                        "적극투자형: 주식 비중을 높여 장기 성장을 추구합니다.\n"
+                        "공격투자형: 높은 변동성을 감수하고 성장·전술자산을 "
+                        "적극적으로 활용합니다.\n\n"
+                        "예: 위험중립형으로 ETF 포트폴리오를 보여줘"
+                    ),
+                )
+            ],
+            limitations=[
+                "완료된 설문 결과보다 위험한 투자성향의 포트폴리오는 "
+                "제안하지 않습니다.",
+                "투자성향을 선택하기 전에는 ETF 포트폴리오를 계산하지 않습니다.",
+            ],
+        )
+
+    @staticmethod
+    def _risk_profile_guardrail(
+        *,
+        assessed_profile: EducationalRiskProfile,
+        requested_profile: EducationalRiskProfile,
+    ) -> ChatResponse:
+        assessed_label = _RISK_PROFILE_LABELS[assessed_profile.value]
+        requested_label = _RISK_PROFILE_LABELS[requested_profile.value]
+        return ChatResponse(
+            intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+            answer=(
+                f"설문 결과는 {assessed_label}입니다. {requested_label} ETF "
+                "포트폴리오는 설문 성향보다 위험해 제안하지 않습니다. "
+                f"{assessed_label} 또는 더 보수적인 투자성향을 선택해 주세요."
+            ),
+            data_mode="profile_guardrail",
+            limitations=[
+                "설문에서 확인된 투자성향보다 위험한 상품 구성은 제안하지 않습니다."
+            ],
+        )
+
+    def _educational_portfolio(
+        self, request: EducationalPortfolioInput
+    ) -> ChatResponse:
+        if self._portfolio_universe_loader is None:
+            return ChatResponse(
+                intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+                answer="교육용 포트폴리오 데이터 저장소가 연결되지 않았습니다.",
+                data_mode="unavailable",
+                limitations=["챗봇이 임의 수치로 대신 계산하지 않았습니다."],
+            )
+        try:
+            repository = self._portfolio_universe_loader(request.account_type)
+            evaluation = build_educational_portfolio(
+                request,
+                products=repository.products,
+                histories=repository.histories,
+                history_sources=repository.history_sources,
+                source_as_of=repository.as_of,
+            )
+        except (FileNotFoundError, KeyError, ValueError):
+            return ChatResponse(
+                intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+                answer=(
+                    "검증된 입력 데이터가 부족해 포트폴리오 결과를 "
+                    "만들지 않았습니다."
+                ),
+                data_mode="unavailable",
+                limitations=[
+                    "챗봇이 누락값을 추정하거나 수익률을 계산하지 않았습니다."
+                ],
+            )
+
+        engine_source = SourceEvidence(
+            evidence_id="engine:educational_portfolio",
+            label="교육용 연금 포트폴리오 규칙 엔진",
+            locator=(
+                f"engine://{evaluation.engine_name}/{evaluation.engine_version}"
+            ),
+            publisher="연금 코파일럿 규칙 엔진",
+            as_of=repository.as_of,
+            data_boundary=DataBoundary.ENGINE,
+        )
+        cma_chip = evaluation.planning_return.sources[0]
+        cma_source = SourceEvidence(
+            evidence_id="policy:cma",
+            label=cma_chip.label,
+            locator=cma_chip.reference,
+            publisher="J.P. Morgan Asset Management",
+            as_of=cma_chip.as_of,
+            data_boundary=DataBoundary.ENGINE,
+        )
+        sources = [engine_source, cma_source]
+        displayed_risk_target = _one_decimal(
+            evaluation.final_general_risk_target_percent
+        )
+        numeric = [
+            NumericEvidence(
+                label="수령 개시까지 운용기간",
+                value=Decimal(evaluation.planning_horizon_years),
+                unit="년",
+                evidence_id=engine_source.evidence_id,
+                basis="수령 개시 나이에서 현재 나이를 차감한 엔진 계산",
+            ),
+            NumericEvidence(
+                label="일반 위험자산 목표비중",
+                value=displayed_risk_target,
+                unit="%",
+                evidence_id=engine_source.evidence_id,
+                basis="계좌 한도·성향·손실감내력을 반영한 엔진 계산",
+            )
+        ]
+        numeric.extend(
+            NumericEvidence(
+                label=f"{_SLEEVE_LABELS[target.sleeve]} 목표비중",
+                value=_one_decimal(target.target_percent),
+                unit="%",
+                evidence_id=engine_source.evidence_id,
+                basis=f"{target.role} 엔진 슬리브 배분",
+            )
+            for target in evaluation.target_sleeves
+        )
+        rebalancing_threshold = _one_decimal(
+            evaluation.rebalancing.drift_threshold_percent_points
+        )
+        numeric.append(
+            NumericEvidence(
+                label="리밸런싱 이탈 기준",
+                value=rebalancing_threshold,
+                unit="%",
+                evidence_id=engine_source.evidence_id,
+                basis="규칙 엔진의 목표비중 이탈 허용 기준",
+            )
+        )
+        planning = evaluation.planning_return
+        planning_text = "검증된 계획수익률 범위를 산출하지 못했습니다."
+        if (
+            planning.conservative_planning_return_percent is not None
+            and planning.base_planning_return_percent is not None
+        ):
+            conservative = _one_decimal(
+                planning.conservative_planning_return_percent
+            )
+            base = _one_decimal(planning.base_planning_return_percent)
+            numeric.extend(
+                [
+                    NumericEvidence(
+                        label="보수 계획수익률",
+                        value=conservative,
+                        unit="%",
+                        evidence_id=engine_source.evidence_id,
+                        basis="CMA·비용·불확실성 할인을 반영한 엔진 계산",
+                    ),
+                    NumericEvidence(
+                        label="기준 계획수익률",
+                        value=base,
+                        unit="%",
+                        evidence_id=engine_source.evidence_id,
+                        basis="CMA와 비용을 반영한 엔진 계산",
+                    ),
+                ]
+            )
+            planning_text = (
+                "CMA 기반 연간 계획수익률 범위는 보수 약 "
+                f"{_decimal_text(conservative)}%에서 기준 약 "
+                f"{_decimal_text(base)}%입니다. "
+                "미래 예측값이 아니라 매년 재검토하는 장기 배분 가정입니다."
+            )
+        profile_label = _RISK_PROFILE_LABELS[
+            evaluation.evaluated_input.risk_profile.value
+        ]
+        strategy_content = (
+            f"{_strategy_summary(evaluation)}\n\n"
+            f"목표 포트폴리오\n{_target_portfolio_summary(evaluation)}\n\n"
+            f"운용 원칙\n{_rebalancing_summary(evaluation)}"
+        )
+        sections = [
+            AnswerSection(
+                kind=SectionKind.SERVICE_EXPLANATION,
+                title=f"{profile_label} 투자전략",
+                content=strategy_content,
+                evidence_ids=[engine_source.evidence_id],
+            ),
+            AnswerSection(
+                kind=SectionKind.FACT,
+                title="장기 계획수익률",
+                content=planning_text,
+                evidence_ids=[
+                    engine_source.evidence_id,
+                    cma_source.evidence_id,
+                ],
+            ),
+        ]
+        return ChatResponse(
+            intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+            answer=(
+                "완료된 설문 결과에 맞춰 투자스타일별 상세 전략과 "
+                "장기 계획수익률을 정리했습니다."
+            ),
+            data_mode="engine_educational_planning",
+            sources=sources,
+            numeric_evidence=numeric,
+            sections=sections,
+            educational_portfolio_evaluation=evaluation,
+            educational_portfolio_evaluations=[evaluation],
+            limitations=[
+                "설명은 규칙 엔진 결과 코드와 수치만 정해진 문장으로 변환합니다.",
+                "CMA는 10~15년 전략배분 기준이며 매년 재검토합니다.",
+                "상품 선택·주문·자동 리밸런싱은 수행하지 않습니다.",
+            ],
+        )
+
+    def _educational_portfolios(
+        self, requests: list[EducationalPortfolioInput]
+    ) -> ChatResponse:
+        responses = [self._educational_portfolio(request) for request in requests]
+        if len(responses) == 1:
+            return responses[0]
+        if any(
+            response.educational_portfolio_evaluation is None
+            for response in responses
+        ):
+            return ChatResponse(
+                intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+                answer=(
+                    "일부 계좌의 검증된 입력 데이터가 부족해 복수 계좌 "
+                    "포트폴리오를 만들지 않았습니다."
+                ),
+                data_mode="unavailable",
+                limitations=[
+                    "계좌별 규칙을 섞거나 누락값을 추정하지 않았습니다."
+                ],
+            )
+
+        account_names = "와 ".join(
+            _ACCOUNT_TYPE_LABELS[request.account_type] for request in requests
+        )
+        first_request = requests[0]
+        profile_label = _RISK_PROFILE_LABELS[first_request.risk_profile.value]
+        survey_source = SourceEvidence(
+            evidence_id="user:completed_survey_profile",
+            label="완료된 MVP 투자성향 설문",
+            locator="request://survey_profile",
+            data_boundary=DataBoundary.USER_INPUT,
+        )
+        sources: dict[str, SourceEvidence] = {
+            survey_source.evidence_id: survey_source
+        }
+        numeric: list[NumericEvidence] = [
+            NumericEvidence(
+                label="현재 나이",
+                value=Decimal(first_request.age),
+                unit="세",
+                evidence_id=survey_source.evidence_id,
+                basis="완료된 MVP 설문 입력",
+            ),
+            NumericEvidence(
+                label="연금수령 개시 나이",
+                value=Decimal(first_request.retirement_start_age),
+                unit="세",
+                evidence_id=survey_source.evidence_id,
+                basis="완료된 MVP 설문 입력",
+            ),
+            NumericEvidence(
+                label="손실감내율",
+                value=first_request.loss_tolerance_percent,
+                unit="%",
+                evidence_id=survey_source.evidence_id,
+                basis="완료된 MVP 설문 입력",
+            ),
+        ]
+        sections: list[AnswerSection] = [
+            AnswerSection(
+                kind=SectionKind.SERVICE_EXPLANATION,
+                title="적용한 MVP 설문 조건",
+                content=(
+                    f"현재 나이 {first_request.age}세, 연금수령 개시 "
+                    f"{first_request.retirement_start_age}세, 투자성향 "
+                    f"{profile_label}, 손실감내율 약 "
+                    f"{_decimal_text(first_request.loss_tolerance_percent)}%를 "
+                    f"적용했습니다. 보유 계좌는 {account_names}이며 계좌별 "
+                    "규칙을 각각 계산합니다."
+                ),
+                evidence_ids=[survey_source.evidence_id],
+            )
+        ]
+        evaluations: list[EducationalPortfolioEvaluation] = []
+        limitations: list[str] = []
+        for request, response in zip(requests, responses, strict=True):
+            account_label = _ACCOUNT_TYPE_LABELS[request.account_type]
+            evidence_ids = {
+                source.evidence_id: (
+                    f"{source.evidence_id}:{request.account_type.value}"
+                )
+                for source in response.sources
+            }
+            for source in response.sources:
+                remapped = source.model_copy(
+                    update={
+                        "evidence_id": evidence_ids[source.evidence_id],
+                        "label": f"{source.label} ({account_label})",
+                    }
+                )
+                sources[remapped.evidence_id] = remapped
+            numeric.extend(
+                item.model_copy(
+                    update={
+                        "label": f"{account_label} · {item.label}",
+                        "evidence_id": evidence_ids[item.evidence_id],
+                    }
+                )
+                for item in response.numeric_evidence
+            )
+            sections.extend(
+                section.model_copy(
+                    update={
+                        "title": f"{account_label} · {section.title}",
+                        "evidence_ids": [
+                            evidence_ids[evidence_id]
+                            for evidence_id in section.evidence_ids
+                        ],
+                    }
+                )
+                for section in response.sections
+            )
+            assert response.educational_portfolio_evaluation is not None
+            evaluations.append(response.educational_portfolio_evaluation)
+            limitations.extend(response.limitations)
+
+        return ChatResponse(
+            intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+            answer=(
+                f"{account_names}의 계좌 규칙을 각각 적용해 ETF 포트폴리오와 "
+                "장기 계획수익률을 정리했습니다."
+            ),
+            data_mode="engine_multi_account_planning",
+            sources=list(sources.values()),
+            numeric_evidence=numeric,
+            sections=sections,
+            educational_portfolio_evaluation=evaluations[0],
+            educational_portfolio_evaluations=evaluations,
+            limitations=list(dict.fromkeys(limitations)),
         )
 
     def _scenario_response(self, scenario_code: str) -> ChatResponse:

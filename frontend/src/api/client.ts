@@ -1,10 +1,13 @@
 import type {
   ChatCapabilities,
+  CompletedSurveyProfile,
   ConversationContext,
   ChatResponse,
   ChatSessionSummary,
   PersistedChatResponse,
   PensionTaxScenarioInput,
+  ProfileEvaluation,
+  ProfileSurveyInput,
   ScenarioEvaluation,
   ScenarioSummary,
   StoredChatMessage,
@@ -154,12 +157,19 @@ export function getMockScenarioEvaluation(
   return apiGet(`/engine/mock-scenario/${scenarioCode}`);
 }
 
+export function evaluateProfileSurvey(
+  survey: ProfileSurveyInput,
+): Promise<ProfileEvaluation> {
+  return apiPost("/engine/profile", survey);
+}
+
 export function sendChat(
   message: string,
   options?: string | {
     scenarioCode?: string;
     conversationContext?: ConversationContext | null;
     pensionTax?: PensionTaxScenarioInput;
+    surveyProfile?: CompletedSurveyProfile | null;
   },
 ): Promise<ChatResponse> {
   const requestOptions = typeof options === "string"
@@ -175,6 +185,9 @@ export function sendChat(
       : {}),
     ...(requestOptions?.pensionTax
       ? { pension_tax: requestOptions.pensionTax }
+      : {}),
+    ...(requestOptions?.surveyProfile
+      ? { survey_profile: requestOptions.surveyProfile }
       : {}),
   });
 }
@@ -217,6 +230,7 @@ export function sendAuthenticatedChat(
   idempotencyKey?: string,
   conversationContext?: ConversationContext | null,
   pensionTax?: PensionTaxScenarioInput,
+  surveyProfile?: CompletedSurveyProfile | null,
 ): Promise<PersistedChatResponse> {
   return apiPost(
     "/chat",
@@ -228,6 +242,7 @@ export function sendAuthenticatedChat(
         ? { conversation_context: conversationContext }
         : {}),
       ...(pensionTax ? { pension_tax: pensionTax } : {}),
+      ...(surveyProfile ? { survey_profile: surveyProfile } : {}),
     },
     accessToken,
     idempotencyKey,

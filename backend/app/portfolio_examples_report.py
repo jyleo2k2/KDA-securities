@@ -17,6 +17,7 @@ from backend.app.portfolio_universe_repository import (
 )
 
 REPRESENTATIVE_AGES = (25, 35, 45, 52)
+RETIREMENT_START_AGES = (55, 60)
 LOSS_TOLERANCE = {
     RiskProfile.STABLE: Decimal("8"),
     RiskProfile.STABLE_SEEKING: Decimal("12"),
@@ -31,6 +32,7 @@ def build_portfolio_examples(
     return_root: Path,
     krx_root: Path,
     adjusted_price_root: Path,
+    event_root: Path,
     as_of: date,
 ) -> dict[str, Any]:
     scenarios = []
@@ -45,47 +47,55 @@ def build_portfolio_examples(
             return_root=return_root,
             krx_root=krx_root,
             adjusted_price_root=adjusted_price_root,
+            event_root=event_root,
         )
         universe_history_source_counts.update(repository.history_sources.values())
         account_scenarios = 0
         for age in REPRESENTATIVE_AGES:
-            for profile in RiskProfile:
-                request = EducationalPortfolioInput(
-                    account_type=account,
-                    age=age,
-                    risk_profile=profile,
-                    loss_tolerance_percent=LOSS_TOLERANCE[profile],
-                )
-                evaluation = build_educational_portfolio(
-                    request,
-                    products=repository.products,
-                    histories=repository.histories,
-                    source_as_of=repository.as_of,
-                    history_sources=repository.history_sources,
-                )
-                candidate_history_source_counts.update(
-                    candidate.price_history_source
-                    for candidate in evaluation.candidates
-                )
-                target_sleeves = {item.sleeve for item in evaluation.target_sleeves}
-                candidate_sleeves = {item.sleeve for item in evaluation.candidates}
-                missing = sorted(target_sleeves.difference(candidate_sleeves))
-                if missing:
-                    missing_candidate_sleeves.append(
-                        {
-                            "account_type": account.value,
-                            "age": age,
-                            "risk_profile": profile.value,
-                            "sleeves": missing,
-                        }
+            for retirement_start_age in RETIREMENT_START_AGES:
+                for profile in RiskProfile:
+                    request = EducationalPortfolioInput(
+                        account_type=account,
+                        age=age,
+                        retirement_start_age=retirement_start_age,
+                        risk_profile=profile,
+                        loss_tolerance_percent=LOSS_TOLERANCE[profile],
                     )
-                if account in {
-                    AccountType.DC,
-                    AccountType.IRP,
-                } and evaluation.final_general_risk_target_percent > Decimal("70"):
-                    cap_violation_count += 1
-                scenarios.append(evaluation.model_dump(mode="json"))
-                account_scenarios += 1
+                    evaluation = build_educational_portfolio(
+                        request,
+                        products=repository.products,
+                        histories=repository.histories,
+                        source_as_of=repository.as_of,
+                        history_sources=repository.history_sources,
+                    )
+                    candidate_history_source_counts.update(
+                        candidate.price_history_source
+                        for candidate in evaluation.candidates
+                    )
+                    target_sleeves = {
+                        item.sleeve for item in evaluation.target_sleeves
+                    }
+                    candidate_sleeves = {
+                        item.sleeve for item in evaluation.candidates
+                    }
+                    missing = sorted(target_sleeves.difference(candidate_sleeves))
+                    if missing:
+                        missing_candidate_sleeves.append(
+                            {
+                                "account_type": account.value,
+                                "age": age,
+                                "retirement_start_age": retirement_start_age,
+                                "risk_profile": profile.value,
+                                "sleeves": missing,
+                            }
+                        )
+                    if account in {
+                        AccountType.DC,
+                        AccountType.IRP,
+                    } and evaluation.final_general_risk_target_percent > Decimal("70"):
+                        cap_violation_count += 1
+                    scenarios.append(evaluation.model_dump(mode="json"))
+                    account_scenarios += 1
         account_counts[account.value] = account_scenarios
 
     return {
@@ -93,8 +103,9 @@ def build_portfolio_examples(
         "as_of": as_of.isoformat(),
         "generated_at": datetime.now(UTC).isoformat(),
         "engine_name": "educational_pension_portfolio",
-        "engine_version": "2026-07-16.2",
+        "engine_version": "2026-07-16.4",
         "representative_ages": REPRESENTATIVE_AGES,
+        "retirement_start_ages": RETIREMENT_START_AGES,
         "risk_profiles": [profile.value for profile in RiskProfile],
         "account_types": [account.value for account in AccountType],
         "scenario_count": len(scenarios),
@@ -111,9 +122,9 @@ def build_portfolio_examples(
         "limitations": [
             "These are educational examples, not individualized advice.",
             "Historical returns are excluded from ETF candidate ranking.",
-            "Correlation uses KIS adjusted closes with KRX close fallback and is "
-            "not holdings overlap.",
-            "No expected return is calculated without approved CMA inputs.",
+            "Historical total returns are used only for risk measurement.",
+            "CMA produces a planning assumption, never a return forecast.",
+            "CMA is reviewed annually and is not frozen for 30 years.",
             "No trade order or automatic rebalancing is produced.",
         ],
         "scenarios": scenarios,
@@ -142,6 +153,9 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("data/cache/kis/adjusted_prices"),
     )
+    parser.add_argument(
+        "--event-root", type=Path, default=Path("data/cache/events")
+    )
     parser.add_argument("--output", type=Path, default=Path("data/cache/portfolios"))
     return parser
 
@@ -152,6 +166,7 @@ def main() -> int:
         return_root=args.return_root,
         krx_root=args.krx_root,
         adjusted_price_root=args.adjusted_price_root,
+        event_root=args.event_root,
         as_of=args.as_of,
     )
     output_path = args.output / (f"educational_portfolio_examples_{args.as_of}.json")
