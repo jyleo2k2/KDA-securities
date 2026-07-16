@@ -1,3 +1,16 @@
+from .educational_portfolio import (
+    CurrentHolding,
+    EducationalEtfCandidate,
+    EducationalPortfolioEvaluation,
+    EducationalPortfolioInput,
+    RebalancingGuidance,
+    RiskProfile,
+    SleeveTarget,
+    build_educational_portfolio,
+    calculate_rebalancing_guidance,
+    calculate_return_correlation,
+    calculate_target_allocation,
+)
 from .market_evidence import (
     EtfObservation,
     HistoricalEtfMetrics,
@@ -29,6 +42,10 @@ from .portfolio import evaluate_risk_cap
 
 __all__ = [
     "AccountType",
+    "CurrentHolding",
+    "EducationalEtfCandidate",
+    "EducationalPortfolioEvaluation",
+    "EducationalPortfolioInput",
     "EtfObservation",
     "HistoricalEtfMetrics",
     "EtfPlanningAssessmentEvaluation",
@@ -39,13 +56,20 @@ __all__ = [
     "PlanningReturnSources",
     "PortfolioInput",
     "RelativeEtfRiskPercentiles",
+    "RebalancingGuidance",
     "RiskCapEvaluation",
+    "RiskProfile",
     "RiskTreatment",
     "RuleStatus",
     "StatutoryException",
+    "SleeveTarget",
     "assess_etf_with_krx_evidence",
+    "build_educational_portfolio",
     "calculate_etf_planning_return",
     "calculate_historical_etf_metrics",
     "calculate_relative_etf_risk_percentiles",
+    "calculate_rebalancing_guidance",
+    "calculate_return_correlation",
+    "calculate_target_allocation",
     "evaluate_risk_cap",
 ]

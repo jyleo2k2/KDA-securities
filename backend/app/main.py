@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Annotated
 from uuid import UUID
 
@@ -6,17 +7,22 @@ from pydantic import BaseModel
 
 from .auth import require_supabase_user_id
 from .engine import (
+    AccountType,
+    EducationalPortfolioEvaluation,
+    EducationalPortfolioInput,
     EtfPlanningAssessmentEvaluation,
     EtfPlanningReturnEvaluation,
     EtfPlanningReturnInput,
     PortfolioInput,
     RiskCapEvaluation,
     assess_etf_with_krx_evidence,
+    build_educational_portfolio,
     calculate_etf_planning_return,
 )
 from .engine.audit import EngineAuditRepository
 from .engine.portfolio import evaluate_risk_cap
 from .market_evidence_repository import KrxMarketEvidenceRepository
+from .portfolio_universe_repository import PortfolioUniverseRepository
 from .settings import Settings, get_settings
 
 app = FastAPI(title="Pension Copilot API", version="0.1.0")
@@ -52,6 +58,13 @@ def get_engine_audit_repository(
             detail="Engine audit database is not configured",
         )
     return EngineAuditRepository(database_url)
+
+
+@lru_cache(maxsize=3)
+def get_portfolio_universe_repository(
+    account_type: AccountType,
+) -> PortfolioUniverseRepository:
+    return PortfolioUniverseRepository.from_latest_cache(account_type)
 
 
 @app.get("/health")
@@ -98,6 +111,28 @@ def etf_planning_assessment(
         assumption,
         product=product,
         universe=repository.universe,
+    )
+
+
+@app.post(
+    "/engine/educational-portfolio",
+    response_model=EducationalPortfolioEvaluation,
+)
+def educational_portfolio(
+    request: EducationalPortfolioInput,
+) -> EducationalPortfolioEvaluation:
+    try:
+        repository = get_portfolio_universe_repository(request.account_type)
+    except (FileNotFoundError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Account-specific ETF cost-return master is unavailable",
+        ) from exc
+    return build_educational_portfolio(
+        request,
+        products=repository.products,
+        histories=repository.histories,
+        source_as_of=repository.as_of,
     )
 
 

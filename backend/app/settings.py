@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     kis_app_secret: SecretStr | None = None
     law_open_api_key: SecretStr | None = None
     fsc_fund_product_api_key: SecretStr | None = None
+    dart_api_key: SecretStr | None = None
     naver_api_hub_client_id: SecretStr | None = None
     naver_api_hub_client_secret: SecretStr | None = None
     database_url: SecretStr | None = None
