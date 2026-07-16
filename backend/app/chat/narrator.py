@@ -208,7 +208,8 @@ class ClaudeNarrator:
         # Keep every news response deterministic: no external text enters the
         # narrator context, even if its wording does not match known attacks.
         if any(
-            source.data_boundary == DataBoundary.NEWS_METADATA
+            source.data_boundary
+            in {DataBoundary.NEWS_METADATA, DataBoundary.NEWS_SUMMARY}
             for source in response.sources
         ):
             return response

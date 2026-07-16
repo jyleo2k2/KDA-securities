@@ -95,6 +95,7 @@ class DataBoundary(StrEnum):
     VERIFIED_KNOWLEDGE = "verified_knowledge"
     OFFICIAL_DISCLOSURE = "official_disclosure"
     NEWS_METADATA = "news_metadata"
+    NEWS_SUMMARY = "news_summary"
     MOCK = "mock"
     ENGINE = "engine"
     USER_INPUT = "user_input"

@@ -113,6 +113,18 @@ def _news_metadata_line(item: NewsMatch) -> str:
     return f"{headline} — {summary}" if summary else headline
 
 
+def _news_summary_block(item: NewsMatch, index: int) -> str:
+    ordinal = ("첫 번째", "두 번째", "세 번째")
+    label = ordinal[index] if index < len(ordinal) else f"{index + 1}번째"
+    headline = (
+        f"{item.title} ({item.published_at.date().isoformat()})"
+        if item.published_at is not None
+        else item.title
+    )
+    summary = "\n".join(item.summary_lines)
+    return f"{label} 뉴스 — {headline}\n{summary}\n원문 링크: {item.original_url}"
+
+
 def _decimal_text(value: Decimal) -> str:
     return format(value.normalize(), "f")
 
@@ -1825,11 +1837,11 @@ class ChatService:
             return ChatResponse(
                 intent=ChatIntent.NEWS,
                 answer=(
-                    "최근 닷새간 저장된 연금 뉴스 메타데이터를 찾지 못했습니다."
+                    "최근 닷새간 요약이 완료된 연금 뉴스를 찾지 못했습니다."
                     if is_pension_news
                     else "해당 검색어로 저장된 뉴스 메타데이터를 찾지 못했습니다."
                 ),
-                data_mode="news_metadata",
+                data_mode="news_summary" if is_pension_news else "news_metadata",
                 limitations=["기사 본문을 임의로 생성하지 않습니다."],
             )
         sources = [
@@ -1839,32 +1851,47 @@ class ChatService:
                 locator=item.original_url,
                 publisher="외부 뉴스 원문",
                 as_of=item.published_at,
-                data_boundary=DataBoundary.NEWS_METADATA,
+                data_boundary=(
+                    DataBoundary.NEWS_SUMMARY
+                    if is_pension_news
+                    else DataBoundary.NEWS_METADATA
+                ),
             )
             for item in matches
         ]
-        lines = [_news_metadata_line(item) for item in matches]
-        limitations = [
-            "기사 본문이 아닌 제목·요약·원문 링크 메타데이터입니다.",
-            "뉴스 사실과 외부 의견은 원문에서 다시 확인해야 합니다.",
-        ]
+        lines = (
+            [_news_summary_block(item, index) for index, item in enumerate(matches)]
+            if is_pension_news
+            else [_news_metadata_line(item) for item in matches]
+        )
+        limitations = (
+            [
+                "기사 원문에서 수집 시점에 생성한 LLM 3줄 요약입니다.",
+                "뉴스 사실과 외부 의견은 연결된 원문에서 다시 확인해야 합니다.",
+            ]
+            if is_pension_news
+            else [
+                "기사 본문이 아닌 제목·요약·원문 링크 메타데이터입니다.",
+                "뉴스 사실과 외부 의견은 원문에서 다시 확인해야 합니다.",
+            ]
+        )
         if is_pension_news and len(matches) < 3:
             limitations.append(
                 "최근 닷새간 저장된 기사가 세 건 미만이라 조회된 기사만 제공합니다."
             )
         return ChatResponse(
             intent=ChatIntent.NEWS,
-            answer=" / ".join(lines),
-            data_mode="news_metadata",
+            answer="\n\n".join(lines),
+            data_mode="news_summary" if is_pension_news else "news_metadata",
             sections=[
                 AnswerSection(
                     kind=SectionKind.EXTERNAL_OPINION,
                     title=(
-                        "최근 닷새 연금 뉴스 메타데이터"
+                        "최근 닷새 연금 뉴스 3줄 요약"
                         if is_pension_news
                         else "뉴스 검색 메타데이터"
                     ),
-                    content=" / ".join(lines),
+                    content="\n\n".join(lines),
                     evidence_ids=_source_ids(sources),
                 )
             ],
