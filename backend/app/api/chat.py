@@ -106,7 +106,15 @@ def chat_demo(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Chat data source is unavailable",
         ) from exc
-    return narrator.narrate(response) if narrator is not None else response
+    return (
+        narrator.narrate(
+            response,
+            pension_tax_input=request.pension_tax,
+            pension_tax_message=request.message,
+        )
+        if narrator is not None
+        else response
+    )
 
 
 @router.post("/chat", response_model=PersistedChatResponse)
@@ -154,7 +162,11 @@ def chat_authenticated(
             detail="Chat data source is unavailable",
         ) from exc
     if narrator is not None:
-        response = narrator.narrate(response)
+        response = narrator.narrate(
+            response,
+            pension_tax_input=chat_request.pension_tax,
+            pension_tax_message=chat_request.message,
+        )
 
     if response.intent == ChatIntent.OUT_OF_SCOPE:
         return PersistedChatResponse(persisted=False, response=response)

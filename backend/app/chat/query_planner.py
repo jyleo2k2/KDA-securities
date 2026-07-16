@@ -26,6 +26,8 @@ class QueryPlan(BaseModel):
     news_query: str | None = Field(default=None, min_length=1, max_length=200)
     max_results: int = Field(default=3, ge=1, le=5)
     combines_account_rules: bool = False
+    requests_tax_credit: bool = False
+    requests_withdrawal_tax: bool = False
     blocked_reason: BlockedReason | None = None
 
     @model_validator(mode="after")
@@ -38,6 +40,13 @@ class QueryPlan(BaseModel):
             raise ValueError("out_of_scope intent requires blocked_reason")
         if self.intent != ChatIntent.OUT_OF_SCOPE and self.blocked_reason is not None:
             raise ValueError("blocked_reason is only valid for out_of_scope")
+        requests_pension_tax = (
+            self.requests_tax_credit or self.requests_withdrawal_tax
+        )
+        if self.intent == ChatIntent.PENSION_TAX and not requests_pension_tax:
+            raise ValueError("pension_tax intent requires a requested calculation")
+        if self.intent != ChatIntent.PENSION_TAX and requests_pension_tax:
+            raise ValueError("pension tax flags require pension_tax intent")
         return self
 
 
@@ -94,7 +103,15 @@ _RULE_TERMS = re.compile(
     r"규칙|제도|한도|세금|인출|차이|위험자산|예외|적격|연금|TDF", re.I
 )
 _SCENARIO_TERMS = re.compile(
-    r"목\s*계좌|모의\s*계좌|내\s*계좌|포트폴리오\s*진단|계좌\s*진단|방치|편중|중복"
+    r"목\s*계좌|모의\s*계좌|내\s*계좌|포트폴리오\s*진단|계좌\s*진단|"
+    r"시나리오|미\s*운용|방치|편중|중복"
+)
+_TAX_CREDIT_TERMS = re.compile(
+    r"세액\s*공제|절세\s*혜택|공제\s*혜택|공제\s*한도"
+)
+_WITHDRAWAL_TAX_TERMS = re.compile(
+    r"중도\s*해지|연금\s*외\s*수령|해지.{0,10}(?:세금|세액|과세)|"
+    r"(?:세금|세액|과세).{0,10}해지|16\.5\s*%"
 )
 _COUNT = re.compile(r"(?<!\d)([1-5])\s*(?:개|건)(?:만)?(?!\d)")
 _KOREAN_COUNT = (
@@ -191,6 +208,26 @@ def plan_question(message: str, *, default_max_results: int = 3) -> QueryPlan:
         )
 
     account_types = _account_types(normalized)
+    # "세액공제 후 미운용"은 세액공제 계산 요청이 아니라 기존 목시나리오명이다.
+    # 명시적인 시나리오·진단 표현이 있으면 개인화 세금 도구보다 먼저 분류한다.
+    if _SCENARIO_TERMS.search(normalized):
+        return QueryPlan(
+            normalized_message=normalized,
+            intent=ChatIntent.MOCK_PORTFOLIO,
+            account_types=account_types,
+            max_results=max_results,
+        )
+    requests_tax_credit = _TAX_CREDIT_TERMS.search(normalized) is not None
+    requests_withdrawal_tax = _WITHDRAWAL_TAX_TERMS.search(normalized) is not None
+    if requests_tax_credit or requests_withdrawal_tax:
+        return QueryPlan(
+            normalized_message=normalized,
+            intent=ChatIntent.PENSION_TAX,
+            account_types=account_types,
+            max_results=max_results,
+            requests_tax_credit=requests_tax_credit,
+            requests_withdrawal_tax=requests_withdrawal_tax,
+        )
     if _NEWS_TERMS.search(normalized):
         return QueryPlan(
             normalized_message=normalized,
@@ -209,13 +246,6 @@ def plan_question(message: str, *, default_max_results: int = 3) -> QueryPlan:
         return QueryPlan(
             normalized_message=normalized,
             intent=ChatIntent.PROVIDER_DISCLOSURE,
-            account_types=account_types,
-            max_results=max_results,
-        )
-    if _SCENARIO_TERMS.search(normalized):
-        return QueryPlan(
-            normalized_message=normalized,
-            intent=ChatIntent.MOCK_PORTFOLIO,
             account_types=account_types,
             max_results=max_results,
         )

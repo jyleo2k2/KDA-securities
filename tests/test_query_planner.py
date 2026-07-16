@@ -87,6 +87,41 @@ def test_multiple_accounts_are_preserved_for_rule_comparison() -> None:
     assert plan.blocked_reason is None
 
 
+def test_personalized_pension_tax_request_selects_both_calculations() -> None:
+    plan = plan_question(
+        "연금저축과 IRP 세액공제 혜택과 중도해지 세금을 알려줘"
+    )
+
+    assert plan.intent == ChatIntent.PENSION_TAX
+    assert plan.requests_tax_credit is True
+    assert plan.requests_withdrawal_tax is True
+
+
+@pytest.mark.parametrize(
+    ("message", "tax_credit", "withdrawal"),
+    (
+        ("연금계좌 세액공제 한도를 계산해줘", True, False),
+        ("연금저축 연금외수령 과세액을 알려줘", False, True),
+    ),
+)
+def test_pension_tax_request_selects_only_requested_tool(
+    message: str,
+    tax_credit: bool,
+    withdrawal: bool,
+) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent == ChatIntent.PENSION_TAX
+    assert plan.requests_tax_credit is tax_credit
+    assert plan.requests_withdrawal_tax is withdrawal
+
+
+def test_named_mock_scenario_wins_over_tax_credit_word() -> None:
+    plan = plan_question("세액공제 후 미운용 시나리오를 진단해줘")
+
+    assert plan.intent == ChatIntent.MOCK_PORTFOLIO
+
+
 def test_combined_cap_request_is_marked_for_account_separation() -> None:
     plan = plan_question(
         "DC와 IRP와 연금저축을 합쳐서 위험자산 70%를 적용하면 돼?"

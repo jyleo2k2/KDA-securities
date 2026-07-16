@@ -5,7 +5,14 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from ..engine import AccountType, PortfolioInput, RiskCapEvaluation, ScenarioEvaluation
+from ..engine import (
+    AccountType,
+    PensionTaxScenarioInput,
+    PensionTaxToolResult,
+    PortfolioInput,
+    RiskCapEvaluation,
+    ScenarioEvaluation,
+)
 
 _NUMBER_WITH_UNIT = re.compile(
     r"(?<![0-9A-Za-z_])(?P<sign>[+\-−])?"
@@ -66,6 +73,7 @@ class ChatIntent(StrEnum):
     MOCK_PORTFOLIO = "mock_portfolio"
     PROVIDER_DISCLOSURE = "provider_disclosure"
     NEWS = "news"
+    PENSION_TAX = "pension_tax"
     OUT_OF_SCOPE = "out_of_scope"
 
 
@@ -75,6 +83,7 @@ class DataBoundary(StrEnum):
     NEWS_METADATA = "news_metadata"
     MOCK = "mock"
     ENGINE = "engine"
+    USER_INPUT = "user_input"
     UNAVAILABLE = "unavailable"
 
 
@@ -99,6 +108,7 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=2, max_length=1000)
     scenario_code: str | None = Field(default=None, min_length=1)
     portfolio: PortfolioInput | None = None
+    pension_tax: PensionTaxScenarioInput | None = None
     max_results: int = Field(default=3, ge=1, le=5)
     conversation_context: ConversationContext | None = None
 
@@ -149,6 +159,7 @@ class ChatResponse(BaseModel):
     numeric_evidence: list[NumericEvidence] = Field(default_factory=list)
     engine_results: list[RiskCapEvaluation] = Field(default_factory=list)
     scenario_evaluation: ScenarioEvaluation | None = None
+    pension_tax_result: PensionTaxToolResult | None = None
     limitations: list[str] = Field(default_factory=list)
     conversation_context: ConversationContext | None = None
 

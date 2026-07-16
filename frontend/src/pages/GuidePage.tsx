@@ -25,8 +25,12 @@ import type {
   ChatResponse,
   ChatSessionSummary,
   DataBoundary,
+  IncomeBasis,
+  IrpDeferredIncomeStatus,
+  PensionTaxScenarioInput,
   ScenarioSummary,
   StoredChatMessage,
+  WithdrawalReason,
 } from "../api/types";
 import { useSupabaseAuth } from "../auth/useSupabaseAuth";
 
@@ -44,6 +48,7 @@ const SUGGESTED_PROMPTS = [
   "DC형 방치 시나리오를 진단해줘",
   "내년 예상수익률을 알려줘",
   "연금 뉴스 알려줘",
+  "연금저축과 IRP 세액공제 혜택과 중도해지 세금을 알려줘",
 ];
 
 const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
@@ -51,6 +56,7 @@ const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   mock_portfolio: "목계좌 진단",
   provider_disclosure: "공식 공시",
   news: "연금 뉴스",
+  pension_tax: "세액공제·중도해지",
   out_of_scope: "지원 범위 안내",
 };
 
@@ -60,8 +66,18 @@ const BOUNDARY_LABELS: Record<DataBoundary, string> = {
   news_metadata: "뉴스 메타데이터",
   mock: "목데이터",
   engine: "규칙 엔진",
+  user_input: "사용자 입력",
   unavailable: "미지원",
 };
+
+const PENSION_TAX_PROMPT = /세액\s*공제|중도\s*해지|연금\s*외\s*수령|16\.5\s*%/;
+
+function numericText(value: string | number, unit: string): string {
+  if (unit.toUpperCase() === "KRW") {
+    return `${Number(value).toLocaleString("ko-KR")}원`;
+  }
+  return `${value}${unit}`;
+}
 
 function Icon({
   name,
@@ -120,7 +136,7 @@ function AssistantMessage({ response, text }: { response?: ChatResponse; text: s
           {response.numeric_evidence.map((item, index) => (
             <div className="number-card" key={`${item.evidence_id}-${index}`}>
               <span>{item.label}</span>
-              <strong>{item.value}{item.unit}</strong>
+              <strong>{numericText(item.value, item.unit)}</strong>
               <small>{item.basis}</small>
             </div>
           ))}
@@ -196,6 +212,15 @@ export function GuidePage() {
   const [loginPanelOpen, setLoginPanelOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [pensionSavingsBalance, setPensionSavingsBalance] = useState("");
+  const [irpBalance, setIrpBalance] = useState("");
+  const [pensionSavingsContribution, setPensionSavingsContribution] = useState("0");
+  const [irpContribution, setIrpContribution] = useState("0");
+  const [incomeBasis, setIncomeBasis] = useState<IncomeBasis>("unknown");
+  const [incomeAmount, setIncomeAmount] = useState("");
+  const [withdrawalReason, setWithdrawalReason] = useState<WithdrawalReason>("general");
+  const [irpDeferredStatus, setIrpDeferredStatus] = useState<IrpDeferredIncomeStatus>("unknown");
+  const [irpDeferredAmount, setIrpDeferredAmount] = useState("");
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const conversationEndRef = useRef<HTMLDivElement>(null);
@@ -239,6 +264,40 @@ export function GuidePage() {
     () => scenarios.find((scenario) => scenario.code === selectedScenario),
     [scenarios, selectedScenario],
   );
+
+  const pensionTaxInput = useMemo<PensionTaxScenarioInput | undefined>(() => {
+    if (!pensionSavingsBalance.trim() || !irpBalance.trim()) return undefined;
+    if (incomeBasis !== "unknown" && !incomeAmount.trim()) return undefined;
+    if (irpDeferredStatus === "known" && !irpDeferredAmount.trim()) return undefined;
+    return {
+      tax_year: 2026,
+      income_basis: incomeBasis,
+      ...(incomeBasis !== "unknown" ? { income_amount_krw: incomeAmount } : {}),
+      pension_savings: {
+        balance_krw: pensionSavingsBalance,
+        current_year_contribution_krw: pensionSavingsContribution || "0",
+      },
+      irp: {
+        balance_krw: irpBalance,
+        current_year_contribution_krw: irpContribution || "0",
+      },
+      withdrawal_reason: withdrawalReason,
+      irp_deferred_income_status: irpDeferredStatus,
+      ...(irpDeferredStatus === "known"
+        ? { irp_deferred_retirement_income_krw: irpDeferredAmount }
+        : {}),
+    };
+  }, [
+    incomeAmount,
+    incomeBasis,
+    irpBalance,
+    irpContribution,
+    irpDeferredAmount,
+    irpDeferredStatus,
+    pensionSavingsBalance,
+    pensionSavingsContribution,
+    withdrawalReason,
+  ]);
 
   useEffect(() => {
     Promise.all([getScenarios(), getCapabilities()])
@@ -449,6 +508,10 @@ export function GuidePage() {
     setInput("");
     setIsSending(true);
 
+    const taxInput = PENSION_TAX_PROMPT.test(normalized)
+      ? pensionTaxInput
+      : undefined;
+
     try {
       const persisted = requestToken
         ? await sendAuthenticatedChat(
@@ -458,6 +521,7 @@ export function GuidePage() {
             activeSessionId || undefined,
             idempotencyKey,
             conversationContext,
+            taxInput,
           )
         : null;
       const response = persisted
@@ -465,6 +529,7 @@ export function GuidePage() {
         : await sendChat(normalized, {
             scenarioCode: selectedScenario || undefined,
             conversationContext,
+            pensionTax: taxInput,
           });
       if (!isCurrentOperation(
         authGeneration,
@@ -619,6 +684,69 @@ export function GuidePage() {
             ))}
           </div>
         </div>
+
+        <details className="tax-input-panel">
+          <summary>세액공제·중도해지 선택 입력</summary>
+          <div className="tax-input-fields">
+            <label>
+              <span>연금저축 잔액</span>
+              <input type="number" min="0" inputMode="numeric" value={pensionSavingsBalance} onChange={(event) => setPensionSavingsBalance(event.target.value)} placeholder="예: 30000000" />
+            </label>
+            <label>
+              <span>IRP 잔액</span>
+              <input type="number" min="0" inputMode="numeric" value={irpBalance} onChange={(event) => setIrpBalance(event.target.value)} placeholder="예: 50000000" />
+            </label>
+            <label>
+              <span>올해 연금저축 납입액</span>
+              <input type="number" min="0" inputMode="numeric" value={pensionSavingsContribution} onChange={(event) => setPensionSavingsContribution(event.target.value)} />
+            </label>
+            <label>
+              <span>올해 IRP 납입액</span>
+              <input type="number" min="0" inputMode="numeric" value={irpContribution} onChange={(event) => setIrpContribution(event.target.value)} />
+            </label>
+            <label>
+              <span>세액공제 소득 기준</span>
+              <select value={incomeBasis} onChange={(event) => setIncomeBasis(event.target.value as IncomeBasis)}>
+                <option value="unknown">모름</option>
+                <option value="gross_salary">근로소득 총급여</option>
+                <option value="comprehensive_income">종합소득금액</option>
+              </select>
+            </label>
+            {incomeBasis !== "unknown" && (
+              <label>
+                <span>소득 기준 금액</span>
+                <input type="number" min="0" inputMode="numeric" value={incomeAmount} onChange={(event) => setIncomeAmount(event.target.value)} />
+              </label>
+            )}
+            <label>
+              <span>인출 사유</span>
+              <select value={withdrawalReason} onChange={(event) => setWithdrawalReason(event.target.value as WithdrawalReason)}>
+                <option value="general">일반 중도해지</option>
+                <option value="unavoidable">의료 등 부득이한 사유</option>
+                <option value="unknown">모름</option>
+              </select>
+            </label>
+            <label>
+              <span>IRP 퇴직금 이전분</span>
+              <select value={irpDeferredStatus} onChange={(event) => setIrpDeferredStatus(event.target.value as IrpDeferredIncomeStatus)}>
+                <option value="unknown">모름</option>
+                <option value="none">없음</option>
+                <option value="known">금액을 알고 있음</option>
+              </select>
+            </label>
+            {irpDeferredStatus === "known" && (
+              <label>
+                <span>IRP 퇴직금 이전분 금액</span>
+                <input type="number" min="0" inputMode="numeric" value={irpDeferredAmount} onChange={(event) => setIrpDeferredAmount(event.target.value)} />
+              </label>
+            )}
+            <p className={pensionTaxInput ? "tax-input-ready" : "auth-note"}>
+              {pensionTaxInput
+                ? "입력값이 준비됐습니다. 질문에 금액을 함께 적으면 최신 질문의 값이 우선됩니다."
+                : "금액과 사유를 질문에 직접 적어도 자동 인식합니다. 필요할 때만 이 패널을 사용하고 계좌번호·인증정보는 입력하지 마세요."}
+            </p>
+          </div>
+        </details>
 
         <div className="sidebar-footer">
           <div className="connection-status">

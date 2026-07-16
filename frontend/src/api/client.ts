@@ -4,6 +4,7 @@ import type {
   ChatResponse,
   ChatSessionSummary,
   PersistedChatResponse,
+  PensionTaxScenarioInput,
   ScenarioEvaluation,
   ScenarioSummary,
   StoredChatMessage,
@@ -98,6 +99,7 @@ export function sendChat(
   options?: string | {
     scenarioCode?: string;
     conversationContext?: ConversationContext | null;
+    pensionTax?: PensionTaxScenarioInput;
   },
 ): Promise<ChatResponse> {
   const requestOptions = typeof options === "string"
@@ -111,6 +113,9 @@ export function sendChat(
     ...(requestOptions?.conversationContext
       ? { conversation_context: requestOptions.conversationContext }
       : {}),
+    ...(requestOptions?.pensionTax
+      ? { pension_tax: requestOptions.pensionTax }
+      : {}),
   });
 }
 
@@ -121,6 +126,7 @@ export function sendAuthenticatedChat(
   sessionId?: string,
   idempotencyKey?: string,
   conversationContext?: ConversationContext | null,
+  pensionTax?: PensionTaxScenarioInput,
 ): Promise<PersistedChatResponse> {
   return apiPost(
     "/chat",
@@ -131,6 +137,7 @@ export function sendAuthenticatedChat(
       ...(conversationContext
         ? { conversation_context: conversationContext }
         : {}),
+      ...(pensionTax ? { pension_tax: pensionTax } : {}),
     },
     accessToken,
     idempotencyKey,

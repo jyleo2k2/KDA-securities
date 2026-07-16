@@ -34,6 +34,12 @@ export type AgeBand =
   | "age_50_54"
   | "at_or_above_55";
 export type AssumptionScenario = "low" | "base" | "high";
+export type IncomeBasis =
+  | "gross_salary"
+  | "comprehensive_income"
+  | "unknown";
+export type WithdrawalReason = "general" | "unavoidable" | "unknown";
+export type IrpDeferredIncomeStatus = "none" | "known" | "unknown";
 
 export interface HealthResponse {
   status: string;
@@ -246,6 +252,102 @@ export interface AllocationExampleEvaluation {
   evidence: SourceChip[];
 }
 
+// ── /engine/pension-tax* ──
+export interface PensionAccountTaxInput {
+  balance_krw: string;
+  current_year_contribution_krw: string;
+  prior_year_non_deducted_principal_krw?: string | null;
+}
+
+export interface PensionTaxCreditInput {
+  tax_year: 2026;
+  income_basis: IncomeBasis;
+  income_amount_krw?: string | null;
+  pension_savings_contribution_krw: string;
+  irp_contribution_krw: string;
+}
+
+export interface NonPensionWithdrawalInput {
+  tax_year: 2026;
+  pension_savings?: PensionAccountTaxInput | null;
+  irp?: PensionAccountTaxInput | null;
+  withdrawal_reason: WithdrawalReason;
+  irp_deferred_income_status: IrpDeferredIncomeStatus;
+  irp_deferred_retirement_income_krw?: string | null;
+}
+
+export interface PensionTaxScenarioInput {
+  tax_year: 2026;
+  income_basis: IncomeBasis;
+  income_amount_krw?: string | null;
+  pension_savings: PensionAccountTaxInput;
+  irp: PensionAccountTaxInput;
+  withdrawal_reason: WithdrawalReason;
+  irp_deferred_income_status: IrpDeferredIncomeStatus;
+  irp_deferred_retirement_income_krw?: string | null;
+}
+
+export interface TaxCreditRateScenario {
+  label: string;
+  income_tax_rate_percent: string;
+  local_inclusive_display_rate_percent: string;
+  estimated_tax_credit_krw: string;
+}
+
+export interface PensionTaxCreditEvaluation {
+  engine_name: string;
+  engine_version: string;
+  rule_version: string;
+  tax_year: number;
+  pension_savings_contribution_krw: string;
+  irp_contribution_krw: string;
+  pension_savings_eligible_contribution_krw: string;
+  irp_eligible_contribution_krw: string;
+  total_eligible_contribution_krw: string;
+  unused_combined_limit_krw: string;
+  rate_determined: boolean;
+  rate_scenarios: TaxCreditRateScenario[];
+  assumption_notice: string;
+  evidence: SourceChip[];
+}
+
+export interface WithdrawalAccountBreakdown {
+  account_type: AccountType;
+  balance_krw: string;
+  current_year_contribution_excluded_krw: string;
+  prior_year_non_deducted_principal_excluded_krw: string;
+  deferred_retirement_income_excluded_krw: string;
+  assumed_other_income_tax_base_krw: string;
+}
+
+export interface NonPensionWithdrawalEvaluation {
+  engine_name: string;
+  engine_version: string;
+  rule_version: string;
+  tax_year: number;
+  status: "estimated" | "requires_review";
+  calculation_mode:
+    | "source_aware_estimate"
+    | "simplified_max_other_income_estimate"
+    | null;
+  total_balance_krw: string | null;
+  total_current_year_contribution_excluded_krw: string;
+  total_prior_year_non_deducted_principal_excluded_krw: string;
+  total_deferred_retirement_income_excluded_krw: string;
+  assumed_other_income_tax_base_krw: string | null;
+  other_income_rate_percent: string | null;
+  estimated_max_other_income_withholding_krw: string | null;
+  account_breakdowns: WithdrawalAccountBreakdown[];
+  assumptions: string[];
+  limitations: string[];
+  evidence: SourceChip[];
+}
+
+export interface PensionTaxToolResult {
+  tax_credit?: PensionTaxCreditEvaluation | null;
+  withdrawal?: NonPensionWithdrawalEvaluation | null;
+}
+
 // ── /engine/mock-scenario ──
 export interface AssetAllocation {
   asset_class_code: string;
@@ -346,6 +448,7 @@ export type ChatIntent =
   | "mock_portfolio"
   | "provider_disclosure"
   | "news"
+  | "pension_tax"
   | "out_of_scope";
 
 export type DataBoundary =
@@ -354,6 +457,7 @@ export type DataBoundary =
   | "news_metadata"
   | "mock"
   | "engine"
+  | "user_input"
   | "unavailable";
 
 export interface SourceEvidence {
@@ -399,6 +503,7 @@ export interface ChatResponse {
   numeric_evidence: NumericEvidence[];
   engine_results: unknown[];
   scenario_evaluation?: unknown | null;
+  pension_tax_result?: PensionTaxToolResult | null;
   limitations: string[];
   conversation_context?: ConversationContext | null;
 }

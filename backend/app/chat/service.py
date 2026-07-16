@@ -3,7 +3,15 @@ from datetime import date
 from decimal import Decimal
 from typing import Protocol
 
-from ..engine import AccountType, evaluate_mock_scenario, evaluate_risk_cap
+from ..engine import (
+    AccountType,
+    NonPensionWithdrawalEvaluation,
+    PensionTaxCreditEvaluation,
+    PensionTaxToolResult,
+    WithdrawalCalculationStatus,
+    evaluate_mock_scenario,
+    evaluate_risk_cap,
+)
 from ..retrieval.repository import KnowledgeMatch, NewsMatch
 from .disclosures import ProviderDisclosure
 from .models import (
@@ -19,9 +27,15 @@ from .models import (
     SourceEvidence,
     extract_numeric_claims,
 )
+from .pension_tax_parser import resolve_pension_tax_inputs
 from .query_planner import BlockedReason, QueryPlan, plan_question
 from .routing import IntentRouter
 from .scenarios import LocalScenarioRepository
+from .tools import (
+    PENSION_TAX_CLOSING_NOTICE,
+    calculate_pension_tax_credit_tool,
+    estimate_non_pension_withdrawal_tax_tool,
+)
 
 
 class KnowledgeSearch(Protocol):
@@ -97,6 +111,8 @@ class ChatService:
             supported=[
                 "DC형·IRP·연금저축 계좌 규칙 근거 Q&A",
                 "목계좌 시나리오 위험자산 한도와 통합 자산군 진단",
+                "연금저축·IRP 당해연도 납입액 세액공제 간이 계산",
+                "연금저축·IRP 연금외수령 16.5% 간이 추정",
                 "근거·기준일·실데이터/목데이터 경계 표시",
             ],
             conditional=[
@@ -143,6 +159,8 @@ class ChatService:
             )
             if request.portfolio is not None:
                 response = self._custom_portfolio(request)
+            elif resolved_plan.intent == ChatIntent.PENSION_TAX:
+                response = self._pension_tax_response(request, resolved_plan)
             elif resolved_plan.intent == ChatIntent.MOCK_PORTFOLIO:
                 scenario_code = request.scenario_code or self._scenario_code(
                     request.message
@@ -195,6 +213,349 @@ class ChatService:
                 )
             }
         )
+
+    def _pension_tax_response(
+        self, request: ChatRequest, plan: QueryPlan
+    ) -> ChatResponse:
+        resolved_inputs = resolve_pension_tax_inputs(
+            request.message, request.pension_tax
+        )
+        missing: list[str] = []
+        if plan.requests_tax_credit and resolved_inputs.tax_credit is None:
+            missing.extend(resolved_inputs.missing_tax_credit)
+        if plan.requests_withdrawal_tax and resolved_inputs.withdrawal is None:
+            missing.extend(resolved_inputs.missing_withdrawal)
+        if missing:
+            missing_text = "·".join(dict.fromkeys(missing))
+            return ChatResponse(
+                intent=ChatIntent.PENSION_TAX,
+                answer=(
+                    f"질문에서 {missing_text}을(를) 확인하지 못했습니다. "
+                    "해당 값만 질문에 포함하거나 연금세액 입력 패널에 "
+                    f"입력해 주세요.\n{PENSION_TAX_CLOSING_NOTICE}"
+                ),
+                data_mode="input_required",
+                limitations=[
+                    "계좌번호·주민등록번호·인증정보는 입력하지 마세요.",
+                    "입력 금액은 세무자문이 아닌 교육용 간이 계산에만 사용합니다.",
+                ],
+            )
+
+        tax_credit: PensionTaxCreditEvaluation | None = None
+        withdrawal: NonPensionWithdrawalEvaluation | None = None
+        if plan.requests_tax_credit:
+            assert resolved_inputs.tax_credit is not None
+            tax_credit = calculate_pension_tax_credit_tool(
+                resolved_inputs.tax_credit
+            )
+        if plan.requests_withdrawal_tax:
+            assert resolved_inputs.withdrawal is not None
+            withdrawal = estimate_non_pension_withdrawal_tax_tool(
+                resolved_inputs.withdrawal
+            )
+        result = PensionTaxToolResult(
+            tax_credit=tax_credit,
+            withdrawal=withdrawal,
+        )
+        sources = self._pension_tax_sources(result)
+        numeric: list[NumericEvidence] = []
+        sections: list[AnswerSection] = []
+        answer_parts: list[str] = []
+        limitations: list[str] = []
+
+        if tax_credit is not None:
+            credit_text = self._tax_credit_text(tax_credit)
+            answer_parts.append(credit_text)
+            sections.append(
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title="당해연도 세액공제 간이 계산",
+                    content=credit_text,
+                    evidence_ids=[
+                        "user:pension_tax",
+                        "engine:pension_tax",
+                        "rule:pension_tax:credit",
+                    ],
+                )
+            )
+            numeric.extend(self._tax_credit_numeric(tax_credit))
+            limitations.append(tax_credit.assumption_notice)
+
+        if withdrawal is not None:
+            withdrawal_text = self._withdrawal_text(withdrawal)
+            answer_parts.append(withdrawal_text)
+            sections.append(
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title="연금외수령 기타소득 간이 추정",
+                    content=withdrawal_text,
+                    evidence_ids=[
+                        "user:pension_tax",
+                        "engine:pension_tax",
+                        "rule:pension_tax:withdrawal_order",
+                        "rule:pension_tax:withdrawal",
+                    ],
+                )
+            )
+            numeric.extend(self._withdrawal_numeric(withdrawal))
+            limitations.extend(withdrawal.assumptions)
+            limitations.extend(withdrawal.limitations)
+
+        return ChatResponse(
+            intent=ChatIntent.PENSION_TAX,
+            answer=" ".join(answer_parts) + f"\n{PENSION_TAX_CLOSING_NOTICE}",
+            data_mode="user_input_engine",
+            sections=sections,
+            sources=sources,
+            numeric_evidence=numeric,
+            pension_tax_result=result,
+            limitations=list(dict.fromkeys(limitations)),
+        )
+
+    @staticmethod
+    def _pension_tax_sources(
+        result: PensionTaxToolResult,
+    ) -> list[SourceEvidence]:
+        evidence = [
+            *(
+                result.tax_credit.evidence
+                if result.tax_credit is not None
+                else []
+            ),
+            *(
+                result.withdrawal.evidence
+                if result.withdrawal is not None
+                else []
+            ),
+        ]
+        credit_source = next(
+            (item for item in evidence if "59조의3" in item.label),
+            None,
+        )
+        withdrawal_source = next(
+            (item for item in evidence if "원천징수세율" in item.label),
+            None,
+        )
+        withdrawal_order_source = next(
+            (item for item in evidence if "인출순서" in item.label),
+            None,
+        )
+        sources = [
+            SourceEvidence(
+                evidence_id="user:pension_tax",
+                label="사용자가 입력한 계좌 잔액·당해연도 납입액",
+                locator="request://pension-tax",
+                publisher="사용자 입력",
+                data_boundary=DataBoundary.USER_INPUT,
+            ),
+            SourceEvidence(
+                evidence_id="engine:pension_tax",
+                label="연금계좌 세액공제·연금외수령 규칙 엔진",
+                locator="engine://pension_tax_guidance/2026-07-15.1",
+                publisher="연금 코파일럿 규칙 엔진",
+                as_of=date(2026, 7, 15),
+                data_boundary=DataBoundary.ENGINE,
+            ),
+        ]
+        if result.tax_credit is not None and credit_source is not None:
+            sources.append(
+                SourceEvidence(
+                    evidence_id="rule:pension_tax:credit",
+                    label=credit_source.label,
+                    locator=credit_source.reference,
+                    publisher="국가법령정보센터",
+                    as_of=credit_source.as_of,
+                    data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
+                )
+            )
+        if result.withdrawal is not None and withdrawal_source is not None:
+            if withdrawal_order_source is not None:
+                sources.append(
+                    SourceEvidence(
+                        evidence_id="rule:pension_tax:withdrawal_order",
+                        label=withdrawal_order_source.label,
+                        locator=withdrawal_order_source.reference,
+                        publisher="국가법령정보센터",
+                        as_of=withdrawal_order_source.as_of,
+                        data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
+                    )
+                )
+            sources.append(
+                SourceEvidence(
+                    evidence_id="rule:pension_tax:withdrawal",
+                    label=withdrawal_source.label,
+                    locator=withdrawal_source.reference,
+                    publisher="국세청",
+                    as_of=withdrawal_source.as_of,
+                    data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
+                )
+            )
+        return sources
+
+    @staticmethod
+    def _krw(value: Decimal) -> str:
+        return f"{value:,.0f}원"
+
+    @classmethod
+    def _tax_credit_text(cls, result: PensionTaxCreditEvaluation) -> str:
+        base = (
+            "당해연도 납입액은 연금저축 "
+            f"{cls._krw(result.pension_savings_contribution_krw)}, IRP "
+            f"{cls._krw(result.irp_contribution_krw)}이며 세액공제 대상 합계는 "
+            f"{cls._krw(result.total_eligible_contribution_krw)}입니다."
+        )
+        if result.rate_determined:
+            scenario = result.rate_scenarios[0]
+            return (
+                f"{base} 지방소득세 효과를 포함한 표시율 "
+                f"{_decimal_text(scenario.local_inclusive_display_rate_percent)}%를 "
+                "적용한 예상 세액공제액은 "
+                f"{cls._krw(scenario.estimated_tax_credit_krw)}입니다."
+            )
+        ordered = sorted(
+            result.rate_scenarios,
+            key=lambda item: item.estimated_tax_credit_krw,
+        )
+        return (
+            f"{base} 소득정보가 없어 표시율 "
+            f"{_decimal_text(ordered[0].local_inclusive_display_rate_percent)}%와 "
+            f"{_decimal_text(ordered[-1].local_inclusive_display_rate_percent)}% "
+            "시나리오로 계산한 예상 세액공제액은 "
+            f"{cls._krw(ordered[0].estimated_tax_credit_krw)}부터 "
+            f"{cls._krw(ordered[-1].estimated_tax_credit_krw)}까지입니다."
+        )
+
+    @staticmethod
+    def _tax_credit_numeric(
+        result: PensionTaxCreditEvaluation,
+    ) -> list[NumericEvidence]:
+        numeric = [
+            NumericEvidence(
+                label="연금저축 당해연도 납입액",
+                value=result.pension_savings_contribution_krw,
+                unit="KRW",
+                evidence_id="user:pension_tax",
+                basis="사용자 입력",
+            ),
+            NumericEvidence(
+                label="IRP 당해연도 납입액",
+                value=result.irp_contribution_krw,
+                unit="KRW",
+                evidence_id="user:pension_tax",
+                basis="사용자 입력",
+            ),
+            NumericEvidence(
+                label="합산 세액공제 대상 납입액",
+                value=result.total_eligible_contribution_krw,
+                unit="KRW",
+                evidence_id="engine:pension_tax",
+                basis="2026년 연금저축 600만원·합산 900만원 한도",
+            ),
+        ]
+        for scenario in result.rate_scenarios:
+            numeric.extend(
+                [
+                    NumericEvidence(
+                        label=f"{scenario.label} 표시율",
+                        value=scenario.local_inclusive_display_rate_percent,
+                        unit="%",
+                        evidence_id="rule:pension_tax:credit",
+                        basis="소득세율과 개인지방소득세 효과 포함",
+                    ),
+                    NumericEvidence(
+                        label=f"{scenario.label} 예상 세액공제액",
+                        value=scenario.estimated_tax_credit_krw,
+                        unit="KRW",
+                        evidence_id="engine:pension_tax",
+                        basis="규칙 엔진 계산",
+                    ),
+                ]
+            )
+        return numeric
+
+    @classmethod
+    def _withdrawal_text(
+        cls, result: NonPensionWithdrawalEvaluation
+    ) -> str:
+        if result.status == WithdrawalCalculationStatus.REQUIRES_REVIEW:
+            if result.total_balance_krw is None:
+                return (
+                    "의료비 등 부득이한 인출 사유는 일반 연금외수령과 "
+                    "과세방식이 다를 수 있어 요청한 예상세액을 계산하지 "
+                    "않았습니다. 먼저 법정 요건과 적용 과세방식을 확인해야 "
+                    "합니다."
+                )
+            return (
+                f"두 계좌 잔액 합계는 {cls._krw(result.total_balance_krw)}입니다. "
+                "인출 사유를 먼저 확인해야 하므로 기타소득 간이 예상액은 "
+                "계산하지 않았습니다."
+            )
+        assert result.assumed_other_income_tax_base_krw is not None
+        assert result.other_income_rate_percent is not None
+        assert result.estimated_max_other_income_withholding_krw is not None
+        return (
+            f"두 계좌 잔액 합계 {cls._krw(result.total_balance_krw)}에서 "
+            "당해연도 납입 과세제외액 "
+            f"{cls._krw(result.total_current_year_contribution_excluded_krw)} 등을 "
+            "반영한 16.5% 간이 과세대상액은 "
+            f"{cls._krw(result.assumed_other_income_tax_base_krw)}입니다. "
+            "지방소득세를 포함한 기타소득 원천징수 최대 간이 추정액은 "
+            f"{cls._krw(result.estimated_max_other_income_withholding_krw)}입니다."
+        )
+
+    @staticmethod
+    def _withdrawal_numeric(
+        result: NonPensionWithdrawalEvaluation,
+    ) -> list[NumericEvidence]:
+        numeric = []
+        if result.total_balance_krw is not None:
+            numeric.append(
+                NumericEvidence(
+                    label="연금저축·IRP 잔액 합계",
+                    value=result.total_balance_krw,
+                    unit="KRW",
+                    evidence_id="engine:pension_tax",
+                    basis="사용자 입력 잔액 합산",
+                )
+            )
+        if result.status == WithdrawalCalculationStatus.REQUIRES_REVIEW:
+            return numeric
+        assert result.assumed_other_income_tax_base_krw is not None
+        assert result.other_income_rate_percent is not None
+        assert result.estimated_max_other_income_withholding_krw is not None
+        numeric.extend(
+            [
+                NumericEvidence(
+                    label="당해연도 납입 과세제외액",
+                    value=result.total_current_year_contribution_excluded_krw,
+                    unit="KRW",
+                    evidence_id="rule:pension_tax:withdrawal_order",
+                    basis="소득세법 시행령 인출순서",
+                ),
+                NumericEvidence(
+                    label="기타소득 간이 과세대상액",
+                    value=result.assumed_other_income_tax_base_krw,
+                    unit="KRW",
+                    evidence_id="engine:pension_tax",
+                    basis="과세제외 재원을 차감한 규칙 엔진 계산",
+                ),
+                NumericEvidence(
+                    label="연금외수령 기타소득 표시세율",
+                    value=result.other_income_rate_percent,
+                    unit="%",
+                    evidence_id="rule:pension_tax:withdrawal",
+                    basis="소득세 15%와 개인지방소득세 1.5% 포함",
+                ),
+                NumericEvidence(
+                    label="최대 기타소득 원천징수 간이 추정액",
+                    value=result.estimated_max_other_income_withholding_krw,
+                    unit="KRW",
+                    evidence_id="engine:pension_tax",
+                    basis="규칙 엔진 계산",
+                ),
+            ]
+        )
+        return numeric
 
     @staticmethod
     def _blocked_response(reason: BlockedReason) -> ChatResponse:

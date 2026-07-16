@@ -54,6 +54,15 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .scenario-list strong { margin-bottom: 2px; font-size: 13px; font-weight: 600; }
 .scenario-list small { color: #86a398; font-size: 10px; }
 .scenario-icon { flex: 0 0 auto; width: 31px; height: 31px; display: grid; place-items: center; border-radius: 9px; background: rgba(255,255,255,.07); }
+.tax-input-panel { flex: 0 0 auto; max-height: 280px; margin-top: 12px; padding: 10px; overflow-y: auto; border: 1px solid rgba(255,255,255,.09); border-radius: 11px; background: rgba(255,255,255,.035); }
+.tax-input-panel summary { color: #dff06c; font-size: 10px; font-weight: 700; cursor: pointer; }
+.tax-input-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 10px; }
+.tax-input-fields label span { display: block; margin-bottom: 3px; color: #9fb7ac; font-size: 8px; }
+.tax-input-fields input, .tax-input-fields select { width: 100%; min-width: 0; padding: 6px 7px; border: 1px solid rgba(255,255,255,.13); border-radius: 7px; outline: 0; background: rgba(255,255,255,.07); color: white; font-size: 9px; }
+.tax-input-fields select option { color: #173f2f; }
+.tax-input-fields input:focus, .tax-input-fields select:focus { border-color: rgba(223,240,108,.58); }
+.tax-input-fields p { grid-column: 1 / -1; }
+.tax-input-ready { margin: 0; color: #dff06c; font-size: 9px; line-height: 1.5; }
 .sidebar-footer { margin-top: auto; padding: 18px 9px 0; border-top: 1px solid rgba(255,255,255,.09); }
 .sidebar-footer p { margin: 10px 0 0; color: #7f9b90; font-size: 10px; line-height: 1.6; }
 .connection-status { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #afc4ba; }

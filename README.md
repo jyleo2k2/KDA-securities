@@ -57,6 +57,8 @@ uv run uvicorn backend.app.main:app --reload
 | `POST /chat/demo` | 자연어 질문 → RAG·규칙 엔진·조건부 실공시/뉴스 조회 |
 | `GET /chat/demo/capabilities` | 현재 지원·조건부·미지원 기능 확인 |
 | `GET /chat/demo/scenarios` | 발표용 목계좌 시나리오 3종 확인 |
+| `POST /engine/pension-tax-credit` | 연금저축·IRP 당해연도 납입액의 세액공제 교육용 추정 |
+| `POST /engine/non-pension-withdrawal-estimate` | 연금외수령 시 기타소득 원천징수 최대 추정 |
 
 `POST /chat/demo` 예시:
 
@@ -69,6 +71,7 @@ uv run uvicorn backend.app.main:app --reload
 - DB 없이도 검증 문서 검색과 목시나리오 규칙 엔진은 동작한다.
 - `DATABASE_URL`이 있고 원격 실적재가 끝나면 FSS 회사·사업자 공시와 저장 뉴스 조회가 활성화된다.
 - `ANTHROPIC_API_KEY`가 있으면 Claude가 검증 답변을 자연어로 다듬는다. 새 숫자가 발견되면 결정론적 원문으로 자동 복귀한다.
+- 연금세액 질문은 화면의 구조화 입력 패널 값을 규칙 엔진에 전달하며, 사용자 입력은 RAG나 공시 데이터로 취급하지 않는다. Claude는 같은 읽기·계산 Tool을 호출한 뒤 결과를 설명만 한다.
 - fixture는 공시 답변에 사용하지 않으며 개별 상품 비교, 미래 수익 예측, 주문은 차단한다.
 
 ## 챗봇 화면 실행

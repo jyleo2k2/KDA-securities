@@ -133,6 +133,36 @@ def test_authenticated_chat_persists_supported_response() -> None:
     )
 
 
+def test_authenticated_pension_tax_keeps_context_and_idempotency() -> None:
+    repository = FakeChatRepository()
+    _override_authenticated_dependencies(repository)
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat",
+                json={
+                    "message": (
+                        "올해 연금저축에 600만원, IRP에 300만원을 납입했고 "
+                        "세액공제 혜택을 알려줘"
+                    ),
+                    "conversation_context": {"account_type": "irp"},
+                },
+                headers=CHAT_HEADERS,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["persisted"] is True
+    assert payload["response"]["intent"] == "pension_tax"
+    assert payload["response"]["pension_tax_result"]["tax_credit"] is not None
+    assert payload["response"]["conversation_context"]["account_type"] == "irp"
+    assert repository.saved[0]["idempotency_key"] == UUID(
+        CHAT_HEADERS["Idempotency-Key"]
+    )
+
+
 def test_sensitive_query_is_not_persisted_or_echoed() -> None:
     repository = FakeChatRepository()
     _override_authenticated_dependencies(repository)
