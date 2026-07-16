@@ -37,7 +37,7 @@
     {
       "id": "default-option",
       "query": "디폴트옵션이 뭐야",
-      "expected_source_url": "project://docs/20_리서치/연금_기초.md",
+      "expected_source_url": "project://docs/40_규제/사전지정운용제도_디폴트옵션.md",
       "required_content_terms": ["디폴트옵션"]
     },
     {
@@ -50,7 +50,7 @@
     {
       "id": "irp-early-withdrawal",
       "query": "IRP 중도인출",
-      "expected_source_url": "project://docs/20_리서치/연금_기초.md",
+      "expected_source_url": "project://docs/40_규제/퇴직연금_수령_중도인출.md",
       "required_content_terms": ["IRP", "중도인출"]
     },
     {
@@ -64,6 +64,27 @@
       "query": "DC 운용현황 통지",
       "expected_source_url": "project://docs/20_리서치/연금_기초.md",
       "required_content_terms": ["DC", "운용현황", "통지"]
+    },
+    {
+      "id": "irp-receipt-requirement",
+      "query": "IRP \uc5f0\uae08 \uc218\ub839 55\uc138 5\ub144",
+      "expected_source_url": "project://docs/40_\uaddc\uc81c/\ud1f4\uc9c1\uc5f0\uae08_\uc218\ub839_\uc911\ub3c4\uc778\ucd9c.md",
+      "required_content_terms": ["IRP", "55\uc138", "5\ub144"],
+      "critical_top1": true
+    },
+    {
+      "id": "default-option-procedure",
+      "query": "\uc0ac\uc804\uc9c0\uc815\uc6b4\uc6a9\uc81c\ub3c4 \ub514\ud3f4\ud2b8\uc635\uc158 \uc801\uc6a9",
+      "expected_source_url": "project://docs/40_\uaddc\uc81c/\uc0ac\uc804\uc9c0\uc815\uc6b4\uc6a9\uc81c\ub3c4_\ub514\ud3f4\ud2b8\uc635\uc158.md",
+      "required_content_terms": ["\uc0ac\uc804\uc9c0\uc815\uc6b4\uc6a9\uc81c\ub3c4", "\uc6b4\uc6a9\ubc29\ubc95", "\ud1b5\uc9c0"],
+      "critical_top1": true
+    },
+    {
+      "id": "provider-disclosure-reading",
+      "query": "\ud1f4\uc9c1\uc5f0\uae08 \uc0ac\uc5c5\uc790 \uc218\uc775\ub960 \uc218\uc218\ub8cc \uacf5\uc2dc \ube44\uad50",
+      "expected_source_url": "project://docs/20_\ub9ac\uc11c\uce58/\ud1f4\uc9c1\uc5f0\uae08_\uc0ac\uc5c5\uc790\uacf5\uc2dc_\uc77d\uae30.md",
+      "required_content_terms": ["\uc218\uc775\ub960", "\ube44\uc6a9", "\uae30\uc900\uc77c"],
+      "critical_top1": true
     }
   ]
 }

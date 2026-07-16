@@ -8,11 +8,11 @@ Remote provisioning requires server-only Supabase keys in ``.env``.
 from __future__ import annotations
 
 import argparse
-from datetime import date
 import json
 import secrets
 import sys
 from contextlib import suppress
+from datetime import date
 from pathlib import Path
 from typing import Any
 from uuid import UUID

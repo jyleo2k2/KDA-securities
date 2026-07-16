@@ -15,6 +15,7 @@ from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
 from backend.app.chat.models import (
     AnswerSection,
     ChatIntent,
+    ChatNewsItem,
     ChatRequest,
     ChatResponse,
     DataBoundary,
@@ -255,6 +256,14 @@ def test_news_response_exposes_three_line_summaries_and_original_links() -> None
     assert response.sources[0].evidence_id == "news:news-1"
     assert response.sources[0].data_boundary == "news_summary"
     assert response.data_mode == "news_summary"
+    assert response.news_items[0].title == "연금 제도 관련 공식 발표 1"
+    assert response.news_items[0].description is None
+    assert response.news_items[0].summary_lines == [
+        "기사 1의 첫 번째 핵심 문장입니다.",
+        "기사 1의 두 번째 핵심 문장입니다.",
+        "기사 1의 세 번째 핵심 문장입니다.",
+    ]
+    assert response.news_items[0].original_url == "https://example.test/news/1"
     assert "첫 번째 뉴스" in response.answer
     assert "기사 1의 첫 번째 핵심 문장입니다." in response.answer
     assert "원문 링크: https://example.test/news/1" in response.answer
@@ -270,6 +279,16 @@ def test_news_response_explains_when_fewer_than_three_recent_items_exist() -> No
 
     assert len(response.sources) == 2
     assert "세 건 미만" in response.limitations[-1]
+
+
+def test_news_card_rejects_partial_summary() -> None:
+    with pytest.raises(ValidationError, match="exactly three"):
+        ChatNewsItem(
+            evidence_id="news:partial",
+            title="불완전 요약",
+            summary_lines=["한 줄만 있음"],
+            original_url="https://example.test/news/partial",
+        )
 
 
 def test_response_rejects_numbers_without_sources() -> None:
@@ -456,11 +475,9 @@ def test_narrator_never_receives_untrusted_news(boundary: DataBoundary) -> None:
 
 
 def _fake_narration_model(
-    text: str, review_note: str = "", thinking: str | None = None
+    text: str, thinking: str | None = None
 ) -> FunctionModel:
-    payload = json.dumps(
-        {"narration": text, "review_note": review_note}, ensure_ascii=False
-    )
+    payload = json.dumps({"narration": text}, ensure_ascii=False)
 
     def respond(messages, info) -> ModelResponse:
         parts: list = []
@@ -475,13 +492,10 @@ def _fake_narration_model(
 def _narrate_with_fake(
     base: ChatResponse,
     text: str,
-    review_note: str = "",
     thinking: str | None = None,
 ) -> ChatResponse:
     narrator = ClaudeNarrator(api_key="test-key", model="test-model")
-    with narrator.agent.override(
-        model=_fake_narration_model(text, review_note, thinking)
-    ):
+    with narrator.agent.override(model=_fake_narration_model(text, thinking)):
         return narrator.narrate(base)
 
 
@@ -595,13 +609,12 @@ def test_claude_narrator_rejects_new_investment_claims_and_korean_numbers(
     assert response.answer == base.answer
 
 
-def test_claude_narrator_prefers_thinking_summary_over_review_note() -> None:
+def test_claude_narrator_exposes_thinking_summary_as_reasoning() -> None:
     base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
 
     response = _narrate_with_fake(
         base,
         "IRP 일반 위험자산 한도는 70%이며 근거를 확인하세요.",
-        review_note="검토 노트입니다.",
         thinking="검증 답변의 70% 한도를 쉬운 문장으로 바꾸는 중.",
     )
 
@@ -610,19 +623,17 @@ def test_claude_narrator_prefers_thinking_summary_over_review_note() -> None:
     assert "70%" in response.narration_reasoning
 
 
-def test_claude_narrator_falls_back_to_review_note_without_thinking() -> None:
+def test_claude_narrator_omits_reasoning_without_thinking() -> None:
+    # 검토 과정은 thinking에서만 온다. 없으면 본문만 남기고 조용히 생략한다.
     base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
 
     response = _narrate_with_fake(
         base,
         "IRP 일반 위험자산 한도는 70%이며 근거를 확인하세요.",
-        review_note="검증 답변의 한도 규칙을 원문 숫자 그대로 풀어썼습니다.",
     )
 
     assert response.narration_mode == "claude_verified"
-    assert response.narration_reasoning == (
-        "검증 답변의 한도 규칙을 원문 숫자 그대로 풀어썼습니다."
-    )
+    assert response.narration_reasoning is None
 
 
 def test_claude_narrator_drops_reasoning_with_new_numbers() -> None:

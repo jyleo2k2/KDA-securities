@@ -4,6 +4,7 @@ from backend.app.chat.models import ChatIntent, ChatRequest
 from backend.app.chat.query_planner import BlockedReason, plan_question
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService
+from backend.app.chat.suggested_prompts import SUGGESTED_CHAT_PROMPTS
 from backend.app.engine import AccountType
 
 
@@ -128,6 +129,25 @@ def test_named_mock_scenario_wins_over_tax_credit_word() -> None:
 )
 def test_my_portfolio_wording_selects_mock_portfolio_intent(message: str) -> None:
     assert plan_question(message).intent == ChatIntent.MOCK_PORTFOLIO
+
+
+@pytest.mark.parametrize(
+    ("message", "expected_intent"),
+    zip(
+        SUGGESTED_CHAT_PROMPTS,
+        (
+            ChatIntent.EDUCATIONAL_PORTFOLIO,
+            ChatIntent.MOCK_PORTFOLIO,
+            ChatIntent.PENSION_TAX,
+        ),
+        strict=True,
+    ),
+)
+def test_guide_page_prompts_route_to_supported_intents(
+    message: str,
+    expected_intent: ChatIntent,
+) -> None:
+    assert plan_question(message).intent == expected_intent
 
 
 @pytest.mark.parametrize(

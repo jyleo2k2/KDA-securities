@@ -22,6 +22,7 @@ from .models import (
     AnswerSection,
     ChatCapabilities,
     ChatIntent,
+    ChatNewsItem,
     ChatRequest,
     ChatResponse,
     ChatVisualization,
@@ -1883,6 +1884,17 @@ class ChatService:
             intent=ChatIntent.NEWS,
             answer="\n\n".join(lines),
             data_mode="news_summary" if is_pension_news else "news_metadata",
+            news_items=[
+                ChatNewsItem(
+                    evidence_id=f"news:{item.item_id}",
+                    title=item.title,
+                    description=None if is_pension_news else item.description,
+                    summary_lines=(list(item.summary_lines) if is_pension_news else []),
+                    original_url=item.original_url,
+                    published_at=item.published_at,
+                )
+                for item in matches
+            ],
             sections=[
                 AnswerSection(
                     kind=SectionKind.EXTERNAL_OPINION,

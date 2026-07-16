@@ -214,6 +214,25 @@ class AnswerSection(BaseModel):
     evidence_ids: list[str] = Field(default_factory=list)
 
 
+class ChatNewsItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    evidence_id: str
+    title: str
+    description: str | None = None
+    summary_lines: list[str] = Field(default_factory=list)
+    original_url: str
+    published_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def validate_summary_lines(self) -> "ChatNewsItem":
+        if len(self.summary_lines) not in {0, 3}:
+            raise ValueError("news summary must contain exactly three lines")
+        if any(not line.strip() for line in self.summary_lines):
+            raise ValueError("news summary lines must not be blank")
+        return self
+
+
 class VisualizationDatum(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -246,6 +265,7 @@ class ChatResponse(BaseModel):
     # 새 숫자가 감지되면 본문과 달리 이 필드만 생략한다.
     narration_reasoning: str | None = None
     sections: list[AnswerSection] = Field(default_factory=list)
+    news_items: list[ChatNewsItem] = Field(default_factory=list)
     visualizations: list[ChatVisualization] = Field(default_factory=list)
     sources: list[SourceEvidence] = Field(default_factory=list)
     numeric_evidence: list[NumericEvidence] = Field(default_factory=list)
@@ -272,6 +292,7 @@ class ChatResponse(BaseModel):
             for visualization in self.visualizations
             for evidence_id in visualization.evidence_ids
         )
+        referenced_ids.update(item.evidence_id for item in self.news_items)
         referenced_ids.update(item.evidence_id for item in self.numeric_evidence)
         missing = referenced_ids - source_ids
         if missing:
