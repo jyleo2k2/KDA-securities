@@ -194,3 +194,14 @@ def test_cors_allows_vite_dev_origin() -> None:
         response.headers.get("access-control-allow-origin")
         == "http://localhost:5173"
     )
+
+
+def test_cors_allows_vite_fallback_dev_origin() -> None:
+    response = client.get(
+        "/health", headers={"Origin": "http://127.0.0.1:5174"}
+    )
+    assert response.status_code == 200
+    assert (
+        response.headers.get("access-control-allow-origin")
+        == "http://127.0.0.1:5174"
+    )

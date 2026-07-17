@@ -207,18 +207,18 @@ def test_news_topic_and_requested_count_are_canonical() -> None:
     samsung = plan_question("삼성전자 가장 최근 뉴스 하나 찾아줘")
     pension = plan_question("퇴직연금 최신 뉴스 5건 알려줘")
 
-    assert samsung.news_query == "삼성전자"
-    assert samsung.max_results == 1
-    assert pension.news_query == "연금"
+    assert samsung.news_query == "market"
+    assert samsung.max_results == 3
+    assert pension.news_query == "market"
     assert pension.max_results == 3
 
 
 @pytest.mark.parametrize("message", ("IRP 뉴스", "DC형 뉴스", "연금저축 뉴스"))
-def test_pension_account_news_uses_pension_news_policy(message: str) -> None:
+def test_account_news_uses_market_news_policy(message: str) -> None:
     plan = plan_question(message)
 
     assert plan.intent == ChatIntent.NEWS
-    assert plan.news_query == "연금"
+    assert plan.news_query == "market"
     assert plan.max_results == 3
 
 
@@ -227,9 +227,17 @@ def test_news_command_removal_keeps_words_that_contain_news_terms() -> None:
     revival = plan_question("기사회생 뉴스")
 
     assert newskin.intent == ChatIntent.NEWS
-    assert newskin.news_query == "뉴스킨"
+    assert newskin.news_query == "market"
     assert revival.intent == ChatIntent.NEWS
-    assert revival.news_query == "기사회생"
+    assert revival.news_query == "market"
+
+
+@pytest.mark.parametrize(
+    ("message", "query"),
+    (("미국 증시 뉴스", "market:us"), ("코스피 뉴스", "market:kr")),
+)
+def test_market_news_region_filter(message: str, query: str) -> None:
+    assert plan_question(message).news_query == query
 
 
 def test_order_and_future_requests_do_not_reach_retrieval() -> None:

@@ -56,16 +56,16 @@ class FakeDisclosureRepository:
 
 class FakeNewsRepository:
     def latest_news(self, search_query, *, limit=10):
-        raise AssertionError("연금 뉴스는 최신순 조회를 사용하면 안 됩니다")
+        raise AssertionError("증시 뉴스는 최신순 메타데이터 조회를 사용하면 안 됩니다")
 
-    def random_recent_news(self, search_query, *, days=5, limit=3):
-        assert search_query == "연금"
+    def random_recent_market_news(self, *, region=None, days=5, limit=3):
+        assert region is None
         assert days == 5
         assert limit == 3
         return [
             NewsMatch(
                 item_id=f"news-{index}",
-                title=f"연금 제도 관련 공식 발표 {index}",
+                title=f"한국·미국 증시 관련 공식 발표 {index}",
                 description=f"검색 API 메타데이터 요약 {index}",
                 original_url=f"https://example.test/news/{index}",
                 portal_url=None,
@@ -81,9 +81,9 @@ class FakeNewsRepository:
 
 
 class SparseNewsRepository(FakeNewsRepository):
-    def random_recent_news(self, search_query, *, days=5, limit=3):
-        return super().random_recent_news(
-            search_query, days=days, limit=limit
+    def random_recent_market_news(self, *, region=None, days=5, limit=3):
+        return super().random_recent_market_news(
+            region=region, days=days, limit=limit
         )[:2]
 
 
@@ -247,7 +247,7 @@ def test_unconfigured_disclosure_does_not_fall_back_to_fixture() -> None:
 
 def test_news_response_exposes_three_line_summaries_and_original_links() -> None:
     response = service(news=FakeNewsRepository()).ask(
-        ChatRequest(message="연금 뉴스 알려줘")
+        ChatRequest(message="증시 뉴스 알려줘")
     )
 
     assert response.intent == ChatIntent.NEWS
@@ -256,7 +256,7 @@ def test_news_response_exposes_three_line_summaries_and_original_links() -> None
     assert response.sources[0].evidence_id == "news:news-1"
     assert response.sources[0].data_boundary == "news_summary"
     assert response.data_mode == "news_summary"
-    assert response.news_items[0].title == "연금 제도 관련 공식 발표 1"
+    assert response.news_items[0].title == "한국·미국 증시 관련 공식 발표 1"
     assert response.news_items[0].description is None
     assert response.news_items[0].summary_lines == [
         "기사 1의 첫 번째 핵심 문장입니다.",
@@ -274,7 +274,7 @@ def test_news_response_exposes_three_line_summaries_and_original_links() -> None
 
 def test_news_response_explains_when_fewer_than_three_recent_items_exist() -> None:
     response = service(news=SparseNewsRepository()).ask(
-        ChatRequest(message="IRP 뉴스 알려줘")
+        ChatRequest(message="증시 뉴스 알려줘")
     )
 
     assert len(response.sources) == 2

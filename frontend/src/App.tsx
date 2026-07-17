@@ -15,15 +15,7 @@ const CARD_PAGES: Partial<Record<TabKey, () => JSX.Element>> = {
 };
 
 const TAB_KEYS: readonly TabKey[] = ["home", "guide", "benchmark", "profile"];
-const MVP_DEMO_PROFILE_VERSION = "irp-pension-savings-neutral-30-55-v1";
-const MVP_DEMO_SURVEY_PROFILE: CompletedSurveyProfile = {
-  account_type: "irp",
-  account_types: ["irp", "pension_savings"],
-  current_age: 30,
-  retirement_start_age: 55,
-  risk_profile: "risk_neutral",
-  loss_tolerance_percent: 10,
-};
+const SURVEY_PROFILE_VERSION = "completed-survey-v1";
 
 function tabFromHash(): TabKey {
   const candidate = window.location.hash.slice(1) as TabKey;
@@ -38,22 +30,16 @@ export default function App(): JSX.Element {
       const storedVersion = window.localStorage.getItem(
         "pension-copilot:mvp-profile-version",
       );
-      if (stored && storedVersion === MVP_DEMO_PROFILE_VERSION) {
+      if (stored && storedVersion === SURVEY_PROFILE_VERSION) {
         try {
           return JSON.parse(stored) as CompletedSurveyProfile;
         } catch {
-          // Use the fixed MVP profile below when stored demo data is malformed.
+          // Invalid local survey state is cleared below.
         }
       }
-      window.localStorage.setItem(
-        "pension-copilot:survey-profile",
-        JSON.stringify(MVP_DEMO_SURVEY_PROFILE),
-      );
-      window.localStorage.setItem(
-        "pension-copilot:mvp-profile-version",
-        MVP_DEMO_PROFILE_VERSION,
-      );
-      return MVP_DEMO_SURVEY_PROFILE;
+      window.localStorage.removeItem("pension-copilot:survey-profile");
+      window.localStorage.removeItem("pension-copilot:mvp-profile-version");
+      return null;
     },
   );
   const CardPage = CARD_PAGES[activeTab];
@@ -73,6 +59,10 @@ export default function App(): JSX.Element {
     window.localStorage.setItem(
       "pension-copilot:survey-profile",
       JSON.stringify(profile),
+    );
+    window.localStorage.setItem(
+      "pension-copilot:mvp-profile-version",
+      SURVEY_PROFILE_VERSION,
     );
     setSurveyProfile(profile);
     changeTab("guide");
