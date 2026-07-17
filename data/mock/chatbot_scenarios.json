@@ -2,7 +2,7 @@
   {
     "scenario_code": "dc_dormant",
     "name": "DC형 방치",
-    "description": "DC 적립금이 원리금보장 상품에만 머문 설명용 시나리오",
+    "description": "회사 DC 적립금이 원리금보장 상품에만 머문 방치형 고객\n비고: 납입액에 대한 세액공제혜택 대상인 연금저축펀드와 개인 IRP계좌가 없음",
     "age_band": "40대",
     "risk_profile": "balanced",
     "investment_horizon_years": 20,
@@ -26,7 +26,7 @@
   {
     "scenario_code": "tax_contribution_uninvested",
     "name": "세액공제 후 미운용",
-    "description": "세액공제를 위해 납입했지만 IRP·연금저축 자금이 현금성 자산에 머문 설명용 시나리오",
+    "description": "세액공제를 위해 납입했지만 IRP·연금저축을 실제 운용하지 않은 고객\n비고: 각 계좌별 납입액 세액공제한도를 고려하지 않고 납입했음",
     "age_band": "30대",
     "risk_profile": "balanced",
     "investment_horizon_years": 25,
@@ -64,7 +64,7 @@
   {
     "scenario_code": "overlap_risk_concentration",
     "name": "계좌별 중복·위험 편중",
-    "description": "세 계좌에 같은 글로벌 주식 노출이 반복되고 위험자산 비중이 높은 설명용 시나리오",
+    "description": "DC·IRP·연금저축에 글로벌주식형 자산이 중복되어 위험자산 편중이 있는 고객",
     "age_band": "30대",
     "risk_profile": "growth",
     "investment_horizon_years": 28,
@@ -145,7 +145,7 @@
   {
     "scenario_code": "young_retirement_distance",
     "name": "연금이 멀게 느껴지는 청년층",
-    "description": "20~39세로 노후가 멀게 느껴져 연금 운용과 추가 납입의 우선순위가 낮은 설명용 시나리오",
+    "description": "노후가 멀게 느껴져 연금 운용과 추가 납입의 우선순위가 낮은 청년층 고객",
     "age_band": "20~39세",
     "risk_profile": "balanced",
     "investment_horizon_years": 35,
@@ -190,7 +190,7 @@
   {
     "scenario_code": "family_budget_pressure",
     "name": "가계지출로 납입이 빠듯한 중년층",
-    "description": "40~54세로 자녀·주거비 때문에 추가 납입은 빠듯하지만 노후 준비를 걱정하기 시작한 설명용 시나리오",
+    "description": "자녀·주거비로 추가 납입은 빠듯하지만 노후 준비를 걱정하기 시작한 중년층 고객",
     "age_band": "40~54세",
     "risk_profile": "balanced",
     "investment_horizon_years": 13,
