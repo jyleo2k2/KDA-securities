@@ -1143,8 +1143,7 @@ class ChatService:
                 "없어 개별 상품의 편입 가능 여부를 확정하지 않습니다."
             )
         else:
-            excerpt = re.sub(r"\s+", " ", matches[0].content).strip()[:600]
-            answer = f"검증 문서에서 확인한 내용입니다. {excerpt}"
+            answer = self._knowledge_summary(matches[0].title, request.message)
             for index, (value, unit) in enumerate(
                 sorted(extract_numeric_claims(answer)), start=1
             ):
@@ -1165,8 +1164,11 @@ class ChatService:
             sections=[
                 AnswerSection(
                     kind=SectionKind.FACT,
-                    title="검색된 근거",
-                    content=re.sub(r"\s+", " ", match.content).strip()[:800],
+                    title="확인한 근거",
+                    content=(
+                        f"‘{match.title}’ 공식 문서를 확인했습니다. "
+                        "원문은 아래 출처에서 볼 수 있어요."
+                    ),
                     evidence_ids=[f"knowledge:{match.chunk_id}"],
                 )
                 for match in matches
@@ -1174,6 +1176,25 @@ class ChatService:
             sources=sources,
             numeric_evidence=numeric,
             limitations=["상품별 적격성은 공식 상품 데이터로 별도 확인해야 합니다."],
+        )
+
+    @staticmethod
+    def _knowledge_summary(title: str, message: str) -> str:
+        """Keep retrieved documents as sources, not as a wall of answer text."""
+
+        if "세액공제" in f"{title} {message}":
+            return (
+                "세액공제는 연금계좌에 낸 돈 일부를 연말정산이나 종합소득세에서 "
+                "빼주는 혜택이에요.\n"
+                "연금저축은 연 600만 원까지, IRP와 DC형 본인 추가납입을 더하면 "
+                "합산 연 900만 원까지 공제 대상입니다.\n"
+                "예를 들어 연금저축 600만 원과 IRP 300만 원을 나눠 납입할 수 있어요. "
+                "올해 납입액과 소득 기준을 알려주면 내 금액으로 계산해 볼게요."
+            )
+        return (
+            "질문과 관련된 공식 근거를 찾았어요. "
+            f"‘{title}’ 내용을 바탕으로 안내할 수 있어요. "
+            "한도·세금·수령 중 무엇이 궁금한지 말해주면 핵심만 정리해 드릴게요."
         )
 
     @staticmethod

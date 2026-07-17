@@ -139,6 +139,19 @@ def test_knowledge_source_uses_document_as_of_date() -> None:
     assert source.as_of == expected
 
 
+def test_tax_knowledge_summary_is_short_and_actionable() -> None:
+    answer = ChatService._knowledge_summary(
+        "연금계좌 세액공제",
+        "연금계좌 세액공제 한도를 알려줘",
+    )
+
+    assert "연금저축은 연 600만 원까지" in answer
+    assert "합산 연 900만 원까지" in answer
+    assert "문서 버전" not in answer
+    assert "소득세법 제59조의3" not in answer
+    assert len(answer) < 250
+
+
 def test_combined_accounts_are_explained_with_separate_rules() -> None:
     response = service().ask(
         ChatRequest(
