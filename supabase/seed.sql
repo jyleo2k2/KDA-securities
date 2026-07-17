@@ -76,11 +76,11 @@ insert into public.mock_scenarios (
     code, name, description, age_band, risk_profile, investment_horizon_years
 )
 values
-    ('dc_dormant', 'DC형 방치', 'DC 적립금이 원리금보장 상품에만 머문 설명용 시나리오', '40대', 'balanced', 20),
-    ('tax_contribution_uninvested', '세액공제 후 미운용', '세액공제를 위해 납입했지만 IRP·연금저축 자금이 현금성 자산에 머문 설명용 시나리오', '30대', 'balanced', 25),
-    ('overlap_risk_concentration', '계좌별 중복·위험 편중', '세 계좌에 같은 글로벌 주식 노출이 반복되고 위험자산 비중이 높은 설명용 시나리오', '30대', 'growth', 28),
-    ('young_retirement_distance', '연금이 멀게 느껴지는 청년층', '20~39세로 노후가 멀게 느껴져 연금 운용과 추가 납입의 우선순위가 낮은 설명용 시나리오', '20~39세', 'balanced', 35),
-    ('family_budget_pressure', '가계지출로 납입이 빠듯한 중년층', '40~54세로 자녀·주거비 때문에 추가 납입은 빠듯하지만 노후 준비를 걱정하기 시작한 설명용 시나리오', '40~54세', 'balanced', 13),
+    ('dc_dormant', 'DC형 방치', E'회사 DC 적립금이 원리금보장 상품에만 머문 방치형 고객\n비고: 납입액에 대한 세액공제혜택 대상인 연금저축펀드와 개인 IRP계좌가 없음', '40대', 'balanced', 20),
+    ('tax_contribution_uninvested', '세액공제 후 미운용', E'세액공제를 위해 납입했지만 IRP·연금저축을 실제 운용하지 않은 고객\n비고: 각 계좌별 납입액 세액공제한도를 고려하지 않고 납입했음', '30대', 'balanced', 25),
+    ('overlap_risk_concentration', '계좌별 중복·위험 편중', 'DC·IRP·연금저축에 글로벌주식형 자산이 중복되어 위험자산 편중이 있는 고객', '30대', 'growth', 28),
+    ('young_retirement_distance', '연금이 멀게 느껴지는 청년층', '노후가 멀게 느껴져 연금 운용과 추가 납입의 우선순위가 낮은 청년층 고객', '20~39세', 'balanced', 35),
+    ('family_budget_pressure', '가계지출로 납입이 빠듯한 중년층', '자녀·주거비로 추가 납입은 빠듯하지만 노후 준비를 걱정하기 시작한 중년층 고객', '40~54세', 'balanced', 13),
     ('pension_payout_transition', '연금 수령을 시작하는 55세 이상', '55세 이상으로 연금 수령을 시작했거나 수령 직전이라 수령 기간·세금·자산 안정성을 실제로 검토하는 설명용 시나리오', '55세 이상', 'conservative', 1)
 on conflict (code) do update set
     name = excluded.name,
@@ -90,6 +90,23 @@ on conflict (code) do update set
     investment_horizon_years = excluded.investment_horizon_years,
     is_active = true,
     updated_at = now();
+
+with contribution_seed (
+    auth_user_id, pension_savings_contribution_krw, irp_contribution_krw
+) as (
+    values
+        ('0d3a8c4f-3d6e-4e2e-91a0-7d11a2b71c01'::uuid, 0::numeric, 0::numeric),
+        ('1e4b9d50-4e7f-4f3f-a2b1-8e22b3c82d02'::uuid, 3000000::numeric, 6000000::numeric),
+        ('2f5cae61-5f80-4040-b3c2-9f33c4d93e03'::uuid, 1500000::numeric, 2000000::numeric),
+        ('306dbf72-6091-4141-84d3-a044d5ea4f04'::uuid, 2000000::numeric, 0::numeric),
+        ('417ec083-71a2-4242-95e4-b155e6fb5005'::uuid, 2400000::numeric, 2400000::numeric)
+)
+update public.demo_user_financial_context as context
+set pension_savings_contribution_krw = seed.pension_savings_contribution_krw,
+    irp_contribution_krw = seed.irp_contribution_krw,
+    updated_at = now()
+from contribution_seed as seed
+where context.auth_user_id = seed.auth_user_id;
 
 with account_seed (scenario_code, account_type, label, balance_krw) as (
     values

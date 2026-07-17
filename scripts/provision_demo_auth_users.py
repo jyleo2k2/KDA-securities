@@ -45,6 +45,8 @@ def load_manifest(path: Path = DEFAULT_MANIFEST_PATH) -> list[dict[str, Any]]:
         "age_band",
         "login_id",
         "customer_context",
+        "pension_savings_contribution_krw",
+        "irp_contribution_krw",
     }
     for user in users:
         if not isinstance(user, dict) or required - user.keys():
@@ -241,6 +243,8 @@ def _sync_demo_financial_context(
             str(user["nickname"]),
             int(user["representative_age"]),
             str(user["customer_context"]),
+            user["pension_savings_contribution_krw"],
+            user["irp_contribution_krw"],
             DEMO_CONTEXT_AS_OF_DATE,
             str(user["scenario_code"]),
         )
@@ -255,12 +259,16 @@ def _sync_demo_financial_context(
                 nickname,
                 representative_age,
                 customer_context,
+                pension_savings_contribution_krw,
+                irp_contribution_krw,
                 tax_year,
                 as_of_date
             )
             select
                 %s::uuid,
                 scenario.id,
+                %s,
+                %s,
                 %s,
                 %s,
                 %s,
@@ -273,6 +281,9 @@ def _sync_demo_financial_context(
                 nickname = excluded.nickname,
                 representative_age = excluded.representative_age,
                 customer_context = excluded.customer_context,
+                pension_savings_contribution_krw =
+                    excluded.pension_savings_contribution_krw,
+                irp_contribution_krw = excluded.irp_contribution_krw,
                 tax_year = excluded.tax_year,
                 as_of_date = excluded.as_of_date,
                 data_kind = 'mock',

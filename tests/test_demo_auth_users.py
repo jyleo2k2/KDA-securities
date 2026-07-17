@@ -41,7 +41,7 @@ def test_prepare_credentials_generates_unique_passwords_once(tmp_path: Path) -> 
     assert all(len(item["password"]) >= 20 for item in first)
 
 
-def test_financial_context_sync_maps_all_users_without_overwriting_amounts(
+def test_financial_context_sync_maps_all_users_with_mock_contributions(
     monkeypatch,
 ) -> None:
     users = load_manifest(MANIFEST)
@@ -58,7 +58,8 @@ def test_financial_context_sync_maps_all_users_without_overwriting_amounts(
 
         def executemany(self, query, rows) -> None:
             assert "gross_salary_krw" not in query
-            assert "irp_contribution_krw" not in query
+            assert "pension_savings_contribution_krw" in query
+            assert "irp_contribution_krw" in query
             self.rows = list(rows)
 
         def execute(self, query, params) -> None:
@@ -88,6 +89,11 @@ def test_financial_context_sync_maps_all_users_without_overwriting_amounts(
     _sync_demo_financial_context("postgresql://test", users)
 
     assert len(cursor.rows) == 6
+    rows_by_scenario = {row[-1]: row for row in cursor.rows}
+    assert rows_by_scenario["tax_contribution_uninvested"][4:6] == (
+        3_000_000,
+        6_000_000,
+    )
 
 
 def test_lifecycle_scenarios_have_expected_totals_and_respect_account_caps() -> None:
