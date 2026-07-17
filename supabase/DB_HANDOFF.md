@@ -27,8 +27,6 @@
 5. [`migrations/`](./migrations) 전체를 시간순으로 읽고 [`seed.sql`](./seed.sql) 확인
 6. DB 변경과 맞닿는 엔진 모델·저장소·API·테스트 확인
 
-참고 설계 원본: [`연금_코파일럿_DB_설계.pdf`](../연금_코파일럿_DB_설계.pdf)
-
 ## 3. 현재 원격 상태
 
 2026-07-16 KST에 연결된 Supabase 프로젝트를 읽기 전용으로 재확인했다.
@@ -246,6 +244,7 @@ uv run ruff check .
 | DB-04 | Postgres repository·API 연결 | `LOCAL-DRAFT` | DB 우선·JSON fallback·E2E 통과 | DB-03 후 구현 |
 | DB-05 | 기존 mock account tables 정리 | `BLOCKED` | 코드·SQL 참조 0, 별도 승인·복구 계획 | DB-04 안정화 전 삭제 금지 |
 | DB-06 | 커뮤니티 리뷰 | `BLOCKED` | 포트폴리오 FK·RLS·신고·보존 정책 승인 | 핵심 계좌 연동 후 검토 |
+| DB-07 | ETF 포트폴리오 유니버스 스키마·조회 연결 | `REMOTE-APPLIED` | `20260717054500`, 상품 2,507행·이력 217,833행·RLS/권한·120개 동등성·API E2E 확인 | 적용 파일 수정 금지, 다음 데이터 버전 적재 시 ready 전환 계약 유지 |
 
 ## 13. 미결정 사항
 
@@ -258,6 +257,34 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-18 KST
+
+- 작업자/브랜치: Codex / `feat/etf-portfolio-supabase-integration` / 사용자(이재용) 승인 하.
+- 변경: 참고 캐시를 `data/cache/`로 이동하고 교육용 포트폴리오 캐시를 `.3`→`.4`로 스키마 보강했다. 120개 시나리오의 기존 후보·위험·계획 결과는 유지하고 누락 3필드만 추가했다. `source_sha256`은 cost-return 마스터뿐 아니라 실제 사용한 KIS 수정주가·KIND 이벤트·필요 시 KRX fallback까지 포함한다.
+- 원격 적용: `20260717054500_add_etf_portfolio_universe` 적용. 3개 테이블 RLS 활성, `anon`·`authenticated` 권한 없음, `service_role` 테이블 권한과 identity sequence usage 확인. 기준일 2026-07-16 `ready` 버전 1에 상품 2,507행(DC 823·IRP 823·연금저축 861), 861종목 총수익 이력 217,833행 적재.
+- 조회 연결: FastAPI 엔진·챗봇은 `DATABASE_URL`이 있으면 최신 `ready` DB 버전을 사용하고, URL이 없는 개발·테스트 환경에서만 로컬 캐시를 사용한다. DB 오류를 로컬 캐시로 숨기지 않는다.
+- 검증: DB·로컬 상품·이력·출처 불일치 0, DB 정렬 기준 120개 포트폴리오와 확정 캐시 불일치 0, 위험한도 위반 0, 후보 슬리브 누락 0. `/engine/educational-portfolio` 원격 DB E2E HTTP 200·후보 5개·엔진 `.4` 확인.
+- Advisor: ETF 관련 보안 항목은 서버 전용 테이블 3개의 의도된 deny-by-default `RLS Enabled No Policy` INFO뿐이며, ETF 관련 성능 경고는 0건이다. 프로젝트 전체 기존 항목은 보안 INFO 29·WARN 1(유출 비밀번호 보호 비활성화), 성능 INFO 42건이다.
+- 주의: 원격 migration history에는 로컬에 없는 후속 뉴스 마이그레이션과 일부 로컬 파일명과 다른 버전이 이미 존재한다. 이번 작업은 ETF 마이그레이션 1건만 추가했으며 기존 이력을 수정하지 않았다.
+
+### 2026-07-17 14:50 KST
+
+- 작업자/브랜치: Claude, 사용자(이재용) 승인 하 / `feat/etf-portfolio-supabase-integration` / 기준 `main` `a7771a9`.
+- 배경: 교육용 포트폴리오 엔진 입력이 로컬 파일 캐시(`data/cache/`, gitignore)에만 존재해 다른 환경에서 챗봇 운용전략 답변이 불가한 문제를 원격 통합으로 해결하기로 결정(이재용).
+- 신규 migration: `20260717054500_add_etf_portfolio_universe.sql` (`LOCAL-DRAFT`). 테이블 3개 — `etf_dataset_versions`(적재 버전·ready 계약), `etf_universe_products`(계좌별 상품 마스터, payload jsonb), `etf_return_histories`(종목별 253관측 총수익 지수). 원시 수정주가 89.7만 행은 적재하지 않고 파일 원본 보존(무료 티어 500MB 대응, 적재 대상 약 24만 행).
+- 보안: RLS 3/3 활성화, `public`/`anon`/`authenticated` 권한 회수, `service_role`만 부여(기존 내부 테이블 패턴 동일).
+- 검증: `tests/test_schema_contract.py`에 `test_etf_universe_is_server_only_and_versioned` 추가, 16 passed(전체 migration pglast 파싱 포함). `ruff check` 통과.
+- 원격 미적용: 이재용 승인·적재 스크립트 완성 후 적용 예정.
+- 다음 작업: ①적재 스크립트 `scripts/load_portfolio_universe.py` ②`PortfolioUniverseRepository.from_database()` + DB 우선·파일 fallback ③산출물 동등성(120개 포트폴리오)·챗봇 E2E 검증. 스키마는 엔진 입력 계약과 겹치므로 김태형 합의 필요(`계약 변경` PR 표기 예정).
+
+### 2026-07-17 15:05 KST
+
+- 작업자/브랜치: Claude, 이재용 승인 하 / `feat/etf-portfolio-supabase-integration` / 기준 `main` `a7771a9`.
+- 이재용 결정: 실 데이터 수집(수시간·수천 API 호출)은 직접 실행하지 않고 김태형의 기존 검증 캐시를 받는 쪽으로 진행(2026-07-17). 그 사이 적재 스크립트를 완성했다.
+- 신규 코드: `backend/app/etf_universe_database.py`(`load_portfolio_universe`) — 계좌 3종의 `PortfolioUniverseRepository.from_latest_cache` 결과를 그대로 옮긴다. 계좌 간 as_of 불일치는 예외로 차단, 같은 종목이 여러 계좌에서 적격이면 이력을 종목당 1행으로 병합, 적재 원본 파일들의 결합 SHA-256을 `source_sha256`에 기록. `scripts/load_portfolio_universe.py`는 `.env`의 `DATABASE_URL`로 이를 실행하는 얇은 CLI.
+- 검증: `tests/test_etf_universe_database.py` 신규(합성 fixture로 병합·불일치 차단 검증, `psycopg.connect`를 fake 커넥션으로 치환해 실제 DB 없이 SQL 실행 경로 검증) 2 passed. 전체 `uv run pytest` 514 passed, `uv run ruff check .` 통과. **실제 원격 적재는 아직 수행하지 않았다** — 김태형 캐시 파일 수령 전.
+- 다음 작업: 김태형 캐시(`data/cache/returns`·`data/cache/kis/adjusted_prices`·`data/cache/events`) 수령 → 이 스크립트로 실적재 → `PortfolioUniverseRepository.from_database()` + DB 우선·파일 fallback 구현 → 산출물 동등성(120개 포트폴리오)·챗봇 E2E 검증 → 이재용 승인 후 마이그레이션 원격 적용.
 
 ### 2026-07-16 11:35 KST
 

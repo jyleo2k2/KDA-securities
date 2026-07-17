@@ -32,6 +32,9 @@ NEWS_SUMMARY_MIGRATION = next(
 LIFECYCLE_SCENARIOS_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob("*_add_lifecycle_demo_scenarios.sql")
 )
+ETF_UNIVERSE_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob("*_add_etf_portfolio_universe.sql")
+)
 SEED = ROOT / "supabase" / "seed.sql"
 
 
@@ -246,6 +249,34 @@ def test_seed_contains_all_six_demo_scenarios() -> None:
     assert "연금이 멀게 느껴지는 청년층" in sql
     assert "가계지출로 납입이 빠듯한 중년층" in sql
     assert "연금 수령을 시작하는 55세 이상" in sql
+
+
+def test_etf_universe_is_server_only_and_versioned() -> None:
+    sql = ETF_UNIVERSE_MIGRATION.read_text(encoding="utf-8").lower()
+    new_tables = {
+        "etf_dataset_versions",
+        "etf_universe_products",
+        "etf_return_histories",
+    }
+
+    for table in new_tables:
+        assert f"create table public.{table}" in sql
+        assert f"alter table public.{table} enable row level security" in sql
+
+    # 반쪽 적재가 노출되지 않도록 ready 계약을 강제한다.
+    assert "etf_dataset_versions_ready_contract_check" in sql
+    assert "status in ('loading', 'ready')" in sql
+    # 엔진 계약과 동일한 계좌 유형·이력 출처만 허용한다.
+    assert "account_type in ('dc', 'irp', 'pension_savings')" in sql
+    assert "'kis_adjusted_close_plus_kind_cash_distribution'" in sql
+    assert "'krx_close_fallback'" in sql
+    # 내부 테이블: 브라우저 권한 차단, service_role만 부여한다.
+    assert "from public, anon, authenticated" in sql
+    assert "to service_role" in sql
+    assert "etf_dataset_versions_id_seq" in sql
+    assert "grant usage, select on sequence" in sql
+    assert "to authenticated" not in sql
+    assert "drop table" not in sql
 
 
 def test_lifecycle_scenarios_are_additive_mock_data_only() -> None:

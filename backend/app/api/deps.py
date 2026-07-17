@@ -1,6 +1,6 @@
 """Shared dependencies for API routers."""
 
-from functools import lru_cache
+from functools import lru_cache, partial
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
@@ -21,6 +21,7 @@ from ..chat.user_context import DemoUserContextRepository
 from ..database import get_database_pool
 from ..engine.audit import EngineAuditRepository
 from ..engine.models import AccountType
+from ..etf_universe_database import PostgresPortfolioUniverseRepository
 from ..ingestion.embeddings import get_query_embedder
 from ..market_evidence_repository import KrxMarketEvidenceRepository
 from ..portfolio_universe_repository import PortfolioUniverseRepository
@@ -64,10 +65,16 @@ def get_krx_market_evidence_repository() -> KrxMarketEvidenceRepository:
         ) from exc
 
 
-@lru_cache(maxsize=3)
+@lru_cache(maxsize=6)
 def get_portfolio_universe_repository(
     account_type: AccountType,
+    database_url: str = "",
 ) -> PortfolioUniverseRepository:
+    if database_url:
+        return PostgresPortfolioUniverseRepository(
+            database_url,
+            pool=get_database_pool(database_url),
+        ).latest(account_type)
     return PortfolioUniverseRepository.from_latest_cache(account_type)
 
 
@@ -181,7 +188,10 @@ def _chat_service(database_url: str) -> ChatService:
         ),
         disclosures=disclosures,
         news=retrieval,
-        portfolio_universe_loader=get_portfolio_universe_repository,
+        portfolio_universe_loader=partial(
+            get_portfolio_universe_repository,
+            database_url=database_url,
+        ),
     )
 
 
@@ -226,3 +236,4 @@ def warm_chat_dependencies(settings: Settings) -> None:
 def clear_chat_dependencies() -> None:
     _chat_service.cache_clear()
     _chat_narrator.cache_clear()
+    get_portfolio_universe_repository.cache_clear()
