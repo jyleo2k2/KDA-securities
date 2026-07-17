@@ -1,6 +1,8 @@
 """Shared dependencies for API routers."""
 
+import logging
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
@@ -23,10 +25,15 @@ from ..engine.audit import EngineAuditRepository
 from ..engine.models import AccountType
 from ..ingestion.embeddings import get_query_embedder
 from ..market_evidence_repository import KrxMarketEvidenceRepository
-from ..portfolio_universe_repository import PortfolioUniverseRepository
+from ..portfolio_universe_repository import (
+    DEFAULT_RETURN_ROOT,
+    PortfolioUniverseRepository,
+)
 from ..retrieval.disclosures_repository import DisclosureReadRepository
 from ..retrieval.repository import RetrievalRepository
 from ..settings import Settings, get_settings
+
+logger = logging.getLogger(__name__)
 
 
 def _database_url_or_503(settings: Settings, *, detail: str) -> str:
@@ -69,6 +76,17 @@ def get_portfolio_universe_repository(
     account_type: AccountType,
 ) -> PortfolioUniverseRepository:
     return PortfolioUniverseRepository.from_latest_cache(account_type)
+
+
+def portfolio_return_master_readiness(
+    return_root: Path = DEFAULT_RETURN_ROOT,
+) -> dict[AccountType, bool]:
+    return {
+        account_type: bool(
+            list(return_root.glob(f"{account_type.value}_etf_cost_return_*.json"))
+        )
+        for account_type in AccountType
+    }
 
 
 def get_retrieval_repository(
@@ -217,6 +235,18 @@ def get_chat_narrator(
 
 def warm_chat_dependencies(settings: Settings) -> None:
     """Preload the fixed guide-page vectors before the API accepts requests."""
+
+    readiness = portfolio_return_master_readiness()
+    missing_accounts = [
+        account_type.value
+        for account_type, is_ready in readiness.items()
+        if not is_ready
+    ]
+    if missing_accounts:
+        logger.warning(
+            "ETF return masters are unavailable for accounts: %s",
+            ", ".join(missing_accounts),
+        )
 
     embedder = get_query_embedder()
     if embedder is not None:

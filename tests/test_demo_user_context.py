@@ -3,6 +3,7 @@ from decimal import Decimal
 from pathlib import Path
 from uuid import UUID, uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.api.deps import (
@@ -14,14 +15,16 @@ from backend.app.api.deps import (
 )
 from backend.app.auth import require_supabase_user_id
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
+from backend.app.chat.models import ChatIntent, ChatResponse, CompletedSurveyProfile
 from backend.app.chat.repository import SavedChatExchange
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService
 from backend.app.chat.user_context import (
     DemoUserContextRepository,
     DemoUserFinancialContext,
+    apply_demo_context_evidence,
 )
-from backend.app.engine import IncomeBasis
+from backend.app.engine import AccountType, EducationalRiskProfile, IncomeBasis
 from backend.app.main import app
 
 OWNER_ID = UUID("0d3a8c4f-3d6e-4e2e-91a0-7d11a2b71c01")
@@ -160,6 +163,134 @@ def test_repository_normalizes_missing_database_values_to_zero() -> None:
     }
 
 
+def test_authenticated_profile_uses_database_age_and_all_positive_accounts() -> None:
+    profile = CompletedSurveyProfile(
+        account_type=AccountType.IRP,
+        account_types=[AccountType.IRP, AccountType.PENSION_SAVINGS],
+        current_age=30,
+        retirement_start_age=55,
+        risk_profile=EducationalRiskProfile.RISK_NEUTRAL,
+        loss_tolerance_percent=Decimal("10"),
+    )
+
+    personalized = _context().personalize_survey_profile(profile)
+
+    assert personalized is not None
+    assert personalized.current_age == 46
+    assert personalized.account_type == AccountType.DC
+    assert personalized.account_types == [AccountType.DC]
+    assert personalized.risk_profile == EducationalRiskProfile.RISK_NEUTRAL
+    assert personalized.loss_tolerance_percent == Decimal("10")
+
+
+def test_payout_user_is_not_forced_into_accumulation_portfolio_engine() -> None:
+    profile = CompletedSurveyProfile(
+        account_type=AccountType.IRP,
+        current_age=30,
+        retirement_start_age=60,
+        risk_profile=EducationalRiskProfile.STABLE_SEEKING,
+        loss_tolerance_percent=Decimal("10"),
+    )
+    payout = _context().model_copy(update={"representative_age": 60})
+
+    assert payout.personalize_survey_profile(profile) is None
+
+
+@pytest.mark.parametrize(
+    (
+        "nickname",
+        "age",
+        "dc_balance",
+        "irp_balance",
+        "pension_savings_balance",
+        "expected_accounts",
+    ),
+    (
+        ("박준호(가상)", 46, 60_000_000, 0, 0, [AccountType.DC]),
+        (
+            "이서연(가상)",
+            34,
+            0,
+            30_000_000,
+            20_000_000,
+            [AccountType.IRP, AccountType.PENSION_SAVINGS],
+        ),
+        (
+            "정민재(가상)",
+            32,
+            100_000_000,
+            50_000_000,
+            40_000_000,
+            [AccountType.DC, AccountType.IRP, AccountType.PENSION_SAVINGS],
+        ),
+        (
+            "김하린(가상)",
+            29,
+            18_000_000,
+            0,
+            3_600_000,
+            [AccountType.DC, AccountType.PENSION_SAVINGS],
+        ),
+        (
+            "최지훈(가상)",
+            47,
+            65_000_000,
+            12_000_000,
+            9_000_000,
+            [AccountType.DC, AccountType.IRP, AccountType.PENSION_SAVINGS],
+        ),
+        ("윤정희(가상)", 60, 0, 110_000_000, 45_000_000, None),
+    ),
+)
+def test_all_six_demo_users_get_database_account_scope(
+    nickname: str,
+    age: int,
+    dc_balance: int,
+    irp_balance: int,
+    pension_savings_balance: int,
+    expected_accounts: list[AccountType] | None,
+) -> None:
+    profile = CompletedSurveyProfile(
+        account_type=AccountType.IRP,
+        current_age=30,
+        retirement_start_age=60,
+        risk_profile=EducationalRiskProfile.RISK_NEUTRAL,
+        loss_tolerance_percent=Decimal("10"),
+    )
+    context = _context().model_copy(
+        update={
+            "nickname": nickname,
+            "representative_age": age,
+            "dc_balance_krw": Decimal(dc_balance),
+            "irp_balance_krw": Decimal(irp_balance),
+            "pension_savings_balance_krw": Decimal(pension_savings_balance),
+        }
+    )
+
+    personalized = context.personalize_survey_profile(profile)
+
+    if expected_accounts is None:
+        assert personalized is None
+    else:
+        assert personalized is not None
+        assert personalized.current_age == age
+        assert personalized.account_types == expected_accounts
+
+
+def test_zero_default_notice_is_not_added_to_unrelated_unavailable_response() -> None:
+    response = apply_demo_context_evidence(
+        ChatResponse(
+            intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+            answer="ETF 데이터가 준비되지 않았습니다.",
+            data_mode="unavailable",
+        ),
+        _context(),
+    )
+
+    assert not any("0원으로 처리" in item for item in response.limitations)
+    assert not any("가상 목데이터" in item for item in response.limitations)
+
+
 def test_me_endpoint_returns_authenticated_database_context() -> None:
     _override_chat()
     try:
@@ -267,3 +398,38 @@ def test_authenticated_scenario_code_cannot_be_spoofed() -> None:
     payload = response.json()["response"]
     assert payload["scenario_evaluation"]["scenario_code"] == "dc_dormant"
     assert payload["sources"][0]["locator"] == "database://mock-scenarios/current"
+
+
+def test_authenticated_strategy_replaces_fixed_demo_age_and_account_scope() -> None:
+    _override_chat()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat",
+                json={
+                    "message": "내 나이에 맞는 연금 운용 전략을 알려줘",
+                    "survey_profile": {
+                        "account_type": "irp",
+                        "account_types": ["irp", "pension_savings"],
+                        "current_age": 30,
+                        "retirement_start_age": 55,
+                        "risk_profile": "risk_neutral",
+                        "loss_tolerance_percent": 10,
+                    },
+                },
+                headers={
+                    "Authorization": "Bearer test",
+                    "Idempotency-Key": str(uuid4()),
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()["response"]
+    survey = payload["conversation_context"]["survey_profile"]
+    assert survey["current_age"] == 46
+    assert survey["account_type"] == "dc"
+    assert survey["account_types"] == ["dc"]
+    assert "DC형 계좌용 교육 포트폴리오 데이터 저장소" in payload["answer"]
+    assert not any("0원으로 처리" in item for item in payload["limitations"])

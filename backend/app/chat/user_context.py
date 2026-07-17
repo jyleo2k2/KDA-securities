@@ -13,6 +13,7 @@ from psycopg_pool import ConnectionPool
 from pydantic import BaseModel, ConfigDict
 
 from ..engine import (
+    AccountType,
     IncomeBasis,
     IrpDeferredIncomeStatus,
     PensionAccountTaxInput,
@@ -23,6 +24,7 @@ from ..engine.models import SourceChip
 from .models import (
     ChatIntent,
     ChatResponse,
+    CompletedSurveyProfile,
     ConversationContext,
     DataBoundary,
     NumericEvidence,
@@ -64,13 +66,15 @@ class DemoUserFinancialContext(BaseModel):
     defaulted_fields: tuple[str, ...] = ()
 
     def to_pension_tax_input(self) -> PensionTaxScenarioInput:
-        income_amount = (
-            None if self.income_basis == IncomeBasis.UNKNOWN else self.income_amount_krw
+        income_basis = (
+            IncomeBasis.GROSS_SALARY
+            if self.income_basis == IncomeBasis.UNKNOWN
+            else self.income_basis
         )
         return PensionTaxScenarioInput(
             tax_year=self.tax_year,
-            income_basis=self.income_basis,
-            income_amount_krw=income_amount,
+            income_basis=income_basis,
+            income_amount_krw=self.income_amount_krw,
             pension_savings=PensionAccountTaxInput(
                 balance_krw=self.pension_savings_balance_krw,
                 current_year_contribution_krw=(self.pension_savings_contribution_krw),
@@ -81,6 +85,44 @@ class DemoUserFinancialContext(BaseModel):
             ),
             withdrawal_reason=WithdrawalReason.GENERAL,
             irp_deferred_income_status=IrpDeferredIncomeStatus.UNKNOWN,
+        )
+
+    def personalize_survey_profile(
+        self,
+        profile: CompletedSurveyProfile | None,
+    ) -> CompletedSurveyProfile | None:
+        """Apply DB-backed age and account scope to a real survey result.
+
+        Risk profile, loss tolerance, and retirement age remain survey inputs.
+        The accumulation portfolio engine is validated only through age 54, so
+        payout-stage users are not forced into that engine with fabricated data.
+        """
+
+        if profile is None or self.representative_age > 54:
+            return None
+        if profile.retirement_start_age <= self.representative_age:
+            return None
+
+        balances = (
+            (AccountType.DC, self.dc_balance_krw),
+            (AccountType.IRP, self.irp_balance_krw),
+            (AccountType.PENSION_SAVINGS, self.pension_savings_balance_krw),
+        )
+        account_types = [account for account, balance in balances if balance > 0]
+        if not account_types:
+            return None
+        account_type = (
+            profile.account_type
+            if profile.account_type in account_types
+            else account_types[0]
+        )
+        return CompletedSurveyProfile(
+            account_type=account_type,
+            account_types=account_types,
+            current_age=self.representative_age,
+            retirement_start_age=profile.retirement_start_age,
+            risk_profile=profile.risk_profile,
+            loss_tolerance_percent=profile.loss_tolerance_percent,
         )
 
     def answers_directly(self, message: str) -> bool:
@@ -297,6 +339,13 @@ def apply_demo_context_evidence(
     """Relabel server-injected values without changing engine calculations."""
 
     replacement_id = "mock:user_context"
+    original_source_ids = {source.evidence_id for source in response.sources}
+    uses_financial_context = bool(
+        original_source_ids.intersection({"user:pension_tax", replacement_id})
+    )
+    uses_demo_context = uses_financial_context or bool(
+        original_source_ids.intersection({"mock:scenario"})
+    )
     sources = []
     for source in response.sources:
         if source.evidence_id == "user:pension_tax":
@@ -354,6 +403,17 @@ def apply_demo_context_evidence(
         )
         for section in response.sections
     ]
+    visualizations = [
+        visualization.model_copy(
+            update={
+                "evidence_ids": [
+                    replacement_id if item == "user:pension_tax" else item
+                    for item in visualization.evidence_ids
+                ]
+            }
+        )
+        for visualization in response.visualizations
+    ]
     scenario_evaluation = response.scenario_evaluation
     if scenario_evaluation is not None:
         scenario_evaluation = scenario_evaluation.model_copy(
@@ -368,9 +428,9 @@ def apply_demo_context_evidence(
 
     limitations = list(response.limitations)
     mock_notice = "로그인한 데모 사용자의 가상 목데이터를 사용했습니다."
-    if mock_notice not in limitations:
+    if uses_demo_context and mock_notice not in limitations:
         limitations.append(mock_notice)
-    if context.defaulted_fields:
+    if uses_financial_context and context.defaulted_fields:
         limitations.append(
             "DB에서 가져오지 못한 금액은 승인된 데모 기준에 따라 0원으로 처리했습니다."
         )
@@ -385,6 +445,7 @@ def apply_demo_context_evidence(
             "sources": sources,
             "numeric_evidence": numeric,
             "sections": sections,
+            "visualizations": visualizations,
             "scenario_evaluation": scenario_evaluation,
             "limitations": limitations,
         }

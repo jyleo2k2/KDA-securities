@@ -406,3 +406,33 @@ def test_mvp_demo_profile_builds_separate_irp_and_pension_savings_plans() -> Non
     )
     assert response.conversation_context is not None
     assert response.conversation_context.survey_profile == survey
+
+
+def test_missing_return_master_names_each_unavailable_account() -> None:
+    def missing(account_type: AccountType):
+        raise FileNotFoundError(
+            f"no cost-return master for account {account_type.value}"
+        )
+
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        portfolio_universe_loader=missing,
+    )
+    survey = CompletedSurveyProfile(
+        account_type=AccountType.IRP,
+        account_types=[AccountType.IRP, AccountType.PENSION_SAVINGS],
+        current_age=30,
+        retirement_start_age=55,
+        risk_profile=EducationalRiskProfile.RISK_NEUTRAL,
+        loss_tolerance_percent=Decimal("10"),
+    )
+
+    response = service.ask(
+        ChatRequest(message="내 ETF 포트폴리오를 알려줘", survey_profile=survey)
+    )
+
+    assert response.data_mode == "unavailable"
+    assert "IRP 계좌용 ETF 비용·수익률 마스터" in response.answer
+    assert "연금저축펀드 계좌용 ETF 비용·수익률 마스터" in response.answer
+    assert "0원" not in response.answer

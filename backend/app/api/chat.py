@@ -62,10 +62,33 @@ def _authenticated_request(
 ) -> ChatRequest:
     payload = request.model_dump(exclude={"session_id"})
     if context is not None:
+        survey_profile = context.personalize_survey_profile(request.survey_profile)
+        conversation_context = request.conversation_context
+        if conversation_context is not None:
+            conversation_survey = context.personalize_survey_profile(
+                conversation_context.survey_profile
+            )
+            conversation_context = conversation_context.model_copy(
+                update={
+                    "account_type": (
+                        conversation_survey.account_type
+                        if conversation_survey is not None
+                        else None
+                    ),
+                    "survey_profile": conversation_survey,
+                    "selected_risk_profile": (
+                        conversation_context.selected_risk_profile
+                        if conversation_survey is not None
+                        else None
+                    ),
+                }
+            )
         payload.update(
             {
                 "scenario_code": context.scenario_code,
                 "pension_tax": context.to_pension_tax_input(),
+                "survey_profile": survey_profile,
+                "conversation_context": conversation_context,
             }
         )
     return ChatRequest.model_validate(payload)
