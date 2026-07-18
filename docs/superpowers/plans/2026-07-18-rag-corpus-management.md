@@ -1,6 +1,6 @@
 # RAG Corpus Management Implementation Plan
 
-> 상태: 구현·원격 반영·PR 병합 완료(2026-07-18, PR #56). 승인 문서 10개·활성 청크 41개·검색 품질 18/18·CI 통과를 확인했다. 세션 전용 기록이 남아 있어 전용 worktree 정리만 보류한다.
+> 상태: 구현·원격 반영·PR 병합·전용 worktree 정리 완료. 최신 main `8075510` 기준 원격 검색 18/18·Hit@1/Hit@5/MRR@5 1.000을 2026-07-19 재확인했다.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -112,4 +112,4 @@
 - [x] **Step 5: Install/use the existing embeddings group** and run `uv run --group embeddings python scripts/embed_knowledge_chunks.py`.
 - [x] **Step 6: Measure remote quality** with `uv run --group embeddings python scripts/measure_search_quality.py`.
 - [x] **Step 7: Push and create PR** with candidate decisions, governance policy, test evidence, remote counts, and rollback note.
-- [ ] **Step 8: Remove the clean worktree** with `git worktree remove C:\dev\kda-rag-corpus` after session-only 상태·handoff 문서가 더 이상 필요하지 않을 때 수행한다.
+- [x] **Step 8: Archive session-only 상태·handoff 문서를 Codex 로컬 메모리에 보관하고 `C:\dev\kda-rag-corpus` worktree를 제거했다(2026-07-19).
