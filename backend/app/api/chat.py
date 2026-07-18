@@ -18,7 +18,7 @@ from ..auth import require_supabase_user_id
 from ..chat import ChatRequest, ChatResponse, ChatService
 from ..chat.heroes import DemoHeroPortfolio, build_demo_heroes
 from ..chat.models import ChatCapabilities, ChatIntent, ScenarioSummary
-from ..chat.narrator import ClaudeNarrator
+from ..chat.narrator import NARRATABLE_INTENTS, ClaudeNarrator
 from ..chat.query_planner import BlockedReason, QueryPlan
 from ..chat.repository import (
     ChatRepository,
@@ -140,6 +140,7 @@ def _log_stream_latency(
     intent: ChatIntent,
     answer_started_at: float,
     narration_started_at: float | None,
+    first_delta_at: float | None,
     started_at: float,
 ) -> None:
     finished_at = perf_counter()
@@ -148,10 +149,16 @@ def _log_stream_latency(
         finished_at - narration_started_at if narration_started_at is not None else 0
     )
     logger.info(
-        "chat_stream_latency intent=%s answer_ms=%d narration_ms=%d total_ms=%d",
+        "chat_stream_latency intent=%s answer_ms=%d narration_ms=%d "
+        "ttfa_ms=%d total_ms=%d",
         intent,
         answer_ms * 1000,
         narration_ms * 1000,
+        (
+            (first_delta_at - started_at) * 1000
+            if first_delta_at is not None
+            else -1
+        ),
         (finished_at - started_at) * 1000,
     )
 
@@ -171,6 +178,16 @@ async def _stream_answer(
     except _DATABASE_ERRORS:
         yield _sse("error", {"detail": "Chat data source is unavailable"})
         return
+    stream_before_narration = (
+        narrator is not None
+        and response.intent in NARRATABLE_INTENTS
+        and bool(response.sources)
+    )
+    first_delta_at = None
+    if stream_before_narration:
+        first_delta_at = perf_counter()
+        for event in _answer_delta_events(response.answer):
+            yield event
     if narrator is not None:
         yield _sse("phase", {"message": "검증된 설명을 생성하고 있습니다."})
         narration_started_at = perf_counter()
@@ -180,17 +197,22 @@ async def _stream_answer(
             pension_tax_input=request.pension_tax,
             pension_tax_message=request.message,
         )
+        if response.narration_mode == "claude_verified":
+            yield _sse("narration_update", {"answer": response.answer})
     else:
         narration_started_at = None
+    yield _sse("phase", {"message": "답변 검증을 완료했습니다."})
+    if not stream_before_narration:
+        first_delta_at = perf_counter()
+        for event in _answer_delta_events(response.answer):
+            yield event
     _log_stream_latency(
         intent=response.intent,
         answer_started_at=answer_started_at,
         narration_started_at=narration_started_at,
+        first_delta_at=first_delta_at,
         started_at=started_at,
     )
-    yield _sse("phase", {"message": "답변 검증을 완료했습니다."})
-    for event in _answer_delta_events(response.answer):
-        yield event
     yield _sse("response", {"response": response.model_dump(mode="json")})
 
 
@@ -357,6 +379,17 @@ async def chat_authenticated_stream(
         except _DATABASE_ERRORS:
             yield _sse("error", {"detail": "Chat data source is unavailable"})
             return
+        stream_before_narration = (
+            narrator is not None
+            and allow_narration
+            and response.intent in NARRATABLE_INTENTS
+            and bool(response.sources)
+        )
+        first_delta_at = None
+        if stream_before_narration:
+            first_delta_at = perf_counter()
+            for event in _answer_delta_events(response.answer):
+                yield event
         if narrator is not None and allow_narration:
             yield _sse("phase", {"message": "검증된 설명을 생성하고 있습니다."})
             narration_started_at = perf_counter()
@@ -366,18 +399,22 @@ async def chat_authenticated_stream(
                 pension_tax_input=chat_request.pension_tax,
                 pension_tax_message=chat_request.message,
             )
+            if response.narration_mode == "claude_verified":
+                yield _sse("narration_update", {"answer": response.answer})
         else:
             narration_started_at = None
-        _log_stream_latency(
-            intent=response.intent,
-            answer_started_at=answer_started_at,
-            narration_started_at=narration_started_at,
-            started_at=started_at,
-        )
         if response.intent == ChatIntent.OUT_OF_SCOPE:
             yield _sse("phase", {"message": "답변 검증을 완료했습니다."})
+            first_delta_at = perf_counter()
             for event in _answer_delta_events(response.answer):
                 yield event
+            _log_stream_latency(
+                intent=response.intent,
+                answer_started_at=answer_started_at,
+                narration_started_at=narration_started_at,
+                first_delta_at=first_delta_at,
+                started_at=started_at,
+            )
             yield _sse(
                 "response",
                 {
@@ -412,8 +449,17 @@ async def chat_authenticated_stream(
             return
         final_response = saved.response or response
         yield _sse("phase", {"message": "답변 검증을 완료했습니다."})
-        for event in _answer_delta_events(final_response.answer):
-            yield event
+        if not stream_before_narration:
+            first_delta_at = perf_counter()
+            for event in _answer_delta_events(final_response.answer):
+                yield event
+        _log_stream_latency(
+            intent=final_response.intent,
+            answer_started_at=answer_started_at,
+            narration_started_at=narration_started_at,
+            first_delta_at=first_delta_at,
+            started_at=started_at,
+        )
         yield _sse(
             "response",
             {
