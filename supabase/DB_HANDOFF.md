@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-19 00:16 KST
-> 확인 기준: `codex/supabase-column-comments` / `origin/main` `dc94f0d` / Supabase MCP 읽기 재검증
+> 최종 확인: 2026-07-19 01:20 KST
+> 확인 기준: `codex/supabase-current-state-docs` / `origin/main` `c7e097f` / Supabase MCP·원격 FastAPI E2E 재검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -30,12 +30,12 @@
 
 ## 3. 현재 원격 상태
 
-2026-07-19 KST에 연결된 Supabase 프로젝트를 읽기 전용으로 재확인했다.
+2026-07-19 KST에 승인된 COMMENT migration을 적용한 뒤 연결된 Supabase 프로젝트를 읽기 전용으로 재확인했다.
 
 | 항목 | 원격 상태 |
 |---|---|
 | public 기본 테이블 | 43개 |
-| 적용 마이그레이션 | 15개(`20260715005435` ~ `20260718131917`) |
+| 적용 마이그레이션 | 16개(`20260715005435` ~ `20260718154819`) |
 | RLS | 43/43 활성화 |
 | `anon` 테이블 권한 | 없음 |
 | `authenticated` 권한 | 사용자 소유 엔진 결과·채팅 관련 5개 테이블 |
@@ -43,6 +43,7 @@
 | `knowledge_chunks.embedding` 타입 | `vector(1024)` |
 | HNSW 인덱스 | `knowledge_chunks_embedding_hnsw_idx` 존재 |
 | PostgreSQL / 프로젝트 상태 | 17.6 / `ACTIVE_HEALTHY` |
+| Supabase MCP 현재 연결 | 마지막 정리 조회에서 `401 token_revoked`; 재인증 필요 |
 
 ### 원격 주요 행 수
 
@@ -61,10 +62,12 @@
 | `benchmark_mock_users` | 10,000 |
 | `benchmark_mock_accounts` | 16,900 |
 | `benchmark_mock_holdings` | 79,381 |
+| `profile_question_sets` / `profile_questions` / `profile_question_options` | 1 / 6 / 30 |
+| `pension_accounts` / `account_snapshots` / `account_cash_flows` / `financial_products` / `account_holding_snapshots` | 모두 0 |
 
 원격에서 직접 수정된 시나리오 설명 5건과 대표 고객 납입액 5건은 `20260718131917_sync_modified_mock_data.sql`로 migration history에 정식 반영했다. 적용 전후 값과 `updated_at`이 모두 같아 데이터 재기록 없이 이력만 정상 추가됐음을 확인했다.
 
-원격 컬럼 설명 3건(`pension_savings_provider_stats.fee_rate_1y`, `retirement_provider_stats.response_division`, `knowledge_chunks.embedding`)은 U+FFFD 대체문자를 포함한 한글 손상 상태다. `20260718151030_repair_corrupted_column_comments.sql`은 로컬 검증만 완료했으며 원격 미적용이다.
+원격 컬럼 설명 3건(`pension_savings_provider_stats.fee_rate_1y`, `retirement_provider_stats.response_division`, `knowledge_chunks.embedding`)은 `20260718154819_repair_corrupted_column_comments.sql`로 교정했다. 실제 설명을 재조회해 목표 문구와 일치하고 U+FFFD 대체문자가 없음을 확인했다. 테이블·컬럼·데이터·RLS·GRANT는 바뀌지 않았다.
 
 ### 현재 43개 테이블의 역할
 
@@ -82,12 +85,12 @@
 
 ## 4. 현재 작업트리의 진행 중 작업
 
-`codex/supabase-column-comments` 브랜치의 `C:\dev\kda-supabase-comments` 전용 worktree에서 컬럼 설명 교정과 DB 세션 런북을 작업한다.
+`codex/supabase-current-state-docs` 브랜치의 `C:\dev\kda-supabase-comments` 전용 worktree에서 원격 적용 후 버전 정합화, 런타임 E2E, 문서 최신화를 작업한다.
 
-- `20260718151030_repair_corrupted_column_comments.sql`은 `COMMENT ON COLUMN` 3문만 포함한다.
-- 테이블·컬럼·데이터·RLS·GRANT는 변경하지 않는다.
+- MCP가 실행 시각 버전 `20260718154819`를 부여해 로컬 파일명을 같은 버전으로 정합화했다. SQL SHA-256 `DF0E4E...25E6925DF`는 변경 전후 같다.
+- `20260718154819_repair_corrupted_column_comments.sql`은 `COMMENT ON COLUMN` 3문만 포함하며 이미 원격 적용됐다.
 - [`DB_SESSION_GUIDE.md`](./DB_SESSION_GUIDE.md)는 고정 운영 절차, 이 문서는 동적 상태 SSOT로 분리한다.
-- 원격 적용과 PR 머지는 이재용 승인 전까지 금지한다.
+- 원격 migration 적용 승인은 이번 요청으로 충족했지만 PR 머지는 별도 명시적 승인 전까지 금지한다.
 
 ### 임베딩 마이그레이션 주의사항
 
@@ -156,7 +159,7 @@ PDF는 사용자·투자성향·연금계좌·보유상품·커뮤니티를 분�
 
 ### 이관
 
-- 세 시나리오, 6개 계좌, 10개 보유내역을 신규 공통 계좌 구조로 backfill한다.
+- 현재 6개 시나리오, 13개 계좌, 26개 보유내역을 신규 공통 계좌 구조로 backfill한다.
 - 기존 `mock_accounts.balance_krw`와 holdings 합계가 일치하는지 마이그레이션 전후에 검증한다.
 - 목상품은 synthetic 출처를 명확히 남기거나 product FK가 아직 없을 때 raw instrument name을 보존한다.
 - 필수 reference data와 backfill SQL은 원격에도 적용되도록 마이그레이션에 포함하고, 로컬 reset용 `seed.sql`도 멱등하게 맞춘다.
@@ -170,16 +173,14 @@ PDF는 사용자·투자성향·연금계좌·보유상품·커뮤니티를 분�
 
 ## 8. 백엔드 연동 계획
 
-현재 `/engine/mock-scenario/{scenario_code}`와 챗봇은 `LocalScenarioRepository`를 통해 `data/mock/chatbot_scenarios.json`을 읽는다.
+현재 챗봇은 `DATABASE_URL`이 있으면 `PostgresScenarioRepository`, 없으면 `LocalScenarioRepository`를 사용한다. `/engine/mock-scenario/{scenario_code}`는 아직 로컬 저장소 경로다.
 
-1. `ScenarioRepository` 프로토콜을 정의한다.
-2. `PostgresScenarioRepository`를 추가해 신규 DB 행을 기존 `ScenarioPortfolioInput`으로 변환한다.
-3. API와 챗 서비스에서 저장소를 직접 생성하지 않고 dependency injection으로 받는다.
-4. DB 연결 시 Postgres 저장소를 사용하고, DB 미연결 개발 환경에서는 `LocalScenarioRepository`를 사용한다.
-5. 사용자 계좌 조회 저장소는 DB 행을 `AccountInput`·`AggregationInput`으로 변환한다.
-6. 성향 저장 API는 입력을 `ProfileSurveyInput`으로 검증한 뒤 규칙 엔진 결과와 버전을 저장한다.
-7. 규칙 엔진은 순수 함수로 유지하고 Supabase 의존성을 추가하지 않는다.
-8. 계산 결과·규칙·출처 연결은 기존 `engine_runs`·`engine_run_evidence`를 재사용한다.
+1. 완료: `ScenarioRepository` 프로토콜, `PostgresScenarioRepository`, dependency injection, DB/로컬 선택 경계와 원격 E2E.
+2. 후속: `/engine/mock-scenario`의 DB 전환 여부를 결정한다.
+3. 후속: 사용자 계좌 조회 저장소가 DB 행을 `AccountInput`·`AggregationInput`으로 변환한다.
+4. 후속: 성향 저장 API가 입력을 `ProfileSurveyInput`으로 검증한 뒤 규칙 엔진 결과와 버전을 저장한다.
+5. 규칙 엔진은 순수 함수로 유지하고 Supabase 의존성을 추가하지 않는다.
+6. 계산 결과·규칙·출처 연결은 기존 `engine_runs`·`engine_run_evidence`를 재사용한다.
 
 공유 REST·엔진 I/O·상품 테이블 계약을 바꾸는 PR에는 `계약 변경`을 명시하고 관련 담당자의 합의를 받는다.
 
@@ -188,7 +189,7 @@ PDF는 사용자·투자성향·연금계좌·보유상품·커뮤니티를 분�
 1. 작업 시작 시 최신 `main`, dirty 파일, 원격 migration history를 확인한다.
 2. Supabase 최신 changelog와 관련 공식 문서를 확인한다.
 3. 로컬 전역 CLI가 없으면 `npx.cmd --yes supabase`를 사용하고 실제 명령 도움말을 확인한다.
-4. 새 마이그레이션 파일은 CLI의 `supabase migration new <name>`으로 생성한다. 적용된 다섯 마이그레이션은 수정하지 않는다.
+4. 새 마이그레이션 파일은 CLI의 `supabase migration new <name>`으로 생성한다. 원격 이력에 존재하는 적용 완료 마이그레이션은 수정하지 않는다.
 5. 첫 PR은 additive DDL, 인덱스, RLS, GRANT, reference seed만 포함한다.
 6. backfill은 사전 건수·합계 기록, 트랜잭션, 사후 동등성 검증을 포함한다.
 7. 저장소를 dual-read 또는 fallback 방식으로 연결하고 기존·신규 결과를 비교한다.
@@ -223,7 +224,7 @@ uv run ruff check .
 
 - 모든 migration과 seed를 UTF-8로 읽고 SQL 구문 검사를 통과한다.
 - 신규 public 테이블마다 RLS와 의도한 GRANT가 계약 테스트에 존재한다.
-- 3개 목시나리오의 계좌 합계, 위험자산 비율, 한도 판정, 자산군 비중이 이전 결과와 동일하다.
+- 승인된 목시나리오 backfill의 계좌 합계, 위험자산 비율, 한도 판정, 자산군 비중이 이전 결과와 동일하다.
 - 5단계 성향 코드와 현재 6개 질문 코드가 Python 모델·seed·DB CHECK에서 동일하다.
 - 사용자 A가 사용자 B의 프로필·계좌·진단을 읽거나 변경할 수 없는지 검증한다.
 - 수익률 계산은 현금흐름 전후 케이스를 포함한다.
@@ -232,7 +233,7 @@ uv run ruff check .
 
 - migration history에 승인된 버전만 존재한다.
 - RLS, role별 GRANT, 정책 predicate, FK, CHECK, unique index를 카탈로그에서 재검증한다.
-- backfill 전후 3/6/10 건수와 금액 합계가 일치한다.
+- backfill 전후 승인된 목표 건수와 금액 합계가 일치한다.
 - FastAPI를 통한 Auth 사용자 경로와 목시나리오 fallback을 각각 E2E 검증한다.
 - `supabase db advisors` 또는 MCP advisors 결과의 보안·성능 경고를 검토한다.
 
@@ -241,17 +242,20 @@ uv run ruff check .
 | ID | 작업 | 상태 | 완료 조건 | 다음 행동 |
 |---|---|---|---|---|
 | DB-00 | BGE-M3 1024차원·HNSW 마이그레이션 | `REMOTE-APPLIED` | 원격 1024차원·HNSW·migration history 확인 | 적용 파일 수정 금지 |
-| DB-01 | 사용자·성향·계좌 스키마 승인 | `LOCAL-VERIFIED` | `user_profiles`, 현금흐름 포함, 커뮤니티 제외, 매핑 보류 확정 | PR 리뷰 |
+| DB-01 | 사용자·성향·계좌 스키마 승인 | `REMOTE-APPLIED` | `user_profiles`, 현금흐름 포함, 커뮤니티 제외, 매핑 보류 계약이 원격 스키마에 반영 | 적용 파일 수정 금지 |
 | DB-02 | Additive domain migration | `REMOTE-APPLIED` | `20260716001737`, 11개 테이블·RLS·정책·권한·행 수 재검증 | 적용 파일 수정 금지 |
 | DB-02A | 성향 답변 복합 FK 인덱스 | `REMOTE-APPLIED` | `(option_id, question_id)` covering index·Advisor 미인덱스 FK 0건 | 적용 파일 수정 금지 |
-| DB-03 | 문항·목계좌 backfill | `LOCAL-DRAFT` | 3/6/10 및 금액·엔진 결과 동등 | 별도 migration 작성 |
-| DB-03A | 생애주기 대표 고객·Auth 준비 | `LOCAL-DRAFT` | 시나리오 6·계좌 13·보유 26, Auth 6개 로그인 검증 | PR·팀장 승인 후 원격 적용 |
+| DB-03 | 공통 계좌 구조 backfill | `LOCAL-DRAFT` | 기존 6/13/26을 `pension_accounts`·snapshot·holding 구조로 이관하고 금액·엔진 결과 동등 | 별도 additive migration·계약 테스트 작성 |
+| DB-03A | 생애주기 대표 고객·Auth 준비 | `REMOTE-APPLIED` | 시나리오 6·계좌 13·보유 26, synthetic demo Auth 사용자 6개 존재 | 데모 로그인 smoke는 다음 인증 가능 세션에서 재검증 |
 | DB-03B | 원격 직접 수정 목데이터 Git 동기화 | `REMOTE-APPLIED` | `20260718131917`, 시나리오 설명 5건·대표 고객 납입액 5건 일치·재적용 시 무변경 확인 | 적용 파일 수정 금지 |
-| DB-04 | Postgres repository·API 연결 | `LOCAL-DRAFT` | DB 우선·JSON fallback·E2E 통과 | DB-03 후 구현 |
+| DB-04 | 챗봇 Postgres scenario repository 연결 | `LOCAL-VERIFIED` | DB 우선·JSON fallback과 원격 채팅 저장·replay E2E 통과 | `/engine/mock-scenario` DB 전환 여부 별도 결정 |
+| DB-04A | 사용자 연금계좌 repository·API 연결 | `LOCAL-DRAFT` | 신규 공통 계좌 구조 조회·Auth 소유권·엔진 입력 변환 E2E | DB-03 backfill 후 구현 |
 | DB-05 | 기존 mock account tables 정리 | `BLOCKED` | 코드·SQL 참조 0, 별도 승인·복구 계획 | DB-04 안정화 전 삭제 금지 |
 | DB-06 | 커뮤니티 리뷰 | `BLOCKED` | 포트폴리오 FK·RLS·신고·보존 정책 승인 | 핵심 계좌 연동 후 검토 |
 | DB-07 | ETF 포트폴리오 유니버스 스키마·조회 연결 | `REMOTE-APPLIED` | `20260717054500`, 상품 2,507행·이력 217,833행·RLS/권한·120개 동등성·API E2E 확인 | 적용 파일 수정 금지, 다음 데이터 버전 적재 시 ready 전환 계약 유지 |
-| DB-08 | 손상된 컬럼 설명 3건 교정 | `LOCAL-VERIFIED` | `20260718151030`, COMMENT 3문 전용·계약/전체 회귀 통과 | 이재용 승인 후 원격 적용·실제 설명 재조회 |
+| DB-08 | 손상된 컬럼 설명 3건 교정 | `REMOTE-APPLIED` | `20260718154819`, COMMENT 3문 전용·실제 설명·불변식 재조회 | 적용 파일 수정 금지 |
+| DB-09 | Auth 유출 비밀번호 보호 | `BLOCKED` | Security Advisor의 `auth_leaked_password_protection` WARN 제거 | Supabase Dashboard 또는 CLI 로그인 후 `password_hibp_enabled` 활성화·Advisor 재조회 |
+| DB-10 | main 원격 DB 런타임 회귀 | `LOCAL-VERIFIED` | Auth/RLS·채팅 persist/replay·RAG·뉴스·공시·ETF·NAVER rollback-only SQL E2E 통과 | main 변경 시 재실행 |
 
 ## 13. 미결정 사항
 
@@ -264,6 +268,19 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-19 01:20 KST
+
+- 작업자/브랜치/기준: Codex / `codex/supabase-current-state-docs` / `origin/main` `c7e097f`; PR #55·#57·#58은 모두 MERGED이고 각 backend/frontend CI가 통과했다. main의 최신 추가 커밋은 세션 하네스 문서·설정이며 DB/backend 변경은 없다.
+- 시작·격리 확인: 세션 시작 시 지정 경로의 MEMORY는 확인 불가였으나 종료 전 생성된 파일을 다시 읽어 RAG PR #56 완료 기록만 있음을 확인했다. 원래 작업 폴더는 다른 세션의 `harness/session-md`이며 clean 상태이고 수정·stash·reset하지 않았다.
+- 원격 적용: 승인된 COMMENT 전용 migration을 적용했다. MCP가 `20260718154819_repair_corrupted_column_comments`를 기록했으며, 로컬 파일명도 SQL SHA-256을 보존한 채 같은 버전으로 정합화했다. `migration repair`, `db reset`, destructive SQL은 사용하지 않았다.
+- 원격 재검증: 현재 branch의 migration 16개와 원격 16개는 이름·버전이 1:1로 일치한다. public 테이블 43개·RLS 43/43, 권한 `anon` 0·`authenticated` 5·`service_role` 43이다. 교정한 설명 3건은 목표 문구와 정확히 같고 U+FFFD가 없다. COMMENT migration statement count는 1, legacy BGE-M3 migration은 0이다. 공시 88/126, 지식 10/45, 뉴스 15, 목데이터 6/13/26, ETF 2,507/217,833은 적용 전과 같다.
+- 런타임 E2E: `scripts/verify_auth_rls_e2e.py`가 Auth 두 사용자 RLS 격리, 채팅 저장·idempotency replay, RAG·뉴스·공시·ETF API, rollback-only NAVER SQL을 실제 원격 DB에서 통과했다. 종료 후 임시 Auth 사용자·임시 제목 세션·고아 세션은 각각 0건이다.
+- 연결 상태: 적용·migration/RLS/GRANT/행 수/Advisor 조회까지 Supabase MCP가 정상 동작했으나, 최신 main rebase 후 마지막 cleanup SELECT에서 OAuth `401 token_revoked`가 발생했다. 시크릿을 출력하지 않는 직접 DB `SELECT`로 임시 Auth 사용자 0·임시 세션 0·고아 세션 0·`ingestion_runs` 37을 대체 재확인했다.
+- Advisor: 보안 INFO 29는 클라이언트 권한이 없는 서버 전용 테이블의 의도된 deny-by-default 상태다. WARN 1은 Auth 유출 비밀번호 보호 비활성화다. 성능 INFO 39는 미사용 인덱스이며 이번 COMMENT 변경과 무관하다.
+- blocker: Supabase Dashboard가 로그인 화면이고 로컬 CLI도 access token이 없어 `password_hibp_enabled`를 변경할 수 없다. 자격 증명을 요청·출력하지 않고 DB-09를 `BLOCKED`로 유지한다.
+- 로컬 검증: 계약 테스트 19건, 전체 pytest 612건(기존 DeprecationWarning 1건), Ruff, `git diff --check`, `supabase/AGENTS.md`·`CLAUDE.md` 동일성 검사가 모두 통과했다.
+- 다음 작업: branch를 push하고 Draft PR로 반영한다. 이후 Supabase MCP 또는 Dashboard/CLI를 재인증해 DB-09를 처리한다. PR 머지는 이재용의 별도 명시적 승인 전까지 금지한다.
 
 ### 2026-07-19 00:11 KST
 
