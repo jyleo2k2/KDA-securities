@@ -176,6 +176,27 @@ def test_chat_idempotency_is_owner_scoped_and_denies_browser_access() -> None:
     assert "using (false)" in policy_sql
 
 
+def test_chat_session_delete_is_owner_scoped_and_cascades_children() -> None:
+    sql = MIGRATION.read_text(encoding="utf-8").lower()
+    idempotency_sql = IDEMPOTENCY_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "create policy chat_sessions_delete_own" in sql
+    assert "for delete to authenticated" in sql
+    assert "using (owner_id = (select auth.uid()))" in sql
+    assert (
+        "session_id uuid not null references public.chat_sessions(id) "
+        "on delete cascade"
+    ) in sql
+    assert (
+        "message_id uuid not null references public.chat_messages(id) "
+        "on delete cascade"
+    ) in sql
+    assert "references public.chat_sessions(id) on delete cascade" in idempotency_sql
+    assert idempotency_sql.count(
+        "references public.chat_messages(id) on delete cascade"
+    ) == 2
+
+
 def test_all_migrations_parse_as_postgres_sql() -> None:
     for migration in sorted((ROOT / "supabase" / "migrations").glob("*.sql")):
         parse_sql(migration.read_text(encoding="utf-8"))

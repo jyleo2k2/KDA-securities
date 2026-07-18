@@ -46,8 +46,12 @@ from .models import (
     extract_numeric_claims,
 )
 from .narrator import contains_unsafe_financial_claim
+from .pension_account_overview import (
+    build_deferred_pension_topic_response,
+    build_pension_account_overview_response,
+)
 from .pension_tax_parser import resolve_pension_tax_inputs
-from .query_planner import BlockedReason, QueryPlan, plan_question
+from .query_planner import AccountRuleTopic, BlockedReason, QueryPlan, plan_question
 from .routing import IntentRouter, NewsFollowUp, NewsFollowUpAction
 from .scenarios import ScenarioRepository
 from .tools import (
@@ -925,7 +929,17 @@ class ChatService:
                 account_type = resolved_plan.account_types[0]
                 response = self._disclosure_response(request, account_type)
             elif resolved_plan.intent == ChatIntent.ACCOUNT_RULE:
-                response = self._account_rule_response(request, resolved_plan)
+                if (
+                    resolved_plan.account_rule_topic
+                    == AccountRuleTopic.PENSION_ACCOUNT_OVERVIEW
+                ):
+                    response = build_pension_account_overview_response()
+                elif resolved_plan.account_rule_topic is not None:
+                    response = build_deferred_pension_topic_response(
+                        resolved_plan.account_rule_topic
+                    )
+                else:
+                    response = self._account_rule_response(request, resolved_plan)
             else:
                 response = self._blocked_response(BlockedReason.UNSUPPORTED)
         response = self._with_context(

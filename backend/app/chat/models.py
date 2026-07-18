@@ -109,6 +109,14 @@ class SectionKind(StrEnum):
     LIMITATION = "limitation"
 
 
+class AnswerBlockKind(StrEnum):
+    CALLOUT = "callout"
+    PARAGRAPH = "paragraph"
+    BULLETS = "bullets"
+    TABLE = "table"
+    FORMULA = "formula"
+
+
 class VisualizationKind(StrEnum):
     ASSET_ALLOCATION = "asset_allocation"
     RISK_CAP = "risk_cap"
@@ -240,6 +248,41 @@ class NumericEvidence(BaseModel):
     basis: str
 
 
+class AnswerBlock(BaseModel):
+    """Optional rich content for answers that need more than one paragraph."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: AnswerBlockKind
+    title: str | None = None
+    text: str | None = None
+    items: list[str] = Field(default_factory=list)
+    headers: list[str] = Field(default_factory=list)
+    rows: list[list[str]] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_block_shape(self) -> "AnswerBlock":
+        if self.kind in {
+            AnswerBlockKind.CALLOUT,
+            AnswerBlockKind.PARAGRAPH,
+            AnswerBlockKind.FORMULA,
+        } and not (self.text and self.text.strip()):
+            raise ValueError(f"{self.kind.value} block requires text")
+        if self.kind == AnswerBlockKind.BULLETS and not self.items:
+            raise ValueError("bullets block requires at least one item")
+        if self.kind == AnswerBlockKind.TABLE:
+            if not self.headers or not self.rows:
+                raise ValueError("table block requires headers and rows")
+            if any(len(row) != len(self.headers) for row in self.rows):
+                raise ValueError("table rows must match the header width")
+        return self
+
+    def plain_text(self) -> str:
+        parts = [self.title or "", self.text or "", *self.items, *self.headers]
+        parts.extend(cell for row in self.rows for cell in row)
+        return "\n".join(part for part in parts if part)
+
+
 class AnswerSection(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -247,6 +290,17 @@ class AnswerSection(BaseModel):
     title: str
     content: str
     evidence_ids: list[str] = Field(default_factory=list)
+    blocks: list[AnswerBlock] = Field(default_factory=list)
+
+    def plain_text(self) -> str:
+        return "\n".join(
+            part
+            for part in (
+                self.content,
+                *(block.plain_text() for block in self.blocks),
+            )
+            if part
+        )
 
 
 class ChatNewsItem(BaseModel):
@@ -324,6 +378,7 @@ class ChatResponse(BaseModel):
     # Claude 내레이터의 thinking 요약(검증 답변을 어떻게 풀어썼는지의 근거 설명).
     # 새 숫자가 감지되면 본문과 달리 이 필드만 생략한다.
     narration_reasoning: str | None = None
+    salutation: str | None = Field(default=None, max_length=60)
     sections: list[AnswerSection] = Field(default_factory=list)
     news_items: list[ChatNewsItem] = Field(default_factory=list)
     visualizations: list[ChatVisualization] = Field(default_factory=list)
@@ -375,7 +430,7 @@ class ChatResponse(BaseModel):
             # than generated claims. Do not duplicate every excerpt value as a UI card.
             if not is_verified_excerpt:
                 section_claims.append(
-                    (section, extract_numeric_claims(section.content))
+                    (section, extract_numeric_claims(section.plain_text()))
                 )
         numeric_claims = answer_claims.union(
             *(claims for _, claims in section_claims)

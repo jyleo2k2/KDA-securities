@@ -506,6 +506,11 @@ class ClaudeNarrator:
         pension_tax_input: PensionTaxScenarioInput | None = None,
         pension_tax_message: str | None = None,
     ) -> ChatResponse:
+        if response.data_mode in {
+            "verified_pension_account_overview",
+            "verified_pension_account_deferred_topic",
+        }:
+            return response
         # NAVER titles/summaries are third-party metadata, not instructions.
         # Keep every news response deterministic: no external text enters the
         # narrator context, even if its wording does not match known attacks.

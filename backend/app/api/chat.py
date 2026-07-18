@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import re
 from collections.abc import AsyncIterator
 from datetime import datetime
 from time import perf_counter
@@ -47,6 +48,17 @@ router = APIRouter(tags=["chat"])
 logger = logging.getLogger("uvicorn.error")
 
 _DATABASE_ERRORS = (psycopg.Error, ConnectionError)
+_SALUTATION_CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def _format_salutation(nickname: str | None) -> str:
+    if nickname is None or _SALUTATION_CONTROL.search(nickname):
+        return "고객님"
+    normalized = " ".join(nickname.split()).strip()
+    if not normalized or len(normalized) > 50:
+        return "고객님"
+    normalized = re.sub(r"\s+님$", "님", normalized)
+    return normalized if normalized.endswith("님") else f"{normalized}님"
 
 
 def _load_demo_context(
@@ -144,6 +156,17 @@ def _authenticated_response(
     )
     if context is not None:
         response = apply_demo_context_evidence(response, context)
+    if response.data_mode in {
+        "verified_pension_account_overview",
+        "verified_pension_account_deferred_topic",
+    }:
+        response = response.model_copy(
+            update={
+                "salutation": _format_salutation(
+                    context.nickname if context is not None else None
+                )
+            }
+        )
     return response, True
 
 

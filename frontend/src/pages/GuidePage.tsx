@@ -23,6 +23,7 @@ import {
 } from "../api/client";
 import { conicGradient } from "../charts";
 import type {
+  AnswerBlock,
   CompletedSurveyProfile,
   ChatCard,
   ConversationContext,
@@ -285,6 +286,70 @@ function NewsCards({ response }: { response: ChatResponse }) {
   );
 }
 
+function AnswerBlocks({ blocks }: { blocks: AnswerBlock[] }) {
+  return (
+    <div className="answer-blocks">
+      {blocks.map((block, index) => {
+        const key = `${block.kind}-${index}`;
+        if (block.kind === "callout") {
+          return (
+            <div className="answer-callout" key={key}>
+              {block.title && <strong>{displayText(block.title)}</strong>}
+              <p>{displayText(block.text ?? "")}</p>
+            </div>
+          );
+        }
+        if (block.kind === "paragraph") {
+          return <p key={key}>{displayText(block.text ?? "")}</p>;
+        }
+        if (block.kind === "bullets") {
+          return (
+            <div key={key}>
+              {block.title && <strong>{displayText(block.title)}</strong>}
+              <ul className="answer-bullets">
+                {block.items.map((item, itemIndex) => (
+                  <li key={`${key}-${itemIndex}`}>{displayText(item)}</li>
+                ))}
+              </ul>
+            </div>
+          );
+        }
+        if (block.kind === "formula") {
+          return (
+            <div className="answer-formula" key={key}>
+              {block.title && <strong>{displayText(block.title)}</strong>}
+              <pre>{displayText(block.text ?? "")}</pre>
+            </div>
+          );
+        }
+        return (
+          <div className="answer-table-wrap" key={key}>
+            {block.title && <strong className="answer-table-title">{displayText(block.title)}</strong>}
+            <table>
+              <thead>
+                <tr>
+                  {block.headers.map((header, headerIndex) => (
+                    <th key={`${key}-header-${headerIndex}`}>{displayText(header)}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {block.rows.map((row, rowIndex) => (
+                  <tr key={`${key}-row-${rowIndex}`}>
+                    {row.map((cell, cellIndex) => (
+                      <td key={`${key}-cell-${rowIndex}-${cellIndex}`}>{displayText(cell)}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function AssistantMessage({
   response,
   text,
@@ -305,7 +370,10 @@ function AssistantMessage({
         <span>{response.narration_mode === "deterministic" ? "검증 답변" : "AI 서술"}</span>
       </div>
       {(response.data_mode !== "news_summary" || response.news_items.length === 0) && (
-        <p className="message-copy">{displayText(response.answer)}</p>
+        <p className="message-copy">
+          {response.salutation && <><strong>{response.salutation},</strong>{" "}</>}
+          {displayText(response.answer)}
+        </p>
       )}
 
       {response.intent !== "mock_portfolio" && response.numeric_evidence.length > 0 && (
@@ -343,9 +411,16 @@ function AssistantMessage({
           응답 필드는 그대로 유지해 디버깅·로그에서 확인한다. */}
 
       {response.sections.map((section, index) => (
-        <details className={`answer-section section-${section.kind}`} key={`${section.title}-${index}`} open={response.intent === "educational_portfolio" || section.kind === "limitation"}>
+        <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} key={`${section.title}-${index}`} open={response.intent === "educational_portfolio" || response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || section.kind === "limitation"}>
           <summary><span>{section.title}</span><small>내용 보기</small></summary>
-          <p>{displayText(section.content)}</p>
+          {section.blocks?.length ? (
+            <>
+              {section.content && <p>{displayText(section.content)}</p>}
+              <AnswerBlocks blocks={section.blocks} />
+            </>
+          ) : (
+            <p>{displayText(section.content)}</p>
+          )}
         </details>
       ))}
 

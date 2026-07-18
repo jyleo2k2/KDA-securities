@@ -17,6 +17,14 @@ class BlockedReason(StrEnum):
     UNSUPPORTED = "unsupported"
 
 
+class AccountRuleTopic(StrEnum):
+    PENSION_ACCOUNT_OVERVIEW = "pension_account_overview"
+    PENSION_RECEIPT_START = "pension_receipt_start"
+    PENSION_RECEIPT_TAX = "pension_receipt_tax"
+    PRIVATE_PENSION_THRESHOLD = "private_pension_threshold"
+    NON_PENSION_WITHDRAWAL = "non_pension_withdrawal"
+
+
 class QueryPlan(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -28,6 +36,7 @@ class QueryPlan(BaseModel):
     combines_account_rules: bool = False
     requests_tax_credit: bool = False
     requests_withdrawal_tax: bool = False
+    account_rule_topic: AccountRuleTopic | None = None
     blocked_reason: BlockedReason | None = None
 
     @model_validator(mode="after")
@@ -47,6 +56,11 @@ class QueryPlan(BaseModel):
             raise ValueError("pension_tax intent requires a requested calculation")
         if self.intent != ChatIntent.PENSION_TAX and requests_pension_tax:
             raise ValueError("pension tax flags require pension_tax intent")
+        if (
+            self.intent != ChatIntent.ACCOUNT_RULE
+            and self.account_rule_topic is not None
+        ):
+            raise ValueError("account_rule_topic requires account_rule intent")
         return self
 
 
@@ -108,6 +122,32 @@ _PENSION_CONTEXT = re.compile(
     r"연금\s*(?:계좌|저축|수령|외\s*수령)|퇴직\s*연금|"
     r"(?<![A-Za-z])(?:IRP|DC)(?![A-Za-z])|세액\s*공제|"
     r"계좌.{0,20}(?:위험\s*자산|한도)",
+    re.I,
+)
+_ACCOUNT_OVERVIEW_WORDS = re.compile(
+    r"규칙|뭐|무엇|전체|전반|한눈에|정리|설명|알려|기본|차이|비교"
+)
+_ACCOUNT_OVERVIEW_NARROW_TERMS = re.compile(
+    r"위험\s*자산|편입|적격|TDF|디폴트\s*옵션|중도\s*인출|"
+    r"세액\s*공제|공제율|수령|개시|요건|조건|과세|세금|"
+    r"수익률|수수료|공시|뉴스"
+)
+_PENSION_RECEIPT_START_TOPIC = re.compile(
+    r"(?:연금|수령).{0,15}(?:언제|몇\s*살|몇\s*세|개시|시작)"
+    r"|(?:언제|몇\s*살|몇\s*세|개시|시작).{0,15}(?:연금|수령)"
+    r"|연금.{0,12}받을\s*수"
+)
+_PENSION_RECEIPT_TAX_TOPIC = re.compile(
+    r"연금\s*(?:으로)?\s*받.{0,10}(?:세금|세율|과세)"
+    r"|(?:세금|세율|과세).{0,10}연금\s*(?:으로)?\s*받"
+)
+_PRIVATE_PENSION_THRESHOLD_TOPIC = re.compile(
+    r"(?:사적\s*연금|연금\s*소득).{0,20}1\s*,?\s*500\s*만\s*원"
+    r"|1\s*,?\s*500\s*만\s*원.{0,20}(?:사적\s*연금|연금\s*소득)"
+)
+_NON_PENSION_WITHDRAWAL_TOPIC = re.compile(
+    r"(?:IRP|DC형?|연금저축|연금\s*계좌)?.{0,8}"
+    r"(?:중도\s*인출|중도\s*해지|해지).{0,8}(?:하면|어떻게|세금은)",
     re.I,
 )
 _SCENARIO_TERMS = re.compile(
@@ -195,6 +235,27 @@ def _news_query(message: str) -> str:
     return "market"
 
 
+def _account_rule_topic(
+    message: str, account_types: tuple[AccountType, ...]
+) -> AccountRuleTopic | None:
+    if _PENSION_RECEIPT_TAX_TOPIC.search(message):
+        return AccountRuleTopic.PENSION_RECEIPT_TAX
+    if _PENSION_RECEIPT_START_TOPIC.search(message) and not re.search(
+        r"요건|조건", message
+    ):
+        return AccountRuleTopic.PENSION_RECEIPT_START
+    if _PRIVATE_PENSION_THRESHOLD_TOPIC.search(message):
+        return AccountRuleTopic.PRIVATE_PENSION_THRESHOLD
+    if _NON_PENSION_WITHDRAWAL_TOPIC.search(message):
+        return AccountRuleTopic.NON_PENSION_WITHDRAWAL
+    if _ACCOUNT_OVERVIEW_NARROW_TERMS.search(message):
+        return None
+    asks_for_overview = _ACCOUNT_OVERVIEW_WORDS.search(message) is not None
+    if asks_for_overview and re.search(r"연금\s*계좌", message):
+        return AccountRuleTopic.PENSION_ACCOUNT_OVERVIEW
+    return None
+
+
 def _blocked(message: str, reason: BlockedReason, max_results: int) -> QueryPlan:
     return QueryPlan(
         normalized_message=message,
@@ -234,6 +295,7 @@ def plan_question(
             return _blocked(normalized, reason, max_results)
 
     account_types = _account_types(normalized)
+    account_rule_topic = _account_rule_topic(normalized, account_types)
     tax_credit_topic = _TAX_CREDIT_TERMS.search(normalized) is not None
     withdrawal_tax_topic = _WITHDRAWAL_TAX_TERMS.search(normalized) is not None
     requests_calculation = (
@@ -256,6 +318,7 @@ def plan_question(
         and _DISCLOSURE_TERMS.search(normalized) is not None,
         ChatIntent.ACCOUNT_RULE: bool(
             account_types
+            or account_rule_topic
             or (
                 _PENSION_CONTEXT.search(normalized)
                 and _RULE_TERMS.search(normalized)
@@ -337,5 +400,6 @@ def plan_question(
                 len(account_types) > 1
                 and _COMBINED_ACCOUNT_RULE.search(normalized) is not None
             ),
+            account_rule_topic=account_rule_topic,
         )
     return _blocked(normalized, BlockedReason.UNSUPPORTED, max_results)
