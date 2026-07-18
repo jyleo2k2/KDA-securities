@@ -47,7 +47,8 @@ values
     )
 on conflict (code) do update set
     description = excluded.description,
-    updated_at = now();
+    updated_at = now()
+where mock_scenarios.description is distinct from excluded.description;
 
 with context_seed (auth_user_id, customer_context) as (
     values
