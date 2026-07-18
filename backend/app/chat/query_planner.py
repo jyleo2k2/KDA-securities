@@ -132,21 +132,6 @@ _KOREAN_COUNT = (
     (re.compile(r"(?:네\s*(?:개|건)|넷)(?:만)?"), 4),
     (re.compile(r"(?:다섯\s*(?:개|건))(?:만)?"), 5),
 )
-_WORD_EDGE_LEFT = r"(?<![0-9A-Za-z가-힣])"
-_WORD_EDGE_RIGHT = r"(?![0-9A-Za-z가-힣])"
-_NEWS_REQUEST_PHRASES = re.compile(
-    _WORD_EDGE_LEFT
-    + r"(?:네이버\s*뉴스|가장\s*최신|가장\s*최근|최신\s*뉴스|최근\s*뉴스|"
-    r"검색\s*해\s*줘|찾아\s*줘|알려\s*줘|보여\s*줘|해\s*줘)(?:요)?"
-    + _WORD_EDGE_RIGHT
-)
-_NEWS_REQUEST_TOKENS = re.compile(
-    _WORD_EDGE_LEFT
-    + r"(?:가장|최신|최근|뉴스|기사|소식|네이버|검색|좀)"
-    r"(?:을|를|로|에서)?"
-    + _WORD_EDGE_RIGHT
-)
-
 _INTENT_PRIORITY = (
     ChatIntent.MOCK_PORTFOLIO,
     ChatIntent.PENSION_TAX,
@@ -192,14 +177,11 @@ def _max_results(message: str, default: int) -> int:
 
 
 def _news_query(message: str) -> str:
-    if "연금" in message:
-        return "연금"
-    query = _COUNT.sub(" ", message)
-    for pattern, _ in _KOREAN_COUNT:
-        query = pattern.sub(" ", query)
-    query = _NEWS_REQUEST_PHRASES.sub(" ", query)
-    query = _NEWS_REQUEST_TOKENS.sub(" ", query)
-    return normalize_search_text(query).strip(" ?!.,")[:200].rstrip() or "연금"
+    if re.search(r"미국|뉴욕|나스닥|S\s*&\s*P|다우", message, re.I):
+        return "market:us"
+    if re.search(r"한국|국내|코스피|코스닥", message, re.I):
+        return "market:kr"
+    return "market"
 
 
 def _blocked(message: str, reason: BlockedReason, max_results: int) -> QueryPlan:
@@ -273,13 +255,13 @@ def plan_question(message: str, *, default_max_results: int = 3) -> QueryPlan:
             requests_withdrawal_tax=requests_withdrawal_tax,
         )
     if intent == ChatIntent.NEWS:
-        news_query = "연금" if account_types else _news_query(normalized)
+        news_query = _news_query(normalized)
         return QueryPlan(
             normalized_message=normalized,
             intent=ChatIntent.NEWS,
             account_types=account_types,
             news_query=news_query,
-            max_results=3 if news_query == "연금" else max_results,
+            max_results=3,
         )
     if intent == ChatIntent.EDUCATIONAL_PORTFOLIO:
         return QueryPlan(

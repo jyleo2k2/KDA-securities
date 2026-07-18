@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-16 10:59 KST
-> 확인 기준: `codex/lifecycle-scenario-auth` / `main` `eea2b4e` / 원격 읽기 검증
+> 최종 확인: 2026-07-18 01:15 KST
+> 확인 기준: `Supabase데이터-` / `origin/main` `fa009fa` / Supabase MCP 읽기 검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -29,16 +29,16 @@
 
 ## 3. 현재 원격 상태
 
-2026-07-16 KST에 연결된 Supabase 프로젝트를 읽기 전용으로 재확인했다.
+2026-07-18 KST에 연결된 Supabase 프로젝트를 읽기 전용으로 재확인했다.
 
 | 항목 | 원격 상태 |
 |---|---|
-| public 기본 테이블 | 36개 |
-| 적용 마이그레이션 | `20260715005435`, `20260715021243`, `20260715103332`, `20260715103542`, `20260715165614`, `20260716001737`, `20260716011137` |
-| RLS | 36/36 활성화 |
+| public 기본 테이블 | 40개 |
+| 적용 마이그레이션 | 12개(`20260715005435` ~ `20260717084953`) |
+| RLS | 40/40 활성화 |
 | `anon` 테이블 권한 | 없음 |
 | `authenticated` 권한 | 사용자 소유 엔진 결과·채팅 관련 5개 테이블 |
-| `service_role` 권한 | 36개 테이블 |
+| `service_role` 권한 | 40개 테이블 |
 | `knowledge_chunks.embedding` 타입 | `vector(1024)` |
 | HNSW 인덱스 | `knowledge_chunks_embedding_hnsw_idx` 존재 |
 | PostgreSQL / 프로젝트 상태 | 17.6 / `ACTIVE_HEALTHY` |
@@ -50,17 +50,20 @@
 | `pension_savings_provider_stats` | 88 |
 | `retirement_provider_stats` | 126 |
 | `financial_institutions` | 102 |
-| `news_items` | 10 |
+| `news_items` | 15 |
 | `knowledge_documents` | 2 |
-| `knowledge_chunks` | 31 |
-| `mock_scenarios` | 3 |
-| `mock_accounts` | 6 |
-| `mock_holdings` | 10 |
-| `auth.users` | 0 |
+| `knowledge_chunks` | 37 |
+| `mock_scenarios` | 6 |
+| `mock_accounts` | 13 |
+| `mock_holdings` | 26 |
+| `demo_user_financial_context` | 6 |
+| `benchmark_mock_users` | 10,000 |
+| `benchmark_mock_accounts` | 16,900 |
+| `benchmark_mock_holdings` | 79,381 |
 
-`knowledge_chunks` 31건 모두 `embedding_dimensions=1024`이며 embedding 값이 존재한다.
+원격에서 직접 수정된 시나리오 설명 5건과 대표 고객 납입액 5건은 2026-07-18 재조회에서 모두 확인됐다. 이를 재현하는 `20260717160209_sync_modified_mock_data.sql`은 아직 원격 migration history에 없으며, 원격 DB에는 다시 적용하지 않았다.
 
-### 현재 36개 테이블의 역할
+### 현재 40개 테이블의 역할
 
 | 영역 | 테이블 |
 |---|---|
@@ -75,15 +78,13 @@
 
 ## 4. 현재 작업트리의 진행 중 작업
 
-`codex/lifecycle-scenario-auth`에서 다음 범위만 작업한다.
+`Supabase데이터-` 브랜치의 별도 worktree에서 다음 범위만 작업한다.
 
-- 최신 `main`의 `20260715103332`, `20260715103542` 파일이 원격 migration history와 일치하는지 유지·검증한다.
-- `20260716001737_add_user_pension_domain.sql`은 PR #22 머지 후 원격 적용·검증을 완료했다.
-- 성능 Advisor의 복합 FK 인덱스 지적은 `20260716011137_add_profile_answer_fk_index.sql`로 원격 보완됐다.
-- `20260716015043_add_lifecycle_demo_scenarios.sql`로 생애주기형 대표 고객 3명을 추가한다. 기존 행동형 3명은 유지한다.
-- 대표 고객 6명의 로그인 ID는 추적 가능한 manifest에 두고, 비밀번호는 `secrets/`의 Git 제외 파일에서만 관리한다. Auth 생성은 PR·팀장 승인 전 실행하지 않는다.
-- 기존 `mock_accounts`, `mock_holdings`, 목시나리오, 공시·RAG·채팅 데이터는 수정하거나 삭제하지 않는다.
-- 기존 적용 migration은 수정하지 않으며 후속 인덱스는 별도 PR·migration으로 유지한다.
+- 원격에서 직접 수정된 `mock_scenarios.description` 5건과 `demo_user_financial_context` 5명의 설명·연금저축/IRP 납입액을 Git에 동기화한다.
+- 신규 멱등 migration, 로컬 `seed.sql`, fallback JSON, Auth manifest·프로비저닝 스크립트를 같은 값으로 맞춘다.
+- `mock_accounts`, `mock_holdings`, 벤치마크 10,000명 데이터와 실데이터는 변경하지 않는다.
+- 원격 DB에는 쓰지 않는다. 신규 migration은 PR 승인·migration history 정리 전 적용하지 않는다.
+- 로컬/원격 migration version은 `add_lifecycle_demo_scenarios`와 `add_benchmark_mock_data` 2건이 다르므로 `db push`를 실행하지 않는다.
 
 ### 임베딩 마이그레이션 주의사항
 
@@ -241,6 +242,7 @@ uv run ruff check .
 | DB-02A | 성향 답변 복합 FK 인덱스 | `REMOTE-APPLIED` | `(option_id, question_id)` covering index·Advisor 미인덱스 FK 0건 | 적용 파일 수정 금지 |
 | DB-03 | 문항·목계좌 backfill | `LOCAL-DRAFT` | 3/6/10 및 금액·엔진 결과 동등 | 별도 migration 작성 |
 | DB-03A | 생애주기 대표 고객·Auth 준비 | `LOCAL-DRAFT` | 시나리오 6·계좌 13·보유 26, Auth 6개 로그인 검증 | PR·팀장 승인 후 원격 적용 |
+| DB-03B | 원격 직접 수정 목데이터 Git 동기화 | `LOCAL-VERIFIED` | 시나리오 설명 5건·대표 고객 납입액 5건 migration/seed/manifest/fallback 일치, 전체 회귀 통과 | PR 리뷰·머지 후 migration history 정리 여부 결정 |
 | DB-04 | Postgres repository·API 연결 | `LOCAL-DRAFT` | DB 우선·JSON fallback·E2E 통과 | DB-03 후 구현 |
 | DB-05 | 기존 mock account tables 정리 | `BLOCKED` | 코드·SQL 참조 0, 별도 승인·복구 계획 | DB-04 안정화 전 삭제 금지 |
 | DB-06 | 커뮤니티 리뷰 | `BLOCKED` | 포트폴리오 FK·RLS·신고·보존 정책 승인 | 핵심 계좌 연동 후 검토 |
@@ -285,6 +287,18 @@ uv run ruff check .
 - 신규 코드: `backend/app/etf_universe_database.py`(`load_portfolio_universe`) — 계좌 3종의 `PortfolioUniverseRepository.from_latest_cache` 결과를 그대로 옮긴다. 계좌 간 as_of 불일치는 예외로 차단, 같은 종목이 여러 계좌에서 적격이면 이력을 종목당 1행으로 병합, 적재 원본 파일들의 결합 SHA-256을 `source_sha256`에 기록. `scripts/load_portfolio_universe.py`는 `.env`의 `DATABASE_URL`로 이를 실행하는 얇은 CLI.
 - 검증: `tests/test_etf_universe_database.py` 신규(합성 fixture로 병합·불일치 차단 검증, `psycopg.connect`를 fake 커넥션으로 치환해 실제 DB 없이 SQL 실행 경로 검증) 2 passed. 전체 `uv run pytest` 514 passed, `uv run ruff check .` 통과. **실제 원격 적재는 아직 수행하지 않았다** — 김태형 캐시 파일 수령 전.
 - 다음 작업: 김태형 캐시(`data/cache/returns`·`data/cache/kis/adjusted_prices`·`data/cache/events`) 수령 → 이 스크립트로 실적재 → `PortfolioUniverseRepository.from_database()` + DB 우선·파일 fallback 구현 → 산출물 동등성(120개 포트폴리오)·챗봇 E2E 검증 → 이재용 승인 후 마이그레이션 원격 적용.
+
+### 2026-07-18 01:15 KST
+
+- 작업자/브랜치/기준: Codex / `Supabase데이터-` / `origin/main` `fa009fa`.
+- 시작 상태: 원래 worktree는 다른 브랜치의 미커밋 변경이 있어 `C:\dev\KDA-securities-supabase-data` 별도 worktree를 생성했다. 기준 회귀는 546건 통과였다.
+- 원격 확인: Supabase MCP로 `KDA-securities` 연결과 40개 public 테이블 RLS 40/40을 확인했다. 시나리오 설명 5건과 대표 고객 납입액 5건이 2026-07-17 19:42 KST에 직접 수정된 상태였다. 원격 현재 건수는 시나리오/계좌/보유 6/13/26, 대표 고객 6, 벤치마크 사용자/계좌/보유 10,000/16,900/79,381이다.
+- 변경 내용: `20260717160209_sync_modified_mock_data.sql`을 CLI로 생성해 멱등 DML을 추가하고, `seed.sql`, 챗봇 fallback 시나리오, 대표 고객 manifest와 Auth 프로비저닝 SQL을 같은 설명·납입액으로 동기화했다. 계좌 잔액·보유자산은 변경하지 않았다.
+- TDD/검증: 신규 계약 테스트가 migration 부재·manifest 필드 부재로 실패하는 것을 먼저 확인했다. 구현 후 관련 40건 통과, 전체 `uv run pytest` 550건 통과(기존 DeprecationWarning 1건), `uv run ruff check .`와 `git diff --check` 통과.
+- 원격 적용: 없음. 원격 데이터가 이미 목표값이므로 재실행하지 않았다. migration history의 `20260716015043`↔`20260716041911`, `20260716042903`↔`20260716043326` 불일치가 있어 `db push`·`migration repair`도 실행하지 않았다.
+- 로컬 DB reset: Docker CLI/daemon이 없어 실행하지 못했다. 모든 migration은 `pglast` 계약 테스트로 파싱했다.
+- Advisor: 보안 WARN은 기존 Auth leaked-password protection 비활성화 1건, INFO는 서버 전용 테이블의 RLS deny-by-default 상태다. 성능 INFO는 초기/미사용 인덱스이며 이번 DML 변경과 무관해 수정하지 않았다.
+- 다음 작업: PR 리뷰·머지 후 migration history 정리 방식을 이재용 승인으로 결정한다. 신규 데이터 migration은 원격에 적용하지 않아도 현재 값과 일치한다.
 
 ### 2026-07-16 11:35 KST
 

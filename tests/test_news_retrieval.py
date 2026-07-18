@@ -67,3 +67,24 @@ def test_random_recent_news_filters_five_days_and_future_rows(monkeypatch) -> No
     assert "cardinality(summary_lines) = 3" in cursor.statement
     assert "order by random()" in cursor.statement
     assert cursor.params == ("연금", 5, 3)
+
+
+def test_random_recent_market_news_filters_selected_us_summaries(monkeypatch) -> None:
+    cursor = _Cursor()
+    monkeypatch.setattr(
+        repository_module.psycopg,
+        "connect",
+        lambda _: _Connection(cursor),
+    )
+
+    results = RetrievalRepository("postgresql://test").random_recent_market_news(
+        region="us", days=5, limit=3
+    )
+
+    assert results == [NewsMatch(*cursor.rows[0])]
+    assert "selection_policy_version is not null" in cursor.statement
+    assert "%s::text is null" in cursor.statement
+    assert "market_region = %s" in cursor.statement
+    assert "summary_status = 'succeeded'" in cursor.statement
+    assert "order by random()" in cursor.statement
+    assert cursor.params == ("us", "us", 5, 3)

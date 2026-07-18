@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-haiku-4-5"
     enable_claude_narration: bool = False
     news_summary_model: str = "claude-sonnet-5"
-    news_summary_prompt_version: str = "news-summary-v1"
+    news_summary_prompt_version: str = "news-summary-v2"
     krx_api_key: SecretStr | None = None
     kis_app_key: SecretStr | None = None
     kis_app_secret: SecretStr | None = None
@@ -36,6 +36,8 @@ class Settings(BaseSettings):
         default_factory=lambda: [
             "http://127.0.0.1:5173",
             "http://localhost:5173",
+            "http://127.0.0.1:5174",
+            "http://localhost:5174",
         ]
     )
 

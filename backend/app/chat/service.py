@@ -1,3 +1,4 @@
+import logging
 import re
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
@@ -45,6 +46,8 @@ from .tools import (
     calculate_pension_tax_credit_tool,
     estimate_non_pension_withdrawal_tax_tool,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class KnowledgeSearch(Protocol):
@@ -1140,8 +1143,7 @@ class ChatService:
                 "없어 개별 상품의 편입 가능 여부를 확정하지 않습니다."
             )
         else:
-            excerpt = re.sub(r"\s+", " ", matches[0].content).strip()[:600]
-            answer = f"검증 문서에서 확인한 내용입니다. {excerpt}"
+            answer = self._knowledge_summary(matches[0].title, request.message)
             for index, (value, unit) in enumerate(
                 sorted(extract_numeric_claims(answer)), start=1
             ):
@@ -1162,8 +1164,11 @@ class ChatService:
             sections=[
                 AnswerSection(
                     kind=SectionKind.FACT,
-                    title="검색된 근거",
-                    content=re.sub(r"\s+", " ", match.content).strip()[:800],
+                    title="확인한 근거",
+                    content=(
+                        f"‘{match.title}’ 공식 문서를 확인했습니다. "
+                        "원문은 아래 출처에서 볼 수 있어요."
+                    ),
                     evidence_ids=[f"knowledge:{match.chunk_id}"],
                 )
                 for match in matches
@@ -1171,6 +1176,25 @@ class ChatService:
             sources=sources,
             numeric_evidence=numeric,
             limitations=["상품별 적격성은 공식 상품 데이터로 별도 확인해야 합니다."],
+        )
+
+    @staticmethod
+    def _knowledge_summary(title: str, message: str) -> str:
+        """Keep retrieved documents as sources, not as a wall of answer text."""
+
+        if "세액공제" in f"{title} {message}":
+            return (
+                "세액공제는 연금계좌에 낸 돈 일부를 연말정산이나 종합소득세에서 "
+                "빼주는 혜택이에요.\n"
+                "연금저축은 연 600만 원까지, IRP와 DC형 본인 추가납입을 더하면 "
+                "합산 연 900만 원까지 공제 대상입니다.\n"
+                "예를 들어 연금저축 600만 원과 IRP 300만 원을 나눠 납입할 수 있어요. "
+                "올해 납입액과 소득 기준을 알려주면 내 금액으로 계산해 볼게요."
+            )
+        return (
+            "질문과 관련된 공식 근거를 찾았어요. "
+            f"‘{title}’ 내용을 바탕으로 안내할 수 있어요. "
+            "한도·세금·수령 중 무엇이 궁금한지 말해주면 핵심만 정리해 드릴게요."
         )
 
     @staticmethod
@@ -1302,12 +1326,18 @@ class ChatService:
     def _educational_portfolio(
         self, request: EducationalPortfolioInput
     ) -> ChatResponse:
+        account_label = _ACCOUNT_TYPE_LABELS[request.account_type]
         if self._portfolio_universe_loader is None:
             return ChatResponse(
                 intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
-                answer="교육용 포트폴리오 데이터 저장소가 연결되지 않았습니다.",
+                answer=(
+                    f"{account_label} 계좌용 교육 포트폴리오 데이터 저장소가 "
+                    "연결되지 않았습니다."
+                ),
                 data_mode="unavailable",
-                limitations=["챗봇이 임의 수치로 대신 계산하지 않았습니다."],
+                limitations=[
+                    f"{account_label} 계좌 결과를 임의 수치로 대신 계산하지 않았습니다."
+                ],
             )
         try:
             repository = self._portfolio_universe_loader(request.account_type)
@@ -1318,16 +1348,31 @@ class ChatService:
                 history_sources=repository.history_sources,
                 source_as_of=repository.as_of,
             )
-        except (FileNotFoundError, KeyError, ValueError):
+        except (FileNotFoundError, KeyError, ValueError) as exc:
+            logger.warning(
+                "Educational portfolio data unavailable for account=%s: %s",
+                request.account_type.value,
+                exc,
+            )
+            missing_master = (
+                isinstance(exc, FileNotFoundError)
+                and "no cost-return master" in str(exc)
+            )
+            unavailable_reason = (
+                "ETF 비용·수익률 마스터가 서버에 준비되지 않았습니다."
+                if missing_master
+                else "ETF 입력 데이터 검증에 실패했습니다."
+            )
             return ChatResponse(
                 intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
                 answer=(
-                    "검증된 입력 데이터가 부족해 포트폴리오 결과를 "
-                    "만들지 않았습니다."
+                    f"{account_label} 계좌용 {unavailable_reason} "
+                    "포트폴리오 결과를 만들지 않았습니다."
                 ),
                 data_mode="unavailable",
                 limitations=[
-                    "챗봇이 누락값을 추정하거나 수익률을 계산하지 않았습니다."
+                    f"{account_label} 계좌의 누락값을 추정하거나 수익률을 "
+                    "계산하지 않았습니다."
                 ],
             )
 
@@ -1480,16 +1525,29 @@ class ChatService:
             response.educational_portfolio_evaluation is None
             for response in responses
         ):
+            unavailable = [
+                response.answer
+                for response in responses
+                if response.educational_portfolio_evaluation is None
+            ]
+            limitations = list(
+                dict.fromkeys(
+                    limitation
+                    for response in responses
+                    for limitation in response.limitations
+                )
+            )
+            limitations.append(
+                "계좌별 규칙을 섞거나 누락값을 추정하지 않았습니다."
+            )
             return ChatResponse(
                 intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
                 answer=(
-                    "일부 계좌의 검증된 입력 데이터가 부족해 복수 계좌 "
-                    "포트폴리오를 만들지 않았습니다."
+                    "복수 계좌 포트폴리오를 만들지 않았습니다.\n"
+                    + "\n".join(f"- {item}" for item in unavailable)
                 ),
                 data_mode="unavailable",
-                limitations=[
-                    "계좌별 규칙을 섞거나 누락값을 추정하지 않았습니다."
-                ],
+                limitations=limitations,
             )
 
         account_names = "와 ".join(
@@ -1828,21 +1886,26 @@ class ChatService:
                 data_mode="unavailable",
                 limitations=["NAVER 뉴스 수집과 DATABASE_URL이 필요합니다."],
             )
-        is_pension_news = search_query == "연금"
+        is_market_news = search_query == "market" or search_query.startswith(
+            "market:"
+        )
+        region = search_query.partition(":")[2] or None
         matches = (
-            self._news.random_recent_news(search_query, days=5, limit=3)
-            if is_pension_news
+            self._news.random_recent_market_news(
+                region=region, days=5, limit=3
+            )
+            if is_market_news
             else self._news.latest_news(search_query, limit=request.max_results)
         )
         if not matches:
             return ChatResponse(
                 intent=ChatIntent.NEWS,
                 answer=(
-                    "최근 닷새간 요약이 완료된 연금 뉴스를 찾지 못했습니다."
-                    if is_pension_news
+                    "최근 닷새간 요약이 완료된 증시 뉴스를 찾지 못했습니다."
+                    if is_market_news
                     else "해당 검색어로 저장된 뉴스 메타데이터를 찾지 못했습니다."
                 ),
-                data_mode="news_summary" if is_pension_news else "news_metadata",
+                data_mode="news_summary" if is_market_news else "news_metadata",
                 limitations=["기사 본문을 임의로 생성하지 않습니다."],
             )
         sources = [
@@ -1854,7 +1917,7 @@ class ChatService:
                 as_of=item.published_at,
                 data_boundary=(
                     DataBoundary.NEWS_SUMMARY
-                    if is_pension_news
+                    if is_market_news
                     else DataBoundary.NEWS_METADATA
                 ),
             )
@@ -1862,7 +1925,7 @@ class ChatService:
         ]
         lines = (
             [_news_summary_block(item, index) for index, item in enumerate(matches)]
-            if is_pension_news
+            if is_market_news
             else [_news_metadata_line(item) for item in matches]
         )
         limitations = (
@@ -1870,26 +1933,27 @@ class ChatService:
                 "기사 원문에서 수집 시점에 생성한 LLM 3줄 요약입니다.",
                 "뉴스 사실과 외부 의견은 연결된 원문에서 다시 확인해야 합니다.",
             ]
-            if is_pension_news
+            if is_market_news
             else [
                 "기사 본문이 아닌 제목·요약·원문 링크 메타데이터입니다.",
                 "뉴스 사실과 외부 의견은 원문에서 다시 확인해야 합니다.",
             ]
         )
-        if is_pension_news and len(matches) < 3:
+        if is_market_news and len(matches) < 3:
             limitations.append(
-                "최근 닷새간 저장된 기사가 세 건 미만이라 조회된 기사만 제공합니다."
+                "최근 닷새간 저장된 증시 기사가 세 건 미만이라 "
+                "조회된 기사만 제공합니다."
             )
         return ChatResponse(
             intent=ChatIntent.NEWS,
             answer="\n\n".join(lines),
-            data_mode="news_summary" if is_pension_news else "news_metadata",
+            data_mode="news_summary" if is_market_news else "news_metadata",
             news_items=[
                 ChatNewsItem(
                     evidence_id=f"news:{item.item_id}",
                     title=item.title,
-                    description=None if is_pension_news else item.description,
-                    summary_lines=(list(item.summary_lines) if is_pension_news else []),
+                    description=None if is_market_news else item.description,
+                    summary_lines=(list(item.summary_lines) if is_market_news else []),
                     original_url=item.original_url,
                     published_at=item.published_at,
                 )
@@ -1899,8 +1963,8 @@ class ChatService:
                 AnswerSection(
                     kind=SectionKind.EXTERNAL_OPINION,
                     title=(
-                        "최근 닷새 연금 뉴스 3줄 요약"
-                        if is_pension_news
+                        "최근 닷새 한국·미국 증시 뉴스 3줄 요약"
+                        if is_market_news
                         else "뉴스 검색 메타데이터"
                     ),
                     content="\n\n".join(lines),

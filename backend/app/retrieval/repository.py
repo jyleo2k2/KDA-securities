@@ -349,6 +349,43 @@ class RetrievalRepository:
             )
             return [NewsMatch(*row) for row in cursor]
 
+    def random_recent_market_news(
+        self,
+        *,
+        region: str | None = None,
+        days: int = 5,
+        limit: int = 3,
+    ) -> list[NewsMatch]:
+        if region not in {None, "kr", "us"}:
+            raise ValueError("region must be kr, us or None")
+        with (
+            self._connection() as connection,
+            connection.cursor() as cursor,
+        ):
+            cursor.execute(
+                """
+                select
+                    id::text, title, description, original_url,
+                    portal_url, published_at, summary_lines
+                from public.news_items
+                where selection_policy_version is not null
+                  and (%s::text is null or market_region = %s)
+                  and published_at >= now() - make_interval(days => %s)
+                  and published_at <= now()
+                  and summary_status = 'succeeded'
+                  and cardinality(summary_lines) = 3
+                order by random()
+                limit %s
+                """,
+                (
+                    region,
+                    region,
+                    max(1, min(days, 365)),
+                    max(1, min(limit, 100)),
+                ),
+            )
+            return [NewsMatch(*row) for row in cursor]
+
 
 def _news_search_terms(search_query: str) -> tuple[str, ...]:
     normalized_query = normalize_search_text(search_query)
