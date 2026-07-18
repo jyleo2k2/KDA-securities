@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import re
 from collections.abc import AsyncIterator
 from datetime import datetime
 from time import perf_counter
@@ -10,7 +11,7 @@ from typing import Annotated
 from uuid import UUID
 
 import psycopg
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict
 from starlette.responses import StreamingResponse
 
@@ -45,6 +46,17 @@ router = APIRouter(tags=["chat"])
 logger = logging.getLogger("uvicorn.error")
 
 _DATABASE_ERRORS = (psycopg.Error, ConnectionError)
+_SALUTATION_CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def _format_salutation(nickname: str | None) -> str:
+    if nickname is None or _SALUTATION_CONTROL.search(nickname):
+        return "고객님"
+    normalized = " ".join(nickname.split()).strip()
+    if not normalized or len(normalized) > 50:
+        return "고객님"
+    normalized = re.sub(r"\s+님$", "님", normalized)
+    return normalized if normalized.endswith("님") else f"{normalized}님"
 
 
 def _load_demo_context(
@@ -54,6 +66,18 @@ def _load_demo_context(
     if repository is None:
         return None
     return repository.get(owner_id)
+
+
+def _load_authenticated_nickname(
+    repository: DemoUserContextRepository | None,
+    owner_id: UUID,
+    context: DemoUserFinancialContext | None,
+) -> str | None:
+    if context is not None:
+        return context.nickname
+    if repository is None:
+        return None
+    return repository.get_nickname(owner_id)
 
 
 def _authenticated_request(
@@ -100,6 +124,7 @@ def _authenticated_response(
     plan: QueryPlan,
     service: ChatService,
     context: DemoUserFinancialContext | None,
+    nickname: str | None,
 ) -> tuple[ChatResponse, bool]:
     direct_context = (
         context is not None
@@ -120,6 +145,13 @@ def _authenticated_response(
     )
     if context is not None:
         response = apply_demo_context_evidence(response, context)
+    if response.data_mode in {
+        "verified_pension_account_overview",
+        "verified_pension_account_deferred_topic",
+    }:
+        response = response.model_copy(
+            update={"salutation": _format_salutation(nickname)}
+        )
     return response, True
 
 
@@ -321,9 +353,7 @@ async def chat_demo_stream(
 def chat_authenticated(
     request: AuthenticatedChatRequest,
     owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
-    repository: Annotated[
-        ChatRepository | None, Depends(get_optional_chat_repository)
-    ],
+    repository: Annotated[ChatRepository | None, Depends(get_optional_chat_repository)],
     service: Annotated[ChatService, Depends(get_chat_service)],
     narrator: Annotated[ClaudeNarrator | None, Depends(get_chat_narrator)],
     context_repository: Annotated[
@@ -356,8 +386,10 @@ def chat_authenticated(
 
     try:
         context = _load_demo_context(context_repository, owner_id)
+        nickname = _load_authenticated_nickname(context_repository, owner_id, context)
     except _DATABASE_ERRORS:
         context = None
+        nickname = None
     chat_request = _authenticated_request(request, context)
     plan = service.plan(chat_request)
     try:
@@ -366,6 +398,7 @@ def chat_authenticated(
             plan=plan,
             service=service,
             context=context,
+            nickname=nickname,
         )
     except _DATABASE_ERRORS as exc:
         raise HTTPException(
@@ -419,9 +452,7 @@ def chat_authenticated(
 async def chat_authenticated_stream(
     request: AuthenticatedChatRequest,
     owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
-    repository: Annotated[
-        ChatRepository | None, Depends(get_optional_chat_repository)
-    ],
+    repository: Annotated[ChatRepository | None, Depends(get_optional_chat_repository)],
     service: Annotated[ChatService, Depends(get_chat_service)],
     narrator: Annotated[ClaudeNarrator | None, Depends(get_chat_narrator)],
     context_repository: Annotated[
@@ -466,8 +497,15 @@ async def chat_authenticated_stream(
                 context_repository,
                 owner_id,
             )
+            nickname = await asyncio.to_thread(
+                _load_authenticated_nickname,
+                context_repository,
+                owner_id,
+                context,
+            )
         except _DATABASE_ERRORS:
             context = None
+            nickname = None
         chat_request = _authenticated_request(request, context)
         started_at = perf_counter()
         plan = service.plan(chat_request)
@@ -480,6 +518,7 @@ async def chat_authenticated_stream(
                 plan=plan,
                 service=service,
                 context=context,
+                nickname=nickname,
             )
         except _DATABASE_ERRORS:
             yield _sse("error", {"detail": "Chat data source is unavailable"})
@@ -555,6 +594,30 @@ def list_chat_sessions(
     return [ChatSessionOut.model_validate(session) for session in sessions]
 
 
+@router.delete(
+    "/chat/sessions/{session_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_chat_session(
+    session_id: UUID,
+    owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
+    repository: Annotated[ChatRepository, Depends(get_chat_repository)],
+) -> Response:
+    try:
+        repository.delete_session(owner_id=owner_id, session_id=session_id)
+    except ChatSessionAccessError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chat session not found",
+        ) from exc
+    except _DATABASE_ERRORS as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Chat database is unavailable",
+        ) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.get(
     "/chat/sessions/{session_id}/messages",
     response_model=list[StoredChatMessageOut],
@@ -565,9 +628,7 @@ def get_chat_messages(
     repository: Annotated[ChatRepository, Depends(get_chat_repository)],
 ) -> list[StoredChatMessageOut]:
     try:
-        messages = repository.get_messages(
-            owner_id=owner_id, session_id=session_id
-        )
+        messages = repository.get_messages(owner_id=owner_id, session_id=session_id)
     except ChatSessionAccessError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

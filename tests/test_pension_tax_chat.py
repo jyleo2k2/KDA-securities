@@ -47,18 +47,20 @@ def _inputs() -> PensionTaxScenarioInput:
 EXPECTED_CLOSING_NOTICE = (
     "자세한 내용은 금융기관을 통한 확인 및 세무전문가의 상담이 필요합니다."
 )
+EXPECTED_DC_EXCLUSION_NOTICE = (
+    "DC형 연금은 원칙적으로 중도해지가 불가능하므로 고려하지 않았습니다."
+)
 
 
 def test_tax_question_without_structured_values_requests_input() -> None:
     response = _service().ask(
-        ChatRequest(
-            message="연금저축과 IRP 세액공제와 중도해지 세금을 알려줘"
-        )
+        ChatRequest(message="연금저축과 IRP 세액공제와 중도해지 세금을 알려줘")
     )
 
     assert response.intent == ChatIntent.PENSION_TAX
     assert response.data_mode == "input_required"
     assert response.pension_tax_result is None
+    assert EXPECTED_DC_EXCLUSION_NOTICE not in response.answer
     assert any("계좌번호" in item for item in response.limitations)
 
 
@@ -82,6 +84,7 @@ def test_natural_language_tax_credit_question_runs_without_form_input() -> None:
     assert response.visualizations[0].kind == "tax_summary"
     assert response.visualizations[0].items[0].value == Decimal("9000000")
     assert response.visualizations[0].items[1].value == Decimal("1485000")
+    assert EXPECTED_DC_EXCLUSION_NOTICE not in response.answer
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
 
 
@@ -145,6 +148,7 @@ def test_natural_language_max_withdrawal_question_runs_without_form_input() -> N
     assert response.pension_tax_result.withdrawal.status == "estimated"
     assert "8,000만 원" in response.answer
     assert "1,320만 원" in response.answer
+    assert response.answer.splitlines()[-2] == EXPECTED_DC_EXCLUSION_NOTICE
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
 
 
@@ -165,6 +169,7 @@ def test_natural_language_unavoidable_reason_blocks_without_balances() -> None:
     assert response.pension_tax_result.withdrawal.total_balance_krw is None
     assert "계산하지 않았습니다" in response.answer
     assert response.numeric_evidence == []
+    assert response.answer.splitlines()[-2] == EXPECTED_DC_EXCLUSION_NOTICE
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
 
 
@@ -183,6 +188,7 @@ def test_combined_tax_question_uses_engine_results_and_evidence() -> None:
     assert response.pension_tax_result.withdrawal is not None
     assert "148.5만 원" in response.answer
     assert "1,171.5만 원" in response.answer
+    assert response.answer.splitlines()[-2] == EXPECTED_DC_EXCLUSION_NOTICE
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
     assert {source.data_boundary for source in response.sources} >= {
         DataBoundary.USER_INPUT,
@@ -193,18 +199,26 @@ def test_combined_tax_question_uses_engine_results_and_evidence() -> None:
 
 
 def test_service_calls_only_the_requested_tax_calculation() -> None:
-    tax_credit = _service().ask(
-        ChatRequest(
-            message="연금계좌 세액공제 혜택을 계산해줘",
-            pension_tax=_inputs(),
+    tax_credit = (
+        _service()
+        .ask(
+            ChatRequest(
+                message="연금계좌 세액공제 혜택을 계산해줘",
+                pension_tax=_inputs(),
+            )
         )
-    ).pension_tax_result
-    withdrawal = _service().ask(
-        ChatRequest(
-            message="연금저축과 IRP 연금외수령 과세액을 알려줘",
-            pension_tax=_inputs(),
+        .pension_tax_result
+    )
+    withdrawal = (
+        _service()
+        .ask(
+            ChatRequest(
+                message="연금저축과 IRP 연금외수령 과세액을 알려줘",
+                pension_tax=_inputs(),
+            )
         )
-    ).pension_tax_result
+        .pension_tax_result
+    )
 
     assert tax_credit is not None
     assert tax_credit.tax_credit is not None
@@ -317,18 +331,14 @@ def test_demo_chat_runs_all_three_guide_questions_without_form_input() -> None:
         result = payload["pension_tax_result"]
         if expected_credit is not None:
             assert (
-                result["tax_credit"]["rate_scenarios"][0][
-                    "estimated_tax_credit_krw"
-                ]
+                result["tax_credit"]["rate_scenarios"][0]["estimated_tax_credit_krw"]
                 == expected_credit
             )
         elif expected_withdrawal == "requires_review":
             assert result["withdrawal"]["status"] == "requires_review"
         else:
             assert (
-                result["withdrawal"][
-                    "estimated_max_other_income_withholding_krw"
-                ]
+                result["withdrawal"]["estimated_max_other_income_withholding_krw"]
                 == expected_withdrawal
             )
 
@@ -342,9 +352,7 @@ def test_engine_tax_endpoints_share_the_same_contract() -> None:
         "pension_savings_contribution_krw": payload["pension_savings"][
             "current_year_contribution_krw"
         ],
-        "irp_contribution_krw": payload["irp"][
-            "current_year_contribution_krw"
-        ],
+        "irp_contribution_krw": payload["irp"]["current_year_contribution_krw"],
     }
     withdrawal_input = {
         "tax_year": payload["tax_year"],
@@ -362,13 +370,11 @@ def test_engine_tax_endpoints_share_the_same_contract() -> None:
 
     assert credit.status_code == 200
     assert (
-        credit.json()["rate_scenarios"][0]["estimated_tax_credit_krw"]
-        == "1485000.00"
+        credit.json()["rate_scenarios"][0]["estimated_tax_credit_krw"] == "1485000.00"
     )
     assert withdrawal.status_code == 200
     assert (
-        withdrawal.json()["estimated_max_other_income_withholding_krw"]
-        == "11715000.00"
+        withdrawal.json()["estimated_max_other_income_withholding_krw"] == "11715000.00"
     )
 
 
@@ -381,7 +387,7 @@ def test_narrator_must_call_both_tax_tools_before_rephrasing() -> None:
         )
     )
     output = json.dumps(
-        {"narration": base.answer.rsplit("\n", maxsplit=1)[0]},
+        {"narration": base.answer.rsplit("\n", maxsplit=2)[0]},
         ensure_ascii=False,
     )
     turn = 0
@@ -421,6 +427,7 @@ def test_narrator_must_call_both_tax_tools_before_rephrasing() -> None:
     assert turn == 2
     assert response.narration_mode == "claude_verified"
     assert response.answer == base.answer
+    assert response.answer.splitlines()[-2] == EXPECTED_DC_EXCLUSION_NOTICE
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
 
 

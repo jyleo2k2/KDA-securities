@@ -19,7 +19,11 @@ from pydantic_ai.providers.anthropic import AnthropicProvider
 from ..engine import PensionTaxScenarioInput
 from .models import ChatIntent, ChatResponse, DataBoundary
 from .pension_tax_parser import resolve_pension_tax_inputs
-from .tools import CHAT_AGENT_TOOLS, PENSION_TAX_CLOSING_NOTICE
+from .tools import (
+    CHAT_AGENT_TOOLS,
+    DC_WITHDRAWAL_EXCLUSION_NOTICE,
+    PENSION_TAX_CLOSING_NOTICE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -164,9 +168,7 @@ def _unsafe_claims(text: str) -> set[str]:
 def _adds_unverified_content(candidate: str, source: str) -> bool:
     return (
         not _number_tokens(candidate).issubset(_number_tokens(source))
-        or not _korean_number_tokens(candidate).issubset(
-            _korean_number_tokens(source)
-        )
+        or not _korean_number_tokens(candidate).issubset(_korean_number_tokens(source))
         or not _unsafe_claims(candidate).issubset(_unsafe_claims(source))
     )
 
@@ -201,6 +203,11 @@ class ClaudeNarrator:
         pension_tax_message: str | None = None,
         required_tool_names: frozenset[str] = frozenset(),
     ) -> ChatResponse:
+        if response.data_mode in {
+            "verified_pension_account_overview",
+            "verified_pension_account_deferred_topic",
+        }:
+            return response
         # NAVER titles/summaries are third-party metadata, not instructions.
         # Keep every news response deterministic: no external text enters the
         # narrator context, even if its wording does not match known attacks.
@@ -212,10 +219,8 @@ class ClaudeNarrator:
             return response
         if response.intent not in NARRATABLE_INTENTS or not response.sources:
             return response
-        prompt = (
-            "검증 답변:\n"
-            f"{response.answer}\n\n"
-            "제한사항:\n" + "\n".join(response.limitations)
+        prompt = f"검증 답변:\n{response.answer}\n\n제한사항:\n" + "\n".join(
+            response.limitations
         )
         resolved_tax_inputs = None
         if response.intent == ChatIntent.PENSION_TAX and (
@@ -233,8 +238,8 @@ class ClaudeNarrator:
                         "Claude Tool 입력을 재구성하지 못해 검증 원문을 표시합니다.",
                         reason="tax_input_unresolved",
                     )
-                tool_payload["tax_credit"] = (
-                    resolved_tax_inputs.tax_credit.model_dump(mode="json")
+                tool_payload["tax_credit"] = resolved_tax_inputs.tax_credit.model_dump(
+                    mode="json"
                 )
             if tax_result is not None and tax_result.withdrawal is not None:
                 if resolved_tax_inputs.withdrawal is None:
@@ -243,8 +248,8 @@ class ClaudeNarrator:
                         "Claude Tool 입력을 재구성하지 못해 검증 원문을 표시합니다.",
                         reason="tax_input_unresolved",
                     )
-                tool_payload["withdrawal"] = (
-                    resolved_tax_inputs.withdrawal.model_dump(mode="json")
+                tool_payload["withdrawal"] = resolved_tax_inputs.withdrawal.model_dump(
+                    mode="json"
                 )
             prompt += (
                 "\n\n연금세액 Tool 입력(JSON):\n"
@@ -302,7 +307,11 @@ class ClaudeNarrator:
                 )
 
         if response.intent == ChatIntent.PENSION_TAX:
+            includes_dc_notice = DC_WITHDRAWAL_EXCLUSION_NOTICE in response.answer
             candidate = candidate.replace(PENSION_TAX_CLOSING_NOTICE, "").rstrip()
+            candidate = candidate.replace(DC_WITHDRAWAL_EXCLUSION_NOTICE, "").rstrip()
+            if includes_dc_notice:
+                candidate += f"\n{DC_WITHDRAWAL_EXCLUSION_NOTICE}"
             candidate += f"\n{PENSION_TAX_CLOSING_NOTICE}"
 
         if _adds_unverified_content(candidate, response.answer):
@@ -328,9 +337,7 @@ class ClaudeNarrator:
                 "answer": candidate,
                 "narration_mode": "claude_verified",
                 "model_name": self._model,
-                "narration_reasoning": self._safe_reasoning(
-                    thinking, response.answer
-                ),
+                "narration_reasoning": self._safe_reasoning(thinking, response.answer),
             }
         )
         return ChatResponse.model_validate(data)

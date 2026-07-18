@@ -302,6 +302,45 @@ def test_foreign_session_fails_before_message_insert(monkeypatch) -> None:
     assert "for update" in cursor.executed[0][0]
 
 
+def test_delete_session_uses_owner_predicate(monkeypatch) -> None:
+    session_id = uuid4()
+    owner_id = uuid4()
+    cursor = FakeCursor([(session_id,)])
+    connection = FakeConnection(cursor)
+    monkeypatch.setattr(
+        repository_module.psycopg,
+        "connect",
+        lambda database_url: connection,
+    )
+
+    ChatRepository("postgresql://test").delete_session(
+        owner_id=owner_id,
+        session_id=session_id,
+    )
+
+    delete_query, delete_params = cursor.executed[0]
+    assert "delete from public.chat_sessions" in delete_query
+    assert "where id = %s and owner_id = %s" in delete_query
+    assert "returning id" in delete_query
+    assert delete_params == (session_id, owner_id)
+
+
+def test_delete_session_hides_missing_or_foreign_session(monkeypatch) -> None:
+    cursor = FakeCursor([None])
+    connection = FakeConnection(cursor)
+    monkeypatch.setattr(
+        repository_module.psycopg,
+        "connect",
+        lambda database_url: connection,
+    )
+
+    with pytest.raises(ChatSessionAccessError):
+        ChatRepository("postgresql://test").delete_session(
+            owner_id=uuid4(),
+            session_id=uuid4(),
+        )
+
+
 def test_assistant_failure_rolls_back_the_same_connection(monkeypatch) -> None:
     cursor = FakeCursor(
         [(uuid4(),), (uuid4(),)], fail_on_assistant=True

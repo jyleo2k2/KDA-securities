@@ -205,3 +205,15 @@ def test_cors_allows_vite_fallback_dev_origin() -> None:
         response.headers.get("access-control-allow-origin")
         == "http://127.0.0.1:5174"
     )
+
+
+def test_cors_allows_delete_from_vite_dev_origin() -> None:
+    response = client.options(
+        "/chat/sessions/00000000-0000-4000-8000-000000000000",
+        headers={
+            "Origin": "http://127.0.0.1:5174",
+            "Access-Control-Request-Method": "DELETE",
+        },
+    )
+    assert response.status_code == 200
+    assert "DELETE" in response.headers["access-control-allow-methods"]

@@ -37,11 +37,16 @@ from .models import (
     VisualizationKind,
     extract_numeric_claims,
 )
+from .pension_account_overview import (
+    build_deferred_pension_topic_response,
+    build_pension_account_overview_response,
+)
 from .pension_tax_parser import resolve_pension_tax_inputs
-from .query_planner import BlockedReason, QueryPlan, plan_question
+from .query_planner import AccountRuleTopic, BlockedReason, QueryPlan, plan_question
 from .routing import IntentRouter
 from .scenarios import ScenarioRepository
 from .tools import (
+    DC_WITHDRAWAL_EXCLUSION_NOTICE,
     PENSION_TAX_CLOSING_NOTICE,
     calculate_pension_tax_credit_tool,
     estimate_non_pension_withdrawal_tax_tool,
@@ -238,9 +243,7 @@ def _target_portfolio_summary(
 ) -> str:
     candidates_by_sleeve: dict[str, list[str]] = {}
     for candidate in evaluation.candidates:
-        candidates_by_sleeve.setdefault(candidate.sleeve, []).append(
-            candidate.isu_name
-        )
+        candidates_by_sleeve.setdefault(candidate.sleeve, []).append(candidate.isu_name)
     lines = []
     for target in evaluation.target_sleeves:
         label = _SLEEVE_LABELS[target.sleeve]
@@ -259,9 +262,7 @@ def _target_portfolio_summary(
 
 def _rebalancing_summary(evaluation: EducationalPortfolioEvaluation) -> str:
     rebalancing = evaluation.rebalancing
-    threshold = _decimal_text(
-        _one_decimal(rebalancing.drift_threshold_percent_points)
-    )
+    threshold = _decimal_text(_one_decimal(rebalancing.drift_threshold_percent_points))
     parts = [
         f"목표비중에서 {threshold}%포인트를 초과해 벗어난 자산군은 "
         "리밸런싱 점검 대상으로 봅니다."
@@ -370,8 +371,7 @@ class ChatService:
     ) -> bool:
         return (
             request.scenario_code is not None
-            and plan.intent
-            in (ChatIntent.ACCOUNT_RULE, ChatIntent.OUT_OF_SCOPE)
+            and plan.intent in (ChatIntent.ACCOUNT_RULE, ChatIntent.OUT_OF_SCOPE)
             and _SELECTED_SCENARIO_DIAGNOSIS_TERMS.search(request.message) is not None
         )
 
@@ -405,13 +405,10 @@ class ChatService:
             elif request.educational_portfolio is not None:
                 response = self._educational_portfolio(request.educational_portfolio)
             elif resolved_plan.intent == ChatIntent.EDUCATIONAL_PORTFOLIO:
-                survey_profile = (
-                    original_request.survey_profile
-                    or (
-                        original_request.conversation_context.survey_profile
-                        if original_request.conversation_context is not None
-                        else None
-                    )
+                survey_profile = original_request.survey_profile or (
+                    original_request.conversation_context.survey_profile
+                    if original_request.conversation_context is not None
+                    else None
                 )
                 if _requests_risk_profile_guide(original_request.message):
                     response = self._risk_profile_selection_guide()
@@ -496,7 +493,17 @@ class ChatService:
                 account_type = resolved_plan.account_types[0]
                 response = self._disclosure_response(request, account_type)
             elif resolved_plan.intent == ChatIntent.ACCOUNT_RULE:
-                response = self._account_rule_response(request, resolved_plan)
+                if (
+                    resolved_plan.account_rule_topic
+                    == AccountRuleTopic.PENSION_ACCOUNT_OVERVIEW
+                ):
+                    response = self._pension_account_overview_response()
+                elif resolved_plan.account_rule_topic is not None:
+                    response = build_deferred_pension_topic_response(
+                        resolved_plan.account_rule_topic
+                    )
+                else:
+                    response = self._account_rule_response(request, resolved_plan)
             else:
                 response = self._blocked_response(BlockedReason.UNSUPPORTED)
         return self._with_context(
@@ -637,9 +644,7 @@ class ChatService:
         scenario_code = (
             request.scenario_code
             or (
-                response_context.scenario_code
-                if response_context is not None
-                else None
+                response_context.scenario_code if response_context is not None else None
             )
             or (previous.scenario_code if previous is not None else None)
         )
@@ -692,9 +697,7 @@ class ChatService:
         withdrawal: NonPensionWithdrawalEvaluation | None = None
         if plan.requests_tax_credit:
             assert resolved_inputs.tax_credit is not None
-            tax_credit = calculate_pension_tax_credit_tool(
-                resolved_inputs.tax_credit
-            )
+            tax_credit = calculate_pension_tax_credit_tool(resolved_inputs.tax_credit)
         if plan.requests_withdrawal_tax:
             assert resolved_inputs.withdrawal is not None
             withdrawal = estimate_non_pension_withdrawal_tax_tool(
@@ -748,9 +751,13 @@ class ChatService:
             limitations.extend(withdrawal.assumptions)
             limitations.extend(withdrawal.limitations)
 
+        closing_notices = []
+        if withdrawal is not None:
+            closing_notices.append(DC_WITHDRAWAL_EXCLUSION_NOTICE)
+        closing_notices.append(PENSION_TAX_CLOSING_NOTICE)
         return ChatResponse(
             intent=ChatIntent.PENSION_TAX,
-            answer=" ".join(answer_parts) + f"\n{PENSION_TAX_CLOSING_NOTICE}",
+            answer=" ".join(answer_parts) + "\n" + "\n".join(closing_notices),
             data_mode="user_input_engine",
             sections=sections,
             sources=sources,
@@ -764,16 +771,8 @@ class ChatService:
         result: PensionTaxToolResult,
     ) -> list[SourceEvidence]:
         evidence = [
-            *(
-                result.tax_credit.evidence
-                if result.tax_credit is not None
-                else []
-            ),
-            *(
-                result.withdrawal.evidence
-                if result.withdrawal is not None
-                else []
-            ),
+            *(result.tax_credit.evidence if result.tax_credit is not None else []),
+            *(result.withdrawal.evidence if result.withdrawal is not None else []),
         ]
         credit_source = next(
             (item for item in evidence if "59조의3" in item.label),
@@ -926,9 +925,7 @@ class ChatService:
         return numeric
 
     @classmethod
-    def _withdrawal_text(
-        cls, result: NonPensionWithdrawalEvaluation
-    ) -> str:
+    def _withdrawal_text(cls, result: NonPensionWithdrawalEvaluation) -> str:
         if result.status == WithdrawalCalculationStatus.REQUIRES_REVIEW:
             if result.total_balance_krw is None:
                 return (
@@ -1177,6 +1174,10 @@ class ChatService:
         )
 
     @staticmethod
+    def _pension_account_overview_response() -> ChatResponse:
+        return build_pension_account_overview_response()
+
+    @staticmethod
     def _is_eligibility_question(message: str) -> bool:
         return any(term in message for term in ("편입", "적격", "가능한 상품"))
 
@@ -1333,10 +1334,9 @@ class ChatService:
                 request.account_type.value,
                 exc,
             )
-            missing_master = (
-                isinstance(exc, FileNotFoundError)
-                and "no cost-return master" in str(exc)
-            )
+            missing_master = isinstance(
+                exc, FileNotFoundError
+            ) and "no cost-return master" in str(exc)
             unavailable_reason = (
                 "ETF 비용·수익률 마스터가 서버에 준비되지 않았습니다."
                 if missing_master
@@ -1358,9 +1358,7 @@ class ChatService:
         engine_source = SourceEvidence(
             evidence_id="engine:educational_portfolio",
             label="교육용 연금 포트폴리오 규칙 엔진",
-            locator=(
-                f"engine://{evaluation.engine_name}/{evaluation.engine_version}"
-            ),
+            locator=(f"engine://{evaluation.engine_name}/{evaluation.engine_version}"),
             publisher="연금 코파일럿 규칙 엔진",
             as_of=repository.as_of,
             data_boundary=DataBoundary.ENGINE,
@@ -1392,7 +1390,7 @@ class ChatService:
                 unit="%",
                 evidence_id=engine_source.evidence_id,
                 basis="계좌 한도·성향·손실감내력을 반영한 엔진 계산",
-            )
+            ),
         ]
         numeric.extend(
             NumericEvidence(
@@ -1422,9 +1420,7 @@ class ChatService:
             planning.conservative_planning_return_percent is not None
             and planning.base_planning_return_percent is not None
         ):
-            conservative = _one_decimal(
-                planning.conservative_planning_return_percent
-            )
+            conservative = _one_decimal(planning.conservative_planning_return_percent)
             base = _one_decimal(planning.base_planning_return_percent)
             numeric.extend(
                 [
@@ -1501,8 +1497,7 @@ class ChatService:
         if len(responses) == 1:
             return responses[0]
         if any(
-            response.educational_portfolio_evaluation is None
-            for response in responses
+            response.educational_portfolio_evaluation is None for response in responses
         ):
             unavailable = [
                 response.answer
@@ -1516,9 +1511,7 @@ class ChatService:
                     for limitation in response.limitations
                 )
             )
-            limitations.append(
-                "계좌별 규칙을 섞거나 누락값을 추정하지 않았습니다."
-            )
+            limitations.append("계좌별 규칙을 섞거나 누락값을 추정하지 않았습니다.")
             return ChatResponse(
                 intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
                 answer=(
@@ -1540,9 +1533,7 @@ class ChatService:
             locator="request://survey_profile",
             data_boundary=DataBoundary.USER_INPUT,
         )
-        sources: dict[str, SourceEvidence] = {
-            survey_source.evidence_id: survey_source
-        }
+        sources: dict[str, SourceEvidence] = {survey_source.evidence_id: survey_source}
         numeric: list[NumericEvidence] = [
             NumericEvidence(
                 label="현재 나이",
@@ -1681,9 +1672,7 @@ class ChatService:
                 )
             else:
                 status_text = (
-                    "기준 안에 있습니다"
-                    if result.within_limit
-                    else "기준을 넘었습니다"
+                    "기준 안에 있습니다" if result.within_limit else "기준을 넘었습니다"
                 )
                 account_lines.append(
                     f"{account_name} 계좌의 위험자산 비중은 {status_text}"
@@ -1865,14 +1854,10 @@ class ChatService:
                 data_mode="unavailable",
                 limitations=["NAVER 뉴스 수집과 DATABASE_URL이 필요합니다."],
             )
-        is_market_news = search_query == "market" or search_query.startswith(
-            "market:"
-        )
+        is_market_news = search_query == "market" or search_query.startswith("market:")
         region = search_query.partition(":")[2] or None
         matches = (
-            self._news.random_recent_market_news(
-                region=region, days=5, limit=3
-            )
+            self._news.random_recent_market_news(region=region, days=5, limit=3)
             if is_market_news
             else self._news.latest_news(search_query, limit=request.max_results)
         )

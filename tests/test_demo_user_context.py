@@ -73,6 +73,14 @@ class FakeContextRepository:
         return _context() if auth_user_id == OWNER_ID else None
 
 
+class FakeProfileOnlyContextRepository:
+    def get(self, auth_user_id: UUID) -> None:
+        return None
+
+    def get_nickname(self, auth_user_id: UUID) -> str | None:
+        return "김민재" if auth_user_id == OWNER_ID else None
+
+
 class FakeChatRepository:
     def find_idempotent_exchange(self, **kwargs):
         return None
@@ -93,8 +101,12 @@ def _service() -> ChatService:
     )
 
 
-def _override_chat() -> None:
-    context_repository = FakeContextRepository()
+def _override_chat(
+    context_repository: FakeContextRepository
+    | FakeProfileOnlyContextRepository
+    | None = None,
+) -> None:
+    context_repository = context_repository or FakeContextRepository()
     app.dependency_overrides[require_supabase_user_id] = lambda: OWNER_ID
     app.dependency_overrides[get_optional_chat_repository] = lambda: (
         FakeChatRepository()
@@ -331,6 +343,67 @@ def test_authenticated_chat_answers_balance_from_loaded_context() -> None:
     assert payload["sources"][0]["evidence_id"] == "mock:user_context"
     assert "IRP 0원" in payload["answer"]
     assert "연금저축 0원" in payload["answer"]
+
+
+def test_authenticated_overview_addresses_server_nickname_once() -> None:
+    _override_chat()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat",
+                json={"message": "연금계좌 규칙 알려줘"},
+                headers={
+                    "Authorization": "Bearer test",
+                    "Idempotency-Key": str(uuid4()),
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()["response"]
+    assert payload["data_mode"] == "verified_pension_account_overview"
+    assert payload["salutation"] == "박준호(가상)님"
+
+
+def test_authenticated_deferred_topic_addresses_server_nickname_once() -> None:
+    _override_chat()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat",
+                json={"message": "연금으로 받을 때 세금은?"},
+                headers={
+                    "Authorization": "Bearer test",
+                    "Idempotency-Key": str(uuid4()),
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()["response"]
+    assert payload["data_mode"] == "verified_pension_account_deferred_topic"
+    assert payload["salutation"] == "박준호(가상)님"
+
+
+def test_authenticated_overview_uses_profile_without_financial_context() -> None:
+    _override_chat(FakeProfileOnlyContextRepository())
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat",
+                json={"message": "연금계좌 전체적으로 정리해줘"},
+                headers={
+                    "Authorization": "Bearer test",
+                    "Idempotency-Key": str(uuid4()),
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["response"]["salutation"] == "김민재님"
 
 
 def test_authenticated_tax_uses_database_context_not_client_values() -> None:

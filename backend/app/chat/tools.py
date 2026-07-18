@@ -31,6 +31,9 @@ from ..engine import (
 PENSION_TAX_CLOSING_NOTICE = (
     "자세한 내용은 금융기관을 통한 확인 및 세무전문가의 상담이 필요합니다."
 )
+DC_WITHDRAWAL_EXCLUSION_NOTICE = (
+    "DC형 연금은 원칙적으로 중도해지가 불가능하므로 고려하지 않았습니다."
+)
 
 
 def account_diagnostics_tool(

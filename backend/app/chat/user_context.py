@@ -215,7 +215,7 @@ class DemoUserContextRepository:
                 """
                 select
                     context.auth_user_id,
-                    context.nickname,
+                    coalesce(nullif(btrim(profile.nickname), ''), context.nickname),
                     context.representative_age,
                     context.customer_context,
                     scenario.code,
@@ -253,12 +253,15 @@ class DemoUserContextRepository:
                 from public.demo_user_financial_context as context
                 join public.mock_scenarios as scenario
                   on scenario.id = context.scenario_id
+                left join public.user_profiles as profile
+                  on profile.user_id = context.auth_user_id
                 left join public.mock_accounts as account
                   on account.scenario_id = scenario.id
                 where context.auth_user_id = %s
                 group by
                     context.auth_user_id,
                     context.nickname,
+                    profile.nickname,
                     context.representative_age,
                     context.customer_context,
                     scenario.code,
@@ -278,6 +281,19 @@ class DemoUserContextRepository:
             )
             row = cursor.fetchone()
         return self._context_from_row(row) if row is not None else None
+
+    def get_nickname(self, auth_user_id: UUID) -> str | None:
+        with self._connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
+                select nullif(btrim(nickname), '')
+                from public.user_profiles
+                where user_id = %s
+                """,
+                (auth_user_id,),
+            )
+            row = cursor.fetchone()
+        return row[0] if row is not None else None
 
     @staticmethod
     def _context_from_row(row: Any) -> DemoUserFinancialContext:

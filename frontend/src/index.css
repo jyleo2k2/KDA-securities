@@ -49,9 +49,18 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .auth-user button { padding: 4px 0; border: 0; background: transparent; color: #b9cbc2; font-size: 8px; cursor: pointer; }
 .history-label { margin: 14px 0 7px; }
 .history-list { max-height: 145px; display: grid; gap: 4px; overflow-y: auto; }
-.history-list button { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 7px 8px; border: 0; border-radius: 8px; background: transparent; color: #b9cbc2; text-align: left; cursor: pointer; }
-.history-list button:hover, .history-list button.active { background: rgba(255,255,255,.08); color: white; }
-.history-list button:disabled { cursor: wait; }.history-list strong { overflow: hidden; font-size: 9px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }.history-list small { color: #78968a; font-size: 8px; }
+.history-item { display: grid; grid-template-columns: minmax(0, 1fr) 30px; gap: 2px; border-radius: 8px; }
+.history-item:hover, .history-item.active { background: rgba(255,255,255,.08); }
+.history-item button { border: 0; background: transparent; color: #b9cbc2; cursor: pointer; }
+.history-item button:disabled { cursor: wait; opacity: .6; }
+.history-open { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 7px 5px 7px 8px; text-align: left; }
+.history-item:hover button, .history-item.active button { color: white; }
+.history-delete { display: grid; place-items: center; padding: 0; border-radius: 7px; color: #78968a !important; }
+.history-delete:hover:not(:disabled) { background: rgba(255,127,104,.16); color: #ffc0a6 !important; }
+.history-delete svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.delete-toast { position: fixed; top: 22px; left: 50%; z-index: 100; transform: translateX(-50%); padding: 11px 18px; border-radius: 999px; background: #204635; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.2); font-size: 13px; font-weight: 700; white-space: nowrap; }
+.delete-progress { font-size: 12px; }
+.history-list strong { overflow: hidden; font-size: 9px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }.history-list small { color: #78968a; font-size: 8px; }
 .sidebar-section { margin-top: 28px; min-height: 0; overflow-y: auto; }
 .sidebar-label { margin: 0 9px 10px; color: #82a094; font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
 .scenario-list { display: grid; gap: 5px; }
@@ -131,6 +140,20 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .answer-section[open] summary small::after { content: "접기"; font-size: 8px; }
 .answer-section p { margin: 0; color: #5e6d65; white-space: pre-wrap; font-size: 11px; line-height: 1.65; }
 .answer-section[open] p { max-height: 260px; overflow-y: auto; padding: 0 0 12px; }
+.answer-blocks { display: grid; gap: 11px; padding: 0 0 13px; }
+.rich-answer-section[open] p { max-height: none; overflow: visible; padding: 0; }
+.answer-callout { padding: 12px; border-radius: 10px; background: #e9f2d7; }
+.answer-callout strong, .answer-formula strong, .answer-table-title { display: block; margin-bottom: 5px; color: #294838; font-size: 10px; }
+.answer-callout p { color: #345342; font-weight: 650; }
+.answer-bullets { display: grid; gap: 6px; margin: 0; padding-left: 18px; color: #5e6d65; font-size: 11px; line-height: 1.6; }
+.answer-table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid #dde5da; border-radius: 9px; background: #fff; }
+.answer-table-title { margin: 0; padding: 9px 10px 0; }
+.answer-table-wrap table { width: 100%; min-width: 560px; border-collapse: collapse; color: #53645a; font-size: 9px; line-height: 1.45; }
+.answer-table-wrap th, .answer-table-wrap td { padding: 8px 9px; border-bottom: 1px solid #e7ece5; text-align: left; vertical-align: top; }
+.answer-table-wrap th { background: #eef4e7; color: #355342; font-weight: 700; }
+.answer-table-wrap tr:last-child td { border-bottom: 0; }
+.answer-formula { padding: 11px; border-radius: 9px; background: #edf1ed; }
+.answer-formula pre { margin: 0; overflow-x: auto; color: #385044; font: 9px/1.65 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre; }
 .section-limitation { border-color: #d98f70; background: #fcf5f1; }
 .section-external_opinion { border-color: #8b99bd; background: #f4f6fb; }
 .number-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 7px; margin-top: 14px; }

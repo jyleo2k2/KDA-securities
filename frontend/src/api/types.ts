@@ -479,11 +479,23 @@ export interface NumericEvidence {
   basis: string;
 }
 
+export type AnswerBlockKind = "callout" | "paragraph" | "bullets" | "table" | "formula";
+
+export interface AnswerBlock {
+  kind: AnswerBlockKind;
+  title?: string | null;
+  text?: string | null;
+  items: string[];
+  headers: string[];
+  rows: string[][];
+}
+
 export interface AnswerSection {
   kind: "fact" | "external_opinion" | "service_explanation" | "limitation";
   title: string;
   content: string;
   evidence_ids: string[];
+  blocks?: AnswerBlock[];
 }
 
 export interface ChatNewsItem {
@@ -564,6 +576,7 @@ export interface ChatResponse {
   model_name?: string | null;
   /** Claude 내레이터의 검토 과정 요약(새 숫자 감지 시 서버가 생략). */
   narration_reasoning?: string | null;
+  salutation?: string | null;
   sections: AnswerSection[];
   news_items: ChatNewsItem[];
   visualizations: ChatVisualization[];

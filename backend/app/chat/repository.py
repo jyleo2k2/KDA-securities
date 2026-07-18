@@ -366,6 +366,24 @@ class ChatRepository:
                 for row in message_rows
             ]
 
+    def delete_session(self, *, owner_id: UUID, session_id: UUID) -> None:
+        """Delete one owned session and its database-cascaded children."""
+
+        with (
+            self._connection() as connection,
+            connection.cursor() as cursor,
+        ):
+            cursor.execute(
+                """
+                delete from public.chat_sessions
+                where id = %s and owner_id = %s
+                returning id
+                """,
+                (session_id, owner_id),
+            )
+            if cursor.fetchone() is None:
+                raise ChatSessionAccessError("chat session was not found")
+
     @staticmethod
     def _require_owned_session(
         cursor: Any, session_id: UUID, owner_id: UUID

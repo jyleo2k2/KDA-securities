@@ -12,6 +12,7 @@ import {
 
 import {
   ApiError,
+  deleteChatSession,
   getCapabilities,
   getChatSessions,
   getMyPensionContext,
@@ -21,6 +22,7 @@ import {
   sendChatStream,
 } from "../api/client";
 import type {
+  AnswerBlock,
   ChatCapabilities,
   CompletedSurveyProfile,
   ConversationContext,
@@ -106,7 +108,7 @@ function Icon({
   name,
   size = 20,
 }: {
-  name: "spark" | "send" | "book" | "database" | "chevron" | "shield" | "refresh" | "sun" | "chart" | "star";
+  name: "spark" | "send" | "book" | "database" | "chevron" | "shield" | "refresh" | "sun" | "chart" | "star" | "trash";
   size?: number;
 }) {
   const paths = {
@@ -120,6 +122,7 @@ function Icon({
     sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" /></>,
     chart: <><path d="M4 20V4M4 20h16" /><path d="m8 15 3-4 3 2 5-6" /></>,
     star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />,
+    trash: <><path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6" /></>,
   };
   return <svg aria-hidden="true" viewBox="0 0 24 24" width={size} height={size}>{paths[name]}</svg>;
 }
@@ -250,6 +253,67 @@ function NewsCards({ response }: { response: ChatResponse }) {
   );
 }
 
+function AnswerBlocks({ blocks }: { blocks: AnswerBlock[] }) {
+  return (
+    <div className="answer-blocks">
+      {blocks.map((block, index) => {
+        const key = `${block.kind}-${index}`;
+        if (block.kind === "callout") {
+          return (
+            <div className="answer-callout" key={key}>
+              {block.title && <strong>{displayText(block.title)}</strong>}
+              <p>{displayText(block.text ?? "")}</p>
+            </div>
+          );
+        }
+        if (block.kind === "paragraph") {
+          return <p key={key}>{displayText(block.text ?? "")}</p>;
+        }
+        if (block.kind === "bullets") {
+          return (
+            <ul className="answer-bullets" key={key}>
+              {block.items.map((item, itemIndex) => (
+                <li key={`${key}-${itemIndex}`}>{displayText(item)}</li>
+              ))}
+            </ul>
+          );
+        }
+        if (block.kind === "formula") {
+          return (
+            <div className="answer-formula" key={key}>
+              {block.title && <strong>{displayText(block.title)}</strong>}
+              <pre>{displayText(block.text ?? "")}</pre>
+            </div>
+          );
+        }
+        return (
+          <div className="answer-table-wrap" key={key}>
+            {block.title && <strong className="answer-table-title">{displayText(block.title)}</strong>}
+            <table>
+              <thead>
+                <tr>
+                  {block.headers.map((header, headerIndex) => (
+                    <th key={`${key}-header-${headerIndex}`}>{displayText(header)}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {block.rows.map((row, rowIndex) => (
+                  <tr key={`${key}-row-${rowIndex}`}>
+                    {row.map((cell, cellIndex) => (
+                      <td key={`${key}-cell-${rowIndex}-${cellIndex}`}>{displayText(cell)}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function AssistantMessage({ response, text }: { response?: ChatResponse; text: string }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -262,7 +326,10 @@ function AssistantMessage({ response, text }: { response?: ChatResponse; text: s
         <span>{response.narration_mode === "deterministic" ? "검증 답변" : "AI 서술"}</span>
       </div>
       {(response.data_mode !== "news_summary" || response.news_items.length === 0) && (
-        <p className="message-copy">{displayText(response.answer)}</p>
+        <p className="message-copy">
+          {response.salutation && <><strong>{response.salutation},</strong>{" "}</>}
+          {displayText(response.answer)}
+        </p>
       )}
 
       {response.intent !== "mock_portfolio" && response.numeric_evidence.length > 0 && (
@@ -290,9 +357,13 @@ function AssistantMessage({ response, text }: { response?: ChatResponse; text: s
           응답 필드는 그대로 유지해 디버깅·로그에서 확인한다. */}
 
       {response.sections.map((section, index) => (
-        <details className={`answer-section section-${section.kind}`} key={`${section.title}-${index}`} open={response.intent === "educational_portfolio" || section.kind === "limitation"}>
+        <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} key={`${section.title}-${index}`} open={response.intent === "educational_portfolio" || response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || section.kind === "limitation"}>
           <summary><span>{section.title}</span><small>내용 보기</small></summary>
-          <p>{displayText(section.content)}</p>
+          {section.blocks?.length ? (
+            <AnswerBlocks blocks={section.blocks} />
+          ) : (
+            <p>{displayText(section.content)}</p>
+          )}
         </details>
       ))}
 
@@ -370,6 +441,8 @@ export function GuidePage({
     useState<ConversationContext | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [deleteToast, setDeleteToast] = useState<string | null>(null);
   const [loginPanelOpen, setLoginPanelOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -425,6 +498,12 @@ export function GuidePage({
     () => scenarios.find((scenario) => scenario.code === selectedScenario),
     [scenarios, selectedScenario],
   );
+
+  useEffect(() => {
+    if (!deleteToast) return;
+    const timer = window.setTimeout(() => setDeleteToast(null), 2500);
+    return () => window.clearTimeout(timer);
+  }, [deleteToast]);
 
   const pensionTaxInput = useMemo<PensionTaxScenarioInput | undefined>(() => {
     if (!pensionSavingsBalance.trim() || !irpBalance.trim()) return undefined;
@@ -504,6 +583,7 @@ export function GuidePage({
       sendingRef.current = false;
       setIsSending(false);
       setHistoryLoading(false);
+      setDeletingSessionId(null);
     }
     if (userChanged) {
       conversationGenerationRef.current += 1;
@@ -680,6 +760,50 @@ export function GuidePage({
     }
   }
 
+  async function deleteStoredSession(session: ChatSessionSummary) {
+    if (
+      !accessToken
+      || !authenticatedUserId
+      || historyLoading
+      || isSending
+      || deletingSessionId
+    ) return;
+    const title = session.title?.trim() || "새 대화";
+    if (!window.confirm(`‘${title}’ 대화를 삭제할까요?\n삭제한 대화는 복구할 수 없습니다.`)) {
+      return;
+    }
+
+    const requestToken = accessToken;
+    const requestUserId = authenticatedUserId;
+    const authGeneration = authGenerationRef.current;
+    setDeletingSessionId(session.session_id);
+    setHistoryError(null);
+    try {
+      await deleteChatSession(session.session_id, requestToken);
+      if (!isCurrentOperation(authGeneration, requestUserId, requestToken)) return;
+      setChatSessions((current) => current.filter(
+        (item) => item.session_id !== session.session_id,
+      ));
+      setDeleteToast("대화가 삭제되었습니다.");
+      if (activeSessionId === session.session_id) {
+        conversationGenerationRef.current += 1;
+        setMessages([]);
+        setActiveSessionId(null);
+        setConversationContext(null);
+        setIsSidebarOpen(false);
+      }
+    } catch (error) {
+      if (!isCurrentOperation(authGeneration, requestUserId, requestToken)) return;
+      setHistoryError(authenticatedErrorMessage(error));
+    } finally {
+      if (isCurrentOperation(authGeneration, requestUserId, requestToken)) {
+        setDeletingSessionId((current) => (
+          current === session.session_id ? null : current
+        ));
+      }
+    }
+  }
+
   async function submitPrompt(prompt: string) {
     const normalized = prompt.trim();
     if (normalized.length < 2 || sendingRef.current) return;
@@ -837,18 +961,37 @@ export function GuidePage({
                   <p className="auth-note">대화 이력을 불러오는 중...</p>
                 ) : chatSessions.length === 0 ? (
                   <p className="auth-note">아직 저장된 대화가 없습니다.</p>
-                ) : chatSessions.map((session) => (
-                  <button
-                    className={activeSessionId === session.session_id ? "active" : ""}
-                    type="button"
-                    key={session.session_id}
-                    onClick={() => void loadStoredSession(session.session_id)}
-                    disabled={historyLoading}
-                  >
-                    <strong>{session.title || "새 대화"}</strong>
-                    <small>{new Date(session.updated_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</small>
-                  </button>
-                ))}
+                ) : chatSessions.map((session) => {
+                  const title = session.title || "새 대화";
+                  const deleting = deletingSessionId === session.session_id;
+                  const disabled = historyLoading || isSending || deletingSessionId !== null;
+                  return (
+                    <div
+                      className={`history-item ${activeSessionId === session.session_id ? "active" : ""}`}
+                      key={session.session_id}
+                    >
+                      <button
+                        className="history-open"
+                        type="button"
+                        onClick={() => void loadStoredSession(session.session_id)}
+                        disabled={disabled}
+                      >
+                        <strong>{title}</strong>
+                        <small>{new Date(session.updated_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</small>
+                      </button>
+                      <button
+                        className="history-delete"
+                        type="button"
+                        aria-label={`대화 삭제: ${title}`}
+                        title="대화 삭제"
+                        onClick={() => void deleteStoredSession(session)}
+                        disabled={disabled}
+                      >
+                        {deleting ? <span className="delete-progress">…</span> : <Icon name="trash" size={14} />}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </>
           ) : auth.configured ? (
@@ -1076,6 +1219,11 @@ export function GuidePage({
           <p>AI 답변은 투자 판단을 돕는 정보이며, 미래 수익을 보장하지 않습니다.</p>
         </div>
       </main>
+      {deleteToast && (
+        <div className="delete-toast" role="status" aria-live="polite">
+          {deleteToast}
+        </div>
+      )}
     </div>
   );
 }
