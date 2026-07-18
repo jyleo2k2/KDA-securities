@@ -444,3 +444,11 @@ def test_manifest_hash_and_personal_identifier_are_enforced(tmp_path) -> None:
 def test_ingestion_cli_reports_invalid_chunk_size_without_traceback(capsys) -> None:
     assert ingest_main(["--validate-only", "--max-chars", "100"]) == 1
     assert "manifest 검증 실패" in capsys.readouterr().err
+
+
+def test_ingestion_cli_reports_nearest_review_deadline(capsys) -> None:
+    assert ingest_main(["--validate-only"]) == 0
+
+    output = capsys.readouterr().out
+    assert "다음 검토: pension-tax-credit" in output
+    assert "2026-10-14" in output
