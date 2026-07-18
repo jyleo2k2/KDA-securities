@@ -1,6 +1,7 @@
 """Shared allowlist and personal-data checks for verified knowledge."""
 
 import re
+from urllib.parse import urlparse
 
 ALLOWED_KNOWLEDGE_SOURCE_CODES = frozenset(
     {
@@ -10,6 +11,23 @@ ALLOWED_KNOWLEDGE_SOURCE_CODES = frozenset(
 )
 ALLOWED_KNOWLEDGE_DOCUMENT_TYPES = frozenset(
     {"official_guide", "regulation", "research"}
+)
+ALLOWED_OFFICIAL_SOURCE_HOSTS = frozenset(
+    {
+        "100lifeplan.fss.or.kr",
+        "easylaw.go.kr",
+        "fsc.go.kr",
+        "g.nts.go.kr",
+        "institute.nps.or.kr",
+        "law.go.kr",
+        "moel.go.kr",
+        "open.krx.co.kr",
+        "regulation.krx.co.kr",
+        "www.fsc.go.kr",
+        "www.law.go.kr",
+        "www.moel.go.kr",
+        "www.nts.go.kr",
+    }
 )
 
 _SENSITIVE_PATTERNS = (
@@ -22,10 +40,38 @@ _SENSITIVE_PATTERNS = (
     ),
 )
 
+# Invisible controls can hide instructions from reviewers. These are rejected instead
+# of normalized so the committed source remains byte-for-byte reviewable.
+_HIDDEN_RAG_CONTROLS = frozenset({"\u200b", "\u200c", "\u200d", "\ufeff"})
+_RAG_INSTRUCTION_PATTERNS = (
+    re.compile(r"ignore\s+(?:all\s+)?previous\s+instructions?", re.I),
+    re.compile(r"이전\s*(?:의\s*)?지시(?:사항)?(?:을|를)?\s*무시"),
+    re.compile(r"시스템\s*프롬프트(?:를|을)?\s*(?:무시|변경|공개)"),
+)
+
 
 def contains_sensitive_personal_data(text: str) -> bool:
     """Detect identifiers that must never enter the verified-knowledge corpus."""
     return any(pattern.search(text) for pattern in _SENSITIVE_PATTERNS)
+
+
+def is_allowed_official_source_url(source_url: str) -> bool:
+    """Allow only HTTPS pages from the project's reviewed public institutions."""
+    parsed = urlparse(source_url)
+    return (
+        parsed.scheme == "https"
+        and parsed.hostname in ALLOWED_OFFICIAL_SOURCE_HOSTS
+        and bool(parsed.path)
+        and not parsed.username
+        and not parsed.password
+    )
+
+
+def contains_unsafe_rag_content(text: str) -> bool:
+    """Reject hidden controls and obvious instructions aimed at the RAG consumer."""
+    return any(character in text for character in _HIDDEN_RAG_CONTROLS) or any(
+        pattern.search(text) for pattern in _RAG_INSTRUCTION_PATTERNS
+    )
 
 
 def canonical_project_source_url(source_path: str) -> str:
