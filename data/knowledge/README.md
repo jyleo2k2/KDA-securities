@@ -4,6 +4,14 @@ RAG 전용 복사본을 따로 두지 않는다. 사용자 대상 원문은
 `docs/20_리서치`, `docs/40_규제`에 두고,
 `approved_documents.json`을 단일 승인 목록으로 사용한다.
 
+## 현재 운영 상태 (2026-07-19)
+
+- PR #56으로 거버넌스 스키마 v2와 공식 문서 5종을 main에 반영했다.
+- 승인 문서 10개, 원격 총 청크 45개(활성 41·비활성 4), 활성 미임베딩 0개다.
+- 원격 `knowledge_chunks.embedding`은 `vector(1024)`이며 HNSW 인덱스가 적용돼 있다.
+- 문서별 대표 질의 18케이스는 로컬 Hit@5=1·Hit@1=1·MRR@5=1을 통과했다.
+- `uv run python scripts/ingest_knowledge.py --validate-only`는 PR과 `main` push CI에서 실행된다. 정기 검토 cron은 아직 없다.
+
 ## 역할
 
 - 자동화: 스키마, 공식 출처 도메인, SHA-256, 개인정보, 숨은 제어문구,
@@ -28,6 +36,18 @@ RAG 전용 복사본을 따로 두지 않는다. 사용자 대상 원문은
 달라졌으면 Markdown, `as_of_date`, SHA-256, 질문 벤치마크를 함께 갱신한다.
 근거를 확인할 수 없거나 범위가 애매하면 승인 목록에서 제거해 검색 대상에서
 제외한다.
+
+## 검토 일정
+
+| 검토 기한 | 문서 ID |
+|---|---|
+| 2026-10-14 | `default-option`, `pension-tax-credit`, `retirement-pension-receipt-withdrawal` |
+| 2026-10-16 | `pension-deposit-protection`, `pension-receipt-taxation`, `retirement-pension-in-kind-transfer` |
+| 2027-01-12 | `pension-basics`, `provider-disclosure-reading` |
+| 2027-01-14 | `etf-comparison-metrics`, `retirement-pension-2025-performance` |
+
+가장 가까운 기한은 2026-10-14다. 정기 실행이 도입되기 전까지 `project_owner`가
+수동 일정으로 검토를 시작하고, 갱신 PR에서 `--validate-only` 결과를 확인한다.
 
 ## 원격 동기화와 복구
 
