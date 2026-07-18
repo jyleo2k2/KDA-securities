@@ -25,9 +25,14 @@ from backend.app.chat.models import (
     SourceEvidence,
     extract_numeric_claims,
 )
-from backend.app.chat.narrator import ClaudeNarrator, _adds_unverified_content
+from backend.app.chat.narrator import (
+    ClaudeNarrator,
+    _adds_unverified_content,
+    _unsafe_claims,
+)
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService, _knowledge_sources
+from backend.app.chat.tools import PENSION_TAX_CLOSING_NOTICE
 from backend.app.engine import AccountType
 from backend.app.main import app, get_chat_narrator, get_chat_service
 from backend.app.retrieval.repository import KnowledgeMatch, NewsMatch
@@ -661,6 +666,161 @@ def test_guard_still_rejects_percent_absent_from_legal_fraction_source() -> None
     source = "납입한 금액의 100분의 15에 해당하는 금액을 공제한다."
 
     assert _adds_unverified_content("납입액의 20%를 공제받습니다.", source)
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    (
+        "이번 달에 한도를 같이 살펴보자.",
+        "이건 계좌별로 규칙이 달라.",
+        "한번 천천히 확인해 보자.",
+        "구원 같은 표현이 아니라 규칙 이야기야.",
+        "일단 사실만 놓고 오늘 정리해 보자.",
+    ),
+)
+def test_guard_allows_colloquial_single_syllable_numeral_homographs(
+    candidate: str,
+) -> None:
+    # 이/한/일/구/사/오 같은 한 글자 숫자어는 흔한 낱말의 첫 글자와 겹친다
+    # (이번·이건·한번·구원·사실·오늘). 형태소 경계가 없는 regex가 이를 숫자로
+    # 오인해 정답 재서술을 통째로 거부하던 오탐을 막는다.
+    source = "IRP 일반 위험자산 한도는 70%입니다."
+
+    assert not _adds_unverified_content(candidate, source)
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    (
+        "IRP 일반 위험자산 한도는 칠십 퍼센트입니다.",
+        "한도는 구백만 원입니다.",
+        "적립금은 삼천만 원까지 가능합니다.",
+    ),
+)
+def test_guard_still_rejects_multisyllable_korean_numerals_absent_from_source(
+    candidate: str,
+) -> None:
+    # 두 글자 이상 한글 숫자 조합(칠십·구백만·삼천만)은 일상어와 겹치지 않으므로
+    # 원문에 없으면 계속 거부한다 — 오탐 완화가 실제 조작 수치를 놓치지 않는다.
+    source = "IRP 일반 위험자산 한도는 70%입니다."
+
+    assert _adds_unverified_content(candidate, source)
+
+
+@pytest.mark.parametrize(
+    ("candidate", "category"),
+    (
+        ("원금 손실 없이 확실한 수익을 보장합니다", "guarantee"),
+        ("예금이 아니라 주식 매수를 추천합니다", "recommendation"),
+    ),
+)
+def test_guard_rejects_connective_negation_before_unsafe_claim(
+    candidate: str,
+    category: str,
+) -> None:
+    # '없이/아니라'는 뒤의 보장·추천 주장을 부정하지 않는 연결 표현이다.
+    assert category in _unsafe_claims(candidate)
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    (
+        "수익 보장은 안 돼요",
+        "매수 추천은 하지 않아요",
+        "원금 보장을 제공하지 않습니다",
+    ),
+)
+def test_guard_allows_negation_attached_after_unsafe_claim(candidate: str) -> None:
+    # 주장 키워드 바로 뒤에서 해당 주장을 부정하는 컴플라이언스 설명은 허용한다.
+    assert _unsafe_claims(candidate) == set()
+
+
+def test_guard_rejects_new_guarantee_instance_in_same_category() -> None:
+    source = "안정형 성향은 원금 보장형 상품 중심으로 구성합니다."
+    candidate = (
+        "안정형 성향은 원금 보장형 상품 중심으로 구성하고, "
+        "수익도 확실히 보장됩니다."
+    )
+
+    # 둘 다 guarantee 카테고리지만 '수익 확실 보장'은 원문에 없는 별도 주장이다.
+    assert _unsafe_claims(source) == {"guarantee"}
+    assert _unsafe_claims(candidate) == {"guarantee"}
+    assert _adds_unverified_content(candidate, source)
+
+
+def test_guard_allows_same_normalized_unsafe_claim_instance() -> None:
+    source = "안정형 성향은 원금 보장형 상품 중심으로 구성합니다."
+    candidate = "안정형은 원금   보장형 상품 중심으로 구성합니다."
+
+    # 공백만 다른 동일 매치 문구는 새 주장으로 보지 않는다.
+    assert not _adds_unverified_content(candidate, source)
+
+
+@pytest.mark.parametrize(
+    ("source", "candidate"),
+    (
+        ("55세까지 가능합니다.", "55주까지 가능합니다."),
+        ("현재 3위입니다.", "현재 3조입니다."),
+        ("면적은 10평입니다.", "금액은 10원입니다."),
+    ),
+)
+def test_guard_rejects_same_number_with_different_domain_unit(
+    source: str,
+    candidate: str,
+) -> None:
+    # 미등재 단위를 모두 무단위(number)로 합치면 단위 스왑이 통과한다.
+    assert _adds_unverified_content(candidate, source)
+
+
+@pytest.mark.parametrize(
+    ("left", "right"),
+    (
+        ("허용 범위는 10~20%입니다.", "허용 범위는 10%~20%입니다."),
+        ("잔액은 3천만 원입니다.", "잔액은 3,000만 원입니다."),
+        ("기준일은 2026-07-16입니다.", "기준일은 2026년 7월 16일입니다."),
+    ),
+)
+def test_guard_treats_exact_numeric_notation_variants_as_equivalent(
+    left: str,
+    right: str,
+) -> None:
+    # 범위·통화 스케일·날짜의 정확한 동치만 허용한다. 값 추정이나 반올림은 없다.
+    assert not _adds_unverified_content(right, left)
+    assert not _adds_unverified_content(left, right)
+
+
+def test_narrator_accepts_limitation_number_and_keeps_tax_closing_notice() -> None:
+    base = ChatResponse(
+        intent=ChatIntent.PENSION_TAX,
+        answer="규칙 엔진 결과를 확인했습니다.",
+        data_mode="engine",
+        sources=[_source()],
+        limitations=["검토 범위는 최근 5년입니다."],
+    )
+
+    response = _narrate_with_fake(base, "최근 5년 범위의 규칙 엔진 결과입니다.")
+
+    # limitations도 Claude가 받은 검증 입력이며, 상담 문구는 서버가 후부착한다.
+    assert response.narration_mode == "claude_verified"
+    assert "5년" in response.answer
+    assert response.answer.endswith(PENSION_TAX_CLOSING_NOTICE)
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    (
+        "백번 맞는 말이야.",
+        "한두 번 확인하면 돼.",
+        "두세 번 같이 살펴보자.",
+        "이사회 결정을 확인했어.",
+        "육회 이야기는 금융 숫자가 아니야.",
+    ),
+)
+def test_guard_allows_narrow_korean_numeral_homographs(candidate: str) -> None:
+    source = "IRP 일반 위험자산 한도는 70%입니다."
+
+    # 어림수·관용구·고정 복합명사만 좁게 제외하며 실제 수치 조합은 계속 검사한다.
+    assert not _adds_unverified_content(candidate, source)
 
 
 def test_narration_fallback_logs_stable_reason_code(caplog) -> None:

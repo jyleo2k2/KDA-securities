@@ -70,15 +70,41 @@ class NarrationOutput(BaseModel):
 _ARABIC_NUMBER = re.compile(
     r"(?<![0-9A-Za-z_])(?P<sign>[+\-−])?"
     r"(?P<number>\d[\d,]*(?:\.\d+)?)\s*"
-    r"(?P<unit>백\s*만\s*원|천\s*만\s*원|억\s*원|만\s*원|천\s*원|"
-    r"KRW|퍼센트|프로|%|년|개월|월|분기|일|배|개|건|명|회|차|층)?"
+    # 긴 통화 단위를 먼저 둬 '3조원'이 '3조'로 잘리지 않게 한다. 세·주·위·
+    # 조·평·원은 값이 같아도 의미가 달라 단위 스왑을 보수적으로 거부한다.
+    r"(?P<unit>조\s*원|백\s*만\s*원|천\s*만\s*원|억\s*원|만\s*원|"
+    r"천\s*원|원|KRW|퍼센트|프로|%|년|개월|월|분기|일|세|주|위|"
+    r"조|평|배|개|건|명|회|차|층)?"
     r"(?![0-9A-Za-z_])",
     re.I,
 )
 _LEGAL_FRACTION = re.compile(
     r"(?P<denominator>\d[\d,]*)\s*분의\s*(?P<numerator>\d[\d,]*(?:\.\d+)?)"
 )
+_PERCENT_RANGE = re.compile(
+    r"(?<!\d)(?P<left>\d[\d,]*(?:\.\d+)?)\s*%?\s*"
+    r"(?:~|〜|–|—)\s*(?P<right>\d[\d,]*(?:\.\d+)?)\s*%(?!\d)"
+)
+_ISO_DATE = re.compile(
+    r"(?<!\d)(?P<year>\d{4})-(?P<month>\d{1,2})-(?P<day>\d{1,2})(?!\d)"
+)
+_KOREAN_DATE = re.compile(
+    r"(?<!\d)(?P<year>\d{4})\s*년\s*(?P<month>\d{1,2})\s*월\s*"
+    r"(?P<day>\d{1,2})\s*일(?!\d)"
+)
+_CURRENCY_MULTIPLIERS = {
+    "원": Decimal("1"),
+    "천원": Decimal("1000"),
+    "만원": Decimal("10000"),
+    "백만원": Decimal("1000000"),
+    "천만원": Decimal("10000000"),
+    "억원": Decimal("100000000"),
+    "조원": Decimal("1000000000000"),
+    "krw": Decimal("1"),
+}
 _KOREAN_NUMBER = re.compile(
+    # '3천만 원'의 '천만 원'을 별도 한글 숫자로 중복 추출하지 않는다.
+    r"(?<![0-9A-Za-z_,하나다섯여섯일곱여덟아홉영공일이삼사오육칠팔구십백천만억한두둘세셋네넷열])"
     r"(?P<sign>마이너스|플러스)?\s*"
     r"(?P<number>(?:하나|다섯|여섯|일곱|여덟|아홉|영|공|일|이|삼|"
     r"사|오|육|칠|팔|구|십|백|천|만|억|한|두|둘|세|셋|네|넷|열)+)\s*"
@@ -117,7 +143,15 @@ _UNSAFE_CLAIM_PATTERNS = (
         ),
     ),
 )
-_NEGATION = re.compile(r"않|아니|없|금지|못|제공하지|의미하지|하지\s*마")
+# 위험 주장 앞의 '손실 없이', '예금이 아니라'는 뒤 주장을 부정하지 않는다.
+# 따라서 매치 주변 창이 아니라 주장 키워드 직후의 문법적 꼬리만 부정으로
+# 인정한다. 애매한 원거리 부정은 안전 우선으로 거부(결정론 폴백)한다.
+_NEGATION = re.compile(
+    r"^\s*(?:은|는|이|가|을|를|도)?\s*"
+    r"(?:하(?:지\s*(?:않|못)|지\s*마)|되\s*지\s*(?:않|못)|"
+    r"할\s*수\s*없|(?:해서는|하면|해도)\s*안\s*(?:돼|되)|"
+    r"안\s*(?:돼|되)|허용되지|금지|아니|없|못|제공하지|의미하지)"
+)
 
 
 def _number_tokens(text: str) -> set[tuple[Decimal, str, str]]:
@@ -130,7 +164,31 @@ def _number_tokens(text: str) -> set[tuple[Decimal, str, str]]:
         numerator = Decimal(match.group("numerator").replace(",", ""))
         if denominator:
             values.add((numerator / denominator * 100, "%", "unsigned"))
-    for match in _ARABIC_NUMBER.finditer(_LEGAL_FRACTION.sub(" ", text)):
+
+    # '10~20%'와 '10%~20%'는 양 끝이 모두 퍼센트인 같은 범위다. 명시적인
+    # % 종결 범위만 정규화하며 단위 없는 일반 범위는 추론하지 않는다.
+    for match in _PERCENT_RANGE.finditer(text):
+        left = Decimal(match.group("left").replace(",", ""))
+        right = Decimal(match.group("right").replace(",", ""))
+        values.update({(left, "%", "unsigned"), (right, "%", "unsigned")})
+
+    # ISO와 한국어 날짜 표기만 연·월·일 토큰으로 맞춘다. 달력값을 다른
+    # 단위로 바꾸지 않아 날짜가 아닌 숫자를 동치로 오인하지 않는다.
+    for date_pattern in (_ISO_DATE, _KOREAN_DATE):
+        for match in date_pattern.finditer(text):
+            values.update(
+                {
+                    (Decimal(match.group("year")), "date_year", "unsigned"),
+                    (Decimal(match.group("month")), "date_month", "unsigned"),
+                    (Decimal(match.group("day")), "date_day", "unsigned"),
+                }
+            )
+
+    remaining = _LEGAL_FRACTION.sub(" ", text)
+    remaining = _PERCENT_RANGE.sub(" ", remaining)
+    remaining = _ISO_DATE.sub(" ", remaining)
+    remaining = _KOREAN_DATE.sub(" ", remaining)
+    for match in _ARABIC_NUMBER.finditer(remaining):
         raw_sign = match.group("sign")
         sign = "-" if raw_sign in {"-", "−"} else ""
         sign_kind = (
@@ -145,28 +203,87 @@ def _number_tokens(text: str) -> set[tuple[Decimal, str, str]]:
         except InvalidOperation:
             continue
         unit = re.sub(r"\s+", "", match.group("unit") or "number").casefold()
+        multiplier = _CURRENCY_MULTIPLIERS.get(unit)
+        if multiplier is not None:
+            value *= multiplier
+            unit = "krw"
         values.add((value, unit, sign_kind))
     return values
+
+
+# 한 글자 숫자어(이·한·일·구·사·오·공·영)는 흔한 낱말의 첫 글자와 겹쳐
+# (이번·이건·한번·구원·사실·오늘) regex가 형태소 경계 없이 숫자로 오인한다.
+# 이런 단독 한 글자 모호 숫자어는 숫자 토큰에서 제외한다. 두 글자 이상 조합
+# (칠십·구백만)은 일상어와 겹치지 않아 그대로 검증하고, 실제 조작 수치는
+# 아라비아 숫자 가드(_ARABIC_NUMBER)가 엄격히 잡는다.
+_AMBIGUOUS_SINGLE_KOREAN_NUMERALS = frozenset("이한일구사오공영")
+_APPROXIMATE_COUNT_NUMERALS = frozenset({"한두", "두세"})
+_NON_NUMERIC_KOREAN_COMPOUNDS = frozenset({"이사회", "육회"})
+_IDIOMATIC_HUNDRED_TIMES_SUFFIX = re.compile(r"^\s*(?:맞|옳)(?:는|은)?\s*말")
+
+
+def _is_non_numeric_korean_match(
+    text: str,
+    match: re.Match[str],
+    *,
+    number: str,
+    unit: str,
+) -> bool:
+    """Exclude only narrow, explainable Korean homographs from number tokens."""
+
+    raw = match.group()
+    if raw in _NON_NUMERIC_KOREAN_COMPOUNDS:
+        return True
+    if unit == "번" and number in _APPROXIMATE_COUNT_NUMERALS:
+        # 한두/두세 번은 정확값이 아닌 일상 어림수라 검증 수치로 연결하지 않는다.
+        return True
+    compact = re.sub(r"\s+", "", raw)
+    # '백번 맞는 말'에서 백번은 횟수 주장이 아니라 강조 관용구다.
+    return compact == "백번" and bool(
+        _IDIOMATIC_HUNDRED_TIMES_SUFFIX.search(text[match.end() :])
+    )
 
 
 def _korean_number_tokens(text: str) -> set[tuple[str, str, str]]:
     values: set[tuple[str, str, str]] = set()
     for match in _KOREAN_NUMBER.finditer(text):
-        sign = match.group("sign") or "부호없음"
         number = re.sub(r"\s+", "", match.group("number"))
+        if number in _AMBIGUOUS_SINGLE_KOREAN_NUMERALS:
+            continue
+        sign = match.group("sign") or "부호없음"
         unit = re.sub(r"\s+", "", match.group("unit"))
+        if _is_non_numeric_korean_match(
+            text,
+            match,
+            number=number,
+            unit=unit,
+        ):
+            continue
         values.add((number, unit, sign))
     return values
 
 
-def _unsafe_claims(text: str) -> set[str]:
-    claims: set[str] = set()
+def _unsafe_claim_instances(text: str) -> set[tuple[str, str]]:
+    """Return each non-negated claim as category plus normalized matched text.
+
+    카테고리만 비교하면 원문의 '원금 보장' 하나로 새 '수익 보장'까지 통과한다.
+    공백·문장부호만 제거한 실제 매치 문구를 함께 비교해 그 우회를 막는다.
+    """
+
+    claims: set[tuple[str, str]] = set()
     for category, pattern in _UNSAFE_CLAIM_PATTERNS:
         for match in pattern.finditer(text):
-            context = text[max(0, match.start() - 8) : match.end() + 18]
-            if _NEGATION.search(context) is None:
-                claims.add(category)
+            suffix = text[match.end() : match.end() + 24]
+            if _NEGATION.search(suffix) is None:
+                normalized_match = re.sub(
+                    r"[^0-9A-Za-z가-힣%]+", "", match.group()
+                ).casefold()
+                claims.add((category, normalized_match))
     return claims
+
+
+def _unsafe_claims(text: str) -> set[str]:
+    return {category for category, _ in _unsafe_claim_instances(text)}
 
 
 def _adds_unverified_content(candidate: str, source: str) -> bool:
@@ -175,7 +292,9 @@ def _adds_unverified_content(candidate: str, source: str) -> bool:
         or not _korean_number_tokens(candidate).issubset(
             _korean_number_tokens(source)
         )
-        or not _unsafe_claims(candidate).issubset(_unsafe_claims(source))
+        or not _unsafe_claim_instances(candidate).issubset(
+            _unsafe_claim_instances(source)
+        )
     )
 
 
@@ -287,6 +406,10 @@ class ClaudeNarrator:
             f"{response.answer}\n\n"
             "제한사항:\n" + "\n".join(response.limitations)
         )
+        # answer와 limitations는 모두 서버가 만든 검증 입력이며 Claude가 실제로
+        # 함께 본다. 가드 원문도 같은 범위로 맞춰 limitations 반향 오탐을 막는다.
+        # 아래 Tool JSON은 사용자 입력이므로 이 신뢰 범위에 포함하지 않는다.
+        guard_source = "\n".join((response.answer, *response.limitations))
         resolved_tax_inputs = None
         if response.intent == ChatIntent.PENSION_TAX and (
             pension_tax_input is not None or pension_tax_message is not None
@@ -390,8 +513,10 @@ class ClaudeNarrator:
         if response.intent == ChatIntent.PENSION_TAX:
             candidate = candidate.replace(PENSION_TAX_CLOSING_NOTICE, "").rstrip()
             candidate += f"\n{PENSION_TAX_CLOSING_NOTICE}"
+            # 이 문구는 모델 출력이 아니라 서버가 강제로 붙이는 검증된 고정문이다.
+            guard_source += f"\n{PENSION_TAX_CLOSING_NOTICE}"
 
-        if _adds_unverified_content(candidate, response.answer):
+        if _adds_unverified_content(candidate, guard_source):
             return self._fallback(
                 response,
                 "Claude 설명에서 새로운 숫자·전망·보장·추천 주장을 감지해 "
@@ -408,7 +533,7 @@ class ClaudeNarrator:
             ),
             None,
         )
-        reasoning = self._safe_reasoning(thinking, response.answer)
+        reasoning = self._safe_reasoning(thinking, guard_source)
         self._cache_store(cache_key, candidate, reasoning)
         data = response.model_dump()
         data.update(
