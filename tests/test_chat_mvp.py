@@ -663,6 +663,45 @@ def test_guard_still_rejects_percent_absent_from_legal_fraction_source() -> None
     assert _adds_unverified_content("납입액의 20%를 공제받습니다.", source)
 
 
+@pytest.mark.parametrize(
+    "candidate",
+    (
+        "이번 달에 한도를 같이 살펴보자.",
+        "이건 계좌별로 규칙이 달라.",
+        "한번 천천히 확인해 보자.",
+        "구원 같은 표현이 아니라 규칙 이야기야.",
+        "일단 사실만 놓고 오늘 정리해 보자.",
+    ),
+)
+def test_guard_allows_colloquial_single_syllable_numeral_homographs(
+    candidate: str,
+) -> None:
+    # 이/한/일/구/사/오 같은 한 글자 숫자어는 흔한 낱말의 첫 글자와 겹친다
+    # (이번·이건·한번·구원·사실·오늘). 형태소 경계가 없는 regex가 이를 숫자로
+    # 오인해 정답 재서술을 통째로 거부하던 오탐을 막는다.
+    source = "IRP 일반 위험자산 한도는 70%입니다."
+
+    assert not _adds_unverified_content(candidate, source)
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    (
+        "IRP 일반 위험자산 한도는 칠십 퍼센트입니다.",
+        "한도는 구백만 원입니다.",
+        "적립금은 삼천만 원까지 가능합니다.",
+    ),
+)
+def test_guard_still_rejects_multisyllable_korean_numerals_absent_from_source(
+    candidate: str,
+) -> None:
+    # 두 글자 이상 한글 숫자 조합(칠십·구백만·삼천만)은 일상어와 겹치지 않으므로
+    # 원문에 없으면 계속 거부한다 — 오탐 완화가 실제 조작 수치를 놓치지 않는다.
+    source = "IRP 일반 위험자산 한도는 70%입니다."
+
+    assert _adds_unverified_content(candidate, source)
+
+
 def test_narration_fallback_logs_stable_reason_code(caplog) -> None:
     # 폴백 분기를 한국어 문구 대신 안정적인 코드로 집계하기 위한 관측 지점.
     base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))

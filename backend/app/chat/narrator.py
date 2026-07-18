@@ -149,11 +149,21 @@ def _number_tokens(text: str) -> set[tuple[Decimal, str, str]]:
     return values
 
 
+# 한 글자 숫자어(이·한·일·구·사·오·공·영)는 흔한 낱말의 첫 글자와 겹쳐
+# (이번·이건·한번·구원·사실·오늘) regex가 형태소 경계 없이 숫자로 오인한다.
+# 이런 단독 한 글자 모호 숫자어는 숫자 토큰에서 제외한다. 두 글자 이상 조합
+# (칠십·구백만)은 일상어와 겹치지 않아 그대로 검증하고, 실제 조작 수치는
+# 아라비아 숫자 가드(_ARABIC_NUMBER)가 엄격히 잡는다.
+_AMBIGUOUS_SINGLE_KOREAN_NUMERALS = frozenset("이한일구사오공영")
+
+
 def _korean_number_tokens(text: str) -> set[tuple[str, str, str]]:
     values: set[tuple[str, str, str]] = set()
     for match in _KOREAN_NUMBER.finditer(text):
-        sign = match.group("sign") or "부호없음"
         number = re.sub(r"\s+", "", match.group("number"))
+        if number in _AMBIGUOUS_SINGLE_KOREAN_NUMERALS:
+            continue
+        sign = match.group("sign") or "부호없음"
         unit = re.sub(r"\s+", "", match.group("unit"))
         values.add((number, unit, sign))
     return values
