@@ -217,6 +217,31 @@ def _number_tokens(text: str) -> set[tuple[Decimal, str, str]]:
 # (칠십·구백만)은 일상어와 겹치지 않아 그대로 검증하고, 실제 조작 수치는
 # 아라비아 숫자 가드(_ARABIC_NUMBER)가 엄격히 잡는다.
 _AMBIGUOUS_SINGLE_KOREAN_NUMERALS = frozenset("이한일구사오공영")
+_APPROXIMATE_COUNT_NUMERALS = frozenset({"한두", "두세"})
+_NON_NUMERIC_KOREAN_COMPOUNDS = frozenset({"이사회", "육회"})
+_IDIOMATIC_HUNDRED_TIMES_SUFFIX = re.compile(r"^\s*(?:맞|옳)(?:는|은)?\s*말")
+
+
+def _is_non_numeric_korean_match(
+    text: str,
+    match: re.Match[str],
+    *,
+    number: str,
+    unit: str,
+) -> bool:
+    """Exclude only narrow, explainable Korean homographs from number tokens."""
+
+    raw = match.group()
+    if raw in _NON_NUMERIC_KOREAN_COMPOUNDS:
+        return True
+    if unit == "번" and number in _APPROXIMATE_COUNT_NUMERALS:
+        # 한두/두세 번은 정확값이 아닌 일상 어림수라 검증 수치로 연결하지 않는다.
+        return True
+    compact = re.sub(r"\s+", "", raw)
+    # '백번 맞는 말'에서 백번은 횟수 주장이 아니라 강조 관용구다.
+    return compact == "백번" and bool(
+        _IDIOMATIC_HUNDRED_TIMES_SUFFIX.search(text[match.end() :])
+    )
 
 
 def _korean_number_tokens(text: str) -> set[tuple[str, str, str]]:
@@ -227,6 +252,13 @@ def _korean_number_tokens(text: str) -> set[tuple[str, str, str]]:
             continue
         sign = match.group("sign") or "부호없음"
         unit = re.sub(r"\s+", "", match.group("unit"))
+        if _is_non_numeric_korean_match(
+            text,
+            match,
+            number=number,
+            unit=unit,
+        ):
+            continue
         values.add((number, unit, sign))
     return values
 

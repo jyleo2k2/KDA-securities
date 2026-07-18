@@ -806,6 +806,23 @@ def test_narrator_accepts_limitation_number_and_keeps_tax_closing_notice() -> No
     assert response.answer.endswith(PENSION_TAX_CLOSING_NOTICE)
 
 
+@pytest.mark.parametrize(
+    "candidate",
+    (
+        "백번 맞는 말이야.",
+        "한두 번 확인하면 돼.",
+        "두세 번 같이 살펴보자.",
+        "이사회 결정을 확인했어.",
+        "육회 이야기는 금융 숫자가 아니야.",
+    ),
+)
+def test_guard_allows_narrow_korean_numeral_homographs(candidate: str) -> None:
+    source = "IRP 일반 위험자산 한도는 70%입니다."
+
+    # 어림수·관용구·고정 복합명사만 좁게 제외하며 실제 수치 조합은 계속 검사한다.
+    assert not _adds_unverified_content(candidate, source)
+
+
 def test_narration_fallback_logs_stable_reason_code(caplog) -> None:
     # 폴백 분기를 한국어 문구 대신 안정적인 코드로 집계하기 위한 관측 지점.
     base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
