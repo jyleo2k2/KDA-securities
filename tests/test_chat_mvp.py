@@ -771,6 +771,23 @@ def test_guard_rejects_same_number_with_different_domain_unit(
     assert _adds_unverified_content(candidate, source)
 
 
+@pytest.mark.parametrize(
+    ("left", "right"),
+    (
+        ("허용 범위는 10~20%입니다.", "허용 범위는 10%~20%입니다."),
+        ("잔액은 3천만 원입니다.", "잔액은 3,000만 원입니다."),
+        ("기준일은 2026-07-16입니다.", "기준일은 2026년 7월 16일입니다."),
+    ),
+)
+def test_guard_treats_exact_numeric_notation_variants_as_equivalent(
+    left: str,
+    right: str,
+) -> None:
+    # 범위·통화 스케일·날짜의 정확한 동치만 허용한다. 값 추정이나 반올림은 없다.
+    assert not _adds_unverified_content(right, left)
+    assert not _adds_unverified_content(left, right)
+
+
 def test_narration_fallback_logs_stable_reason_code(caplog) -> None:
     # 폴백 분기를 한국어 문구 대신 안정적인 코드로 집계하기 위한 관측 지점.
     base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))

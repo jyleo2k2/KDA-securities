@@ -81,7 +81,30 @@ _ARABIC_NUMBER = re.compile(
 _LEGAL_FRACTION = re.compile(
     r"(?P<denominator>\d[\d,]*)\s*분의\s*(?P<numerator>\d[\d,]*(?:\.\d+)?)"
 )
+_PERCENT_RANGE = re.compile(
+    r"(?<!\d)(?P<left>\d[\d,]*(?:\.\d+)?)\s*%?\s*"
+    r"(?:~|〜|–|—)\s*(?P<right>\d[\d,]*(?:\.\d+)?)\s*%(?!\d)"
+)
+_ISO_DATE = re.compile(
+    r"(?<!\d)(?P<year>\d{4})-(?P<month>\d{1,2})-(?P<day>\d{1,2})(?!\d)"
+)
+_KOREAN_DATE = re.compile(
+    r"(?<!\d)(?P<year>\d{4})\s*년\s*(?P<month>\d{1,2})\s*월\s*"
+    r"(?P<day>\d{1,2})\s*일(?!\d)"
+)
+_CURRENCY_MULTIPLIERS = {
+    "원": Decimal("1"),
+    "천원": Decimal("1000"),
+    "만원": Decimal("10000"),
+    "백만원": Decimal("1000000"),
+    "천만원": Decimal("10000000"),
+    "억원": Decimal("100000000"),
+    "조원": Decimal("1000000000000"),
+    "krw": Decimal("1"),
+}
 _KOREAN_NUMBER = re.compile(
+    # '3천만 원'의 '천만 원'을 별도 한글 숫자로 중복 추출하지 않는다.
+    r"(?<![0-9A-Za-z_,하나다섯여섯일곱여덟아홉영공일이삼사오육칠팔구십백천만억한두둘세셋네넷열])"
     r"(?P<sign>마이너스|플러스)?\s*"
     r"(?P<number>(?:하나|다섯|여섯|일곱|여덟|아홉|영|공|일|이|삼|"
     r"사|오|육|칠|팔|구|십|백|천|만|억|한|두|둘|세|셋|네|넷|열)+)\s*"
@@ -141,7 +164,31 @@ def _number_tokens(text: str) -> set[tuple[Decimal, str, str]]:
         numerator = Decimal(match.group("numerator").replace(",", ""))
         if denominator:
             values.add((numerator / denominator * 100, "%", "unsigned"))
-    for match in _ARABIC_NUMBER.finditer(_LEGAL_FRACTION.sub(" ", text)):
+
+    # '10~20%'와 '10%~20%'는 양 끝이 모두 퍼센트인 같은 범위다. 명시적인
+    # % 종결 범위만 정규화하며 단위 없는 일반 범위는 추론하지 않는다.
+    for match in _PERCENT_RANGE.finditer(text):
+        left = Decimal(match.group("left").replace(",", ""))
+        right = Decimal(match.group("right").replace(",", ""))
+        values.update({(left, "%", "unsigned"), (right, "%", "unsigned")})
+
+    # ISO와 한국어 날짜 표기만 연·월·일 토큰으로 맞춘다. 달력값을 다른
+    # 단위로 바꾸지 않아 날짜가 아닌 숫자를 동치로 오인하지 않는다.
+    for date_pattern in (_ISO_DATE, _KOREAN_DATE):
+        for match in date_pattern.finditer(text):
+            values.update(
+                {
+                    (Decimal(match.group("year")), "date_year", "unsigned"),
+                    (Decimal(match.group("month")), "date_month", "unsigned"),
+                    (Decimal(match.group("day")), "date_day", "unsigned"),
+                }
+            )
+
+    remaining = _LEGAL_FRACTION.sub(" ", text)
+    remaining = _PERCENT_RANGE.sub(" ", remaining)
+    remaining = _ISO_DATE.sub(" ", remaining)
+    remaining = _KOREAN_DATE.sub(" ", remaining)
+    for match in _ARABIC_NUMBER.finditer(remaining):
         raw_sign = match.group("sign")
         sign = "-" if raw_sign in {"-", "−"} else ""
         sign_kind = (
@@ -156,6 +203,10 @@ def _number_tokens(text: str) -> set[tuple[Decimal, str, str]]:
         except InvalidOperation:
             continue
         unit = re.sub(r"\s+", "", match.group("unit") or "number").casefold()
+        multiplier = _CURRENCY_MULTIPLIERS.get(unit)
+        if multiplier is not None:
+            value *= multiplier
+            unit = "krw"
         values.add((value, unit, sign_kind))
     return values
 
