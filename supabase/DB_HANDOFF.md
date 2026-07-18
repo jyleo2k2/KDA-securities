@@ -2,7 +2,7 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-19 01:20 KST
+> 최종 확인: 2026-07-19 01:21 KST
 > 확인 기준: `codex/supabase-current-state-docs` / `origin/main` `c7e097f` / Supabase MCP·원격 FastAPI E2E 재검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
@@ -269,7 +269,7 @@ uv run ruff check .
 
 ## 14. 작업 로그
 
-### 2026-07-19 01:20 KST
+### 2026-07-19 01:21 KST
 
 - 작업자/브랜치/기준: Codex / `codex/supabase-current-state-docs` / `origin/main` `c7e097f`; PR #55·#57·#58은 모두 MERGED이고 각 backend/frontend CI가 통과했다. main의 최신 추가 커밋은 세션 하네스 문서·설정이며 DB/backend 변경은 없다.
 - 시작·격리 확인: 세션 시작 시 지정 경로의 MEMORY는 확인 불가였으나 종료 전 생성된 파일을 다시 읽어 RAG PR #56 완료 기록만 있음을 확인했다. 원래 작업 폴더는 다른 세션의 `harness/session-md`이며 clean 상태이고 수정·stash·reset하지 않았다.
@@ -280,7 +280,8 @@ uv run ruff check .
 - Advisor: 보안 INFO 29는 클라이언트 권한이 없는 서버 전용 테이블의 의도된 deny-by-default 상태다. WARN 1은 Auth 유출 비밀번호 보호 비활성화다. 성능 INFO 39는 미사용 인덱스이며 이번 COMMENT 변경과 무관하다.
 - blocker: Supabase Dashboard가 로그인 화면이고 로컬 CLI도 access token이 없어 `password_hibp_enabled`를 변경할 수 없다. 자격 증명을 요청·출력하지 않고 DB-09를 `BLOCKED`로 유지한다.
 - 로컬 검증: 계약 테스트 19건, 전체 pytest 612건(기존 DeprecationWarning 1건), Ruff, `git diff --check`, `supabase/AGENTS.md`·`CLAUDE.md` 동일성 검사가 모두 통과했다.
-- 다음 작업: branch를 push하고 Draft PR로 반영한다. 이후 Supabase MCP 또는 Dashboard/CLI를 재인증해 DB-09를 처리한다. PR 머지는 이재용의 별도 명시적 승인 전까지 금지한다.
+- Git/PR: `codex/supabase-current-state-docs`를 push하고 Draft PR #59를 생성했다. 생성 직후 backend/frontend CI는 진행 중이다. ready 전환·머지는 하지 않았다.
+- 다음 작업: PR #59 CI·리뷰를 확인한다. 이후 Supabase MCP 또는 Dashboard/CLI를 재인증해 DB-09를 처리한다. PR 머지는 이재용의 별도 명시적 승인 전까지 금지한다.
 
 ### 2026-07-19 00:11 KST
 
