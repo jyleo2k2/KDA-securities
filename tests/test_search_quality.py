@@ -54,6 +54,7 @@ def test_benchmark_has_at_least_ten_unique_korean_cases() -> None:
     assert len({case.query for case in cases}) == len(cases)
     assert all(case.required_content_terms for case in cases)
     assert all(case.expected_source_url in approved_urls for case in cases)
+    assert approved_urls <= {case.expected_source_url for case in cases}
     assert any(case.critical_top1 for case in cases)
 
 
