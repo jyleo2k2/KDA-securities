@@ -14,6 +14,7 @@ from backend.app.ingestion.knowledge import (
     load_approved_documents,
 )
 from backend.app.retrieval import knowledge_repository
+from backend.app.retrieval.knowledge_policy import canonical_project_source_url
 from backend.app.retrieval.knowledge_repository import KnowledgeWriteRepository
 from scripts.ingest_knowledge import main as ingest_main
 
@@ -197,7 +198,7 @@ def test_manifest_rejects_hidden_controls_and_prompt_injection_markers(
     payload = json.loads(DEFAULT_MANIFEST.read_text(encoding="utf-8"))
     entry = payload["documents"][0]
     entry["path"] = str(document_path)
-    entry["source_url"] = f"project://{document_path.as_posix()}"
+    entry["source_url"] = canonical_project_source_url(str(document_path))
     payload["documents"] = [entry]
     monkeypatch.setattr(knowledge, "_ALLOWED_ROOTS", (tmp_path.resolve(),))
 
