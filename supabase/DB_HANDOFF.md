@@ -280,7 +280,7 @@ uv run ruff check .
 - Advisor: 보안 INFO 29는 클라이언트 권한이 없는 서버 전용 테이블의 의도된 deny-by-default 상태다. WARN 1은 Auth 유출 비밀번호 보호 비활성화다. 성능 INFO 39는 미사용 인덱스이며 이번 COMMENT 변경과 무관하다.
 - blocker: Supabase Dashboard가 로그인 화면이고 로컬 CLI도 access token이 없어 `password_hibp_enabled`를 변경할 수 없다. 자격 증명을 요청·출력하지 않고 DB-09를 `BLOCKED`로 유지한다.
 - 로컬 검증: 계약 테스트 19건, 전체 pytest 612건(기존 DeprecationWarning 1건), Ruff, `git diff --check`, `supabase/AGENTS.md`·`CLAUDE.md` 동일성 검사가 모두 통과했다.
-- Git/PR: `codex/supabase-current-state-docs`를 push하고 Draft PR #59를 생성했다. 생성 직후 backend/frontend CI는 진행 중이다. ready 전환·머지는 하지 않았다.
+- Git/PR: `codex/supabase-current-state-docs`를 push하고 Draft PR #59를 생성했다. backend/frontend CI status check 대상이며 ready 전환·머지는 하지 않았다.
 - 다음 작업: PR #59 CI·리뷰를 확인한다. 이후 Supabase MCP 또는 Dashboard/CLI를 재인증해 DB-09를 처리한다. PR 머지는 이재용의 별도 명시적 승인 전까지 금지한다.
 
 ### 2026-07-19 00:11 KST
