@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,6 +17,7 @@ class Settings(BaseSettings):
     anthropic_api_key: SecretStr | None = None
     anthropic_model: str = "claude-haiku-4-5"
     enable_claude_narration: bool = False
+    narration_cache_path: Path = Path("data/cache/narration_cache.json")
     news_summary_model: str = "claude-sonnet-5"
     news_summary_prompt_version: str = "news-summary-v2"
     krx_api_key: SecretStr | None = None

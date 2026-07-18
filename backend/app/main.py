@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +12,7 @@ from .api.deps import (
     clear_chat_dependencies,
     get_chat_narrator,
     get_chat_service,
+    precompute_chat_narrations,
     warm_chat_dependencies,
 )
 from .api.engine import (
@@ -61,6 +62,7 @@ async def lifespan(app: FastAPI):
         if database_url:
             pool = get_database_pool(database_url)
             pool.open(wait=False)
+    precompute_task = None
     if "PYTEST_CURRENT_TEST" not in os.environ:
         try:
             await asyncio.to_thread(warm_chat_dependencies, settings)
@@ -68,9 +70,16 @@ async def lifespan(app: FastAPI):
             logger.warning(
                 "Chat embedding prewarm failed; full-text search remains available"
             )
+        precompute_task = asyncio.create_task(
+            asyncio.to_thread(precompute_chat_narrations, settings)
+        )
     try:
         yield
     finally:
+        if precompute_task is not None and not precompute_task.done():
+            precompute_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await precompute_task
         clear_chat_dependencies()
         close_pool(pool)
         get_database_pool.cache_clear()
