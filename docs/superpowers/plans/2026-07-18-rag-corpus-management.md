@@ -1,5 +1,7 @@
 # RAG Corpus Management Implementation Plan
 
+> 상태: 구현·원격 반영·PR 병합·전용 worktree 정리 완료. 최신 main `8075510` 기준 원격 검색 18/18·Hit@1/Hit@5/MRR@5 1.000을 2026-07-19 재확인했다.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 승인된 연금 지식 문서를 사람 검토와 자동 만료 차단으로 관리하고, 공식 문서 5종을 추가해 로컬·원격 RAG 검색에 반영한다.
@@ -30,12 +32,12 @@
 **Interfaces:**
 - Produces: `load_approved_documents(..., today: date | None = None)` and chunk metadata containing governance fields.
 
-- [ ] **Step 1: Write failing tests** for schema v2 required fields, official HTTPS host allowlist, 90/180-day review windows, expired document rejection, hidden control characters, prompt-injection markers, and governance metadata propagation.
-- [ ] **Step 2: Run RED** with `uv run pytest tests/test_knowledge_ingestion.py -q`; expect failures because schema v1 accepts no governance fields.
-- [ ] **Step 3: Implement minimal v2 validation** with deterministic Python/date/regex helpers and no new dependency.
-- [ ] **Step 4: Upgrade the existing five manifest entries** with stable IDs, official sources, topics, question families, verification dates, due dates, owner, and chunking version.
-- [ ] **Step 5: Run GREEN** with `uv run pytest tests/test_knowledge_ingestion.py -q`.
-- [ ] **Step 6: Commit** as `feat(rag): enforce corpus provenance and review lifecycle`.
+- [x] **Step 1: Write failing tests** for schema v2 required fields, official HTTPS host allowlist, 90/180-day review windows, expired document rejection, hidden control characters, prompt-injection markers, and governance metadata propagation.
+- [x] **Step 2: Run RED** with `uv run pytest tests/test_knowledge_ingestion.py -q`; expect failures because schema v1 accepts no governance fields.
+- [x] **Step 3: Implement minimal v2 validation** with deterministic Python/date/regex helpers and no new dependency.
+- [x] **Step 4: Upgrade the existing five manifest entries** with stable IDs, official sources, topics, question families, verification dates, due dates, owner, and chunking version.
+- [x] **Step 5: Run GREEN** with `uv run pytest tests/test_knowledge_ingestion.py -q`.
+- [x] **Step 6: Commit** as `feat(rag): enforce corpus provenance and review lifecycle`.
 
 ### Task 2: 운영 감사와 문서화
 
@@ -49,12 +51,12 @@
 - Consumes: v2 loader from Task 1.
 - Produces: `--validate-only` output with document/chunk count and nearest review deadline.
 
-- [ ] **Step 1: Write a failing CLI test** asserting the audit output includes the nearest `review_due_date` and document ID.
-- [ ] **Step 2: Run RED** for that test and confirm the missing audit detail.
-- [ ] **Step 3: Add audit output and README workflow** covering candidate, approval, update, expiry, retirement, remote sync, and rollback.
-- [ ] **Step 4: Add a CI step** running `uv run python scripts/ingest_knowledge.py --validate-only` before tests.
-- [ ] **Step 5: Run GREEN** for ingestion tests and Ruff on changed Python files.
-- [ ] **Step 6: Commit** as `docs(rag): document and automate corpus review workflow`.
+- [x] **Step 1: Write a failing CLI test** asserting the audit output includes the nearest `review_due_date` and document ID.
+- [x] **Step 2: Run RED** for that test and confirm the missing audit detail.
+- [x] **Step 3: Add audit output and README workflow** covering candidate, approval, update, expiry, retirement, remote sync, and rollback.
+- [x] **Step 4: Add a CI step** running `uv run python scripts/ingest_knowledge.py --validate-only` before tests.
+- [x] **Step 5: Run GREEN** for ingestion tests and Ruff on changed Python files.
+- [x] **Step 6: Commit** as `docs(rag): document and automate corpus review workflow`.
 
 ### Task 3: 공식 지식 문서 5종과 매니페스트 등록
 
@@ -70,12 +72,12 @@
 **Interfaces:**
 - Produces: ten approved documents that pass v2 governance and SHA validation.
 
-- [ ] **Step 1: Write a failing test** expecting ten documents and the five stable document IDs.
-- [ ] **Step 2: Run RED** and confirm only five documents load.
-- [ ] **Step 3: Write five concise documents** from KRX, MOEL, NTS, and FSC official pages with explicit scope, basis date, limitations, and source links.
-- [ ] **Step 4: Compute stripped UTF-8 SHA-256** using `uv run python` and register five entries.
-- [ ] **Step 5: Run GREEN** for ingestion tests and `uv run python scripts/ingest_knowledge.py --validate-only`.
-- [ ] **Step 6: Commit** as `docs(rag): add five official pension knowledge guides`.
+- [x] **Step 1: Write a failing test** expecting ten documents and the five stable document IDs.
+- [x] **Step 2: Run RED** and confirm only five documents load.
+- [x] **Step 3: Write five concise documents** from KRX, MOEL, NTS, and FSC official pages with explicit scope, basis date, limitations, and source links.
+- [x] **Step 4: Compute stripped UTF-8 SHA-256** using `uv run python` and register five entries.
+- [x] **Step 5: Run GREEN** for ingestion tests and `uv run python scripts/ingest_knowledge.py --validate-only`.
+- [x] **Step 6: Commit** as `docs(rag): add five official pension knowledge guides`.
 
 ### Task 4: 문서별 검색 품질 게이트
 
@@ -87,12 +89,12 @@
 - Consumes: ten approved source URLs.
 - Produces: at least one deterministic retrieval case per approved document.
 
-- [ ] **Step 1: Write a failing coverage test** asserting every approved source URL appears in the benchmark.
-- [ ] **Step 2: Run RED** and confirm the five new URLs are uncovered.
-- [ ] **Step 3: Add five Korean representative queries** with required content terms and critical top-1 only where ambiguity is low.
-- [ ] **Step 4: Tune headings/phrasing, not ranking code**, until local Markdown retrieval reaches Hit@5=1, Hit@1=1, MRR@5=1.
-- [ ] **Step 5: Run GREEN** with `uv run pytest tests/test_search_quality.py -q`.
-- [ ] **Step 6: Commit** as `test(rag): cover every approved knowledge document`.
+- [x] **Step 1: Write a failing coverage test** asserting every approved source URL appears in the benchmark.
+- [x] **Step 2: Run RED** and confirm the five new URLs are uncovered.
+- [x] **Step 3: Add five Korean representative queries** with required content terms and critical top-1 only where ambiguity is low.
+- [x] **Step 4: Tune headings/phrasing, not ranking code**, until local Markdown retrieval reaches Hit@5=1, Hit@1=1, MRR@5=1.
+- [x] **Step 5: Run GREEN** with `uv run pytest tests/test_search_quality.py -q`.
+- [x] **Step 6: Commit** as `test(rag): cover every approved knowledge document`.
 
 ### Task 5: 로컬 최종 검증과 원격 반영
 
@@ -103,11 +105,11 @@
 - Consumes: validated ten-document corpus.
 - Produces: remote documents, chunks, BGE-M3 embeddings, and search-quality evidence.
 
-- [ ] **Step 1: Run local validation** with `uv run python scripts/ingest_knowledge.py --validate-only`.
-- [ ] **Step 2: Run lint and full tests** with `uv run ruff check .` and `uv run pytest`.
-- [ ] **Step 3: Inspect diff and commit graph**, ensuring original WIP paths are absent.
-- [ ] **Step 4: Ingest to Supabase** with `uv run python scripts/ingest_knowledge.py`.
-- [ ] **Step 5: Install/use the existing embeddings group** and run `uv run --group embeddings python scripts/embed_knowledge_chunks.py`.
-- [ ] **Step 6: Measure remote quality** with `uv run --group embeddings python scripts/measure_search_quality.py`.
-- [ ] **Step 7: Push and create PR** with candidate decisions, governance policy, test evidence, remote counts, and rollback note.
-- [ ] **Step 8: Remove the clean worktree** with `git worktree remove C:\dev\kda-rag-corpus` after PR creation.
+- [x] **Step 1: Run local validation** with `uv run python scripts/ingest_knowledge.py --validate-only`.
+- [x] **Step 2: Run lint and full tests** with `uv run ruff check .` and `uv run pytest`.
+- [x] **Step 3: Inspect diff and commit graph**, ensuring original WIP paths are absent.
+- [x] **Step 4: Ingest to Supabase** with `uv run python scripts/ingest_knowledge.py`.
+- [x] **Step 5: Install/use the existing embeddings group** and run `uv run --group embeddings python scripts/embed_knowledge_chunks.py`.
+- [x] **Step 6: Measure remote quality** with `uv run --group embeddings python scripts/measure_search_quality.py`.
+- [x] **Step 7: Push and create PR** with candidate decisions, governance policy, test evidence, remote counts, and rollback note.
+- [x] **Step 8: Archive session-only 상태·handoff 문서를 Codex 로컬 메모리에 보관하고 `C:\dev\kda-rag-corpus` worktree를 제거했다(2026-07-19).
