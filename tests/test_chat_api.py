@@ -183,6 +183,36 @@ def test_authenticated_chat_stream_persists_final_response() -> None:
     assert len(repository.saved) == 1
 
 
+def test_authenticated_chat_stream_does_not_persist_sensitive_query() -> None:
+    repository = FakeChatRepository()
+    _override_authenticated_dependencies(repository)
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={
+                    "message": "주민등록번호 900101-1234567로 IRP를 확인해줘"
+                },
+                headers=CHAT_HEADERS,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert "대화 기록을 저장하고 있습니다." not in response.text
+    assert "event: answer_delta" in response.text
+    final_block = next(
+        block
+        for block in response.text.strip().split("\n\n")
+        if block.startswith("event: response")
+    )
+    final = json.loads(final_block.split("data: ", 1)[1])
+    assert final["persisted"] is False
+    assert final["response"]["intent"] == "out_of_scope"
+    assert "900101" not in response.text
+    assert repository.saved == []
+
+
 def test_authenticated_pension_tax_keeps_context_and_idempotency() -> None:
     repository = FakeChatRepository()
     _override_authenticated_dependencies(repository)

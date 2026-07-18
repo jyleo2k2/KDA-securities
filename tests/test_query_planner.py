@@ -117,6 +117,28 @@ def test_pension_tax_request_selects_only_requested_tool(
     assert plan.requests_withdrawal_tax is withdrawal
 
 
+@pytest.mark.parametrize(
+    ("message", "expected_intent", "tax_credit", "withdrawal"),
+    (
+        ("내 계좌 세액공제 계산해줘", ChatIntent.PENSION_TAX, True, False),
+        ("내 계좌 중도해지 세금 얼마야", ChatIntent.PENSION_TAX, False, True),
+        ("세액공제 계산해줘", ChatIntent.PENSION_TAX, True, False),
+        ("내 계좌 진단해줘", ChatIntent.MOCK_PORTFOLIO, False, False),
+    ),
+)
+def test_explicit_personal_tax_request_overrides_ambiguous_account_wording(
+    message: str,
+    expected_intent: ChatIntent,
+    tax_credit: bool,
+    withdrawal: bool,
+) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent == expected_intent
+    assert plan.requests_tax_credit is tax_credit
+    assert plan.requests_withdrawal_tax is withdrawal
+
+
 def test_named_mock_scenario_wins_over_tax_credit_word() -> None:
     plan = plan_question("세액공제 후 미운용 시나리오를 진단해줘")
 

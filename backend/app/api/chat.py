@@ -501,6 +501,22 @@ async def chat_authenticated_stream(
             narration_started_at=narration_started_at,
             started_at=started_at,
         )
+        if response.intent == ChatIntent.OUT_OF_SCOPE:
+            yield _sse("phase", {"message": "답변 검증을 완료했습니다."})
+            for event in _answer_delta_events(response.answer):
+                yield event
+            yield _sse(
+                "response",
+                {
+                    "persisted": False,
+                    "session_id": None,
+                    "user_message_id": None,
+                    "assistant_message_id": None,
+                    "idempotency_replayed": False,
+                    "response": response.model_dump(mode="json"),
+                },
+            )
+            return
         yield _sse("phase", {"message": "대화 기록을 저장하고 있습니다."})
         try:
             saved = await asyncio.to_thread(
