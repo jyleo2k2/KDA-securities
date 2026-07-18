@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from pydantic_ai.messages import ModelResponse, TextPart, ThinkingPart
 from pydantic_ai.models.function import FunctionModel
 
+from backend.app.api import deps
 from backend.app.chat.disclosures import ProviderDisclosure
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
 from backend.app.chat.models import (
@@ -30,6 +31,7 @@ from backend.app.chat.service import ChatService, _knowledge_sources
 from backend.app.engine import AccountType
 from backend.app.main import app, get_chat_narrator, get_chat_service
 from backend.app.retrieval.repository import KnowledgeMatch, NewsMatch
+from backend.app.settings import get_settings
 
 
 class FakeDisclosureRepository:
@@ -519,6 +521,112 @@ def test_claude_narrator_rejects_new_numbers() -> None:
     assert response.narration_mode == "deterministic"
     assert response.answer == base.answer
     assert "새로운 숫자" in response.limitations[-1]
+
+
+def test_narrator_prewarm_uses_throwaway_agent(monkeypatch) -> None:
+    # 부팅 스레드에서 self.agent를 쓰면 HTTP 클라이언트가 그 이벤트루프에
+    # 묶여 이후 요청 호출이 멈춘다. 반드시 버리는 Agent로 워밍해야 한다.
+    narrator = ClaudeNarrator(api_key="test-key", model="test-model")
+    original_agent = narrator.agent
+    calls: list[str] = []
+
+    class FakeAgent:
+        def run_sync(self, prompt: str) -> None:
+            calls.append(prompt)
+
+    monkeypatch.setattr(narrator, "_build_agent", lambda: FakeAgent())
+
+    narrator.prewarm()
+
+    assert len(calls) == 1
+    assert narrator.agent is original_agent
+
+
+def test_narrator_prewarm_swallows_errors(monkeypatch, caplog) -> None:
+    narrator = ClaudeNarrator(api_key="test-key", model="test-model")
+
+    class BoomAgent:
+        def run_sync(self, prompt: str) -> None:
+            raise RuntimeError("network down")
+
+    monkeypatch.setattr(narrator, "_build_agent", lambda: BoomAgent())
+
+    with caplog.at_level(logging.WARNING, logger="backend.app.chat.narrator"):
+        narrator.prewarm()
+
+    assert "narrator_prewarm_failed" in caplog.text
+
+
+def test_narration_cache_reuses_verified_result() -> None:
+    # 엔진 답변이 결정론이므로 같은 프롬프트의 검증 내레이션은 재사용한다.
+    base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
+    narrator = ClaudeNarrator(api_key="test-key", model="test-model")
+    calls: list[int] = []
+
+    def respond(messages, info) -> ModelResponse:
+        calls.append(1)
+        return ModelResponse(
+            parts=[
+                TextPart(
+                    json.dumps(
+                        {"narration": "IRP 일반 위험자산 한도는 70%야."},
+                        ensure_ascii=False,
+                    )
+                )
+            ]
+        )
+
+    with narrator.agent.override(model=FunctionModel(respond)):
+        first = narrator.narrate(base)
+        second = narrator.narrate(base)
+
+    assert calls == [1]
+    assert first.narration_mode == "claude_verified"
+    assert second.narration_mode == "claude_verified"
+    assert second.answer == first.answer
+
+
+def test_narration_cache_never_stores_rejected_fallback() -> None:
+    base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
+    narrator = ClaudeNarrator(api_key="test-key", model="test-model")
+    calls: list[int] = []
+
+    def respond(messages, info) -> ModelResponse:
+        calls.append(1)
+        return ModelResponse(
+            parts=[
+                TextPart(
+                    json.dumps(
+                        {"narration": "IRP 위험자산을 80%까지 운용할 수 있어."},
+                        ensure_ascii=False,
+                    )
+                )
+            ]
+        )
+
+    with narrator.agent.override(model=FunctionModel(respond)):
+        first = narrator.narrate(base)
+        second = narrator.narrate(base)
+
+    assert first.narration_mode == "deterministic"
+    assert second.narration_mode == "deterministic"
+    assert calls == [1, 1]
+
+
+def test_warm_chat_dependencies_prewarms_enabled_narrator(monkeypatch) -> None:
+    calls: list[str] = []
+
+    class FakeNarrator:
+        def prewarm(self) -> None:
+            calls.append("prewarm")
+
+    monkeypatch.setattr(
+        deps, "get_chat_narrator", lambda settings: FakeNarrator()
+    )
+
+    deps.warm_chat_dependencies(get_settings())
+
+    assert calls == ["prewarm"]
 
 
 def test_numeric_claims_read_korean_legal_fraction_as_percent() -> None:

@@ -94,8 +94,11 @@ def get_retrieval_repository(
 def get_disclosures_repository(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> DisclosureReadRepository:
+    database_url = _database_url_or_503(
+        settings, detail="Database is not configured"
+    )
     return DisclosureReadRepository(
-        _database_url_or_503(settings, detail="Database is not configured")
+        database_url, pool=get_database_pool(database_url)
     )
 
 
@@ -172,7 +175,9 @@ def _chat_service(database_url: str) -> ChatService:
         if database_url
         else None
     )
-    disclosures = ChatDisclosureRepository(database_url) if database_url else None
+    disclosures = (
+        ChatDisclosureRepository(database_url, pool=pool) if database_url else None
+    )
     local_knowledge = LocalMarkdownKnowledgeRepository()
     knowledge = (
         FallbackKnowledgeRepository(retrieval, local_knowledge)
@@ -226,11 +231,14 @@ def get_chat_narrator(
 
 
 def warm_chat_dependencies(settings: Settings) -> None:
-    """Preload the fixed guide-page vectors before the API accepts requests."""
+    """Preload guide-page vectors and warm the narrator before requests."""
 
     embedder = get_query_embedder()
     if embedder is not None:
         embedder.prewarm_queries(SUGGESTED_CHAT_PROMPTS)
+    narrator = get_chat_narrator(settings)
+    if narrator is not None:
+        narrator.prewarm()
 
 
 def clear_chat_dependencies() -> None:

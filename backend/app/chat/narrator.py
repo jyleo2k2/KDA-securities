@@ -7,7 +7,10 @@
 import json
 import logging
 import re
+import threading
+from collections import OrderedDict
 from decimal import Decimal, InvalidOperation
+from hashlib import sha256
 
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, NativeOutput
@@ -22,6 +25,9 @@ from .pension_tax_parser import resolve_pension_tax_inputs
 from .tools import CHAT_AGENT_TOOLS, PENSION_TAX_CLOSING_NOTICE
 
 logger = logging.getLogger(__name__)
+
+# 엔진 답변이 결정론이므로 같은 프롬프트는 같은 검증 내레이션을 재사용한다.
+NARRATION_CACHE_MAX_ENTRIES = 256
 
 NARRATABLE_INTENTS = {
     ChatIntent.ACCOUNT_RULE,
@@ -38,6 +44,8 @@ SYSTEM_PROMPT = (
     "따뜻한 친구처럼, 질문에서 느껴지는 걱정이나 혼란을 짧게 공감한 뒤 "
     "차근차근 설명하고 필요하면 '같이 살펴보자'처럼 다음 행동을 안내한다. "
     "과도하게 친근하거나 가벼운 말투, 근거 없는 안심·격려는 쓰지 않는다. "
+    "본문은 서너 문장, 최대 다섯 문장으로 짧게 쓰되 모든 문장은 중간에 "
+    "끊지 말고 완결한다. "
     "사실·외부 의견·서비스 해석의 경계를 유지하고 숫자와 단위는 원문 "
     "그대로 둔다."
     " 연금세액 Tool 입력이 제공되면 검증 답변을 쓰기 전에 요청된 "
@@ -178,20 +186,82 @@ class ClaudeNarrator:
         if not api_key.strip() or not model.strip():
             raise ValueError("api_key and model are required")
         self._model = model.strip()
-        self.agent: Agent[None, NarrationOutput] = Agent(
+        self._api_key = api_key.strip()
+        # 검증 통과 내레이션만 저장하는 LRU 캐시(폴백은 저장하지 않는다).
+        self._narration_cache: OrderedDict[str, tuple[str, str | None]] = (
+            OrderedDict()
+        )
+        self._narration_cache_lock = threading.Lock()
+        self.agent: Agent[None, NarrationOutput] = self._build_agent()
+
+    def _build_agent(self) -> Agent[None, NarrationOutput]:
+        settings = AnthropicModelSettings(
+            # 출력 길이는 시스템프롬프트의 문장 수 제한으로 관리한다.
+            # max_tokens는 안전 상한일 뿐이며, 초과 절단 시 구조화 출력이
+            # 깨져 결정론 폴백으로 빠지므로 끊긴 문장이 노출되지 않는다.
+            max_tokens=2500,
+            # 고정부(시스템프롬프트·툴 정의) 서버측 프롬프트 캐싱.
+            anthropic_cache_instructions=True,
+            anthropic_cache_tool_definitions=True,
+        )
+        if not self._model.startswith("claude-haiku"):
+            # Haiku 계열은 adaptive thinking 미지원(400)이고, enabled(고정
+            # 예산)는 매번 thinking을 강제 생성해 오히려 느리다(실측:
+            # enabled 7.2초 vs OFF 3.6초, 2026-07-18). Haiku에서는 thinking을
+            # 끄고 숫자 가드가 품질을 보장한다. 그 외 모델은 검토 과정을
+            # 이 thinking 요약만 사용한다(NarrationOutput 참고).
+            settings["anthropic_thinking"] = {
+                "type": "adaptive",
+                "display": "summarized",
+            }
+        return Agent(
             AnthropicModel(
                 self._model,
-                provider=AnthropicProvider(api_key=api_key.strip()),
+                provider=AnthropicProvider(api_key=self._api_key),
             ),
             output_type=NativeOutput(NarrationOutput),
             instructions=SYSTEM_PROMPT,
             tools=CHAT_AGENT_TOOLS,
-            model_settings=AnthropicModelSettings(
-                max_tokens=1500,
-                # 검토 과정은 이 thinking 요약만 사용한다(NarrationOutput 참고).
-                anthropic_thinking={"type": "adaptive", "display": "summarized"},
-            ),
+            model_settings=settings,
         )
+
+    def prewarm(self) -> None:
+        """부팅 시 1회 호출해 첫 요청의 프로세스 초기화 지연을 흡수한다.
+
+        실측: 콜드 첫 호출 ~14초 vs 워밍 후 ~4초(2026-07-18). 반드시 버리는
+        Agent로 호출한다 — self.agent를 부팅 스레드의 이벤트루프에서 쓰면
+        HTTP 클라이언트가 그 루프에 묶여 이후 요청 스레드의 호출이 멈춘다
+        (TestClient 재현으로 확인). 실패해도 본 요청은 결정론 폴백으로
+        동작하므로 경고만 남긴다.
+        """
+        try:
+            self._build_agent().run_sync(
+                "검증 답변:\n연금 코파일럿 내레이터 워밍업 호출이다.\n\n"
+                "제한사항:\n한 문장으로만 답한다."
+            )
+        except Exception:  # noqa: BLE001 — 워밍업 실패는 서비스에 영향 없음
+            logger.warning("narrator_prewarm_failed")
+
+    def _cache_key(self, intent: ChatIntent, prompt: str) -> str:
+        return sha256(
+            f"{self._model}\x00{intent.value}\x00{prompt}".encode()
+        ).hexdigest()
+
+    def _cache_lookup(self, key: str) -> tuple[str, str | None] | None:
+        with self._narration_cache_lock:
+            cached = self._narration_cache.get(key)
+            if cached is not None:
+                self._narration_cache.move_to_end(key)
+            return cached
+
+    def _cache_store(
+        self, key: str, narration: str, reasoning: str | None
+    ) -> None:
+        with self._narration_cache_lock:
+            self._narration_cache[key] = (narration, reasoning)
+            self._narration_cache.move_to_end(key)
+            while len(self._narration_cache) > NARRATION_CACHE_MAX_ENTRIES:
+                self._narration_cache.popitem(last=False)
 
     def narrate(
         self,
@@ -252,6 +322,22 @@ class ClaudeNarrator:
                 + "\n위 입력을 임의로 수정하지 말고 검증 답변에 포함된 계산 "
                 "종류의 Tool을 반드시 호출하세요."
             )
+        # 엔진 답변이 결정론이라 같은 프롬프트의 검증 통과 내레이션은 그대로
+        # 재사용한다(정확 일치라 오적중 없음). 폴백은 캐시되지 않는다.
+        cache_key = self._cache_key(response.intent, prompt)
+        cached = self._cache_lookup(cache_key)
+        if cached is not None:
+            cached_answer, cached_reasoning = cached
+            data = response.model_dump()
+            data.update(
+                {
+                    "answer": cached_answer,
+                    "narration_mode": "claude_verified",
+                    "model_name": self._model,
+                    "narration_reasoning": cached_reasoning,
+                }
+            )
+            return ChatResponse.model_validate(data)
         try:
             result = self.agent.run_sync(prompt)
             output = result.output
@@ -322,15 +408,15 @@ class ClaudeNarrator:
             ),
             None,
         )
+        reasoning = self._safe_reasoning(thinking, response.answer)
+        self._cache_store(cache_key, candidate, reasoning)
         data = response.model_dump()
         data.update(
             {
                 "answer": candidate,
                 "narration_mode": "claude_verified",
                 "model_name": self._model,
-                "narration_reasoning": self._safe_reasoning(
-                    thinking, response.answer
-                ),
+                "narration_reasoning": reasoning,
             }
         )
         return ChatResponse.model_validate(data)

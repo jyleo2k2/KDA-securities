@@ -269,6 +269,7 @@ class ProfitLockEvaluation(BaseModel):
 class ScenarioHoldingInput(HoldingInput):
     asset_class_code: str = Field(min_length=1)
     instrument_name: str = Field(min_length=1)
+    etf_isu_code: str | None = Field(default=None, min_length=6, max_length=6)
 
 
 class ScenarioAccountInput(BaseModel):

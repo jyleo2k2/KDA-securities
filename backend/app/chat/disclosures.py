@@ -7,6 +7,8 @@ SQL·행 모델은 retrieval 저장소(아키텍처.md §10 통합)에 있고, �
 import re
 from decimal import Decimal
 
+from psycopg_pool import ConnectionPool
+
 from ..engine import AccountType
 from ..retrieval.disclosures_repository import (
     DisclosureReadRepository as DisclosureStatsRepository,
@@ -31,8 +33,10 @@ def _rank(question: str, row: ProviderDisclosure) -> tuple[int, Decimal]:
 class DisclosureReadRepository:
     """Rank live-ingested provider rows against the user question."""
 
-    def __init__(self, database_url: str) -> None:
-        self._stats = DisclosureStatsRepository(database_url)
+    def __init__(
+        self, database_url: str, *, pool: ConnectionPool | None = None
+    ) -> None:
+        self._stats = DisclosureStatsRepository(database_url, pool=pool)
 
     def search(
         self,

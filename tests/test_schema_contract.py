@@ -35,6 +35,12 @@ LIFECYCLE_SCENARIOS_MIGRATION = next(
 ETF_UNIVERSE_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob("*_add_etf_portfolio_universe.sql")
 )
+HERO_ETF_MIGRATION = (
+    ROOT
+    / "supabase"
+    / "migrations"
+    / "20260718090000_link_demo_hero_etf_holdings.sql"
+)
 SEED = ROOT / "supabase" / "seed.sql"
 
 
@@ -286,4 +292,29 @@ def test_lifecycle_scenarios_are_additive_mock_data_only() -> None:
     assert "insert into public.mock_accounts" in sql
     assert "insert into public.mock_holdings" in sql
     assert "auth.users" not in sql
+    assert "drop table" not in sql
+
+
+def test_demo_hero_etf_links_are_additive_and_use_verified_universe() -> None:
+    assert HERO_ETF_MIGRATION.exists()
+    sql = HERO_ETF_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "alter table public.mock_holdings" in sql
+    assert "etf_isu_code text" in sql
+    assert "mock_holdings_etf_isu_code_idx" in sql
+    assert "expected 12 hero etf links" in sql
+
+    for code in ("379800", "273130", "434060"):
+        assert f"'{code}'" in sql
+    for scenario in (
+        "family_budget_pressure",
+        "overlap_risk_concentration",
+        "pension_payout_transition",
+    ):
+        assert f"'{scenario}'" in sql
+
+    assert "etf_universe_products" in sql
+    assert "etf_return_histories" in sql
+    assert "count(*) = 253" in sql
+    assert "benchmark_mock" not in sql
     assert "drop table" not in sql

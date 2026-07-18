@@ -6,11 +6,14 @@ REST read path and never mutates disclosure tables. 챗봇의 최신분기 회�
 """
 
 import calendar
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 
 import psycopg
+from psycopg_pool import ConnectionPool
 from pydantic import BaseModel, ConfigDict
 
 from ..engine import AccountType
@@ -73,10 +76,22 @@ class RetirementProviderStat:
 
 
 class DisclosureReadRepository:
-    def __init__(self, database_url: str) -> None:
+    def __init__(
+        self, database_url: str, *, pool: ConnectionPool | None = None
+    ) -> None:
         if not database_url:
             raise ValueError("database_url is required")
         self._database_url = database_url
+        self._pool = pool
+
+    @contextmanager
+    def _connection(self) -> Iterator[psycopg.Connection]:
+        if self._pool is None:
+            with psycopg.connect(self._database_url) as connection:
+                yield connection
+            return
+        with self._pool.connection() as connection:
+            yield connection
 
     def latest_pension_savings_stats(
         self,
@@ -86,7 +101,7 @@ class DisclosureReadRepository:
         limit: int = 100,
     ) -> list[PensionSavingsProviderStat]:
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connection() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
@@ -114,7 +129,7 @@ class DisclosureReadRepository:
         limit: int = 100,
     ) -> list[RetirementProviderStat]:
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connection() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
@@ -152,7 +167,7 @@ class DisclosureReadRepository:
 
     def _latest_quarter_pension_savings(self) -> list[ProviderDisclosure]:
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connection() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
@@ -198,7 +213,7 @@ class DisclosureReadRepository:
         self, account_type: AccountType
     ) -> list[ProviderDisclosure]:
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connection() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
