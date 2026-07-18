@@ -2,7 +2,7 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-19 00:11 KST
+> 최종 확인: 2026-07-19 00:16 KST
 > 확인 기준: `codex/supabase-column-comments` / `origin/main` `dc94f0d` / Supabase MCP 읽기 재검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
@@ -274,8 +274,9 @@ uv run ruff check .
 - 문서: DB 세션 고정 운영 절차를 [`DB_SESSION_GUIDE.md`](./DB_SESSION_GUIDE.md)로 분리하고 `AGENTS.md`·`CLAUDE.md` READ-FIRST를 동일하게 갱신했다.
 - 검증: 관련 계약 19건 통과, 전체 `uv run pytest` 603건 통과(기존 DeprecationWarning 1건), `uv run ruff check .`, `git diff --check`, `AGENTS.md`·`CLAUDE.md` 동일성 확인 통과.
 - Advisor: 보안 INFO 29·WARN 1(유출 비밀번호 보호 비활성화), 성능 INFO 40(미사용 인덱스)이며 이번 COMMENT 범위와 무관해 변경하지 않았다.
+- Git/PR: `codex/supabase-column-comments`를 push하고 Draft PR #57을 열었다. 원격 적용과 PR 머지는 하지 않았다.
 - 원격 적용: 없음. 이재용 승인 전 적용 금지. `migration repair`, `db reset` 미사용.
-- 다음 작업: 변경 diff 검토 후 commit·push·Draft PR 생성, 이재용에게 원격 적용 승인 요청.
+- 다음 작업: 이재용에게 원격 migration 적용 승인을 요청한다. 승인 후 적용·실제 컬럼 설명 재조회·migration 16개 정합성을 검증한다.
 
 ### 2026-07-18 22:19 KST
 
