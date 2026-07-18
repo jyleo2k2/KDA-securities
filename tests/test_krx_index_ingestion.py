@@ -1,3 +1,4 @@
+import asyncio
 import json
 from datetime import date
 
@@ -6,7 +7,7 @@ import pytest
 
 from backend.app.ingestion.krx_client import (
     KrxApiError,
-    fetch_krx_index_daily,
+    fetch_krx_index_daily_async,
     parse_krx_index_payload,
 )
 from backend.app.ingestion.krx_indices import (
@@ -92,16 +93,17 @@ def test_krx_index_fetch_never_echoes_api_key() -> None:
         assert request.url.params["basDd"] == "20260715"
         return httpx.Response(401)
 
-    with (
-        httpx.Client(transport=httpx.MockTransport(handler)) as client,
-        pytest.raises(KrxApiError) as error,
-    ):
-        fetch_krx_index_daily(
-            client,
-            api_key="never-print-key",
-            series="krx",
-            base_date=BASE_DATE,
-        )
+    async def call() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            await fetch_krx_index_daily_async(
+                client,
+                api_key="never-print-key",
+                series="krx",
+                base_date=BASE_DATE,
+            )
+
+    with pytest.raises(KrxApiError) as error:
+        asyncio.run(call())
     assert "never-print-key" not in str(error.value)
 
 

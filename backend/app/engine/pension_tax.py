@@ -9,7 +9,7 @@ from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from .models import AccountType, SourceChip
 from .portfolio import MONEY_QUANTUM
@@ -221,26 +221,11 @@ class PensionTaxScenarioInput(BaseModel):
 
     @model_validator(mode="after")
     def require_consistent_optional_facts(self) -> "PensionTaxScenarioInput":
-        if self.income_basis == IncomeBasis.UNKNOWN:
-            if self.income_amount_krw is not None:
-                raise ValueError(
-                    "income_amount_krw requires a non-unknown income_basis"
-                )
-        elif self.income_amount_krw is None:
-            raise ValueError("income_amount_krw is required for the income_basis")
-
-        deferred = self.irp_deferred_retirement_income_krw
-        if self.irp_deferred_income_status == IrpDeferredIncomeStatus.KNOWN:
-            if deferred is None:
-                raise ValueError(
-                    "known IRP deferred income requires its amount"
-                )
-            if deferred > self.irp.balance_krw:
-                raise ValueError("IRP deferred income cannot exceed IRP balance")
-        elif deferred is not None and deferred != 0:
-            raise ValueError(
-                "IRP deferred income amount is allowed only when status is known"
-            )
+        try:
+            self.to_tax_credit_input()
+            self.to_withdrawal_input()
+        except ValidationError as exc:
+            raise ValueError(str(exc)) from exc
         return self
 
     def to_tax_credit_input(self) -> PensionTaxCreditInput:
@@ -386,10 +371,8 @@ def _rate_scenarios(
 
 
 def calculate_pension_tax_credit(
-    inputs: PensionTaxCreditInput | PensionTaxScenarioInput,
+    inputs: PensionTaxCreditInput,
 ) -> PensionTaxCreditEvaluation:
-    if isinstance(inputs, PensionTaxScenarioInput):
-        inputs = inputs.to_tax_credit_input()
     pension_eligible = min(
         inputs.pension_savings_contribution_krw,
         PENSION_SAVINGS_CREDIT_LIMIT_KRW,
@@ -479,10 +462,8 @@ def _withdrawal_breakdown(
 
 
 def estimate_non_pension_withdrawal_tax(
-    inputs: NonPensionWithdrawalInput | PensionTaxScenarioInput,
+    inputs: NonPensionWithdrawalInput,
 ) -> NonPensionWithdrawalEvaluation:
-    if isinstance(inputs, PensionTaxScenarioInput):
-        inputs = inputs.to_withdrawal_input()
     accounts = [
         account
         for account in (inputs.pension_savings, inputs.irp)
@@ -611,15 +592,4 @@ def estimate_non_pension_withdrawal_tax(
         assumptions=assumptions,
         limitations=limitations,
         evidence=evidence,
-    )
-
-
-def evaluate_pension_tax_scenario(
-    inputs: PensionTaxScenarioInput,
-) -> PensionTaxToolResult:
-    return PensionTaxToolResult(
-        tax_credit=calculate_pension_tax_credit(inputs.to_tax_credit_input()),
-        withdrawal=estimate_non_pension_withdrawal_tax(
-            inputs.to_withdrawal_input()
-        ),
     )

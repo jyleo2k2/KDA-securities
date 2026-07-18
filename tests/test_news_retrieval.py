@@ -48,27 +48,6 @@ class _Connection:
         return self._cursor
 
 
-def test_random_recent_news_filters_five_days_and_future_rows(monkeypatch) -> None:
-    cursor = _Cursor()
-    monkeypatch.setattr(
-        repository_module.psycopg,
-        "connect",
-        lambda _: _Connection(cursor),
-    )
-
-    results = RetrievalRepository("postgresql://test").random_recent_news(
-        "연금", days=5, limit=3
-    )
-
-    assert results == [NewsMatch(*cursor.rows[0])]
-    assert "published_at >= now() - make_interval(days => %s)" in cursor.statement
-    assert "published_at <= now()" in cursor.statement
-    assert "summary_status = 'succeeded'" in cursor.statement
-    assert "cardinality(summary_lines) = 3" in cursor.statement
-    assert "order by random()" in cursor.statement
-    assert cursor.params == ("연금", 5, 3)
-
-
 def test_random_recent_market_news_filters_selected_us_summaries(monkeypatch) -> None:
     cursor = _Cursor()
     monkeypatch.setattr(

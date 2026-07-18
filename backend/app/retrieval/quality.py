@@ -3,16 +3,9 @@
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
 
-from .repository import KnowledgeMatch
+from .repository import KnowledgeMatch, KnowledgeSearch
 from .search_ranking import search_tokens, text_matches_all
-
-
-class KnowledgeSearch(Protocol):
-    def search_knowledge(
-        self, query: str, *, limit: int = 8
-    ) -> list[KnowledgeMatch]: ...
 
 
 class QualityBenchmarkError(ValueError):

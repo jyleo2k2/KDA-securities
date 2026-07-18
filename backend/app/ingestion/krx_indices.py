@@ -11,6 +11,9 @@ import httpx
 
 from backend.app.settings import get_settings
 
+from ._dates import weekdays
+from ._retry import async_retry_with_backoff
+from ._secrets import require_secret
 from .krx_client import (
     KRX_INDEX_ENDPOINTS,
     KrxApiError,
@@ -52,16 +55,6 @@ class IndexCollectionRecord:
     relative_path: str | None
     retrieved_at: str | None
     error: str | None = None
-
-
-def _weekdays(start: date, end: date) -> list[date]:
-    if start > end:
-        raise ValueError("from-date must not be after to-date")
-    return [
-        current
-        for offset in range((end - start).days + 1)
-        if (current := start + timedelta(days=offset)).weekday() < 5
-    ]
 
 
 def _raw_path(root: Path, series: str, base_date: date) -> Path:
@@ -120,28 +113,16 @@ async def _fetch_with_retry(
     series: str,
     base_date: date,
 ) -> KrxIndexDailyResponse:
-    last_error: KrxApiError | None = None
-    for attempt in range(MAX_RETRIES + 1):
-        try:
-            return await fetch_krx_index_daily_async(
-                client,
-                api_key=api_key,
-                series=series,
-                base_date=base_date,
-            )
-        except KrxApiError as exc:
-            last_error = exc
-            retryable = (
-                exc.status_code is None
-                or exc.status_code == 429
-                or (exc.status_code is not None and exc.status_code >= 500)
-            )
-            if not retryable or attempt == MAX_RETRIES:
-                break
-            await asyncio.sleep(2**attempt)
-    if last_error is None:
-        raise RuntimeError("KRX index retry loop completed without a result")
-    raise last_error
+    return await async_retry_with_backoff(
+        lambda: fetch_krx_index_daily_async(
+            client, api_key=api_key, series=series, base_date=base_date
+        ),
+        exceptions=KrxApiError,
+        is_retryable=lambda exc: exc.status_code is None
+        or exc.status_code == 429
+        or exc.status_code >= 500,
+        max_retries=MAX_RETRIES,
+    )
 
 
 def _benchmark_name(series: str, row: dict[str, str]) -> str:
@@ -183,7 +164,7 @@ def build_benchmark_history(
         for name in names
     }
     missing_raw_count = 0
-    for base_date in _weekdays(start_date, end_date):
+    for base_date in weekdays(start_date, end_date):
         for series in INDEX_SERIES:
             path = _raw_path(raw_root, series, base_date)
             if not path.exists():
@@ -262,7 +243,7 @@ async def collect_krx_index_history(
 ) -> dict[str, Any]:
     if workers < 1 or workers > 16:
         raise ValueError("workers must be between 1 and 16")
-    requested_dates = _weekdays(start_date, end_date)
+    requested_dates = weekdays(start_date, end_date)
     requested = [
         (series, base_date)
         for base_date in requested_dates
@@ -432,11 +413,7 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = _parser().parse_args()
     settings = get_settings()
-    if settings.krx_api_key is None:
-        raise SystemExit("KRX_API_KEY is required")
-    api_key = settings.krx_api_key.get_secret_value().strip()
-    if not api_key:
-        raise SystemExit("KRX_API_KEY is required")
+    api_key = require_secret(settings.krx_api_key, "KRX_API_KEY")
     result = asyncio.run(
         collect_krx_index_history(
             api_key=api_key,

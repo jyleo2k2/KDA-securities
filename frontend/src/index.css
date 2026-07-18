@@ -22,6 +22,60 @@ button, input, textarea, select { font: inherit; }
 button { color: inherit; }
 svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
+.home-dashboard { display: grid; gap: 18px; padding: 8px 0 24px; }
+.home-hero-heading > span, .section-heading-row > div > span { color: #007848; font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+.home-hero-heading h1 { margin: 8px 0 10px; color: #12372a; font-size: 30px; line-height: 1.22; letter-spacing: -.04em; }
+.home-hero-heading p { margin: 0; color: #6d7c74; font-size: 13px; line-height: 1.65; }
+.home-loading, .home-error { padding: 18px; border-radius: 16px; background: white; font-size: 13px; }
+.home-error { color: #a53d2d; background: #fff0eb; }
+.hero-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.hero-picker button { min-width: 0; display: grid; justify-items: center; gap: 4px; padding: 12px 5px; border: 1px solid #dfe7e0; border-radius: 15px; background: #fff; cursor: pointer; }
+.hero-picker button > span { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: #eef3ec; color: #567063; font-weight: 800; }
+.hero-picker button strong { overflow: hidden; max-width: 100%; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.hero-picker button small { color: #819087; font-size: 9px; }
+.hero-picker button.active { border-color: #007848; background: #eff8f2; box-shadow: 0 7px 18px rgba(0, 120, 72, .09); }
+.hero-picker button.active > span { background: #007848; color: #fff; }
+.portfolio-summary-card, .risk-review-card, .account-holdings-section { padding: 18px; border: 1px solid #e1e8e1; border-radius: 20px; background: #fff; box-shadow: 0 9px 28px rgba(24, 56, 43, .05); }
+.portfolio-summary-top { display: grid; gap: 12px; }
+.portfolio-summary-top h2 { margin: 8px 0 4px; font-size: 22px; }
+.portfolio-summary-top p { margin: 0; color: #6d7c74; font-size: 11px; line-height: 1.55; white-space: pre-line; }
+.portfolio-summary-top > strong { color: #12372a; font-size: 26px; letter-spacing: -.04em; }
+.mock-chip { display: inline-flex; padding: 4px 8px; border-radius: 999px; background: #fff1df; color: #9b5c1f; font-size: 9px; font-weight: 800; }
+.allocation-layout { display: grid; grid-template-columns: 132px 1fr; align-items: center; gap: 16px; margin-top: 22px; }
+.home-allocation-donut { position: relative; width: 132px; height: 132px; display: grid; place-items: center; border-radius: 50%; }
+.home-allocation-donut::before { width: 76px; height: 76px; border-radius: 50%; background: #fff; content: ""; }
+.home-allocation-donut > span { position: absolute; color: #718078; text-align: center; font-size: 9px; line-height: 1.35; }
+.home-allocation-donut > span strong { color: #12372a; font-size: 15px; }
+.home-allocation-list { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.home-allocation-list li { display: grid; grid-template-columns: 8px 1fr auto; align-items: center; gap: 7px; font-size: 10px; }
+.home-allocation-list i { width: 8px; height: 8px; border-radius: 50%; }
+.home-allocation-list span { color: #6d7c74; }.home-allocation-list strong { font-size: 10px; }
+.section-heading-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.section-heading-row h2 { margin: 3px 0 0; font-size: 18px; }
+.section-heading-row > small { color: #88948e; font-size: 9px; }
+.section-heading-row > b { padding: 5px 8px; border-radius: 999px; font-size: 9px; }
+.review-needed { background: #fff0e7; color: #a6502f; }.review-ok { background: #eaf6ed; color: #267348; }
+.risk-metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 15px; }
+.risk-metric-grid > div { padding: 12px; border-radius: 13px; background: #f4f7f3; }
+.risk-metric-grid span, .risk-metric-grid strong { display: block; }
+.risk-metric-grid span { color: #75837b; font-size: 9px; line-height: 1.45; }
+.risk-metric-grid strong { margin-top: 5px; color: #12372a; font-size: 19px; }
+.risk-metric-grid .stress-metric { grid-column: 1 / -1; background: #173f31; }
+.risk-metric-grid .stress-metric span { color: #adcbc0; }.risk-metric-grid .stress-metric strong { color: #dff06c; }
+.risk-review-card > p { margin: 12px 0 0; color: #88948e; font-size: 9px; line-height: 1.55; }
+.account-card-list { display: grid; gap: 10px; margin-top: 14px; }
+.account-card-list > article { padding: 13px; border: 1px solid #e5ebe5; border-radius: 14px; }
+.account-card-list article > header { display: flex; justify-content: space-between; align-items: center; }
+.account-card-list article > header strong { font-size: 12px; }.account-card-list article > header span { color: #007848; font-size: 9px; font-weight: 800; }
+.account-card-list ul { display: grid; gap: 9px; margin: 11px 0 0; padding: 11px 0 0; border-top: 1px solid #eef1ed; list-style: none; }
+.account-card-list li { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.account-card-list li > div:last-child { display: grid; justify-items: end; gap: 3px; }
+.account-card-list li strong, .account-card-list li small, .account-card-list li span { display: block; }
+.account-card-list li strong { font-size: 10px; }.account-card-list li small { margin-top: 3px; color: #8b968f; font-size: 8px; }
+.account-card-list li code { padding: 2px 5px; border-radius: 5px; background: #edf5ef; color: #007848; font-size: 8px; }
+.account-card-list li span { color: #53645b; font-size: 9px; white-space: nowrap; }
+.analyze-hero-button { width: 100%; padding: 15px; border: 0; border-radius: 15px; background: #007848; color: white; font-weight: 800; cursor: pointer; box-shadow: 0 10px 24px rgba(0, 120, 72, .18); }
+
 .app-shell { min-height: 100vh; display: flex; background: #f9faf7; }
 .sidebar { position: fixed; inset: 0 auto 0 0; z-index: 20; width: 272px; display: flex; flex-direction: column; padding: 25px 18px 22px; background: #12372a; color: #f4f8f3; box-shadow: 16px 0 42px rgba(17, 49, 38, .08); }
 .brand { display: flex; align-items: center; gap: 11px; padding: 0 7px 23px; }

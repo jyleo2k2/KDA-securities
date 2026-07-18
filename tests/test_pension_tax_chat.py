@@ -13,6 +13,7 @@ from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService
 from backend.app.engine import PensionTaxScenarioInput
 from backend.app.main import app, get_chat_narrator, get_chat_service
+from tests.conftest import final_sse_response
 
 
 def _service() -> ChatService:
@@ -256,7 +257,7 @@ def test_demo_chat_accepts_structured_tax_input() -> None:
     try:
         with TestClient(app) as client:
             response = client.post(
-                "/chat/demo",
+                "/chat/demo/stream",
                 json={
                     "message": "세액공제 혜택과 중도해지 세금을 알려줘",
                     "pension_tax": _input_payload(),
@@ -266,7 +267,7 @@ def test_demo_chat_accepts_structured_tax_input() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    payload = response.json()
+    payload = final_sse_response(response.text)["response"]
     assert payload["intent"] == "pension_tax"
     assert payload["pension_tax_result"]["tax_credit"] is not None
     assert payload["pension_tax_result"]["withdrawal"] is not None
@@ -301,7 +302,7 @@ def test_demo_chat_runs_all_three_guide_questions_without_form_input() -> None:
     try:
         with TestClient(app) as client:
             responses = [
-                client.post("/chat/demo", json={"message": message})
+                client.post("/chat/demo/stream", json={"message": message})
                 for message, _, _ in cases
             ]
     finally:
@@ -311,7 +312,7 @@ def test_demo_chat_runs_all_three_guide_questions_without_form_input() -> None:
         responses, cases, strict=True
     ):
         assert response.status_code == 200
-        payload = response.json()
+        payload = final_sse_response(response.text)["response"]
         assert payload["data_mode"] == "user_input_engine"
         assert payload["answer"].splitlines()[-1] == EXPECTED_CLOSING_NOTICE
         result = payload["pension_tax_result"]

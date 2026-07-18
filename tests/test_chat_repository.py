@@ -12,6 +12,7 @@ from backend.app.chat.models import (
     SourceEvidence,
 )
 from backend.app.chat.repository import ChatRepository, ChatSessionAccessError
+from tests.conftest import FakeConnection
 
 
 class FakeCursor:
@@ -38,22 +39,6 @@ class FakeCursor:
 
     def fetchone(self):
         return self._fetchone_rows.pop(0) if self._fetchone_rows else None
-
-
-class FakeConnection:
-    def __init__(self, cursor: FakeCursor) -> None:
-        self._cursor = cursor
-        self.exit_exception = None
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, traceback):
-        self.exit_exception = exc_type
-        return False
-
-    def cursor(self) -> FakeCursor:
-        return self._cursor
 
 
 def _response() -> ChatResponse:

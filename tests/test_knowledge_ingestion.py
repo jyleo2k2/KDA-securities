@@ -17,6 +17,7 @@ from backend.app.retrieval import knowledge_repository
 from backend.app.retrieval.knowledge_policy import canonical_project_source_url
 from backend.app.retrieval.knowledge_repository import KnowledgeWriteRepository
 from scripts.ingest_knowledge import main as ingest_main
+from tests.conftest import FakeConnection
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -87,20 +88,6 @@ class FakeCursor:
 
     def fetchall(self):
         return self._rows
-
-
-class FakeConnection:
-    def __init__(self, cursor: FakeCursor) -> None:
-        self._cursor = cursor
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, traceback):
-        return False
-
-    def cursor(self) -> FakeCursor:
-        return self._cursor
 
 
 def test_chunk_markdown_keeps_headings_and_max_size() -> None:

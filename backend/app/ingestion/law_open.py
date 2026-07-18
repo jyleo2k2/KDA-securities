@@ -10,6 +10,8 @@ import httpx
 
 from backend.app.settings import get_settings
 
+from ._files import atomic_write_json as _atomic_json
+from ._secrets import require_secret
 from .law_open_client import (
     LAW_OPEN_ENDPOINT,
     LawOpenApiError,
@@ -61,16 +63,6 @@ class DocumentRecord:
 
 def _raw_path(root: Path, snapshot_date: date, slug: str) -> Path:
     return root / snapshot_date.isoformat() / f"{slug}.json"
-
-
-def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),
-        encoding="utf-8",
-    )
-    temporary.replace(path)
 
 
 def _persist_raw(
@@ -393,11 +385,7 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = _parser().parse_args()
     settings = get_settings()
-    if settings.law_open_api_key is None:
-        raise SystemExit("LAW_OPEN_API_KEY is required")
-    api_key = settings.law_open_api_key.get_secret_value().strip()
-    if not api_key:
-        raise SystemExit("LAW_OPEN_API_KEY is required")
+    api_key = require_secret(settings.law_open_api_key, "LAW_OPEN_API_KEY")
     result = collect_pension_regulatory_rules(
         api_key=api_key,
         snapshot_date=args.snapshot_date,

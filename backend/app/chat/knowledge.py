@@ -1,13 +1,12 @@
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Protocol
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 import psycopg
 
 from ..ingestion.knowledge import DEFAULT_MANIFEST, load_approved_documents
-from ..retrieval.repository import KnowledgeMatch
+from ..retrieval.repository import KnowledgeMatch, KnowledgeSearch
 from ..retrieval.search_ranking import (
     rerank_knowledge_matches,
     search_tokens,
@@ -25,12 +24,6 @@ class _Chunk:
     publisher: str
     document_type: str
     as_of_date: date | None
-
-
-class KnowledgeSearch(Protocol):
-    def search_knowledge(
-        self, query: str, *, limit: int = 8
-    ) -> list[KnowledgeMatch]: ...
 
 
 class FallbackKnowledgeRepository:

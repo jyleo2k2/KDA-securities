@@ -280,6 +280,12 @@ class ScenarioAccountInput(BaseModel):
     label: str = Field(min_length=1)
     holdings: list[ScenarioHoldingInput] = Field(min_length=1)
 
+    @model_validator(mode="after")
+    def require_positive_total(self) -> "ScenarioAccountInput":
+        if sum((holding.amount_krw for holding in self.holdings), Decimal("0")) <= 0:
+            raise ValueError("scenario account total amount must be greater than zero")
+        return self
+
 
 class ScenarioPortfolioInput(BaseModel):
     model_config = ConfigDict(extra="forbid")

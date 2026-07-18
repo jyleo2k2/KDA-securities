@@ -92,27 +92,9 @@ class NaverNewsRepository:
             raise ValueError("database_url is required")
         self._database_url = database_url
 
-    def start_run(
-        self,
-        *,
-        query: str,
-        display: int,
-        start: int,
-        sort: str,
-        max_pages: int,
-        max_age_days: int | None,
+    def _start_run(
+        self, *, metadata: dict[str, Any], requested_params: dict[str, Any]
     ) -> tuple[UUID, int]:
-        query = normalize_search_text(query)
-        if not query:
-            raise ValueError("query must not be empty")
-        requested_params = {
-            "query": query,
-            "display": display,
-            "start": start,
-            "sort": sort,
-            "max_pages": max_pages,
-            "max_age_days": max_age_days,
-        }
         with (
             psycopg.connect(self._database_url) as connection,
             connection.cursor() as cursor,
@@ -124,8 +106,7 @@ class NaverNewsRepository:
                 )
                 values (
                     'naver_search_news', 'NAVER API HUB 뉴스 검색',
-                    'news_api', 'NAVER Cloud', %s,
-                    %s
+                    'news_api', 'NAVER Cloud', %s, %s
                 )
                 on conflict (code) do update set
                     name = excluded.name,
@@ -135,17 +116,7 @@ class NaverNewsRepository:
                     updated_at = now()
                 returning id
                 """,
-                (
-                    NAVER_NEWS_ENDPOINT,
-                    Jsonb(
-                        {
-                            "storage_policy": "metadata_and_derived_summary",
-                            "article_body_storage": "transient_only",
-                            "data_boundary": "news_metadata_and_summary",
-                            "is_mock": False,
-                        }
-                    ),
-                ),
+                (NAVER_NEWS_ENDPOINT, Jsonb(metadata)),
             )
             source_row = cursor.fetchone()
             if source_row is None:
@@ -170,71 +141,54 @@ class NaverNewsRepository:
                 )
             return run_row[0], source_id
 
+    def start_run(
+        self,
+        *,
+        query: str,
+        display: int,
+        start: int,
+        sort: str,
+        max_pages: int,
+        max_age_days: int | None,
+    ) -> tuple[UUID, int]:
+        query = normalize_search_text(query)
+        if not query:
+            raise ValueError("query must not be empty")
+        return self._start_run(
+            metadata={
+                "storage_policy": "metadata_and_derived_summary",
+                "article_body_storage": "transient_only",
+                "data_boundary": "news_metadata_and_summary",
+                "is_mock": False,
+            },
+            requested_params={
+                "query": query,
+                "display": display,
+                "start": start,
+                "sort": sort,
+                "max_pages": max_pages,
+                "max_age_days": max_age_days,
+            },
+        )
+
     def start_market_run(self, *, queries: tuple[str, ...]) -> tuple[UUID, int]:
         if not queries or any(not normalize_search_text(query) for query in queries):
             raise ValueError("queries must contain non-empty values")
-        requested_params = {
-            "queries": list(queries),
-            "sort": "date",
-            "max_age_hours": 24,
-            "daily_limit": 20,
-        }
-        with (
-            psycopg.connect(self._database_url) as connection,
-            connection.cursor() as cursor,
-        ):
-            cursor.execute(
-                """
-                insert into public.data_sources (
-                    code, name, source_type, authority, base_url, metadata
-                )
-                values (
-                    'naver_search_news', 'NAVER API HUB 뉴스 검색',
-                    'news_api', 'NAVER Cloud', %s, %s
-                )
-                on conflict (code) do update set
-                    name = excluded.name,
-                    base_url = excluded.base_url,
-                    metadata = data_sources.metadata || excluded.metadata,
-                    is_active = true,
-                    updated_at = now()
-                returning id
-                """,
-                (
-                    NAVER_NEWS_ENDPOINT,
-                    Jsonb(
-                        {
-                            "storage_policy": "selected_metadata_and_summary",
-                            "article_body_storage": "transient_only",
-                            "selection_policy": "market-news-v1",
-                            "data_boundary": "news_metadata_and_summary",
-                            "is_mock": False,
-                        }
-                    ),
-                ),
-            )
-            source_row = cursor.fetchone()
-            if source_row is None:
-                raise NaverNewsRepositoryError(
-                    "failed to resolve NAVER news data source"
-                )
-            source_id = int(source_row[0])
-            cursor.execute(
-                """
-                insert into public.ingestion_runs (
-                    source_id, endpoint, requested_params, status
-                )
-                values (%s, %s, %s, 'running')
-                returning id
-                """,
-                (source_id, NAVER_NEWS_ENDPOINT, Jsonb(requested_params)),
-            )
-            run_row = cursor.fetchone()
-            if run_row is None:
-                raise NaverNewsRepositoryError(
-                    "failed to create NAVER market-news ingestion run"
-                )
-            return run_row[0], source_id
+        return self._start_run(
+            metadata={
+                "storage_policy": "selected_metadata_and_summary",
+                "article_body_storage": "transient_only",
+                "selection_policy": "market-news-v1",
+                "data_boundary": "news_metadata_and_summary",
+                "is_mock": False,
+            },
+            requested_params={
+                "queries": list(queries),
+                "sort": "date",
+                "max_age_hours": 24,
+                "daily_limit": 20,
+            },
+        )
 
     def complete_run(
         self,

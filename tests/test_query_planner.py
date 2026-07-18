@@ -145,6 +145,13 @@ def test_named_mock_scenario_wins_over_tax_credit_word() -> None:
     assert plan.intent == ChatIntent.MOCK_PORTFOLIO
 
 
+def test_bare_account_wording_does_not_shadow_tax_credit_intent() -> None:
+    plan = plan_question("내 계좌 세액공제 얼마야?")
+
+    assert plan.intent == ChatIntent.PENSION_TAX
+    assert plan.requests_tax_credit is True
+
+
 @pytest.mark.parametrize(
     "message",
     ("현재 나의 포트폴리오 보여줘", "내 연금 포트폴리오를 진단해줘"),

@@ -76,18 +76,20 @@
         "holdings": [
           {
             "holding_id": "dc_global_equity",
-            "instrument_name": "글로벌주식형 모형",
+            "instrument_name": "KODEX 미국S&P500",
             "asset_class_code": "global_equity",
             "amount_krw": "60000000",
-            "risk_treatment": "general_risky"
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "379800"
           },
           {
             "holding_id": "dc_tdf",
-            "instrument_name": "적격 TDF 모형",
+            "instrument_name": "KODEX TDF2050액티브",
             "asset_class_code": "eligible_tdf",
             "amount_krw": "20000000",
             "risk_treatment": "statutory_exception",
-            "statutory_exception": "eligible_tdf"
+            "statutory_exception": "eligible_tdf",
+            "etf_isu_code": "434060"
           },
           {
             "holding_id": "dc_deposit",
@@ -105,17 +107,19 @@
         "holdings": [
           {
             "holding_id": "irp_global_equity",
-            "instrument_name": "글로벌주식형 모형",
+            "instrument_name": "KODEX 미국S&P500",
             "asset_class_code": "global_equity",
             "amount_krw": "34000000",
-            "risk_treatment": "general_risky"
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "379800"
           },
           {
             "holding_id": "irp_bond",
-            "instrument_name": "채권형 모형",
+            "instrument_name": "KODEX 종합채권(AA-이상)액티브",
             "asset_class_code": "bond",
             "amount_krw": "16000000",
-            "risk_treatment": "capital_preservation"
+            "risk_treatment": "capital_preservation",
+            "etf_isu_code": "273130"
           }
         ]
       },
@@ -126,10 +130,11 @@
         "holdings": [
           {
             "holding_id": "pension_global_equity",
-            "instrument_name": "글로벌주식형 모형",
+            "instrument_name": "KODEX 미국S&P500",
             "asset_class_code": "global_equity",
             "amount_krw": "36000000",
-            "risk_treatment": "general_risky"
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "379800"
           },
           {
             "holding_id": "pension_cash",
@@ -209,17 +214,19 @@
           },
           {
             "holding_id": "family_dc_global_equity",
-            "instrument_name": "중년층 글로벌주식형 모형",
+            "instrument_name": "KODEX 미국S&P500",
             "asset_class_code": "global_equity",
             "amount_krw": "20000000",
-            "risk_treatment": "general_risky"
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "379800"
           },
           {
             "holding_id": "family_dc_bond",
-            "instrument_name": "중년층 채권형 모형",
+            "instrument_name": "KODEX 종합채권(AA-이상)액티브",
             "asset_class_code": "bond",
             "amount_krw": "10000000",
-            "risk_treatment": "capital_preservation"
+            "risk_treatment": "capital_preservation",
+            "etf_isu_code": "273130"
           }
         ]
       },
@@ -251,17 +258,19 @@
         "holdings": [
           {
             "holding_id": "family_pension_global_equity",
-            "instrument_name": "중년층 연금저축 글로벌주식형 모형",
+            "instrument_name": "KODEX 미국S&P500",
             "asset_class_code": "global_equity",
             "amount_krw": "5000000",
-            "risk_treatment": "general_risky"
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "379800"
           },
           {
             "holding_id": "family_pension_bond",
-            "instrument_name": "중년층 연금저축 채권형 모형",
+            "instrument_name": "KODEX 종합채권(AA-이상)액티브",
             "asset_class_code": "bond",
             "amount_krw": "4000000",
-            "risk_treatment": "capital_preservation"
+            "risk_treatment": "capital_preservation",
+            "etf_isu_code": "273130"
           }
         ]
       }
@@ -289,10 +298,11 @@
           },
           {
             "holding_id": "payout_irp_bond",
-            "instrument_name": "수령기 IRP 채권형 모형",
+            "instrument_name": "KODEX 종합채권(AA-이상)액티브",
             "asset_class_code": "bond",
             "amount_krw": "30000000",
-            "risk_treatment": "capital_preservation"
+            "risk_treatment": "capital_preservation",
+            "etf_isu_code": "273130"
           },
           {
             "holding_id": "payout_irp_cash",
@@ -310,10 +320,11 @@
         "holdings": [
           {
             "holding_id": "payout_pension_bond",
-            "instrument_name": "수령기 연금저축 채권형 모형",
+            "instrument_name": "KODEX 종합채권(AA-이상)액티브",
             "asset_class_code": "bond",
             "amount_krw": "25000000",
-            "risk_treatment": "capital_preservation"
+            "risk_treatment": "capital_preservation",
+            "etf_isu_code": "273130"
           },
           {
             "holding_id": "payout_pension_cash",
@@ -324,10 +335,11 @@
           },
           {
             "holding_id": "payout_pension_global_equity",
-            "instrument_name": "수령기 연금저축 글로벌주식형 모형",
+            "instrument_name": "KODEX 미국S&P500",
             "asset_class_code": "global_equity",
             "amount_krw": "5000000",
-            "risk_treatment": "general_risky"
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "379800"
           }
         ]
       }

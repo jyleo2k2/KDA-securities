@@ -369,6 +369,47 @@ export interface ScenarioEvaluation {
   source: SourceChip;
 }
 
+export interface DemoHeroHolding extends HoldingInput {
+  instrument_name: string;
+  asset_class_code: AssetClass;
+  etf_isu_code?: string | null;
+}
+
+export interface DemoHeroAccount {
+  account_id: string;
+  account_type: AccountType;
+  label: string;
+  holdings: DemoHeroHolding[];
+}
+
+export interface DemoHeroRiskSummary {
+  dominant_asset_class: AssetClass;
+  dominant_asset_percent: string;
+  general_risky_asset_percent: string;
+  stress_scenario_code: "equity_drawdown";
+  estimated_stress_loss_percent: string;
+  is_forecast: false;
+  requires_rebalancing_review: boolean;
+  policy_label: string;
+}
+
+export interface DemoHeroPortfolio {
+  nickname: string;
+  representative_age: number;
+  customer_context: string;
+  scenario_code: string;
+  scenario_name: string;
+  age_band: string;
+  risk_profile: string;
+  investment_horizon_years: number;
+  total_amount_krw: string;
+  accounts: DemoHeroAccount[];
+  asset_allocations: AssetAllocation[];
+  duplicated_asset_classes: string[];
+  risk_summary: DemoHeroRiskSummary;
+  data_boundary: "mock";
+}
+
 // ── /retrieval/* ──
 export interface KnowledgeMatch {
   chunk_id: number;

@@ -187,23 +187,6 @@ def _parse_response(response: httpx.Response, base_date: date) -> KrxEtfDailyRes
     )
 
 
-def fetch_krx_etf_daily(
-    client: httpx.Client,
-    *,
-    api_key: str,
-    base_date: date,
-) -> KrxEtfDailyResponse:
-    try:
-        response = client.get(
-            KRX_ETF_DAILY_ENDPOINT,
-            params={"basDd": base_date.strftime("%Y%m%d")},
-            headers={"AUTH_KEY": api_key},
-        )
-    except httpx.HTTPError as exc:
-        raise KrxApiError("KRX transport failed") from exc
-    return _parse_response(response, base_date)
-
-
 async def fetch_krx_etf_daily_async(
     client: httpx.AsyncClient,
     *,
@@ -242,28 +225,6 @@ def _parse_index_response(
         base_date=base_date,
         raw_content=response.content,
     )
-
-
-def fetch_krx_index_daily(
-    client: httpx.Client,
-    *,
-    api_key: str,
-    series: str,
-    base_date: date,
-) -> KrxIndexDailyResponse:
-    try:
-        endpoint = KRX_INDEX_ENDPOINTS[series]
-    except KeyError as exc:
-        raise ValueError(f"unsupported KRX index series: {series}") from exc
-    try:
-        response = client.get(
-            endpoint,
-            params={"basDd": base_date.strftime("%Y%m%d")},
-            headers={"AUTH_KEY": api_key},
-        )
-    except httpx.HTTPError as exc:
-        raise KrxApiError(f"KRX {series} index transport failed") from exc
-    return _parse_index_response(response, series=series, base_date=base_date)
 
 
 async def fetch_krx_index_daily_async(

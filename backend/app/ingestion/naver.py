@@ -10,6 +10,7 @@ import psycopg
 from backend.app.settings import get_settings
 from backend.app.text_normalization import normalize_search_text
 
+from ._secrets import optional_secret, require_secret
 from .naver_news import (
     NaverNewsAllItemsRejectedError,
     NaverNewsApiError,
@@ -203,21 +204,14 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = _parser().parse_args()
     settings = get_settings()
-    if (
-        settings.naver_api_hub_client_id is None
-        or settings.naver_api_hub_client_secret is None
-    ):
-        raise SystemExit("NAVER API HUB credentials are required")
-    client_id = settings.naver_api_hub_client_id.get_secret_value().strip()
-    client_secret = settings.naver_api_hub_client_secret.get_secret_value().strip()
-    if not client_id or not client_secret:
-        raise SystemExit("NAVER API HUB credentials are required")
-
-    database_url = (
-        settings.database_url.get_secret_value().strip()
-        if settings.database_url is not None
-        else None
+    client_id = require_secret(
+        settings.naver_api_hub_client_id, "NAVER API HUB credentials"
     )
+    client_secret = require_secret(
+        settings.naver_api_hub_client_secret, "NAVER API HUB credentials"
+    )
+
+    database_url = optional_secret(settings.database_url)
     if not args.fetch_only and not database_url:
         raise SystemExit("DATABASE_URL is required unless --fetch-only is used")
 

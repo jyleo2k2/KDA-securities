@@ -4,21 +4,16 @@ import argparse
 import json
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
 from typing import Any
 
 import httpx
 
 from backend.app.settings import get_settings
 
+from ._secrets import require_secret
 from .naver_news_repository import NaverNewsRepository, PendingNewsSummary
 from .news_article import NewsArticleFetchError, fetch_news_article
 from .news_summarizer import NewsSummarizer, NewsSummaryError
-
-
-@dataclass(frozen=True, slots=True)
-class _ItemOutcome:
-    status: str
 
 
 def run_summary_worker(
@@ -52,7 +47,7 @@ def run_summary_worker(
             thread_state.summarizer = current
         return current
 
-    def process(item: PendingNewsSummary) -> _ItemOutcome:
+    def process(item: PendingNewsSummary) -> str:
         try:
             with httpx.Client(timeout=30.0, trust_env=False) as client:
                 article = fetch_news_article(client, item.original_url)
@@ -62,7 +57,7 @@ def run_summary_worker(
                 status="fetch_failed",
                 error_code=exc.code,
             )
-            return _ItemOutcome("fetch_failed")
+            return "fetch_failed"
 
         try:
             summary = summarizer().summarize(
@@ -80,7 +75,7 @@ def run_summary_worker(
                 status=status,
                 error_code=exc.code,
             )
-            return _ItemOutcome(status)
+            return status
 
         repository.save_summary(
             item_id=item.item_id,
@@ -89,7 +84,7 @@ def run_summary_worker(
             prompt_version=prompt_version,
             content_sha256=article.content_sha256,
         )
-        return _ItemOutcome("succeeded")
+        return "succeeded"
 
     counts = {
         "claimed": 0,
@@ -112,7 +107,7 @@ def run_summary_worker(
             counts["claimed"] += len(items)
             futures = [executor.submit(process, item) for item in items]
             for future in as_completed(futures):
-                counts[future.result().status] += 1
+                counts[future.result()] += 1
 
     failed = (
         counts["fetch_failed"]
@@ -140,20 +135,8 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = _parser().parse_args()
     settings = get_settings()
-    database_url = (
-        settings.database_url.get_secret_value().strip()
-        if settings.database_url is not None
-        else ""
-    )
-    api_key = (
-        settings.anthropic_api_key.get_secret_value().strip()
-        if settings.anthropic_api_key is not None
-        else ""
-    )
-    if not database_url:
-        raise SystemExit("DATABASE_URL is required")
-    if not api_key:
-        raise SystemExit("ANTHROPIC_API_KEY is required")
+    database_url = require_secret(settings.database_url, "DATABASE_URL")
+    api_key = require_secret(settings.anthropic_api_key, "ANTHROPIC_API_KEY")
 
     result = run_summary_worker(
         database_url=database_url,

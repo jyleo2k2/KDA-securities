@@ -37,6 +37,7 @@ from backend.app.engine import AccountType
 from backend.app.main import app, get_chat_narrator, get_chat_service
 from backend.app.retrieval.repository import KnowledgeMatch, NewsMatch
 from backend.app.settings import get_settings
+from tests.conftest import final_sse_response
 
 
 class FakeDisclosureRepository:
@@ -236,15 +237,56 @@ def test_selected_scenario_explains_holdings_and_rebalancing_boundary() -> None:
 
     assert response.intent == ChatIntent.MOCK_PORTFOLIO
     sections = {section.title: section.content for section in response.sections}
-    assert "글로벌주식형 모형 60%" in sections["보유 항목과 비중"]
-    assert "적격 TDF 모형 20%" in sections["보유 항목과 비중"]
+    assert "KODEX 미국S&P500 (379800) 60%" in sections["보유 항목과 비중"]
+    assert "KODEX TDF2050액티브 (434060) 20%" in sections["보유 항목과 비중"]
     assert "리밸런싱 점검이 필요합니다" in sections["리밸런싱 점검"]
     assert "매수·매도 수량은 계산하지 않았습니다" in sections["리밸런싱 점검"]
     assert any(
-        item.label == "회사 DC 글로벌주식형 모형 보유 비중"
+        item.label == "회사 DC KODEX 미국S&P500 보유 비중"
         and item.value == Decimal("60.0")
         for item in response.numeric_evidence
     )
+
+
+def test_scenario_holdings_summary_guards_zero_total_account() -> None:
+    """ScenarioAccountInput.require_positive_total already blocks this via
+    normal validation; model_construct bypasses it to prove the division
+    guard in _scenario_holdings_summary itself holds even so."""
+    from backend.app.chat.service import _scenario_holdings_summary
+    from backend.app.engine.models import (
+        RiskTreatment,
+        ScenarioAccountInput,
+        ScenarioHoldingInput,
+        ScenarioPortfolioInput,
+    )
+
+    zero_holding = ScenarioHoldingInput(
+        holding_id="h1",
+        amount_krw=Decimal("0"),
+        risk_treatment=RiskTreatment.GENERAL_RISKY,
+        asset_class_code="domestic_equity",
+        instrument_name="샘플 ETF",
+    )
+    zero_account = ScenarioAccountInput.model_construct(
+        account_id="a1",
+        account_type=AccountType.DC,
+        label="테스트 계좌",
+        holdings=[zero_holding],
+    )
+    scenario = ScenarioPortfolioInput.model_construct(
+        scenario_code="zero_total_probe",
+        name="0원 계좌 방어 테스트",
+        description="총합 0원 계좌에서 나눗셈 예외가 나지 않는지 확인",
+        age_band="30s",
+        risk_profile="balanced",
+        investment_horizon_years=10,
+        accounts=[zero_account],
+    )
+
+    summary, evidence = _scenario_holdings_summary(scenario)
+
+    assert "0%" in summary
+    assert evidence[0].value == Decimal("0")
 
 
 def test_individual_product_comparison_is_blocked_until_data_exists() -> None:
@@ -959,7 +1001,7 @@ def test_fastapi_exposes_chat_mvp_golden_path() -> None:
     try:
         with TestClient(app) as client:
             response = client.post(
-                "/chat/demo",
+                "/chat/demo/stream",
                 json={"message": "IRP 위험자산 한도를 알려줘"},
             )
             capabilities = client.get("/chat/demo/capabilities")
@@ -968,7 +1010,7 @@ def test_fastapi_exposes_chat_mvp_golden_path() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert response.json()["intent"] == "account_rule"
+    assert final_sse_response(response.text)["response"]["intent"] == "account_rule"
     assert capabilities.status_code == 200
     assert "dc_dormant" in capabilities.json()["scenario_codes"]
     assert "young_retirement_distance" in capabilities.json()["scenario_codes"]

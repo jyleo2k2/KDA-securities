@@ -30,8 +30,6 @@ class Settings(BaseSettings):
     supabase_url: str | None = None
     supabase_publishable_key: SecretStr | None = None
     supabase_secret_key: SecretStr | None = None
-    app_env: str = "development"
-    use_mock_account_data: bool = True
     cors_origins: list[str] = Field(
         default_factory=lambda: [
             "http://127.0.0.1:5173",

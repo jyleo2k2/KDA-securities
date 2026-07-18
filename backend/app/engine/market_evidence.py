@@ -1,3 +1,4 @@
+import statistics
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -92,13 +93,7 @@ def _money(value: Decimal) -> Decimal:
 
 
 def _median(values: list[Decimal]) -> Decimal | None:
-    if not values:
-        return None
-    ordered = sorted(values)
-    midpoint = len(ordered) // 2
-    if len(ordered) % 2:
-        return ordered[midpoint]
-    return (ordered[midpoint - 1] + ordered[midpoint]) / Decimal("2")
+    return statistics.median(values) if values else None
 
 
 def _returns(values: list[Decimal]) -> list[Decimal]:
