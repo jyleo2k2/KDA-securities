@@ -221,6 +221,27 @@ def test_mock_overlap_scenario_runs_engine_and_keeps_mock_boundary() -> None:
     assert response.answer.startswith("좋아요, 하나씩 같이 볼게요.")
 
 
+def test_selected_scenario_explains_holdings_and_rebalancing_boundary() -> None:
+    response = service().ask(
+        ChatRequest(
+            message="선택한 목계좌의 보유 ETF와 비중, 리밸런싱 필요 여부를 알려줘",
+            scenario_code="overlap_risk_concentration",
+        )
+    )
+
+    assert response.intent == ChatIntent.MOCK_PORTFOLIO
+    sections = {section.title: section.content for section in response.sections}
+    assert "글로벌주식형 모형 60%" in sections["보유 항목과 비중"]
+    assert "적격 TDF 모형 20%" in sections["보유 항목과 비중"]
+    assert "리밸런싱 점검이 필요합니다" in sections["리밸런싱 점검"]
+    assert "매수·매도 수량은 계산하지 않았습니다" in sections["리밸런싱 점검"]
+    assert any(
+        item.label == "회사 DC 글로벌주식형 모형 보유 비중"
+        and item.value == Decimal("60.0")
+        for item in response.numeric_evidence
+    )
+
+
 def test_individual_product_comparison_is_blocked_until_data_exists() -> None:
     response = service().ask(ChatRequest(message="판매 중인 상품 비교를 해줘"))
 

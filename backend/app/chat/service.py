@@ -12,6 +12,7 @@ from ..engine import (
     NonPensionWithdrawalEvaluation,
     PensionTaxCreditEvaluation,
     PensionTaxToolResult,
+    ScenarioPortfolioInput,
     WithdrawalCalculationStatus,
     build_educational_portfolio,
     evaluate_mock_scenario,
@@ -95,6 +96,7 @@ SCENARIO_KEYWORDS = {
 _SELECTED_SCENARIO_DIAGNOSIS_TERMS = re.compile(
     r"(?:내|나의)\s*(?:연금|계좌|자산).{0,20}(?:관리|상태|구성|확인|어떻게)"
     r"|지금\s*(?:뭘|무엇을).{0,20}(?:먼저\s*)?확인"
+    r"|(?:현재|보유).{0,20}(?:ETF|포트폴리오|리밸런싱|운용\s*전략)"
 )
 _ASSET_CLASS_LABELS = {
     "deposit": "원리금보장형 자산",
@@ -135,6 +137,56 @@ def _decimal_text(value: Decimal) -> str:
 
 def _one_decimal(value: Decimal) -> Decimal:
     return value.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+
+
+def _scenario_holdings_summary(
+    scenario: ScenarioPortfolioInput,
+) -> tuple[str, list[NumericEvidence]]:
+    """Return account-level holdings without turning mock data into an order."""
+
+    lines: list[str] = []
+    evidence: list[NumericEvidence] = []
+    for account in scenario.accounts:
+        total = sum(
+            (holding.amount_krw for holding in account.holdings), Decimal("0")
+        )
+        entries: list[str] = []
+        for holding in account.holdings:
+            weight = _one_decimal(holding.amount_krw / total * Decimal("100"))
+            display_name = holding.instrument_name
+            if holding.etf_isu_code is not None:
+                display_name += f" ({holding.etf_isu_code})"
+            entries.append(f"{display_name} {_decimal_text(weight)}%")
+            evidence.append(
+                NumericEvidence(
+                    label=(
+                        f"{account.label} {holding.instrument_name} 보유 비중"
+                    ),
+                    value=weight,
+                    unit="%",
+                    evidence_id="mock:scenario",
+                    basis="목시나리오 보유 금액 / 계좌별 보유 금액",
+                )
+            )
+        lines.append(f"{account.label}: " + " · ".join(entries))
+    return "\n".join(lines), evidence
+
+
+def _scenario_rebalancing_summary(duplicated_asset_classes: list[str]) -> str:
+    if duplicated_asset_classes:
+        duplicated = " · ".join(
+            _ASSET_CLASS_LABELS[asset] for asset in duplicated_asset_classes
+        )
+        return (
+            f"여러 계좌에 {duplicated}이(가) 겹쳐 있어 리밸런싱 점검이 "
+            "필요합니다. 다만 이 목시나리오에는 성향별 목표비중과 추가 납입액이 "
+            "없으므로 매수·매도 수량은 계산하지 않았습니다."
+        )
+    return (
+        "계좌 간 같은 자산군의 중복은 확인되지 않았습니다. 다만 성향별 목표비중과 "
+        "추가 납입액이 없으므로 리밸런싱 필요 여부를 확정하거나 매수·매도 수량을 "
+        "계산하지 않았습니다."
+    )
 
 
 _RISK_PROFILE_LABELS = {
@@ -371,7 +423,11 @@ class ChatService:
         return (
             request.scenario_code is not None
             and plan.intent
-            in (ChatIntent.ACCOUNT_RULE, ChatIntent.OUT_OF_SCOPE)
+            in (
+                ChatIntent.ACCOUNT_RULE,
+                ChatIntent.EDUCATIONAL_PORTFOLIO,
+                ChatIntent.OUT_OF_SCOPE,
+            )
             and _SELECTED_SCENARIO_DIAGNOSIS_TERMS.search(request.message) is not None
         )
 
@@ -1743,9 +1799,15 @@ class ChatService:
             if duplicate_text
             else "계좌 간 같은 자산군의 중복은 확인되지 않았습니다."
         )
+        holdings_summary, holding_evidence = _scenario_holdings_summary(scenario)
+        numeric.extend(holding_evidence)
+        rebalancing_summary = _scenario_rebalancing_summary(
+            evaluation.duplicated_asset_classes
+        )
         answer = (
             f"좋아요, 하나씩 같이 볼게요. {account_summary}. "
-            f"자산별 비중은 아래 그래프로 확인해 보세요. {duplicate_summary}"
+            f"{duplicate_summary} 보유 항목별 비중과 리밸런싱 점검은 아래에서 "
+            "확인해 보세요."
         )
         return ChatResponse(
             intent=ChatIntent.MOCK_PORTFOLIO,
@@ -1762,6 +1824,18 @@ class ChatService:
                     kind=SectionKind.SERVICE_EXPLANATION,
                     title="자산 구성 그래프 안내",
                     content=duplicate_summary,
+                    evidence_ids=["mock:scenario", "engine:scenario"],
+                ),
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title="보유 항목과 비중",
+                    content=holdings_summary,
+                    evidence_ids=["mock:scenario"],
+                ),
+                AnswerSection(
+                    kind=SectionKind.LIMITATION,
+                    title="리밸런싱 점검",
+                    content=rebalancing_summary,
                     evidence_ids=["mock:scenario", "engine:scenario"],
                 ),
             ],

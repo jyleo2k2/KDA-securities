@@ -98,6 +98,19 @@ def test_selected_scenario_routes_natural_management_questions_to_diagnosis(
     assert response.scenario_evaluation is not None
 
 
+def test_selected_scenario_routes_holding_strategy_to_diagnosis() -> None:
+    response = _service().ask(
+        ChatRequest(
+            message="현재 보유 ETF 기준으로 운용 전략을 설명해줘",
+            scenario_code="overlap_risk_concentration",
+        )
+    )
+
+    assert response.intent is ChatIntent.MOCK_PORTFOLIO
+    assert response.data_mode == "mock_scenario"
+    assert any(section.title == "보유 항목과 비중" for section in response.sections)
+
+
 def test_remote_knowledge_empty_or_failed_falls_back_to_local_documents() -> None:
     fallback = LocalKnowledgeFallback()
 
