@@ -6,7 +6,7 @@ def test_daily_news_workflow_runs_atomic_market_news_pipeline() -> None:
         Path(__file__).resolve().parents[1]
         / ".github"
         / "workflows"
-        / "naver-pension-news.yml"
+        / "naver-market-news.yml"
     ).read_text(encoding="utf-8")
 
     pipeline = (

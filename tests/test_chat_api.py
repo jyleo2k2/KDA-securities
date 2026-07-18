@@ -14,7 +14,12 @@ from backend.app.api.deps import (
 )
 from backend.app.auth import require_supabase_user_id
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
-from backend.app.chat.models import ChatRequest
+from backend.app.chat.models import (
+    ChatRequest,
+    ConversationContext,
+    MarketRegion,
+    NewsConversationContext,
+)
 from backend.app.chat.repository import (
     ChatSessionAccessError,
     ChatSessionSummary,
@@ -36,6 +41,7 @@ class FakeChatRepository:
     def __init__(self) -> None:
         self.saved: list[dict[str, object]] = []
         self.deleted: list[dict[str, UUID]] = []
+        self.latest_context: ConversationContext | None = None
 
     def save_exchange(self, **kwargs) -> SavedChatExchange:
         self.saved.append(kwargs)
@@ -92,6 +98,13 @@ class FakeChatRepository:
                 evidence=(),
             ),
         ]
+
+    def get_latest_conversation_context(
+        self, *, owner_id: UUID, session_id: UUID
+    ) -> ConversationContext | None:
+        assert owner_id == OWNER_ID
+        assert session_id == SESSION_ID
+        return self.latest_context
 
     def delete_session(self, *, owner_id: UUID, session_id: UUID) -> None:
         self.deleted.append({"owner_id": owner_id, "session_id": session_id})
@@ -293,6 +306,59 @@ def test_delete_chat_session_requires_bearer_authentication() -> None:
 
     assert response.status_code == 401
     assert repository.deleted == []
+
+
+class ContextCapturingChatService:
+    def __init__(self) -> None:
+        self.delegate = _service()
+        self.context: ConversationContext | None = None
+
+    def plan(self, request):
+        self.context = request.conversation_context
+        return self.delegate.plan(request)
+
+    def ask(self, request, *, plan=None, prefer_structured_pension_tax=False):
+        return self.delegate.ask(
+            request,
+            plan=plan,
+            prefer_structured_pension_tax=prefer_structured_pension_tax,
+        )
+
+
+def test_authenticated_session_context_is_server_authoritative() -> None:
+    repository = FakeChatRepository()
+    service = ContextCapturingChatService()
+    repository.latest_context = ConversationContext(
+        news=NewsConversationContext(
+            news_item_ids=["server-news"],
+            market_region=MarketRegion.US,
+            shown_at=datetime(2026, 7, 18, tzinfo=UTC),
+        )
+    )
+    _override_authenticated_dependencies(repository)
+    app.dependency_overrides[get_chat_service] = lambda: service
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat",
+                json={
+                    "message": "IRP 위험자산 한도를 알려줘",
+                    "session_id": str(SESSION_ID),
+                    "conversation_context": {
+                        "news": {
+                            "news_item_ids": ["client-news"],
+                            "market_region": "kr",
+                            "shown_at": "2026-07-17T00:00:00Z",
+                        }
+                    },
+                },
+                headers=CHAT_HEADERS,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert service.context == repository.latest_context
 
 
 def test_session_history_returns_current_chat_response_contract() -> None:

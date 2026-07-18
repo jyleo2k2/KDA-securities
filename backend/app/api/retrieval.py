@@ -39,6 +39,7 @@ class NewsItemOut(BaseModel):
 
     item_id: str
     title: str
+    publisher: str | None
     description: str | None
     original_url: str
     portal_url: str | None

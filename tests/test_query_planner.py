@@ -155,7 +155,7 @@ def test_guide_page_prompts_route_to_supported_intents(
     (
         ("세액공제 후 미운용 시나리오 최신 뉴스", ChatIntent.MOCK_PORTFOLIO),
         ("연금저축 세액공제 뉴스를 알려줘", ChatIntent.PENSION_TAX),
-        ("IRP 사업자 수익률 뉴스를 알려줘", ChatIntent.NEWS),
+        ("IRP 사업자 수익률 뉴스를 알려줘", ChatIntent.OUT_OF_SCOPE),
         ("IRP 사업자 수익률 한도를 알려줘", ChatIntent.PROVIDER_DISCLOSURE),
     ),
 )
@@ -203,41 +203,48 @@ def test_multiple_account_disclosures_require_one_account_at_a_time() -> None:
     assert plan.blocked_reason == BlockedReason.ACCOUNT_SELECTION_REQUIRED
 
 
-def test_news_topic_and_requested_count_are_canonical() -> None:
+def test_unsupported_news_topics_do_not_fall_through_to_market_news() -> None:
     samsung = plan_question("삼성전자 가장 최근 뉴스 하나 찾아줘")
     pension = plan_question("퇴직연금 최신 뉴스 5건 알려줘")
 
-    assert samsung.news_query == "market"
-    assert samsung.max_results == 3
-    assert pension.news_query == "market"
-    assert pension.max_results == 3
+    assert samsung.intent == ChatIntent.OUT_OF_SCOPE
+    assert samsung.blocked_reason == BlockedReason.UNSUPPORTED_NEWS_TOPIC
+    assert pension.intent == ChatIntent.OUT_OF_SCOPE
+    assert pension.blocked_reason == BlockedReason.UNSUPPORTED_NEWS_TOPIC
 
 
 @pytest.mark.parametrize("message", ("IRP 뉴스", "DC형 뉴스", "연금저축 뉴스"))
-def test_account_news_uses_market_news_policy(message: str) -> None:
+def test_account_news_does_not_use_market_news_policy(message: str) -> None:
     plan = plan_question(message)
 
-    assert plan.intent == ChatIntent.NEWS
-    assert plan.news_query == "market"
-    assert plan.max_results == 3
+    assert plan.intent == ChatIntent.OUT_OF_SCOPE
+    assert plan.blocked_reason == BlockedReason.UNSUPPORTED_NEWS_TOPIC
 
 
-def test_news_command_removal_keeps_words_that_contain_news_terms() -> None:
+def test_words_containing_news_terms_do_not_become_market_news() -> None:
     newskin = plan_question("뉴스킨 최신 뉴스")
     revival = plan_question("기사회생 뉴스")
 
-    assert newskin.intent == ChatIntent.NEWS
-    assert newskin.news_query == "market"
-    assert revival.intent == ChatIntent.NEWS
-    assert revival.news_query == "market"
+    assert newskin.intent == ChatIntent.OUT_OF_SCOPE
+    assert revival.intent == ChatIntent.OUT_OF_SCOPE
 
 
 @pytest.mark.parametrize(
-    ("message", "query"),
-    (("미국 증시 뉴스", "market:us"), ("코스피 뉴스", "market:kr")),
+    ("message", "query", "max_results"),
+    (
+        ("미국 증시 뉴스 2건", "market:us", 2),
+        ("코스피 뉴스", "market:kr", 3),
+        ("뉴스 알려줘", "market", 3),
+        ("증시 뉴스 5건 알려줘", "market", 5),
+    ),
 )
-def test_market_news_region_filter(message: str, query: str) -> None:
-    assert plan_question(message).news_query == query
+def test_market_news_region_filter_and_requested_count(
+    message: str, query: str, max_results: int
+) -> None:
+    plan = plan_question(message)
+
+    assert plan.news_query == query
+    assert plan.max_results == max_results
 
 
 def test_order_and_future_requests_do_not_reach_retrieval() -> None:

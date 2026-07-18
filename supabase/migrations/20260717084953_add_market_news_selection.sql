@@ -4,6 +4,7 @@ alter table public.news_items
     add column canonical_url text,
     add column normalized_title_hash text,
     add column event_fingerprint text,
+    add column is_active boolean not null default true,
     add column selection_score smallint,
     add column selection_reasons text[] not null default array[]::text[],
     add column selection_policy_version text,
@@ -70,14 +71,8 @@ create unique index news_items_event_fingerprint_unique_idx
 create index news_items_market_recent_idx
     on public.news_items (published_at desc, fetched_at desc, id)
     where selection_policy_version is not null
-      and summary_status = 'succeeded';
-
-alter table public.chat_message_evidence
-    drop constraint chat_message_evidence_news_item_id_fkey,
-    add constraint chat_message_evidence_news_item_id_fkey
-        foreign key (news_item_id)
-        references public.news_items(id)
-        on delete cascade;
+      and summary_status = 'succeeded'
+      and is_active;
 
 comment on column public.news_items.selection_score is
     '시장영향·직접관련성·구체성·출처신뢰도·최신성·새로움의 규칙 기반 100점 점수';

@@ -457,6 +457,7 @@ export type DataBoundary =
   | "verified_knowledge"
   | "official_disclosure"
   | "news_metadata"
+  | "news_summary"
   | "mock"
   | "engine"
   | "user_input"
@@ -501,6 +502,7 @@ export interface AnswerSection {
 export interface ChatNewsItem {
   evidence_id: string;
   title: string;
+  publisher?: string | null;
   description?: string | null;
   summary_lines?: string[];
   original_url: string;
@@ -566,6 +568,14 @@ export interface ConversationContext {
   last_intent?: ChatIntent | null;
   survey_profile?: CompletedSurveyProfile | null;
   selected_risk_profile?: RiskProfile | null;
+  news?: NewsConversationContext | null;
+}
+
+export interface NewsConversationContext {
+  news_item_ids: string[];
+  focus_news_item_id?: string | null;
+  market_region: "all" | "kr" | "us";
+  shown_at: string;
 }
 
 export interface ChatResponse {

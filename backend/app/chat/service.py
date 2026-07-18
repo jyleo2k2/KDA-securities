@@ -1,6 +1,6 @@
 import logging
 import re
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Protocol
 
@@ -29,6 +29,8 @@ from .models import (
     ChatVisualization,
     ConversationContext,
     DataBoundary,
+    MarketRegion,
+    NewsConversationContext,
     NumericEvidence,
     SectionKind,
     SourceEvidence,
@@ -43,7 +45,7 @@ from .pension_account_overview import (
 )
 from .pension_tax_parser import resolve_pension_tax_inputs
 from .query_planner import AccountRuleTopic, BlockedReason, QueryPlan, plan_question
-from .routing import IntentRouter
+from .routing import IntentRouter, NewsFollowUp, NewsFollowUpAction
 from .scenarios import ScenarioRepository
 from .tools import (
     DC_WITHDRAWAL_EXCLUSION_NOTICE,
@@ -77,6 +79,17 @@ class NewsSearch(Protocol):
     def random_recent_news(
         self, search_query: str, *, days: int = 5, limit: int = 3
     ) -> list[NewsMatch]: ...
+
+    def recent_market_news(
+        self,
+        *,
+        region: str | None = None,
+        days: int = 5,
+        limit: int = 3,
+        exclude_item_ids: tuple[str, ...] = (),
+    ) -> list[NewsMatch]: ...
+
+    def news_by_ids(self, item_ids: tuple[str, ...]) -> list[NewsMatch]: ...
 
 
 class PortfolioUniverse(Protocol):
@@ -130,6 +143,8 @@ def _news_summary_block(item: NewsMatch, index: int) -> str:
         if item.published_at is not None
         else item.title
     )
+    if item.publisher:
+        headline = f"{item.publisher} · {headline}"
     summary = "\n".join(item.summary_lines)
     return f"{label} 뉴스 — {headline}\n{summary}\n원문 링크: {item.original_url}"
 
@@ -336,7 +351,7 @@ class ChatService:
             ],
             conditional=[
                 "Supabase 실적재 후 회사·사업자 과거 공시 비교",
-                "NAVER 뉴스 적재 후 최신 뉴스 메타데이터 조회",
+                "NAVER 증시뉴스 적재 후 매체·3줄 요약·원문 링크 조회",
             ],
             unsupported=[
                 "DC·IRP 개별 상품 비교",
@@ -355,6 +370,34 @@ class ChatService:
                 normalized_message=direct_plan.normalized_message,
                 intent=ChatIntent.MOCK_PORTFOLIO,
                 max_results=direct_plan.max_results,
+            )
+        if direct_plan.blocked_reason not in {
+            None,
+            BlockedReason.UNSUPPORTED,
+            BlockedReason.UNSUPPORTED_NEWS_TOPIC,
+        }:
+            return direct_plan
+        news_follow_up = self._router.news_follow_up(request)
+        if news_follow_up is not None:
+            region = news_follow_up.region
+            news_query = (
+                "context"
+                if news_follow_up.action
+                in {
+                    NewsFollowUpAction.DETAIL,
+                    NewsFollowUpAction.COMPARE,
+                    NewsFollowUpAction.SOURCE,
+                    NewsFollowUpAction.CLARIFY,
+                }
+                else "market"
+                if region in {None, MarketRegion.ALL}
+                else f"market:{region.value}"
+            )
+            return QueryPlan(
+                normalized_message=direct_plan.normalized_message,
+                intent=ChatIntent.NEWS,
+                news_query=news_query,
+                max_results=3,
             )
         if direct_plan.blocked_reason != BlockedReason.UNSUPPORTED:
             return direct_plan
@@ -486,9 +529,33 @@ class ChatService:
                 )
             elif resolved_plan.intent == ChatIntent.NEWS:
                 assert resolved_plan.news_query is not None
-                response = self._news_response(
-                    request, search_query=resolved_plan.news_query
-                )
+                news_follow_up = self._router.news_follow_up(original_request)
+                if news_follow_up is not None and news_follow_up.action in {
+                    NewsFollowUpAction.DETAIL,
+                    NewsFollowUpAction.COMPARE,
+                    NewsFollowUpAction.SOURCE,
+                    NewsFollowUpAction.CLARIFY,
+                }:
+                    response = self._news_follow_up_response(
+                        original_request, news_follow_up
+                    )
+                else:
+                    exclude_item_ids = (
+                        tuple(
+                            original_request.conversation_context.news.news_item_ids
+                        )
+                        if news_follow_up is not None
+                        and news_follow_up.action == NewsFollowUpAction.REFRESH
+                        and original_request.conversation_context is not None
+                        and original_request.conversation_context.news is not None
+                        else ()
+                    )
+                    response = self._news_response(
+                        request,
+                        search_query=resolved_plan.news_query,
+                        max_results=resolved_plan.max_results,
+                        exclude_item_ids=exclude_item_ids,
+                    )
             elif resolved_plan.intent == ChatIntent.PROVIDER_DISCLOSURE:
                 account_type = resolved_plan.account_types[0]
                 response = self._disclosure_response(request, account_type)
@@ -648,6 +715,13 @@ class ChatService:
             )
             or (previous.scenario_code if previous is not None else None)
         )
+        news_context = (
+            response_context.news
+            if response_context is not None and response_context.news is not None
+            else previous.news
+            if previous is not None
+            else None
+        )
         return response.model_copy(
             update={
                 "conversation_context": ConversationContext(
@@ -656,6 +730,7 @@ class ChatService:
                     last_intent=response.intent,
                     survey_profile=survey_profile,
                     selected_risk_profile=selected_risk_profile,
+                    news=news_context,
                 )
             }
         )
@@ -1064,6 +1139,18 @@ class ChatService:
                 ),
                 data_mode="blocked",
                 limitations=["계좌별 공시 계약을 분리해 조회합니다."],
+            )
+        if reason == BlockedReason.UNSUPPORTED_NEWS_TOPIC:
+            return ChatResponse(
+                intent=ChatIntent.OUT_OF_SCOPE,
+                answer=(
+                    "현재 뉴스 기능은 한국·미국 주요 증시뉴스만 제공합니다. "
+                    "연금·특정 기업별 뉴스는 증시뉴스로 바꿔 답하지 않습니다."
+                ),
+                data_mode="unavailable",
+                limitations=[
+                    "증시 뉴스, 한국 증시 뉴스 또는 미국 증시 뉴스로 질문해 주세요."
+                ],
             )
         return ChatResponse(
             intent=ChatIntent.OUT_OF_SCOPE,
@@ -1842,7 +1929,12 @@ class ChatService:
         )
 
     def _news_response(
-        self, request: ChatRequest, *, search_query: str
+        self,
+        request: ChatRequest,
+        *,
+        search_query: str,
+        max_results: int,
+        exclude_item_ids: tuple[str, ...] = (),
     ) -> ChatResponse:
         if self._news is None:
             return ChatResponse(
@@ -1856,11 +1948,20 @@ class ChatService:
             )
         is_market_news = search_query == "market" or search_query.startswith("market:")
         region = search_query.partition(":")[2] or None
-        matches = (
-            self._news.random_recent_market_news(region=region, days=5, limit=3)
-            if is_market_news
-            else self._news.latest_news(search_query, limit=request.max_results)
-        )
+        market_limit = min(max_results, 3)
+        if is_market_news and exclude_item_ids:
+            matches = self._news.recent_market_news(
+                region=region,
+                days=5,
+                limit=market_limit,
+                exclude_item_ids=exclude_item_ids,
+            )
+        elif is_market_news:
+            matches = self._news.recent_market_news(
+                region=region, days=5, limit=market_limit
+            )
+        else:
+            matches = self._news.latest_news(search_query, limit=request.max_results)
         if not matches:
             return ChatResponse(
                 intent=ChatIntent.NEWS,
@@ -1877,7 +1978,7 @@ class ChatService:
                 evidence_id=f"news:{item.item_id}",
                 label=item.title,
                 locator=item.original_url,
-                publisher="외부 뉴스 원문",
+                publisher=item.publisher or "외부 뉴스 원문",
                 as_of=item.published_at,
                 data_boundary=(
                     DataBoundary.NEWS_SUMMARY
@@ -1903,11 +2004,13 @@ class ChatService:
                 "뉴스 사실과 외부 의견은 원문에서 다시 확인해야 합니다.",
             ]
         )
-        if is_market_news and len(matches) < 3:
+        if is_market_news and len(matches) < market_limit:
             limitations.append(
                 "최근 닷새간 저장된 증시 기사가 세 건 미만이라 "
                 "조회된 기사만 제공합니다."
             )
+        if is_market_news and max_results > 3:
+            limitations.append("증시 뉴스는 한 번에 최대 세 건까지 제공합니다.")
         return ChatResponse(
             intent=ChatIntent.NEWS,
             answer="\n\n".join(lines),
@@ -1916,6 +2019,7 @@ class ChatService:
                 ChatNewsItem(
                     evidence_id=f"news:{item.item_id}",
                     title=item.title,
+                    publisher=item.publisher,
                     description=None if is_market_news else item.description,
                     summary_lines=(list(item.summary_lines) if is_market_news else []),
                     original_url=item.original_url,
@@ -1937,6 +2041,142 @@ class ChatService:
             ],
             sources=sources,
             limitations=limitations,
+            conversation_context=ConversationContext(
+                news=NewsConversationContext(
+                    news_item_ids=[item.item_id for item in matches],
+                    market_region=(
+                        MarketRegion(region) if region is not None else MarketRegion.ALL
+                    ),
+                    shown_at=datetime.now(UTC),
+                )
+            ),
+        )
+
+    def _news_follow_up_response(
+        self, request: ChatRequest, follow_up: NewsFollowUp
+    ) -> ChatResponse:
+        context = request.conversation_context
+        news_context = context.news if context is not None else None
+        if news_context is None:
+            return ChatResponse(
+                intent=ChatIntent.NEWS,
+                answer="현재 세션에서 먼저 표시된 증시뉴스가 없습니다.",
+                data_mode="news_follow_up",
+                limitations=["먼저 증시뉴스를 요청해 주세요."],
+            )
+        if follow_up.action == NewsFollowUpAction.CLARIFY:
+            return ChatResponse(
+                intent=ChatIntent.NEWS,
+                answer=(
+                    "현재 세션에는 뉴스 "
+                    f"{len(news_context.news_item_ids)}건이 있습니다. "
+                    "첫 번째, 두 번째처럼 확인할 기사를 지정해 주세요."
+                ),
+                data_mode="news_follow_up",
+                limitations=["여러 기사 중 대상을 임의로 선택하지 않습니다."],
+                conversation_context=ConversationContext(news=news_context),
+            )
+        if self._news is None:
+            return ChatResponse(
+                intent=ChatIntent.NEWS,
+                answer="저장된 뉴스 데이터에 연결할 수 없습니다.",
+                data_mode="unavailable",
+                limitations=["DATABASE_URL과 저장된 뉴스 데이터가 필요합니다."],
+                conversation_context=ConversationContext(news=news_context),
+            )
+
+        selected = [
+            (index, news_context.news_item_ids[index])
+            for index in follow_up.item_indexes
+        ]
+        matches = self._news.news_by_ids(tuple(item_id for _, item_id in selected))
+        matches_by_id = {item.item_id: item for item in matches}
+        ordered = [
+            (index, matches_by_id[item_id])
+            for index, item_id in selected
+            if item_id in matches_by_id
+        ]
+        if len(ordered) != len(selected):
+            return ChatResponse(
+                intent=ChatIntent.NEWS,
+                answer=(
+                    "세션에서 참조한 뉴스가 현재 저장소에 없어 내용을 다시 불러오지 "
+                    "못했습니다. 최신 증시뉴스를 다시 요청해 주세요."
+                ),
+                data_mode="unavailable",
+                limitations=["삭제되거나 만료된 뉴스 내용을 임의로 복원하지 않습니다."],
+                conversation_context=ConversationContext(news=news_context),
+            )
+
+        sources = [
+            SourceEvidence(
+                evidence_id=f"news:{item.item_id}",
+                label=item.title,
+                locator=item.original_url,
+                publisher=item.publisher or "외부 뉴스 원문",
+                as_of=item.published_at,
+                data_boundary=DataBoundary.NEWS_SUMMARY,
+            )
+            for _, item in ordered
+        ]
+        if follow_up.action == NewsFollowUpAction.SOURCE:
+            def published_date(item: NewsMatch) -> str:
+                return (
+                    item.published_at.date().isoformat()
+                    if item.published_at
+                    else "확인되지 않음"
+                )
+
+            lines = [
+                (
+                    f"{index + 1}번째 뉴스 — {item.title}\n"
+                    f"발행일: {published_date(item)}\n"
+                    f"원문 링크: {item.original_url}"
+                )
+                for index, item in ordered
+            ]
+            title = "뉴스 출처와 발행일"
+        else:
+            lines = [_news_summary_block(item, index) for index, item in ordered]
+            title = (
+                "세션 뉴스 비교"
+                if follow_up.action == NewsFollowUpAction.COMPARE
+                else "선택한 뉴스 다시 보기"
+            )
+        focus_id = selected[0][1] if len(selected) == 1 else None
+        updated_news_context = news_context.model_copy(
+            update={"focus_news_item_id": focus_id}
+        )
+        answer = "\n\n".join(lines)
+        return ChatResponse(
+            intent=ChatIntent.NEWS,
+            answer=answer,
+            data_mode="news_follow_up",
+            news_items=[
+                ChatNewsItem(
+                    evidence_id=f"news:{item.item_id}",
+                    title=item.title,
+                    publisher=item.publisher,
+                    summary_lines=list(item.summary_lines),
+                    original_url=item.original_url,
+                    published_at=item.published_at,
+                )
+                for _, item in ordered
+            ],
+            sections=[
+                AnswerSection(
+                    kind=SectionKind.EXTERNAL_OPINION,
+                    title=title,
+                    content=answer,
+                    evidence_ids=_source_ids(sources),
+                )
+            ],
+            sources=sources,
+            limitations=[
+                "이 세션에서 앞서 보여드린 뉴스만 다시 조회했습니다.",
+                "뉴스 사실과 외부 의견은 연결된 원문에서 다시 확인해야 합니다.",
+            ],
+            conversation_context=ConversationContext(news=updated_news_context),
         )
 
     @staticmethod

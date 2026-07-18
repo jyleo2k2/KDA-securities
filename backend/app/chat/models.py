@@ -1,5 +1,5 @@
 import re
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 
@@ -158,6 +158,36 @@ class CompletedSurveyProfile(BaseModel):
         return tuple(self.account_types or [self.account_type])
 
 
+class MarketRegion(StrEnum):
+    ALL = "all"
+    KR = "kr"
+    US = "us"
+
+
+class NewsConversationContext(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    news_item_ids: list[str] = Field(min_length=1, max_length=3)
+    focus_news_item_id: str | None = None
+    market_region: MarketRegion = MarketRegion.ALL
+    shown_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @model_validator(mode="after")
+    def validate_news_item_ids(self) -> "NewsConversationContext":
+        normalized_ids = [item_id.strip() for item_id in self.news_item_ids]
+        if any(not item_id for item_id in normalized_ids):
+            raise ValueError("news_item_ids must not contain blanks")
+        if len(set(normalized_ids)) != len(normalized_ids):
+            raise ValueError("news_item_ids must not contain duplicates")
+        if (
+            self.focus_news_item_id is not None
+            and self.focus_news_item_id not in normalized_ids
+        ):
+            raise ValueError("focus_news_item_id must be included in news_item_ids")
+        self.news_item_ids = normalized_ids
+        return self
+
+
 class ConversationContext(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -166,6 +196,7 @@ class ConversationContext(BaseModel):
     last_intent: ChatIntent | None = None
     survey_profile: CompletedSurveyProfile | None = None
     selected_risk_profile: EducationalRiskProfile | None = None
+    news: NewsConversationContext | None = None
 
 
 class ChatRequest(BaseModel):
@@ -273,6 +304,7 @@ class ChatNewsItem(BaseModel):
 
     evidence_id: str
     title: str
+    publisher: str | None = None
     description: str | None = None
     summary_lines: list[str] = Field(default_factory=list)
     original_url: str

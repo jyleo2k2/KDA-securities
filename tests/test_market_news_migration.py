@@ -18,6 +18,7 @@ def test_market_news_migration_parses_and_limits_scope() -> None:
     assert "news_items_normalized_title_hash_unique_idx" in sql
     assert "news_items_event_fingerprint_unique_idx" in sql
     assert "news_items_source_content_sha256_unique_idx" in sql
-    assert "on delete cascade" in sql
-    assert "alter table public.chat_message_evidence" in sql
+    assert "add column is_active boolean not null default true" in sql
+    assert "on delete cascade" not in sql
+    assert "alter table public.chat_message_evidence" not in sql
     assert "drop table" not in sql.casefold()

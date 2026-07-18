@@ -14,6 +14,7 @@ class BlockedReason(StrEnum):
     ORDER_REQUEST = "order_request"
     PRODUCT_LEVEL_UNAVAILABLE = "product_level_unavailable"
     ACCOUNT_SELECTION_REQUIRED = "account_selection_required"
+    UNSUPPORTED_NEWS_TOPIC = "unsupported_news_topic"
     UNSUPPORTED = "unsupported"
 
 
@@ -112,7 +113,24 @@ _COMBINED_ACCOUNT_RULE = re.compile(
     rf"|{_COMBINED_RULE_WORDS}.{{0,25}}{_COMBINE_WORDS}"
 )
 _DISCLOSURE_TERMS = re.compile(r"공시|수익률|수수료|적립금|준비금|사업자|회사")
-_NEWS_TERMS = re.compile(r"뉴스|기사|소식")
+_NEWS_TERMS = re.compile(
+    r"(?:증시|주식\s*시장|코스피|코스닥|나스닥|뉴욕|미국|한국|국내)"
+    r"\s*(?:뉴스|기사|소식)"
+    r"|(?<![0-9A-Za-z가-힣])(?:뉴스|기사|소식)"
+    r"(?:을|를|이|가|은|는|로|에서)?(?![0-9A-Za-z가-힣])",
+    re.I,
+)
+_MARKET_NEWS_SCOPE_TERMS = re.compile(
+    r"증시|주식\s*시장|코스피|코스닥|나스닥|뉴욕|S\s*&\s*P|다우|"
+    r"미국|한국|국내",
+    re.I,
+)
+_GENERIC_NEWS_WORDS = re.compile(
+    r"(?:뉴스|기사|소식)(?:을|를|이|가|은|는|로|에서)?|"
+    r"가장|최신|최근|오늘|주요|좀|"
+    r"알려\s*줘|보여\s*줘|찾아\s*줘|검색\s*해\s*줘|해\s*줘|부탁해",
+    re.I,
+)
 _RULE_TERMS = re.compile(
     r"규칙|제도|한도|세금|인출|차이|위험자산|예외|적격|연금|TDF", re.I
 )
@@ -221,6 +239,21 @@ def _news_query(message: str) -> str:
     return "market"
 
 
+def _supports_market_news(
+    message: str, account_types: tuple[AccountType, ...]
+) -> bool:
+    if account_types or re.search(r"연금|퇴직", message, re.I):
+        return False
+    if _MARKET_NEWS_SCOPE_TERMS.search(message):
+        return True
+    remainder = _COUNT.sub(" ", message)
+    for pattern, _ in _KOREAN_COUNT:
+        remainder = pattern.sub(" ", remainder)
+    remainder = _GENERIC_NEWS_WORDS.sub(" ", remainder)
+    remainder = re.sub(r"[^0-9A-Za-z가-힣]+", " ", remainder)
+    return not normalize_search_text(remainder)
+
+
 def _account_rule_topic(
     message: str, account_types: tuple[AccountType, ...]
 ) -> AccountRuleTopic | None:
@@ -317,13 +350,17 @@ def plan_question(message: str, *, default_max_results: int = 3) -> QueryPlan:
             requests_withdrawal_tax=requests_withdrawal_tax,
         )
     if intent == ChatIntent.NEWS:
+        if not _supports_market_news(normalized, account_types):
+            return _blocked(
+                normalized, BlockedReason.UNSUPPORTED_NEWS_TOPIC, max_results
+            )
         news_query = _news_query(normalized)
         return QueryPlan(
             normalized_message=normalized,
             intent=ChatIntent.NEWS,
             account_types=account_types,
             news_query=news_query,
-            max_results=3,
+            max_results=max_results,
         )
     if intent == ChatIntent.EDUCATIONAL_PORTFOLIO:
         return QueryPlan(

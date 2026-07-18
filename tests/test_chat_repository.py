@@ -8,10 +8,38 @@ from backend.app.chat import repository as repository_module
 from backend.app.chat.models import (
     ChatIntent,
     ChatResponse,
+    ConversationContext,
     DataBoundary,
+    MarketRegion,
+    NewsConversationContext,
     SourceEvidence,
 )
-from backend.app.chat.repository import ChatRepository, ChatSessionAccessError
+from backend.app.chat.repository import (
+    ChatRepository,
+    ChatSessionAccessError,
+    _assistant_conversation_context,
+)
+
+
+def test_assistant_payload_restores_news_conversation_context() -> None:
+    expected = ConversationContext(
+        last_intent=ChatIntent.NEWS,
+        news=NewsConversationContext(
+            news_item_ids=["news-1", "news-2"],
+            focus_news_item_id="news-2",
+            market_region=MarketRegion.KR,
+            shown_at=datetime(2026, 7, 18, tzinfo=UTC),
+        ),
+    )
+    content = json.dumps(
+        {
+            "schema_version": 1,
+            "question_message_id": str(uuid4()),
+            "response": {"conversation_context": expected.model_dump(mode="json")},
+        }
+    )
+
+    assert _assistant_conversation_context(content) == expected
 
 
 class FakeCursor:
@@ -74,7 +102,7 @@ def _response() -> ChatResponse:
                 evidence_id=f"news:{news_id}",
                 label="뉴스",
                 locator="https://example.test/news",
-                data_boundary=DataBoundary.NEWS_METADATA,
+                data_boundary=DataBoundary.NEWS_SUMMARY,
             ),
             SourceEvidence(
                 evidence_id="engine:risk_cap",

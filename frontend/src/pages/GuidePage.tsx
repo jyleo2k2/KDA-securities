@@ -71,7 +71,7 @@ const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   account_rule: "계좌 규칙",
   mock_portfolio: "목계좌 진단",
   provider_disclosure: "공식 공시",
-  news: "연금 뉴스",
+  news: "증시 뉴스",
   pension_tax: "세액공제·중도해지",
   educational_portfolio: "연금 운용전략",
   out_of_scope: "지원 범위 안내",
@@ -81,6 +81,7 @@ const BOUNDARY_LABELS: Record<DataBoundary, string> = {
   verified_knowledge: "검증 지식",
   official_disclosure: "공식 공시",
   news_metadata: "뉴스 메타데이터",
+  news_summary: "뉴스 3줄 요약",
   mock: "목데이터",
   engine: "규칙 엔진",
   user_input: "사용자 입력",
@@ -232,7 +233,12 @@ function NewsCards({ response }: { response: ChatResponse }) {
                 ? `${ordinals[index] ?? `${index + 1}번째`} 뉴스 · 3줄 요약`
                 : "뉴스 메타데이터"}
             </span>
-            {newsDate(item.published_at) && <time>{newsDate(item.published_at)}</time>}
+            {(item.publisher || newsDate(item.published_at)) && (
+              <span>
+                {item.publisher && `${displayText(item.publisher)} · `}
+                {newsDate(item.published_at) && <time>{newsDate(item.published_at)}</time>}
+              </span>
+            )}
           </div>
           <strong>{displayText(item.title)}</strong>
           {item.summary_lines?.length === 3 ? (

@@ -1,0 +1,33 @@
+name: Daily NAVER market news ingestion
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+      timezone: "Asia/Seoul"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: naver-market-news-ingestion
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      NAVER_API_HUB_CLIENT_ID: ${{ secrets.NAVER_API_HUB_CLIENT_ID }}
+      NAVER_API_HUB_CLIENT_SECRET: ${{ secrets.NAVER_API_HUB_CLIENT_SECRET }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      NEWS_SUMMARY_MODEL: claude-sonnet-5
+      NEWS_SUMMARY_PROMPT_VERSION: news-summary-v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dependencies
+        run: uv sync --locked --group embeddings
+      - name: Select, summarize and rotate daily market news
+        run: uv run --group embeddings python -m backend.app.ingestion.naver_market_news

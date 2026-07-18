@@ -13,7 +13,7 @@ from backend.app.ingestion.naver_news_repository import (
 class _RotationCursor:
     def __init__(self, current_count: int) -> None:
         self.current_count = current_count
-        self.deleted_count = 0
+        self.expired_count = 0
         self.inserted_count = 0
         self.rowcount = 0
         self._next_row: tuple[object, ...] | None = None
@@ -31,12 +31,12 @@ class _RotationCursor:
         self.statements.append(compact)
         self.rowcount = 1
         self._next_row = None
-        if compact == "select count(*) from public.news_items":
-            final_count = self.current_count - self.deleted_count + self.inserted_count
+        if compact.startswith("select count(*) from public.news_items"):
+            final_count = self.current_count - self.expired_count + self.inserted_count
             self._next_row = (final_count,)
         elif compact.startswith("with oldest as"):
-            self.deleted_count = min(20, self.current_count)
-            self.rowcount = self.deleted_count
+            self.expired_count = min(20, self.current_count)
+            self.rowcount = self.expired_count
 
     def executemany(self, statement: str, rows: list[dict[str, object]]) -> None:
         self.statements.append(" ".join(statement.split()))
@@ -90,7 +90,11 @@ def _article(index: int) -> ReadyMarketNews:
     )
 
 
-def _run_rotation(monkeypatch, current_count: int, article_count: int):
+def _run_rotation(
+    monkeypatch,
+    current_count: int,
+    article_count: int,
+):
     cursor = _RotationCursor(current_count)
     connection = _Connection(cursor)
     monkeypatch.setattr(
@@ -115,7 +119,7 @@ def test_full_store_waits_without_deleting_for_partial_batch(monkeypatch) -> Non
     result, cursor, connection = _run_rotation(monkeypatch, 100, 19)
 
     assert result.inserted_count == 0
-    assert result.deleted_count == 0
+    assert result.expired_count == 0
     assert result.final_count == 100
     assert result.held_for_full_batch is True
     assert cursor.inserted_rows == []
@@ -129,11 +133,15 @@ def test_full_store_atomically_replaces_oldest_twenty(monkeypatch) -> None:
     result, cursor, _ = _run_rotation(monkeypatch, 100, 20)
 
     assert result.inserted_count == 20
-    assert result.deleted_count == 20
+    assert result.expired_count == 20
     assert result.final_count == 100
     assert result.held_for_full_batch is False
     assert len(cursor.inserted_rows) == 20
-    assert any("limit 20 for update" in statement for statement in cursor.statements)
+    assert any("set is_active = false" in statement for statement in cursor.statements)
+    assert not any(
+        "delete from public.news_items" in statement
+        for statement in cursor.statements
+    )
     assert any("pg_advisory_xact_lock" in statement for statement in cursor.statements)
 
 
@@ -141,6 +149,7 @@ def test_store_below_cap_inserts_only_available_capacity(monkeypatch) -> None:
     result, cursor, _ = _run_rotation(monkeypatch, 90, 20)
 
     assert result.inserted_count == 10
-    assert result.deleted_count == 0
+    assert result.expired_count == 0
     assert result.final_count == 100
     assert len(cursor.inserted_rows) == 10
+
