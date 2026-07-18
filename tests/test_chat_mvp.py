@@ -32,6 +32,7 @@ from backend.app.chat.narrator import (
 )
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService, _knowledge_sources
+from backend.app.chat.tools import PENSION_TAX_CLOSING_NOTICE
 from backend.app.engine import AccountType
 from backend.app.main import app, get_chat_narrator, get_chat_service
 from backend.app.retrieval.repository import KnowledgeMatch, NewsMatch
@@ -786,6 +787,23 @@ def test_guard_treats_exact_numeric_notation_variants_as_equivalent(
     # 범위·통화 스케일·날짜의 정확한 동치만 허용한다. 값 추정이나 반올림은 없다.
     assert not _adds_unverified_content(right, left)
     assert not _adds_unverified_content(left, right)
+
+
+def test_narrator_accepts_limitation_number_and_keeps_tax_closing_notice() -> None:
+    base = ChatResponse(
+        intent=ChatIntent.PENSION_TAX,
+        answer="규칙 엔진 결과를 확인했습니다.",
+        data_mode="engine",
+        sources=[_source()],
+        limitations=["검토 범위는 최근 5년입니다."],
+    )
+
+    response = _narrate_with_fake(base, "최근 5년 범위의 규칙 엔진 결과입니다.")
+
+    # limitations도 Claude가 받은 검증 입력이며, 상담 문구는 서버가 후부착한다.
+    assert response.narration_mode == "claude_verified"
+    assert "5년" in response.answer
+    assert response.answer.endswith(PENSION_TAX_CLOSING_NOTICE)
 
 
 def test_narration_fallback_logs_stable_reason_code(caplog) -> None:

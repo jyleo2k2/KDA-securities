@@ -374,6 +374,10 @@ class ClaudeNarrator:
             f"{response.answer}\n\n"
             "제한사항:\n" + "\n".join(response.limitations)
         )
+        # answer와 limitations는 모두 서버가 만든 검증 입력이며 Claude가 실제로
+        # 함께 본다. 가드 원문도 같은 범위로 맞춰 limitations 반향 오탐을 막는다.
+        # 아래 Tool JSON은 사용자 입력이므로 이 신뢰 범위에 포함하지 않는다.
+        guard_source = "\n".join((response.answer, *response.limitations))
         resolved_tax_inputs = None
         if response.intent == ChatIntent.PENSION_TAX and (
             pension_tax_input is not None or pension_tax_message is not None
@@ -477,8 +481,10 @@ class ClaudeNarrator:
         if response.intent == ChatIntent.PENSION_TAX:
             candidate = candidate.replace(PENSION_TAX_CLOSING_NOTICE, "").rstrip()
             candidate += f"\n{PENSION_TAX_CLOSING_NOTICE}"
+            # 이 문구는 모델 출력이 아니라 서버가 강제로 붙이는 검증된 고정문이다.
+            guard_source += f"\n{PENSION_TAX_CLOSING_NOTICE}"
 
-        if _adds_unverified_content(candidate, response.answer):
+        if _adds_unverified_content(candidate, guard_source):
             return self._fallback(
                 response,
                 "Claude 설명에서 새로운 숫자·전망·보장·추천 주장을 감지해 "
@@ -495,7 +501,7 @@ class ClaudeNarrator:
             ),
             None,
         )
-        reasoning = self._safe_reasoning(thinking, response.answer)
+        reasoning = self._safe_reasoning(thinking, guard_source)
         self._cache_store(cache_key, candidate, reasoning)
         data = response.model_dump()
         data.update(
