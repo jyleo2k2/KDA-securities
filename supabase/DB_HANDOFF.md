@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-18 01:15 KST
-> 확인 기준: `Supabase데이터-` / `origin/main` `fa009fa` / Supabase MCP 읽기 검증
+> 최종 확인: 2026-07-18 22:19 KST
+> 확인 기준: `fix/supabase-migration-reconcile` / `origin/main` `3573619` / Supabase MCP 적용·재검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -33,12 +33,12 @@
 
 | 항목 | 원격 상태 |
 |---|---|
-| public 기본 테이블 | 40개 |
-| 적용 마이그레이션 | 12개(`20260715005435` ~ `20260717084953`) |
-| RLS | 40/40 활성화 |
+| public 기본 테이블 | 43개 |
+| 적용 마이그레이션 | 15개(`20260715005435` ~ `20260718131917`) |
+| RLS | 43/43 활성화 |
 | `anon` 테이블 권한 | 없음 |
 | `authenticated` 권한 | 사용자 소유 엔진 결과·채팅 관련 5개 테이블 |
-| `service_role` 권한 | 40개 테이블 |
+| `service_role` 권한 | 43개 테이블 |
 | `knowledge_chunks.embedding` 타입 | `vector(1024)` |
 | HNSW 인덱스 | `knowledge_chunks_embedding_hnsw_idx` 존재 |
 | PostgreSQL / 프로젝트 상태 | 17.6 / `ACTIVE_HEALTHY` |
@@ -61,9 +61,9 @@
 | `benchmark_mock_accounts` | 16,900 |
 | `benchmark_mock_holdings` | 79,381 |
 
-원격에서 직접 수정된 시나리오 설명 5건과 대표 고객 납입액 5건은 2026-07-18 재조회에서 모두 확인됐다. 이를 재현하는 `20260717160209_sync_modified_mock_data.sql`은 아직 원격 migration history에 없으며, 원격 DB에는 다시 적용하지 않았다.
+원격에서 직접 수정된 시나리오 설명 5건과 대표 고객 납입액 5건은 `20260718131917_sync_modified_mock_data.sql`로 migration history에 정식 반영했다. 적용 전후 값과 `updated_at`이 모두 같아 데이터 재기록 없이 이력만 정상 추가됐음을 확인했다.
 
-### 현재 40개 테이블의 역할
+### 현재 43개 테이블의 역할
 
 | 영역 | 테이블 |
 |---|---|
@@ -75,16 +75,18 @@
 | RAG·뉴스 | `knowledge_documents`, `knowledge_chunks`, `news_items`, `curated_contents` |
 | 채팅 | `chat_sessions`, `chat_messages`, `chat_message_evidence`, `chat_request_idempotency` |
 | 사용자·성향·계좌 | `user_profiles`, `profile_question_sets`, `profile_questions`, `profile_question_options`, `investment_profile_assessments`, `investment_profile_answers`, `pension_accounts`, `account_snapshots`, `account_cash_flows`, `financial_products`, `account_holding_snapshots` |
+| ETF 유니버스 | `etf_dataset_versions`, `etf_universe_products`, `etf_return_histories` |
 
 ## 4. 현재 작업트리의 진행 중 작업
 
-`Supabase데이터-` 브랜치의 별도 worktree에서 다음 범위만 작업한다.
+`fix/supabase-migration-reconcile` 브랜치의 별도 worktree에서 migration history 정합성을 정리했다.
 
 - 원격에서 직접 수정된 `mock_scenarios.description` 5건과 `demo_user_financial_context` 5명의 설명·연금저축/IRP 납입액을 Git에 동기화한다.
 - 신규 멱등 migration, 로컬 `seed.sql`, fallback JSON, Auth manifest·프로비저닝 스크립트를 같은 값으로 맞춘다.
 - `mock_accounts`, `mock_holdings`, 벤치마크 10,000명 데이터와 실데이터는 변경하지 않는다.
-- 원격 DB에는 쓰지 않는다. 신규 migration은 PR 승인·migration history 정리 전 적용하지 않는다.
-- 로컬/원격 migration version은 `add_lifecycle_demo_scenarios`와 `add_benchmark_mock_data` 2건이 다르므로 `db push`를 실행하지 않는다.
+- `add_lifecycle_demo_scenarios`는 원격 적용 SQL과 내용이 같음을 확인하고 파일 버전을 `20260716041911`로 맞췄다.
+- `add_benchmark_mock_data`는 SQL 동일성을 확인한 뒤 파일 버전을 `20260716043326`으로 맞췄다.
+- `sync_modified_mock_data`는 값이 달라질 때만 `updated_at`을 바꾸도록 보강한 뒤 원격에 정식 적용했다. `migration repair`는 사용하지 않았다.
 
 ### 임베딩 마이그레이션 주의사항
 
@@ -242,7 +244,7 @@ uv run ruff check .
 | DB-02A | 성향 답변 복합 FK 인덱스 | `REMOTE-APPLIED` | `(option_id, question_id)` covering index·Advisor 미인덱스 FK 0건 | 적용 파일 수정 금지 |
 | DB-03 | 문항·목계좌 backfill | `LOCAL-DRAFT` | 3/6/10 및 금액·엔진 결과 동등 | 별도 migration 작성 |
 | DB-03A | 생애주기 대표 고객·Auth 준비 | `LOCAL-DRAFT` | 시나리오 6·계좌 13·보유 26, Auth 6개 로그인 검증 | PR·팀장 승인 후 원격 적용 |
-| DB-03B | 원격 직접 수정 목데이터 Git 동기화 | `LOCAL-VERIFIED` | 시나리오 설명 5건·대표 고객 납입액 5건 migration/seed/manifest/fallback 일치, 전체 회귀 통과 | PR 리뷰·머지 후 migration history 정리 여부 결정 |
+| DB-03B | 원격 직접 수정 목데이터 Git 동기화 | `REMOTE-APPLIED` | `20260718131917`, 시나리오 설명 5건·대표 고객 납입액 5건 일치·재적용 시 무변경 확인 | 적용 파일 수정 금지 |
 | DB-04 | Postgres repository·API 연결 | `LOCAL-DRAFT` | DB 우선·JSON fallback·E2E 통과 | DB-03 후 구현 |
 | DB-05 | 기존 mock account tables 정리 | `BLOCKED` | 코드·SQL 참조 0, 별도 승인·복구 계획 | DB-04 안정화 전 삭제 금지 |
 | DB-06 | 커뮤니티 리뷰 | `BLOCKED` | 포트폴리오 FK·RLS·신고·보존 정책 승인 | 핵심 계좌 연동 후 검토 |
@@ -259,6 +261,15 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-18 22:19 KST
+
+- 작업자/브랜치/기준: Codex / `fix/supabase-migration-reconcile` / `origin/main` `3573619`.
+- 이력 정리: `add_lifecycle_demo_scenarios`와 `add_benchmark_mock_data`는 원격 적용 SQL과 로컬 SQL이 같음을 확인하고 파일 버전을 각각 `20260716041911`, `20260716043326`으로 맞췄다. PowerShell 기본 출력에서 보인 한글 깨짐은 파일 손상이 아니라 콘솔 인코딩 표시 문제였다.
+- 원격 적용: `sync_modified_mock_data`의 시나리오 UPSERT에 값 변경 조건을 추가하고 `20260718131917`로 정식 적용했다. 적용 전후 5개 시나리오와 5개 대표 고객의 값·`updated_at`이 모두 같아 불필요한 재기록이 없었다.
+- 원격 재검증: migration 15개, public 테이블 43개, RLS 43/43, `service_role` 권한 43개 테이블을 확인했다. 로컬 15개 migration 이름·버전과 원격 이력이 1:1로 일치한다.
+- 금지 명령: `migration repair`, `db reset`은 사용하지 않았다.
+- 다음 작업: 로컬 SQL 계약·전체 회귀 검증 후 PR 리뷰·머지.
 
 ### 2026-07-18 KST
 
