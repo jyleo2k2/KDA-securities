@@ -707,6 +707,14 @@ export function GuidePage({
         conversationGeneration,
       )) setStreamingAnswer((current) => current + delta);
     };
+    const replaceWithNarration = (answer: string) => {
+      if (isCurrentOperation(
+        authGeneration,
+        requestUserId,
+        requestToken,
+        conversationGeneration,
+      )) setStreamingAnswer(answer);
+    };
 
     const taxInput = !requestToken && PENSION_TAX_PROMPT.test(normalized)
       ? pensionTaxInput
@@ -719,6 +727,7 @@ export function GuidePage({
             requestToken,
             setSendingStage,
             appendAnswerDelta,
+            replaceWithNarration,
             undefined,
             activeSessionId || undefined,
             idempotencyKey,
@@ -726,12 +735,18 @@ export function GuidePage({
             taxInput,
             surveyProfile,
           )
-        : await sendChatStream(normalized, setSendingStage, appendAnswerDelta, {
-            scenarioCode: selectedScenario || undefined,
-            conversationContext,
-            pensionTax: taxInput,
-            surveyProfile,
-          });
+        : await sendChatStream(
+            normalized,
+            setSendingStage,
+            appendAnswerDelta,
+            replaceWithNarration,
+            {
+              scenarioCode: selectedScenario || undefined,
+              conversationContext,
+              pensionTax: taxInput,
+              surveyProfile,
+            },
+          );
       const persisted = streamed.persisted ? streamed : null;
       const response = streamed.response;
       if (!isCurrentOperation(

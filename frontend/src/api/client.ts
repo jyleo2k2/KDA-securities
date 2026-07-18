@@ -97,6 +97,7 @@ async function apiPostStream<TBody>(
   body: TBody,
   onPhase: (message: string) => void,
   onAnswerDelta: (delta: string) => void,
+  onNarrationUpdate: (answer: string) => void,
   accessToken?: string,
   idempotencyKey?: string,
 ): Promise<ChatStreamResult> {
@@ -134,6 +135,10 @@ async function apiPostStream<TBody>(
           event === "answer_delta" && typeof payload.delta === "string"
         ) {
           onAnswerDelta(payload.delta);
+        } else if (
+          event === "narration_update" && typeof payload.answer === "string"
+        ) {
+          onNarrationUpdate(payload.answer);
         } else if (event === "error" && typeof payload.detail === "string") {
           throw new Error(payload.detail);
         } else if (event === "response") {
@@ -193,6 +198,7 @@ export function sendChatStream(
   message: string,
   onPhase: (message: string) => void,
   onAnswerDelta: (delta: string) => void,
+  onNarrationUpdate: (answer: string) => void,
   options?: ChatBodyOptions,
 ): Promise<ChatStreamResult> {
   return apiPostStream(
@@ -200,6 +206,7 @@ export function sendChatStream(
     buildChatBody(message, options),
     onPhase,
     onAnswerDelta,
+    onNarrationUpdate,
   );
 }
 
@@ -208,6 +215,7 @@ export function sendAuthenticatedChatStream(
   accessToken: string,
   onPhase: (message: string) => void,
   onAnswerDelta: (delta: string) => void,
+  onNarrationUpdate: (answer: string) => void,
   scenarioCode?: string,
   sessionId?: string,
   idempotencyKey?: string,
@@ -226,6 +234,7 @@ export function sendAuthenticatedChatStream(
     }),
     onPhase,
     onAnswerDelta,
+    onNarrationUpdate,
     accessToken,
     idempotencyKey,
   );
