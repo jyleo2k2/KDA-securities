@@ -1,6 +1,8 @@
+from collections import Counter
 from datetime import date, timedelta
 from decimal import Decimal
 
+import backend.app.engine.educational_portfolio as portfolio_module
 from backend.app.engine.educational_portfolio import (
     CurrentHolding,
     EducationalPortfolioInput,
@@ -9,6 +11,7 @@ from backend.app.engine.educational_portfolio import (
     build_educational_portfolio,
     calculate_return_correlation,
     calculate_target_allocation,
+    select_educational_candidates,
 )
 from backend.app.engine.models import AccountType
 
@@ -105,6 +108,88 @@ def test_correlation_requires_enough_overlap_and_detects_similarity() -> None:
 
     assert correlation is not None
     assert correlation > Decimal("0.99")
+
+
+def test_candidate_selection_calculates_each_daily_return_series_once(
+    monkeypatch,
+) -> None:
+    products = [
+        _product(
+            "CORE01",
+            asset_class="equity",
+            strategy="broad_market",
+            region="south_korea",
+        ),
+        _product(
+            "CORE02",
+            asset_class="equity",
+            strategy="broad_market",
+            region="united_states",
+        ),
+        _product(
+            "CORE03",
+            asset_class="equity",
+            strategy="broad_market",
+            region="japan",
+        ),
+        _product("TACT01", asset_class="equity", strategy="sector_or_theme"),
+        _product("TACT02", asset_class="equity", strategy="covered_call"),
+        _product(
+            "BOND01",
+            asset_class="fixed_income",
+            strategy="government_bond",
+            allocation_bucket="full_allocation_eligible",
+        ),
+        _product(
+            "CASH01",
+            asset_class="cash_equivalent",
+            strategy="money_market",
+            allocation_bucket="full_allocation_eligible",
+        ),
+    ]
+    histories = {
+        product["isu_code"]: _history(str(index + 1))
+        for index, product in enumerate(products)
+    }
+    calls: Counter[int] = Counter()
+    correlation_calls: Counter[tuple[int, int]] = Counter()
+    original = portfolio_module._daily_returns
+    original_correlation = (
+        portfolio_module._calculate_return_correlation_from_returns
+    )
+
+    def counted(history):
+        calls[id(history)] += 1
+        return original(history)
+
+    def counted_correlation(first, second):
+        correlation_calls[tuple(sorted((id(first), id(second))))] += 1
+        return original_correlation(first, second)
+
+    monkeypatch.setattr(portfolio_module, "_daily_returns", counted)
+    monkeypatch.setattr(
+        portfolio_module,
+        "_calculate_return_correlation_from_returns",
+        counted_correlation,
+    )
+
+    select_educational_candidates(
+        products=products,
+        histories=histories,
+        sleeves={
+            "core_equity": Decimal("55"),
+            "tactical": Decimal("15"),
+            "real_assets": Decimal("0"),
+            "fixed_income": Decimal("25"),
+            "cash": Decimal("5"),
+        },
+        request=_request(),
+    )
+
+    assert calls
+    assert max(calls.values()) == 1
+    assert correlation_calls
+    assert max(correlation_calls.values()) == 1
 
 
 def test_large_tactical_sleeve_is_split_across_two_candidates() -> None:

@@ -930,8 +930,16 @@ def _daily_returns(history: dict[date, Decimal]) -> dict[date, Decimal]:
 def calculate_return_correlation(
     first: dict[date, Decimal], second: dict[date, Decimal]
 ) -> Decimal | None:
-    first_returns = _daily_returns(first)
-    second_returns = _daily_returns(second)
+    return _calculate_return_correlation_from_returns(
+        _daily_returns(first),
+        _daily_returns(second),
+    )
+
+
+def _calculate_return_correlation_from_returns(
+    first_returns: dict[date, Decimal],
+    second_returns: dict[date, Decimal],
+) -> Decimal | None:
     common = sorted(set(first_returns).intersection(second_returns))
     if len(common) < 60:
         return None
@@ -986,6 +994,27 @@ def select_educational_candidates(
     counts = _candidate_counts(sleeves, request.max_etfs)
     selected: list[tuple[dict[str, Any], CandidateQuality]] = []
     output: list[EducationalEtfCandidate] = []
+    returns_by_code: dict[str, dict[date, Decimal]] = {}
+    correlations_by_pair: dict[tuple[str, str], Decimal | None] = {}
+
+    def returns_for(isu_code: str) -> dict[date, Decimal]:
+        if isu_code not in returns_by_code:
+            returns_by_code[isu_code] = _daily_returns(
+                histories.get(isu_code, {})
+            )
+        return returns_by_code[isu_code]
+
+    def correlation_for(first_code: str, second_code: str) -> Decimal | None:
+        pair = tuple(sorted((first_code, second_code)))
+        if pair not in correlations_by_pair:
+            correlations_by_pair[pair] = (
+                _calculate_return_correlation_from_returns(
+                    returns_for(first_code),
+                    returns_for(second_code),
+                )
+            )
+        return correlations_by_pair[pair]
+
     for sleeve in sorted(counts, key=lambda item: (-sleeves[item], item)):
         pool = []
         for product in products:
@@ -1013,9 +1042,9 @@ def select_educational_candidates(
                     correlation
                     for selected_product, _ in selected
                     if (
-                        correlation := calculate_return_correlation(
-                            histories.get(product["isu_code"], {}),
-                            histories.get(selected_product["isu_code"], {}),
+                        correlation := correlation_for(
+                            product["isu_code"],
+                            selected_product["isu_code"],
                         )
                     )
                     is not None
