@@ -233,9 +233,24 @@ def plan_question(message: str, *, default_max_results: int = 3) -> QueryPlan:
             account_types or _RULE_TERMS.search(normalized)
         ),
     }
-    intent = next(
-        (candidate for candidate in _INTENT_PRIORITY if intent_matches[candidate]),
-        None,
+    personal_account_tax_request = (
+        intent_matches[ChatIntent.PENSION_TAX]
+        and re.search(r"내\s*계좌", normalized) is not None
+    )
+    # "내 계좌"는 목시나리오 선택에도 쓰이지만 명시적 세금 요청과 함께면
+    # 세금 계산 의도가 더 구체적이다. 전역 우선순위는 유지해 다른 복합 질문의
+    # 기존 라우팅 범위를 넓히지 않는다.
+    intent = (
+        ChatIntent.PENSION_TAX
+        if personal_account_tax_request
+        else next(
+            (
+                candidate
+                for candidate in _INTENT_PRIORITY
+                if intent_matches[candidate]
+            ),
+            None,
+        )
     )
 
     if intent == ChatIntent.MOCK_PORTFOLIO:
