@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-18 22:19 KST
-> 확인 기준: `fix/supabase-migration-reconcile` / `origin/main` `3573619` / Supabase MCP 적용·재검증
+> 최종 확인: 2026-07-19 00:11 KST
+> 확인 기준: `codex/supabase-column-comments` / `origin/main` `dc94f0d` / Supabase MCP 읽기 재검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -23,13 +23,14 @@
 1. 루트 [`AGENTS.md`](../AGENTS.md) 또는 [`CLAUDE.md`](../CLAUDE.md)
 2. [`docs/team/_공통_AI규칙.md`](../docs/team/_공통_AI규칙.md)
 3. [`docs/30_스펙/아키텍처.md`](../docs/30_스펙/아키텍처.md)
-4. 이 문서
-5. [`migrations/`](./migrations) 전체를 시간순으로 읽고 [`seed.sql`](./seed.sql) 확인
-6. DB 변경과 맞닿는 엔진 모델·저장소·API·테스트 확인
+4. [`DB_SESSION_GUIDE.md`](./DB_SESSION_GUIDE.md)
+5. 이 문서
+6. [`migrations/`](./migrations) 전체를 시간순으로 읽고 [`seed.sql`](./seed.sql) 확인
+7. DB 변경과 맞닿는 엔진 모델·저장소·API·테스트 확인
 
 ## 3. 현재 원격 상태
 
-2026-07-18 KST에 연결된 Supabase 프로젝트를 읽기 전용으로 재확인했다.
+2026-07-19 KST에 연결된 Supabase 프로젝트를 읽기 전용으로 재확인했다.
 
 | 항목 | 원격 상태 |
 |---|---|
@@ -51,8 +52,8 @@
 | `retirement_provider_stats` | 126 |
 | `financial_institutions` | 102 |
 | `news_items` | 15 |
-| `knowledge_documents` | 2 |
-| `knowledge_chunks` | 37 |
+| `knowledge_documents` | 10 |
+| `knowledge_chunks` | 45 |
 | `mock_scenarios` | 6 |
 | `mock_accounts` | 13 |
 | `mock_holdings` | 26 |
@@ -62,6 +63,8 @@
 | `benchmark_mock_holdings` | 79,381 |
 
 원격에서 직접 수정된 시나리오 설명 5건과 대표 고객 납입액 5건은 `20260718131917_sync_modified_mock_data.sql`로 migration history에 정식 반영했다. 적용 전후 값과 `updated_at`이 모두 같아 데이터 재기록 없이 이력만 정상 추가됐음을 확인했다.
+
+원격 컬럼 설명 3건(`pension_savings_provider_stats.fee_rate_1y`, `retirement_provider_stats.response_division`, `knowledge_chunks.embedding`)은 U+FFFD 대체문자를 포함한 한글 손상 상태다. `20260718151030_repair_corrupted_column_comments.sql`은 로컬 검증만 완료했으며 원격 미적용이다.
 
 ### 현재 43개 테이블의 역할
 
@@ -79,21 +82,20 @@
 
 ## 4. 현재 작업트리의 진행 중 작업
 
-`fix/supabase-migration-reconcile` 브랜치의 별도 worktree에서 migration history 정합성을 정리했다.
+`codex/supabase-column-comments` 브랜치의 `C:\dev\kda-supabase-comments` 전용 worktree에서 컬럼 설명 교정과 DB 세션 런북을 작업한다.
 
-- 원격에서 직접 수정된 `mock_scenarios.description` 5건과 `demo_user_financial_context` 5명의 설명·연금저축/IRP 납입액을 Git에 동기화한다.
-- 신규 멱등 migration, 로컬 `seed.sql`, fallback JSON, Auth manifest·프로비저닝 스크립트를 같은 값으로 맞춘다.
-- `mock_accounts`, `mock_holdings`, 벤치마크 10,000명 데이터와 실데이터는 변경하지 않는다.
-- `add_lifecycle_demo_scenarios`는 원격 적용 SQL과 내용이 같음을 확인하고 파일 버전을 `20260716041911`로 맞췄다.
-- `add_benchmark_mock_data`는 SQL 동일성을 확인한 뒤 파일 버전을 `20260716043326`으로 맞췄다.
-- `sync_modified_mock_data`는 값이 달라질 때만 `updated_at`을 바꾸도록 보강한 뒤 원격에 정식 적용했다. `migration repair`는 사용하지 않았다.
+- `20260718151030_repair_corrupted_column_comments.sql`은 `COMMENT ON COLUMN` 3문만 포함한다.
+- 테이블·컬럼·데이터·RLS·GRANT는 변경하지 않는다.
+- [`DB_SESSION_GUIDE.md`](./DB_SESSION_GUIDE.md)는 고정 운영 절차, 이 문서는 동적 상태 SSOT로 분리한다.
+- 원격 적용과 PR 머지는 이재용 승인 전까지 금지한다.
 
 ### 임베딩 마이그레이션 주의사항
 
 - `20260715165614_fix_embedding_dimension_bge_m3.sql`은 이미 원격 적용됐다.
-- 원격 non-null embedding은 1건이고 1024차원이며, HNSW 인덱스도 존재한다.
+- 원격 non-null embedding은 45건이고 모두 1024차원이며, HNSW 인덱스도 존재한다.
 - 적용된 파일의 "기존 embedding 값은 전부 null" 주석은 원격 적용 직전 사실과 달랐지만, 적용 이력 파일은 수정하지 않는다. 이 문서에 사실 차이만 기록한다.
-- 현재 원격 상태는 `vector(1024)` 1건, 비정상 차원 0건이다.
+- 원격 migration history의 해당 버전은 statements 배열이 비어 있다(statement count 0). 과거 이력을 repair하거나 조작하지 않는 legacy 예외로 유지한다.
+- 현재 원격 상태는 `vector(1024)` 45건, 비정상 차원 0건이다.
 
 ## 5. PDF 설계 검토 결론
 
@@ -249,6 +251,7 @@ uv run ruff check .
 | DB-05 | 기존 mock account tables 정리 | `BLOCKED` | 코드·SQL 참조 0, 별도 승인·복구 계획 | DB-04 안정화 전 삭제 금지 |
 | DB-06 | 커뮤니티 리뷰 | `BLOCKED` | 포트폴리오 FK·RLS·신고·보존 정책 승인 | 핵심 계좌 연동 후 검토 |
 | DB-07 | ETF 포트폴리오 유니버스 스키마·조회 연결 | `REMOTE-APPLIED` | `20260717054500`, 상품 2,507행·이력 217,833행·RLS/권한·120개 동등성·API E2E 확인 | 적용 파일 수정 금지, 다음 데이터 버전 적재 시 ready 전환 계약 유지 |
+| DB-08 | 손상된 컬럼 설명 3건 교정 | `LOCAL-VERIFIED` | `20260718151030`, COMMENT 3문 전용·계약/전체 회귀 통과 | 이재용 승인 후 원격 적용·실제 설명 재조회 |
 
 ## 13. 미결정 사항
 
@@ -261,6 +264,18 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-19 00:11 KST
+
+- 작업자/브랜치/기준: Codex / `codex/supabase-column-comments` / `origin/main` `dc94f0d`.
+- 원격 읽기 재검증: 프로젝트 `ACTIVE_HEALTHY`, migration 15개, public 테이블 43개·RLS 43/43, 권한 `anon` 0·`authenticated` 5·`service_role` 43, 목데이터 목표값 5/5를 확인했다. 로컬 main 15개와 원격 migration 이름·버전은 1:1이다.
+- 발견: 컬럼 설명 3건에 U+FFFD 대체문자가 존재했다. BGE-M3 원격 상태는 `vector(1024)` non-null 45건·HNSW 존재이며, `20260715165614` migration statements는 0건이다.
+- TDD/변경: migration 부재로 계약 테스트가 먼저 실패하는 것을 확인한 뒤 CLI 2.109.1의 `migration new`로 `20260718151030_repair_corrupted_column_comments.sql`을 생성했다. SQL은 COMMENT 3문만 포함한다.
+- 문서: DB 세션 고정 운영 절차를 [`DB_SESSION_GUIDE.md`](./DB_SESSION_GUIDE.md)로 분리하고 `AGENTS.md`·`CLAUDE.md` READ-FIRST를 동일하게 갱신했다.
+- 검증: 관련 계약 19건 통과, 전체 `uv run pytest` 603건 통과(기존 DeprecationWarning 1건), `uv run ruff check .`, `git diff --check`, `AGENTS.md`·`CLAUDE.md` 동일성 확인 통과.
+- Advisor: 보안 INFO 29·WARN 1(유출 비밀번호 보호 비활성화), 성능 INFO 40(미사용 인덱스)이며 이번 COMMENT 범위와 무관해 변경하지 않았다.
+- 원격 적용: 없음. 이재용 승인 전 적용 금지. `migration repair`, `db reset` 미사용.
+- 다음 작업: 변경 diff 검토 후 commit·push·Draft PR 생성, 이재용에게 원격 적용 승인 요청.
 
 ### 2026-07-18 22:19 KST
 
