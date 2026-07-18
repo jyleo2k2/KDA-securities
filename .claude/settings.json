@@ -26,6 +26,18 @@
         ]
       }
     ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" || exit 0; git fetch origin main --quiet 2>/dev/null; behind=$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0); if [ \"$behind\" -gt 0 ]; then if [ -z \"$(git status --porcelain)\" ]; then echo \"[하네스] 이 워크트리는 origin/main보다 ${behind}커밋 뒤처져 있다. 작업 시작 전 'git rebase origin/main'으로 동기화할 것.\"; else echo \"[하네스] 이 워크트리는 origin/main보다 ${behind}커밋 뒤처져 있고 트리가 더티다. 다른 세션 WIP인지 소유자를 먼저 확인하고, 본인 작업이면 커밋/스태시 후 'git rebase origin/main'으로 동기화할 것.\"; fi; fi; exit 0",
+            "timeout": 30,
+            "statusMessage": "main 동기화 확인 중..."
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [

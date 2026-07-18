@@ -61,6 +61,8 @@ npx.cmd --yes supabase migration new <descriptive_name>
 6. 스키마·데이터·권한 변경을 한 migration에 불필요하게 섞지 않는다.
 7. SQL 계약 테스트와 `pglast` 파싱으로 구문을 검증한다.
 8. 원격 적용 전 migration 파일, 영향 범위, 롤포워드 방식, 검증 쿼리를 이재용에게 제시한다.
+9. 인증된 linked CLI를 사용할 수 있으면 로컬 migration version을 보존하는 적용 경로를 우선한다. MCP `apply_migration`을 사용하면 실행 시각 버전이 부여될 수 있으므로 적용 직후 로컬·원격 이름과 버전을 비교한다.
+10. 버전이 달라져도 `migration repair`로 이력을 조작하지 않는다. SQL 내용과 SHA-256을 보존한 채 미적용 로컬 파일명을 실제 원격 버전에 맞추고 branch → PR로 반영한다.
 
 ## 6. 원격 읽기 검증 기준
 
@@ -111,6 +113,10 @@ order by version;
 
 `20260715165614_fix_embedding_dimension_bge_m3`의 statement count 0은 과거 legacy 예외다. 실제 `vector(1024)` 타입·non-null 차원·HNSW 인덱스를 확인하고, 과거 이력을 repair하거나 조작하지 않는다.
 
+### Auth 보안 설정
+
+`get_advisors(type=security)`에서 `auth_leaked_password_protection`을 확인한다. 유출 비밀번호 보호는 인증된 Supabase Dashboard 또는 Management API에서만 변경하고, 비밀번호·access token을 요청하거나 출력하지 않는다. 인증 세션이 없으면 설정을 우회하지 않고 `BLOCKED`로 기록한다.
+
 ### 컬럼 설명
 
 ```sql
@@ -136,6 +142,7 @@ git diff --check
 ```
 
 - 테스트 결과는 명령·종료 코드·통과 건수를 `DB_HANDOFF.md`에 남긴다.
+- 원격 런타임 회귀는 비밀값이 있는 프로젝트 루트에서 `uv run python <DB_WORKTREE>/scripts/verify_auth_rls_e2e.py`로 실행한다. 이 스크립트는 임시 Auth 사용자·채팅 세션을 정리하고 NAVER 쓰기 SQL은 rollback-only 트랜잭션으로 검증하며, 자격 증명은 출력하지 않는다.
 - 원격 적용 후에는 migration history, 실제 카탈로그 상태, RLS, GRANT, 데이터 불변식을 다시 조회한다.
 - 확인하지 못한 항목은 `확인 불가`로 기록한다.
 

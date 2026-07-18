@@ -6,6 +6,7 @@ import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
+import backend.app.api.chat as chat_api
 from backend.app.api.deps import (
     get_chat_narrator,
     get_chat_repository,
@@ -157,6 +158,116 @@ def test_demo_chat_streams_progress_before_final_response() -> None:
     )
     final = json.loads(final_block.split("data: ", 1)[1])
     assert "".join(deltas) == final["response"]["answer"]
+
+
+class VerifiedNarrator:
+    def narrate(self, response, **kwargs):
+        return response.model_copy(
+            update={
+                "answer": "검증된 설명: IRP 일반 위험자산 한도는 70%입니다.",
+                "narration_mode": "claude_verified",
+                "model_name": "test-model",
+            }
+        )
+
+
+class FallbackNarrator:
+    def narrate(self, response, **kwargs):
+        return response.model_copy(
+            update={
+                "limitations": [
+                    *response.limitations,
+                    "테스트 폴백으로 검증 원문을 표시합니다.",
+                ]
+            }
+        )
+
+
+def test_demo_stream_sends_engine_answer_before_verified_narration() -> None:
+    app.dependency_overrides[get_chat_service] = _service
+    app.dependency_overrides[get_chat_narrator] = VerifiedNarrator
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/demo/stream",
+                json={"message": "IRP 위험자산 한도를 알려줘"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    events = parse_sse(response.text)
+    event_names = [event for event, _ in events]
+    engine_answer = _service().ask(
+        ChatRequest(message="IRP 위험자산 한도를 알려줘")
+    ).answer
+    streamed_answer = "".join(
+        data["delta"] for event, data in events if event == "answer_delta"
+    )
+    narration = next(
+        data for event, data in events if event == "narration_update"
+    )
+
+    assert event_names.index("answer_delta") < event_names.index(
+        "narration_update"
+    )
+    assert streamed_answer == engine_answer
+    assert narration["answer"].startswith("검증된 설명")
+    assert final_sse_response(response.text)["response"]["answer"] == narration[
+        "answer"
+    ]
+
+
+def test_demo_stream_omits_narration_update_for_fallback() -> None:
+    app.dependency_overrides[get_chat_service] = _service
+    app.dependency_overrides[get_chat_narrator] = FallbackNarrator
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/demo/stream",
+                json={"message": "IRP 위험자산 한도를 알려줘"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    events = parse_sse(response.text)
+    final = final_sse_response(response.text)["response"]
+
+    assert "narration_update" not in {event for event, _ in events}
+    assert final["narration_mode"] == "deterministic"
+    assert final["limitations"][-1] == "테스트 폴백으로 검증 원문을 표시합니다."
+
+
+def test_authenticated_stream_saves_after_narration_update(monkeypatch) -> None:
+    order: list[str] = []
+    original_sse = chat_api._sse
+
+    def traced_sse(event, payload):
+        if event == "narration_update":
+            order.append("narration_update")
+        return original_sse(event, payload)
+
+    class OrderingRepository(FakeChatRepository):
+        def save_exchange(self, **kwargs):
+            order.append("save_exchange")
+            return super().save_exchange(**kwargs)
+
+    repository = OrderingRepository()
+    _override_authenticated_dependencies(repository)
+    app.dependency_overrides[get_chat_narrator] = VerifiedNarrator
+    monkeypatch.setattr(chat_api, "_sse", traced_sse)
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={"message": "IRP 위험자산 한도를 알려줘"},
+                headers=CHAT_HEADERS,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert order == ["narration_update", "save_exchange"]
+    assert repository.saved[0]["response"].narration_mode == "claude_verified"
 
 
 def test_authenticated_chat_stream_persists_final_response() -> None:

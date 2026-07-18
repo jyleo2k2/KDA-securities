@@ -694,6 +694,83 @@ def test_narration_cache_never_stores_rejected_fallback() -> None:
     assert calls == [1, 1]
 
 
+def test_narration_cache_survives_narrator_restart(tmp_path) -> None:
+    base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
+    cache_path = tmp_path / "narration_cache.json"
+    first_narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=cache_path,
+    )
+
+    def first_response(messages, info) -> ModelResponse:
+        return ModelResponse(
+            parts=[
+                TextPart(
+                    json.dumps(
+                        {"narration": "IRP 일반 위험자산 한도는 70%야."},
+                        ensure_ascii=False,
+                    )
+                )
+            ]
+        )
+
+    with first_narrator.agent.override(model=FunctionModel(first_response)):
+        first = first_narrator.narrate(base)
+
+    calls: list[int] = []
+    second_narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=cache_path,
+    )
+
+    def unexpected_response(messages, info) -> ModelResponse:
+        calls.append(1)
+        raise AssertionError("persistent cache should avoid a model call")
+
+    with second_narrator.agent.override(model=FunctionModel(unexpected_response)):
+        second = second_narrator.narrate(base)
+
+    assert cache_path.is_file()
+    assert not cache_path.with_suffix(".json.tmp").exists()
+    assert first.narration_mode == "claude_verified"
+    assert second.answer == first.answer
+    assert calls == []
+
+
+@pytest.mark.parametrize("content", ["", '{"version": 1, "entries": ['])
+def test_narration_cache_ignores_corrupted_json(tmp_path, content) -> None:
+    cache_path = tmp_path / "narration_cache.json"
+    cache_path.write_text(content, encoding="utf-8")
+
+    narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=cache_path,
+    )
+
+    assert narrator._cache_lookup("missing") is None
+
+
+def test_narration_precompute_uses_a_throwaway_narrator(monkeypatch) -> None:
+    base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
+    narrator = ClaudeNarrator(api_key="test-key", model="test-model")
+    request_agent = narrator.agent
+    used_agents = []
+
+    def tracked_narrate(self, response, **kwargs):
+        used_agents.append(self.agent)
+        return response
+
+    monkeypatch.setattr(ClaudeNarrator, "narrate", tracked_narrate)
+
+    narrator.precompute([base])
+
+    assert used_agents
+    assert request_agent not in used_agents
+
+
 def test_warm_chat_dependencies_prewarms_enabled_narrator(monkeypatch) -> None:
     calls: list[str] = []
 
@@ -708,6 +785,58 @@ def test_warm_chat_dependencies_prewarms_enabled_narrator(monkeypatch) -> None:
     deps.warm_chat_dependencies(get_settings())
 
     assert calls == ["prewarm"]
+
+
+def test_narration_precompute_is_noop_without_api_key(monkeypatch) -> None:
+    settings = get_settings().model_copy(
+        update={"enable_claude_narration": True, "anthropic_api_key": None}
+    )
+    monkeypatch.setattr(
+        deps,
+        "get_chat_service",
+        lambda settings: pytest.fail("service must not be created"),
+    )
+
+    deps.precompute_chat_narrations(settings)
+
+
+def test_narration_precompute_swallows_dependency_errors(
+    monkeypatch, caplog
+) -> None:
+    def fail(settings):
+        raise RuntimeError("narrator unavailable")
+
+    monkeypatch.setattr(deps, "get_chat_narrator", fail)
+
+    with caplog.at_level(logging.WARNING, logger="backend.app.api.deps"):
+        deps.precompute_chat_narrations(get_settings())
+
+    assert "narration_precompute_failed" in caplog.text
+
+
+def test_narration_precompute_covers_scenarios_and_suggested_prompts(
+    monkeypatch,
+) -> None:
+    requests = []
+    warmed = []
+
+    class FakeService:
+        def ask(self, request):
+            requests.append(request)
+            return request
+
+    class FakeNarrator:
+        def precompute(self, responses):
+            warmed.extend(responses)
+
+    monkeypatch.setattr(deps, "get_chat_service", lambda settings: FakeService())
+    monkeypatch.setattr(deps, "get_chat_narrator", lambda settings: FakeNarrator())
+
+    deps.precompute_chat_narrations(get_settings())
+
+    assert len(requests) == 18
+    assert len(warmed) == 18
+    assert len({request.scenario_code for request in requests}) == 6
 
 
 def test_numeric_claims_read_korean_legal_fraction_as_percent() -> None:

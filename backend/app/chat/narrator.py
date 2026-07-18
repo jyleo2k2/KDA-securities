@@ -9,8 +9,10 @@ import logging
 import re
 import threading
 from collections import OrderedDict
+from collections.abc import Iterable
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
+from pathlib import Path
 
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, NativeOutput
@@ -28,6 +30,8 @@ logger = logging.getLogger(__name__)
 
 # 엔진 답변이 결정론이므로 같은 프롬프트는 같은 검증 내레이션을 재사용한다.
 NARRATION_CACHE_MAX_ENTRIES = 256
+NARRATION_CACHE_VERSION = 1
+_NARRATION_CACHE_FILE_LOCK = threading.Lock()
 
 NARRATABLE_INTENTS = {
     ChatIntent.ACCOUNT_RULE,
@@ -301,16 +305,24 @@ def _adds_unverified_content(candidate: str, source: str) -> bool:
 class ClaudeNarrator:
     """Rephrase verified output; reject any response that invents a new number."""
 
-    def __init__(self, *, api_key: str, model: str) -> None:
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        model: str,
+        cache_path: Path | None = None,
+    ) -> None:
         if not api_key.strip() or not model.strip():
             raise ValueError("api_key and model are required")
         self._model = model.strip()
         self._api_key = api_key.strip()
+        self._cache_path = cache_path
         # 검증 통과 내레이션만 저장하는 LRU 캐시(폴백은 저장하지 않는다).
         self._narration_cache: OrderedDict[str, tuple[str, str | None]] = (
             OrderedDict()
         )
         self._narration_cache_lock = threading.Lock()
+        self._load_persistent_cache()
         self.agent: Agent[None, NarrationOutput] = self._build_agent()
 
     def _build_agent(self) -> Agent[None, NarrationOutput]:
@@ -366,6 +378,85 @@ class ClaudeNarrator:
             f"{self._model}\x00{intent.value}\x00{prompt}".encode()
         ).hexdigest()
 
+    def _read_persistent_cache(
+        self,
+    ) -> OrderedDict[str, tuple[str, str | None]]:
+        if self._cache_path is None:
+            return OrderedDict()
+        try:
+            payload = json.loads(self._cache_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return OrderedDict()
+        if not isinstance(payload, dict) or payload.get("version") != 1:
+            return OrderedDict()
+        raw_entries = payload.get("entries")
+        if not isinstance(raw_entries, list):
+            return OrderedDict()
+        loaded: OrderedDict[str, tuple[str, str | None]] = OrderedDict()
+        for entry in raw_entries:
+            if not isinstance(entry, dict):
+                continue
+            key = entry.get("key")
+            narration = entry.get("narration")
+            reasoning = entry.get("reasoning")
+            if not isinstance(key, str) or not isinstance(narration, str):
+                continue
+            if reasoning is not None and not isinstance(reasoning, str):
+                continue
+            loaded[key] = (narration, reasoning)
+        while len(loaded) > NARRATION_CACHE_MAX_ENTRIES:
+            loaded.popitem(last=False)
+        return loaded
+
+    def _merge_cache(
+        self,
+        entries: OrderedDict[str, tuple[str, str | None]],
+    ) -> None:
+        with self._narration_cache_lock:
+            for key, value in entries.items():
+                self._narration_cache[key] = value
+                self._narration_cache.move_to_end(key)
+            while len(self._narration_cache) > NARRATION_CACHE_MAX_ENTRIES:
+                self._narration_cache.popitem(last=False)
+
+    def _load_persistent_cache(self) -> None:
+        self._merge_cache(self._read_persistent_cache())
+
+    def _persist_cache(self) -> None:
+        if self._cache_path is None:
+            return
+        try:
+            with _NARRATION_CACHE_FILE_LOCK:
+                merged = self._read_persistent_cache()
+                with self._narration_cache_lock:
+                    for key, value in self._narration_cache.items():
+                        merged[key] = value
+                        merged.move_to_end(key)
+                while len(merged) > NARRATION_CACHE_MAX_ENTRIES:
+                    merged.popitem(last=False)
+                payload = {
+                    "version": NARRATION_CACHE_VERSION,
+                    "entries": [
+                        {
+                            "key": key,
+                            "narration": narration,
+                            "reasoning": reasoning,
+                        }
+                        for key, (narration, reasoning) in merged.items()
+                    ],
+                }
+                self._cache_path.parent.mkdir(parents=True, exist_ok=True)
+                temporary = self._cache_path.with_suffix(
+                    self._cache_path.suffix + ".tmp"
+                )
+                temporary.write_text(
+                    json.dumps(payload, ensure_ascii=False),
+                    encoding="utf-8",
+                )
+                temporary.replace(self._cache_path)
+        except OSError:
+            logger.warning("narration_cache_persist_failed")
+
     def _cache_lookup(self, key: str) -> tuple[str, str | None] | None:
         with self._narration_cache_lock:
             cached = self._narration_cache.get(key)
@@ -381,6 +472,24 @@ class ClaudeNarrator:
             self._narration_cache.move_to_end(key)
             while len(self._narration_cache) > NARRATION_CACHE_MAX_ENTRIES:
                 self._narration_cache.popitem(last=False)
+        self._persist_cache()
+
+    def precompute(self, responses: Iterable[ChatResponse]) -> None:
+        """Populate cache through a disposable narrator, never the request agent."""
+
+        try:
+            warmer = ClaudeNarrator(
+                api_key=self._api_key,
+                model=self._model,
+                cache_path=self._cache_path,
+            )
+            for response in responses:
+                warmer.narrate(response)
+            with warmer._narration_cache_lock:
+                warmed = OrderedDict(warmer._narration_cache)
+            self._merge_cache(warmed)
+        except Exception:  # noqa: BLE001 — 프리컴퓨트 실패는 요청 경로와 격리
+            logger.warning("narration_precompute_failed")
 
     def narrate(
         self,

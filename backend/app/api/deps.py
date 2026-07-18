@@ -14,6 +14,7 @@ from ..chat.knowledge import (
     FallbackKnowledgeRepository,
     LocalMarkdownKnowledgeRepository,
 )
+from ..chat.models import ChatRequest
 from ..chat.narrator import ClaudeNarrator
 from ..chat.repository import ChatRepository
 from ..chat.scenarios import LocalScenarioRepository, PostgresScenarioRepository
@@ -231,8 +232,16 @@ def get_chat_service(
 
 
 @lru_cache(maxsize=1)
-def _chat_narrator(api_key: str, model: str) -> ClaudeNarrator:
-    return ClaudeNarrator(api_key=api_key, model=model)
+def _chat_narrator(
+    api_key: str,
+    model: str,
+    cache_path: Path,
+) -> ClaudeNarrator:
+    return ClaudeNarrator(
+        api_key=api_key,
+        model=model,
+        cache_path=cache_path,
+    )
 
 
 def get_chat_narrator(
@@ -245,7 +254,46 @@ def get_chat_narrator(
     api_key = settings.anthropic_api_key.get_secret_value().strip()
     if not api_key:
         return None
-    return _chat_narrator(api_key, settings.anthropic_model)
+    return _chat_narrator(
+        api_key,
+        settings.anthropic_model,
+        settings.narration_cache_path,
+    )
+
+
+def precompute_chat_narrations(settings: Settings) -> None:
+    """Warm fixed demo questions without touching the request narrator agent."""
+
+    try:
+        narrator = get_chat_narrator(settings)
+        if narrator is None:
+            return
+        service = get_chat_service(settings)
+        scenarios = LocalScenarioRepository().list()
+    except Exception:  # noqa: BLE001 — 부팅 워밍 실패는 요청과 격리
+        logger.warning("narration_precompute_failed")
+        return
+    responses = []
+    for scenario in scenarios:
+        for prompt in SUGGESTED_CHAT_PROMPTS:
+            try:
+                responses.append(
+                    service.ask(
+                        ChatRequest(
+                            message=prompt,
+                            scenario_code=scenario.code,
+                        )
+                    )
+                )
+            except Exception:  # noqa: BLE001 — 개별 워밍 실패는 요청과 격리
+                logger.warning(
+                    "narration_precompute_answer_failed scenario=%s",
+                    scenario.code,
+                )
+    try:
+        narrator.precompute(responses)
+    except Exception:  # noqa: BLE001 — 부팅 워밍 실패는 요청과 격리
+        logger.warning("narration_precompute_failed")
 
 
 def warm_chat_dependencies(settings: Settings) -> None:
