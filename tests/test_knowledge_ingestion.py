@@ -116,7 +116,14 @@ def test_chunk_markdown_keeps_headings_and_max_size() -> None:
 def test_approved_manifest_loads_only_verified_non_mock_documents() -> None:
     documents = load_approved_documents()
 
-    assert len(documents) == 5
+    assert len(documents) == 10
+    assert {
+        "etf-comparison-metrics",
+        "pension-deposit-protection",
+        "pension-receipt-taxation",
+        "retirement-pension-2025-performance",
+        "retirement-pension-in-kind-transfer",
+    }.issubset({document.metadata["document_id"] for document in documents})
     for document in documents:
         assert document.license_status == "permitted"
         assert document.metadata["data_boundary"] == "verified_knowledge"
