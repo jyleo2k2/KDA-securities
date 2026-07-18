@@ -176,6 +176,27 @@ def test_manifest_v2_enforces_review_windows_and_expiry(tmp_path) -> None:
         load_approved_documents(manifest, today=date(2026, 7, 1))
 
 
+def test_skip_expired_drops_lapsed_document_instead_of_failing(tmp_path) -> None:
+    # Runtime read path must degrade, not crash: a single expired review date
+    # cannot be allowed to take the whole chatbot down on restart.
+    payload = json.loads(DEFAULT_MANIFEST.read_text(encoding="utf-8"))
+    total = len(payload["documents"])
+    payload["documents"][0]["verified_at"] = "2026-01-01"
+    payload["documents"][0]["review_due_date"] = "2026-06-30"
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+    # Strict (ingestion) still refuses the stale corpus.
+    with pytest.raises(KnowledgeManifestError, match="review expired"):
+        load_approved_documents(manifest, today=date(2026, 7, 1))
+
+    # skip_expired (runtime) drops only the lapsed document and serves the rest.
+    documents = load_approved_documents(
+        manifest, today=date(2026, 7, 1), skip_expired=True
+    )
+    assert len(documents) == total - 1
+
+
 def test_manifest_rejects_hidden_controls_and_prompt_injection_markers(
     tmp_path, monkeypatch
 ) -> None:

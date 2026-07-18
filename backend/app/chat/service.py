@@ -333,10 +333,18 @@ def _rebalancing_summary(evaluation: EducationalPortfolioEvaluation) -> str:
     return " ".join(parts)
 
 
+def _knowledge_evidence_id(match: KnowledgeMatch) -> str:
+    # Local-fallback ids are not DB chunk ids; a distinct namespace keeps them
+    # out of the chunk-FK persistence path (source chip is still shown). Answer
+    # sections and source chips must use this same id or validation fails.
+    prefix = "local-knowledge" if match.is_local_fallback else "knowledge"
+    return f"{prefix}:{match.chunk_id}"
+
+
 def _knowledge_sources(matches: list[KnowledgeMatch]) -> list[SourceEvidence]:
     return [
         SourceEvidence(
-            evidence_id=f"knowledge:{match.chunk_id}",
+            evidence_id=_knowledge_evidence_id(match),
             label=match.title,
             locator=match.source_url,
             publisher="연금 코파일럿 검증 지식",
@@ -1219,7 +1227,7 @@ class ChatService:
                         f"‘{match.title}’ 공식 문서를 확인했습니다. "
                         "원문은 아래 출처에서 볼 수 있어요."
                     ),
-                    evidence_ids=[f"knowledge:{match.chunk_id}"],
+                    evidence_ids=[_knowledge_evidence_id(match)],
                 )
                 for match in matches
             ],

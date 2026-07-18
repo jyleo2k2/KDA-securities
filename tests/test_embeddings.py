@@ -3,6 +3,7 @@ import inspect
 from backend.app.ingestion.embeddings import (
     EMBEDDING_DIMENSIONS,
     EMBEDDING_MODEL,
+    QUERY_CACHE_MAX_ENTRIES,
     BgeM3Embedder,
     embed_pending_chunks,
     vector_literal,
@@ -85,3 +86,17 @@ def test_prewarmed_query_uses_cached_embedding(monkeypatch) -> None:
 
     assert embedder.embed_query("IRP   위험자산") == [1.0]
     assert calls == [["IRP 위험자산", "연금 뉴스"]]
+
+
+def test_query_cache_is_bounded_and_evicts_least_recently_used(monkeypatch) -> None:
+    embedder = BgeM3Embedder()
+    monkeypatch.setattr(embedder, "embed", lambda texts: [[0.0] for _ in texts])
+
+    for index in range(QUERY_CACHE_MAX_ENTRIES + 50):
+        embedder.embed_query(f"query {index}")
+
+    # Unbounded growth is the bug this guards; the cache stays at its LRU cap.
+    assert len(embedder._query_cache) == QUERY_CACHE_MAX_ENTRIES
+    # The oldest untouched keys are the ones evicted.
+    assert "query 0" not in embedder._query_cache
+    assert f"query {QUERY_CACHE_MAX_ENTRIES + 49}" in embedder._query_cache
