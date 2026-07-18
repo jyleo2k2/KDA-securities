@@ -117,7 +117,15 @@ _UNSAFE_CLAIM_PATTERNS = (
         ),
     ),
 )
-_NEGATION = re.compile(r"않|아니|없|금지|못|제공하지|의미하지|하지\s*마")
+# 위험 주장 앞의 '손실 없이', '예금이 아니라'는 뒤 주장을 부정하지 않는다.
+# 따라서 매치 주변 창이 아니라 주장 키워드 직후의 문법적 꼬리만 부정으로
+# 인정한다. 애매한 원거리 부정은 안전 우선으로 거부(결정론 폴백)한다.
+_NEGATION = re.compile(
+    r"^\s*(?:은|는|이|가|을|를|도)?\s*"
+    r"(?:하(?:지\s*(?:않|못)|지\s*마)|되\s*지\s*(?:않|못)|"
+    r"할\s*수\s*없|(?:해서는|하면|해도)\s*안\s*(?:돼|되)|"
+    r"안\s*(?:돼|되)|허용되지|금지|아니|없|못|제공하지|의미하지)"
+)
 
 
 def _number_tokens(text: str) -> set[tuple[Decimal, str, str]]:
@@ -173,8 +181,8 @@ def _unsafe_claims(text: str) -> set[str]:
     claims: set[str] = set()
     for category, pattern in _UNSAFE_CLAIM_PATTERNS:
         for match in pattern.finditer(text):
-            context = text[max(0, match.start() - 8) : match.end() + 18]
-            if _NEGATION.search(context) is None:
+            suffix = text[match.end() : match.end() + 24]
+            if _NEGATION.search(suffix) is None:
                 claims.add(category)
     return claims
 

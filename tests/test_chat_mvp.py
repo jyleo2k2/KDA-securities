@@ -25,7 +25,11 @@ from backend.app.chat.models import (
     SourceEvidence,
     extract_numeric_claims,
 )
-from backend.app.chat.narrator import ClaudeNarrator, _adds_unverified_content
+from backend.app.chat.narrator import (
+    ClaudeNarrator,
+    _adds_unverified_content,
+    _unsafe_claims,
+)
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService, _knowledge_sources
 from backend.app.engine import AccountType
@@ -700,6 +704,34 @@ def test_guard_still_rejects_multisyllable_korean_numerals_absent_from_source(
     source = "IRP 일반 위험자산 한도는 70%입니다."
 
     assert _adds_unverified_content(candidate, source)
+
+
+@pytest.mark.parametrize(
+    ("candidate", "category"),
+    (
+        ("원금 손실 없이 확실한 수익을 보장합니다", "guarantee"),
+        ("예금이 아니라 주식 매수를 추천합니다", "recommendation"),
+    ),
+)
+def test_guard_rejects_connective_negation_before_unsafe_claim(
+    candidate: str,
+    category: str,
+) -> None:
+    # '없이/아니라'는 뒤의 보장·추천 주장을 부정하지 않는 연결 표현이다.
+    assert category in _unsafe_claims(candidate)
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    (
+        "수익 보장은 안 돼요",
+        "매수 추천은 하지 않아요",
+        "원금 보장을 제공하지 않습니다",
+    ),
+)
+def test_guard_allows_negation_attached_after_unsafe_claim(candidate: str) -> None:
+    # 주장 키워드 바로 뒤에서 해당 주장을 부정하는 컴플라이언스 설명은 허용한다.
+    assert _unsafe_claims(candidate) == set()
 
 
 def test_narration_fallback_logs_stable_reason_code(caplog) -> None:
