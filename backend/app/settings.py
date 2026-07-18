@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     pension_portal_api_key: SecretStr | None = None
     anthropic_api_key: SecretStr | None = None
-    anthropic_model: str = "claude-sonnet-5"
+    anthropic_model: str = "claude-haiku-4-5"
     enable_claude_narration: bool = False
     news_summary_model: str = "claude-sonnet-5"
     news_summary_prompt_version: str = "news-summary-v2"

@@ -90,11 +90,15 @@ class PostgresScenarioRepository:
                     account.account_type,
                     account.label,
                     holding.id,
-                    holding.instrument_name,
+                    coalesce(
+                        product.payload ->> 'isu_name',
+                        holding.instrument_name
+                    ),
                     asset.code,
                     holding.market_value_krw,
                     holding.risk_treatment,
-                    holding.statutory_exception
+                    holding.statutory_exception,
+                    holding.etf_isu_code
                 from public.mock_scenarios as scenario
                 join public.mock_accounts as account
                   on account.scenario_id = scenario.id
@@ -102,6 +106,17 @@ class PostgresScenarioRepository:
                   on holding.account_id = account.id
                 join public.asset_classes as asset
                   on asset.id = holding.asset_class_id
+                left join public.etf_dataset_versions as version
+                  on version.status = 'ready'
+                 and version.id = (
+                     select max(id)
+                     from public.etf_dataset_versions
+                     where status = 'ready'
+                 )
+                left join public.etf_universe_products as product
+                  on product.version_id = version.id
+                 and product.account_type = account.account_type
+                 and product.isu_code = holding.etf_isu_code
                 where scenario.code = %s
                   and scenario.is_active = true
                 order by account.id, holding.id
@@ -124,6 +139,7 @@ class PostgresScenarioRepository:
                     amount_krw=row[12],
                     risk_treatment=row[13],
                     statutory_exception=row[14],
+                    etf_isu_code=row[15],
                 )
             )
             account_rows.setdefault(account_id, (row[7], row[8]))

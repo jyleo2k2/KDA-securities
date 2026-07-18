@@ -32,6 +32,15 @@ NEWS_SUMMARY_MIGRATION = next(
 LIFECYCLE_SCENARIOS_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob("*_add_lifecycle_demo_scenarios.sql")
 )
+ETF_UNIVERSE_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob("*_add_etf_portfolio_universe.sql")
+)
+HERO_ETF_MIGRATION = (
+    ROOT
+    / "supabase"
+    / "migrations"
+    / "20260718090000_link_demo_hero_etf_holdings.sql"
+)
 SEED = ROOT / "supabase" / "seed.sql"
 
 
@@ -248,6 +257,34 @@ def test_seed_contains_all_six_demo_scenarios() -> None:
     assert "연금 수령을 시작하는 55세 이상" in sql
 
 
+def test_etf_universe_is_server_only_and_versioned() -> None:
+    sql = ETF_UNIVERSE_MIGRATION.read_text(encoding="utf-8").lower()
+    new_tables = {
+        "etf_dataset_versions",
+        "etf_universe_products",
+        "etf_return_histories",
+    }
+
+    for table in new_tables:
+        assert f"create table public.{table}" in sql
+        assert f"alter table public.{table} enable row level security" in sql
+
+    # 반쪽 적재가 노출되지 않도록 ready 계약을 강제한다.
+    assert "etf_dataset_versions_ready_contract_check" in sql
+    assert "status in ('loading', 'ready')" in sql
+    # 엔진 계약과 동일한 계좌 유형·이력 출처만 허용한다.
+    assert "account_type in ('dc', 'irp', 'pension_savings')" in sql
+    assert "'kis_adjusted_close_plus_kind_cash_distribution'" in sql
+    assert "'krx_close_fallback'" in sql
+    # 내부 테이블: 브라우저 권한 차단, service_role만 부여한다.
+    assert "from public, anon, authenticated" in sql
+    assert "to service_role" in sql
+    assert "etf_dataset_versions_id_seq" in sql
+    assert "grant usage, select on sequence" in sql
+    assert "to authenticated" not in sql
+    assert "drop table" not in sql
+
+
 def test_lifecycle_scenarios_are_additive_mock_data_only() -> None:
     sql = LIFECYCLE_SCENARIOS_MIGRATION.read_text(encoding="utf-8").lower()
 
@@ -255,4 +292,29 @@ def test_lifecycle_scenarios_are_additive_mock_data_only() -> None:
     assert "insert into public.mock_accounts" in sql
     assert "insert into public.mock_holdings" in sql
     assert "auth.users" not in sql
+    assert "drop table" not in sql
+
+
+def test_demo_hero_etf_links_are_additive_and_use_verified_universe() -> None:
+    assert HERO_ETF_MIGRATION.exists()
+    sql = HERO_ETF_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "alter table public.mock_holdings" in sql
+    assert "etf_isu_code text" in sql
+    assert "mock_holdings_etf_isu_code_idx" in sql
+    assert "expected 12 hero etf links" in sql
+
+    for code in ("379800", "273130", "434060"):
+        assert f"'{code}'" in sql
+    for scenario in (
+        "family_budget_pressure",
+        "overlap_risk_concentration",
+        "pension_payout_transition",
+    ):
+        assert f"'{scenario}'" in sql
+
+    assert "etf_universe_products" in sql
+    assert "etf_return_histories" in sql
+    assert "count(*) = 253" in sql
+    assert "benchmark_mock" not in sql
     assert "drop table" not in sql

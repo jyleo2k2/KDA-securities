@@ -8,6 +8,7 @@ the database.
 from typing import Annotated
 from uuid import UUID
 
+import psycopg
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
@@ -50,7 +51,9 @@ from ..engine import (
     simulate_accumulation,
 )
 from ..engine.audit import EngineAuditRepository
+from ..etf_universe_database import PortfolioUniverseLoadError
 from ..market_evidence_repository import KrxMarketEvidenceRepository
+from ..settings import Settings, get_settings
 from .deps import (
     get_engine_audit_repository,
     get_krx_market_evidence_repository,
@@ -124,13 +127,27 @@ def etf_planning_assessment(
 )
 def educational_portfolio(
     request: EducationalPortfolioInput,
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> EducationalPortfolioEvaluation:
+    database_url = (
+        settings.database_url.get_secret_value().strip()
+        if settings.database_url is not None
+        else ""
+    )
     try:
-        repository = get_portfolio_universe_repository(request.account_type)
-    except (FileNotFoundError, ValueError) as exc:
+        repository = get_portfolio_universe_repository(
+            request.account_type,
+            database_url,
+        )
+    except (
+        FileNotFoundError,
+        ValueError,
+        PortfolioUniverseLoadError,
+        psycopg.Error,
+    ) as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Account-specific ETF cost-return master is unavailable",
+            detail="Account-specific ETF universe is unavailable",
         ) from exc
     return build_educational_portfolio(
         request,

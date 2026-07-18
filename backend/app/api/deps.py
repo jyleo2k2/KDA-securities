@@ -1,7 +1,7 @@
 """Shared dependencies for API routers."""
 
 import logging
-from functools import lru_cache
+from functools import lru_cache, partial
 from pathlib import Path
 from typing import Annotated
 
@@ -23,6 +23,7 @@ from ..chat.user_context import DemoUserContextRepository
 from ..database import get_database_pool
 from ..engine.audit import EngineAuditRepository
 from ..engine.models import AccountType
+from ..etf_universe_database import PostgresPortfolioUniverseRepository
 from ..ingestion.embeddings import get_query_embedder
 from ..market_evidence_repository import KrxMarketEvidenceRepository
 from ..portfolio_universe_repository import (
@@ -71,10 +72,16 @@ def get_krx_market_evidence_repository() -> KrxMarketEvidenceRepository:
         ) from exc
 
 
-@lru_cache(maxsize=3)
+@lru_cache(maxsize=6)
 def get_portfolio_universe_repository(
     account_type: AccountType,
+    database_url: str = "",
 ) -> PortfolioUniverseRepository:
+    if database_url:
+        return PostgresPortfolioUniverseRepository(
+            database_url,
+            pool=get_database_pool(database_url),
+        ).latest(account_type)
     return PortfolioUniverseRepository.from_latest_cache(account_type)
 
 
@@ -105,8 +112,11 @@ def get_retrieval_repository(
 def get_disclosures_repository(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> DisclosureReadRepository:
+    database_url = _database_url_or_503(
+        settings, detail="Database is not configured"
+    )
     return DisclosureReadRepository(
-        _database_url_or_503(settings, detail="Database is not configured")
+        database_url, pool=get_database_pool(database_url)
     )
 
 
@@ -183,7 +193,9 @@ def _chat_service(database_url: str) -> ChatService:
         if database_url
         else None
     )
-    disclosures = ChatDisclosureRepository(database_url) if database_url else None
+    disclosures = (
+        ChatDisclosureRepository(database_url, pool=pool) if database_url else None
+    )
     local_knowledge = LocalMarkdownKnowledgeRepository()
     knowledge = (
         FallbackKnowledgeRepository(retrieval, local_knowledge)
@@ -199,7 +211,10 @@ def _chat_service(database_url: str) -> ChatService:
         ),
         disclosures=disclosures,
         news=retrieval,
-        portfolio_universe_loader=get_portfolio_universe_repository,
+        portfolio_universe_loader=partial(
+            get_portfolio_universe_repository,
+            database_url=database_url,
+        ),
     )
 
 
@@ -234,25 +249,35 @@ def get_chat_narrator(
 
 
 def warm_chat_dependencies(settings: Settings) -> None:
-    """Preload the fixed guide-page vectors before the API accepts requests."""
+    """Preload guide-page vectors and warm the narrator before requests."""
 
-    readiness = portfolio_return_master_readiness()
-    missing_accounts = [
-        account_type.value
-        for account_type, is_ready in readiness.items()
-        if not is_ready
-    ]
-    if missing_accounts:
-        logger.warning(
-            "ETF return masters are unavailable for accounts: %s",
-            ", ".join(missing_accounts),
-        )
+    database_url = (
+        settings.database_url.get_secret_value().strip()
+        if settings.database_url is not None
+        else ""
+    )
+    if not database_url:
+        readiness = portfolio_return_master_readiness()
+        missing_accounts = [
+            account_type.value
+            for account_type, is_ready in readiness.items()
+            if not is_ready
+        ]
+        if missing_accounts:
+            logger.warning(
+                "ETF return masters are unavailable for accounts: %s",
+                ", ".join(missing_accounts),
+            )
 
     embedder = get_query_embedder()
     if embedder is not None:
         embedder.prewarm_queries(SUGGESTED_CHAT_PROMPTS)
+    narrator = get_chat_narrator(settings)
+    if narrator is not None:
+        narrator.prewarm()
 
 
 def clear_chat_dependencies() -> None:
     _chat_service.cache_clear()
     _chat_narrator.cache_clear()
+    get_portfolio_universe_repository.cache_clear()
