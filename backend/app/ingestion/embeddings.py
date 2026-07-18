@@ -7,6 +7,7 @@ sentence-transformers는 선택 의존성 그룹(embeddings)이라 미설치 환
     uv run --group embeddings python scripts/embed_knowledge_chunks.py
 """
 
+from collections import OrderedDict
 from functools import lru_cache
 from threading import RLock
 from typing import Protocol
@@ -15,6 +16,9 @@ import psycopg
 
 EMBEDDING_MODEL = "BAAI/bge-m3"
 EMBEDDING_DIMENSIONS = 1024
+# 무제한 dict는 사용자 질문마다 벡터가 영구 누적된다. 고정 UI 프롬프트 +
+# 최근 질의만 유지하는 LRU 상한을 둔다(내레이션 캐시와 같은 정책).
+QUERY_CACHE_MAX_ENTRIES = 512
 
 
 class QueryEmbedder(Protocol):
@@ -27,7 +31,7 @@ class BgeM3Embedder:
     def __init__(self, model_name: str = EMBEDDING_MODEL) -> None:
         self._model_name = model_name
         self._model = None
-        self._query_cache: dict[str, list[float]] = {}
+        self._query_cache: OrderedDict[str, list[float]] = OrderedDict()
         self._query_cache_lock = RLock()
 
     def _load(self):
@@ -47,27 +51,36 @@ class BgeM3Embedder:
         key = " ".join(text.split())
         with self._query_cache_lock:
             cached = self._query_cache.get(key)
-        if cached is not None:
-            return cached
+            if cached is not None:
+                self._query_cache.move_to_end(key)
+                return cached
         vector = self.embed([text])[0]
         with self._query_cache_lock:
-            self._query_cache[key] = vector
+            self._cache_store(key, vector)
         return vector
+
+    def _cache_store(self, key: str, vector: list[float]) -> None:
+        # 프리워밍된 고정 UI 프롬프트는 자주 재적중하도록 LRU가 자연히 유지한다.
+        self._query_cache[key] = vector
+        self._query_cache.move_to_end(key)
+        while len(self._query_cache) > QUERY_CACHE_MAX_ENTRIES:
+            self._query_cache.popitem(last=False)
 
     def prewarm_queries(self, texts: tuple[str, ...]) -> None:
         """Load the model once and cache vectors for fixed UI prompts."""
 
-        missing = tuple(
-            text
-            for text in texts
-            if " ".join(text.split()) not in self._query_cache
-        )
+        with self._query_cache_lock:
+            missing = tuple(
+                text
+                for text in texts
+                if " ".join(text.split()) not in self._query_cache
+            )
         if not missing:
             return
         vectors = self.embed(list(missing))
         with self._query_cache_lock:
             for text, vector in zip(missing, vectors, strict=True):
-                self._query_cache[" ".join(text.split())] = vector
+                self._cache_store(" ".join(text.split()), vector)
 
 
 @lru_cache(maxsize=1)

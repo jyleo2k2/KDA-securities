@@ -43,6 +43,10 @@ class KnowledgeMatch:
     source_authority: str | None = None
     document_type: str | None = None
     as_of_date: date | None = None
+    # Local-fallback matches carry a self-assigned chunk_id that does NOT map to
+    # public.knowledge_chunks.id. Flag them so persistence never writes that id
+    # as a chunk foreign key (wrong provenance / FK violation).
+    is_local_fallback: bool = False
 
 
 @dataclass(frozen=True, slots=True)

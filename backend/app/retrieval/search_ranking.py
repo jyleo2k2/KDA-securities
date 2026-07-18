@@ -188,7 +188,14 @@ def rerank_knowledge_matches(
     """Rerank candidates without allowing the LLM to influence retrieval."""
     if not matches:
         return matches
-    ranked = [(_score(match, query_tokens), match) for match in matches]
-    ranked.sort(key=lambda item: (-item[0], item[1].chunk_id))
+    ranked = list(enumerate(_score(match, query_tokens) for match in matches))
+    # Stable sort on score alone preserves the retrieval order on ties (RRF for
+    # hybrid, ts_rank for full-text, both already deterministic via `kc.id`).
+    # The previous chunk_id tiebreak discarded that order, sinking semantically
+    # ranked vector-only hits below arbitrary lower-id peers of equal score.
+    ranked.sort(key=lambda item: -item[1])
     bounded_limit = max(1, min(limit, 50))
-    return [replace(match, text_rank=score) for score, match in ranked[:bounded_limit]]
+    return [
+        replace(matches[index], text_rank=score)
+        for index, score in ranked[:bounded_limit]
+    ]

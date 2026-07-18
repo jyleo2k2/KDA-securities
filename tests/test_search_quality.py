@@ -1,14 +1,20 @@
+import os
 from pathlib import Path
 from uuid import uuid4
 
+import psycopg
+import pytest
+
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
+from backend.app.ingestion.embeddings import get_query_embedder
 from backend.app.ingestion.knowledge import load_approved_documents
 from backend.app.retrieval.quality import (
     QualityCase,
     load_quality_cases,
     measure_search_quality,
 )
-from backend.app.retrieval.repository import KnowledgeMatch
+from backend.app.retrieval.repository import KnowledgeMatch, RetrievalRepository
+from backend.app.settings import get_settings
 
 ROOT = Path(__file__).resolve().parents[1]
 BENCHMARK = ROOT / "data" / "search_quality" / "knowledge_v1.json"
@@ -100,6 +106,45 @@ def test_approved_local_corpus_meets_real_top1_quality_gate() -> None:
     assert report.hit_at_1 == 1
     assert report.mrr_at_k == 1
     assert report.failed_case_ids == ()
+    assert report.critical_top1_failed_case_ids == ()
+
+
+def _hybrid_repository_or_skip() -> RetrievalRepository:
+    """Build the real DB-backed hybrid repository, or skip when unavailable.
+
+    Skips (never fails) unless explicitly opted in, so the default suite and the
+    Stop-hook pytest stay fast. The RAG session runs it with
+    ``RUN_HYBRID_RAG_BENCHMARK=1`` (plus embeddings + DATABASE_URL) to exercise
+    the production retrieval path; the daily cron runs the script equivalent.
+    """
+    if os.environ.get("RUN_HYBRID_RAG_BENCHMARK") != "1":
+        pytest.skip("set RUN_HYBRID_RAG_BENCHMARK=1 to run the hybrid RAG gate")
+    embedder = get_query_embedder()
+    if embedder is None:
+        pytest.skip("embeddings group not installed (uv sync --group embeddings)")
+    settings = get_settings()
+    if settings.database_url is None:
+        pytest.skip("DATABASE_URL not configured")
+    database_url = settings.database_url.get_secret_value().strip()
+    if not database_url:
+        pytest.skip("DATABASE_URL is empty")
+    repository = RetrievalRepository(database_url, embedder=embedder)
+    try:
+        repository.search_knowledge("연금", limit=1)
+    except psycopg.Error as error:
+        pytest.skip(f"knowledge DB unreachable: {type(error).__name__}")
+    return repository
+
+
+def test_hybrid_retrieval_holds_critical_top1_on_real_corpus() -> None:
+    # Guards the actually-served path (remote pgvector hybrid + rerank), which
+    # the local-corpus gate above cannot see. Ranking regressions that only
+    # surface with embeddings (e.g. tie-break scrambling) fail here.
+    repository = _hybrid_repository_or_skip()
+    cases = load_quality_cases(BENCHMARK)
+
+    report = measure_search_quality(repository, cases, limit=5)
+
     assert report.critical_top1_failed_case_ids == ()
 
 

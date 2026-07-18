@@ -1,6 +1,7 @@
 """Manifest-only ingestion for approved verified-knowledge Markdown."""
 
 import json
+import logging
 import re
 from datetime import date, timedelta
 from hashlib import sha256
@@ -16,6 +17,8 @@ from ..retrieval.knowledge_policy import (
 )
 from ..retrieval.knowledge_repository import KnowledgeDocumentInput
 
+logger = logging.getLogger(__name__)
+
 ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_MANIFEST = ROOT / "data" / "knowledge" / "approved_documents.json"
 DEFAULT_CHUNK_CHARS = 800
@@ -28,6 +31,14 @@ _ALLOWED_ROOTS = (
 
 class KnowledgeManifestError(ValueError):
     pass
+
+
+class KnowledgeReviewExpiredError(KnowledgeManifestError):
+    """A document is valid but past its review-due date.
+
+    Distinct from other manifest errors so the runtime read path can skip an
+    expired document (degraded but serving) while ingestion stays strict.
+    """
 
 
 def _is_allowed_path(path: Path) -> bool:
@@ -189,7 +200,7 @@ def _load_entry(
             f"{document_type} review_due_date must be within {max_review_days} days"
         )
     if review_date > review_due_date:
-        raise KnowledgeManifestError(
+        raise KnowledgeReviewExpiredError(
             f"document review expired: {document_id} ({review_due_date.isoformat()})"
         )
     expected_source_url = canonical_project_source_url(source_path)
@@ -261,7 +272,15 @@ def load_approved_documents(
     *,
     max_chars: int = DEFAULT_CHUNK_CHARS,
     today: date | None = None,
+    skip_expired: bool = False,
 ) -> tuple[KnowledgeDocumentInput, ...]:
+    """Load approved documents from the manifest.
+
+    ``skip_expired`` lets the runtime read path degrade gracefully: an expired
+    document is logged and dropped instead of raising, so a lapsed review date
+    never takes the whole chatbot down. Ingestion keeps the default (strict) so
+    stale documents never reach the corpus.
+    """
     try:
         payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
@@ -274,10 +293,17 @@ def load_approved_documents(
     if not all(isinstance(entry, dict) for entry in entries):
         raise KnowledgeManifestError("knowledge manifest documents must be objects")
     review_date = today or date.today()
-    documents = tuple(
-        _load_entry(entry, max_chars=max_chars, review_date=review_date)
-        for entry in entries
-    )
+    loaded: list[KnowledgeDocumentInput] = []
+    for entry in entries:
+        try:
+            loaded.append(
+                _load_entry(entry, max_chars=max_chars, review_date=review_date)
+            )
+        except KnowledgeReviewExpiredError as error:
+            if not skip_expired:
+                raise
+            logger.warning("knowledge_document_review_expired: %s", error)
+    documents = tuple(loaded)
     document_keys = {
         (document.source_code, document.source_url) for document in documents
     }

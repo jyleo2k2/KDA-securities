@@ -31,3 +31,8 @@ jobs:
         run: uv sync --locked --group embeddings
       - name: Select, summarize and rotate daily market news
         run: uv run --group embeddings python -m backend.app.ingestion.naver_market_news
+      - name: Report hybrid RAG search quality (informational)
+        # Surfaces retrieval-quality drift on the real hybrid path in the daily
+        # log. Soft: a regression here must not block news rotation.
+        continue-on-error: true
+        run: uv run --group embeddings python scripts/measure_search_quality.py

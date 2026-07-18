@@ -55,7 +55,9 @@ class LocalMarkdownKnowledgeRepository:
     def _load_chunks(manifest_path: Path) -> tuple[_Chunk, ...]:
         chunks: list[_Chunk] = []
         next_id = 1
-        for document in load_approved_documents(manifest_path):
+        # Runtime read path: a lapsed review date drops that one document with a
+        # warning instead of taking the whole chatbot down. Ingestion stays strict.
+        for document in load_approved_documents(manifest_path, skip_expired=True):
             document_id = uuid5(NAMESPACE_URL, document.source_url)
             for content in document.chunks:
                 chunks.append(
@@ -92,6 +94,7 @@ class LocalMarkdownKnowledgeRepository:
                         source_authority=chunk.publisher,
                         document_type=chunk.document_type,
                         as_of_date=chunk.as_of_date,
+                        is_local_fallback=True,
                     )
                 )
         return rerank_knowledge_matches(
