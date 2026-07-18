@@ -2,11 +2,11 @@
 
 > 적용 범위: `supabase/` 하위의 마이그레이션, seed, 설정, DB 운영 문서.
 > 이 파일과 같은 폴더의 `AGENTS.md`·`CLAUDE.md`는 내용 동기화 대상이다. 한쪽을 바꾸면 다른 쪽도 같은 커밋에서 바꾼다.
-> 최종 갱신: 2026-07-15
+> 최종 갱신: 2026-07-19
 
 ## 임무
 
-현재 Supabase 데이터 기반을 보존하면서 PDF의 사용자·투자성향·연금계좌·보유상품 설계를 현재 Python 엔진과 FastAPI 계약에 맞게 단계적으로 통합한다. DB 작업의 상태·검증·결정은 [`DB_HANDOFF.md`](./DB_HANDOFF.md)에 계속 기록한다.
+현재 Supabase 데이터 기반과 적용 이력을 보존하면서 사용자·투자성향·연금계좌·보유상품 설계를 Python 엔진과 FastAPI 계약에 맞게 단계적으로 통합한다. DB 작업의 동적 상태·검증·결정은 [`DB_HANDOFF.md`](./DB_HANDOFF.md)에만 기록한다.
 
 ## READ-FIRST
 
@@ -23,7 +23,7 @@
 ## 작업 시작 규칙
 
 - 먼저 현재 브랜치·HEAD·dirty 파일 소유자를 확인한다. 다른 팀원의 변경을 수정·삭제·되돌리지 않는다.
-- 현재 작업트리는 임베딩 파이프라인, `20260715165614_fix_embedding_dimension_bge_m3.sql`, 원격 적용 스크립트 작업이 진행 중이다. 소유자 확인 없이 건드리지 않는다.
+- 현재 작업·원격 적용 상태는 추정하지 않고 [`DB_HANDOFF.md`](./DB_HANDOFF.md)와 실제 Git·Supabase 조회로 재확인한다.
 - Supabase 기능을 구현하기 전 최신 changelog와 공식 문서를 확인한다.
 - 시크릿을 읽어 출력하지 않는다. `.env`, DB URL, API key, service role key를 로그·문서·커밋에 남기지 않는다.
 - 계획과 영향 범위를 먼저 제시하고 승인받은 뒤 수정한다.
@@ -31,7 +31,7 @@
 
 ## 마이그레이션 규칙
 
-- 적용된 `20260715005435_initial_data_foundation.sql`과 `20260715021243_tighten_data_api_grants.sql`은 수정하지 않는다.
+- 원격 migration history에 존재하는 모든 적용 완료 migration은 수정하지 않는다.
 - 새 파일은 `supabase migration new <descriptive_name>`으로 생성한다. CLI 명령은 먼저 `--help`로 확인한다.
 - `scripts/apply_embedding_migration.py`는 SQL과 migration history를 직접 기록하는 이재용 실행용 스크립트다. 명시적 승인과 사전 검토 없이 실행하지 않는다.
 - 첫 단계는 additive migration이다. 컬럼·테이블 삭제와 이름 변경을 같은 마이그레이션에 섞지 않는다.
@@ -93,6 +93,7 @@
 uv run pytest tests/test_schema_contract.py tests/test_embedded_sql.py
 uv run pytest
 uv run ruff check .
+git diff --check
 ```
 
 - Python은 `uv run python`만 사용한다.
@@ -105,7 +106,7 @@ uv run ruff check .
 
 - 요청한 DDL·seed·backend adapter가 같은 데이터 계약을 사용한다.
 - 로컬 전체 테스트와 관련 보안·SQL 계약 테스트가 통과한다.
-- 목시나리오 3개, 계좌 6개, holding 10개의 건수·금액·엔진 결과가 이관 전후 동일하다.
+- 승인된 backfill의 사전·사후 건수·금액·엔진 결과가 동일하다.
 - 신규 public 테이블의 RLS·GRANT·소유권 격리를 실제 역할로 검증한다.
 - 원격 적용 후 migration history와 E2E를 재검증한다.
 - [`DB_HANDOFF.md`](./DB_HANDOFF.md)가 실제 최종 상태와 일치한다.
