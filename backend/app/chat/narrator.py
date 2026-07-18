@@ -177,14 +177,27 @@ def _korean_number_tokens(text: str) -> set[tuple[str, str, str]]:
     return values
 
 
-def _unsafe_claims(text: str) -> set[str]:
-    claims: set[str] = set()
+def _unsafe_claim_instances(text: str) -> set[tuple[str, str]]:
+    """Return each non-negated claim as category plus normalized matched text.
+
+    카테고리만 비교하면 원문의 '원금 보장' 하나로 새 '수익 보장'까지 통과한다.
+    공백·문장부호만 제거한 실제 매치 문구를 함께 비교해 그 우회를 막는다.
+    """
+
+    claims: set[tuple[str, str]] = set()
     for category, pattern in _UNSAFE_CLAIM_PATTERNS:
         for match in pattern.finditer(text):
             suffix = text[match.end() : match.end() + 24]
             if _NEGATION.search(suffix) is None:
-                claims.add(category)
+                normalized_match = re.sub(
+                    r"[^0-9A-Za-z가-힣%]+", "", match.group()
+                ).casefold()
+                claims.add((category, normalized_match))
     return claims
+
+
+def _unsafe_claims(text: str) -> set[str]:
+    return {category for category, _ in _unsafe_claim_instances(text)}
 
 
 def _adds_unverified_content(candidate: str, source: str) -> bool:
@@ -193,7 +206,9 @@ def _adds_unverified_content(candidate: str, source: str) -> bool:
         or not _korean_number_tokens(candidate).issubset(
             _korean_number_tokens(source)
         )
-        or not _unsafe_claims(candidate).issubset(_unsafe_claims(source))
+        or not _unsafe_claim_instances(candidate).issubset(
+            _unsafe_claim_instances(source)
+        )
     )
 
 

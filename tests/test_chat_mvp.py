@@ -734,6 +734,27 @@ def test_guard_allows_negation_attached_after_unsafe_claim(candidate: str) -> No
     assert _unsafe_claims(candidate) == set()
 
 
+def test_guard_rejects_new_guarantee_instance_in_same_category() -> None:
+    source = "안정형 성향은 원금 보장형 상품 중심으로 구성합니다."
+    candidate = (
+        "안정형 성향은 원금 보장형 상품 중심으로 구성하고, "
+        "수익도 확실히 보장됩니다."
+    )
+
+    # 둘 다 guarantee 카테고리지만 '수익 확실 보장'은 원문에 없는 별도 주장이다.
+    assert _unsafe_claims(source) == {"guarantee"}
+    assert _unsafe_claims(candidate) == {"guarantee"}
+    assert _adds_unverified_content(candidate, source)
+
+
+def test_guard_allows_same_normalized_unsafe_claim_instance() -> None:
+    source = "안정형 성향은 원금 보장형 상품 중심으로 구성합니다."
+    candidate = "안정형은 원금   보장형 상품 중심으로 구성합니다."
+
+    # 공백만 다른 동일 매치 문구는 새 주장으로 보지 않는다.
+    assert not _adds_unverified_content(candidate, source)
+
+
 def test_narration_fallback_logs_stable_reason_code(caplog) -> None:
     # 폴백 분기를 한국어 문구 대신 안정적인 코드로 집계하기 위한 관측 지점.
     base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
