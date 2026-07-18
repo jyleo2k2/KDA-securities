@@ -1,3 +1,4 @@
+import statistics
 from collections import defaultdict
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
@@ -333,12 +334,9 @@ def _stress_results(
 
 
 def _quantile(values: list[Decimal], probability: Decimal) -> Decimal:
-    ordered = sorted(values)
-    position = probability * Decimal(len(ordered) - 1)
-    lower = int(position)
-    upper = min(lower + 1, len(ordered) - 1)
-    fraction = position - Decimal(lower)
-    return ordered[lower] + (ordered[upper] - ordered[lower]) * fraction
+    if probability != Decimal("0.05"):
+        raise ValueError("only the 5th percentile is supported")
+    return statistics.quantiles(values, n=20, method="inclusive")[0]
 
 
 def calculate_portfolio_risk(

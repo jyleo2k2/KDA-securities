@@ -12,6 +12,9 @@ import httpx
 
 from backend.app.settings import get_settings
 
+from ._files import latest_matching
+from ._retry import retry_with_backoff
+from ._secrets import require_secret
 from .kis_client import (
     KIS_BASE_URL,
     KIS_COMPONENT_ENDPOINT,
@@ -42,10 +45,7 @@ class KisCollectionRecord:
 
 
 def _latest_krx_report(cache_root: Path) -> Path:
-    candidates = sorted(cache_root.glob("etf_market_evidence_*.json"))
-    if not candidates:
-        raise FileNotFoundError(f"no KRX ETF report found under {cache_root}")
-    return candidates[-1]
+    return latest_matching(cache_root, "etf_market_evidence_*.json")
 
 
 def load_krx_etf_universe(path: Path) -> tuple[str, list[dict[str, str]]]:
@@ -94,18 +94,12 @@ def _load_payload(path: Path) -> tuple[dict[str, Any], str]:
 
 
 def _fetch_with_retry(fetch: Callable[[], KisApiResponse]) -> KisApiResponse:
-    last_error: KisApiError | None = None
-    for attempt in range(MAX_RETRIES + 1):
-        try:
-            return fetch()
-        except KisApiError as exc:
-            last_error = exc
-            if not exc.retryable or attempt == MAX_RETRIES:
-                break
-            time.sleep(2**attempt)
-    if last_error is None:
-        raise RuntimeError("KIS retry loop completed without a result")
-    raise last_error
+    return retry_with_backoff(
+        fetch,
+        exceptions=KisApiError,
+        is_retryable=lambda exc: exc.retryable,
+        max_retries=MAX_RETRIES,
+    )
 
 
 def _normalize_product(
@@ -356,12 +350,10 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = _parser().parse_args()
     settings = get_settings()
-    if settings.kis_app_key is None or settings.kis_app_secret is None:
-        raise SystemExit("KIS_APP_KEY and KIS_APP_SECRET are required")
-    app_key = settings.kis_app_key.get_secret_value().strip()
-    app_secret = settings.kis_app_secret.get_secret_value().strip()
-    if not app_key or not app_secret:
-        raise SystemExit("KIS_APP_KEY and KIS_APP_SECRET are required")
+    app_key = require_secret(settings.kis_app_key, "KIS_APP_KEY and KIS_APP_SECRET")
+    app_secret = require_secret(
+        settings.kis_app_secret, "KIS_APP_KEY and KIS_APP_SECRET"
+    )
     krx_report = args.krx_report or _latest_krx_report(DEFAULT_KRX_CACHE_ROOT)
     result = collect_kis_etf_snapshot(
         app_key=app_key,

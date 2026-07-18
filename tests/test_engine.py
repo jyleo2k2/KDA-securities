@@ -14,7 +14,6 @@ from backend.app.engine import (
     evaluate_risk_cap,
 )
 from backend.app.engine.audit import validate_rule_parameters
-from backend.app.engine.service import evaluate_risk_cap_with_audit
 from backend.app.main import app, health, risk_cap, risk_cap_audited
 
 
@@ -194,28 +193,6 @@ def test_fastapi_exposes_health_and_engine_golden_path() -> None:
     }
     assert health() == {"status": "ok"}
     assert risk_cap(portfolio).status == RuleStatus.PASS
-
-
-def test_engine_service_records_the_exact_evaluation() -> None:
-    recorded = []
-
-    class Recorder:
-        def record(self, evaluation, *, owner_id=None):
-            recorded.append((evaluation, owner_id))
-            return "test-run-id"
-
-    portfolio = PortfolioInput(
-        account_type=AccountType.DC,
-        holdings=[
-            holding("equity", "600000", RiskTreatment.GENERAL_RISKY),
-            holding("deposit", "400000", RiskTreatment.CAPITAL_PRESERVATION),
-        ],
-    )
-
-    result = evaluate_risk_cap_with_audit(portfolio, recorder=Recorder())
-
-    assert recorded == [(result, None)]
-    assert result.evidence[0].rule_code == "GENERAL_RISK_ASSET_CAP"
 
 
 def test_audit_rejects_database_rule_drift() -> None:

@@ -13,6 +13,8 @@ import httpx
 
 from backend.app.settings import get_settings
 
+from ._files import latest_matching
+from ._secrets import require_secret
 from .fsc_fund_client import (
     FSC_FUND_PRODUCT_ENDPOINT,
     FscFundApiError,
@@ -83,10 +85,7 @@ class PageRecord:
 
 
 def _latest_krx_report(cache_root: Path) -> Path:
-    candidates = sorted(cache_root.glob("etf_market_evidence_*.json"))
-    if not candidates:
-        raise FileNotFoundError(f"no KRX ETF report found under {cache_root}")
-    return candidates[-1]
+    return latest_matching(cache_root, "etf_market_evidence_*.json")
 
 
 def _raw_page_path(root: Path, snapshot_date: date, page_number: int) -> Path:
@@ -401,11 +400,9 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = _parser().parse_args()
     settings = get_settings()
-    if settings.fsc_fund_product_api_key is None:
-        raise SystemExit("FSC_FUND_PRODUCT_API_KEY is required")
-    api_key = settings.fsc_fund_product_api_key.get_secret_value().strip()
-    if not api_key:
-        raise SystemExit("FSC_FUND_PRODUCT_API_KEY is required")
+    api_key = require_secret(
+        settings.fsc_fund_product_api_key, "FSC_FUND_PRODUCT_API_KEY"
+    )
     result = collect_fsc_fund_products(
         api_key=api_key,
         snapshot_date=args.snapshot_date,

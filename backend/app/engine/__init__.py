@@ -85,7 +85,6 @@ from .pension_tax import (
     WithdrawalReason,
     calculate_pension_tax_credit,
     estimate_non_pension_withdrawal_tax,
-    evaluate_pension_tax_scenario,
 )
 from .planning_assessment import (
     EtfPlanningAssessmentEvaluation,
@@ -207,7 +206,6 @@ __all__ = [
     "evaluate_profile",
     "evaluate_risk_cap",
     "estimate_non_pension_withdrawal_tax",
-    "evaluate_pension_tax_scenario",
     "evaluate_historical_returns",
     "evaluate_profit_lock",
     "evaluate_risk_budget",

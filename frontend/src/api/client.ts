@@ -1,16 +1,14 @@
 import type {
-  ChatCapabilities,
   BenchmarkSummary,
   CompletedSurveyProfile,
   ConversationContext,
   ChatResponse,
   ChatSessionSummary,
   DemoUserFinancialContext,
-  PersistedChatResponse,
+  DemoHeroPortfolio,
   PensionTaxScenarioInput,
   ProfileEvaluation,
   ProfileSurveyInput,
-  ScenarioEvaluation,
   ScenarioSummary,
   StoredChatMessage,
 } from "./types";
@@ -150,10 +148,6 @@ async function apiPostStream<TBody>(
   return result;
 }
 
-export function getCapabilities(): Promise<ChatCapabilities> {
-  return apiGet("/chat/demo/capabilities");
-}
-
 export function getBenchmarkSummary(): Promise<BenchmarkSummary> {
   return apiGet("/benchmark/summary");
 }
@@ -162,10 +156,8 @@ export function getScenarios(): Promise<ScenarioSummary[]> {
   return apiGet("/chat/demo/scenarios");
 }
 
-export function getMockScenarioEvaluation(
-  scenarioCode: string,
-): Promise<ScenarioEvaluation> {
-  return apiGet(`/engine/mock-scenario/${scenarioCode}`);
+export function getDemoHeroes(): Promise<DemoHeroPortfolio[]> {
+  return apiGet("/chat/demo/heroes");
 }
 
 export function evaluateProfileSurvey(
@@ -174,95 +166,40 @@ export function evaluateProfileSurvey(
   return apiPost("/engine/profile", survey);
 }
 
-export function sendChat(
-  message: string,
-  options?: string | {
-    scenarioCode?: string;
-    conversationContext?: ConversationContext | null;
-    pensionTax?: PensionTaxScenarioInput;
-    surveyProfile?: CompletedSurveyProfile | null;
-  },
-): Promise<ChatResponse> {
-  const requestOptions = typeof options === "string"
-    ? { scenarioCode: options }
-    : options;
-  return apiPost("/chat/demo", {
+interface ChatBodyOptions {
+  scenarioCode?: string;
+  sessionId?: string;
+  conversationContext?: ConversationContext | null;
+  pensionTax?: PensionTaxScenarioInput;
+  surveyProfile?: CompletedSurveyProfile | null;
+}
+
+function buildChatBody(message: string, options?: ChatBodyOptions) {
+  return {
     message,
-    ...(requestOptions?.scenarioCode
-      ? { scenario_code: requestOptions.scenarioCode }
+    ...(options?.scenarioCode ? { scenario_code: options.scenarioCode } : {}),
+    ...(options?.sessionId ? { session_id: options.sessionId } : {}),
+    ...(options?.conversationContext
+      ? { conversation_context: options.conversationContext }
       : {}),
-    ...(requestOptions?.conversationContext
-      ? { conversation_context: requestOptions.conversationContext }
+    ...(options?.pensionTax ? { pension_tax: options.pensionTax } : {}),
+    ...(options?.surveyProfile
+      ? { survey_profile: options.surveyProfile }
       : {}),
-    ...(requestOptions?.pensionTax
-      ? { pension_tax: requestOptions.pensionTax }
-      : {}),
-    ...(requestOptions?.surveyProfile
-      ? { survey_profile: requestOptions.surveyProfile }
-      : {}),
-  });
+  };
 }
 
 export function sendChatStream(
   message: string,
   onPhase: (message: string) => void,
   onAnswerDelta: (delta: string) => void,
-  options?: string | {
-    scenarioCode?: string;
-    conversationContext?: ConversationContext | null;
-    pensionTax?: PensionTaxScenarioInput;
-    surveyProfile?: CompletedSurveyProfile | null;
-  },
+  options?: ChatBodyOptions,
 ): Promise<ChatStreamResult> {
-  const requestOptions = typeof options === "string"
-    ? { scenarioCode: options }
-    : options;
   return apiPostStream(
     "/chat/demo/stream",
-    {
-      message,
-      ...(requestOptions?.scenarioCode
-        ? { scenario_code: requestOptions.scenarioCode }
-        : {}),
-      ...(requestOptions?.conversationContext
-        ? { conversation_context: requestOptions.conversationContext }
-        : {}),
-      ...(requestOptions?.pensionTax
-        ? { pension_tax: requestOptions.pensionTax }
-        : {}),
-      ...(requestOptions?.surveyProfile
-        ? { survey_profile: requestOptions.surveyProfile }
-        : {}),
-    },
+    buildChatBody(message, options),
     onPhase,
     onAnswerDelta,
-  );
-}
-
-export function sendAuthenticatedChat(
-  message: string,
-  accessToken: string,
-  scenarioCode?: string,
-  sessionId?: string,
-  idempotencyKey?: string,
-  conversationContext?: ConversationContext | null,
-  pensionTax?: PensionTaxScenarioInput,
-  surveyProfile?: CompletedSurveyProfile | null,
-): Promise<PersistedChatResponse> {
-  return apiPost(
-    "/chat",
-    {
-      message,
-      ...(scenarioCode ? { scenario_code: scenarioCode } : {}),
-      ...(sessionId ? { session_id: sessionId } : {}),
-      ...(conversationContext
-        ? { conversation_context: conversationContext }
-        : {}),
-      ...(pensionTax ? { pension_tax: pensionTax } : {}),
-      ...(surveyProfile ? { survey_profile: surveyProfile } : {}),
-    },
-    accessToken,
-    idempotencyKey,
   );
 }
 
@@ -280,16 +217,13 @@ export function sendAuthenticatedChatStream(
 ): Promise<ChatStreamResult> {
   return apiPostStream(
     "/chat/stream",
-    {
-      message,
-      ...(scenarioCode ? { scenario_code: scenarioCode } : {}),
-      ...(sessionId ? { session_id: sessionId } : {}),
-      ...(conversationContext
-        ? { conversation_context: conversationContext }
-        : {}),
-      ...(pensionTax ? { pension_tax: pensionTax } : {}),
-      ...(surveyProfile ? { survey_profile: surveyProfile } : {}),
-    },
+    buildChatBody(message, {
+      scenarioCode,
+      sessionId,
+      conversationContext,
+      pensionTax,
+      surveyProfile,
+    }),
     onPhase,
     onAnswerDelta,
     accessToken,

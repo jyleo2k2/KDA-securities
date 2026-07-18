@@ -16,7 +16,6 @@ from backend.app.api.deps import (
 from backend.app.auth import require_supabase_user_id
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
 from backend.app.chat.models import ChatIntent, ChatResponse, CompletedSurveyProfile
-from backend.app.chat.repository import SavedChatExchange
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService
 from backend.app.chat.user_context import (
@@ -26,6 +25,7 @@ from backend.app.chat.user_context import (
 )
 from backend.app.engine import AccountType, EducationalRiskProfile, IncomeBasis
 from backend.app.main import app
+from tests.conftest import FakeChatRepository, final_sse_response
 
 OWNER_ID = UUID("0d3a8c4f-3d6e-4e2e-91a0-7d11a2b71c01")
 MIGRATION = (
@@ -71,19 +71,6 @@ def _context() -> DemoUserFinancialContext:
 class FakeContextRepository:
     def get(self, auth_user_id: UUID) -> DemoUserFinancialContext | None:
         return _context() if auth_user_id == OWNER_ID else None
-
-
-class FakeChatRepository:
-    def find_idempotent_exchange(self, **kwargs):
-        return None
-
-    def save_exchange(self, **kwargs) -> SavedChatExchange:
-        return SavedChatExchange(
-            session_id=uuid4(),
-            user_message_id=uuid4(),
-            assistant_message_id=uuid4(),
-            response=kwargs["response"],
-        )
 
 
 def _service() -> ChatService:
@@ -315,7 +302,7 @@ def test_authenticated_chat_answers_balance_from_loaded_context() -> None:
     try:
         with TestClient(app) as client:
             response = client.post(
-                "/chat",
+                "/chat/stream",
                 json={"message": "내 IRP와 연금저축 현재 잔액을 알려줘"},
                 headers={
                     "Authorization": "Bearer test",
@@ -326,7 +313,7 @@ def test_authenticated_chat_answers_balance_from_loaded_context() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    payload = response.json()["response"]
+    payload = final_sse_response(response.text)["response"]
     assert payload["data_mode"] == "authenticated_mock_context"
     assert payload["sources"][0]["evidence_id"] == "mock:user_context"
     assert "IRP 0원" in payload["answer"]
@@ -338,7 +325,7 @@ def test_authenticated_tax_uses_database_context_not_client_values() -> None:
     try:
         with TestClient(app) as client:
             response = client.post(
-                "/chat",
+                "/chat/stream",
                 json={
                     "message": "내 연금계좌 세액공제를 계산해줘",
                     "scenario_code": "overlap_risk_concentration",
@@ -367,7 +354,7 @@ def test_authenticated_tax_uses_database_context_not_client_values() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    payload = response.json()["response"]
+    payload = final_sse_response(response.text)["response"]
     credit = payload["pension_tax_result"]["tax_credit"]
     assert credit["pension_savings_contribution_krw"] == "0.00"
     assert credit["irp_contribution_krw"] == "0.00"
@@ -381,7 +368,7 @@ def test_authenticated_scenario_code_cannot_be_spoofed() -> None:
     try:
         with TestClient(app) as client:
             response = client.post(
-                "/chat",
+                "/chat/stream",
                 json={
                     "message": "목계좌 시나리오를 진단해줘",
                     "scenario_code": "overlap_risk_concentration",
@@ -395,7 +382,7 @@ def test_authenticated_scenario_code_cannot_be_spoofed() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    payload = response.json()["response"]
+    payload = final_sse_response(response.text)["response"]
     assert payload["scenario_evaluation"]["scenario_code"] == "dc_dormant"
     assert payload["sources"][0]["locator"] == "database://mock-scenarios/current"
 
@@ -405,7 +392,7 @@ def test_authenticated_strategy_replaces_fixed_demo_age_and_account_scope() -> N
     try:
         with TestClient(app) as client:
             response = client.post(
-                "/chat",
+                "/chat/stream",
                 json={
                     "message": "내 나이에 맞는 연금 운용 전략을 알려줘",
                     "survey_profile": {
@@ -426,7 +413,7 @@ def test_authenticated_strategy_replaces_fixed_demo_age_and_account_scope() -> N
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    payload = response.json()["response"]
+    payload = final_sse_response(response.text)["response"]
     survey = payload["conversation_context"]["survey_profile"]
     assert survey["current_age"] == 46
     assert survey["account_type"] == "dc"

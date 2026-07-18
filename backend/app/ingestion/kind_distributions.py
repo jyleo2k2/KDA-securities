@@ -4,13 +4,14 @@ import json
 import time
 from dataclasses import asdict
 from datetime import UTC, date, datetime
-from decimal import Decimal
 from functools import partial
 from pathlib import Path
 from typing import Any
 
 import httpx
 
+from ._files import atomic_write_bytes, atomic_write_json
+from .kind_common import json_value, request_with_retry, windows
 from .kind_distribution_client import (
     KIND_BASE_URL,
     KIND_ETF_DISCLOSURE_ENDPOINT,
@@ -30,52 +31,6 @@ from .kind_distribution_client import (
 
 DEFAULT_START_DATE = date(2020, 1, 1)
 PAGE_SIZE = 3000
-MAX_RETRIES = 3
-
-
-def _windows(start_date: date, end_date: date) -> list[tuple[date, date]]:
-    if start_date > end_date:
-        raise ValueError("from-date must not be after to-date")
-    result = []
-    current = start_date
-    while current <= end_date:
-        window_end = min(end_date, date(current.year, 12, 31))
-        result.append((current, window_end))
-        current = date(current.year + 1, 1, 1)
-    return result
-
-
-def _request_with_retry(operation: str, callback: Any) -> bytes:
-    last_error: KindDisclosureError | None = None
-    for attempt in range(MAX_RETRIES + 1):
-        try:
-            return callback()
-        except KindDisclosureError as exc:
-            last_error = exc
-            retryable = exc.status_code in {None, 429} or (
-                exc.status_code is not None and exc.status_code >= 500
-            )
-            if not retryable or attempt == MAX_RETRIES:
-                break
-            time.sleep(2**attempt)
-    if last_error is None:
-        raise RuntimeError(f"KIND {operation} retry loop produced no result")
-    raise last_error
-
-
-def _write_bytes(path: Path, content: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_bytes(content)
-    temporary.replace(path)
-
-
-def _json_value(value: Any) -> Any:
-    if isinstance(value, (date, datetime)):
-        return value.isoformat()
-    if isinstance(value, Decimal):
-        return format(value, "f")
-    raise TypeError(f"unsupported JSON value: {type(value).__name__}")
 
 
 def _event_key(event: KindDistributionEvent) -> tuple[str, date]:
@@ -106,7 +61,7 @@ def collect_kind_distributions(
         headers=headers,
         follow_redirects=True,
     ) as client:
-        for window_start, window_end in _windows(start_date, end_date):
+        for window_start, window_end in windows(start_date, end_date):
             page_index = 1
             while True:
                 search_path = (
@@ -118,8 +73,7 @@ def collect_kind_distributions(
                 if search_path.exists():
                     raw_search = search_path.read_bytes()
                 else:
-                    raw_search = _request_with_retry(
-                        "search",
+                    raw_search = request_with_retry(
                         partial(
                             fetch_disclosure_search,
                             client,
@@ -129,7 +83,7 @@ def collect_kind_distributions(
                             page_size=PAGE_SIZE,
                         ),
                     )
-                    _write_bytes(search_path, raw_search)
+                    atomic_write_bytes(search_path, raw_search)
                 page_rows = parse_disclosure_search(
                     decode_kind_html(raw_search)
                 )
@@ -170,8 +124,7 @@ def collect_kind_distributions(
                     metadata = json.loads(metadata_path.read_text("utf-8"))
                     source_url = metadata["source_url"]
                 else:
-                    raw_viewer = _request_with_retry(
-                        "viewer",
+                    raw_viewer = request_with_retry(
                         partial(
                             fetch_viewer,
                             client, receipt_number=row.receipt_number
@@ -180,29 +133,27 @@ def collect_kind_distributions(
                     doc_number = parse_main_document_number(
                         decode_kind_html(raw_viewer)
                     )
-                    raw_path = _request_with_retry(
-                        "document path",
+                    raw_path = request_with_retry(
                         partial(
                             fetch_document_path,
                             client, doc_number=doc_number
                         ),
                     )
                     source_url = parse_document_url(decode_kind_html(raw_path))
-                    raw_document = _request_with_retry(
-                        "document",
+                    raw_document = request_with_retry(
                         partial(
                             fetch_document,
                             client, source_url=source_url
                         ),
                     )
-                    _write_bytes(document_path, raw_document)
+                    atomic_write_bytes(document_path, raw_document)
                     metadata = {
                         "receipt_number": row.receipt_number,
                         "doc_number": doc_number,
                         "source_url": source_url,
                         "sha256": hashlib.sha256(raw_document).hexdigest(),
                     }
-                    _write_bytes(
+                    atomic_write_bytes(
                         metadata_path,
                         json.dumps(
                             metadata,
@@ -273,22 +224,10 @@ def collect_kind_distributions(
         ),
         "events": [asdict(event) for event in ordered_events],
     }
-    output_root.mkdir(parents=True, exist_ok=True)
     output_path = output_root / (
         f"etf_distributions_{start_date:%Y%m%d}_{end_date:%Y%m%d}.json"
     )
-    temporary = output_path.with_suffix(".json.tmp")
-    temporary.write_text(
-        json.dumps(
-            report,
-            ensure_ascii=False,
-            indent=2,
-            sort_keys=True,
-            default=_json_value,
-        ),
-        encoding="utf-8",
-    )
-    temporary.replace(output_path)
+    atomic_write_json(output_path, report, default=json_value)
     report["output_path"] = output_path.as_posix()
     return report
 

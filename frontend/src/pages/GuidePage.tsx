@@ -12,7 +12,6 @@ import {
 
 import {
   ApiError,
-  getCapabilities,
   getChatSessions,
   getMyPensionContext,
   getScenarios,
@@ -20,8 +19,8 @@ import {
   sendAuthenticatedChatStream,
   sendChatStream,
 } from "../api/client";
+import { conicGradient } from "../charts";
 import type {
-  ChatCapabilities,
   CompletedSurveyProfile,
   ConversationContext,
   ChatResponse,
@@ -172,14 +171,10 @@ function VisualizationCard({ visualization }: { visualization: ChatVisualization
   }
 
   const colors = ["#4f8a70", "#84ad67", "#d8a45e", "#7183b1", "#bf7d70"];
-  let start = 0;
-  const gradientStops = visualization.items.map((item, index) => {
-    const end = start + Number(item.value);
-    const color = colors[index % colors.length];
-    const stop = `${color} ${start}% ${end}%`;
-    start = end;
-    return stop;
-  });
+  const gradientStops = conicGradient(
+    visualization.items.map((item) => Number(item.value)),
+    colors,
+  );
 
   return (
     <section className="allocation-chart" aria-label={visualization.title}>
@@ -190,7 +185,7 @@ function VisualizationCard({ visualization }: { visualization: ChatVisualization
           aria-label={visualization.items.map((item) => `${item.label} ${item.value}%`).join(", ")}
           className="allocation-donut"
           role="img"
-          style={{ background: `conic-gradient(${gradientStops.join(", ")})` }}
+          style={{ background: `conic-gradient(${gradientStops})` }}
         >
           <span>전체<br /><strong>100%</strong></span>
         </div>
@@ -345,8 +340,10 @@ function authenticatedErrorMessage(error: unknown): string {
 }
 
 export function GuidePage({
+  initialScenarioCode,
   surveyProfile,
 }: {
+  initialScenarioCode?: string;
   surveyProfile: CompletedSurveyProfile | null;
 }) {
   const auth = useSupabaseAuth();
@@ -355,10 +352,9 @@ export function GuidePage({
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [input, setInput] = useState("");
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
-  const [selectedScenario, setSelectedScenario] = useState("");
+  const [selectedScenario, setSelectedScenario] = useState(initialScenarioCode ?? "");
   const [userContext, setUserContext] =
     useState<DemoUserFinancialContext | null>(null);
-  const [capabilities, setCapabilities] = useState<ChatCapabilities | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [sendingStage, setSendingStage] = useState("답변을 준비하고 있습니다.");
   const [streamingAnswer, setStreamingAnswer] = useState("");
@@ -468,11 +464,10 @@ export function GuidePage({
     let retryTimer: number | undefined;
 
     const check = () => {
-      Promise.all([getScenarios(), getCapabilities()])
-        .then(([scenarioData, capabilityData]) => {
+      getScenarios()
+        .then((scenarioData) => {
           if (cancelled) return;
           setScenarios(scenarioData);
-          setCapabilities(capabilityData);
           setServerReady(true);
         })
         .catch(() => {
@@ -1017,7 +1012,7 @@ export function GuidePage({
                 ))}
               </div>
 
-              {capabilities && <p className="capability-note">연금 도우미는 참고용 정보를 제공하며, 실제 투자·가입 결정은 본인의 판단과 전문가 상담을 거쳐 주세요.</p>}
+              <p className="capability-note">연금 도우미는 참고용 정보를 제공하며, 실제 투자·가입 결정은 본인의 판단과 전문가 상담을 거쳐 주세요.</p>
             </div>
           ) : (
             <div className="message-list">

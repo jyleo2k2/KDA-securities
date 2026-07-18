@@ -7,6 +7,7 @@ import psycopg
 
 from backend.app.settings import get_settings
 
+from ._secrets import optional_secret, require_secret
 from .fss_client import (
     PS_CORP_ENDPOINT,
     RP_CORP_ENDPOINT,
@@ -213,17 +214,9 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = _parser().parse_args()
     settings = get_settings()
-    if settings.pension_portal_api_key is None:
-        raise SystemExit("PENSION_PORTAL_API_KEY is required")
-    api_key = settings.pension_portal_api_key.get_secret_value().strip()
-    if not api_key:
-        raise SystemExit("PENSION_PORTAL_API_KEY is required")
+    api_key = require_secret(settings.pension_portal_api_key, "PENSION_PORTAL_API_KEY")
 
-    database_url = (
-        settings.database_url.get_secret_value().strip()
-        if settings.database_url is not None
-        else None
-    )
+    database_url = optional_secret(settings.database_url)
     if not args.fetch_only and not database_url:
         raise SystemExit("DATABASE_URL is required unless --fetch-only is used")
 

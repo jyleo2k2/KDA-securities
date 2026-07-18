@@ -10,7 +10,6 @@ import type { CompletedSurveyProfile } from "./api/types";
 // 상태관리·라우팅 라이브러리는 의도적으로 미도입(아키텍처.md §10 미확정 항목).
 // 화면 담당자가 결정 후 교체한다.
 const CARD_PAGES: Partial<Record<TabKey, () => JSX.Element>> = {
-  home: HomePage,
   benchmark: BenchmarkPage,
 };
 
@@ -42,6 +41,9 @@ export default function App(): JSX.Element {
       return null;
     },
   );
+  const [selectedScenarioCode, setSelectedScenarioCode] = useState(
+    () => window.localStorage.getItem("pension-copilot:selected-scenario") ?? "",
+  );
   const CardPage = CARD_PAGES[activeTab];
 
   useEffect(() => {
@@ -68,12 +70,21 @@ export default function App(): JSX.Element {
     changeTab("guide");
   }
 
+  function analyzeHero(scenarioCode: string): void {
+    window.localStorage.setItem("pension-copilot:selected-scenario", scenarioCode);
+    setSelectedScenarioCode(scenarioCode);
+    changeTab("guide");
+  }
+
   return (
     <>
       {activeTab === "guide" ? (
         // 챗 화면은 자체 레이아웃(app-shell)을 쓰므로 풀블리드로 렌더한다.
         <div className="guide-tab">
-          <GuidePage surveyProfile={surveyProfile} />
+          <GuidePage
+            initialScenarioCode={selectedScenarioCode}
+            surveyProfile={surveyProfile}
+          />
         </div>
       ) : (
         <div
@@ -86,7 +97,9 @@ export default function App(): JSX.Element {
           }}
         >
           <main style={{ padding: 16 }}>
-            {activeTab === "profile" ? (
+            {activeTab === "home" ? (
+              <HomePage onAnalyzeHero={analyzeHero} />
+            ) : activeTab === "profile" ? (
               <ProfilePage profile={surveyProfile} onComplete={completeSurvey} />
             ) : CardPage ? <CardPage /> : null}
           </main>

@@ -12,13 +12,9 @@ from .api.deps import (
     clear_chat_dependencies,
     get_chat_narrator,
     get_chat_service,
-    get_krx_market_evidence_repository,
-    get_portfolio_universe_repository,
     warm_chat_dependencies,
 )
 from .api.engine import (
-    AuditedRiskCapResponse,
-    educational_portfolio,
     etf_planning_assessment,
     etf_planning_return,
     risk_cap,
@@ -31,16 +27,12 @@ from .settings import get_settings
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "AuditedRiskCapResponse",
     "app",
     "create_app",
-    "educational_portfolio",
     "etf_planning_assessment",
     "etf_planning_return",
     "get_chat_narrator",
     "get_chat_service",
-    "get_krx_market_evidence_repository",
-    "get_portfolio_universe_repository",
     "health",
     "risk_cap",
     "risk_cap_audited",

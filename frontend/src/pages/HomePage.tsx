@@ -1,162 +1,188 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { apiGet, getMockScenarioEvaluation, getScenarios } from "../api/client";
-import type { HealthResponse, ScenarioEvaluation, ScenarioSummary } from "../api/types";
+import { getDemoHeroes } from "../api/client";
+import type {
+  AssetClass,
+  DemoHeroPortfolio,
+} from "../api/types";
+import { conicGradient } from "../charts";
 
-type BackendStatus = "loading" | "ok" | "unreachable";
 
-const BADGE_COLOR: Record<BackendStatus, string> = {
-  loading: "#999999",
-  ok: "#1a7f37",
-  unreachable: "#c0392b",
+const ASSET_LABELS: Record<AssetClass, string> = {
+  cash: "현금성",
+  deposit: "원리금보장",
+  bond: "채권",
+  domestic_equity: "국내주식",
+  global_equity: "글로벌주식",
+  alternative: "대체자산",
+  eligible_tdf: "적격 TDF",
+  default_option: "디폴트옵션",
 };
 
-const BADGE_LABEL: Record<BackendStatus, string> = {
-  loading: "백엔드 확인 중…",
-  ok: "백엔드 연결됨",
-  unreachable: "백엔드 연결 안 됨",
+const RISK_LABELS: Record<string, string> = {
+  conservative: "안정형",
+  balanced: "균형형",
+  growth: "성장형",
 };
+
+const ACCOUNT_LABELS: Record<string, string> = {
+  dc: "DC",
+  irp: "IRP",
+  pension_savings: "연금저축",
+};
+
+const ALLOCATION_COLORS = ["#007848", "#8ead52", "#d7a44d", "#6887aa", "#d37c67"];
 
 function formatKrw(value: string): string {
-  const amount = Math.round(Number(value));
-  return `${amount.toLocaleString("ko-KR")}원`;
+  return `${Math.round(Number(value)).toLocaleString("ko-KR")}원`;
 }
 
-export function HomePage() {
-  const [status, setStatus] = useState<BackendStatus>("loading");
-  const [scenario, setScenario] = useState<ScenarioSummary | null>(null);
-  const [evaluation, setEvaluation] = useState<ScenarioEvaluation | null>(null);
-  const [scenarioError, setScenarioError] = useState<string | null>(null);
+interface HomePageProps {
+  onAnalyzeHero: (scenarioCode: string) => void;
+}
+
+export function HomePage({ onAnalyzeHero }: HomePageProps) {
+  const [heroes, setHeroes] = useState<DemoHeroPortfolio[]>([]);
+  const [selectedCode, setSelectedCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    apiGet<HealthResponse>("/health")
-      .then((health) => {
-        if (!cancelled) {
-          setStatus(health.status === "ok" ? "ok" : "unreachable");
-        }
+    void getDemoHeroes()
+      .then((items) => {
+        if (cancelled) return;
+        setHeroes(items);
+        setSelectedCode((current) => current || items[0]?.scenario_code || "");
       })
       .catch(() => {
-        if (!cancelled) {
-          setStatus("unreachable");
-        }
+        if (!cancelled) setError("가상 고객 포트폴리오를 불러오지 못했습니다.");
       });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    getScenarios()
-      .then((scenarios) => {
-        const first = scenarios[0];
-        if (!first || cancelled) return;
-        setScenario(first);
-        return getMockScenarioEvaluation(first.code);
-      })
-      .then((result) => {
-        if (!cancelled && result) setEvaluation(result);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setScenarioError("목시나리오 데이터를 불러오지 못했습니다.");
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const selected = useMemo(
+    () => heroes.find((hero) => hero.scenario_code === selectedCode) ?? null,
+    [heroes, selectedCode],
+  );
 
   return (
-    <section>
-      <h1 style={{ fontSize: 20 }}>내 연금 포트폴리오</h1>
-      <p
-        style={{
-          display: "inline-block",
-          padding: "4px 10px",
-          borderRadius: 12,
-          fontSize: 13,
-          color: "#ffffff",
-          background: BADGE_COLOR[status],
-        }}
-      >
-        {BADGE_LABEL[status]}
-      </p>
+    <section className="home-dashboard">
+      <header className="home-hero-heading">
+        <span>연금계좌 운용 가이드</span>
+        <h1>누구의 포트폴리오를<br />살펴볼까요?</h1>
+        <p>발표용 가상 고객 6명의 실제 ETF 연결 보유내역을 확인할 수 있습니다.</p>
+      </header>
 
-      {scenarioError && (
-        <p style={{ color: "#c0392b", fontSize: 13 }}>{scenarioError}</p>
-      )}
+      {error && <p className="home-error">{error}</p>}
+      {!error && heroes.length === 0 && <p className="home-loading">고객 포트폴리오를 불러오는 중입니다…</p>}
 
-      {scenario && evaluation && (
-        <div
-          style={{
-            marginTop: 12,
-            padding: 12,
-            border: "1px solid #e5e5e5",
-            borderRadius: 8,
-          }}
-        >
-          <p
-            style={{
-              display: "inline-block",
-              padding: "2px 8px",
-              borderRadius: 8,
-              fontSize: 11,
-              color: "#8a5a00",
-              background: "#fff3cd",
-              marginBottom: 6,
-            }}
+      <div className="hero-picker" aria-label="가상 고객 선택">
+        {heroes.map((hero) => (
+          <button
+            aria-pressed={hero.scenario_code === selectedCode}
+            className={hero.scenario_code === selectedCode ? "active" : ""}
+            key={hero.scenario_code}
+            onClick={() => setSelectedCode(hero.scenario_code)}
+            type="button"
           >
-            목데이터(MOCK) 시연 — {evaluation.source.label} · 기준일{" "}
-            {evaluation.source.as_of}
-          </p>
-          <h2 style={{ fontSize: 16, margin: "4px 0" }}>{scenario.name}</h2>
-          <p style={{ color: "#666666", fontSize: 12, margin: "2px 0" }}>
-            대표 연령대 {scenario.age_band}
-          </p>
-          <p style={{ color: "#555555", fontSize: 13, lineHeight: 1.5 }}>
-            {scenario.description}
-          </p>
-          <p style={{ fontSize: 14, fontWeight: 600 }}>
-            총자산 {formatKrw(evaluation.total_amount_krw)}
-          </p>
+            <span>{hero.nickname.slice(0, 1)}</span>
+            <strong>{hero.nickname}</strong>
+            <small>{hero.representative_age}세 · {RISK_LABELS[hero.risk_profile] ?? hero.risk_profile}</small>
+          </button>
+        ))}
+      </div>
 
-          <p style={{ fontSize: 13, fontWeight: 600, marginTop: 10 }}>
-            계좌별 위험자산 한도 판정
-          </p>
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
-            {evaluation.account_evaluations.map((account) => (
-              <li key={account.evaluated_input.account_type}>
-                {account.evaluated_input.account_type.toUpperCase()}: 일반
-                위험자산 {account.general_risky_ratio_percent}%
-                {account.limit_percent !== null && (
-                  <> (한도 {account.limit_percent}%
-                    {account.within_limit ? " · 이내" : " · 초과"})</>
-                )}
-              </li>
-            ))}
-          </ul>
+      {selected && (
+        <>
+          <article className="portfolio-summary-card">
+            <div className="portfolio-summary-top">
+              <div>
+                <span className="mock-chip">가상 목데이터</span>
+                <h2>{selected.nickname}</h2>
+                <p>{selected.customer_context}</p>
+              </div>
+              <strong>{formatKrw(selected.total_amount_krw)}</strong>
+            </div>
 
-          <p style={{ fontSize: 13, fontWeight: 600, marginTop: 10 }}>
-            통합 자산군 비중
-          </p>
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
-            {evaluation.asset_allocations.map((item) => (
-              <li key={item.asset_class_code}>
-                {item.asset_class_code}: {item.allocation_percent}%
-              </li>
-            ))}
-          </ul>
-        </div>
+            <div className="allocation-layout">
+              <div
+                aria-label={selected.asset_allocations.map((item) => `${ASSET_LABELS[item.asset_class_code as AssetClass] ?? item.asset_class_code} ${item.allocation_percent}%`).join(", ")}
+                className="home-allocation-donut"
+                role="img"
+                style={{
+                  background: `conic-gradient(${conicGradient(
+                    selected.asset_allocations.map((item) => Number(item.allocation_percent)),
+                    ALLOCATION_COLORS,
+                  )})`,
+                }}
+              >
+                <span>총자산<br /><strong>100%</strong></span>
+              </div>
+              <ul className="home-allocation-list">
+                {selected.asset_allocations.map((item, index) => (
+                  <li key={item.asset_class_code}>
+                    <i style={{ backgroundColor: ALLOCATION_COLORS[index % ALLOCATION_COLORS.length] }} />
+                    <span>{ASSET_LABELS[item.asset_class_code as AssetClass] ?? item.asset_class_code}</span>
+                    <strong>{item.allocation_percent}%</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </article>
+
+          <article className="risk-review-card">
+            <div className="section-heading-row">
+              <div>
+                <span>규칙 엔진 점검</span>
+                <h2>위험·스트레스 확인</h2>
+              </div>
+              <b className={selected.risk_summary.requires_rebalancing_review ? "review-needed" : "review-ok"}>
+                {selected.risk_summary.requires_rebalancing_review ? "리밸런싱 점검 필요" : "현재 기준 내"}
+              </b>
+            </div>
+            <div className="risk-metric-grid">
+              <div><span>일반 위험자산</span><strong>{selected.risk_summary.general_risky_asset_percent}%</strong></div>
+              <div><span>최대 자산군</span><strong>{selected.risk_summary.dominant_asset_percent}%</strong></div>
+              <div className="stress-metric"><span>주식 급락 충격 시 교육용 손실 점검값</span><strong>{selected.risk_summary.estimated_stress_loss_percent}%</strong></div>
+            </div>
+            <p>고정 충격을 적용한 점검값이며 미래 손실 예측이나 수익률 전망이 아닙니다.</p>
+          </article>
+
+          <section className="account-holdings-section">
+            <div className="section-heading-row">
+              <div><span>계좌별 구성</span><h2>보유 항목</h2></div>
+              <small>ETF 종목코드 표시</small>
+            </div>
+            <div className="account-card-list">
+              {selected.accounts.map((account) => (
+                <article key={account.account_id}>
+                  <header><strong>{account.label}</strong><span>{ACCOUNT_LABELS[account.account_type]}</span></header>
+                  <ul>
+                    {account.holdings.map((holding) => (
+                      <li key={holding.holding_id}>
+                        <div>
+                          <strong>{holding.instrument_name}</strong>
+                          <small>{ASSET_LABELS[holding.asset_class_code] ?? holding.asset_class_code}</small>
+                        </div>
+                        <div>
+                          {holding.etf_isu_code && <code>{holding.etf_isu_code}</code>}
+                          <span>{formatKrw(holding.amount_krw)}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <button className="analyze-hero-button" type="button" onClick={() => onAnalyzeHero(selected.scenario_code)}>
+            이 고객 분석하기
+          </button>
+        </>
       )}
-
-      <p style={{ color: "#555555", lineHeight: 1.6, marginTop: 12 }}>
-        위 카드는 <code>/chat/demo/scenarios</code>·
-        <code>/engine/mock-scenario/{"{code}"}</code>가 반환하는 목시나리오
-        엔진 결과다. 실계좌 연동 전까지 홈 화면의 통합 원그래프·진단은 이
-        데이터로 대체한다.
-      </p>
     </section>
   );
 }

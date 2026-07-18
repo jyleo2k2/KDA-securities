@@ -41,7 +41,7 @@ def scenario(**updates) -> PensionTaxScenarioInput:
 
 
 def test_tax_credit_applies_account_and_combined_limits() -> None:
-    result = calculate_pension_tax_credit(scenario())
+    result = calculate_pension_tax_credit(scenario().to_tax_credit_input())
 
     assert result.pension_savings_eligible_contribution_krw == Decimal("6000000")
     assert result.irp_eligible_contribution_krw == Decimal("3000000")
@@ -67,7 +67,7 @@ def test_tax_credit_uses_high_income_rate_and_allows_irp_only() -> None:
                 "current_year_contribution_krw": "9000000",
             },
             irp_deferred_income_status="unknown",
-        )
+        ).to_tax_credit_input()
     )
 
     assert result.pension_savings_eligible_contribution_krw == 0
@@ -80,7 +80,7 @@ def test_tax_credit_uses_high_income_rate_and_allows_irp_only() -> None:
 
 def test_unknown_income_returns_both_display_rate_scenarios() -> None:
     result = calculate_pension_tax_credit(
-        scenario(income_basis="unknown", income_amount_krw=None)
+        scenario(income_basis="unknown", income_amount_krw=None).to_tax_credit_input()
     )
 
     assert result.rate_determined is False
@@ -102,7 +102,7 @@ def test_simple_max_withdrawal_reproduces_document_example() -> None:
         irp_deferred_income_status="unknown",
     )
 
-    result = estimate_non_pension_withdrawal_tax(inputs)
+    result = estimate_non_pension_withdrawal_tax(inputs.to_withdrawal_input())
 
     assert result.calculation_mode == WithdrawalCalculationMode.SIMPLIFIED_MAX
     assert result.assumed_other_income_tax_base_krw == Decimal("80000000")
@@ -113,7 +113,7 @@ def test_simple_max_withdrawal_reproduces_document_example() -> None:
 
 
 def test_current_year_contributions_are_excluded_before_taxable_amount() -> None:
-    result = estimate_non_pension_withdrawal_tax(scenario())
+    result = estimate_non_pension_withdrawal_tax(scenario().to_withdrawal_input())
 
     assert result.calculation_mode == WithdrawalCalculationMode.SOURCE_AWARE
     assert result.total_current_year_contribution_excluded_krw == Decimal(
@@ -140,7 +140,7 @@ def test_known_non_deducted_principal_and_deferred_income_are_excluded() -> None
             },
             irp_deferred_income_status="known",
             irp_deferred_retirement_income_krw="20000000",
-        )
+        ).to_withdrawal_input()
     )
 
     assert result.total_prior_year_non_deducted_principal_excluded_krw == Decimal(
@@ -156,7 +156,7 @@ def test_known_non_deducted_principal_and_deferred_income_are_excluded() -> None
 @pytest.mark.parametrize("reason", ("unavoidable", "unknown"))
 def test_non_general_withdrawal_requires_review(reason: str) -> None:
     result = estimate_non_pension_withdrawal_tax(
-        scenario(withdrawal_reason=reason)
+        scenario(withdrawal_reason=reason).to_withdrawal_input()
     )
 
     assert result.status == WithdrawalCalculationStatus.REQUIRES_REVIEW

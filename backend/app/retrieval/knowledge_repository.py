@@ -61,10 +61,6 @@ class KnowledgeWriteRepository:
             raise ValueError("database_url is required")
         self._database_url = database_url
 
-    def upsert_document(self, document: KnowledgeDocumentInput) -> UUID:
-        """Compatibility wrapper; all writes are tracked by an ingestion run."""
-        return self.ingest_document(document).document_id
-
     def ingest_document(
         self, document: KnowledgeDocumentInput
     ) -> KnowledgeIngestionResult:

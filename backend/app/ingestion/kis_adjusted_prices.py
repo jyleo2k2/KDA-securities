@@ -12,6 +12,8 @@ import httpx
 
 from backend.app.settings import get_settings
 
+from ._retry import retry_with_backoff
+from ._secrets import require_secret
 from .kis_client import (
     KIS_ADJUSTED_DAILY_PRICE_ENDPOINT,
     KIS_BASE_URL,
@@ -103,18 +105,12 @@ def _write_raw(path: Path, response: KisApiResponse) -> str:
 
 
 def _fetch_with_retry(fetch: Any) -> KisApiResponse:
-    last_error: KisApiError | None = None
-    for attempt in range(MAX_RETRIES + 1):
-        try:
-            return fetch()
-        except KisApiError as exc:
-            last_error = exc
-            if not exc.retryable or attempt == MAX_RETRIES:
-                break
-            time.sleep(2**attempt)
-    if last_error is None:
-        raise RuntimeError("KIS adjusted price retry loop ended without a result")
-    raise last_error
+    return retry_with_backoff(
+        fetch,
+        exceptions=KisApiError,
+        is_retryable=lambda exc: exc.retryable,
+        max_retries=MAX_RETRIES,
+    )
 
 
 def _normalize_row(row: dict[str, str]) -> dict[str, str]:
@@ -446,12 +442,10 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = _parser().parse_args()
     settings = get_settings()
-    if settings.kis_app_key is None or settings.kis_app_secret is None:
-        raise SystemExit("KIS_APP_KEY and KIS_APP_SECRET are required")
-    app_key = settings.kis_app_key.get_secret_value().strip()
-    app_secret = settings.kis_app_secret.get_secret_value().strip()
-    if not app_key or not app_secret:
-        raise SystemExit("KIS_APP_KEY and KIS_APP_SECRET are required")
+    app_key = require_secret(settings.kis_app_key, "KIS_APP_KEY and KIS_APP_SECRET")
+    app_secret = require_secret(
+        settings.kis_app_secret, "KIS_APP_KEY and KIS_APP_SECRET"
+    )
     result = collect_kis_adjusted_prices(
         app_key=app_key,
         app_secret=app_secret,

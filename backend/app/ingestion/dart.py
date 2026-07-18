@@ -14,6 +14,8 @@ import httpx
 
 from backend.app.settings import get_settings
 
+from ._files import latest_matching
+from ._secrets import require_secret
 from .dart_client import (
     DART_DOCUMENT_ENDPOINT,
     DART_LIST_ENDPOINT,
@@ -53,13 +55,6 @@ class _TextExtractor(HTMLParser):
         cleaned = " ".join(data.split())
         if cleaned:
             self.parts.append(cleaned)
-
-
-def _latest(path: Path, pattern: str) -> Path:
-    candidates = sorted(path.glob(pattern))
-    if not candidates:
-        raise FileNotFoundError(f"no matching file found under {path}")
-    return candidates[-1]
 
 
 def dart_fund_match_key(name: str) -> str:
@@ -444,12 +439,8 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = _parser().parse_args()
     settings = get_settings()
-    if settings.dart_api_key is None:
-        raise SystemExit("DART_API_KEY is required")
-    api_key = settings.dart_api_key.get_secret_value().strip()
-    if not api_key:
-        raise SystemExit("DART_API_KEY is required")
-    source_report = args.source_report or _latest(
+    api_key = require_secret(settings.dart_api_key, "DART_API_KEY")
+    source_report = args.source_report or latest_matching(
         Path("data/cache/returns"), "pension_etf_cost_return_master_*.json"
     )
     begin_date = args.begin_date or (

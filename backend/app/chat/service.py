@@ -18,7 +18,7 @@ from ..engine import (
     evaluate_mock_scenario,
     evaluate_risk_cap,
 )
-from ..retrieval.repository import KnowledgeMatch, NewsMatch
+from ..retrieval.repository import KnowledgeMatch, KnowledgeSearch, NewsMatch
 from .disclosures import ProviderDisclosure
 from .models import (
     AnswerSection,
@@ -51,12 +51,6 @@ from .tools import (
 logger = logging.getLogger(__name__)
 
 
-class KnowledgeSearch(Protocol):
-    def search_knowledge(
-        self, query: str, *, limit: int = 8
-    ) -> list[KnowledgeMatch]: ...
-
-
 class DisclosureSearch(Protocol):
     def search(
         self,
@@ -69,10 +63,6 @@ class DisclosureSearch(Protocol):
 
 class NewsSearch(Protocol):
     def latest_news(self, search_query: str, *, limit: int = 10) -> list[NewsMatch]: ...
-
-    def random_recent_news(
-        self, search_query: str, *, days: int = 5, limit: int = 3
-    ) -> list[NewsMatch]: ...
 
 
 class PortfolioUniverse(Protocol):
@@ -152,7 +142,11 @@ def _scenario_holdings_summary(
         )
         entries: list[str] = []
         for holding in account.holdings:
-            weight = _one_decimal(holding.amount_krw / total * Decimal("100"))
+            weight = (
+                _one_decimal(holding.amount_krw / total * Decimal("100"))
+                if total != 0
+                else Decimal("0")
+            )
             display_name = holding.instrument_name
             if holding.etf_isu_code is not None:
                 display_name += f" ({holding.etf_isu_code})"
@@ -1849,12 +1843,15 @@ class ChatService:
     def _scenario_selection_response(
         self, limitation: str | None = None
     ) -> ChatResponse:
-        names = ", ".join(item.code for item in self._scenarios.list())
+        names = ", ".join(item.name for item in self._scenarios.list())
         limitations = [limitation] if limitation else []
-        limitations.append("진단할 scenario_code를 요청에 지정해 주세요.")
+        limitations.append("홈 또는 왼쪽 메뉴에서 진단할 가상 고객을 선택해 주세요.")
         return ChatResponse(
             intent=ChatIntent.MOCK_PORTFOLIO,
-            answer=f"사용 가능한 목시나리오는 {names}입니다.",
+            answer=(
+                "먼저 진단할 가상 고객을 선택해 주세요. "
+                f"현재 선택 가능한 고객 유형은 {names}입니다."
+            ),
             data_mode="mock_scenario_selection",
             limitations=limitations,
         )

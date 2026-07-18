@@ -16,6 +16,7 @@ from starlette.responses import StreamingResponse
 
 from ..auth import require_supabase_user_id
 from ..chat import ChatRequest, ChatResponse, ChatService
+from ..chat.heroes import DemoHeroPortfolio, build_demo_heroes
 from ..chat.models import ChatCapabilities, ChatIntent, ScenarioSummary
 from ..chat.narrator import ClaudeNarrator
 from ..chat.query_planner import BlockedReason, QueryPlan
@@ -197,17 +198,6 @@ class AuthenticatedChatRequest(ChatRequest):
     session_id: UUID | None = None
 
 
-class PersistedChatResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    persisted: bool
-    session_id: UUID | None = None
-    user_message_id: UUID | None = None
-    assistant_message_id: UUID | None = None
-    idempotency_replayed: bool = False
-    response: ChatResponse
-
-
 class ChatSessionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -251,6 +241,11 @@ def chat_scenarios() -> list[ScenarioSummary]:
     return LocalScenarioRepository().list()
 
 
+@router.get("/chat/demo/heroes", response_model=list[DemoHeroPortfolio])
+def chat_demo_heroes() -> tuple[DemoHeroPortfolio, ...]:
+    return build_demo_heroes()
+
+
 @router.get(
     "/me/pension-context",
     response_model=DemoUserFinancialContext,
@@ -276,32 +271,6 @@ def get_my_pension_context(
     return context
 
 
-@router.post("/chat/demo", response_model=ChatResponse)
-def chat_demo(
-    request: ChatRequest,
-    service: Annotated[ChatService, Depends(get_chat_service)],
-    narrator: Annotated[ClaudeNarrator | None, Depends(get_chat_narrator)],
-) -> ChatResponse:
-    """Unauthenticated MVP using mock accounts and read-only evidence."""
-
-    try:
-        response = service.ask(request)
-    except _DATABASE_ERRORS as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Chat data source is unavailable",
-        ) from exc
-    return (
-        narrator.narrate(
-            response,
-            pension_tax_input=request.pension_tax,
-            pension_tax_message=request.message,
-        )
-        if narrator is not None
-        else response
-    )
-
-
 @router.post("/chat/demo/stream")
 async def chat_demo_stream(
     request: ChatRequest,
@@ -314,104 +283,6 @@ async def chat_demo_stream(
         _stream_answer(request=request, service=service, narrator=narrator),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
-
-
-@router.post("/chat", response_model=PersistedChatResponse)
-def chat_authenticated(
-    request: AuthenticatedChatRequest,
-    owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
-    repository: Annotated[
-        ChatRepository | None, Depends(get_optional_chat_repository)
-    ],
-    service: Annotated[ChatService, Depends(get_chat_service)],
-    narrator: Annotated[ClaudeNarrator | None, Depends(get_chat_narrator)],
-    context_repository: Annotated[
-        DemoUserContextRepository | None,
-        Depends(get_optional_demo_user_context_repository),
-    ],
-    idempotency_key: Annotated[UUID, Header(alias="Idempotency-Key")],
-) -> PersistedChatResponse:
-    """Generate first, then atomically save one verified exchange."""
-
-    if repository is not None:
-        try:
-            replayed = repository.find_idempotent_exchange(
-                owner_id=owner_id, idempotency_key=idempotency_key
-            )
-        except _DATABASE_ERRORS as exc:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Chat database is unavailable",
-            ) from exc
-        if replayed is not None and replayed.response is not None:
-            return PersistedChatResponse(
-                persisted=True,
-                session_id=replayed.session_id,
-                user_message_id=replayed.user_message_id,
-                assistant_message_id=replayed.assistant_message_id,
-                idempotency_replayed=True,
-                response=replayed.response,
-            )
-
-    try:
-        context = _load_demo_context(context_repository, owner_id)
-    except _DATABASE_ERRORS:
-        context = None
-    chat_request = _authenticated_request(request, context)
-    plan = service.plan(chat_request)
-    try:
-        response, allow_narration = _authenticated_response(
-            request=chat_request,
-            plan=plan,
-            service=service,
-            context=context,
-        )
-    except _DATABASE_ERRORS as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Chat data source is unavailable",
-        ) from exc
-    if narrator is not None and allow_narration:
-        response = narrator.narrate(
-            response,
-            pension_tax_input=chat_request.pension_tax,
-            pension_tax_message=chat_request.message,
-        )
-
-    if response.intent == ChatIntent.OUT_OF_SCOPE:
-        return PersistedChatResponse(persisted=False, response=response)
-    if repository is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Chat database is not configured",
-        )
-
-    try:
-        saved = repository.save_exchange(
-            owner_id=owner_id,
-            question=plan.normalized_message,
-            response=response,
-            session_id=request.session_id,
-            idempotency_key=idempotency_key,
-        )
-    except ChatSessionAccessError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat session not found",
-        ) from exc
-    except _DATABASE_ERRORS as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Chat database is unavailable",
-        ) from exc
-    return PersistedChatResponse(
-        persisted=True,
-        session_id=saved.session_id,
-        user_message_id=saved.user_message_id,
-        assistant_message_id=saved.assistant_message_id,
-        idempotency_replayed=saved.replayed,
-        response=saved.response or response,
     )
 
 
@@ -430,35 +301,37 @@ async def chat_authenticated_stream(
     ],
     idempotency_key: Annotated[UUID, Header(alias="Idempotency-Key")],
 ) -> StreamingResponse:
-    """Authenticated variant that persists the final validated response."""
+    """Authenticated variant that persists the final validated response.
+
+    Out-of-scope answers need no database, so the idempotency/persistence
+    steps are skipped entirely when there is nothing to save.
+    """
 
     async def events() -> AsyncIterator[str]:
-        if repository is None:
-            yield _sse("error", {"detail": "Chat database is not configured"})
-            return
         yield _sse("phase", {"message": "요청을 확인하고 있습니다."})
-        try:
-            replayed = await asyncio.to_thread(
-                repository.find_idempotent_exchange,
-                owner_id=owner_id,
-                idempotency_key=idempotency_key,
-            )
-        except _DATABASE_ERRORS:
-            yield _sse("error", {"detail": "Chat database is unavailable"})
-            return
-        if replayed is not None and replayed.response is not None:
-            yield _sse(
-                "response",
-                {
-                    "persisted": True,
-                    "session_id": str(replayed.session_id),
-                    "user_message_id": str(replayed.user_message_id),
-                    "assistant_message_id": str(replayed.assistant_message_id),
-                    "idempotency_replayed": True,
-                    "response": replayed.response.model_dump(mode="json"),
-                },
-            )
-            return
+        if repository is not None:
+            try:
+                replayed = await asyncio.to_thread(
+                    repository.find_idempotent_exchange,
+                    owner_id=owner_id,
+                    idempotency_key=idempotency_key,
+                )
+            except _DATABASE_ERRORS:
+                yield _sse("error", {"detail": "Chat database is unavailable"})
+                return
+            if replayed is not None and replayed.response is not None:
+                yield _sse(
+                    "response",
+                    {
+                        "persisted": True,
+                        "session_id": str(replayed.session_id),
+                        "user_message_id": str(replayed.user_message_id),
+                        "assistant_message_id": str(replayed.assistant_message_id),
+                        "idempotency_replayed": True,
+                        "response": replayed.response.model_dump(mode="json"),
+                    },
+                )
+                return
 
         try:
             context = await asyncio.to_thread(
@@ -517,6 +390,10 @@ async def chat_authenticated_stream(
                 },
             )
             return
+        if repository is None:
+            yield _sse("error", {"detail": "Chat database is not configured"})
+            return
+
         yield _sse("phase", {"message": "대화 기록을 저장하고 있습니다."})
         try:
             saved = await asyncio.to_thread(

@@ -24,6 +24,7 @@ from pydantic_ai.providers.anthropic import AnthropicProvider
 
 from backend.app.settings import get_settings
 
+from ._secrets import require_secret
 from .news_article import NewsArticleFetchError, fetch_news_article
 
 Decision = Literal["keep", "delete", "review"]
@@ -546,20 +547,8 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = _parser().parse_args()
     settings = get_settings()
-    database_url = (
-        settings.database_url.get_secret_value().strip()
-        if settings.database_url is not None
-        else ""
-    )
-    api_key = (
-        settings.anthropic_api_key.get_secret_value().strip()
-        if settings.anthropic_api_key is not None
-        else ""
-    )
-    if not database_url:
-        raise SystemExit("DATABASE_URL is required")
-    if not api_key:
-        raise SystemExit("ANTHROPIC_API_KEY is required")
+    database_url = require_secret(settings.database_url, "DATABASE_URL")
+    api_key = require_secret(settings.anthropic_api_key, "ANTHROPIC_API_KEY")
     items = load_news_items(database_url)
     decisions = audit_news_items(
         items=items,
