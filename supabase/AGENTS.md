@@ -13,9 +13,10 @@
 1. 루트 [`AGENTS.md`](../AGENTS.md) 또는 [`CLAUDE.md`](../CLAUDE.md)
 2. [`docs/team/_공통_AI규칙.md`](../docs/team/_공통_AI규칙.md)
 3. [`docs/30_스펙/아키텍처.md`](../docs/30_스펙/아키텍처.md)
-4. [`DB_HANDOFF.md`](./DB_HANDOFF.md)
-5. [`migrations/`](./migrations)을 시간순으로 읽고 [`seed.sql`](./seed.sql) 확인
-6. `git status`, 현재 diff, 원격 migration history 확인
+4. [`DB_SESSION_GUIDE.md`](./DB_SESSION_GUIDE.md) — DB 세션 고정 운영 절차
+5. [`DB_HANDOFF.md`](./DB_HANDOFF.md) — 현재 상태·작업 로그 SSOT
+6. [`migrations/`](./migrations)을 시간순으로 읽고 [`seed.sql`](./seed.sql) 확인
+7. `git status`, 현재 diff, 원격 migration history 확인
 
 루트 `AGENTS.md`·`CLAUDE.md`는 이재용만 수정한다. 이 작업을 이유로 두 파일을 편집하지 않는다.
 

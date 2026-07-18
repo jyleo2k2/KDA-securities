@@ -122,6 +122,45 @@ def test_embedding_migration_fixes_bge_m3_dimension() -> None:
     assert "extensions.vector_cosine_ops" in sql
 
 
+def test_corrupted_column_comments_are_repaired_additively() -> None:
+    migrations = sorted(
+        (ROOT / "supabase" / "migrations").glob(
+            "*_repair_corrupted_column_comments.sql"
+        )
+    )
+    assert len(migrations) == 1
+
+    sql = migrations[0].read_text(encoding="utf-8")
+    normalized = sql.lower()
+    expected_statements = (
+        "comment on column public.pension_savings_provider_stats.fee_rate_1y is\n"
+        "    'FSS psCorpList feeRate1: 과거 1년 수수료율. "
+        "당기 수수료율로 해석하지 않는다.';",
+        "comment on column public.retirement_provider_stats.response_division is\n"
+        "    'FSS rpCorpResultList 실제 응답의 division 필드. "
+        "공식 문서의 sysType 응답 표기와 다르다.';",
+        "comment on column public.knowledge_chunks.embedding is\n"
+        "    '검증된 공식 지식 청크의 BGE-M3 1024차원 임베딩. "
+        "코사인 거리 HNSW 인덱스로 의미 검색에 사용한다.';",
+    )
+
+    for statement in expected_statements:
+        assert statement in sql
+
+    assert normalized.count("comment on column") == 3
+    for forbidden in (
+        "alter table",
+        "create table",
+        "drop ",
+        "insert ",
+        "update ",
+        "delete ",
+        "grant ",
+        "revoke ",
+    ):
+        assert forbidden not in normalized
+
+
 def test_chat_idempotency_is_owner_scoped_and_denies_browser_access() -> None:
     sql = IDEMPOTENCY_MIGRATION.read_text(encoding="utf-8").lower()
     policy_sql = IDEMPOTENCY_POLICY_MIGRATION.read_text(encoding="utf-8").lower()
