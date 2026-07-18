@@ -38,6 +38,15 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     chunk_count = sum(len(document.chunks) for document in documents)
     print(f"manifest 검증 완료: 문서 {len(documents)}개, 청크 {chunk_count}개")
+    nearest_review = min(
+        documents,
+        key=lambda document: str(document.metadata["review_due_date"]),
+    )
+    print(
+        "다음 검토: "
+        f"{nearest_review.metadata['document_id']} "
+        f"({nearest_review.metadata['review_due_date']})"
+    )
     if args.validate_only:
         return 0
 

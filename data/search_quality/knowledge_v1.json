@@ -85,6 +85,41 @@
       "expected_source_url": "project://docs/20_\ub9ac\uc11c\uce58/\ud1f4\uc9c1\uc5f0\uae08_\uc0ac\uc5c5\uc790\uacf5\uc2dc_\uc77d\uae30.md",
       "required_content_terms": ["\uc218\uc775\ub960", "\ube44\uc6a9", "\uae30\uc900\uc77c"],
       "critical_top1": true
+    },
+    {
+      "id": "etf-comparison-metrics",
+      "query": "ETF 추적오차 괴리율 유동성 비교",
+      "expected_source_url": "project://docs/20_리서치/ETF_비교지표_읽기.md",
+      "required_content_terms": ["추적오차", "괴리율", "유동성"],
+      "critical_top1": true
+    },
+    {
+      "id": "retirement-pension-2025-performance",
+      "query": "2025년 퇴직연금 적립금 501.4조 수익률 6.5%",
+      "expected_source_url": "project://docs/20_리서치/퇴직연금_2025_운용현황.md",
+      "required_content_terms": ["퇴직연금 적립금", "전체 퇴직연금 수익률", "과거"],
+      "critical_top1": true
+    },
+    {
+      "id": "pension-receipt-taxation",
+      "query": "연금수령한도 연금소득세 5% 4% 3%",
+      "expected_source_url": "project://docs/40_규제/연금수령_과세.md",
+      "required_content_terms": ["연금수령한도", "연금소득 원천징수세율", "나이에 따라"],
+      "critical_top1": true
+    },
+    {
+      "id": "retirement-pension-in-kind-transfer",
+      "query": "퇴직연금 실물이전 사전조회 동일 상품",
+      "expected_source_url": "project://docs/40_규제/퇴직연금_실물이전.md",
+      "required_content_terms": ["실물이전", "사전조회", "동일한 상품"],
+      "critical_top1": true
+    },
+    {
+      "id": "pension-deposit-protection",
+      "query": "IRP ETF 예금자보호 대상 투자손실",
+      "expected_source_url": "project://docs/40_규제/연금계좌_예금자보호.md",
+      "required_content_terms": ["IRP", "ETF", "예금자보호", "투자손실"],
+      "critical_top1": true
     }
   ]
 }
