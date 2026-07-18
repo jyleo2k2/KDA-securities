@@ -755,6 +755,22 @@ def test_guard_allows_same_normalized_unsafe_claim_instance() -> None:
     assert not _adds_unverified_content(candidate, source)
 
 
+@pytest.mark.parametrize(
+    ("source", "candidate"),
+    (
+        ("55세까지 가능합니다.", "55주까지 가능합니다."),
+        ("현재 3위입니다.", "현재 3조입니다."),
+        ("면적은 10평입니다.", "금액은 10원입니다."),
+    ),
+)
+def test_guard_rejects_same_number_with_different_domain_unit(
+    source: str,
+    candidate: str,
+) -> None:
+    # 미등재 단위를 모두 무단위(number)로 합치면 단위 스왑이 통과한다.
+    assert _adds_unverified_content(candidate, source)
+
+
 def test_narration_fallback_logs_stable_reason_code(caplog) -> None:
     # 폴백 분기를 한국어 문구 대신 안정적인 코드로 집계하기 위한 관측 지점.
     base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
