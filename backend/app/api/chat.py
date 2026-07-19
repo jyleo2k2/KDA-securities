@@ -10,7 +10,7 @@ from typing import Annotated
 from uuid import UUID
 
 import psycopg
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict
 from starlette.responses import StreamingResponse
 
@@ -492,6 +492,30 @@ def list_chat_sessions(
             detail="Chat database is unavailable",
         ) from exc
     return [ChatSessionOut.model_validate(session) for session in sessions]
+
+
+@router.delete(
+    "/chat/sessions/{session_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_chat_session(
+    session_id: UUID,
+    owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
+    repository: Annotated[ChatRepository, Depends(get_chat_repository)],
+) -> Response:
+    try:
+        repository.delete_session(owner_id=owner_id, session_id=session_id)
+    except ChatSessionAccessError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chat session not found",
+        ) from exc
+    except _DATABASE_ERRORS as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Chat database is unavailable",
+        ) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(

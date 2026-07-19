@@ -42,6 +42,7 @@ class FakeChatRepository(_BaseFakeChatRepository):
             user_message_id=USER_MESSAGE_ID,
             assistant_message_id=ASSISTANT_MESSAGE_ID,
         )
+        self.deleted: list[dict[str, UUID]] = []
 
     def list_sessions(self, owner_id: UUID) -> list[ChatSessionSummary]:
         assert owner_id == OWNER_ID
@@ -87,6 +88,10 @@ class FakeChatRepository(_BaseFakeChatRepository):
                 evidence=(),
             ),
         ]
+
+    def delete_session(self, *, owner_id: UUID, session_id: UUID) -> UUID:
+        self.deleted.append({"owner_id": owner_id, "session_id": session_id})
+        return session_id
 
 
 def _service() -> ChatService:
@@ -417,6 +422,19 @@ def test_chat_requires_bearer_authentication() -> None:
     assert response.status_code == 401
 
 
+def test_delete_chat_session_requires_bearer_authentication() -> None:
+    repository = FakeChatRepository()
+    app.dependency_overrides[get_chat_repository] = lambda: repository
+    try:
+        with TestClient(app) as client:
+            response = client.delete(f"/chat/sessions/{SESSION_ID}")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 401
+    assert repository.deleted == []
+
+
 def test_session_history_returns_current_chat_response_contract() -> None:
     repository = FakeChatRepository()
     _override_authenticated_dependencies(repository)
@@ -436,8 +454,27 @@ def test_session_history_returns_current_chat_response_contract() -> None:
     assert payload[1]["question_message_id"] == str(USER_MESSAGE_ID)
 
 
+def test_authenticated_user_can_delete_owned_session() -> None:
+    repository = FakeChatRepository()
+    _override_authenticated_dependencies(repository)
+    try:
+        with TestClient(app) as client:
+            response = client.delete(f"/chat/sessions/{SESSION_ID}")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 204
+    assert response.content == b""
+    assert repository.deleted == [
+        {"owner_id": OWNER_ID, "session_id": SESSION_ID}
+    ]
+
+
 class ForeignSessionRepository(FakeChatRepository):
     def get_messages(self, *, owner_id: UUID, session_id: UUID):
+        raise ChatSessionAccessError("not found")
+
+    def delete_session(self, *, owner_id: UUID, session_id: UUID) -> UUID:
         raise ChatSessionAccessError("not found")
 
 
@@ -453,9 +490,35 @@ def test_foreign_session_is_reported_as_not_found() -> None:
     assert response.status_code == 404
 
 
+def test_foreign_session_delete_is_reported_as_not_found() -> None:
+    repository = ForeignSessionRepository()
+    _override_authenticated_dependencies(repository)
+    try:
+        with TestClient(app) as client:
+            response = client.delete(f"/chat/sessions/{uuid4()}")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+
+
 class UnavailableRepository(FakeChatRepository):
     def save_exchange(self, **kwargs) -> SavedChatExchange:
         raise psycopg.OperationalError("database unavailable")
+
+    def delete_session(self, *, owner_id: UUID, session_id: UUID) -> UUID:
+        raise psycopg.OperationalError("database unavailable")
+
+
+def test_delete_database_failure_returns_service_unavailable() -> None:
+    _override_authenticated_dependencies(UnavailableRepository())
+    try:
+        with TestClient(app) as client:
+            response = client.delete(f"/chat/sessions/{SESSION_ID}")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 503
 
 
 def test_database_failure_is_distinct_from_auth_failure() -> None:

@@ -12,6 +12,7 @@ import {
 
 import {
   ApiError,
+  deleteChatSession,
   getChatSessions,
   getMyPensionContext,
   getScenarios,
@@ -105,7 +106,7 @@ function Icon({
   name,
   size = 20,
 }: {
-  name: "spark" | "send" | "book" | "database" | "chevron" | "shield" | "refresh" | "sun" | "chart" | "star";
+  name: "spark" | "send" | "book" | "database" | "chevron" | "shield" | "refresh" | "sun" | "chart" | "star" | "trash";
   size?: number;
 }) {
   const paths = {
@@ -119,6 +120,7 @@ function Icon({
     sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" /></>,
     chart: <><path d="M4 20V4M4 20h16" /><path d="m8 15 3-4 3 2 5-6" /></>,
     star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />,
+    trash: <path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6" />,
   };
   return <svg aria-hidden="true" viewBox="0 0 24 24" width={size} height={size}>{paths[name]}</svg>;
 }
@@ -366,6 +368,8 @@ export function GuidePage({
     useState<ConversationContext | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [deleteStatus, setDeleteStatus] = useState<string | null>(null);
   const [loginPanelOpen, setLoginPanelOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -392,6 +396,7 @@ export function GuidePage({
   }>({ userId: authenticatedUserId, accessToken: accessToken ?? null });
   const authGenerationRef = useRef(0);
   const conversationGenerationRef = useRef(0);
+  const sessionListGenerationRef = useRef(0);
   const sendingRef = useRef(false);
 
   currentAuthRef.current = {
@@ -496,9 +501,11 @@ export function GuidePage({
     };
     if (authChanged) {
       authGenerationRef.current += 1;
+      sessionListGenerationRef.current += 1;
       sendingRef.current = false;
       setIsSending(false);
       setHistoryLoading(false);
+      setDeletingSessionId(null);
     }
     if (userChanged) {
       conversationGenerationRef.current += 1;
@@ -555,13 +562,20 @@ export function GuidePage({
 
   async function refreshChatSessions(token: string, userId: string) {
     const authGeneration = authGenerationRef.current;
+    const sessionListGeneration = sessionListGenerationRef.current;
     try {
       const sessions = await getChatSessions(token);
-      if (!isCurrentOperation(authGeneration, userId, token)) return;
+      if (
+        !isCurrentOperation(authGeneration, userId, token)
+        || sessionListGenerationRef.current !== sessionListGeneration
+      ) return;
       setChatSessions(sessions);
       setHistoryError(null);
     } catch (error) {
-      if (!isCurrentOperation(authGeneration, userId, token)) return;
+      if (
+        !isCurrentOperation(authGeneration, userId, token)
+        || sessionListGenerationRef.current !== sessionListGeneration
+      ) return;
       setHistoryError(authenticatedErrorMessage(error));
     }
   }
@@ -675,9 +689,81 @@ export function GuidePage({
     }
   }
 
+  async function deleteStoredSession(session: ChatSessionSummary) {
+    if (
+      !accessToken
+      || !authenticatedUserId
+      || historyLoading
+      || isSending
+      || deletingSessionId
+    ) return;
+    const title = session.title?.trim() || "새 대화";
+    if (!window.confirm(`‘${title}’ 대화를 삭제할까요?\n삭제한 대화는 복구할 수 없습니다.`)) {
+      return;
+    }
+
+    const requestToken = accessToken;
+    const requestUserId = authenticatedUserId;
+    const authGeneration = authGenerationRef.current;
+    const conversationGeneration = conversationGenerationRef.current;
+    const deletedIndex = chatSessions.findIndex(
+      (item) => item.session_id === session.session_id,
+    );
+    const focusSessionId = (
+      chatSessions[deletedIndex + 1] ?? chatSessions[deletedIndex - 1]
+    )?.session_id;
+    sessionListGenerationRef.current += 1;
+    setDeletingSessionId(session.session_id);
+    setDeleteStatus(null);
+    setHistoryError(null);
+    try {
+      await deleteChatSession(session.session_id, requestToken);
+      if (!isCurrentOperation(authGeneration, requestUserId, requestToken)) return;
+      setChatSessions((current) => current.filter(
+        (item) => item.session_id !== session.session_id,
+      ));
+      sessionListGenerationRef.current += 1;
+      setDeleteStatus("대화가 삭제되었습니다.");
+      if (
+        activeSessionId === session.session_id
+        && conversationGenerationRef.current === conversationGeneration
+      ) {
+        conversationGenerationRef.current += 1;
+        setMessages([]);
+        setActiveSessionId(null);
+        setConversationContext(null);
+        setIsSidebarOpen(false);
+      }
+      const focusGeneration = conversationGenerationRef.current;
+      window.setTimeout(() => {
+        if (
+          !isCurrentOperation(
+            authGeneration,
+            requestUserId,
+            requestToken,
+            focusGeneration,
+          )
+        ) return;
+        const nextHistoryButton = Array.from(
+          document.querySelectorAll<HTMLButtonElement>(".history-open"),
+        ).find((button) => button.dataset.sessionId === focusSessionId);
+        (nextHistoryButton ?? textareaRef.current)?.focus();
+      }, 0);
+    } catch (error) {
+      if (!isCurrentOperation(authGeneration, requestUserId, requestToken)) return;
+      setHistoryError(authenticatedErrorMessage(error));
+    } finally {
+      if (isCurrentOperation(authGeneration, requestUserId, requestToken)) {
+        setDeletingSessionId((current) => (
+          current === session.session_id ? null : current
+        ));
+      }
+    }
+  }
+
   async function submitPrompt(prompt: string) {
     const normalized = prompt.trim();
-    if (normalized.length < 2 || sendingRef.current) return;
+    if (normalized.length < 2 || sendingRef.current || deletingSessionId) return;
 
     const requestToken = accessToken ?? null;
     const requestUserId = authenticatedUserId;
@@ -847,19 +933,44 @@ export function GuidePage({
                   <p className="auth-note">대화 이력을 불러오는 중...</p>
                 ) : chatSessions.length === 0 ? (
                   <p className="auth-note">아직 저장된 대화가 없습니다.</p>
-                ) : chatSessions.map((session) => (
-                  <button
-                    className={activeSessionId === session.session_id ? "active" : ""}
-                    type="button"
-                    key={session.session_id}
-                    onClick={() => void loadStoredSession(session.session_id)}
-                    disabled={historyLoading}
-                  >
-                    <strong>{session.title || "새 대화"}</strong>
-                    <small>{new Date(session.updated_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</small>
-                  </button>
-                ))}
+                ) : chatSessions.map((session) => {
+                  const title = session.title || "새 대화";
+                  const deleting = deletingSessionId === session.session_id;
+                  const disabled = historyLoading || isSending || deletingSessionId !== null;
+                  return (
+                    <div
+                      className={`history-item ${activeSessionId === session.session_id ? "active" : ""}`}
+                      key={session.session_id}
+                    >
+                      <button
+                        className="history-open"
+                        data-session-id={session.session_id}
+                        type="button"
+                        onClick={() => void loadStoredSession(session.session_id)}
+                        disabled={disabled}
+                      >
+                        <strong>{title}</strong>
+                        <small>{new Date(session.updated_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</small>
+                      </button>
+                      <button
+                        className="history-delete"
+                        type="button"
+                        aria-label={`대화 삭제: ${title}`}
+                        title="대화 삭제"
+                        onClick={() => void deleteStoredSession(session)}
+                        disabled={disabled}
+                      >
+                        {deleting ? "…" : <Icon name="trash" size={14} />}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
+              {deleteStatus && (
+                <p className="auth-note" role="status" aria-live="polite">
+                  {deleteStatus}
+                </p>
+              )}
             </>
           ) : auth.configured ? (
             <>
@@ -1043,7 +1154,7 @@ export function GuidePage({
                       <AssistantMessage response={message.response} text={message.text} />
                     </div>
                     {message.failedPrompt && (
-                      <button className="retry-button" type="button" onClick={() => void submitPrompt(message.failedPrompt!)} disabled={isSending}>
+                      <button className="retry-button" type="button" onClick={() => void submitPrompt(message.failedPrompt!)} disabled={isSending || deletingSessionId !== null}>
                         <Icon name="refresh" size={15} /> 다시 시도
                       </button>
                     )}
@@ -1079,9 +1190,9 @@ export function GuidePage({
               placeholder="연금에 대해 무엇이든 물어보세요"
               rows={1}
               aria-label="질문 입력"
-              disabled={isSending}
+              disabled={isSending || deletingSessionId !== null}
             />
-            <button type="submit" disabled={input.trim().length < 2 || isSending} aria-label="질문 보내기"><Icon name="send" size={20} /></button>
+            <button type="submit" disabled={input.trim().length < 2 || isSending || deletingSessionId !== null} aria-label="질문 보내기"><Icon name="send" size={20} /></button>
           </form>
           <p>AI 답변은 투자 판단을 돕는 정보이며, 미래 수익을 보장하지 않습니다.</p>
         </div>
