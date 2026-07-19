@@ -33,6 +33,17 @@ from .educational_portfolio import (
     calculate_return_correlation,
     calculate_target_allocation,
 )
+from .etf_theme import (
+    EtfThemeCatalog,
+    EtfThemeDefinition,
+    KisComponentHolding,
+    ThemeCandidateEvaluation,
+    ThemeEtfCandidate,
+    classify_etf_themes,
+    normalize_kis_holdings,
+    resolve_theme,
+    select_theme_etf_candidates,
+)
 from .educational_portfolio import (
     RiskProfile as EducationalRiskProfile,
 )
@@ -144,6 +155,8 @@ __all__ = [
     "EducationalPortfolioInput",
     "EducationalRiskProfile",
     "EtfObservation",
+    "EtfThemeCatalog",
+    "EtfThemeDefinition",
     "EtfPlanningAssessmentEvaluation",
     "EtfPlanningReturnEvaluation",
     "EtfPlanningReturnInput",
@@ -153,6 +166,7 @@ __all__ = [
     "IncomeBasis",
     "IrpDeferredIncomeStatus",
     "KrxEtfEvidenceProduct",
+    "KisComponentHolding",
     "NonPensionWithdrawalInput",
     "NonPensionWithdrawalEvaluation",
     "OverlapFinding",
@@ -190,6 +204,8 @@ __all__ = [
     "StatutoryException",
     "SleeveTarget",
     "SurveyAnswer",
+    "ThemeCandidateEvaluation",
+    "ThemeEtfCandidate",
     "WithdrawalCalculationMode",
     "WithdrawalCalculationStatus",
     "WithdrawalReason",
@@ -207,6 +223,7 @@ __all__ = [
     "calculate_relative_etf_risk_percentiles",
     "calculate_return_correlation",
     "calculate_target_allocation",
+    "classify_etf_themes",
     "evaluate_account_diagnostics",
     "evaluate_mock_scenario",
     "evaluate_profile",
@@ -215,5 +232,8 @@ __all__ = [
     "evaluate_historical_returns",
     "evaluate_profit_lock",
     "evaluate_risk_budget",
+    "normalize_kis_holdings",
+    "resolve_theme",
+    "select_theme_etf_candidates",
     "simulate_accumulation",
 ]

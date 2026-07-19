@@ -25,6 +25,7 @@ from ..database import get_database_pool
 from ..engine.audit import EngineAuditRepository
 from ..engine.models import AccountType
 from ..etf_universe_database import PostgresPortfolioUniverseRepository
+from ..etf_theme_repository import get_default_etf_theme_repository
 from ..ingestion.embeddings import get_query_embedder
 from ..market_evidence_repository import KrxMarketEvidenceRepository
 from ..pension_accounts_repository import PensionAccountRepository
@@ -229,6 +230,7 @@ def _chat_service(database_url: str) -> ChatService:
             get_portfolio_universe_repository,
             database_url=database_url,
         ),
+        theme_repository=get_default_etf_theme_repository(),
     )
 
 

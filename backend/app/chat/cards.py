@@ -79,6 +79,13 @@ CHAT_CARDS = (
         priority=20,
     ),
     ChatCard(
+        card_id="etf_theme_semiconductor",
+        title="반도체 ETF 테마",
+        message="반도체 테마의 특징과 위험을 알려줘.",
+        intent=ChatIntent.ETF_THEME,
+        priority=25,
+    ),
+    ChatCard(
         card_id="tax_credit",
         title="연금 세액공제",
         message="올해 받을 수 있는 연금 세액공제가 궁금해.",

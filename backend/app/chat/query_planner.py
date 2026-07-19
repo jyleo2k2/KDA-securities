@@ -4,6 +4,10 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ..engine import AccountType
+from ..etf_theme_repository import (
+    EtfThemeRepository,
+    get_default_etf_theme_repository,
+)
 from ..text_normalization import normalize_search_text
 from .models import ChatIntent
 
@@ -37,6 +41,9 @@ class QueryPlan(BaseModel):
     requests_tax_credit: bool = False
     requests_withdrawal_tax: bool = False
     account_rule_topic: AccountRuleTopic | None = None
+    theme_id: str | None = None
+    requests_theme_candidates: bool = False
+    requests_theme_holdings: bool = False
     blocked_reason: BlockedReason | None = None
 
     @model_validator(mode="after")
@@ -61,6 +68,14 @@ class QueryPlan(BaseModel):
             and self.account_rule_topic is not None
         ):
             raise ValueError("account_rule_topic requires account_rule intent")
+        if self.intent == ChatIntent.ETF_THEME and self.theme_id is None:
+            raise ValueError("etf_theme intent requires theme_id")
+        if self.intent != ChatIntent.ETF_THEME and (
+            self.theme_id is not None
+            or self.requests_theme_candidates
+            or self.requests_theme_holdings
+        ):
+            raise ValueError("theme fields require etf_theme intent")
         return self
 
 
@@ -104,6 +119,10 @@ _FUTURE_PREDICTION = re.compile(
     r"|(?:수익률|가격).{0,15}(?:예측|보장|확정)|목표가"
 )
 _PRODUCT_LEVEL = re.compile(r"개별\s*상품|상품\s*추천|상품\s*비교|판매\s*중인\s*상품")
+_THEME_CANDIDATE_TERMS = re.compile(
+    r"상품|종목|후보|추천|비교|보수|거래\s*대금|순자산", re.I
+)
+_THEME_HOLDING_TERMS = re.compile(r"구성\s*종목|편입\s*종목|보유\s*종목|종목\s*비중")
 _COMBINE_WORDS = (
     r"(?:합쳐(?:서)?|합산(?:해서)?|통합(?:해서)?|묶어(?:서)?|"
     r"전체(?:로)?|한꺼번에|둘을\s*같이|같이\s*묶어)"
@@ -187,6 +206,7 @@ _INTENT_PRIORITY = (
     ChatIntent.MOCK_PORTFOLIO,
     ChatIntent.PENSION_TAX,
     ChatIntent.NEWS,
+    ChatIntent.ETF_THEME,
     ChatIntent.EDUCATIONAL_PORTFOLIO,
     ChatIntent.PROVIDER_DISCLOSURE,
     ChatIntent.ACCOUNT_RULE,
@@ -270,11 +290,19 @@ def plan_question(
     *,
     default_max_results: int = 3,
     structured_pension_tax: bool = False,
+    theme_repository: EtfThemeRepository | None = None,
 ) -> QueryPlan:
     normalized = normalize_search_text(message)
     max_results = _max_results(normalized, default_max_results)
     if not normalized:
         return _blocked("질문 없음", BlockedReason.UNSUPPORTED, max_results)
+    if theme_repository is not None:
+        theme = theme_repository.resolve(normalized)
+    else:
+        try:
+            theme = get_default_etf_theme_repository().resolve(normalized)
+        except (FileNotFoundError, ValueError):
+            theme = None
     blocking_rules = (
         (
             _contains_sensitive_information(normalized),
@@ -286,7 +314,7 @@ def plan_question(
             BlockedReason.FUTURE_PREDICTION,
         ),
         (
-            _PRODUCT_LEVEL.search(normalized) is not None,
+            _PRODUCT_LEVEL.search(normalized) is not None and theme is None,
             BlockedReason.PRODUCT_LEVEL_UNAVAILABLE,
         ),
     )
@@ -311,6 +339,7 @@ def plan_question(
         ChatIntent.MOCK_PORTFOLIO: _SCENARIO_TERMS.search(normalized) is not None,
         ChatIntent.PENSION_TAX: requests_tax_credit or requests_withdrawal_tax,
         ChatIntent.NEWS: _NEWS_TERMS.search(normalized) is not None,
+        ChatIntent.ETF_THEME: theme is not None,
         ChatIntent.EDUCATIONAL_PORTFOLIO: (
             _EDUCATIONAL_PORTFOLIO_TERMS.search(normalized) is not None
         ),
@@ -369,6 +398,21 @@ def plan_question(
             account_types=account_types,
             news_query=news_query,
             max_results=max_results,
+        )
+    if intent == ChatIntent.ETF_THEME:
+        assert theme is not None
+        requests_holdings = _THEME_HOLDING_TERMS.search(normalized) is not None
+        return QueryPlan(
+            normalized_message=normalized,
+            intent=ChatIntent.ETF_THEME,
+            account_types=account_types,
+            max_results=max_results,
+            theme_id=theme.theme_id,
+            requests_theme_candidates=(
+                requests_holdings
+                or _THEME_CANDIDATE_TERMS.search(normalized) is not None
+            ),
+            requests_theme_holdings=requests_holdings,
         )
     if intent == ChatIntent.EDUCATIONAL_PORTFOLIO:
         return QueryPlan(
