@@ -6,6 +6,11 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.app.api.chat import (
+    AuthenticatedChatRequest,
+    _authenticated_planning_request,
+    _authenticated_request,
+)
 from backend.app.api.deps import (
     get_chat_narrator,
     get_chat_service,
@@ -65,6 +70,30 @@ def _context() -> DemoUserFinancialContext:
             "irp_balance_krw",
             "pension_savings_balance_krw",
         ),
+    )
+
+
+def test_authenticated_planning_distinguishes_explicit_tax_payload() -> None:
+    implicit_request = AuthenticatedChatRequest(message="결과를 알려줘")
+    implicit_chat = _authenticated_request(implicit_request, _context())
+    explicit_request = AuthenticatedChatRequest(
+        message="결과를 알려줘",
+        pension_tax=_context().to_pension_tax_input(),
+    )
+    explicit_chat = _authenticated_request(explicit_request, _context())
+
+    assert implicit_chat.pension_tax is not None
+    assert (
+        _authenticated_planning_request(
+            implicit_request, implicit_chat
+        ).pension_tax
+        is None
+    )
+    assert (
+        _authenticated_planning_request(
+            explicit_request, explicit_chat
+        ).pension_tax
+        is not None
     )
 
 
