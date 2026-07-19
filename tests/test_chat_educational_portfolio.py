@@ -129,7 +129,7 @@ def test_chatbot_only_explains_structured_portfolio_engine_result() -> None:
     assert "35년" in sections["위험중립형 투자전략"]
     assert "위험중립형 코어·위성 전략" in sections["위험중립형 투자전략"]
     assert "엔진 편입 후보" in sections["위험중립형 투자전략"]
-    assert "신규 납입금" in sections["위험중립형 투자전략"]
+    assert "새 납입금" in sections["위험중립형 투자전략"]
     assert "미래 예측값이 아니라" in sections["장기 계획수익률"]
 
 
@@ -188,7 +188,7 @@ def test_chat_does_not_collect_age_when_survey_is_missing() -> None:
     response = _service().ask(ChatRequest(message="내 연금 운용 전략을 알려줘"))
 
     assert response.data_mode == "survey_required"
-    assert "프로필에서 설문을 완료" in response.answer
+    assert "프로필에서 설문을 마친 뒤" in response.answer
     assert "현재 나이" not in response.answer
     assert "수령 개시 나이" not in response.answer
 
@@ -320,7 +320,7 @@ def test_chat_rejects_style_above_completed_survey_result() -> None:
     assert response.educational_portfolio_evaluation is None
     assert "위험중립형" in response.answer
     assert "공격투자형" in response.answer
-    assert "위험해 제안하지 않습니다" in response.answer
+    assert "위험해서 제안하지 않아요" in response.answer
     assert response.conversation_context is not None
     assert (
         response.conversation_context.selected_risk_profile
@@ -433,6 +433,6 @@ def test_missing_return_master_names_each_unavailable_account() -> None:
     )
 
     assert response.data_mode == "unavailable"
-    assert "IRP 계좌용 ETF 비용·수익률 마스터" in response.answer
-    assert "연금저축펀드 계좌용 ETF 비용·수익률 마스터" in response.answer
+    assert "IRP 계좌용 ETF 비용·수익률 기준 데이터" in response.answer
+    assert "연금저축펀드 계좌용 ETF 비용·수익률 기준 데이터" in response.answer
     assert "0원" not in response.answer

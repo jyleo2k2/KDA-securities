@@ -173,13 +173,12 @@ def _scenario_rebalancing_summary(duplicated_asset_classes: list[str]) -> str:
         )
         return (
             f"여러 계좌에 {duplicated}이(가) 겹쳐 있어 리밸런싱 점검이 "
-            "필요합니다. 다만 이 목시나리오에는 성향별 목표비중과 추가 납입액이 "
-            "없으므로 매수·매도 수량은 계산하지 않았습니다."
+            "필요해요. 다만 이 예시에는 성향별 목표비중과 추가 납입액이 "
+            "없어서 매수·매도 수량은 계산하지 않았어요."
         )
     return (
-        "계좌 간 같은 자산군의 중복은 확인되지 않았습니다. 다만 성향별 목표비중과 "
-        "추가 납입액이 없으므로 리밸런싱 필요 여부를 확정하거나 매수·매도 수량을 "
-        "계산하지 않았습니다."
+        "계좌 사이에 겹친 자산군은 없어요. 다만 성향별 목표비중과 추가 납입액이 "
+        "없어서 리밸런싱 필요 여부를 확정하거나 매수·매도 수량을 계산하지 않았어요."
     )
 
 
@@ -238,16 +237,16 @@ _SLEEVE_LABELS = {
     "cash": "현금",
 }
 _ROLE_SENTENCES = {
-    "long_term_growth_core": "주식 ETF를 장기 성장 핵심자산으로 둡니다.",
+    "long_term_growth_core": "주식 ETF를 장기 성장 핵심자산으로 둬요.",
     "inflation_and_diversification": (
-        "실물자산은 인플레이션 대응과 분산 역할을 맡습니다."
+        "실물자산은 물가 상승에 대비하고 자산을 나누는 역할을 해요."
     ),
     "capped_tactical_satellite": (
-        "전술자산은 한도가 정해진 위성자산으로만 활용합니다."
+        "전술자산은 비중 한도가 있는 보조자산으로만 활용해요."
     ),
-    "drawdown_buffer": "채권은 하락 위험을 완충하는 역할을 맡습니다.",
+    "drawdown_buffer": "채권은 가격 하락 충격을 줄이는 역할을 해요.",
     "liquidity_and_rebalancing_reserve": (
-        "현금은 유동성과 리밸런싱 여력을 확보합니다."
+        "현금은 필요할 때 바로 쓰고 비중을 다시 맞출 여유를 줘요."
     ),
 }
 
@@ -275,7 +274,7 @@ def _strategy_summary(evaluation: EducationalPortfolioEvaluation) -> str:
     ]
     return (
         f"{evaluation.planning_horizon_years}년의 장기 운용기간을 고려한 "
-        f"{profile} {strategy}입니다. " + " ".join(role_sentences)
+        f"{profile} {strategy}이에요. " + " ".join(role_sentences)
     )
 
 
@@ -299,7 +298,7 @@ def _target_portfolio_summary(
     )
     return (
         ",\n".join(lines)
-        + f"\n일반 위험자산 목표비중은 전체의 약 {risk_target}%입니다."
+        + f"\n일반 위험자산 목표비중은 전체의 약 {risk_target}%예요."
     )
 
 
@@ -310,14 +309,14 @@ def _rebalancing_summary(evaluation: EducationalPortfolioEvaluation) -> str:
     )
     parts = [
         f"목표비중에서 {threshold}%포인트를 초과해 벗어난 자산군은 "
-        "리밸런싱 점검 대상으로 봅니다."
+        "리밸런싱(자산 비중을 목표에 맞게 다시 조정하는 일) 점검 대상이에요."
     ]
     if rebalancing.contribution_first:
-        parts.append("매도보다 신규 납입금을 부족한 자산에 먼저 배분합니다.")
+        parts.append("매도보다 새 납입금을 부족한 자산에 먼저 나눠요.")
     if not rebalancing.sell_instruction_produced:
-        parts.append("자동 매도 지시는 만들지 않습니다.")
+        parts.append("자동 매도 지시는 만들지 않아요.")
     if rebalancing.status == "not_requested":
-        parts.append("보유자산 입력이 없어 현재 이탈폭 계산은 생략했습니다.")
+        parts.append("보유자산 입력이 없어 현재 차이는 계산하지 않았어요.")
     else:
         review = [
             _SLEEVE_LABELS[item.sleeve]
@@ -325,11 +324,11 @@ def _rebalancing_summary(evaluation: EducationalPortfolioEvaluation) -> str:
             if item.status != "within_drift_band"
         ]
         if review:
-            parts.append(f"현재 입력에서는 {' · '.join(review)}을(를) 점검합니다.")
+            parts.append(f"현재 입력에서는 {' · '.join(review)}을(를) 점검해요.")
         else:
-            parts.append("현재 입력에서는 모든 자산군이 허용 범위 안입니다.")
+            parts.append("현재 입력에서는 모든 자산군이 허용 범위 안이에요.")
         if rebalancing.status == "partial_unclassified_holdings":
-            parts.append("분류되지 않은 보유자산은 별도 확인이 필요합니다.")
+            parts.append("분류되지 않은 보유자산은 따로 확인해야 해요.")
     return " ".join(parts)
 
 
@@ -735,8 +734,8 @@ class ChatService:
             return ChatResponse(
                 intent=ChatIntent.PENSION_TAX,
                 answer=(
-                    f"질문에서 {missing_text}을(를) 확인하지 못했습니다. "
-                    "해당 값만 질문에 포함하거나 연금세액 입력 패널에 "
+                    f"계산에 필요한 {missing_text}이(가) 빠져 있어요. "
+                    "해당 값만 질문에 적거나 연금세액 입력 화면에 "
                     f"입력해 주세요.\n{PENSION_TAX_CLOSING_NOTICE}"
                 ),
                 data_mode="input_required",
@@ -909,10 +908,10 @@ class ChatService:
     def _tax_credit_text(cls, result: PensionTaxCreditEvaluation) -> str:
         base = (
             "세액공제 대상은 총 "
-            f"{cls._krw(result.total_eligible_contribution_krw)}입니다. "
+            f"{cls._krw(result.total_eligible_contribution_krw)}이에요. "
             "입력한 납입액은 연금저축 "
             f"{cls._krw(result.pension_savings_contribution_krw)}, IRP "
-            f"{cls._krw(result.irp_contribution_krw)}입니다."
+            f"{cls._krw(result.irp_contribution_krw)}이에요."
         )
         if result.rate_determined:
             scenario = result.rate_scenarios[0]
@@ -920,7 +919,7 @@ class ChatService:
                 f"{base} 표시율 "
                 f"{_decimal_text(scenario.local_inclusive_display_rate_percent)}% 기준 "
                 "예상 세액공제액은 "
-                f"{cls._krw(scenario.estimated_tax_credit_krw)}입니다."
+                f"{cls._krw(scenario.estimated_tax_credit_krw)}이에요."
             )
         ordered = sorted(
             result.rate_scenarios,
@@ -932,7 +931,7 @@ class ChatService:
             f"{_decimal_text(ordered[-1].local_inclusive_display_rate_percent)}% "
             "시나리오로 계산한 예상 세액공제액은 "
             f"{cls._krw(ordered[0].estimated_tax_credit_krw)}부터 "
-            f"{cls._krw(ordered[-1].estimated_tax_credit_krw)}까지입니다."
+            f"{cls._krw(ordered[-1].estimated_tax_credit_krw)}까지예요."
         )
 
     @staticmethod
@@ -991,14 +990,12 @@ class ChatService:
             if result.total_balance_krw is None:
                 return (
                     "의료비 등 부득이한 인출 사유는 일반 연금외수령과 "
-                    "과세방식이 다를 수 있어 요청한 예상세액을 계산하지 "
-                    "않았습니다. 먼저 법정 요건과 적용 과세방식을 확인해야 "
-                    "합니다."
+                    "세금 부과 방식이 다를 수 있어 예상세액을 계산하지 않았어요. "
+                    "먼저 법정 요건과 적용 방식을 확인해야 해요."
                 )
             return (
-                f"두 계좌 잔액 합계는 {cls._krw(result.total_balance_krw)}입니다. "
-                "인출 사유를 먼저 확인해야 하므로 기타소득 간이 예상액은 "
-                "계산하지 않았습니다."
+                f"두 계좌 잔액 합계는 {cls._krw(result.total_balance_krw)}이에요. "
+                "인출 사유를 먼저 확인해야 해서 기타소득 예상액은 계산하지 않았어요."
             )
         assert result.assumed_other_income_tax_base_krw is not None
         assert result.other_income_rate_percent is not None
@@ -1008,9 +1005,9 @@ class ChatService:
             "당해연도 납입 과세제외액 "
             f"{cls._krw(result.total_current_year_contribution_excluded_krw)} 등을 "
             "반영한 16.5% 간이 과세대상액은 "
-            f"{cls._krw(result.assumed_other_income_tax_base_krw)}입니다. "
+            f"{cls._krw(result.assumed_other_income_tax_base_krw)}이에요. "
             "지방소득세를 포함한 기타소득 원천징수 최대 간이 추정액은 "
-            f"{cls._krw(result.estimated_max_other_income_withholding_krw)}입니다."
+            f"{cls._krw(result.estimated_max_other_income_withholding_krw)}이에요."
         )
 
     @staticmethod
@@ -1073,8 +1070,8 @@ class ChatService:
             return ChatResponse(
                 intent=ChatIntent.OUT_OF_SCOPE,
                 answer=(
-                    "개인 식별정보나 인증정보가 포함된 질문은 처리하지 않습니다. "
-                    "해당 값을 삭제한 뒤 제도나 운용 원리만 질문해 주세요."
+                    "개인 식별정보나 인증정보가 포함된 질문은 처리하지 않아요. "
+                    "해당 값을 지운 뒤 제도나 운용 원리만 질문해 주세요."
                 ),
                 data_mode="blocked",
                 limitations=[
@@ -1085,9 +1082,9 @@ class ChatService:
             return ChatResponse(
                 intent=ChatIntent.OUT_OF_SCOPE,
                 answer=(
-                    "미래 수익률·목표가·수익 보장은 제공하지 않습니다. "
-                    "구조화된 포트폴리오 입력이 있으면 규칙 엔진이 계산한 "
-                    "CMA 기반 장기 계획가정과 과거 위험지표만 설명합니다."
+                    "미래 수익률 예측은 제공하지 않아요. 목표가나 수익 보장도 "
+                    "안내하지 않아요. 포트폴리오 입력이 있으면 규칙 엔진이 계산한 "
+                    "장기 계획가정과 과거 위험지표를 설명해 드려요."
                 ),
                 data_mode="blocked",
                 limitations=[
@@ -1099,8 +1096,8 @@ class ChatService:
             return ChatResponse(
                 intent=ChatIntent.OUT_OF_SCOPE,
                 answer=(
-                    "상품 선택과 주문은 이용자가 금융회사 공식 채널에서 직접 "
-                    "수행해야 합니다. 챗봇은 판단 기준과 근거만 설명합니다."
+                    "상품 선택과 주문은 이용자가 직접 해야 해요. 금융회사 공식 "
+                    "채널을 이용해 주세요. 챗봇은 판단 기준과 근거만 설명해 드려요."
                 ),
                 data_mode="blocked",
                 limitations=["주문·자동운용은 지원하지 않습니다."],
@@ -1109,9 +1106,9 @@ class ChatService:
             return ChatResponse(
                 intent=ChatIntent.OUT_OF_SCOPE,
                 answer=(
-                    "현재 실적재 계약은 연금저축 회사와 퇴직연금 사업자 집계 "
-                    "단위입니다. 개별 상품 데이터로 오인될 수 있어 상품 단위 "
-                    "비교·추천은 제공하지 않습니다."
+                    "현재 데이터는 연금저축 회사와 퇴직연금 사업자 단위로 모여 "
+                    "있어요. 개별 상품 데이터가 아니어서 상품별 비교·추천은 "
+                    "제공하지 않아요."
                 ),
                 data_mode="unavailable",
                 limitations=["검증된 개별 상품 식별자와 적격성 데이터가 필요합니다."],
@@ -1121,7 +1118,7 @@ class ChatService:
                 intent=ChatIntent.OUT_OF_SCOPE,
                 answer=(
                     "공시 수치는 계좌 제도별 항목이 달라 한 번에 섞어 비교하지 "
-                    "않습니다. DC형, IRP, 연금저축 중 하나를 지정해 주세요."
+                    "않아요. DC형, IRP, 연금저축 중 하나를 지정해 주세요."
                 ),
                 data_mode="blocked",
                 limitations=["계좌별 공시 계약을 분리해 조회합니다."],
@@ -1129,9 +1126,8 @@ class ChatService:
         return ChatResponse(
             intent=ChatIntent.OUT_OF_SCOPE,
             answer=(
-                "현재 MVP는 연금계좌 규칙, 목계좌 진단, 과거 공시와 뉴스 "
-                "근거 조회에 답할 수 있습니다. 질문에 계좌 유형이나 진단할 "
-                "목시나리오를 포함해 주세요."
+                "연금계좌 규칙, 가상계좌 진단, 과거 공시와 뉴스 근거를 안내할 수 "
+                "있어요. 질문에 계좌 유형이나 진단할 가상 시나리오를 적어 주세요."
             ),
             data_mode="safe_fallback",
             limitations=["범용 투자·세무·법률 상담은 지원하지 않습니다."],
@@ -1145,7 +1141,7 @@ class ChatService:
         if not matches:
             return ChatResponse(
                 intent=ChatIntent.ACCOUNT_RULE,
-                answer="검증된 근거 문서를 찾지 못해 답변을 생성하지 않았습니다.",
+                answer="검증된 근거 문서를 찾지 못해 답변을 만들지 않았어요.",
                 data_mode="verified_knowledge",
                 limitations=["질문을 계좌 유형과 함께 더 구체적으로 입력해 주세요."],
             )
@@ -1158,10 +1154,9 @@ class ChatService:
         numeric: list[NumericEvidence] = []
         if plan.combines_account_rules and risk_question:
             answer = (
-                "계좌가 여러 개면 헷갈릴 수 있어요. 위험자산 기준은 여러 "
-                "연금계좌를 합쳐서 보지 않고, 계좌마다 따로 확인해요. DC와 "
-                "IRP는 각 계좌에서 위험자산을 계좌 돈의 70%까지만 담을 수 "
-                "있고, 연금저축펀드에는 같은 비율 제한이 없어요."
+                "위험자산 기준은 계좌마다 따로 적용해요. DC와 IRP는 각 계좌에서 "
+                "위험자산(주식처럼 가격이 오르내릴 수 있는 자산)을 70%까지 담을 "
+                "수 있어요. 연금저축펀드에는 같은 비율 제한이 없어요."
             )
             numeric.append(
                 NumericEvidence(
@@ -1179,11 +1174,10 @@ class ChatService:
             )
         elif risk_question and has_retirement_account:
             answer = (
-                "DC와 IRP에서는 위험자산을 계좌 돈의 70%까지만 담을 수 "
-                "있습니다. 위험자산은 주식처럼 가격이 오르내릴 수 있는 "
-                "자산입니다. 적격 TDF와 일부 "
-                "디폴트옵션은 별도 기준이 적용될 수 있습니다. 연금저축펀드에는 "
-                "이 비율 제한이 없지만, 담을 수 있는 상품인지는 확인이 필요합니다."
+                "DC와 IRP의 위험자산 한도는 계좌별 70%예요. 위험자산은 주식처럼 "
+                "가격이 오르내릴 수 있는 자산이에요. 적격 TDF와 일부 "
+                "디폴트옵션에는 별도 기준이 적용될 수 있어요. 연금저축펀드에는 "
+                "같은 비율 제한이 없지만, 상품별 편입 가능 여부는 확인해야 해요."
             )
             numeric.append(
                 NumericEvidence(
@@ -1197,8 +1191,8 @@ class ChatService:
         elif has_pension_savings and self._is_eligibility_question(request.message):
             answer = (
                 "연금저축에서는 특정 상품을 편입할 수 있는지 상품별 적격성으로 "
-                "확인해야 합니다. 현재 챗봇에는 공식 상품 식별자·적격성 데이터가 "
-                "없어 개별 상품의 편입 가능 여부를 확정하지 않습니다."
+                "확인해야 해요. 현재 챗봇에는 공식 상품 식별자·적격성 데이터가 "
+                "없어서 개별 상품의 편입 가능 여부를 확정하지 않아요."
             )
         else:
             answer = self._knowledge_summary(matches[0].title, request.message)
@@ -1224,7 +1218,7 @@ class ChatService:
                     kind=SectionKind.FACT,
                     title="확인한 근거",
                     content=(
-                        f"‘{match.title}’ 공식 문서를 확인했습니다. "
+                        f"‘{match.title}’ 공식 문서를 확인했어요. "
                         "원문은 아래 출처에서 볼 수 있어요."
                     ),
                     evidence_ids=[_knowledge_evidence_id(match)],
@@ -1245,7 +1239,7 @@ class ChatService:
                 "세액공제는 연금계좌에 낸 돈 일부를 연말정산이나 종합소득세에서 "
                 "빼주는 혜택이에요.\n"
                 "연금저축은 연 600만 원까지, IRP와 DC형 본인 추가납입을 더하면 "
-                "합산 연 900만 원까지 공제 대상입니다.\n"
+                "합산 연 900만 원까지 공제 대상이에요.\n"
                 "예를 들어 연금저축 600만 원과 IRP 300만 원을 나눠 납입할 수 있어요. "
                 "올해 납입액과 소득 기준을 알려주면 내 금액으로 계산해 볼게요."
             )
@@ -1273,15 +1267,22 @@ class ChatService:
         ratio = _decimal_text(evaluation.general_risky_ratio_percent)
         if evaluation.limit_percent is None:
             answer = (
-                f"입력한 연금저축 목포트폴리오의 일반 위험자산 비중은 {ratio}%입니다. "
-                "DC형·IRP의 총량 한도는 적용하지 않고 상품 적격성을 별도로 "
-                "확인해야 합니다."
+                f"연금저축 예시 포트폴리오의 위험자산 비중은 {ratio}%예요. "
+                "DC형·IRP의 비율 한도는 적용하지 않아요. 상품별로 담을 수 "
+                "있는지는 따로 확인해야 해요."
             )
         else:
-            status_text = "한도 이내" if evaluation.within_limit else "한도 초과"
+            limit = _decimal_text(evaluation.limit_percent)
+            limit_status = (
+                f"한도({limit}%) 안이에요"
+                if evaluation.within_limit
+                else f"한도({limit}%)를 넘었어요"
+            )
             answer = (
-                f"입력한 {evaluation.evaluated_input.account_type.value.upper()} "
-                f"목포트폴리오의 일반 위험자산 비중은 {ratio}%이며 {status_text}입니다."
+                f"{evaluation.evaluated_input.account_type.value.upper()} 예시 "
+                f"포트폴리오는 위험자산이 {ratio}%로 {limit_status}. "
+                "위험자산은 주식처럼 가격이 오르내릴 수 있는 자산이에요. "
+                "상품별 편입 가능 여부도 확인해야 해요."
             )
         numeric = [
             NumericEvidence(
@@ -1317,8 +1318,8 @@ class ChatService:
         return ChatResponse(
             intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
             answer=(
-                "완료된 투자성향 설문 결과를 찾지 못했습니다. "
-                "프로필에서 설문을 완료한 뒤 투자전략을 다시 요청해 주세요."
+                "완료된 투자성향 설문 결과가 없어요. 프로필에서 설문을 마친 뒤 "
+                "투자전략을 다시 요청해 주세요."
             ),
             data_mode="survey_required",
             limitations=[
@@ -1333,7 +1334,7 @@ class ChatService:
             intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
             answer=(
                 "투자성향은 안정형, 안정추구형, 위험중립형, 적극투자형, "
-                "공격투자형의 다섯 유형으로 구분합니다. 원하는 유형을 하나 "
+                "공격투자형의 다섯 유형으로 나눠요. 원하는 유형을 하나 "
                 "선택해 말해 주세요."
             ),
             data_mode="risk_profile_selection",
@@ -1342,13 +1343,13 @@ class ChatService:
                     kind=SectionKind.SERVICE_EXPLANATION,
                     title="투자성향 선택",
                     content=(
-                        "안정형: 원금 보전과 낮은 변동성을 우선합니다.\n"
+                        "안정형: 원금 보전과 낮은 가격 변동을 우선해요.\n"
                         "안정추구형: 채권 중심으로 운용하되 제한적으로 "
-                        "위험자산을 활용합니다.\n"
-                        "위험중립형: 성장성과 안정성의 균형을 추구합니다.\n"
-                        "적극투자형: 주식 비중을 높여 장기 성장을 추구합니다.\n"
+                        "위험자산을 활용해요.\n"
+                        "위험중립형: 성장성과 안정성의 균형을 추구해요.\n"
+                        "적극투자형: 주식 비중을 높여 장기 성장을 추구해요.\n"
                         "공격투자형: 높은 변동성을 감수하고 성장·전술자산을 "
-                        "적극적으로 활용합니다.\n\n"
+                        "적극적으로 활용해요.\n\n"
                         "예: 위험중립형으로 ETF 포트폴리오를 보여줘"
                     ),
                 )
@@ -1371,8 +1372,8 @@ class ChatService:
         return ChatResponse(
             intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
             answer=(
-                f"설문 결과는 {assessed_label}입니다. {requested_label} ETF "
-                "포트폴리오는 설문 성향보다 위험해 제안하지 않습니다. "
+                f"설문 결과는 {assessed_label}이에요. {requested_label} ETF "
+                "포트폴리오는 설문 성향보다 위험해서 제안하지 않아요. "
                 f"{assessed_label} 또는 더 보수적인 투자성향을 선택해 주세요."
             ),
             data_mode="profile_guardrail",
@@ -1390,7 +1391,7 @@ class ChatService:
                 intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
                 answer=(
                     f"{account_label} 계좌용 교육 포트폴리오 데이터 저장소가 "
-                    "연결되지 않았습니다."
+                    "연결되지 않았어요."
                 ),
                 data_mode="unavailable",
                 limitations=[
@@ -1417,15 +1418,15 @@ class ChatService:
                 and "no cost-return master" in str(exc)
             )
             unavailable_reason = (
-                "ETF 비용·수익률 마스터가 서버에 준비되지 않았습니다."
+                "ETF 비용·수익률 기준 데이터가 서버에 준비되지 않았어요."
                 if missing_master
-                else "ETF 입력 데이터 검증에 실패했습니다."
+                else "ETF 입력 데이터 검증에 실패했어요."
             )
             return ChatResponse(
                 intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
                 answer=(
                     f"{account_label} 계좌용 {unavailable_reason} "
-                    "포트폴리오 결과를 만들지 않았습니다."
+                    "포트폴리오 결과를 만들지 않았어요."
                 ),
                 data_mode="unavailable",
                 limitations=[
@@ -1496,7 +1497,7 @@ class ChatService:
             )
         )
         planning = evaluation.planning_return
-        planning_text = "검증된 계획수익률 범위를 산출하지 못했습니다."
+        planning_text = "검증된 계획수익률 범위를 계산하지 못했어요."
         if (
             planning.conservative_planning_return_percent is not None
             and planning.base_planning_return_percent is not None
@@ -1526,8 +1527,8 @@ class ChatService:
             planning_text = (
                 "CMA 기반 연간 계획수익률 범위는 보수 약 "
                 f"{_decimal_text(conservative)}%에서 기준 약 "
-                f"{_decimal_text(base)}%입니다. "
-                "미래 예측값이 아니라 매년 재검토하는 장기 배분 가정입니다."
+                f"{_decimal_text(base)}%예요. 미래 예측값이 아니라 매년 다시 "
+                "살펴보는 장기 자산배분 가정이에요."
             )
         profile_label = _RISK_PROFILE_LABELS[
             evaluation.evaluated_input.risk_profile.value
@@ -1557,8 +1558,8 @@ class ChatService:
         return ChatResponse(
             intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
             answer=(
-                "완료된 설문 결과에 맞춰 투자스타일별 상세 전략과 "
-                "장기 계획수익률을 정리했습니다."
+                "설문 결과에 맞는 투자전략과 장기 계획수익률을 정리했어요. "
+                "계좌별 목표비중과 운용 원칙은 아래에서 볼 수 있어요."
             ),
             data_mode="engine_educational_planning",
             sources=sources,
@@ -1601,7 +1602,7 @@ class ChatService:
             return ChatResponse(
                 intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
                 answer=(
-                    "복수 계좌 포트폴리오를 만들지 않았습니다.\n"
+                    "여러 계좌의 포트폴리오를 만들지 못했어요.\n"
                     + "\n".join(f"- {item}" for item in unavailable)
                 ),
                 data_mode="unavailable",
@@ -1654,8 +1655,8 @@ class ChatService:
                     f"{first_request.retirement_start_age}세, 투자성향 "
                     f"{profile_label}, 손실감내율 약 "
                     f"{_decimal_text(first_request.loss_tolerance_percent)}%를 "
-                    f"적용했습니다. 보유 계좌는 {account_names}이며 계좌별 "
-                    "규칙을 각각 계산합니다."
+                    f"적용했어요. 보유 계좌는 {account_names}이며 계좌별 규칙을 "
+                    "각각 계산해요."
                 ),
                 evidence_ids=[survey_source.evidence_id],
             )
@@ -1706,8 +1707,8 @@ class ChatService:
         return ChatResponse(
             intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
             answer=(
-                f"{account_names}의 계좌 규칙을 각각 적용해 ETF 포트폴리오와 "
-                "장기 계획수익률을 정리했습니다."
+                f"{account_names}의 계좌 규칙을 각각 적용했어요. 계좌별 ETF "
+                "포트폴리오와 장기 계획수익률은 아래에서 볼 수 있어요."
             ),
             data_mode="engine_multi_account_planning",
             sources=list(sources.values()),
@@ -1742,6 +1743,8 @@ class ChatService:
             ),
         ]
         account_lines: list[str] = []
+        has_limit_breach = False
+        risk_term_explained = False
         numeric = [
             NumericEvidence(
                 label="목시나리오 총자산",
@@ -1754,19 +1757,35 @@ class ChatService:
         for result in evaluation.account_evaluations:
             account_code = result.evaluated_input.account_type.value
             account_name = _ACCOUNT_TYPE_LABELS[account_code]
+            account_subject = {
+                AccountType.DC.value: "DC형은",
+                AccountType.IRP.value: "IRP는",
+                AccountType.PENSION_SAVINGS.value: "연금저축펀드는",
+            }[account_code]
             if result.limit_percent is None:
                 account_lines.append(
-                    f"{account_name} 계좌는 담을 수 있는 상품을 별도로 확인합니다"
+                    f"{account_subject} 비율 제한이 없어서 상품별로 담을 수 "
+                    "있는지만 확인하면 돼요"
                 )
             else:
-                status_text = (
-                    "기준 안에 있습니다"
+                ratio = _decimal_text(result.general_risky_ratio_percent)
+                limit = _decimal_text(result.limit_percent)
+                limit_status = (
+                    f"한도({limit}%) 안이에요"
                     if result.within_limit
-                    else "기준을 넘었습니다"
+                    else f"한도({limit}%)를 넘었어요"
+                )
+                risk_term = (
+                    "위험자산(주식처럼 가격이 오르내릴 수 있는 자산)"
+                    if not risk_term_explained
+                    else "위험자산"
                 )
                 account_lines.append(
-                    f"{account_name} 계좌의 위험자산 비중은 {status_text}"
+                    f"{account_subject} {risk_term}이 {ratio}%로 "
+                    f"{limit_status}"
                 )
+                risk_term_explained = True
+                has_limit_breach = has_limit_breach or not result.within_limit
             numeric.append(
                 NumericEvidence(
                     label=f"{account_name} 일반 위험자산 비중",
@@ -1776,6 +1795,16 @@ class ChatService:
                     basis="규칙 엔진 계산",
                 )
             )
+            if result.limit_percent is not None:
+                numeric.append(
+                    NumericEvidence(
+                        label=f"{account_name} 일반 위험자산 한도",
+                        value=result.limit_percent,
+                        unit="%",
+                        evidence_id="engine:scenario",
+                        basis="규칙 엔진에 적용된 계좌 한도",
+                    )
+                )
         for item in evaluation.asset_allocations:
             asset_name = _ASSET_CLASS_LABELS[item.asset_class_code]
             numeric.append(
@@ -1795,22 +1824,28 @@ class ChatService:
             if evaluation.duplicated_asset_classes
             else None
         )
+        if duplicate_text and "현금성 자산" in duplicate_text:
+            duplicate_text = duplicate_text.replace(
+                "현금성 자산",
+                "현금성 자산(예금·CMA처럼 바로 찾을 수 있는 돈)",
+            )
         account_summary = ". ".join(account_lines)
         duplicate_summary = (
-            f"여러 계좌에 {duplicate_text}이 겹쳐 있는 점을 먼저 확인해 보세요."
+            f"여러 계좌에 {duplicate_text}이 겹쳐 있어요."
             if duplicate_text
-            else "계좌 간 같은 자산군의 중복은 확인되지 않았습니다."
+            else "계좌 사이에 겹친 자산군은 없어요."
         )
         holdings_summary, holding_evidence = _scenario_holdings_summary(scenario)
         numeric.extend(holding_evidence)
         rebalancing_summary = _scenario_rebalancing_summary(
             evaluation.duplicated_asset_classes
         )
-        answer = (
-            f"좋아요, 하나씩 같이 볼게요. {account_summary}. "
-            f"{duplicate_summary} 보유 항목별 비중과 리밸런싱 점검은 아래에서 "
-            "확인해 보세요."
+        conclusion = (
+            "한도를 넘은 계좌가 있어요. "
+            if has_limit_breach
+            else "점검 결과 큰 문제는 없어요. "
         )
+        answer = conclusion + f"{account_summary}. {duplicate_summary}"
         return ChatResponse(
             intent=ChatIntent.MOCK_PORTFOLIO,
             answer=answer,
@@ -1858,7 +1893,7 @@ class ChatService:
             intent=ChatIntent.MOCK_PORTFOLIO,
             answer=(
                 "먼저 진단할 가상 고객을 선택해 주세요. "
-                f"현재 선택 가능한 고객 유형은 {names}입니다."
+                f"현재 선택할 수 있는 고객 유형은 {names}예요."
             ),
             data_mode="mock_scenario_selection",
             limitations=limitations,
@@ -1871,8 +1906,9 @@ class ChatService:
             return ChatResponse(
                 intent=ChatIntent.PROVIDER_DISCLOSURE,
                 answer=(
-                    "원격 Supabase 실공시 적재가 확인되지 않아 회사·사업자 수치를 "
-                    "표시하지 않았습니다. fixture를 실데이터로 대신하지 않습니다."
+                    "원격 Supabase에 실제 공시 데이터가 없어 회사·사업자 수치를 "
+                    "표시하지 않았어요. fixture(테스트용 데이터)를 실제 데이터처럼 "
+                    "쓰지 않아요."
                 ),
                 data_mode="unavailable",
                 limitations=["DATABASE_URL과 FSS 실적재가 필요합니다."],
@@ -1885,7 +1921,7 @@ class ChatService:
         if not rows:
             return ChatResponse(
                 intent=ChatIntent.PROVIDER_DISCLOSURE,
-                answer="조건에 맞는 최신 실공시 행을 찾지 못했습니다.",
+                answer="조건에 맞는 최신 실제 공시를 찾지 못했어요.",
                 data_mode="official_disclosure",
                 limitations=["수집 상태와 질문의 회사명을 확인해 주세요."],
             )
@@ -1904,19 +1940,24 @@ class ChatService:
                     data_boundary=DataBoundary.OFFICIAL_DISCLOSURE,
                 )
             )
-            current = (
-                "공시값 없음"
+            current_clause = (
+                "당기 과거 수익률은 확인되지 않았고"
                 if row.earn_rate_current_pct is None
-                else f"{_decimal_text(row.earn_rate_current_pct)}%"
+                else (
+                    "당기 과거 수익률은 "
+                    f"{_decimal_text(row.earn_rate_current_pct)}%이고"
+                )
             )
-            three_year = (
-                "공시값 없음"
+            three_year_clause = (
+                "3년 연환산 수익률도 확인되지 않았어요"
                 if row.avg_earn_rate_3y_pct is None
-                else f"{_decimal_text(row.avg_earn_rate_3y_pct)}%"
+                else (
+                    "3년 연환산 수익률은 "
+                    f"{_decimal_text(row.avg_earn_rate_3y_pct)}%예요"
+                )
             )
             lines.append(
-                f"{row.company_name}: 당기 과거 수익률 {current}, "
-                f"3년 연환산 {three_year}"
+                f"{row.company_name}의 {current_clause}, {three_year_clause}."
             )
             for label, value in (
                 ("당기 과거 수익률", row.earn_rate_current_pct),
@@ -1934,13 +1975,13 @@ class ChatService:
                     )
         return ChatResponse(
             intent=ChatIntent.PROVIDER_DISCLOSURE,
-            answer=" / ".join(lines),
+            answer="과거 공시를 찾았어요. " + " ".join(lines),
             data_mode="official_disclosure",
             sections=[
                 AnswerSection(
                     kind=SectionKind.FACT,
                     title="회사·사업자 과거 공시",
-                    content=" / ".join(lines),
+                    content=" ".join(lines),
                     evidence_ids=_source_ids(sources),
                 )
             ],
@@ -1959,8 +2000,7 @@ class ChatService:
             return ChatResponse(
                 intent=ChatIntent.NEWS,
                 answer=(
-                    "저장된 뉴스 메타데이터가 없어 최신 뉴스 답변을 "
-                    "생성하지 않았습니다."
+                    "저장된 뉴스 정보가 없어 최신 뉴스 답변을 만들지 않았어요."
                 ),
                 data_mode="unavailable",
                 limitations=["NAVER 뉴스 수집과 DATABASE_URL이 필요합니다."],
@@ -1980,9 +2020,9 @@ class ChatService:
             return ChatResponse(
                 intent=ChatIntent.NEWS,
                 answer=(
-                    "최근 닷새간 요약이 완료된 증시 뉴스를 찾지 못했습니다."
+                    "최근 닷새간 요약이 끝난 증시 뉴스를 찾지 못했어요."
                     if is_market_news
-                    else "해당 검색어로 저장된 뉴스 메타데이터를 찾지 못했습니다."
+                    else "해당 검색어로 저장된 뉴스 정보를 찾지 못했어요."
                 ),
                 data_mode="news_summary" if is_market_news else "news_metadata",
                 limitations=["기사 본문을 임의로 생성하지 않습니다."],
@@ -2007,6 +2047,11 @@ class ChatService:
             if is_market_news
             else [_news_metadata_line(item) for item in matches]
         )
+        answer_intro = (
+            "최근 증시 뉴스를 찾았어요."
+            if is_market_news
+            else "관련 뉴스를 찾았어요."
+        )
         limitations = (
             [
                 "기사 원문에서 수집 시점에 생성한 LLM 3줄 요약입니다.",
@@ -2025,7 +2070,7 @@ class ChatService:
             )
         return ChatResponse(
             intent=ChatIntent.NEWS,
-            answer="\n\n".join(lines),
+            answer=answer_intro + "\n\n" + "\n\n".join(lines),
             data_mode="news_summary" if is_market_news else "news_metadata",
             news_items=[
                 ChatNewsItem(

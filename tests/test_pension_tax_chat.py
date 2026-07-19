@@ -46,7 +46,7 @@ def _inputs() -> PensionTaxScenarioInput:
 
 
 EXPECTED_CLOSING_NOTICE = (
-    "자세한 내용은 금융기관을 통한 확인 및 세무전문가의 상담이 필요합니다."
+    "자세한 내용은 금융기관에 확인하거나 세무전문가와 상담해야 해요."
 )
 
 
@@ -164,7 +164,7 @@ def test_natural_language_unavoidable_reason_blocks_without_balances() -> None:
     assert response.pension_tax_result.withdrawal is not None
     assert response.pension_tax_result.withdrawal.status == "requires_review"
     assert response.pension_tax_result.withdrawal.total_balance_krw is None
-    assert "계산하지 않았습니다" in response.answer
+    assert "계산하지 않았어요" in response.answer
     assert response.numeric_evidence == []
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
 
@@ -246,7 +246,7 @@ def test_unavoidable_withdrawal_ends_with_expert_review_notice() -> None:
     assert response.pension_tax_result is not None
     assert response.pension_tax_result.withdrawal is not None
     assert response.pension_tax_result.withdrawal.status == "requires_review"
-    assert "계산하지 않았습니다" in response.answer
+    assert "계산하지 않았어요" in response.answer
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
 
 
