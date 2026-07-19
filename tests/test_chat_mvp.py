@@ -34,7 +34,7 @@ from backend.app.chat.narrator import (
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService, _knowledge_sources
 from backend.app.chat.tools import PENSION_TAX_CLOSING_NOTICE
-from backend.app.engine import AccountType
+from backend.app.engine import AccountType, HoldingInput, PortfolioInput, RiskTreatment
 from backend.app.main import app, get_chat_narrator, get_chat_service
 from backend.app.retrieval.repository import KnowledgeMatch, NewsMatch
 from backend.app.settings import get_settings
@@ -379,6 +379,12 @@ def test_disclosure_comparison_uses_only_repository_numbers() -> None:
     )
 
     assert response.intent == ChatIntent.PROVIDER_DISCLOSURE
+    assert response.answer.startswith("과거 공시를 찾았어요.")
+    assert (
+        "테스트증권의 당기 과거 수익률은 4.25%이고, "
+        "3년 연환산 수익률은 3.1%예요."
+        in response.answer
+    )
     assert "4.25%" in response.answer
     assert response.numeric_evidence[0].value == Decimal("4.25")
     assert response.sources[0].data_boundary == "official_disclosure"
@@ -413,12 +419,42 @@ def test_news_response_exposes_three_line_summaries_and_original_links() -> None
         "기사 1의 세 번째 핵심 문장입니다.",
     ]
     assert response.news_items[0].original_url == "https://example.test/news/1"
+    assert response.answer.startswith("최근 증시 뉴스를 찾았어요.")
     assert "첫 번째 뉴스" in response.answer
     assert "기사 1의 첫 번째 핵심 문장입니다." in response.answer
     assert "원문 링크: https://example.test/news/1" in response.answer
     assert response.answer.index("첫 번째 뉴스") < response.answer.index("두 번째 뉴스")
     assert response.answer.index("두 번째 뉴스") < response.answer.index("세 번째 뉴스")
     assert "LLM 3줄 요약" in response.limitations[0]
+
+
+def test_custom_dc_portfolio_answer_is_conclusion_first_heyoche() -> None:
+    response = service().ask(
+        ChatRequest(
+            message="입력한 DC 포트폴리오를 진단해줘",
+            portfolio=PortfolioInput(
+                account_type=AccountType.DC,
+                holdings=[
+                    HoldingInput(
+                        holding_id="equity",
+                        amount_krw=Decimal("600000"),
+                        risk_treatment=RiskTreatment.GENERAL_RISKY,
+                    ),
+                    HoldingInput(
+                        holding_id="deposit",
+                        amount_krw=Decimal("400000"),
+                        risk_treatment=RiskTreatment.CAPITAL_PRESERVATION,
+                    ),
+                ],
+            ),
+        )
+    )
+
+    assert response.answer.startswith(
+        "DC 예시 포트폴리오는 위험자산이 60%로 한도(70%) 안이에요."
+    )
+    assert "위험자산은 주식처럼 가격이 오르내릴 수 있는 자산이에요." in response.answer
+    assert "상품별 편입 가능 여부도 확인해야 해요." in response.answer
 
 
 def test_news_response_explains_when_fewer_than_three_recent_items_exist() -> None:

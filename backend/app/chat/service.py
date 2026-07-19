@@ -1276,7 +1276,9 @@ class ChatService:
             status_text = "안이에요" if evaluation.within_limit else "넘었어요"
             answer = (
                 f"{evaluation.evaluated_input.account_type.value.upper()} 예시 "
-                f"포트폴리오는 위험자산이 {ratio}%로 한도({limit}%) {status_text}."
+                f"포트폴리오는 위험자산이 {ratio}%로 한도({limit}%) {status_text}. "
+                "위험자산은 주식처럼 가격이 오르내릴 수 있는 자산이에요. "
+                "상품별 편입 가능 여부도 확인해야 해요."
             )
         numeric = [
             NumericEvidence(
@@ -1934,19 +1936,24 @@ class ChatService:
                     data_boundary=DataBoundary.OFFICIAL_DISCLOSURE,
                 )
             )
-            current = (
-                "공시값 없음"
+            current_clause = (
+                "당기 과거 수익률은 확인되지 않았고"
                 if row.earn_rate_current_pct is None
-                else f"{_decimal_text(row.earn_rate_current_pct)}%"
+                else (
+                    "당기 과거 수익률은 "
+                    f"{_decimal_text(row.earn_rate_current_pct)}%이고"
+                )
             )
-            three_year = (
-                "공시값 없음"
+            three_year_clause = (
+                "3년 연환산 수익률도 확인되지 않았어요"
                 if row.avg_earn_rate_3y_pct is None
-                else f"{_decimal_text(row.avg_earn_rate_3y_pct)}%"
+                else (
+                    "3년 연환산 수익률은 "
+                    f"{_decimal_text(row.avg_earn_rate_3y_pct)}%예요"
+                )
             )
             lines.append(
-                f"{row.company_name}: 당기 과거 수익률 {current}, "
-                f"3년 연환산 {three_year}"
+                f"{row.company_name}의 {current_clause}, {three_year_clause}."
             )
             for label, value in (
                 ("당기 과거 수익률", row.earn_rate_current_pct),
@@ -1964,13 +1971,13 @@ class ChatService:
                     )
         return ChatResponse(
             intent=ChatIntent.PROVIDER_DISCLOSURE,
-            answer=" / ".join(lines),
+            answer="과거 공시를 찾았어요. " + " ".join(lines),
             data_mode="official_disclosure",
             sections=[
                 AnswerSection(
                     kind=SectionKind.FACT,
                     title="회사·사업자 과거 공시",
-                    content=" / ".join(lines),
+                    content=" ".join(lines),
                     evidence_ids=_source_ids(sources),
                 )
             ],
@@ -2036,6 +2043,11 @@ class ChatService:
             if is_market_news
             else [_news_metadata_line(item) for item in matches]
         )
+        answer_intro = (
+            "최근 증시 뉴스를 찾았어요."
+            if is_market_news
+            else "관련 뉴스를 찾았어요."
+        )
         limitations = (
             [
                 "기사 원문에서 수집 시점에 생성한 LLM 3줄 요약입니다.",
@@ -2054,7 +2066,7 @@ class ChatService:
             )
         return ChatResponse(
             intent=ChatIntent.NEWS,
-            answer="\n\n".join(lines),
+            answer=answer_intro + "\n\n" + "\n\n".join(lines),
             data_mode="news_summary" if is_market_news else "news_metadata",
             news_items=[
                 ChatNewsItem(
