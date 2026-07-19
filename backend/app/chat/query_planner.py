@@ -104,6 +104,12 @@ _NEWS_TERMS = re.compile(r"뉴스|기사|소식")
 _RULE_TERMS = re.compile(
     r"규칙|제도|한도|세금|인출|차이|위험자산|예외|적격|연금|TDF", re.I
 )
+_PENSION_CONTEXT = re.compile(
+    r"연금\s*(?:계좌|저축|수령|외\s*수령)|퇴직\s*연금|"
+    r"(?<![A-Za-z])(?:IRP|DC)(?![A-Za-z])|세액\s*공제|"
+    r"계좌.{0,20}(?:위험\s*자산|한도)",
+    re.I,
+)
 _SCENARIO_TERMS = re.compile(
     r"목\s*계좌|모의\s*계좌|내\s*(?:연금\s*)?포트폴리오|"
     r"나의\s*(?:연금\s*)?포트폴리오|포트폴리오\s*진단|계좌\s*진단|"
@@ -231,11 +237,18 @@ def plan_question(
     tax_credit_topic = _TAX_CREDIT_TERMS.search(normalized) is not None
     withdrawal_tax_topic = _WITHDRAWAL_TAX_TERMS.search(normalized) is not None
     requests_calculation = (
-        structured_pension_tax
-        or _PENSION_TAX_CALCULATION_TERMS.search(normalized) is not None
+        _PENSION_TAX_CALCULATION_TERMS.search(normalized) is not None
     )
-    requests_tax_credit = tax_credit_topic and requests_calculation
-    requests_withdrawal_tax = withdrawal_tax_topic and requests_calculation
+    has_calculation_input = structured_pension_tax or requests_calculation
+    requests_tax_credit = tax_credit_topic and has_calculation_input
+    requests_withdrawal_tax = withdrawal_tax_topic and has_calculation_input
+    if (
+        structured_pension_tax
+        and requests_calculation
+        and not (tax_credit_topic or withdrawal_tax_topic)
+    ):
+        requests_tax_credit = True
+        requests_withdrawal_tax = True
     intent_matches = {
         ChatIntent.MOCK_PORTFOLIO: _SCENARIO_TERMS.search(normalized) is not None,
         ChatIntent.PENSION_TAX: requests_tax_credit or requests_withdrawal_tax,
@@ -246,7 +259,11 @@ def plan_question(
         ChatIntent.PROVIDER_DISCLOSURE: bool(account_types)
         and _DISCLOSURE_TERMS.search(normalized) is not None,
         ChatIntent.ACCOUNT_RULE: bool(
-            account_types or _RULE_TERMS.search(normalized)
+            account_types
+            or (
+                _PENSION_CONTEXT.search(normalized)
+                and _RULE_TERMS.search(normalized)
+            )
         ),
     }
     personal_account_tax_request = (

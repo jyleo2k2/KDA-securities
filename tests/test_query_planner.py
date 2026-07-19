@@ -107,6 +107,13 @@ def test_informational_pension_questions_use_verified_knowledge(
     assert plan.requests_withdrawal_tax is False
 
 
+def test_unrelated_tax_wording_does_not_enter_pension_rag() -> None:
+    plan = plan_question("세금 제도가 뭐야?")
+
+    assert plan.intent == ChatIntent.OUT_OF_SCOPE
+    assert plan.blocked_reason == BlockedReason.UNSUPPORTED
+
+
 @pytest.mark.parametrize(
     ("message", "tax_credit", "withdrawal"),
     (

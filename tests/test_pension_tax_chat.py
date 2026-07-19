@@ -193,6 +193,17 @@ def test_combined_tax_question_uses_engine_results_and_evidence() -> None:
     assert all(item.evidence_id for item in response.numeric_evidence)
 
 
+def test_structured_scenario_without_topic_runs_both_tax_calculations() -> None:
+    response = _service().ask(
+        ChatRequest(message="이 값으로 계산해줘", pension_tax=_inputs())
+    )
+
+    assert response.intent == ChatIntent.PENSION_TAX
+    assert response.pension_tax_result is not None
+    assert response.pension_tax_result.tax_credit is not None
+    assert response.pension_tax_result.withdrawal is not None
+
+
 def test_service_calls_only_the_requested_tax_calculation() -> None:
     tax_credit = _service().ask(
         ChatRequest(
