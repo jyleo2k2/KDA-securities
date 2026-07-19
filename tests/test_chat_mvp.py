@@ -26,6 +26,7 @@ from backend.app.chat.models import (
     extract_numeric_claims,
 )
 from backend.app.chat.narrator import (
+    SYSTEM_PROMPT,
     ClaudeNarrator,
     _adds_unverified_content,
     _unsafe_claims,
@@ -115,8 +116,8 @@ def test_account_rule_question_returns_rag_source_and_numeric_evidence() -> None
 
     assert response.intent == ChatIntent.ACCOUNT_RULE
     assert "70%" in response.answer
-    assert "위험자산을 계좌 돈의 70%까지만 담을 수 있습니다." in response.answer
-    assert "위험자산은 주식처럼 가격이 오르내릴 수 있는 자산입니다." in response.answer
+    assert "DC와 IRP의 위험자산 한도는 계좌별 70%예요." in response.answer
+    assert "위험자산은 주식처럼 가격이 오르내릴 수 있는 자산이에요." in response.answer
     assert "판정합니다" not in response.answer
     assert response.sources
     assert len(response.numeric_evidence) == 1
@@ -170,8 +171,8 @@ def test_combined_accounts_are_explained_with_separate_rules() -> None:
     )
 
     assert response.intent == ChatIntent.ACCOUNT_RULE
-    assert "여러 연금계좌를 합쳐서 보지 않고" in response.answer
-    assert "계좌마다 따로 확인해요" in response.answer
+    assert "위험자산 기준은 계좌마다 따로 적용해요" in response.answer
+    assert "DC와 IRP는 각 계좌에서" in response.answer
     assert response.numeric_evidence[0].value == Decimal("70")
 
 
@@ -224,7 +225,61 @@ def test_mock_overlap_scenario_runs_engine_and_keeps_mock_boundary() -> None:
     assert "global_equity" not in response.answer
     assert "pension_savings" not in response.answer
     assert "글로벌 주식형 자산" in response.answer
-    assert response.answer.startswith("좋아요, 하나씩 같이 볼게요.")
+    assert response.answer.startswith("점검 결과 큰 문제는 없어요.")
+    assert (
+        "DC형은 위험자산(주식처럼 가격이 오르내릴 수 있는 자산)이 "
+        "60%로 한도(70%) 안이에요."
+        in response.answer
+    )
+    assert "IRP는 위험자산이 68%로 한도(70%) 안이에요." in response.answer
+    assert any(
+        item.label == "DC형 일반 위험자산 한도"
+        and item.value == Decimal("70.00")
+        for item in response.numeric_evidence
+    )
+
+
+def test_scenario_conclusion_leads_with_limit_breach() -> None:
+    base = LocalScenarioRepository().get("overlap_risk_concentration")
+    assert base is not None
+    dc_account = base.accounts[0]
+    amounts = (Decimal("80000000"), Decimal("19000000"), Decimal("1000000"))
+    over_limit_dc = dc_account.model_copy(
+        update={
+            "holdings": [
+                holding.model_copy(update={"amount_krw": amount})
+                for holding, amount in zip(dc_account.holdings, amounts, strict=True)
+            ]
+        }
+    )
+    scenario = base.model_copy(
+        update={"accounts": [over_limit_dc, *base.accounts[1:]]}
+    )
+
+    class OverLimitScenarioRepository:
+        @staticmethod
+        def get(scenario_code: str):
+            return scenario if scenario_code == scenario.scenario_code else None
+
+        @staticmethod
+        def list():
+            return []
+
+    chatbot = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=OverLimitScenarioRepository(),
+    )
+
+    response = chatbot.ask(
+        ChatRequest(
+            message="선택한 목계좌를 진단해줘",
+            scenario_code=scenario.scenario_code,
+        )
+    )
+
+    assert response.answer.startswith("한도를 넘은 계좌가 있어요.")
+    assert "DC형은 위험자산" in response.answer
+    assert "80%로 한도(70%)를 넘었어요" in response.answer
 
 
 def test_selected_scenario_explains_holdings_and_rebalancing_boundary() -> None:
@@ -239,8 +294,8 @@ def test_selected_scenario_explains_holdings_and_rebalancing_boundary() -> None:
     sections = {section.title: section.content for section in response.sections}
     assert "KODEX 미국S&P500 (379800) 60%" in sections["보유 항목과 비중"]
     assert "KODEX TDF2050액티브 (434060) 20%" in sections["보유 항목과 비중"]
-    assert "리밸런싱 점검이 필요합니다" in sections["리밸런싱 점검"]
-    assert "매수·매도 수량은 계산하지 않았습니다" in sections["리밸런싱 점검"]
+    assert "리밸런싱 점검이 필요해요" in sections["리밸런싱 점검"]
+    assert "매수·매도 수량은 계산하지 않았어요" in sections["리밸런싱 점검"]
     assert any(
         item.label == "회사 DC KODEX 미국S&P500 보유 비중"
         and item.value == Decimal("60.0")
@@ -303,8 +358,19 @@ def test_future_return_and_order_requests_are_blocked() -> None:
 
     assert future.intent == ChatIntent.OUT_OF_SCOPE
     assert future.data_mode == "blocked"
+    assert future.answer.startswith("미래 수익률 예측은 제공하지 않아요.")
     assert order.intent == ChatIntent.OUT_OF_SCOPE
     assert order.data_mode == "blocked"
+    assert "상품 선택과 주문은 이용자가 직접 해야 해요." in order.answer
+
+
+def test_narrator_prompt_requires_conclusion_first_heyoche() -> None:
+    assert "쉬운 한국어 해요체 한 문단" in SYSTEM_PROMPT
+    assert "결론을 첫 문장에" in SYSTEM_PROMPT
+    assert "어려운 금융 용어" in SYSTEM_PROMPT
+    assert "반말" not in SYSTEM_PROMPT
+    assert "같이 살펴보자" not in SYSTEM_PROMPT
+    assert "같이 살펴봐요" in SYSTEM_PROMPT
 
 
 def test_disclosure_comparison_uses_only_repository_numbers() -> None:
