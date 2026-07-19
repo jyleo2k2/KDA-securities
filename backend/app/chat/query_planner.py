@@ -124,6 +124,11 @@ _WITHDRAWAL_TAX_TERMS = re.compile(
     r"중도\s*해지|연금\s*외\s*수령|해지.{0,10}(?:세금|세액|과세)|"
     r"(?:세금|세액|과세).{0,10}해지|16\.5\s*%"
 )
+_PENSION_TAX_CALCULATION_TERMS = re.compile(
+    r"계산|얼마|공제액|과세액|예상\s*(?:세액|금액)|환급액|돌려\s*받|"
+    r"받을\s*수\s*있는|"
+    r"\d[\d,]*(?:\.\d+)?\s*(?:억|천만|만|천)?\s*원"
+)
 _COUNT = re.compile(r"(?<!\d)([1-5])\s*(?:개|건)(?:만)?(?!\d)")
 _KOREAN_COUNT = (
     (re.compile(r"(?:한\s*(?:개|건)|하나)(?:만)?"), 1),
@@ -193,7 +198,12 @@ def _blocked(message: str, reason: BlockedReason, max_results: int) -> QueryPlan
     )
 
 
-def plan_question(message: str, *, default_max_results: int = 3) -> QueryPlan:
+def plan_question(
+    message: str,
+    *,
+    default_max_results: int = 3,
+    structured_pension_tax: bool = False,
+) -> QueryPlan:
     normalized = normalize_search_text(message)
     max_results = _max_results(normalized, default_max_results)
     if not normalized:
@@ -218,8 +228,14 @@ def plan_question(message: str, *, default_max_results: int = 3) -> QueryPlan:
             return _blocked(normalized, reason, max_results)
 
     account_types = _account_types(normalized)
-    requests_tax_credit = _TAX_CREDIT_TERMS.search(normalized) is not None
-    requests_withdrawal_tax = _WITHDRAWAL_TAX_TERMS.search(normalized) is not None
+    tax_credit_topic = _TAX_CREDIT_TERMS.search(normalized) is not None
+    withdrawal_tax_topic = _WITHDRAWAL_TAX_TERMS.search(normalized) is not None
+    requests_calculation = (
+        structured_pension_tax
+        or _PENSION_TAX_CALCULATION_TERMS.search(normalized) is not None
+    )
+    requests_tax_credit = tax_credit_topic and requests_calculation
+    requests_withdrawal_tax = withdrawal_tax_topic and requests_calculation
     intent_matches = {
         ChatIntent.MOCK_PORTFOLIO: _SCENARIO_TERMS.search(normalized) is not None,
         ChatIntent.PENSION_TAX: requests_tax_credit or requests_withdrawal_tax,

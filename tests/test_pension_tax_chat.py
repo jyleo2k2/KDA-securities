@@ -53,7 +53,7 @@ EXPECTED_CLOSING_NOTICE = (
 def test_tax_question_without_structured_values_requests_input() -> None:
     response = _service().ask(
         ChatRequest(
-            message="연금저축과 IRP 세액공제와 중도해지 세금을 알려줘"
+            message="연금저축과 IRP 세액공제와 중도해지 세금을 계산해줘"
         )
     )
 

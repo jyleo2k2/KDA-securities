@@ -88,9 +88,47 @@ def test_multiple_accounts_are_preserved_for_rule_comparison() -> None:
     assert plan.blocked_reason is None
 
 
+@pytest.mark.parametrize(
+    "message",
+    (
+        "DC형·IRP·연금저축은 각각 어떤 계좌야? 차이를 비교해줘",
+        "연금저축 세액공제 한도를 알려줘",
+        "IRP 중도해지 세금 구조를 알려줘",
+        "연금계좌 수령 요건을 알려줘",
+    ),
+)
+def test_informational_pension_questions_use_verified_knowledge(
+    message: str,
+) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent == ChatIntent.ACCOUNT_RULE
+    assert plan.requests_tax_credit is False
+    assert plan.requests_withdrawal_tax is False
+
+
+@pytest.mark.parametrize(
+    ("message", "tax_credit", "withdrawal"),
+    (
+        ("연금저축 600만원 납입 시 세액공제액을 계산해줘", True, False),
+        ("IRP 잔액 1,000만원 중도해지 과세액은 얼마야", False, True),
+    ),
+)
+def test_pension_tax_engine_is_reserved_for_calculation_requests(
+    message: str,
+    tax_credit: bool,
+    withdrawal: bool,
+) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent == ChatIntent.PENSION_TAX
+    assert plan.requests_tax_credit is tax_credit
+    assert plan.requests_withdrawal_tax is withdrawal
+
+
 def test_personalized_pension_tax_request_selects_both_calculations() -> None:
     plan = plan_question(
-        "연금저축과 IRP 세액공제 혜택과 중도해지 세금을 알려줘"
+        "연금저축과 IRP 세액공제 혜택과 중도해지 세금을 계산해줘"
     )
 
     assert plan.intent == ChatIntent.PENSION_TAX
@@ -183,7 +221,7 @@ def test_guide_page_prompts_route_to_supported_intents(
     ("message", "expected_intent"),
     (
         ("세액공제 후 미운용 시나리오 최신 뉴스", ChatIntent.MOCK_PORTFOLIO),
-        ("연금저축 세액공제 뉴스를 알려줘", ChatIntent.PENSION_TAX),
+        ("연금저축 세액공제 뉴스를 알려줘", ChatIntent.NEWS),
         ("IRP 사업자 수익률 뉴스를 알려줘", ChatIntent.NEWS),
         ("IRP 사업자 수익률 한도를 알려줘", ChatIntent.PROVIDER_DISCLOSURE),
     ),

@@ -147,9 +147,8 @@ def test_account_rule_question_returns_rag_source_and_numeric_evidence() -> None
     )
 
     assert response.intent == ChatIntent.ACCOUNT_RULE
-    assert "70%" in response.answer
-    assert "DC와 IRP의 위험자산 한도는 계좌별 70%예요." in response.answer
-    assert "위험자산은 주식처럼 가격이 오르내릴 수 있는 자산이에요." in response.answer
+    assert response.answer.endswith("함께 봐 주세요.")
+    assert "70%" in "\n".join(section.content for section in response.sections)
     assert "판정합니다" not in response.answer
     assert response.sources
     assert len(response.numeric_evidence) == 1
@@ -180,17 +179,48 @@ def test_knowledge_source_uses_document_as_of_date() -> None:
     assert source.as_of == expected
 
 
-def test_tax_knowledge_summary_is_short_and_actionable() -> None:
-    answer = ChatService._knowledge_summary(
-        "연금계좌 세액공제",
-        "연금계좌 세액공제 한도를 알려줘",
+def test_general_account_overview_is_a_verified_rag_excerpt() -> None:
+    response = service().ask(
+        ChatRequest(
+            message="DC형·IRP·연금저축은 각각 어떤 계좌야? 차이를 비교해줘"
+        )
     )
 
-    assert "연금저축은 연 600만 원까지" in answer
-    assert "합산 연 900만 원까지" in answer
-    assert "문서 버전" not in answer
-    assert "소득세법 제59조의3" not in answer
-    assert len(answer) < 250
+    evidence_text = "\n".join(section.content for section in response.sections)
+    assert response.intent == ChatIntent.ACCOUNT_RULE
+    assert response.data_mode == "verified_knowledge"
+    assert "| 항목 |" in evidence_text
+    assert "연금저축펀드" in evidence_text
+    assert "개인형 IRP" in evidence_text
+    assert "DC형 퇴직연금" in evidence_text
+    assert evidence_text in response.answer
+    assert len(response.answer) < 850
+    assert response.sources
+    assert all(section.evidence_ids for section in response.sections)
+
+
+@pytest.mark.parametrize(
+    ("message", "expected_excerpt"),
+    (
+        ("연금저축 세액공제 한도를 알려줘", "세액공제"),
+        ("IRP 중도인출 조건을 알려줘", "중도인출"),
+        ("연금계좌 수령 요건을 알려줘", "연금수령"),
+    ),
+)
+def test_account_guidance_uses_topic_specific_verified_evidence(
+    message: str,
+    expected_excerpt: str,
+) -> None:
+    response = service().ask(ChatRequest(message=message))
+
+    evidence_text = "\n".join(section.content for section in response.sections)
+    assert response.intent == ChatIntent.ACCOUNT_RULE
+    assert expected_excerpt in evidence_text
+    if "세액공제" in message:
+        assert "연금저축계좌 단독: 연 600만원" in evidence_text
+    assert response.sources
+    assert response.pension_tax_result is None
+    assert "수익률을 보장" not in response.answer
 
 
 def test_combined_accounts_are_explained_with_separate_rules() -> None:
@@ -203,8 +233,8 @@ def test_combined_accounts_are_explained_with_separate_rules() -> None:
     )
 
     assert response.intent == ChatIntent.ACCOUNT_RULE
-    assert "위험자산 기준은 계좌마다 따로 적용해요" in response.answer
-    assert "DC와 IRP는 각 계좌에서" in response.answer
+    assert "DC형·IRP에 적용" in response.answer
+    assert "연금저축펀드에는 동일한 한도가 없다" in response.answer
     assert response.numeric_evidence[0].value == Decimal("70")
 
 
@@ -214,8 +244,8 @@ def test_pension_savings_rule_does_not_apply_dc_irp_cap() -> None:
     )
 
     assert response.intent == ChatIntent.ACCOUNT_RULE
-    assert "위험자산 비율을 제한하지 않아요" in response.answer
-    assert response.numeric_evidence == []
+    assert "연금저축펀드에는 동일한 한도가 없다" in response.answer
+    assert response.numeric_evidence[0].value == Decimal("70")
 
 
 def test_pension_savings_eligibility_answer_is_concise_and_source_linked() -> None:

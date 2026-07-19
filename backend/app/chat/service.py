@@ -227,6 +227,175 @@ _ACCOUNT_TYPE_LABELS = {
     AccountType.IRP: "IRP",
     AccountType.PENSION_SAVINGS: "연금저축펀드",
 }
+_KNOWLEDGE_TOPIC_TERMS = (
+    (re.compile(r"세액\s*공제"), ("세액공제", "납입 한도")),
+    (
+        re.compile(r"중도\s*(?:인출|해지)|연금\s*외\s*수령"),
+        ("중도인출", "중도해지", "연금외수령"),
+    ),
+    (re.compile(r"연금\s*수령|수령\s*(?:요건|조건|방법)"), ("연금수령", "수령")),
+    (re.compile(r"위험\s*자산"), ("위험자산", "한도")),
+    (re.compile(r"편입|적격|가능한\s*상품"), ("편입", "적격", "상품")),
+)
+_ACCOUNT_OVERVIEW_TERMS = re.compile(r"차이|비교|각각|어떤\s*계좌|개요")
+_ACCOUNT_OVERVIEW_ROWS = (
+    "가입 대상",
+    "운용 주체",
+    "일반 위험자산 한도",
+    "중도 부분인출",
+    "퇴직급여 통합",
+)
+
+
+def _knowledge_topics(message: str) -> tuple[str, ...]:
+    topics: list[str] = []
+    for pattern, terms in _KNOWLEDGE_TOPIC_TERMS:
+        if pattern.search(message) is not None:
+            topics.extend(terms)
+    return tuple(dict.fromkeys(topics))
+
+
+def _knowledge_query(message: str, plan: QueryPlan) -> str:
+    """Add only retrieval vocabulary; account rules remain in the corpus."""
+
+    suffix: list[str] = []
+    topics = _knowledge_topics(message)
+    if _ACCOUNT_OVERVIEW_TERMS.search(message) is not None:
+        suffix.extend(("계좌 핵심 비교", "운용 주체"))
+    if "세액공제" in topics:
+        suffix.append("연금계좌 세액공제 공식 안내")
+    if any(topic in topics for topic in ("중도인출", "중도해지", "연금외수령")):
+        suffix.append("연금수령 중도인출 확인 기준")
+    elif "연금수령" in topics:
+        suffix.append("연금수령 확인 기준")
+    suffix.extend(_ACCOUNT_TYPE_LABELS[item] for item in plan.account_types)
+    return " ".join(dict.fromkeys((message, *suffix)))
+
+
+def _knowledge_match_score(
+    match: KnowledgeMatch,
+    *,
+    message: str,
+    plan: QueryPlan,
+) -> tuple[int, int]:
+    content = f"{match.title}\n{match.content}"
+    topics = _knowledge_topics(message)
+    score = sum(content.count(topic) for topic in topics) * 4
+    score += sum(
+        int(_ACCOUNT_TYPE_LABELS[account_type] in content)
+        for account_type in plan.account_types
+    )
+    if topics and any(
+        all(topic in line for topic in topics)
+        for line in match.content.splitlines()
+    ):
+        score += 8
+    if _ACCOUNT_OVERVIEW_TERMS.search(message) is not None and not topics:
+        score += 12 if "세 계좌의 비세금 핵심 비교" in content else 0
+        score += 4 if "| 항목 |" in content else 0
+    # For equally relevant chunks, the shorter excerpt is safer and easier to read.
+    return score, -len(match.content)
+
+
+def _knowledge_excerpt(content: str, *, message: str, max_chars: int = 650) -> str:
+    """Select a compact verbatim excerpt; never synthesize a rule or number."""
+
+    raw_lines = [line.rstrip() for line in content.splitlines()]
+    topics = _knowledge_topics(message)
+
+    def section_from(heading: str) -> str | None:
+        start = next(
+            (
+                index
+                for index, line in enumerate(raw_lines)
+                if heading in line
+            ),
+            None,
+        )
+        if start is None:
+            return None
+        section: list[str] = []
+        for line in raw_lines[start:]:
+            cleaned = line.lstrip("> ").strip()
+            if not cleaned:
+                if len(section) > 1:
+                    break
+                continue
+            candidate = "\n".join((*section, cleaned))
+            if len(candidate) > max_chars:
+                break
+            section.append(cleaned)
+        return "\n".join(section) if len(section) > 1 else None
+
+    section_heading = (
+        "2. 납입 한도"
+        if "세액공제" in topics
+        else "2. 중도인출은 일반 인출이 아니다"
+        if "중도인출" in topics
+        else "어떤 돈을 어떻게 받는지 구분한다"
+        if "연금수령" in topics
+        else None
+    )
+    if section_heading is not None:
+        section = section_from(section_heading)
+        if section is not None:
+            return section
+
+    overview = (
+        _ACCOUNT_OVERVIEW_TERMS.search(message) is not None
+        and not topics
+    )
+    if overview:
+        table_start = next(
+            (
+                index
+                for index, line in enumerate(raw_lines)
+                if line.startswith("|")
+                and "IRP" in line
+                and "DC형" in line
+                and "연금저축" in line
+            ),
+            None,
+        )
+        if table_start is not None:
+            table = raw_lines[table_start : table_start + 2]
+            table.extend(
+                line
+                for line in raw_lines[table_start + 2 :]
+                if line.startswith("|")
+                and any(row in line for row in _ACCOUNT_OVERVIEW_ROWS)
+            )
+            bounded_table: list[str] = []
+            for line in table:
+                candidate = "\n".join((*bounded_table, line))
+                if len(candidate) > max_chars:
+                    break
+                bounded_table.append(line)
+            if len(bounded_table) >= 3:
+                return "\n".join(bounded_table)
+
+    useful = [
+        line.lstrip("> ").strip()
+        for line in raw_lines
+        if line.strip()
+        and not line.lstrip().startswith("[")
+        and "http" not in line
+    ]
+    matched = [
+        line for line in useful if topics and any(topic in line for topic in topics)
+    ]
+    candidates = matched or useful
+    excerpt: list[str] = []
+    for line in candidates:
+        if line in excerpt:
+            continue
+        candidate = "\n".join((*excerpt, line))
+        if len(candidate) > max_chars:
+            break
+        excerpt.append(line)
+        if len(excerpt) >= 5:
+            break
+    return "\n".join(excerpt)
 _RISK_PROFILE_RANKS = {
     EducationalRiskProfile.STABLE: 0,
     EducationalRiskProfile.STABLE_SEEKING: 1,
@@ -433,7 +602,9 @@ class ChatService:
 
     def plan(self, request: ChatRequest) -> QueryPlan:
         direct_plan = plan_question(
-            request.message, default_max_results=request.max_results
+            request.message,
+            default_max_results=request.max_results,
+            structured_pension_tax=request.pension_tax is not None,
         )
         if self._is_selected_scenario_diagnosis_request(request, direct_plan):
             return QueryPlan(
@@ -477,7 +648,9 @@ class ChatService:
         if contextual_message == request.message:
             return direct_plan
         return plan_question(
-            contextual_message, default_max_results=request.max_results
+            contextual_message,
+            default_max_results=request.max_results,
+            structured_pension_tax=request.pension_tax is not None,
         )
 
     @staticmethod
@@ -1231,8 +1404,9 @@ class ChatService:
     def _account_rule_response(
         self, request: ChatRequest, plan: QueryPlan
     ) -> ChatResponse:
-        matches = self._knowledge.search_knowledge(request.message, limit=3)
-        sources = _knowledge_sources(matches)
+        matches = self._knowledge.search_knowledge(
+            _knowledge_query(request.message, plan), limit=8
+        )
         if not matches:
             return ChatResponse(
                 intent=ChatIntent.ACCOUNT_RULE,
@@ -1240,69 +1414,61 @@ class ChatService:
                 data_mode="verified_knowledge",
                 limitations=["질문을 계좌 유형과 함께 더 구체적으로 입력해 주세요."],
             )
-
-        risk_question = "위험자산" in request.message or "한도" in request.message
-        has_retirement_account = bool(
-            {AccountType.DC, AccountType.IRP}.intersection(plan.account_types)
+        match = max(
+            matches,
+            key=lambda item: _knowledge_match_score(
+                item, message=request.message, plan=plan
+            ),
         )
-        has_pension_savings = AccountType.PENSION_SAVINGS in plan.account_types
-        numeric: list[NumericEvidence] = []
-        if plan.combines_account_rules and risk_question:
-            answer = (
-                "위험자산 기준은 계좌마다 따로 적용해요. DC와 IRP는 각 계좌에서 "
-                "위험자산(주식처럼 가격이 오르내릴 수 있는 자산)을 70%까지 담을 "
-                "수 있어요. 연금저축펀드에는 같은 비율 제한이 없어요."
+        sources = _knowledge_sources([match])
+        if (
+            AccountType.PENSION_SAVINGS in plan.account_types
+            and self._is_eligibility_question(request.message)
+        ):
+            return ChatResponse(
+                intent=ChatIntent.ACCOUNT_RULE,
+                answer=(
+                    "연금저축의 상품별 적격성은 공식 상품 식별자와 금융회사 "
+                    "편입 목록으로 확인해야 해요. 현재 챗봇에는 그 데이터가 "
+                    "없어서 개별 상품의 편입 가능 여부를 확정하지 않아요."
+                ),
+                data_mode="verified_knowledge",
+                sources=sources,
+                limitations=[
+                    "상품별 적격성은 공식 상품 데이터로 별도 확인해야 합니다."
+                ],
             )
-            numeric.append(
-                NumericEvidence(
-                    label="DC형·IRP 계좌별 일반 위험자산 한도",
-                    value=Decimal("70"),
-                    unit="%",
-                    evidence_id=sources[0].evidence_id,
-                    basis="검증된 계좌별 규칙",
-                )
+        excerpt = _knowledge_excerpt(match.content, message=request.message)
+        if not excerpt:
+            return ChatResponse(
+                intent=ChatIntent.ACCOUNT_RULE,
+                answer="검증된 근거에서 답변에 쓸 대목을 찾지 못했어요.",
+                data_mode="verified_knowledge",
+                sources=sources,
+                limitations=["질문을 계좌 유형과 함께 더 구체적으로 입력해 주세요."],
             )
-        elif risk_question and has_pension_savings and not has_retirement_account:
-            answer = (
-                "연금저축펀드는 DC와 IRP처럼 위험자산 비율을 제한하지 않아요. "
-                "대신 원하는 상품을 담을 수 있는지는 따로 확인해야 해요."
+        answer = (
+            "공식 근거에서 확인한 내용이에요.\n\n"
+            f"{excerpt}\n\n"
+            "개인 상황에 적용하기 전에는 아래 출처와 기준일을 함께 봐 주세요."
+        )
+        risk_question = "위험자산" in request.message
+        numeric = [
+            NumericEvidence(
+                label=(
+                    f"{match.title} 위험자산 한도"
+                    if risk_question and unit == "%"
+                    else f"{match.title} 답변 수치 {index}"
+                ),
+                value=value,
+                unit=unit,
+                evidence_id=sources[0].evidence_id,
+                basis="검증된 지식 문서에서 직접 발췌",
             )
-        elif risk_question and has_retirement_account:
-            answer = (
-                "DC와 IRP의 위험자산 한도는 계좌별 70%예요. 위험자산은 주식처럼 "
-                "가격이 오르내릴 수 있는 자산이에요. 적격 TDF와 일부 "
-                "디폴트옵션에는 별도 기준이 적용될 수 있어요. 연금저축펀드에는 "
-                "같은 비율 제한이 없지만, 상품별 편입 가능 여부는 확인해야 해요."
-            )
-            numeric.append(
-                NumericEvidence(
-                    label="DC형·IRP 계좌별 일반 위험자산 한도",
-                    value=Decimal("70"),
-                    unit="%",
-                    evidence_id=sources[0].evidence_id,
-                    basis="검증된 계좌 규칙",
-                )
-            )
-        elif has_pension_savings and self._is_eligibility_question(request.message):
-            answer = (
-                "연금저축에서는 특정 상품을 편입할 수 있는지 상품별 적격성으로 "
-                "확인해야 해요. 현재 챗봇에는 공식 상품 식별자·적격성 데이터가 "
-                "없어서 개별 상품의 편입 가능 여부를 확정하지 않아요."
-            )
-        else:
-            answer = self._knowledge_summary(matches[0].title, request.message)
             for index, (value, unit) in enumerate(
                 sorted(extract_numeric_claims(answer)), start=1
-            ):
-                numeric.append(
-                    NumericEvidence(
-                        label=f"{matches[0].title} 답변 수치 {index}",
-                        value=value,
-                        unit=unit,
-                        evidence_id=sources[0].evidence_id,
-                        basis="검증된 지식 문서 답변 인용",
-                    )
-                )
+            )
+        ]
 
         return ChatResponse(
             intent=ChatIntent.ACCOUNT_RULE,
@@ -1311,37 +1477,14 @@ class ChatService:
             sections=[
                 AnswerSection(
                     kind=SectionKind.FACT,
-                    title="확인한 근거",
-                    content=(
-                        f"‘{match.title}’ 공식 문서를 확인했어요. "
-                        "원문은 아래 출처에서 볼 수 있어요."
-                    ),
+                    title="근거에서 확인한 내용",
+                    content=excerpt,
                     evidence_ids=[_knowledge_evidence_id(match)],
                 )
-                for match in matches
             ],
             sources=sources,
             numeric_evidence=numeric,
             limitations=["상품별 적격성은 공식 상품 데이터로 별도 확인해야 합니다."],
-        )
-
-    @staticmethod
-    def _knowledge_summary(title: str, message: str) -> str:
-        """Keep retrieved documents as sources, not as a wall of answer text."""
-
-        if "세액공제" in f"{title} {message}":
-            return (
-                "세액공제는 연금계좌에 낸 돈 일부를 연말정산이나 종합소득세에서 "
-                "빼주는 혜택이에요.\n"
-                "연금저축은 연 600만 원까지, IRP와 DC형 본인 추가납입을 더하면 "
-                "합산 연 900만 원까지 공제 대상이에요.\n"
-                "예를 들어 연금저축 600만 원과 IRP 300만 원을 나눠 납입할 수 있어요. "
-                "올해 납입액과 소득 기준을 알려주면 내 금액으로 계산해 볼게요."
-            )
-        return (
-            "질문과 관련된 공식 근거를 찾았어요. "
-            f"‘{title}’ 내용을 바탕으로 안내할 수 있어요. "
-            "한도·세금·수령 중 무엇이 궁금한지 말해주면 핵심만 정리해 드릴게요."
         )
 
     @staticmethod
