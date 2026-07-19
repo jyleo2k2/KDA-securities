@@ -195,7 +195,14 @@ def test_general_account_overview_is_a_verified_rag_excerpt() -> None:
     assert "개인형 IRP" in evidence_text
     assert "DC형 퇴직연금" in evidence_text
     assert evidence_text in response.answer
-    assert len(response.answer) < 1100
+    assert len(evidence_text) <= 850
+    assert "1억원" not in evidence_text
+    assert "예금자보호 주의" not in evidence_text
+    assert evidence_text.splitlines()[-1] == (
+        "- 금융회사 이전: 연금저축펀드: 연금저축 간 계좌이체 가능; "
+        "개인형 IRP: IRP 간 조건부 실물이전 가능; "
+        "DC형 퇴직연금: 회사가 계약한 사업자 범위에서 조건부 이전 가능"
+    )
     assert response.sources
     assert all(section.evidence_ids for section in response.sections)
 
@@ -205,7 +212,7 @@ def test_general_account_overview_is_a_verified_rag_excerpt() -> None:
     (
         ("연금저축 세액공제 한도를 알려줘", "세액공제"),
         ("IRP 중도인출 조건을 알려줘", "중도인출"),
-        ("연금계좌 수령 요건을 알려줘", "연금수령"),
+        ("연금계좌 수령 요건을 알려줘", "55세"),
     ),
 )
 def test_account_guidance_uses_topic_specific_verified_evidence(
@@ -230,8 +237,9 @@ def test_account_guidance_uses_topic_specific_verified_evidence(
         ("연금계좌 세액공제 공제율을 알려줘", ("15%", "12%")),
         ("IRP 중도인출 사유를 알려줘", ("무주택자",)),
         ("IRP 연금 수령 개시요건을 알려줘", ("55세", "가입기간 5년")),
+        ("연금계좌 수령 개시 요건을 알려줘", ("55세", "가입기간 5년")),
         ("연금외수령 과세 구조를 알려줘", ("15%", "기타소득")),
-        ("연금수령 과세를 알려줘", ("돈의 출처", "수령 방식")),
+        ("연금수령 과세를 알려줘", ("5%", "4%", "3%", "70%", "60%", "15%")),
         ("IRP란 뭐야?", ("개인형퇴직연금", "개인 계좌")),
     ),
 )
@@ -248,6 +256,35 @@ def test_pension_topics_return_complete_plain_verified_sections(
     assert "](" not in response.answer
     assert response.sources
     assert response.sections[0].content in response.answer
+
+
+def test_tax_rate_guidance_does_not_card_compound_refund_examples() -> None:
+    response = service().ask(
+        ChatRequest(message="연금계좌 세액공제 공제율을 알려줘")
+    )
+
+    assert "최대 148만 5천원" not in response.answer
+    assert all(
+        evidence.value not in {Decimal("5000"), Decimal("8000")}
+        for evidence in response.numeric_evidence
+    )
+
+
+@pytest.mark.parametrize("last_intent", (ChatIntent.ACCOUNT_RULE, ChatIntent.NEWS))
+def test_generic_tax_question_does_not_inherit_irp_definition_context(
+    last_intent: ChatIntent,
+) -> None:
+    plan = service().plan(
+        ChatRequest(
+            message="그럼 세금 제도가 뭐야?",
+            conversation_context=ConversationContext(
+                account_type=AccountType.IRP,
+                last_intent=last_intent,
+            ),
+        )
+    )
+
+    assert plan.intent == ChatIntent.OUT_OF_SCOPE
 
 
 class StaticKnowledgeRepository:

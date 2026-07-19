@@ -234,6 +234,7 @@ _ACCOUNT_TYPE_LABELS = {
 }
 _NUMBERED_HEADING = re.compile(r"^\s*\d+(?:-\d+)?\.\s+")
 _MARKDOWN_LINK = re.compile(r"\[([^]]+)]\([^)]+\)")
+_MARKDOWN_HEADING = re.compile(r"^(#+)\s+")
 _SENSITIVE_KNOWLEDGE_PROMPT = re.compile(
     r"(?:계좌\s*번호|주민\s*등록\s*번호|비밀\s*번호|OTP|인증\s*번호)"
     r".{0,30}?(?:입력|알려|보내|제공)",
@@ -279,7 +280,7 @@ def _knowledge_topic(
             "국세청 안내의 주요 세율",
             None,
         )
-    if re.search(r"연금\s*수령", message) and re.search(
+    if re.search(r"연금(?:\s*계좌)?\s*수령", message) and re.search(
         r"개시|요건|조건|몇\s*살", message
     ):
         return (
@@ -289,12 +290,14 @@ def _knowledge_topic(
             "1. IRP 연금 수령의 기본 요건",
             None,
         )
-    if re.search(r"연금\s*수령", message) and re.search(r"과세|세금|세율", message):
+    if re.search(r"연금(?:\s*계좌)?\s*수령", message) and re.search(
+        r"과세|세금|세율", message
+    ):
         return (
             "receipt_tax",
             "연금수령 과세 자금 원천 수령 방식 확인",
             "연금수령 과세",
-            "어떤 돈을 어떻게 받는지 구분한다",
+            "국세청 안내의 주요 세율",
             None,
         )
     if "위험자산" in message:
@@ -313,7 +316,14 @@ def _knowledge_topic(
             "4-2. 세 계좌의 비세금 핵심 비교",
             "| 항목 |",
         )
-    if len(plan.account_types) == 1 and re.search(r"란|뭐|어떤\s*계좌", message):
+    definition = re.search(
+        r"(?<![A-Za-z])(?:IRP|DC)(?![A-Za-z])\s*(?:란|은|는)\s*(?:뭐|무엇)?"
+        r"|(?:연금저축|IRP|DC).{0,6}어떤\s*계좌"
+        r"|어떤\s*계좌.{0,6}(?:연금저축|IRP|DC)",
+        message,
+        re.I,
+    )
+    if len(plan.account_types) == 1 and definition is not None:
         account_type = plan.account_types[0]
         heading = (
             "4. 3층 — 개인연금 (연금저축)"
@@ -376,8 +386,22 @@ def _plain_knowledge_excerpt(content: str, *, heading: str | None) -> str:
             return ""
     section: list[str] = []
     start_heading = raw_lines[start].strip()
+    start_markdown_heading = _MARKDOWN_HEADING.match(start_heading)
+    start_heading_level = (
+        len(start_markdown_heading.group(1))
+        if start_markdown_heading is not None
+        else None
+    )
     for line in raw_lines[start:]:
         stripped = line.strip()
+        markdown_heading = _MARKDOWN_HEADING.match(stripped)
+        if (
+            section
+            and start_heading_level is not None
+            and markdown_heading is not None
+            and len(markdown_heading.group(1)) <= start_heading_level
+        ):
+            break
         if section and _NUMBERED_HEADING.match(stripped):
             if stripped == start_heading:
                 continue
@@ -407,6 +431,8 @@ def _plain_knowledge_excerpt(content: str, *, heading: str | None) -> str:
                 for column, value in zip(table_header[1:], values, strict=False)
             )
             plain.append(f"- {label}: {details}")
+        elif table_header is not None:
+            break
         elif _NUMBERED_HEADING.match(line):
             plain.append(line)
         elif line.startswith(("-", "•")):
@@ -415,7 +441,13 @@ def _plain_knowledge_excerpt(content: str, *, heading: str | None) -> str:
             plain[-1] = f"{plain[-1]} {line}"
         else:
             plain.append(f"- {line}")
-    return "\n".join(plain)
+    bounded: list[str] = []
+    for line in plain:
+        candidate = "\n".join((*bounded, line))
+        if len(candidate) > 850:
+            break
+        bounded.append(line)
+    return "\n".join(bounded)
 
 
 _RISK_PROFILE_RANKS = {
@@ -669,11 +701,17 @@ class ChatService:
         contextual_message = self._router.contextual_message(request)
         if contextual_message == request.message:
             return direct_plan
-        return plan_question(
+        contextual_plan = plan_question(
             contextual_message,
             default_max_results=request.max_results,
             structured_pension_tax=request.pension_tax is not None,
         )
+        if (
+            contextual_plan.intent == ChatIntent.ACCOUNT_RULE
+            and _knowledge_topic(request.message, contextual_plan)[0] == "general"
+        ):
+            return direct_plan
+        return contextual_plan
 
     @staticmethod
     def _is_selected_scenario_diagnosis_request(
@@ -1481,6 +1519,12 @@ class ChatService:
                 ],
             )
         excerpt = _plain_knowledge_excerpt(match.content, heading=heading)
+        if topic == "tax_rate":
+            excerpt = "\n".join(
+                line
+                for line in excerpt.splitlines()
+                if not ("최대" in line and "환급" in line)
+            )
         if not excerpt:
             return ChatResponse(
                 intent=ChatIntent.ACCOUNT_RULE,

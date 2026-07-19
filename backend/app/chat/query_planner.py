@@ -242,11 +242,7 @@ def plan_question(
     has_calculation_input = structured_pension_tax or requests_calculation
     requests_tax_credit = tax_credit_topic and has_calculation_input
     requests_withdrawal_tax = withdrawal_tax_topic and has_calculation_input
-    if (
-        structured_pension_tax
-        and requests_calculation
-        and not (tax_credit_topic or withdrawal_tax_topic)
-    ):
+    if structured_pension_tax and not (tax_credit_topic or withdrawal_tax_topic):
         requests_tax_credit = True
         requests_withdrawal_tax = True
     intent_matches = {

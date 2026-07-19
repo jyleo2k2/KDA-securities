@@ -143,6 +143,14 @@ def test_personalized_pension_tax_request_selects_both_calculations() -> None:
     assert plan.requests_withdrawal_tax is True
 
 
+def test_structured_tax_input_without_topic_selects_both_calculations() -> None:
+    plan = plan_question("결과를 알려줘", structured_pension_tax=True)
+
+    assert plan.intent == ChatIntent.PENSION_TAX
+    assert plan.requests_tax_credit is True
+    assert plan.requests_withdrawal_tax is True
+
+
 @pytest.mark.parametrize(
     ("message", "tax_credit", "withdrawal"),
     (

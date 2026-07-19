@@ -204,6 +204,17 @@ def test_structured_scenario_without_topic_runs_both_tax_calculations() -> None:
     assert response.pension_tax_result.withdrawal is not None
 
 
+def test_structured_scenario_without_topic_or_calculation_word_runs_both() -> None:
+    response = _service().ask(
+        ChatRequest(message="결과를 알려줘", pension_tax=_inputs())
+    )
+
+    assert response.intent == ChatIntent.PENSION_TAX
+    assert response.pension_tax_result is not None
+    assert response.pension_tax_result.tax_credit is not None
+    assert response.pension_tax_result.withdrawal is not None
+
+
 def test_service_calls_only_the_requested_tax_calculation() -> None:
     tax_credit = _service().ask(
         ChatRequest(
