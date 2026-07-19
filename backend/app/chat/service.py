@@ -16,10 +16,14 @@ from ..engine import (
     build_educational_portfolio,
     evaluate_mock_scenario,
     evaluate_risk_cap,
+    select_theme_etf_candidates,
 )
+from ..etf_theme_repository import EtfThemeRepository
 from ..retrieval.repository import KnowledgeMatch, NewsMatch
 from .disclosures import ProviderDisclosure
 from .models import (
+    AnswerBlock,
+    AnswerBlockKind,
     AnswerSection,
     ChatCapabilities,
     ChatIntent,
@@ -330,6 +334,7 @@ class ChatService:
         disclosures: DisclosureSearch | None = None,
         news: NewsSearch | None = None,
         portfolio_universe_loader: PortfolioUniverseLoader | None = None,
+        theme_repository: EtfThemeRepository | None = None,
         router: IntentRouter | None = None,
     ) -> None:
         self._knowledge = knowledge
@@ -337,6 +342,7 @@ class ChatService:
         self._disclosures = disclosures
         self._news = news
         self._portfolio_universe_loader = portfolio_universe_loader
+        self._theme_repository = theme_repository
         self._router = router or IntentRouter()
 
     def capabilities(self) -> ChatCapabilities:
@@ -345,6 +351,7 @@ class ChatService:
                 "DC형·IRP·연금저축 계좌 규칙 근거 Q&A",
                 "목계좌 시나리오 위험자산 한도와 통합 자산군 진단",
                 "연령·성향·수령개시연령별 교육용 포트폴리오 위험·계획가정",
+                "ETF 테마 1~23의 구조·기회·위험 설명",
                 "연금저축·IRP 당해연도 납입액 세액공제 간이 계산",
                 "연금저축·IRP 연금외수령 16.5% 간이 추정",
                 "근거·기준일·실데이터/목데이터 경계 표시",
@@ -352,9 +359,10 @@ class ChatService:
             conditional=[
                 "Supabase 실적재 후 회사·사업자 과거 공시 비교",
                 "NAVER 증시뉴스 적재 후 매체·3줄 요약·원문 링크 조회",
+                "투자성향·계좌 적격성·KIS 구성종목 근거가 갖춰진 테마 ETF 비교",
             ],
             unsupported=[
-                "DC·IRP 개별 상품 비교",
+                "검증 범위 밖 테마와 적격성 미확인 상품 비교",
                 "LLM의 미래 수익률·목표가 직접 예측",
                 "주문·자동운용",
             ],
@@ -363,7 +371,9 @@ class ChatService:
 
     def plan(self, request: ChatRequest) -> QueryPlan:
         direct_plan = plan_question(
-            request.message, default_max_results=request.max_results
+            request.message,
+            default_max_results=request.max_results,
+            theme_repository=self._theme_repository,
         )
         if self._is_selected_scenario_diagnosis_request(request, direct_plan):
             return QueryPlan(
@@ -405,7 +415,9 @@ class ChatService:
         if contextual_message == request.message:
             return direct_plan
         return plan_question(
-            contextual_message, default_max_results=request.max_results
+            contextual_message,
+            default_max_results=request.max_results,
+            theme_repository=self._theme_repository,
         )
 
     @staticmethod
@@ -512,6 +524,11 @@ class ChatService:
                             )
                         }
                     )
+            elif resolved_plan.intent == ChatIntent.ETF_THEME:
+                response = self._etf_theme_response(
+                    original_request,
+                    resolved_plan,
+                )
             elif resolved_plan.intent == ChatIntent.PENSION_TAX:
                 response = self._pension_tax_response(
                     request,
@@ -575,6 +592,356 @@ class ChatService:
                 response = self._blocked_response(BlockedReason.UNSUPPORTED)
         return self._with_context(
             self._attach_visualizations(response), original_request, resolved_plan
+        )
+
+    def _etf_theme_response(
+        self,
+        request: ChatRequest,
+        plan: QueryPlan,
+    ) -> ChatResponse:
+        if self._theme_repository is None or plan.theme_id is None:
+            return ChatResponse(
+                intent=ChatIntent.ETF_THEME,
+                answer="ETF 테마 카탈로그를 불러오지 못했습니다.",
+                data_mode="unavailable",
+                limitations=["테마 카탈로그 연결 상태를 확인해야 합니다."],
+            )
+        theme = self._theme_repository.get(plan.theme_id)
+        if theme is None:
+            return ChatResponse(
+                intent=ChatIntent.ETF_THEME,
+                answer="요청한 ETF 테마를 현재 카탈로그에서 찾지 못했습니다.",
+                data_mode="unavailable",
+            )
+
+        catalog_source_id = "policy:etf_theme_catalog"
+        sources = [
+            SourceEvidence(
+                evidence_id=catalog_source_id,
+                label="ETF 테마 서비스 카탈로그",
+                locator=self._theme_repository.catalog_path.as_posix(),
+                publisher="연금 코파일럿",
+                as_of=self._theme_repository.catalog.as_of_date,
+                data_boundary=DataBoundary.ENGINE,
+            )
+        ]
+        sections = [
+            AnswerSection(
+                kind=SectionKind.SERVICE_EXPLANATION,
+                title=f"{theme.name} 테마",
+                content=theme.plain_summary,
+                evidence_ids=[catalog_source_id],
+                blocks=[
+                    AnswerBlock(
+                        kind=AnswerBlockKind.CALLOUT,
+                        title="분류상 정의",
+                        text=theme.definition,
+                    ),
+                    AnswerBlock(
+                        kind=AnswerBlockKind.BULLETS,
+                        title="무엇을 담나",
+                        items=list(theme.exposure_segments),
+                    ),
+                    AnswerBlock(
+                        kind=AnswerBlockKind.BULLETS,
+                        title="움직임을 살필 요인",
+                        items=list(theme.performance_drivers),
+                    ),
+                    AnswerBlock(
+                        kind=AnswerBlockKind.BULLETS,
+                        title="살펴볼 점",
+                        items=list(theme.benefits),
+                    ),
+                    AnswerBlock(
+                        kind=AnswerBlockKind.BULLETS,
+                        title="주요 위험",
+                        items=list(theme.risks),
+                    ),
+                    AnswerBlock(
+                        kind=AnswerBlockKind.CALLOUT,
+                        title="한 줄 비유",
+                        text=theme.one_line_analogy,
+                    ),
+                ],
+            )
+        ]
+        limitations = [
+            "테마 설명은 사용자가 제공한 조사 내용을 서비스 분류체계로 "
+            "정리한 것으로 공식 문서 검증 전 초안입니다.",
+            "테마 편입은 상품의 미래 성과를 뜻하지 않으며 "
+            "수익률을 예측하지 않습니다.",
+        ]
+        if not plan.requests_theme_candidates:
+            return ChatResponse(
+                intent=ChatIntent.ETF_THEME,
+                answer=f"{theme.name} 테마의 구조와 판단할 위험을 정리했습니다.",
+                data_mode="theme_overview",
+                sections=sections,
+                sources=sources,
+                limitations=limitations,
+            )
+
+        survey = request.survey_profile or (
+            request.conversation_context.survey_profile
+            if request.conversation_context is not None
+            else None
+        )
+        if survey is None:
+            limitations.append(
+                "투자성향과 보유 계좌가 확인되기 전에는 ETF 후보를 제시하지 않습니다."
+            )
+            return ChatResponse(
+                intent=ChatIntent.ETF_THEME,
+                answer=(
+                    f"{theme.name} 테마 설명은 제공할 수 있지만 ETF 후보 비교에는 "
+                    "완료된 투자성향 설문과 계좌 유형이 필요합니다."
+                ),
+                data_mode="survey_required",
+                sections=sections,
+                sources=sources,
+                limitations=limitations,
+            )
+
+        previous_selection = (
+            request.conversation_context.selected_risk_profile
+            if request.conversation_context is not None
+            else None
+        )
+        selected_profile = (
+            _selected_risk_profile(request.message)
+            or previous_selection
+            or survey.risk_profile
+        )
+        if (
+            _RISK_PROFILE_RANKS[selected_profile]
+            > _RISK_PROFILE_RANKS[survey.risk_profile]
+        ):
+            limitations.append(
+                "완료된 설문 결과보다 위험한 투자성향의 테마 ETF 후보는 "
+                "제시하지 않습니다."
+            )
+            return ChatResponse(
+                intent=ChatIntent.ETF_THEME,
+                answer=f"{theme.name} 테마 설명만 제공했습니다.",
+                data_mode="profile_guardrail",
+                sections=sections,
+                sources=sources,
+                limitations=limitations,
+            )
+
+        allowed_accounts = survey.portfolio_account_types()
+        requested_accounts = plan.account_types or allowed_accounts
+        account_types = tuple(
+            account for account in requested_accounts if account in allowed_accounts
+        )
+        if not account_types:
+            limitations.append(
+                "질문에 지정한 계좌가 완료된 설문 프로필의 보유 계좌에 없습니다."
+            )
+            return ChatResponse(
+                intent=ChatIntent.ETF_THEME,
+                answer=f"{theme.name} 테마 설명만 제공했습니다.",
+                data_mode="account_profile_mismatch",
+                sections=sections,
+                sources=sources,
+                limitations=limitations,
+            )
+        if self._portfolio_universe_loader is None:
+            limitations.append("계좌별 ETF 적격 유니버스를 불러올 수 없습니다.")
+            return ChatResponse(
+                intent=ChatIntent.ETF_THEME,
+                answer=f"{theme.name} 테마 설명만 제공했습니다.",
+                data_mode="unavailable",
+                sections=sections,
+                sources=sources,
+                limitations=limitations,
+            )
+
+        numeric: list[NumericEvidence] = []
+        candidate_rows: list[list[str]] = []
+        holding_sections: list[AnswerSection] = []
+        holding_source_ids: set[str] = set()
+        successful_accounts = 0
+        for account_type in account_types:
+            try:
+                universe = self._portfolio_universe_loader(account_type)
+            except (FileNotFoundError, ValueError):
+                limitations.append(
+                    f"{_ACCOUNT_TYPE_LABELS[account_type]} ETF 적격 유니버스를 "
+                    "불러오지 못했습니다."
+                )
+                continue
+            evaluation = select_theme_etf_candidates(
+                catalog=self._theme_repository.catalog,
+                theme=theme,
+                products=universe.products,
+                kis_products_by_code=(
+                    self._theme_repository.kis_products_by_code
+                ),
+                component_snapshot_date=(
+                    self._theme_repository.component_snapshot_date
+                ),
+                request=EducationalPortfolioInput(
+                    account_type=account_type,
+                    age=survey.current_age,
+                    retirement_start_age=survey.retirement_start_age,
+                    risk_profile=selected_profile,
+                    loss_tolerance_percent=survey.loss_tolerance_percent,
+                ),
+                limit=plan.max_results,
+            )
+            if evaluation.status != "ok":
+                limitations.extend(evaluation.limitations)
+                continue
+            successful_accounts += 1
+            master_source_id = f"engine:theme_candidates:{account_type.value}"
+            sources.append(
+                SourceEvidence(
+                    evidence_id=master_source_id,
+                    label=(
+                        f"{_ACCOUNT_TYPE_LABELS[account_type]} "
+                        "계좌별 ETF 적격 유니버스"
+                    ),
+                    locator=str(getattr(universe, "source_path", "local-cache")),
+                    publisher="연금 코파일럿 규칙 엔진",
+                    as_of=universe.as_of,
+                    data_boundary=DataBoundary.ENGINE,
+                )
+            )
+            for candidate in evaluation.candidates:
+                fee_text = "확인 필요"
+                if candidate.fee_percent is not None:
+                    fee_text = f"{_decimal_text(candidate.fee_percent)}%"
+                    numeric.append(
+                        NumericEvidence(
+                            label=f"{candidate.isu_name} 총보수",
+                            value=candidate.fee_percent,
+                            unit="%",
+                            evidence_id=master_source_id,
+                            basis="계좌별 ETF 실데이터 마스터",
+                        )
+                    )
+                candidate_rows.append(
+                    [
+                        _ACCOUNT_TYPE_LABELS[account_type],
+                        candidate.isu_name,
+                        candidate.isu_code,
+                        fee_text,
+                    ]
+                )
+                if not plan.requests_theme_holdings or not candidate.top_holdings:
+                    continue
+                kis_source_id = f"kis:components:{candidate.isu_code}"
+                if kis_source_id in holding_source_ids:
+                    continue
+                holding_source_ids.add(kis_source_id)
+                sources.append(
+                    SourceEvidence(
+                        evidence_id=kis_source_id,
+                        label=f"{candidate.isu_name} 구성종목",
+                        locator=(
+                            "https://openapi.koreainvestment.com:9443/uapi/etfetn/"
+                            "v1/quotations/inquire-component-stock-price"
+                        ),
+                        publisher="한국투자증권 Open Trading API",
+                        as_of=candidate.component_snapshot_date,
+                        data_boundary=DataBoundary.OFFICIAL_DISCLOSURE,
+                    )
+                )
+                holding_rows: list[list[str]] = []
+                for holding in candidate.top_holdings[:5]:
+                    holding_rows.append(
+                        [
+                            holding.component_name,
+                            holding.component_code or "-",
+                            f"{_decimal_text(holding.weight_percent)}%",
+                        ]
+                    )
+                    numeric.append(
+                        NumericEvidence(
+                            label=(
+                                f"{candidate.isu_name} "
+                                f"{holding.component_name} 구성 비중"
+                            ),
+                            value=holding.weight_percent,
+                            unit="%",
+                            evidence_id=kis_source_id,
+                            basis="KIS etf_cnfg_issu_rlim 원문 필드",
+                        )
+                    )
+                holding_sections.append(
+                    AnswerSection(
+                        kind=SectionKind.FACT,
+                        title=f"{candidate.isu_name} 주요 구성종목",
+                        content="한국투자증권이 제공한 기준일 스냅샷입니다.",
+                        evidence_ids=[kis_source_id],
+                        blocks=[
+                            AnswerBlock(
+                                kind=AnswerBlockKind.TABLE,
+                                headers=["구성종목", "종목코드", "비중"],
+                                rows=holding_rows,
+                            )
+                        ],
+                    )
+                )
+
+        if candidate_rows:
+            master_ids = [
+                source.evidence_id
+                for source in sources
+                if source.evidence_id.startswith("engine:theme_candidates:")
+            ]
+            sections.append(
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title="성향·계좌 범위 안의 비교 후보",
+                    content=(
+                        "계좌 적격성, 투자성향 슬리브와 비수익률 품질지표를 "
+                        "통과한 교육용 비교 후보입니다."
+                    ),
+                    evidence_ids=master_ids,
+                    blocks=[
+                        AnswerBlock(
+                            kind=AnswerBlockKind.TABLE,
+                            headers=["계좌", "ETF", "종목코드", "총보수"],
+                            rows=candidate_rows,
+                        )
+                    ],
+                )
+            )
+            sections.extend(holding_sections)
+        else:
+            limitations.append(
+                "현재 성향·계좌 범위와 적재 데이터에서 제시 가능한 "
+                "테마 ETF 후보가 없습니다."
+            )
+        if plan.requests_theme_holdings and not holding_sections:
+            limitations.append(
+                "최신 한국투자증권 구성종목 스냅샷이 없어 요청한 비중을 "
+                "표시하지 않았습니다."
+            )
+
+        return ChatResponse(
+            intent=ChatIntent.ETF_THEME,
+            answer=(
+                f"{theme.name} 테마를 설명하고 성향·계좌 기준을 통과한 "
+                "교육용 ETF 비교 결과를 정리했습니다."
+                if candidate_rows
+                else f"{theme.name} 테마 설명만 제공했습니다."
+            ),
+            data_mode=(
+                "theme_candidates" if successful_accounts else "theme_overview_only"
+            ),
+            sections=sections,
+            sources=sources,
+            numeric_evidence=numeric,
+            limitations=list(dict.fromkeys(limitations)),
+            conversation_context=ConversationContext(
+                account_type=survey.account_type,
+                last_intent=ChatIntent.ETF_THEME,
+                survey_profile=survey,
+                selected_risk_profile=selected_profile,
+            ),
         )
 
     @staticmethod

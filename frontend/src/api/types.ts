@@ -450,6 +450,7 @@ export type ChatIntent =
   | "provider_disclosure"
   | "news"
   | "pension_tax"
+  | "etf_theme"
   | "educational_portfolio"
   | "out_of_scope";
 

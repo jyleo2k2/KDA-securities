@@ -23,6 +23,7 @@ from ..chat.user_context import DemoUserContextRepository
 from ..database import get_database_pool
 from ..engine.audit import EngineAuditRepository
 from ..engine.models import AccountType
+from ..etf_theme_repository import get_default_etf_theme_repository
 from ..ingestion.embeddings import get_query_embedder
 from ..market_evidence_repository import KrxMarketEvidenceRepository
 from ..portfolio_universe_repository import (
@@ -200,6 +201,7 @@ def _chat_service(database_url: str) -> ChatService:
         disclosures=disclosures,
         news=retrieval,
         portfolio_universe_loader=get_portfolio_universe_repository,
+        theme_repository=get_default_etf_theme_repository(),
     )
 
 

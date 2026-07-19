@@ -65,6 +65,11 @@ const SUGGESTED_PROMPTS = [
     prompt: "올해 받을 수 있는 연금 세액공제가 궁금해.",
     icon: "star" as const,
   },
+  {
+    category: "ETF 테마 이해",
+    prompt: "2번 반도체 ETF 테마를 쉽게 설명해 줘.",
+    icon: "chart" as const,
+  },
 ];
 
 const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
@@ -73,6 +78,7 @@ const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   provider_disclosure: "공식 공시",
   news: "증시 뉴스",
   pension_tax: "세액공제·중도해지",
+  etf_theme: "ETF 테마",
   educational_portfolio: "연금 운용전략",
   out_of_scope: "지원 범위 안내",
 };
@@ -277,11 +283,14 @@ function AnswerBlocks({ blocks }: { blocks: AnswerBlock[] }) {
         }
         if (block.kind === "bullets") {
           return (
-            <ul className="answer-bullets" key={key}>
-              {block.items.map((item, itemIndex) => (
-                <li key={`${key}-${itemIndex}`}>{displayText(item)}</li>
-              ))}
-            </ul>
+            <div key={key}>
+              {block.title && <strong>{displayText(block.title)}</strong>}
+              <ul className="answer-bullets">
+                {block.items.map((item, itemIndex) => (
+                  <li key={`${key}-${itemIndex}`}>{displayText(item)}</li>
+                ))}
+              </ul>
+            </div>
           );
         }
         if (block.kind === "formula") {
@@ -366,7 +375,10 @@ function AssistantMessage({ response, text }: { response?: ChatResponse; text: s
         <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} key={`${section.title}-${index}`} open={response.intent === "educational_portfolio" || response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || section.kind === "limitation"}>
           <summary><span>{section.title}</span><small>내용 보기</small></summary>
           {section.blocks?.length ? (
-            <AnswerBlocks blocks={section.blocks} />
+            <>
+              {section.content && <p>{displayText(section.content)}</p>}
+              <AnswerBlocks blocks={section.blocks} />
+            </>
           ) : (
             <p>{displayText(section.content)}</p>
           )}
