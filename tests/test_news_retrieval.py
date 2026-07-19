@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from uuid import UUID
 
 from backend.app.retrieval import repository as repository_module
 from backend.app.retrieval.repository import NewsMatch, RetrievalRepository
@@ -10,7 +11,7 @@ class _Cursor:
         self.params: tuple[object, ...] = ()
         self.rows = [
             (
-                "news-1",
+                "11111111-1111-4111-8111-111111111111",
                 "연금 뉴스",
                 "메타데이터 요약",
                 "https://example.test/news/1",
@@ -48,7 +49,9 @@ class _Connection:
         return self._cursor
 
 
-def test_random_recent_market_news_filters_selected_us_summaries(monkeypatch) -> None:
+def test_recent_market_news_is_deterministic_and_filters_active_summaries(
+    monkeypatch,
+) -> None:
     cursor = _Cursor()
     monkeypatch.setattr(
         repository_module.psycopg,
@@ -56,14 +59,68 @@ def test_random_recent_market_news_filters_selected_us_summaries(monkeypatch) ->
         lambda _: _Connection(cursor),
     )
 
-    results = RetrievalRepository("postgresql://test").random_recent_market_news(
+    results = RetrievalRepository("postgresql://test").recent_market_news(
         region="us", days=5, limit=3
     )
 
     assert results == [NewsMatch(*cursor.rows[0])]
     assert "selection_policy_version is not null" in cursor.statement
+    assert "is_active" in cursor.statement
     assert "%s::text is null" in cursor.statement
     assert "market_region = %s" in cursor.statement
     assert "summary_status = 'succeeded'" in cursor.statement
-    assert "order by random()" in cursor.statement
-    assert cursor.params == ("us", "us", 5, 3)
+    assert "selection_score desc" in cursor.statement
+    assert "published_at desc" in cursor.statement
+    assert "order by random()" not in cursor.statement
+    assert cursor.params == ("us", "us", [], 5, "us", 3)
+
+
+def test_recent_market_news_balances_regions_and_excludes_seen_ids(monkeypatch) -> None:
+    cursor = _Cursor()
+    seen_id = "11111111-1111-4111-8111-111111111111"
+    monkeypatch.setattr(
+        repository_module.psycopg,
+        "connect",
+        lambda _: _Connection(cursor),
+    )
+
+    RetrievalRepository("postgresql://test").recent_market_news(
+        region=None,
+        days=5,
+        limit=3,
+        exclude_item_ids=(seen_id, "tampered"),
+    )
+
+    assert "partition by market_region" in cursor.statement
+    assert "region_rank = 1" in cursor.statement
+    assert "not (id = any(%s::uuid[]))" in cursor.statement
+    assert cursor.params == (None, None, [seen_id], 5, None, 3)
+
+
+def test_news_by_ids_preserves_caller_order(monkeypatch) -> None:
+    cursor = _Cursor()
+    first = "11111111-1111-4111-8111-111111111111"
+    second = "22222222-2222-4222-8222-222222222222"
+    base = cursor.rows[0][1:]
+    cursor.rows = [(first, *base), (second, *base)]
+    monkeypatch.setattr(
+        repository_module.psycopg,
+        "connect",
+        lambda _: _Connection(cursor),
+    )
+
+    results = RetrievalRepository("postgresql://test").news_by_ids((second, first))
+
+    assert [UUID(item.item_id) for item in results] == [UUID(second), UUID(first)]
+    assert "where id = any(%s::uuid[])" in cursor.statement
+    assert cursor.params == ([second, first],)
+
+
+def test_news_by_ids_rejects_tampered_ids_without_query(monkeypatch) -> None:
+    monkeypatch.setattr(
+        repository_module.psycopg,
+        "connect",
+        lambda _: (_ for _ in ()).throw(AssertionError("database should not run")),
+    )
+
+    assert RetrievalRepository("postgresql://test").news_by_ids(("tampered",)) == []

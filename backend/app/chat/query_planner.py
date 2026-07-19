@@ -276,7 +276,7 @@ def plan_question(message: str, *, default_max_results: int = 3) -> QueryPlan:
             intent=ChatIntent.NEWS,
             account_types=account_types,
             news_query=news_query,
-            max_results=3,
+            max_results=max_results,
         )
     if intent == ChatIntent.EDUCATIONAL_PORTFOLIO:
         return QueryPlan(

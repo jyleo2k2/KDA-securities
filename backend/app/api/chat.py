@@ -57,6 +57,20 @@ def _load_demo_context(
     return repository.get(owner_id)
 
 
+def _restore_session_conversation_context(
+    request: "AuthenticatedChatRequest",
+    repository: ChatRepository,
+    owner_id: UUID,
+) -> "AuthenticatedChatRequest":
+    if request.session_id is None:
+        return request
+    context = repository.get_latest_conversation_context(
+        owner_id=owner_id,
+        session_id=request.session_id,
+    )
+    return request.model_copy(update={"conversation_context": context})
+
+
 def _authenticated_request(
     request: "AuthenticatedChatRequest",
     context: DemoUserFinancialContext | None,
@@ -355,6 +369,22 @@ async def chat_authenticated_stream(
                 )
                 return
 
+        request_with_context = request
+        if repository is not None and request.session_id is not None:
+            try:
+                request_with_context = await asyncio.to_thread(
+                    _restore_session_conversation_context,
+                    request,
+                    repository,
+                    owner_id,
+                )
+            except ChatSessionAccessError:
+                yield _sse("error", {"detail": "Chat session not found"})
+                return
+            except _DATABASE_ERRORS:
+                yield _sse("error", {"detail": "Chat database is unavailable"})
+                return
+
         try:
             context = await asyncio.to_thread(
                 _load_demo_context,
@@ -363,7 +393,7 @@ async def chat_authenticated_stream(
             )
         except _DATABASE_ERRORS:
             context = None
-        chat_request = _authenticated_request(request, context)
+        chat_request = _authenticated_request(request_with_context, context)
         started_at = perf_counter()
         plan = service.plan(chat_request)
         yield _sse("phase", {"message": "근거를 검색하고 있습니다."})

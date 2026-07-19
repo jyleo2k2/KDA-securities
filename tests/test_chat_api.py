@@ -15,7 +15,12 @@ from backend.app.api.deps import (
 )
 from backend.app.auth import require_supabase_user_id
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
-from backend.app.chat.models import ChatRequest
+from backend.app.chat.models import (
+    ChatIntent,
+    ChatRequest,
+    ConversationContext,
+    NewsConversationContext,
+)
 from backend.app.chat.repository import (
     ChatSessionAccessError,
     ChatSessionSummary,
@@ -92,6 +97,38 @@ class FakeChatRepository(_BaseFakeChatRepository):
     def delete_session(self, *, owner_id: UUID, session_id: UUID) -> UUID:
         self.deleted.append({"owner_id": owner_id, "session_id": session_id})
         return session_id
+
+
+def test_authenticated_session_restores_server_context_over_client_context() -> None:
+    trusted_id = "11111111-1111-4111-8111-111111111111"
+    tampered_id = "22222222-2222-4222-8222-222222222222"
+    trusted = ConversationContext(
+        last_intent=ChatIntent.NEWS,
+        news=NewsConversationContext(news_item_ids=[trusted_id]),
+    )
+
+    class Repository:
+        def get_latest_conversation_context(self, *, owner_id, session_id):
+            assert owner_id == OWNER_ID
+            assert session_id == SESSION_ID
+            return trusted
+
+    request = chat_api.AuthenticatedChatRequest(
+        message="첫 번째 기사 보여줘",
+        session_id=SESSION_ID,
+        conversation_context=ConversationContext(
+            last_intent=ChatIntent.NEWS,
+            news=NewsConversationContext(news_item_ids=[tampered_id]),
+        ),
+    )
+
+    restored = chat_api._restore_session_conversation_context(
+        request,
+        Repository(),
+        OWNER_ID,
+    )
+
+    assert restored.conversation_context == trusted
 
 
 def _service() -> ChatService:

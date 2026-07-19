@@ -254,7 +254,7 @@ def run_market_news_ingestion(
         "selected": len(selected),
         "summarized": len(ready),
         "inserted": rotation.inserted_count,
-        "deleted": rotation.deleted_count,
+        "expired": rotation.expired_count,
         "stored_total": rotation.final_count,
         "held_for_full_batch": rotation.held_for_full_batch,
         "processing_failures": dict(failures),

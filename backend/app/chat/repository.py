@@ -10,7 +10,7 @@ from uuid import UUID
 import psycopg
 from psycopg_pool import ConnectionPool
 
-from .models import ChatResponse, DataBoundary
+from .models import ChatResponse, ConversationContext, DataBoundary
 
 
 class ChatSessionAccessError(LookupError):
@@ -66,6 +66,24 @@ def _assistant_question_message_id(content: str) -> UUID | None:
             return None
         return UUID(payload["question_message_id"])
     except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+        return None
+
+
+def _assistant_conversation_context(content: str) -> ConversationContext | None:
+    try:
+        payload = json.loads(content)
+        if not isinstance(payload, dict) or payload.get("schema_version") != 1:
+            return None
+        response = payload.get("response")
+        if not isinstance(response, dict):
+            return None
+        context = response.get("conversation_context")
+        return (
+            ConversationContext.model_validate(context)
+            if context is not None
+            else None
+        )
+    except (json.JSONDecodeError, TypeError, ValueError):
         return None
 
 
@@ -365,6 +383,30 @@ class ChatRepository:
                 )
                 for row in message_rows
             ]
+
+    def get_latest_conversation_context(
+        self, *, owner_id: UUID, session_id: UUID
+    ) -> ConversationContext | None:
+        with (
+            self._connection() as connection,
+            connection.cursor() as cursor,
+        ):
+            self._require_owned_session(cursor, session_id, owner_id)
+            cursor.execute(
+                """
+                select content
+                from public.chat_messages
+                where session_id = %s and role = 'assistant'
+                order by created_at desc, id desc
+                limit 20
+                """,
+                (session_id,),
+            )
+            for row in cursor:
+                context = _assistant_conversation_context(row[0])
+                if context is not None:
+                    return context
+        return None
 
     def delete_session(self, *, owner_id: UUID, session_id: UUID) -> UUID:
         """Delete one owned session and hide missing/foreign sessions alike."""
