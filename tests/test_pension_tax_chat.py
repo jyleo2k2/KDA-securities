@@ -53,7 +53,7 @@ EXPECTED_CLOSING_NOTICE = (
 def test_tax_question_without_structured_values_requests_input() -> None:
     response = _service().ask(
         ChatRequest(
-            message="연금저축과 IRP 세액공제와 중도해지 세금을 알려줘"
+            message="연금저축과 IRP 세액공제와 중도해지 세금을 계산해줘"
         )
     )
 
@@ -191,6 +191,28 @@ def test_combined_tax_question_uses_engine_results_and_evidence() -> None:
         DataBoundary.VERIFIED_KNOWLEDGE,
     }
     assert all(item.evidence_id for item in response.numeric_evidence)
+
+
+def test_structured_scenario_without_topic_runs_both_tax_calculations() -> None:
+    response = _service().ask(
+        ChatRequest(message="이 값으로 계산해줘", pension_tax=_inputs())
+    )
+
+    assert response.intent == ChatIntent.PENSION_TAX
+    assert response.pension_tax_result is not None
+    assert response.pension_tax_result.tax_credit is not None
+    assert response.pension_tax_result.withdrawal is not None
+
+
+def test_structured_scenario_without_topic_or_calculation_word_runs_both() -> None:
+    response = _service().ask(
+        ChatRequest(message="결과를 알려줘", pension_tax=_inputs())
+    )
+
+    assert response.intent == ChatIntent.PENSION_TAX
+    assert response.pension_tax_result is not None
+    assert response.pension_tax_result.tax_credit is not None
+    assert response.pension_tax_result.withdrawal is not None
 
 
 def test_service_calls_only_the_requested_tax_calculation() -> None:

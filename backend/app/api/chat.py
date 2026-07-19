@@ -109,6 +109,14 @@ def _authenticated_request(
     return ChatRequest.model_validate(payload)
 
 
+def _authenticated_planning_request(
+    request: "AuthenticatedChatRequest", chat_request: ChatRequest
+) -> ChatRequest:
+    if request.pension_tax is not None:
+        return chat_request
+    return chat_request.model_copy(update={"pension_tax": None})
+
+
 def _authenticated_response(
     *,
     request: ChatRequest,
@@ -398,7 +406,9 @@ async def chat_authenticated_stream(
             context = None
         chat_request = _authenticated_request(request_with_context, context)
         started_at = perf_counter()
-        plan = service.plan(chat_request)
+        plan = service.plan(
+            _authenticated_planning_request(request_with_context, chat_request)
+        )
         yield _sse("phase", {"message": "근거를 검색하고 있습니다."})
         answer_started_at = perf_counter()
         try:

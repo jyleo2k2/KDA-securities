@@ -292,6 +292,12 @@ def _unsafe_claims(text: str) -> set[str]:
     return {category for category, _ in _unsafe_claim_instances(text)}
 
 
+def contains_unsafe_financial_claim(text: str) -> bool:
+    """Expose the narrator's positive-claim guard to verified RAG consumers."""
+
+    return bool(_unsafe_claim_instances(text))
+
+
 def _adds_unverified_content(candidate: str, source: str) -> bool:
     return (
         not _number_tokens(candidate).issubset(_number_tokens(source))
