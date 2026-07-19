@@ -457,6 +457,33 @@ def test_custom_dc_portfolio_answer_is_conclusion_first_heyoche() -> None:
     assert "상품별 편입 가능 여부도 확인해야 해요." in response.answer
 
 
+def test_custom_dc_portfolio_uses_correct_particle_when_over_limit() -> None:
+    response = service().ask(
+        ChatRequest(
+            message="입력한 DC 포트폴리오를 진단해줘",
+            portfolio=PortfolioInput(
+                account_type=AccountType.DC,
+                holdings=[
+                    HoldingInput(
+                        holding_id="equity",
+                        amount_krw=Decimal("800000"),
+                        risk_treatment=RiskTreatment.GENERAL_RISKY,
+                    ),
+                    HoldingInput(
+                        holding_id="deposit",
+                        amount_krw=Decimal("200000"),
+                        risk_treatment=RiskTreatment.CAPITAL_PRESERVATION,
+                    ),
+                ],
+            ),
+        )
+    )
+
+    assert response.answer.startswith(
+        "DC 예시 포트폴리오는 위험자산이 80%로 한도(70%)를 넘었어요."
+    )
+
+
 def test_news_response_explains_when_fewer_than_three_recent_items_exist() -> None:
     response = service(news=SparseNewsRepository()).ask(
         ChatRequest(message="증시 뉴스 알려줘")

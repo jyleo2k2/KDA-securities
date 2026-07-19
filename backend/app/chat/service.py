@@ -1273,10 +1273,14 @@ class ChatService:
             )
         else:
             limit = _decimal_text(evaluation.limit_percent)
-            status_text = "안이에요" if evaluation.within_limit else "넘었어요"
+            limit_status = (
+                f"한도({limit}%) 안이에요"
+                if evaluation.within_limit
+                else f"한도({limit}%)를 넘었어요"
+            )
             answer = (
                 f"{evaluation.evaluated_input.account_type.value.upper()} 예시 "
-                f"포트폴리오는 위험자산이 {ratio}%로 한도({limit}%) {status_text}. "
+                f"포트폴리오는 위험자산이 {ratio}%로 {limit_status}. "
                 "위험자산은 주식처럼 가격이 오르내릴 수 있는 자산이에요. "
                 "상품별 편입 가능 여부도 확인해야 해요."
             )
