@@ -369,6 +369,7 @@ export function GuidePage({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [deleteStatus, setDeleteStatus] = useState<string | null>(null);
   const [loginPanelOpen, setLoginPanelOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -395,6 +396,7 @@ export function GuidePage({
   }>({ userId: authenticatedUserId, accessToken: accessToken ?? null });
   const authGenerationRef = useRef(0);
   const conversationGenerationRef = useRef(0);
+  const sessionListGenerationRef = useRef(0);
   const sendingRef = useRef(false);
 
   currentAuthRef.current = {
@@ -499,6 +501,7 @@ export function GuidePage({
     };
     if (authChanged) {
       authGenerationRef.current += 1;
+      sessionListGenerationRef.current += 1;
       sendingRef.current = false;
       setIsSending(false);
       setHistoryLoading(false);
@@ -559,13 +562,20 @@ export function GuidePage({
 
   async function refreshChatSessions(token: string, userId: string) {
     const authGeneration = authGenerationRef.current;
+    const sessionListGeneration = sessionListGenerationRef.current;
     try {
       const sessions = await getChatSessions(token);
-      if (!isCurrentOperation(authGeneration, userId, token)) return;
+      if (
+        !isCurrentOperation(authGeneration, userId, token)
+        || sessionListGenerationRef.current !== sessionListGeneration
+      ) return;
       setChatSessions(sessions);
       setHistoryError(null);
     } catch (error) {
-      if (!isCurrentOperation(authGeneration, userId, token)) return;
+      if (
+        !isCurrentOperation(authGeneration, userId, token)
+        || sessionListGenerationRef.current !== sessionListGeneration
+      ) return;
       setHistoryError(authenticatedErrorMessage(error));
     }
   }
@@ -696,7 +706,15 @@ export function GuidePage({
     const requestUserId = authenticatedUserId;
     const authGeneration = authGenerationRef.current;
     const conversationGeneration = conversationGenerationRef.current;
+    const deletedIndex = chatSessions.findIndex(
+      (item) => item.session_id === session.session_id,
+    );
+    const focusSessionId = (
+      chatSessions[deletedIndex + 1] ?? chatSessions[deletedIndex - 1]
+    )?.session_id;
+    sessionListGenerationRef.current += 1;
     setDeletingSessionId(session.session_id);
+    setDeleteStatus(null);
     setHistoryError(null);
     try {
       await deleteChatSession(session.session_id, requestToken);
@@ -704,6 +722,8 @@ export function GuidePage({
       setChatSessions((current) => current.filter(
         (item) => item.session_id !== session.session_id,
       ));
+      sessionListGenerationRef.current += 1;
+      setDeleteStatus("대화가 삭제되었습니다.");
       if (
         activeSessionId === session.session_id
         && conversationGenerationRef.current === conversationGeneration
@@ -714,6 +734,21 @@ export function GuidePage({
         setConversationContext(null);
         setIsSidebarOpen(false);
       }
+      const focusGeneration = conversationGenerationRef.current;
+      window.setTimeout(() => {
+        if (
+          !isCurrentOperation(
+            authGeneration,
+            requestUserId,
+            requestToken,
+            focusGeneration,
+          )
+        ) return;
+        const nextHistoryButton = Array.from(
+          document.querySelectorAll<HTMLButtonElement>(".history-open"),
+        ).find((button) => button.dataset.sessionId === focusSessionId);
+        (nextHistoryButton ?? textareaRef.current)?.focus();
+      }, 0);
     } catch (error) {
       if (!isCurrentOperation(authGeneration, requestUserId, requestToken)) return;
       setHistoryError(authenticatedErrorMessage(error));
@@ -728,7 +763,7 @@ export function GuidePage({
 
   async function submitPrompt(prompt: string) {
     const normalized = prompt.trim();
-    if (normalized.length < 2 || sendingRef.current) return;
+    if (normalized.length < 2 || sendingRef.current || deletingSessionId) return;
 
     const requestToken = accessToken ?? null;
     const requestUserId = authenticatedUserId;
@@ -909,6 +944,7 @@ export function GuidePage({
                     >
                       <button
                         className="history-open"
+                        data-session-id={session.session_id}
                         type="button"
                         onClick={() => void loadStoredSession(session.session_id)}
                         disabled={disabled}
@@ -930,6 +966,11 @@ export function GuidePage({
                   );
                 })}
               </div>
+              {deleteStatus && (
+                <p className="auth-note" role="status" aria-live="polite">
+                  {deleteStatus}
+                </p>
+              )}
             </>
           ) : auth.configured ? (
             <>
@@ -1113,7 +1154,7 @@ export function GuidePage({
                       <AssistantMessage response={message.response} text={message.text} />
                     </div>
                     {message.failedPrompt && (
-                      <button className="retry-button" type="button" onClick={() => void submitPrompt(message.failedPrompt!)} disabled={isSending}>
+                      <button className="retry-button" type="button" onClick={() => void submitPrompt(message.failedPrompt!)} disabled={isSending || deletingSessionId !== null}>
                         <Icon name="refresh" size={15} /> 다시 시도
                       </button>
                     )}
@@ -1149,9 +1190,9 @@ export function GuidePage({
               placeholder="연금에 대해 무엇이든 물어보세요"
               rows={1}
               aria-label="질문 입력"
-              disabled={isSending}
+              disabled={isSending || deletingSessionId !== null}
             />
-            <button type="submit" disabled={input.trim().length < 2 || isSending} aria-label="질문 보내기"><Icon name="send" size={20} /></button>
+            <button type="submit" disabled={input.trim().length < 2 || isSending || deletingSessionId !== null} aria-label="질문 보내기"><Icon name="send" size={20} /></button>
           </form>
           <p>AI 답변은 투자 판단을 돕는 정보이며, 미래 수익을 보장하지 않습니다.</p>
         </div>
