@@ -543,27 +543,6 @@ class NaverNewsRepository:
             held_for_full_batch = current_count >= 100 and len(rows) < 20
             expired_count = 0
             if current_count >= 100 and len(rows) == 20:
-                cursor.execute(
-                    """
-                    with oldest as (
-                        select news.id
-                        from public.news_items as news
-                        where news.selection_policy_version is not null
-                          and news.is_active
-                        order by
-                            news.published_at asc nulls first,
-                            news.fetched_at asc,
-                            news.id
-                        limit 20
-                        for update
-                    )
-                    update public.news_items as news
-                    set is_active = false
-                    from oldest
-                    where news.id = oldest.id
-                    """
-                )
-                expired_count = max(cursor.rowcount, 0)
                 rows_to_insert = rows
             elif current_count < 100:
                 rows_to_insert = rows[: 100 - current_count]
@@ -606,6 +585,31 @@ class NaverNewsRepository:
                 inserted_count = max(cursor.rowcount, 0)
             else:
                 inserted_count = 0
+
+            if current_count >= 100 and inserted_count:
+                cursor.execute(
+                    """
+                    with oldest as (
+                        select news.id
+                        from public.news_items as news
+                        where news.selection_policy_version is not null
+                          and news.is_active
+                          and news.ingestion_run_id is distinct from %s
+                        order by
+                            news.published_at asc nulls first,
+                            news.fetched_at asc,
+                            news.id
+                        limit %s
+                        for update
+                    )
+                    update public.news_items as news
+                    set is_active = false
+                    from oldest
+                    where news.id = oldest.id
+                    """,
+                    (run_id, inserted_count),
+                )
+                expired_count = max(cursor.rowcount, 0)
 
             cursor.execute(
                 """

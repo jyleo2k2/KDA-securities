@@ -11,8 +11,14 @@ from backend.app.ingestion.naver_news_repository import (
 
 
 class _RotationCursor:
-    def __init__(self, current_count: int) -> None:
+    def __init__(
+        self,
+        current_count: int,
+        *,
+        actual_inserted_count: int | None = None,
+    ) -> None:
         self.current_count = current_count
+        self.actual_inserted_count = actual_inserted_count
         self.expired_count = 0
         self.inserted_count = 0
         self.rowcount = 0
@@ -35,14 +41,19 @@ class _RotationCursor:
             final_count = self.current_count - self.expired_count + self.inserted_count
             self._next_row = (final_count,)
         elif compact.startswith("with oldest as"):
-            self.expired_count = min(20, self.current_count)
+            requested_count = int(params[-1]) if params else 0
+            self.expired_count = min(requested_count, self.current_count)
             self.rowcount = self.expired_count
 
     def executemany(self, statement: str, rows: list[dict[str, object]]) -> None:
         self.statements.append(" ".join(statement.split()))
         self.inserted_rows = rows
-        self.inserted_count = len(rows)
-        self.rowcount = len(rows)
+        self.inserted_count = (
+            len(rows)
+            if self.actual_inserted_count is None
+            else min(self.actual_inserted_count, len(rows))
+        )
+        self.rowcount = self.inserted_count
 
     def fetchone(self) -> tuple[object, ...] | None:
         return self._next_row
@@ -90,8 +101,17 @@ def _article(index: int) -> ReadyMarketNews:
     )
 
 
-def _run_rotation(monkeypatch, current_count: int, article_count: int):
-    cursor = _RotationCursor(current_count)
+def _run_rotation(
+    monkeypatch,
+    current_count: int,
+    article_count: int,
+    *,
+    actual_inserted_count: int | None = None,
+):
+    cursor = _RotationCursor(
+        current_count,
+        actual_inserted_count=actual_inserted_count,
+    )
     connection = _Connection(cursor)
     monkeypatch.setattr(
         repository_module.psycopg,
@@ -140,6 +160,49 @@ def test_full_store_atomically_expires_oldest_twenty(monkeypatch) -> None:
     assert any("pg_advisory_xact_lock" in statement for statement in cursor.statements)
 
 
+def test_full_store_expires_only_rows_actually_inserted_after_conflicts(
+    monkeypatch,
+) -> None:
+    result, cursor, _ = _run_rotation(
+        monkeypatch,
+        100,
+        20,
+        actual_inserted_count=7,
+    )
+
+    assert result.inserted_count == 7
+    assert result.expired_count == 7
+    assert result.final_count == 100
+    insert_index = next(
+        index
+        for index, statement in enumerate(cursor.statements)
+        if statement.startswith("insert into public.news_items")
+    )
+    expire_index = next(
+        index
+        for index, statement in enumerate(cursor.statements)
+        if statement.startswith("with oldest as")
+    )
+    assert insert_index < expire_index
+    assert "ingestion_run_id is distinct from" in cursor.statements[expire_index]
+
+
+def test_full_store_does_not_expire_when_every_insert_conflicts(monkeypatch) -> None:
+    result, cursor, _ = _run_rotation(
+        monkeypatch,
+        100,
+        20,
+        actual_inserted_count=0,
+    )
+
+    assert result.inserted_count == 0
+    assert result.expired_count == 0
+    assert result.final_count == 100
+    assert not any(
+        statement.startswith("with oldest as") for statement in cursor.statements
+    )
+
+
 def test_store_below_cap_inserts_only_available_capacity(monkeypatch) -> None:
     result, cursor, _ = _run_rotation(monkeypatch, 90, 20)
 
@@ -147,3 +210,19 @@ def test_store_below_cap_inserts_only_available_capacity(monkeypatch) -> None:
     assert result.expired_count == 0
     assert result.final_count == 100
     assert len(cursor.inserted_rows) == 10
+
+
+def test_store_below_cap_keeps_existing_rows_when_inserts_conflict(monkeypatch) -> None:
+    result, cursor, _ = _run_rotation(
+        monkeypatch,
+        90,
+        20,
+        actual_inserted_count=4,
+    )
+
+    assert result.inserted_count == 4
+    assert result.expired_count == 0
+    assert result.final_count == 94
+    assert not any(
+        statement.startswith("with oldest as") for statement in cursor.statements
+    )

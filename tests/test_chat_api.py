@@ -441,6 +441,28 @@ def test_blocked_query_works_without_chat_database() -> None:
     assert ("error", {"detail": "Chat database is not configured"}) in supported_events
 
 
+def test_existing_session_without_repository_errors_before_answer_delta() -> None:
+    _override_authenticated_dependencies(None)
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={
+                    "message": "IRP 위험자산 한도를 알려줘",
+                    "session_id": str(SESSION_ID),
+                },
+                headers=CHAT_HEADERS,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    events = parse_sse(response.text)
+    assert events == [
+        ("phase", {"message": "요청을 확인하고 있습니다."}),
+        ("error", {"detail": "Chat database is not configured"}),
+    ]
+
+
 def test_chat_requires_bearer_authentication() -> None:
     repository = FakeChatRepository()
     app.dependency_overrides[get_chat_service] = _service

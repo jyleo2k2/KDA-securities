@@ -134,6 +134,26 @@ def _news_summary_block(item: NewsMatch, index: int) -> str:
     return f"{label} 뉴스 — {headline}\n{summary}\n원문 링크: {item.original_url}"
 
 
+def _news_comparison_block(item: NewsMatch, index: int) -> str:
+    published = (
+        item.published_at.date().isoformat()
+        if item.published_at is not None
+        else "확인되지 않음"
+    )
+    summary_lines = list(item.summary_lines)
+    return "\n".join(
+        (
+            f"{index + 1}번째 기사",
+            f"제목: {item.title}",
+            f"발행일: {published}",
+            f"핵심 1: {summary_lines[0]}",
+            f"핵심 2: {summary_lines[1]}",
+            f"핵심 3: {summary_lines[2]}",
+            f"원문 링크: {item.original_url}",
+        )
+    )
+
+
 def _decimal_text(value: Decimal) -> str:
     return format(value.normalize(), "f")
 
@@ -423,7 +443,13 @@ class ChatService:
             )
         if direct_plan.blocked_reason not in {None, BlockedReason.UNSUPPORTED}:
             return direct_plan
-        news_follow_up = self._router.news_follow_up(request)
+        can_use_news_context = (
+            direct_plan.intent == ChatIntent.NEWS
+            or direct_plan.blocked_reason == BlockedReason.UNSUPPORTED
+        )
+        news_follow_up = (
+            self._router.news_follow_up(request) if can_use_news_context else None
+        )
         if news_follow_up is not None:
             region = news_follow_up.region
             news_query = (
@@ -2248,6 +2274,14 @@ class ChatService:
                 limitations=["만료된 뉴스 내용을 임의로 복원하지 않아요."],
                 conversation_context=ConversationContext(news=news_context),
             )
+        if any(len(item.summary_lines) != 3 for _, item in ordered):
+            return ChatResponse(
+                intent=ChatIntent.NEWS,
+                answer="검증된 3줄 요약이 없어 후속 비교를 만들지 않았어요.",
+                data_mode="unavailable",
+                limitations=["기사 내용을 임의로 보완하지 않아요."],
+                conversation_context=ConversationContext(news=news_context),
+            )
 
         sources = [
             SourceEvidence(
@@ -2275,13 +2309,19 @@ class ChatService:
                 for index, item in ordered
             ]
             title = "뉴스 출처와 발행일"
+        elif follow_up.action == NewsFollowUpAction.COMPARE:
+            lines = [
+                _news_comparison_block(item, index) for index, item in ordered
+            ]
+            lines.insert(
+                0,
+                "기사별 검증된 메타데이터와 요약을 같은 항목으로 "
+                "나란히 비교해요.",
+            )
+            title = "세션 뉴스 비교"
         else:
             lines = [_news_summary_block(item, index) for index, item in ordered]
-            title = (
-                "세션 뉴스 비교"
-                if follow_up.action == NewsFollowUpAction.COMPARE
-                else "선택한 뉴스 다시 보기"
-            )
+            title = "선택한 뉴스 다시 보기"
         focus_id = selected[0][1] if len(selected) == 1 else None
         updated_news_context = news_context.model_copy(
             update={"focus_news_item_id": focus_id}

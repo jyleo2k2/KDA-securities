@@ -345,6 +345,9 @@ async def chat_authenticated_stream(
 
     async def events() -> AsyncIterator[str]:
         yield _sse("phase", {"message": "요청을 확인하고 있습니다."})
+        if request.session_id is not None and repository is None:
+            yield _sse("error", {"detail": "Chat database is not configured"})
+            return
         if repository is not None:
             try:
                 replayed = await asyncio.to_thread(

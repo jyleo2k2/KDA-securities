@@ -500,6 +500,56 @@ def test_news_follow_up_selects_compares_and_shows_sources() -> None:
         "한국·미국 증시 관련 공식 발표 1",
         "한국·미국 증시 관련 공식 발표 2",
     ]
+    assert compared.answer.startswith(
+        "기사별 검증된 메타데이터와 요약을 같은 항목으로 나란히 비교해요."
+    )
+    assert compared.answer.count("발행일:") == 2
+    assert compared.answer.count("핵심 1:") == 2
+    assert compared.answer.count("핵심 2:") == 2
+    assert compared.answer.count("핵심 3:") == 2
+    assert compared.answer.index("1번째 기사") < compared.answer.index("2번째 기사")
+
+
+@pytest.mark.parametrize(
+    ("message", "expected_intent"),
+    (
+        ("첫 번째 계좌의 위험자산 한도를 알려줘", ChatIntent.ACCOUNT_RULE),
+        ("첫 번째 납입액의 세액공제를 계산해줘", ChatIntent.PENSION_TAX),
+        ("첫 번째 투자 성향을 설명해줘", ChatIntent.EDUCATIONAL_PORTFOLIO),
+    ),
+)
+def test_news_context_does_not_intercept_explicit_non_news_questions(
+    message: str,
+    expected_intent: ChatIntent,
+) -> None:
+    context = ConversationContext(
+        last_intent=ChatIntent.NEWS,
+        news=NewsConversationContext(
+            news_item_ids=[str(UUID(int=1)), str(UUID(int=2))]
+        ),
+    )
+
+    plan = service(news=FakeNewsRepository()).plan(
+        ChatRequest(message=message, conversation_context=context)
+    )
+
+    assert plan.intent == expected_intent
+
+
+def test_explicit_ordinal_article_still_uses_news_context() -> None:
+    context = ConversationContext(
+        last_intent=ChatIntent.NEWS,
+        news=NewsConversationContext(
+            news_item_ids=[str(UUID(int=1)), str(UUID(int=2))]
+        ),
+    )
+
+    plan = service(news=FakeNewsRepository()).plan(
+        ChatRequest(message="첫 번째 기사 보여줘", conversation_context=context)
+    )
+
+    assert plan.intent == ChatIntent.NEWS
+    assert plan.news_query == "context"
 
 
 @pytest.mark.parametrize("refresh_message", ("다른 뉴스 보여줘", "새로고침"))
