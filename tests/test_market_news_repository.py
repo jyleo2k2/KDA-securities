@@ -11,9 +11,15 @@ from backend.app.ingestion.naver_news_repository import (
 
 
 class _RotationCursor:
-    def __init__(self, current_count: int) -> None:
+    def __init__(
+        self,
+        current_count: int,
+        *,
+        actual_inserted_count: int | None = None,
+    ) -> None:
         self.current_count = current_count
-        self.deleted_count = 0
+        self.actual_inserted_count = actual_inserted_count
+        self.expired_count = 0
         self.inserted_count = 0
         self.rowcount = 0
         self._next_row: tuple[object, ...] | None = None
@@ -31,18 +37,23 @@ class _RotationCursor:
         self.statements.append(compact)
         self.rowcount = 1
         self._next_row = None
-        if compact == "select count(*) from public.news_items":
-            final_count = self.current_count - self.deleted_count + self.inserted_count
+        if compact.startswith("select count(*) from public.news_items"):
+            final_count = self.current_count - self.expired_count + self.inserted_count
             self._next_row = (final_count,)
         elif compact.startswith("with oldest as"):
-            self.deleted_count = min(20, self.current_count)
-            self.rowcount = self.deleted_count
+            requested_count = int(params[-1]) if params else 0
+            self.expired_count = min(requested_count, self.current_count)
+            self.rowcount = self.expired_count
 
     def executemany(self, statement: str, rows: list[dict[str, object]]) -> None:
         self.statements.append(" ".join(statement.split()))
         self.inserted_rows = rows
-        self.inserted_count = len(rows)
-        self.rowcount = len(rows)
+        self.inserted_count = (
+            len(rows)
+            if self.actual_inserted_count is None
+            else min(self.actual_inserted_count, len(rows))
+        )
+        self.rowcount = self.inserted_count
 
     def fetchone(self) -> tuple[object, ...] | None:
         return self._next_row
@@ -90,8 +101,17 @@ def _article(index: int) -> ReadyMarketNews:
     )
 
 
-def _run_rotation(monkeypatch, current_count: int, article_count: int):
-    cursor = _RotationCursor(current_count)
+def _run_rotation(
+    monkeypatch,
+    current_count: int,
+    article_count: int,
+    *,
+    actual_inserted_count: int | None = None,
+):
+    cursor = _RotationCursor(
+        current_count,
+        actual_inserted_count=actual_inserted_count,
+    )
     connection = _Connection(cursor)
     monkeypatch.setattr(
         repository_module.psycopg,
@@ -115,7 +135,7 @@ def test_full_store_waits_without_deleting_for_partial_batch(monkeypatch) -> Non
     result, cursor, connection = _run_rotation(monkeypatch, 100, 19)
 
     assert result.inserted_count == 0
-    assert result.deleted_count == 0
+    assert result.expired_count == 0
     assert result.final_count == 100
     assert result.held_for_full_batch is True
     assert cursor.inserted_rows == []
@@ -125,22 +145,84 @@ def test_full_store_waits_without_deleting_for_partial_batch(monkeypatch) -> Non
     assert connection.rolled_back is False
 
 
-def test_full_store_atomically_replaces_oldest_twenty(monkeypatch) -> None:
+def test_full_store_atomically_expires_oldest_twenty(monkeypatch) -> None:
     result, cursor, _ = _run_rotation(monkeypatch, 100, 20)
 
     assert result.inserted_count == 20
-    assert result.deleted_count == 20
+    assert result.expired_count == 20
     assert result.final_count == 100
     assert result.held_for_full_batch is False
     assert len(cursor.inserted_rows) == 20
-    assert any("limit 20 for update" in statement for statement in cursor.statements)
+    assert any("set is_active = false" in statement for statement in cursor.statements)
+    assert not any(
+        "delete from public.news_items" in item for item in cursor.statements
+    )
     assert any("pg_advisory_xact_lock" in statement for statement in cursor.statements)
+
+
+def test_full_store_expires_only_rows_actually_inserted_after_conflicts(
+    monkeypatch,
+) -> None:
+    result, cursor, _ = _run_rotation(
+        monkeypatch,
+        100,
+        20,
+        actual_inserted_count=7,
+    )
+
+    assert result.inserted_count == 7
+    assert result.expired_count == 7
+    assert result.final_count == 100
+    insert_index = next(
+        index
+        for index, statement in enumerate(cursor.statements)
+        if statement.startswith("insert into public.news_items")
+    )
+    expire_index = next(
+        index
+        for index, statement in enumerate(cursor.statements)
+        if statement.startswith("with oldest as")
+    )
+    assert insert_index < expire_index
+    assert "ingestion_run_id is distinct from" in cursor.statements[expire_index]
+
+
+def test_full_store_does_not_expire_when_every_insert_conflicts(monkeypatch) -> None:
+    result, cursor, _ = _run_rotation(
+        monkeypatch,
+        100,
+        20,
+        actual_inserted_count=0,
+    )
+
+    assert result.inserted_count == 0
+    assert result.expired_count == 0
+    assert result.final_count == 100
+    assert not any(
+        statement.startswith("with oldest as") for statement in cursor.statements
+    )
 
 
 def test_store_below_cap_inserts_only_available_capacity(monkeypatch) -> None:
     result, cursor, _ = _run_rotation(monkeypatch, 90, 20)
 
     assert result.inserted_count == 10
-    assert result.deleted_count == 0
+    assert result.expired_count == 0
     assert result.final_count == 100
     assert len(cursor.inserted_rows) == 10
+
+
+def test_store_below_cap_keeps_existing_rows_when_inserts_conflict(monkeypatch) -> None:
+    result, cursor, _ = _run_rotation(
+        monkeypatch,
+        90,
+        20,
+        actual_inserted_count=4,
+    )
+
+    assert result.inserted_count == 4
+    assert result.expired_count == 0
+    assert result.final_count == 94
+    assert not any(
+        statement.startswith("with oldest as") for statement in cursor.statements
+    )

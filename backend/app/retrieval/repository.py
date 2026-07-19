@@ -301,6 +301,7 @@ class RetrievalRepository:
                     portal_url, published_at, summary_lines
                 from public.news_items
                 where search_query = %s
+                  and (selection_policy_version is null or is_active)
                 order by published_at desc nulls last, fetched_at desc
                 limit %s
                 """,
@@ -318,8 +319,11 @@ class RetrievalRepository:
                     id::text, title, description, original_url,
                     portal_url, published_at, summary_lines
                 from public.news_items
-                where title ilike any(%s::text[])
-                   or coalesce(description, '') ilike any(%s::text[])
+                where (selection_policy_version is null or is_active)
+                  and (
+                      title ilike any(%s::text[])
+                      or coalesce(description, '') ilike any(%s::text[])
+                  )
                 order by published_at desc nulls last, fetched_at desc
                 limit %s
                 """,
@@ -327,15 +331,79 @@ class RetrievalRepository:
             )
             return [NewsMatch(*row) for row in cursor]
 
-    def random_recent_market_news(
+    def recent_market_news(
         self,
         *,
         region: str | None = None,
         days: int = 5,
         limit: int = 3,
+        exclude_item_ids: tuple[str, ...] = (),
     ) -> list[NewsMatch]:
         if region not in {None, "kr", "us"}:
             raise ValueError("region must be kr, us or None")
+        excluded_ids: list[str] = []
+        for item_id in exclude_item_ids:
+            try:
+                excluded_ids.append(str(UUID(item_id)))
+            except ValueError:
+                continue
+        with (
+            self._connection() as connection,
+            connection.cursor() as cursor,
+        ):
+            cursor.execute(
+                """
+                with eligible as (
+                    select
+                        id, title, description, original_url,
+                        portal_url, published_at, summary_lines,
+                        selection_score, market_region,
+                        row_number() over (
+                            partition by market_region
+                            order by selection_score desc, published_at desc, id
+                        ) as region_rank
+                    from public.news_items
+                    where selection_policy_version is not null
+                      and is_active
+                      and (%s::text is null or market_region = %s)
+                      and not (id = any(%s::uuid[]))
+                      and published_at >= now() - make_interval(days => %s)
+                      and published_at <= now()
+                      and summary_status = 'succeeded'
+                      and cardinality(summary_lines) = 3
+                )
+                select
+                    id::text, title, description, original_url,
+                    portal_url, published_at, summary_lines
+                from eligible
+                order by
+                    case
+                        when %s::text is null and region_rank = 1 then 0
+                        else 1
+                    end,
+                    selection_score desc,
+                    published_at desc,
+                    id
+                limit %s
+                """,
+                (
+                    region,
+                    region,
+                    excluded_ids,
+                    max(1, min(days, 365)),
+                    region,
+                    max(1, min(limit, 100)),
+                ),
+            )
+            return [NewsMatch(*row) for row in cursor]
+
+    def news_by_ids(self, item_ids: tuple[str, ...]) -> list[NewsMatch]:
+        if not item_ids:
+            return []
+        try:
+            normalized_ids = [str(UUID(item_id)) for item_id in item_ids]
+        except ValueError:
+            return []
         with (
             self._connection() as connection,
             connection.cursor() as cursor,
@@ -346,23 +414,14 @@ class RetrievalRepository:
                     id::text, title, description, original_url,
                     portal_url, published_at, summary_lines
                 from public.news_items
-                where selection_policy_version is not null
-                  and (%s::text is null or market_region = %s)
-                  and published_at >= now() - make_interval(days => %s)
-                  and published_at <= now()
-                  and summary_status = 'succeeded'
-                  and cardinality(summary_lines) = 3
-                order by random()
-                limit %s
+                where id = any(%s::uuid[])
                 """,
-                (
-                    region,
-                    region,
-                    max(1, min(days, 365)),
-                    max(1, min(limit, 100)),
-                ),
+                (normalized_ids,),
             )
-            return [NewsMatch(*row) for row in cursor]
+            matches = {
+                item.item_id: item for item in (NewsMatch(*row) for row in cursor)
+            }
+        return [matches[item_id] for item_id in normalized_ids if item_id in matches]
 
 
 def _news_search_terms(search_query: str) -> tuple[str, ...]:

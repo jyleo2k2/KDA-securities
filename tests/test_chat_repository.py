@@ -8,7 +8,10 @@ from backend.app.chat import repository as repository_module
 from backend.app.chat.models import (
     ChatIntent,
     ChatResponse,
+    ConversationContext,
     DataBoundary,
+    MarketRegion,
+    NewsConversationContext,
     SourceEvidence,
 )
 from backend.app.chat.repository import ChatRepository, ChatSessionAccessError
@@ -16,8 +19,15 @@ from tests.conftest import FakeConnection
 
 
 class FakeCursor:
-    def __init__(self, fetchone_rows, *, fail_on_assistant: bool = False) -> None:
+    def __init__(
+        self,
+        fetchone_rows,
+        *,
+        fail_on_assistant: bool = False,
+        iter_rows=(),
+    ) -> None:
         self._fetchone_rows = list(fetchone_rows)
+        self._iter_rows = list(iter_rows)
         self.fail_on_assistant = fail_on_assistant
         self.executed: list[tuple[str, object]] = []
         self.many: list[tuple[str, list[dict[str, object]]]] = []
@@ -39,6 +49,9 @@ class FakeCursor:
 
     def fetchone(self):
         return self._fetchone_rows.pop(0) if self._fetchone_rows else None
+
+    def __iter__(self):
+        return iter(self._iter_rows)
 
 
 def _response() -> ChatResponse:
@@ -120,6 +133,49 @@ def test_message_order_keeps_same_timestamp_exchanges_together() -> None:
         "user",
         "assistant",
     ]
+
+
+def test_latest_server_conversation_context_is_restored_from_assistant(
+    monkeypatch,
+) -> None:
+    owner_id = uuid4()
+    session_id = uuid4()
+    trusted = ConversationContext(
+        last_intent=ChatIntent.NEWS,
+        news=NewsConversationContext(
+            news_item_ids=[str(uuid4())],
+            market_region=MarketRegion.US,
+        ),
+    )
+    assistant = json.dumps(
+        {
+            "schema_version": 1,
+            "question_message_id": str(uuid4()),
+            "response": ChatResponse(
+                intent=ChatIntent.NEWS,
+                answer="저장된 뉴스 답변이에요.",
+                data_mode="news_summary",
+                conversation_context=trusted,
+            ).model_dump(mode="json"),
+        }
+    )
+    cursor = FakeCursor(
+        [(1,)],
+        iter_rows=[("not-json",), (assistant,)],
+    )
+    monkeypatch.setattr(
+        repository_module.psycopg,
+        "connect",
+        lambda _: FakeConnection(cursor),
+    )
+
+    restored = ChatRepository("postgresql://test").get_latest_conversation_context(
+        owner_id=owner_id,
+        session_id=session_id,
+    )
+
+    assert restored == trusted
+    assert any("role = 'assistant'" in query for query, _ in cursor.executed)
 
 
 def test_save_exchange_is_one_transaction_with_relational_evidence(

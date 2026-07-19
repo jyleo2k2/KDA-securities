@@ -589,12 +589,22 @@ export interface CompletedSurveyProfile {
   loss_tolerance_percent: string | number;
 }
 
+export type MarketRegion = "all" | "kr" | "us";
+
+export interface NewsConversationContext {
+  news_item_ids: string[];
+  focus_news_item_id?: string | null;
+  market_region: MarketRegion;
+  shown_at: string;
+}
+
 export interface ConversationContext {
   account_type?: AccountType | null;
   scenario_code?: string | null;
   last_intent?: ChatIntent | null;
   survey_profile?: CompletedSurveyProfile | null;
   selected_risk_profile?: RiskProfile | null;
+  news?: NewsConversationContext | null;
 }
 
 export interface ChatResponse {

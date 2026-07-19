@@ -232,14 +232,14 @@ def test_multiple_account_disclosures_require_one_account_at_a_time() -> None:
     assert plan.blocked_reason == BlockedReason.ACCOUNT_SELECTION_REQUIRED
 
 
-def test_news_topic_and_requested_count_are_canonical() -> None:
+def test_news_topic_and_requested_count_are_preserved() -> None:
     samsung = plan_question("삼성전자 가장 최근 뉴스 하나 찾아줘")
     pension = plan_question("퇴직연금 최신 뉴스 5건 알려줘")
 
     assert samsung.news_query == "market"
-    assert samsung.max_results == 3
+    assert samsung.max_results == 1
     assert pension.news_query == "market"
-    assert pension.max_results == 3
+    assert pension.max_results == 5
 
 
 @pytest.mark.parametrize("message", ("IRP 뉴스", "DC형 뉴스", "연금저축 뉴스"))
@@ -262,11 +262,20 @@ def test_news_command_removal_keeps_words_that_contain_news_terms() -> None:
 
 
 @pytest.mark.parametrize(
-    ("message", "query"),
-    (("미국 증시 뉴스", "market:us"), ("코스피 뉴스", "market:kr")),
+    ("message", "query", "max_results"),
+    (
+        ("미국 증시 뉴스 2건", "market:us", 2),
+        ("코스피 뉴스", "market:kr", 3),
+        ("증시 뉴스 5건", "market", 5),
+    ),
 )
-def test_market_news_region_filter(message: str, query: str) -> None:
-    assert plan_question(message).news_query == query
+def test_market_news_region_filter_and_count(
+    message: str, query: str, max_results: int
+) -> None:
+    plan = plan_question(message)
+
+    assert plan.news_query == query
+    assert plan.max_results == max_results
 
 
 def test_order_and_future_requests_do_not_reach_retrieval() -> None:

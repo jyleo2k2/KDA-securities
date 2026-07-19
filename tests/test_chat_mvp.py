@@ -19,7 +19,10 @@ from backend.app.chat.models import (
     ChatNewsItem,
     ChatRequest,
     ChatResponse,
+    ConversationContext,
     DataBoundary,
+    MarketRegion,
+    NewsConversationContext,
     NumericEvidence,
     SectionKind,
     SourceEvidence,
@@ -64,16 +67,17 @@ class FakeDisclosureRepository:
 
 
 class FakeNewsRepository:
+    def __init__(self) -> None:
+        self.recent_calls: list[dict[str, object]] = []
+
     def latest_news(self, search_query, *, limit=10):
         raise AssertionError("증시 뉴스는 최신순 메타데이터 조회를 사용하면 안 됩니다")
 
-    def random_recent_market_news(self, *, region=None, days=5, limit=3):
-        assert region is None
-        assert days == 5
-        assert limit == 3
+    @staticmethod
+    def _items():
         return [
             NewsMatch(
-                item_id=f"news-{index}",
+                item_id=str(UUID(int=index)),
                 title=f"한국·미국 증시 관련 공식 발표 {index}",
                 description=f"검색 API 메타데이터 요약 {index}",
                 original_url=f"https://example.test/news/{index}",
@@ -85,14 +89,42 @@ class FakeNewsRepository:
                     f"기사 {index}의 세 번째 핵심 문장입니다.",
                 ),
             )
-            for index in range(1, 4)
+            for index in range(1, 7)
         ]
+
+    def recent_market_news(
+        self,
+        *,
+        region=None,
+        days=5,
+        limit=3,
+        exclude_item_ids=(),
+    ):
+        assert days == 5
+        self.recent_calls.append(
+            {
+                "region": region,
+                "limit": limit,
+                "exclude_item_ids": exclude_item_ids,
+            }
+        )
+        excluded = set(exclude_item_ids)
+        return [item for item in self._items() if item.item_id not in excluded][:limit]
+
+    def news_by_ids(self, item_ids):
+        by_id = {item.item_id: item for item in self._items()}
+        return [by_id[item_id] for item_id in item_ids if item_id in by_id]
 
 
 class SparseNewsRepository(FakeNewsRepository):
-    def random_recent_market_news(self, *, region=None, days=5, limit=3):
-        return super().random_recent_market_news(
-            region=region, days=days, limit=limit
+    def recent_market_news(
+        self, *, region=None, days=5, limit=3, exclude_item_ids=()
+    ):
+        return super().recent_market_news(
+            region=region,
+            days=days,
+            limit=limit,
+            exclude_item_ids=exclude_item_ids,
         )[:2]
 
 
@@ -408,7 +440,7 @@ def test_news_response_exposes_three_line_summaries_and_original_links() -> None
     assert response.intent == ChatIntent.NEWS
     assert len(response.sources) == 3
     assert response.sources[0].locator == "https://example.test/news/1"
-    assert response.sources[0].evidence_id == "news:news-1"
+    assert response.sources[0].evidence_id == f"news:{UUID(int=1)}"
     assert response.sources[0].data_boundary == "news_summary"
     assert response.data_mode == "news_summary"
     assert response.news_items[0].title == "한국·미국 증시 관련 공식 발표 1"
@@ -426,6 +458,149 @@ def test_news_response_exposes_three_line_summaries_and_original_links() -> None
     assert response.answer.index("첫 번째 뉴스") < response.answer.index("두 번째 뉴스")
     assert response.answer.index("두 번째 뉴스") < response.answer.index("세 번째 뉴스")
     assert "LLM 3줄 요약" in response.limitations[0]
+    assert response.conversation_context is not None
+    assert response.conversation_context.news is not None
+    assert response.conversation_context.news.market_region == MarketRegion.ALL
+    assert response.conversation_context.news.news_item_ids == [
+        str(UUID(int=index)) for index in range(1, 4)
+    ]
+
+
+def test_news_follow_up_selects_compares_and_shows_sources() -> None:
+    repository = FakeNewsRepository()
+    chatbot = service(news=repository)
+    initial = chatbot.ask(ChatRequest(message="증시 뉴스 알려줘"))
+    assert initial.conversation_context is not None
+
+    detail = chatbot.ask(
+        ChatRequest(
+            message="첫 번째 기사 자세히 보여줘",
+            conversation_context=initial.conversation_context,
+        )
+    )
+    source = chatbot.ask(
+        ChatRequest(
+            message="두 번째 기사 원문 링크 알려줘",
+            conversation_context=initial.conversation_context,
+        )
+    )
+    compared = chatbot.ask(
+        ChatRequest(
+            message="첫 번째와 두 번째 기사를 비교해줘",
+            conversation_context=initial.conversation_context,
+        )
+    )
+
+    assert detail.data_mode == "news_follow_up"
+    assert [item.title for item in detail.news_items] == [
+        "한국·미국 증시 관련 공식 발표 1"
+    ]
+    assert "https://example.test/news/2" in source.answer
+    assert [item.title for item in compared.news_items] == [
+        "한국·미국 증시 관련 공식 발표 1",
+        "한국·미국 증시 관련 공식 발표 2",
+    ]
+    assert compared.answer.startswith(
+        "기사별 검증된 메타데이터와 요약을 같은 항목으로 나란히 비교해요."
+    )
+    assert compared.answer.count("발행일:") == 2
+    assert compared.answer.count("핵심 1:") == 2
+    assert compared.answer.count("핵심 2:") == 2
+    assert compared.answer.count("핵심 3:") == 2
+    assert compared.answer.index("1번째 기사") < compared.answer.index("2번째 기사")
+
+
+@pytest.mark.parametrize(
+    ("message", "expected_intent"),
+    (
+        ("첫 번째 계좌의 위험자산 한도를 알려줘", ChatIntent.ACCOUNT_RULE),
+        ("첫 번째 납입액의 세액공제를 계산해줘", ChatIntent.PENSION_TAX),
+        ("첫 번째 투자 성향을 설명해줘", ChatIntent.EDUCATIONAL_PORTFOLIO),
+    ),
+)
+def test_news_context_does_not_intercept_explicit_non_news_questions(
+    message: str,
+    expected_intent: ChatIntent,
+) -> None:
+    context = ConversationContext(
+        last_intent=ChatIntent.NEWS,
+        news=NewsConversationContext(
+            news_item_ids=[str(UUID(int=1)), str(UUID(int=2))]
+        ),
+    )
+
+    plan = service(news=FakeNewsRepository()).plan(
+        ChatRequest(message=message, conversation_context=context)
+    )
+
+    assert plan.intent == expected_intent
+
+
+def test_explicit_ordinal_article_still_uses_news_context() -> None:
+    context = ConversationContext(
+        last_intent=ChatIntent.NEWS,
+        news=NewsConversationContext(
+            news_item_ids=[str(UUID(int=1)), str(UUID(int=2))]
+        ),
+    )
+
+    plan = service(news=FakeNewsRepository()).plan(
+        ChatRequest(message="첫 번째 기사 보여줘", conversation_context=context)
+    )
+
+    assert plan.intent == ChatIntent.NEWS
+    assert plan.news_query == "context"
+
+
+@pytest.mark.parametrize("refresh_message", ("다른 뉴스 보여줘", "새로고침"))
+def test_news_refresh_excludes_seen_and_region_follow_up_switches_market(
+    refresh_message: str,
+) -> None:
+    repository = FakeNewsRepository()
+    chatbot = service(news=repository)
+    initial = chatbot.ask(ChatRequest(message="증시 뉴스 알려줘"))
+    assert initial.conversation_context is not None
+    assert initial.conversation_context.news is not None
+
+    refreshed = chatbot.ask(
+        ChatRequest(
+            message=refresh_message,
+            conversation_context=initial.conversation_context,
+        )
+    )
+    us_news = chatbot.ask(
+        ChatRequest(
+            message="그럼 미국 뉴스로 바꿔줘",
+            conversation_context=initial.conversation_context,
+        )
+    )
+
+    assert repository.recent_calls[1]["exclude_item_ids"] == tuple(
+        initial.conversation_context.news.news_item_ids
+    )
+    assert [item.title for item in refreshed.news_items] == [
+        f"한국·미국 증시 관련 공식 발표 {index}" for index in range(4, 7)
+    ]
+    assert repository.recent_calls[2]["region"] == "us"
+    assert us_news.conversation_context is not None
+    assert us_news.conversation_context.news is not None
+    assert us_news.conversation_context.news.market_region == MarketRegion.US
+
+
+def test_news_follow_up_without_explicit_item_requests_clarification() -> None:
+    response = service(news=FakeNewsRepository()).ask(
+        ChatRequest(
+            message="그 기사 출처 알려줘",
+            conversation_context=ConversationContext(
+                news=NewsConversationContext(
+                    news_item_ids=[str(UUID(int=1)), str(UUID(int=2))]
+                )
+            ),
+        )
+    )
+
+    assert response.data_mode == "news_follow_up"
+    assert "첫 번째" in response.answer
 
 
 def test_custom_dc_portfolio_answer_is_conclusion_first_heyoche() -> None:

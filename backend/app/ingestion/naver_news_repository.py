@@ -71,7 +71,7 @@ class ReadyMarketNews:
 @dataclass(frozen=True, slots=True)
 class MarketNewsRotationResult:
     inserted_count: int
-    deleted_count: int
+    expired_count: int
     final_count: int
     held_for_full_batch: bool
 
@@ -529,32 +529,20 @@ class NaverNewsRepository:
                 "select pg_advisory_xact_lock(hashtext(%s))",
                 ("naver_market_news_rotation",),
             )
-            cursor.execute("select count(*) from public.news_items")
+            cursor.execute(
+                """
+                select count(*)
+                from public.news_items
+                where selection_policy_version is not null and is_active
+                """
+            )
             count_row = cursor.fetchone()
             if count_row is None:
                 raise NaverNewsRepositoryError("failed to count stored news")
             current_count = int(count_row[0])
             held_for_full_batch = current_count >= 100 and len(rows) < 20
-            deleted_count = 0
+            expired_count = 0
             if current_count >= 100 and len(rows) == 20:
-                cursor.execute(
-                    """
-                    with oldest as (
-                        select id
-                        from public.news_items
-                        order by
-                            published_at asc nulls first,
-                            fetched_at asc,
-                            id
-                        limit 20
-                        for update
-                    )
-                    delete from public.news_items as news
-                    using oldest
-                    where news.id = oldest.id
-                    """
-                )
-                deleted_count = max(cursor.rowcount, 0)
                 rows_to_insert = rows
             elif current_count < 100:
                 rows_to_insert = rows[: 100 - current_count]
@@ -598,7 +586,38 @@ class NaverNewsRepository:
             else:
                 inserted_count = 0
 
-            cursor.execute("select count(*) from public.news_items")
+            if current_count >= 100 and inserted_count:
+                cursor.execute(
+                    """
+                    with oldest as (
+                        select news.id
+                        from public.news_items as news
+                        where news.selection_policy_version is not null
+                          and news.is_active
+                          and news.ingestion_run_id is distinct from %s
+                        order by
+                            news.published_at asc nulls first,
+                            news.fetched_at asc,
+                            news.id
+                        limit %s
+                        for update
+                    )
+                    update public.news_items as news
+                    set is_active = false
+                    from oldest
+                    where news.id = oldest.id
+                    """,
+                    (run_id, inserted_count),
+                )
+                expired_count = max(cursor.rowcount, 0)
+
+            cursor.execute(
+                """
+                select count(*)
+                from public.news_items
+                where selection_policy_version is not null and is_active
+                """
+            )
             final_row = cursor.fetchone()
             if final_row is None:
                 raise NaverNewsRepositoryError("failed to verify stored news count")
@@ -627,7 +646,7 @@ class NaverNewsRepository:
                             "selected_record_count": selected_count,
                             "summarized_record_count": len(articles),
                             "processing_failures": processing_failures,
-                            "deleted_record_count": deleted_count,
+                            "expired_record_count": expired_count,
                             "final_news_count": final_count,
                             "held_for_full_batch": held_for_full_batch,
                             "data_boundary": "news_metadata_and_summary",
@@ -643,7 +662,7 @@ class NaverNewsRepository:
                 )
         return MarketNewsRotationResult(
             inserted_count=inserted_count,
-            deleted_count=deleted_count,
+            expired_count=expired_count,
             final_count=final_count,
             held_for_full_batch=held_for_full_batch,
         )
