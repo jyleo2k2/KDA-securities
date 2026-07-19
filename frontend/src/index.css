@@ -103,9 +103,13 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .auth-user button { padding: 4px 0; border: 0; background: transparent; color: #b9cbc2; font-size: 8px; cursor: pointer; }
 .history-label { margin: 14px 0 7px; }
 .history-list { max-height: 145px; display: grid; gap: 4px; overflow-y: auto; }
-.history-list button { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 7px 8px; border: 0; border-radius: 8px; background: transparent; color: #b9cbc2; text-align: left; cursor: pointer; }
-.history-list button:hover, .history-list button.active { background: rgba(255,255,255,.08); color: white; }
-.history-list button:disabled { cursor: wait; }.history-list strong { overflow: hidden; font-size: 9px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }.history-list small { color: #78968a; font-size: 8px; }
+.history-item { display: grid; grid-template-columns: minmax(0, 1fr) 30px; align-items: center; border-radius: 8px; }
+.history-item:hover, .history-item.active { background: rgba(255,255,255,.08); color: white; }
+.history-list button { border: 0; background: transparent; color: #b9cbc2; cursor: pointer; }
+.history-open { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 7px 8px; text-align: left; }
+.history-delete { width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border-radius: 7px; }
+.history-delete:hover { color: #ffc0a6; background: rgba(255,255,255,.08); }
+.history-list button:disabled { cursor: wait; opacity: .6; }.history-list strong { overflow: hidden; font-size: 9px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }.history-list small { color: #78968a; font-size: 8px; }
 .sidebar-section { margin-top: 28px; min-height: 0; overflow-y: auto; }
 .sidebar-label { margin: 0 9px 10px; color: #82a094; font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
 .scenario-list { display: grid; gap: 5px; }

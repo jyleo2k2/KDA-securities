@@ -12,6 +12,7 @@ import {
 
 import {
   ApiError,
+  deleteChatSession,
   getChatSessions,
   getMyPensionContext,
   getScenarios,
@@ -105,7 +106,7 @@ function Icon({
   name,
   size = 20,
 }: {
-  name: "spark" | "send" | "book" | "database" | "chevron" | "shield" | "refresh" | "sun" | "chart" | "star";
+  name: "spark" | "send" | "book" | "database" | "chevron" | "shield" | "refresh" | "sun" | "chart" | "star" | "trash";
   size?: number;
 }) {
   const paths = {
@@ -119,6 +120,7 @@ function Icon({
     sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" /></>,
     chart: <><path d="M4 20V4M4 20h16" /><path d="m8 15 3-4 3 2 5-6" /></>,
     star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />,
+    trash: <path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6" />,
   };
   return <svg aria-hidden="true" viewBox="0 0 24 24" width={size} height={size}>{paths[name]}</svg>;
 }
@@ -366,6 +368,7 @@ export function GuidePage({
     useState<ConversationContext | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [loginPanelOpen, setLoginPanelOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -499,6 +502,7 @@ export function GuidePage({
       sendingRef.current = false;
       setIsSending(false);
       setHistoryLoading(false);
+      setDeletingSessionId(null);
     }
     if (userChanged) {
       conversationGenerationRef.current += 1;
@@ -675,6 +679,53 @@ export function GuidePage({
     }
   }
 
+  async function deleteStoredSession(session: ChatSessionSummary) {
+    if (
+      !accessToken
+      || !authenticatedUserId
+      || historyLoading
+      || isSending
+      || deletingSessionId
+    ) return;
+    const title = session.title?.trim() || "새 대화";
+    if (!window.confirm(`‘${title}’ 대화를 삭제할까요?\n삭제한 대화는 복구할 수 없습니다.`)) {
+      return;
+    }
+
+    const requestToken = accessToken;
+    const requestUserId = authenticatedUserId;
+    const authGeneration = authGenerationRef.current;
+    const conversationGeneration = conversationGenerationRef.current;
+    setDeletingSessionId(session.session_id);
+    setHistoryError(null);
+    try {
+      await deleteChatSession(session.session_id, requestToken);
+      if (!isCurrentOperation(authGeneration, requestUserId, requestToken)) return;
+      setChatSessions((current) => current.filter(
+        (item) => item.session_id !== session.session_id,
+      ));
+      if (
+        activeSessionId === session.session_id
+        && conversationGenerationRef.current === conversationGeneration
+      ) {
+        conversationGenerationRef.current += 1;
+        setMessages([]);
+        setActiveSessionId(null);
+        setConversationContext(null);
+        setIsSidebarOpen(false);
+      }
+    } catch (error) {
+      if (!isCurrentOperation(authGeneration, requestUserId, requestToken)) return;
+      setHistoryError(authenticatedErrorMessage(error));
+    } finally {
+      if (isCurrentOperation(authGeneration, requestUserId, requestToken)) {
+        setDeletingSessionId((current) => (
+          current === session.session_id ? null : current
+        ));
+      }
+    }
+  }
+
   async function submitPrompt(prompt: string) {
     const normalized = prompt.trim();
     if (normalized.length < 2 || sendingRef.current) return;
@@ -847,18 +898,37 @@ export function GuidePage({
                   <p className="auth-note">대화 이력을 불러오는 중...</p>
                 ) : chatSessions.length === 0 ? (
                   <p className="auth-note">아직 저장된 대화가 없습니다.</p>
-                ) : chatSessions.map((session) => (
-                  <button
-                    className={activeSessionId === session.session_id ? "active" : ""}
-                    type="button"
-                    key={session.session_id}
-                    onClick={() => void loadStoredSession(session.session_id)}
-                    disabled={historyLoading}
-                  >
-                    <strong>{session.title || "새 대화"}</strong>
-                    <small>{new Date(session.updated_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</small>
-                  </button>
-                ))}
+                ) : chatSessions.map((session) => {
+                  const title = session.title || "새 대화";
+                  const deleting = deletingSessionId === session.session_id;
+                  const disabled = historyLoading || isSending || deletingSessionId !== null;
+                  return (
+                    <div
+                      className={`history-item ${activeSessionId === session.session_id ? "active" : ""}`}
+                      key={session.session_id}
+                    >
+                      <button
+                        className="history-open"
+                        type="button"
+                        onClick={() => void loadStoredSession(session.session_id)}
+                        disabled={disabled}
+                      >
+                        <strong>{title}</strong>
+                        <small>{new Date(session.updated_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</small>
+                      </button>
+                      <button
+                        className="history-delete"
+                        type="button"
+                        aria-label={`대화 삭제: ${title}`}
+                        title="대화 삭제"
+                        onClick={() => void deleteStoredSession(session)}
+                        disabled={disabled}
+                      >
+                        {deleting ? "…" : <Icon name="trash" size={14} />}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </>
           ) : auth.configured ? (

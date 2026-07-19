@@ -92,6 +92,17 @@ export async function apiPost<TBody, TResult>(
   return parseOrThrow<TResult>(path, response);
 }
 
+export async function apiDelete(
+  path: string,
+  accessToken: string,
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "DELETE",
+    headers: requestHeaders(accessToken),
+  });
+  if (!response.ok) await parseOrThrow<never>(path, response);
+}
+
 async function apiPostStream<TBody>(
   path: string,
   body: TBody,
@@ -258,6 +269,16 @@ export function getStoredChatMessages(
 ): Promise<StoredChatMessage[]> {
   return apiGet(
     `/chat/sessions/${encodeURIComponent(sessionId)}/messages`,
+    accessToken,
+  );
+}
+
+export function deleteChatSession(
+  sessionId: string,
+  accessToken: string,
+): Promise<void> {
+  return apiDelete(
+    `/chat/sessions/${encodeURIComponent(sessionId)}`,
     accessToken,
   );
 }
