@@ -70,6 +70,210 @@ def _name_key(value: object) -> str:
     return re.sub(r"\s+", "", str(value or "")).upper()
 
 
+def _iso_date(value: object) -> str | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    if len(text) == 8 and text.isdigit():
+        return date.fromisoformat(f"{text[:4]}-{text[4:6]}-{text[6:]}").isoformat()
+    return date.fromisoformat(text).isoformat()
+
+
+def _kis_dividend_references(
+    payload: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    if payload is None:
+        return []
+    rows = payload.get("events", payload.get("output1", []))
+    if isinstance(rows, dict):
+        rows = [rows]
+    if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
+        raise ValueError("KIS dividend schedule must contain object rows")
+    normalized = []
+    for row in rows:
+        code = row.get("isu_code", row.get("sht_cd"))
+        record_date = _iso_date(row.get("record_date"))
+        if not isinstance(code, str) or not code or record_date is None:
+            raise ValueError("KIS dividend schedule row has no code or record date")
+        normalized.append(
+            {
+                "source_type": "kis_ksd_dividend_schedule",
+                "isu_code": code,
+                "record_date": record_date,
+                "payment_date": _iso_date(
+                    row.get("payment_date", row.get("divi_pay_dt"))
+                ),
+                "cash_per_share_krw": _decimal_text(
+                    row.get("cash_per_share_krw", row.get("per_sto_divi_amt"))
+                ),
+                "dividend_kind": row.get("dividend_kind", row.get("divi_kind")),
+                "endpoint": "/uapi/domestic-stock/v1/ksdinfo/dividend",
+                "tr_id": "HHKDB669102C0",
+            }
+        )
+    return normalized
+
+
+def _fsc_dividend_references(
+    payload: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    if payload is None:
+        return []
+    rows = payload.get("records")
+    if rows is None:
+        response = payload.get("response", payload)
+        body = response.get("body", {}) if isinstance(response, dict) else {}
+        items = body.get("items", []) if isinstance(body, dict) else []
+        rows = items.get("item", []) if isinstance(items, dict) else items
+    if isinstance(rows, dict):
+        rows = [rows]
+    if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
+        raise ValueError("FSC stock-dividend report must contain object rows")
+    normalized = []
+    for row in rows:
+        isin = row.get("isin", row.get("isinCd"))
+        record_date = _iso_date(row.get("record_date", row.get("dvdnBasDt")))
+        if not isinstance(isin, str) or not isin or record_date is None:
+            raise ValueError("FSC stock-dividend row has no ISIN or record date")
+        normalized.append(
+            {
+                "source_type": "fsc_stock_dividend_information",
+                "isin": isin.upper(),
+                "record_date": record_date,
+                "payment_date": _iso_date(
+                    row.get("payment_date", row.get("cashDvdnPayDt"))
+                ),
+                "cash_per_share_krw": _decimal_text(
+                    row.get("cash_per_share_krw", row.get("stckGenrDvdnAmt"))
+                ),
+                "base_date": _iso_date(row.get("base_date", row.get("basDt"))),
+                "issuer_name": row.get("issuer_name", row.get("stckIssuCmpyNm")),
+                "endpoint": (
+                    "https://apis.data.go.kr/1160100/"
+                    "GetStocDiviInfoService_V2/getDiviInfo_V2"
+                ),
+            }
+        )
+    return normalized
+
+
+def _reference_conflicts(event: dict[str, Any], reference: dict[str, Any]) -> list[str]:
+    conflicts = []
+    for field in ("cash_per_share_krw", "payment_date"):
+        current = event.get(field)
+        other = reference.get(field)
+        if current is None or other is None:
+            continue
+        values_match = current == other
+        if field == "cash_per_share_krw":
+            values_match = Decimal(str(current)) == Decimal(str(other))
+        if not values_match:
+            conflicts.append(field)
+    return conflicts
+
+
+def _cross_validate_cash_events(
+    cash_events: list[dict[str, Any]],
+    *,
+    kis_references: list[dict[str, Any]],
+    fsc_references: list[dict[str, Any]],
+) -> tuple[dict[str, int], set[tuple[str, str]]]:
+    kis_by_key: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    fsc_by_key: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for reference in kis_references:
+        kis_by_key[(reference["isu_code"], reference["record_date"])].append(reference)
+    for reference in fsc_references:
+        fsc_by_key[(reference["isin"], reference["record_date"])].append(reference)
+
+    matched_kis_keys: set[tuple[str, str]] = set()
+    matched_source_count = 0
+    conflict_event_count = 0
+    for event in cash_events:
+        references = list(
+            kis_by_key.get((str(event["isu_code"]), str(event["record_date"])), [])
+        )
+        isin = event.get("isin")
+        if isinstance(isin, str) and isin:
+            references.extend(
+                fsc_by_key.get((isin.upper(), str(event["record_date"])), [])
+            )
+        matched_sources = []
+        conflicts = []
+        for reference in references:
+            source_type = str(reference["source_type"])
+            matched_sources.append(source_type)
+            mismatched_fields = _reference_conflicts(event, reference)
+            if mismatched_fields:
+                conflicts.append(
+                    {
+                        "source_type": source_type,
+                        "fields": mismatched_fields,
+                    }
+                )
+            event["source_evidence"].append(reference)
+            if source_type == "kis_ksd_dividend_schedule":
+                matched_kis_keys.add(
+                    (str(reference["isu_code"]), str(reference["record_date"]))
+                )
+        if conflicts:
+            validation_status = "source_conflict_review_required"
+            conflict_event_count += 1
+        elif matched_sources:
+            validation_status = "corroborated_by_secondary_source"
+        else:
+            validation_status = "primary_source_only"
+        matched_source_count += len(set(matched_sources))
+        event["cross_validation"] = {
+            "status": validation_status,
+            "matched_sources": sorted(set(matched_sources)),
+            "conflicts": conflicts,
+            "calculation_authority": "krx_kind_distribution_disclosure",
+        }
+    return (
+        {
+            "matched_secondary_source_count": matched_source_count,
+            "source_conflict_event_count": conflict_event_count,
+        },
+        matched_kis_keys,
+    )
+
+
+def _scheduled_kis_dividend_events(
+    references: list[dict[str, Any]],
+    *,
+    matched_keys: set[tuple[str, str]],
+    eligible_codes: set[str],
+    as_of: date,
+) -> list[dict[str, Any]]:
+    output = []
+    for reference in references:
+        key = (reference["isu_code"], reference["record_date"])
+        if (
+            key in matched_keys
+            or reference["isu_code"] not in eligible_codes
+            or date.fromisoformat(reference["record_date"]) < as_of
+        ):
+            continue
+        output.append(
+            {
+                "isu_code": reference["isu_code"],
+                "isu_name": None,
+                "isin": None,
+                "event_type": "scheduled_cash_distribution",
+                "effective_date": reference["record_date"],
+                "record_date": reference["record_date"],
+                "payment_date": reference["payment_date"],
+                "cash_per_share_krw": reference["cash_per_share_krw"],
+                "ratio": None,
+                "timing_basis": "record_date_schedule_not_ex_date",
+                "confidence": "reference_only",
+                "status": "excluded_from_historical_total_return",
+                "source_evidence": [reference],
+            }
+        )
+    return output
+
+
 def _cash_distribution_events(
     distribution_report: dict[str, Any],
     ex_date_report: dict[str, Any] | None,
@@ -148,6 +352,7 @@ def _cash_distribution_events(
             {
                 "isu_code": code,
                 "isu_name": event.get("isu_name"),
+                "isin": event.get("isin"),
                 "event_type": "cash_distribution",
                 "effective_date": effective_date.isoformat(),
                 "record_date": record_date.isoformat(),
@@ -274,14 +479,30 @@ def build_etf_corporate_event_master(
     adjusted_price_root: Path,
     source_files: dict[str, str],
     as_of: date,
+    kis_dividend_report: dict[str, Any] | None = None,
+    fsc_dividend_report: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     cash_events, used_ex_dates = _cash_distribution_events(
         distribution_report, ex_date_report
     )
     unmatched_ex_dates = _unmatched_ex_date_events(ex_date_report, used_ex_dates)
     kis_events = _kis_adjustment_events(adjusted_price_root)
+    kis_dividend_references = _kis_dividend_references(kis_dividend_report)
+    fsc_dividend_references = _fsc_dividend_references(fsc_dividend_report)
+    cross_validation, matched_kis_keys = _cross_validate_cash_events(
+        cash_events,
+        kis_references=kis_dividend_references,
+        fsc_references=fsc_dividend_references,
+    )
+    eligible_codes = {path.stem for path in adjusted_price_root.glob("*.json")}
+    scheduled_kis_events = _scheduled_kis_dividend_events(
+        kis_dividend_references,
+        matched_keys=matched_kis_keys,
+        eligible_codes=eligible_codes,
+        as_of=as_of,
+    )
     events = sorted(
-        [*cash_events, *unmatched_ex_dates, *kis_events],
+        [*cash_events, *scheduled_kis_events, *unmatched_ex_dates, *kis_events],
         key=lambda event: (
             str(event.get("effective_date") or ""),
             str(event.get("isu_code") or ""),
@@ -305,7 +526,7 @@ def build_etf_corporate_event_master(
         "as_of": as_of.isoformat(),
         "generated_at": datetime.now(UTC).isoformat(),
         "engine_name": "etf_corporate_event_evidence",
-        "engine_version": "2026-07-16.1",
+        "engine_version": "2026-07-20.1",
         "source_files": source_files,
         "event_count": len(events),
         "event_type_counts": dict(sorted(event_type_counts.items())),
@@ -316,6 +537,10 @@ def build_etf_corporate_event_master(
         "record_date_fallback_count": timing_counts.get("record_date_fallback", 0),
         "unmatched_exact_ex_date_count": len(unmatched_ex_dates),
         "kis_adjustment_event_count": len(kis_events),
+        "scheduled_kis_dividend_count": len(scheduled_kis_events),
+        "kis_dividend_reference_count": len(kis_dividend_references),
+        "fsc_dividend_reference_count": len(fsc_dividend_references),
+        **cross_validation,
         "kind_ex_date_failure_count": ex_date_failures,
         "policies": {
             "cash_distribution": (
@@ -327,12 +552,27 @@ def build_etf_corporate_event_master(
                 "Classify split, reverse split, or merger only when the KIS adjusted "
                 "price reason explicitly names the event."
             ),
+            "dividend_cross_validation": (
+                "KIND remains the calculation authority. KIS KSD schedules and "
+                "FSC stock-dividend rows corroborate matching ETF record dates, "
+                "amounts, and payment dates; conflicts are never auto-corrected."
+            ),
+            "scheduled_dividend": (
+                "A KIS schedule without a matching KIND disclosure is reference-only "
+                "and excluded from historical total-return calculations."
+            ),
+            "portfolio_scoring": (
+                "Dividend amount or yield does not increase ETF quality scores; "
+                "distributions are part of total return, not an extra return source."
+            ),
             "no_price_jump_inference": True,
         },
         "limitations": [
             "A record-date fallback is not an exact ex-distribution date.",
             "Unclassified KIS adjustments require issuer disclosure verification.",
             "Adjusted prices are not assumed to include cash distributions.",
+            "FSC stock-dividend rows are matched only by exact ISIN and record date.",
+            "Secondary-source conflicts require review and do not overwrite KIND.",
         ],
         "events": events,
     }
@@ -345,6 +585,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--distributions", type=Path)
     parser.add_argument("--ex-dates", type=Path)
     parser.add_argument("--adjusted-prices", type=Path)
+    parser.add_argument("--kis-dividend-schedule", type=Path)
+    parser.add_argument("--fsc-stock-dividends", type=Path)
     parser.add_argument("--output", type=Path, default=Path("data/cache/events"))
     parser.add_argument("--as-of", type=date.fromisoformat, default=date.today())
     return parser
@@ -367,12 +609,28 @@ def main() -> int:
     }
     if ex_date_path is not None:
         source_files["kind_distribution_ex_dates"] = ex_date_path.as_posix()
+    if args.kis_dividend_schedule is not None:
+        source_files["kis_ksd_dividend_schedule"] = (
+            args.kis_dividend_schedule.as_posix()
+        )
+    if args.fsc_stock_dividends is not None:
+        source_files["fsc_stock_dividends"] = args.fsc_stock_dividends.as_posix()
     report = build_etf_corporate_event_master(
         distribution_report=_load(distribution_path),
         ex_date_report=_load(ex_date_path) if ex_date_path is not None else None,
         adjusted_price_root=adjusted_price_root,
         source_files=source_files,
         as_of=args.as_of,
+        kis_dividend_report=(
+            _load(args.kis_dividend_schedule)
+            if args.kis_dividend_schedule is not None
+            else None
+        ),
+        fsc_dividend_report=(
+            _load(args.fsc_stock_dividends)
+            if args.fsc_stock_dividends is not None
+            else None
+        ),
     )
     args.output.mkdir(parents=True, exist_ok=True)
     output_path = args.output / f"etf_corporate_events_{args.as_of}.json"

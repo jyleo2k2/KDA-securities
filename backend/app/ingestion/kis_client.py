@@ -1,20 +1,21 @@
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 import httpx
 
 KIS_BASE_URL = "https://openapi.koreainvestment.com:9443"
 KIS_TOKEN_ENDPOINT = "/oauth2/tokenP"
-KIS_COMPONENT_ENDPOINT = (
-    "/uapi/etfetn/v1/quotations/inquire-component-stock-price"
-)
+KIS_COMPONENT_ENDPOINT = "/uapi/etfetn/v1/quotations/inquire-component-stock-price"
 KIS_PRICE_ENDPOINT = "/uapi/etfetn/v1/quotations/inquire-price"
 KIS_ADJUSTED_DAILY_PRICE_ENDPOINT = (
     "/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice"
 )
+KIS_KSD_DIVIDEND_ENDPOINT = "/uapi/domestic-stock/v1/ksdinfo/dividend"
 KIS_COMPONENT_TR_ID = "FHKST121600C0"
 KIS_PRICE_TR_ID = "FHPST02400000"
 KIS_ADJUSTED_DAILY_PRICE_TR_ID = "FHKST03010100"
+KIS_KSD_DIVIDEND_TR_ID = "HHKDB669102C0"
 KIS_ADJUSTED_DAILY_PRICE_REQUIRED_FIELDS = frozenset(
     {
         "stck_bsop_date",
@@ -30,6 +31,22 @@ KIS_ADJUSTED_DAILY_PRICE_REQUIRED_FIELDS = frozenset(
         "prdy_vrss_sign",
         "prdy_vrss",
         "revl_issu_reas",
+    }
+)
+KIS_KSD_DIVIDEND_REQUIRED_FIELDS = frozenset(
+    {
+        "record_date",
+        "sht_cd",
+        "divi_kind",
+        "face_val",
+        "per_sto_divi_amt",
+        "divi_rate",
+        "stk_divi_rate",
+        "divi_pay_dt",
+        "stk_div_pay_dt",
+        "odd_pay_dt",
+        "stk_kind",
+        "high_divi_gb",
     }
 )
 
@@ -288,6 +305,81 @@ def fetch_adjusted_daily_item_prices(
         operation="adjusted daily item chart price",
     )
     return parse_adjusted_daily_price_payload(
+        response.payload,
+        raw_content=response.raw_content,
+    )
+
+
+def parse_ksd_dividend_payload(
+    payload: Any,
+    *,
+    raw_content: bytes = b"",
+) -> KisApiResponse:
+    if not isinstance(payload, dict):
+        raise KisApiError("KIS KSD dividend payload must be an object")
+    if payload.get("rt_cd") != "0":
+        raise KisApiError("KIS KSD dividend payload is not successful")
+    rows = payload.get("output1", [])
+    if isinstance(rows, dict):
+        rows = [rows]
+    if not isinstance(rows, list):
+        raise KisApiError("KIS KSD dividend response has an invalid schema")
+    for position, row in enumerate(rows):
+        if not isinstance(row, dict):
+            raise KisApiError(f"KIS KSD dividend row {position} must be an object")
+        missing = KIS_KSD_DIVIDEND_REQUIRED_FIELDS.difference(row)
+        if missing:
+            fields = ",".join(sorted(missing))
+            raise KisApiError(f"KIS KSD dividend row {position} is missing: {fields}")
+        if not all(isinstance(value, str) for value in row.values()):
+            raise KisApiError(f"KIS KSD dividend row {position} fields must be strings")
+        for field in ("record_date", "divi_pay_dt", "stk_div_pay_dt", "odd_pay_dt"):
+            value = row[field].strip()
+            if field == "record_date" and not value:
+                raise KisApiError(
+                    f"KIS KSD dividend row {position} has an invalid {field}"
+                )
+            if field != "record_date" and value in {"", "00000000"}:
+                continue
+            try:
+                if value:
+                    date.fromisoformat(f"{value[:4]}-{value[4:6]}-{value[6:]}")
+            except ValueError as exc:
+                raise KisApiError(
+                    f"KIS KSD dividend row {position} has an invalid {field}"
+                ) from exc
+    return KisApiResponse(payload=payload, raw_content=raw_content)
+
+
+def fetch_ksd_dividend_schedule(
+    client: httpx.Client,
+    *,
+    app_key: str,
+    app_secret: str,
+    access_token: str,
+    start_date: str,
+    end_date: str,
+    isu_code: str = "",
+    dividend_kind: str = "0",
+) -> KisApiResponse:
+    response = _fetch(
+        client,
+        app_key=app_key,
+        app_secret=app_secret,
+        access_token=access_token,
+        endpoint=KIS_KSD_DIVIDEND_ENDPOINT,
+        tr_id=KIS_KSD_DIVIDEND_TR_ID,
+        params={
+            "CTS": "",
+            "GB1": dividend_kind,
+            "F_DT": start_date,
+            "T_DT": end_date,
+            "SHT_CD": isu_code,
+            "HIGH_GB": "",
+        },
+        operation="KSD dividend schedule",
+    )
+    return parse_ksd_dividend_payload(
         response.payload,
         raw_content=response.raw_content,
     )
