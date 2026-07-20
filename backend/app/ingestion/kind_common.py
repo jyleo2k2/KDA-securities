@@ -27,7 +27,7 @@ def request_with_retry(callback: Callable[[], bytes]) -> bytes:
     return retry_with_backoff(
         callback,
         exceptions=KindDisclosureError,
-        is_retryable=lambda exc: exc.status_code in {None, 429}
+        is_retryable=lambda exc: exc.status_code in {None, 403, 429}
         or (exc.status_code is not None and exc.status_code >= 500),
         max_retries=MAX_RETRIES,
     )

@@ -12,10 +12,10 @@ from .macro_regime import MacroRegimeMatch
 from .models import SourceChip
 
 ENGINE_NAME = "historical_macro_regime_etf_outcomes"
-ENGINE_VERSION = "2026-07-20.1"
-POLICY_VERSION = "macro-analog-etf-outcomes-2026-07-20.1"
+ENGINE_VERSION = "2026-07-20.2"
+POLICY_VERSION = "macro-analog-etf-outcomes-2026-07-20.2"
 OUTCOME_HORIZON_MONTHS = (3, 6, 12)
-_MAX_BOUNDARY_LAG_DAYS = 7
+_MAX_BOUNDARY_LAG_DAYS = 14
 _QUANTUM = Decimal("0.0001")
 
 

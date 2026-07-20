@@ -250,6 +250,36 @@ def test_post_regime_etf_outcomes_keep_missing_periods_explicit() -> None:
     ]
 
 
+def test_post_regime_etf_outcomes_allow_long_exchange_holiday() -> None:
+    history = {
+        date(2017, 4, 3): Decimal("100"),
+        date(2017, 10, 10): Decimal("110"),
+    }
+    result = calculate_post_regime_etf_outcomes(
+        matches=[_regime_match(date(2017, 3, 1))],
+        isu_codes=["069500"],
+        names_by_code={"069500": "KODEX 200"},
+        histories={"069500": history},
+        history_sources={
+            "069500": "kis_adjusted_close_plus_kind_cash_distribution"
+        },
+        source_chips={
+            "069500": SourceChip(
+                label="총수익지수",
+                reference="https://openapi.koreainvestment.com/",
+                as_of=date(2017, 10, 10),
+            )
+        },
+    )
+
+    etf = result.groups[0].etfs[0]
+    six_month = next(
+        item for item in etf.horizons if item.horizon_months == 6
+    )
+    assert six_month.end_date == date(2017, 10, 10)
+    assert six_month.total_return_percent == Decimal("10.0000")
+
+
 def test_macro_analog_regime_api_returns_only_sanitized_contract(
     tmp_path: Path,
 ) -> None:

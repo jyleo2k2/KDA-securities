@@ -198,7 +198,8 @@ def _collect_product(
     fetched_any = False
     while requested_end >= start_date:
         path = _raw_path(raw_root, product["isu_code"], requested_end)
-        if path.exists() and not force:
+        loaded_existing = path.exists() and not force
+        if loaded_existing:
             response = _load_raw(path)
             page_status = "skipped_existing"
             digest = hashlib.sha256(response.raw_content).hexdigest()
@@ -220,6 +221,28 @@ def _collect_product(
             if delay_seconds:
                 time.sleep(delay_seconds)
         rows = response.payload["output2"]
+        if loaded_existing and rows:
+            oldest_cached_date = datetime.strptime(
+                rows[-1]["stck_bsop_date"], "%Y%m%d"
+            ).date()
+            if len(rows) < 100 and oldest_cached_date > start_date:
+                response = _fetch_with_retry(
+                    lambda page_end=requested_end: fetch_adjusted_daily_item_prices(
+                        client,
+                        app_key=app_key,
+                        app_secret=app_secret,
+                        access_token=access_token,
+                        isu_code=product["isu_code"],
+                        start_date=start_date.strftime("%Y%m%d"),
+                        end_date=page_end.strftime("%Y%m%d"),
+                    )
+                )
+                digest = _write_raw(path, response)
+                page_status = "refetched_for_extended_start"
+                fetched_any = True
+                rows = response.payload["output2"]
+                if delay_seconds:
+                    time.sleep(delay_seconds)
         page_evidence.append(
             {
                 "requested_end": requested_end.isoformat(),

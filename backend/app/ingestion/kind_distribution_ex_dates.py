@@ -1,6 +1,7 @@
 import argparse
 import hashlib
 import json
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict
 from datetime import UTC, date, datetime
@@ -73,6 +74,7 @@ def _document_event(
                 "utf-8"
             ),
         )
+        time.sleep(0.05)
     return parse_distribution_ex_date_event(
         decode_kind_html(raw_document),
         isu_code=row.isu_code,

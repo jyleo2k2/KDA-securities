@@ -40,7 +40,7 @@ class KindDisclosureRow:
 @dataclass(frozen=True, slots=True)
 class KindDistributionEvent:
     isu_code: str
-    isin: str
+    isin: str | None
     isu_name: str
     record_date: date
     payment_date: date | None
@@ -266,6 +266,8 @@ def parse_distribution_events(
     receipt_number: str,
     submitted_at: datetime,
     source_url: str,
+    isu_code: str | None = None,
+    isu_name: str | None = None,
 ) -> list[KindDistributionEvent]:
     parser = _TableParser()
     parser.feed(html)
@@ -343,6 +345,53 @@ def parse_distribution_events(
                     source_url=source_url,
                 )
             )
+    if events or isu_code is None or isu_name is None:
+        return events
+    for table in parser.tables:
+        fields: dict[str, str] = {}
+        for row in table:
+            if len(row) >= 2:
+                fields[row[0].strip()] = row[1].strip()
+        record_date = next(
+            (
+                _date_value(value)
+                for label, value in fields.items()
+                if "지급기준일" in label
+            ),
+            None,
+        )
+        payment_date = next(
+            (
+                _date_value(value)
+                for label, value in fields.items()
+                if "지급예정일" in label
+            ),
+            None,
+        )
+        amount = next(
+            (
+                _amount(value)
+                for label, value in fields.items()
+                if "분배금" in label and "지급" not in label and "과세" not in label
+            ),
+            None,
+        )
+        if record_date is None or amount is None:
+            continue
+        events.append(
+            KindDistributionEvent(
+                isu_code=_kind_etf_issue_id_to_short_code(isu_code),
+                isin=None,
+                isu_name=fields.get("종목") or isu_name,
+                record_date=record_date,
+                payment_date=payment_date,
+                distribution_per_share_krw=amount,
+                receipt_number=receipt_number,
+                submitted_at=submitted_at,
+                source_url=source_url,
+            )
+        )
+        break
     return events
 
 
@@ -367,7 +416,11 @@ def parse_distribution_ex_date_event(
         effective_date = _date_value(fields.get("적용일", ""))
         reference_price = _amount(fields.get("기준가격(원)", ""))
         reason = fields.get("사유", "")
-        if effective_date is None or reference_price is None or "분배락" not in reason:
+        if (
+            effective_date is None
+            or reference_price is None
+            or not ({"분배락", "배당락"} & set(reason.split()))
+        ):
             continue
         return KindDistributionExDateEvent(
             isu_code=_kind_etf_issue_id_to_short_code(isu_code),

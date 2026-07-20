@@ -85,6 +85,35 @@ def test_kind_distribution_parser_supports_historical_name_header() -> None:
     assert events[0].isu_code == "069500"
 
 
+def test_kind_distribution_parser_supports_legacy_key_value_form() -> None:
+    filing_html = """
+    <table>
+      <tr><td>종목</td><td>TIGER 국채3년</td></tr>
+      <tr><td>투자신탁 분배금 지급기준일</td><td>2011-03-09</td></tr>
+      <tr><td>투자신탁 분배금 지급예정일</td><td>2011-03-11</td></tr>
+      <tr><td>1좌당 예상분배금(원)</td><td>1,666</td></tr>
+      <tr><td>1좌당 과세표준액(원)</td><td>1,666</td></tr>
+    </table>
+    """
+
+    events = parse_distribution_events(
+        filing_html,
+        receipt_number="20110307000772",
+        submitted_at=datetime(2011, 3, 7, 20, 1),
+        source_url="https://kind.krx.co.kr/external/legacy.htm",
+        isu_code="011482",
+        isu_name="TIGER 국채3년",
+    )
+
+    assert len(events) == 1
+    assert events[0].isu_code == "114820"
+    assert events[0].isin is None
+    assert events[0].record_date.isoformat() == "2011-03-09"
+    assert events[0].payment_date is not None
+    assert events[0].payment_date.isoformat() == "2011-03-11"
+    assert str(events[0].distribution_per_share_krw) == "1666"
+
+
 def test_kind_ex_distribution_parser_uses_official_effective_date() -> None:
     filing_html = """
     <table>
@@ -108,3 +137,28 @@ def test_kind_ex_distribution_parser_uses_official_effective_date() -> None:
     assert event.isu_code == "069500"
     assert event.effective_date.isoformat() == "2026-04-29"
     assert str(event.reference_price_krw) == "31245"
+
+
+def test_kind_ex_distribution_parser_supports_legacy_dividend_wording() -> None:
+    filing_html = """
+    <table>
+      <tr><td>1. 종목명</td><td>KODEX 단기채권</td></tr>
+      <tr><td>2. 기준가격(원)</td><td>100,010</td></tr>
+      <tr><td>3. 사유</td><td>배당락</td></tr>
+      <tr><td>4. 적용일</td><td>2012-12-27</td></tr>
+      <tr><td>5. 근거규정</td><td>업무규정시행세칙 제30조</td></tr>
+    </table>
+    """
+
+    event = parse_distribution_ex_date_event(
+        filing_html,
+        isu_code="015313",
+        isu_name="KODEX 단기채권",
+        receipt_number="20121226000549",
+        submitted_at=datetime(2012, 12, 26, 18, 30),
+        source_url="https://kind.krx.co.kr/external/legacy-ex-date.htm",
+    )
+
+    assert event.isu_code == "153130"
+    assert event.reason == "배당락"
+    assert event.effective_date.isoformat() == "2012-12-27"
