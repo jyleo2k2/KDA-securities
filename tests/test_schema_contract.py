@@ -35,6 +35,12 @@ LIFECYCLE_SCENARIOS_MIGRATION = next(
 ETF_UNIVERSE_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob("*_add_etf_portfolio_universe.sql")
 )
+ETF_THEME_VERIFICATION_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob(
+        "*_add_etf_theme_content_verification.sql"
+    ),
+    None,
+)
 HERO_ETF_MIGRATION = (
     ROOT
     / "supabase"
@@ -349,6 +355,32 @@ def test_etf_universe_is_server_only_and_versioned() -> None:
     assert "to service_role" in sql
     assert "etf_dataset_versions_id_seq" in sql
     assert "grant usage, select on sequence" in sql
+    assert "to authenticated" not in sql
+    assert "drop table" not in sql
+
+
+def test_etf_theme_verification_is_hash_bound_and_server_only() -> None:
+    assert ETF_THEME_VERIFICATION_MIGRATION is not None
+    sql = ETF_THEME_VERIFICATION_MIGRATION.read_text(encoding="utf-8").lower()
+
+    for table in (
+        "etf_theme_content_reviews",
+        "etf_theme_content_evidence",
+    ):
+        assert f"create table public.{table}" in sql
+        assert f"alter table public.{table} enable row level security" in sql
+
+    assert "content_sha256" in sql
+    assert "^[0-9a-f]{64}$" in sql
+    assert "overview" in sql
+    assert "representative_companies" in sql
+    assert "investment_considerations" in sql
+    assert "status in ('draft', 'verified', 'rejected')" in sql
+    assert "knowledge_documents" in sql
+    assert "knowledge_chunks" in sql
+    assert "knowledge_chunk_id bigint not null" in sql
+    assert "from public, anon, authenticated" in sql
+    assert "to service_role" in sql
     assert "to authenticated" not in sql
     assert "drop table" not in sql
 

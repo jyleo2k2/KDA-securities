@@ -221,6 +221,7 @@ def test_my_portfolio_wording_selects_mock_portfolio_intent(message: str) -> Non
             ChatIntent.EDUCATIONAL_PORTFOLIO,
             ChatIntent.MOCK_PORTFOLIO,
             ChatIntent.PENSION_TAX,
+            ChatIntent.ETF_THEME,
         ),
         strict=True,
     ),

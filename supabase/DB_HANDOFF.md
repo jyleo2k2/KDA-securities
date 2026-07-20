@@ -284,6 +284,13 @@ uv run ruff check .
 
 ## 14. 작업 로그
 
+### 2026-07-20 ETF 테마 콘텐츠 검증 통합
+
+- 신규 로컬 migration `20260720024713_add_etf_theme_content_verification.sql`은 테마·질문 유형별 payload SHA-256 검토 장부와 승인 지식 문서·청크·공식 URL 근거 연결을 추가한다.
+- 두 신규 테이블은 RLS를 활성화하고 `public`·`anon`·`authenticated` 권한을 회수하며 `service_role`만 접근한다.
+- 런타임은 `verified` 상태, 해시, 검토기한, 승인 지식 metadata, 활성 청크와 공식 URL이 모두 유효할 때만 해당 문구를 검증 완료로 표시한다. DB 미적용·장애·불일치는 기존 초안 표기를 유지한다.
+- 원격 적용은 하지 않았다. migration과 검증 데이터 적재는 이재용의 별도 승인 후 진행한다.
+
 ### 2026-07-20 14:39 KST
 
 - 승인/적용: 이재용의 원격 Supabase 적용 승인을 전달받아 `20260720044229`와 `20260720044230`을 CLI `db push`로 적용했다. migration history 20개가 로컬과 1:1로 일치한다.

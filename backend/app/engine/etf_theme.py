@@ -14,6 +14,17 @@ from .educational_portfolio import (
 from .models import AccountType
 
 
+class RepresentativeCompany(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    name: str = Field(min_length=1)
+    theme_role: str = Field(min_length=1)
+    plain_description: str = Field(min_length=1)
+    representative_reason: str = Field(min_length=1)
+    source_url: str = Field(pattern=r"^https://")
+    as_of_date: date
+
+
 class EtfThemeDefinition(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -29,14 +40,25 @@ class EtfThemeDefinition(BaseModel):
     exposure_segments: tuple[str, ...] = Field(min_length=1)
     performance_drivers: tuple[str, ...] = Field(min_length=1)
     one_line_analogy: str
+    representative_companies: tuple[RepresentativeCompany, ...] = Field(
+        min_length=3,
+        max_length=3,
+    )
     benefits: tuple[str, ...] = Field(min_length=3, max_length=3)
     risks: tuple[str, ...] = Field(min_length=3, max_length=3)
+
+    @model_validator(mode="after")
+    def unique_representative_companies(self) -> "EtfThemeDefinition":
+        names = [company.name.casefold() for company in self.representative_companies]
+        if len(set(names)) != len(names):
+            raise ValueError("representative company names must be unique per theme")
+        return self
 
 
 class EtfThemeCatalog(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    schema_version: int = Field(default=2, ge=2, le=2)
+    schema_version: int = Field(default=3, ge=3, le=3)
     catalog_version: str
     as_of_date: date
     content_status: str
