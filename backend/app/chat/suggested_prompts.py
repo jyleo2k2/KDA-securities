@@ -1,4 +1,4 @@
-"""Fixed guide-page prompts eligible for startup embedding prewarming."""
+"""Fixed startup-prewarming prompts; the guide page uses the card catalog."""
 
 SUGGESTED_CHAT_PROMPTS = (
     "내 나이에 맞는 연금 저축 전략을 알려줘.",

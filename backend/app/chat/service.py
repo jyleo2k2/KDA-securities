@@ -23,6 +23,7 @@ from ..retrieval.knowledge_policy import (
     contains_unsafe_rag_content,
 )
 from ..retrieval.repository import KnowledgeMatch, KnowledgeSearch, NewsMatch
+from .cards import build_suggested_follow_ups
 from .disclosures import ProviderDisclosure
 from .models import (
     AnswerSection,
@@ -876,33 +877,38 @@ class ChatService:
                 response = self._account_rule_response(request, resolved_plan)
             else:
                 response = self._blocked_response(BlockedReason.UNSUPPORTED)
-        return self._with_context(
+        response = self._with_context(
             self._attach_visualizations(response), original_request, resolved_plan
+        )
+        return response.model_copy(
+            update={"suggested_follow_ups": build_suggested_follow_ups(response)}
         )
 
     @staticmethod
     def _attach_visualizations(response: ChatResponse) -> ChatResponse:
         """Attach only views backed by the response's existing engine evidence."""
 
+        visualizations: list[ChatVisualization] = []
         if response.scenario_evaluation is not None:
             evaluation = response.scenario_evaluation
-            visualization = ChatVisualization(
-                kind=VisualizationKind.ASSET_ALLOCATION,
-                title="전체 자산 구성",
-                description="계좌를 합쳐 어떤 자산에 얼마나 담겼는지 보여줘요.",
-                data_boundary=DataBoundary.MOCK,
-                evidence_ids=["mock:scenario", "engine:scenario"],
-                items=[
-                    VisualizationDatum(
-                        label=_ASSET_CLASS_LABELS[item.asset_class_code],
-                        value=item.allocation_percent,
-                        unit="%",
-                        role=VisualizationDatumRole.SEGMENT,
-                    )
-                    for item in evaluation.asset_allocations
-                ],
+            visualizations.append(
+                ChatVisualization(
+                    kind=VisualizationKind.ASSET_ALLOCATION,
+                    title="전체 자산 구성",
+                    description="계좌를 합쳐 어떤 자산에 얼마나 담겼는지 보여줘요.",
+                    data_boundary=DataBoundary.MOCK,
+                    evidence_ids=["mock:scenario", "engine:scenario"],
+                    items=[
+                        VisualizationDatum(
+                            label=_ASSET_CLASS_LABELS[item.asset_class_code],
+                            value=item.allocation_percent,
+                            unit="%",
+                            role=VisualizationDatumRole.SEGMENT,
+                        )
+                        for item in evaluation.asset_allocations
+                    ],
+                )
             )
-            return response.model_copy(update={"visualizations": [visualization]})
 
         tax_credit = (
             response.pension_tax_result.tax_credit
@@ -911,66 +917,154 @@ class ChatService:
         )
         if tax_credit is not None and tax_credit.rate_determined:
             rate = tax_credit.rate_scenarios[0]
-            visualization = ChatVisualization(
-                kind=VisualizationKind.TAX_SUMMARY,
-                title="세액공제 요약",
-                description="입력한 납입액과 규칙 엔진 계산 결과를 함께 보여줘요.",
-                data_boundary=DataBoundary.ENGINE,
-                evidence_ids=[
-                    "user:pension_tax",
-                    "engine:pension_tax",
-                    "rule:pension_tax:credit",
-                ],
-                items=[
-                    VisualizationDatum(
-                        label="세액공제 대상 납입액",
-                        value=tax_credit.total_eligible_contribution_krw,
-                        unit="KRW",
-                        role=VisualizationDatumRole.VALUE,
-                    ),
-                    VisualizationDatum(
-                        label="예상 세액공제액",
-                        value=rate.estimated_tax_credit_krw,
-                        unit="KRW",
-                        role=VisualizationDatumRole.VALUE,
-                    ),
-                ],
+            visualizations.append(
+                ChatVisualization(
+                    kind=VisualizationKind.TAX_SUMMARY,
+                    title="세액공제 요약",
+                    description="입력한 납입액과 규칙 엔진 계산 결과를 함께 보여줘요.",
+                    data_boundary=DataBoundary.ENGINE,
+                    evidence_ids=[
+                        "user:pension_tax",
+                        "engine:pension_tax",
+                        "rule:pension_tax:credit",
+                    ],
+                    items=[
+                        VisualizationDatum(
+                            label="세액공제 대상 납입액",
+                            value=tax_credit.total_eligible_contribution_krw,
+                            unit="KRW",
+                            role=VisualizationDatumRole.VALUE,
+                        ),
+                        VisualizationDatum(
+                            label="예상 세액공제액",
+                            value=rate.estimated_tax_credit_krw,
+                            unit="KRW",
+                            role=VisualizationDatumRole.VALUE,
+                        ),
+                    ],
+                )
             )
-            return response.model_copy(update={"visualizations": [visualization]})
 
         risk_items = [
             item
             for item in response.numeric_evidence
             if "위험자산 비중" in item.label or "위험자산 한도" in item.label
         ]
-        if not risk_items:
-            return response
-        visualization_items = [
-            VisualizationDatum(
-                label=item.label,
-                value=item.value,
-                unit=item.unit,
-                role=(
-                    VisualizationDatumRole.CURRENT
-                    if "비중" in item.label
-                    else VisualizationDatumRole.LIMIT
-                ),
+        if risk_items:
+            visualizations.append(
+                ChatVisualization(
+                    kind=VisualizationKind.RISK_CAP,
+                    title="위험자산 기준",
+                    description="현재 비중과 계좌 기준을 한눈에 비교해 보세요.",
+                    data_boundary=(
+                        DataBoundary.ENGINE
+                        if any(
+                            item.evidence_id.startswith("engine:")
+                            for item in risk_items
+                        )
+                        else DataBoundary.VERIFIED_KNOWLEDGE
+                    ),
+                    evidence_ids=list(
+                        dict.fromkeys(item.evidence_id for item in risk_items)
+                    ),
+                    items=[
+                        VisualizationDatum(
+                            label=item.label,
+                            value=item.value,
+                            unit=item.unit,
+                            role=(
+                                VisualizationDatumRole.CURRENT
+                                if "비중" in item.label
+                                else VisualizationDatumRole.LIMIT
+                            ),
+                        )
+                        for item in risk_items
+                    ],
+                )
             )
-            for item in risk_items
-        ]
-        visualization = ChatVisualization(
-            kind=VisualizationKind.RISK_CAP,
-            title="위험자산 기준",
-            description="현재 비중과 계좌 기준을 한눈에 비교해 보세요.",
-            data_boundary=(
-                DataBoundary.ENGINE
-                if any(item.evidence_id.startswith("engine:") for item in risk_items)
-                else DataBoundary.VERIFIED_KNOWLEDGE
-            ),
-            evidence_ids=list(dict.fromkeys(item.evidence_id for item in risk_items)),
-            items=visualization_items,
-        )
-        return response.model_copy(update={"visualizations": [visualization]})
+
+        for evaluation in response.educational_portfolio_evaluations:
+            account_label = _ACCOUNT_TYPE_LABELS[
+                evaluation.evaluated_input.account_type
+            ]
+            sleeve_label = _SLEEVE_LABELS[evaluation.target_sleeves[0].sleeve]
+            evidence_id = next(
+                item.evidence_id
+                for item in response.numeric_evidence
+                if item.evidence_id.startswith("engine:educational_portfolio")
+                and item.label.endswith(f"{sleeve_label} 목표비중")
+                and (
+                    len(response.educational_portfolio_evaluations) == 1
+                    or item.label.startswith(f"{account_label} · ")
+                )
+            )
+            visualizations.append(
+                ChatVisualization(
+                    kind=VisualizationKind.SLEEVE_ALLOCATION,
+                    title=f"{account_label} 목표 자산배분",
+                    description="규칙 엔진이 계산한 5개 슬리브 목표비중이에요.",
+                    data_boundary=DataBoundary.ENGINE,
+                    evidence_ids=[evidence_id],
+                    items=[
+                        VisualizationDatum(
+                            label=_SLEEVE_LABELS[target.sleeve],
+                            value=_one_decimal(target.target_percent),
+                            unit="%",
+                            role=VisualizationDatumRole.SEGMENT,
+                        )
+                        for target in evaluation.target_sleeves
+                    ],
+                )
+            )
+            stress_items = evaluation.portfolio_risk.stress_scenarios
+            if stress_items:
+                visualizations.append(
+                    ChatVisualization(
+                        kind=VisualizationKind.STRESS_SCENARIOS,
+                        title=f"{account_label} 스트레스 점검",
+                        description="규칙 엔진의 스트레스 시나리오별 손실 추정치예요.",
+                        data_boundary=DataBoundary.ENGINE,
+                        evidence_ids=[evidence_id],
+                        items=[
+                            VisualizationDatum(
+                                label=stress.scenario_code,
+                                value=_one_decimal(stress.estimated_loss_percent),
+                                unit="%",
+                                role=VisualizationDatumRole.VALUE,
+                            )
+                            for stress in stress_items
+                        ],
+                    )
+                )
+
+        if response.intent == ChatIntent.PROVIDER_DISCLOSURE:
+            disclosure_items = [
+                VisualizationDatum(
+                    label=item.label,
+                    value=item.value,
+                    unit=item.unit,
+                    role=VisualizationDatumRole.VALUE,
+                )
+                for item in response.numeric_evidence
+            ]
+            if disclosure_items:
+                visualizations.append(
+                    ChatVisualization(
+                        kind=VisualizationKind.DISCLOSURE_COMPARISON,
+                        title="사업자 공시 비교",
+                        description="회사별 과거 수익률과 공시된 수수료율을 비교해요.",
+                        data_boundary=DataBoundary.OFFICIAL_DISCLOSURE,
+                        evidence_ids=list(
+                            dict.fromkeys(
+                                item.evidence_id
+                                for item in response.numeric_evidence
+                            )
+                        ),
+                        items=disclosure_items,
+                    )
+                )
+
+        return response.model_copy(update={"visualizations": visualizations})
 
     @staticmethod
     def _with_context(
@@ -1826,6 +1920,16 @@ class ChatService:
                 basis="규칙 엔진의 목표비중 이탈 허용 기준",
             )
         )
+        numeric.extend(
+            NumericEvidence(
+                label=f"{stress.scenario_code} 스트레스 손실 추정치",
+                value=_one_decimal(stress.estimated_loss_percent),
+                unit="%",
+                evidence_id=engine_source.evidence_id,
+                basis="규칙 엔진의 포트폴리오 스트레스 시나리오",
+            )
+            for stress in evaluation.portfolio_risk.stress_scenarios
+        )
         planning = evaluation.planning_return
         planning_text = "검증된 계획수익률 범위를 계산하지 못했어요."
         if (
@@ -2292,6 +2396,7 @@ class ChatService:
             for label, value in (
                 ("당기 과거 수익률", row.earn_rate_current_pct),
                 ("3년 연환산 수익률", row.avg_earn_rate_3y_pct),
+                ("1년 수수료율", row.fee_rate_1y_pct),
             ):
                 if value is not None:
                     numeric.append(
