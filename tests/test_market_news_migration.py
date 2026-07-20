@@ -25,14 +25,14 @@ def test_market_news_migration_parses_and_limits_scope() -> None:
 
 def test_market_news_active_retention_is_additive_and_parseable() -> None:
     root = Path(__file__).resolve().parents[1]
-    migration = (
-        root
-        / "supabase"
-        / "migrations"
-        / "20260719184500_repair_market_news_is_active.sql"
+    migrations = list(
+        (root / "supabase" / "migrations").glob(
+            "*_repair_market_news_is_active.sql"
+        )
     )
 
-    sql = migration.read_text(encoding="utf-8")
+    assert len(migrations) == 1
+    sql = migrations[0].read_text(encoding="utf-8")
     assert parse_sql(sql)
     assert "add column if not exists is_active boolean not null default true" in sql
     assert "summary_status = 'succeeded'" in sql

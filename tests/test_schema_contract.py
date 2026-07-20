@@ -45,6 +45,10 @@ MOCK_ACCOUNT_BACKFILL_MIGRATION_GLOB = "*_backfill_mock_pension_accounts.sql"
 DEMO_ETF_COMMON_SYNC_MIGRATION_GLOB = (
     "*_sync_demo_etf_holdings_to_common_accounts.sql"
 )
+DEMO_CUSTOMER_CONTRACT_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob("*_unify_demo_customer_contract.sql")
+)
+BENCHMARK_LOADER = ROOT / "scripts" / "load_benchmark_mock_data.py"
 SEED = ROOT / "supabase" / "seed.sql"
 
 
@@ -419,3 +423,25 @@ def test_demo_etf_holdings_are_resynced_to_common_accounts() -> None:
     assert "synced common holding total does not match source" in sql
     assert "drop table" not in sql
     assert "truncate" not in sql
+
+
+def test_demo_customer_runtime_tax_year_stays_on_supported_engine_year() -> None:
+    migration_sql = DEMO_CUSTOMER_CONTRACT_MIGRATION.read_text(
+        encoding="utf-8"
+    ).lower()
+    loader_source = BENCHMARK_LOADER.read_text(encoding="utf-8").lower()
+
+    for source in (migration_sql, loader_source):
+        assert "tax_year = 2026" in source
+        assert "tax_year = benchmark.tax_year::smallint" not in source
+
+
+def test_demo_customer_migration_caps_legacy_personal_pension_contributions() -> None:
+    sql = DEMO_CUSTOMER_CONTRACT_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "monthly_personal_pension_limit_krw" in sql
+    assert "1500000::numeric" in sql
+    assert "floor(exact_units)" in sql
+    assert "order by fractional_units desc, account_id" in sql
+    assert "monthly_contribution_krw = capped.target_monthly_krw::text" in sql
+    assert "annual_contribution_krw = (capped.target_monthly_krw * 12)::text" in sql
