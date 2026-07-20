@@ -319,7 +319,7 @@ class StoredChatMessageOut(BaseModel):
 def chat_capabilities(
     service: Annotated[ChatService, Depends(get_chat_service)],
 ) -> ChatCapabilities:
-    return service.capabilities()
+    return service.capabilities
 
 
 @router.get("/chat/cards", response_model=ChatCardCatalog)
