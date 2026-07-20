@@ -3,6 +3,7 @@ import logging
 import os
 from contextlib import asynccontextmanager, suppress
 
+import httpx
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute, request_response
@@ -65,6 +66,15 @@ def _include_eagerly(app: FastAPI, router: APIRouter) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
+    auth_http_client = httpx.AsyncClient(
+        timeout=10.0,
+        limits=httpx.Limits(
+            max_keepalive_connections=10,
+            max_connections=20,
+            keepalive_expiry=30.0,
+        ),
+    )
+    app.state.auth_http_client = auth_http_client
     pool = None
     if settings.database_url is not None:
         database_url = settings.database_url.get_secret_value().strip()
@@ -92,6 +102,8 @@ async def lifespan(app: FastAPI):
         clear_chat_dependencies()
         close_pool(pool)
         get_database_pool.cache_clear()
+        await auth_http_client.aclose()
+        app.state.auth_http_client = None
 
 
 def create_app() -> FastAPI:

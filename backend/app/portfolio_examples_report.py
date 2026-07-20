@@ -67,6 +67,8 @@ def build_portfolio_examples(
                         histories=repository.histories,
                         source_as_of=repository.as_of,
                         history_sources=repository.history_sources,
+                        history_as_of=repository.latest_history_as_of,
+                        score_cache=repository.score_cache,
                     )
                     candidate_history_source_counts.update(
                         candidate.price_history_source

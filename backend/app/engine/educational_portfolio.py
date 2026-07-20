@@ -1,10 +1,12 @@
 import statistics
+from bisect import bisect_left, bisect_right
 from collections import defaultdict
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum
 from typing import Any
 
+import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .models import AccountType, SourceChip
@@ -344,6 +346,7 @@ def calculate_portfolio_risk(
     candidates: list[EducationalEtfCandidate],
     histories: dict[str, dict[date, Decimal]],
     source_as_of: date,
+    history_as_of: date | None = None,
 ) -> PortfolioRiskEvaluation:
     stress = _stress_results(candidates)
     returns_by_code = {
@@ -356,16 +359,11 @@ def calculate_portfolio_risk(
         else set()
     )
     ordered_dates = sorted(common_dates)
-    history_dates = [
-        observed_on
-        for history in histories.values()
-        for observed_on in history
-    ]
     sources = [
         SourceChip(
             label="한투 수정주가·KIND 분배금 반영 원화 총수익률",
             reference="data/cache/kis/adjusted_prices + data/cache/events",
-            as_of=max(history_dates, default=source_as_of),
+            as_of=history_as_of or source_as_of,
         ),
         SourceChip(
             label="연금 코파일럿 포트폴리오 스트레스 정책",
@@ -409,26 +407,16 @@ def calculate_portfolio_risk(
         )
         for observed_on in ordered_dates
     ]
-    mean = sum(portfolio_returns, Decimal("0")) / Decimal(len(portfolio_returns))
-    variance = sum(
-        ((value - mean) ** 2 for value in portfolio_returns), Decimal("0")
-    ) / Decimal(len(portfolio_returns) - 1)
-    volatility = variance.sqrt() * TRADING_DAYS_PER_YEAR.sqrt()
-    downside = (
-        sum(
-            (min(value, Decimal("0")) ** 2 for value in portfolio_returns),
-            Decimal("0"),
-        )
-        / Decimal(len(portfolio_returns))
-    ).sqrt() * TRADING_DAYS_PER_YEAR.sqrt()
-    wealth = Decimal("1")
-    peak = Decimal("1")
-    maximum_drawdown = Decimal("0")
-    for daily_return in portfolio_returns:
-        wealth *= Decimal("1") + daily_return
-        peak = max(peak, wealth)
-        maximum_drawdown = min(maximum_drawdown, wealth / peak - Decimal("1"))
-    fifth_percentile = _quantile(portfolio_returns, Decimal("0.05"))
+    return_array = np.asarray([float(value) for value in portfolio_returns])
+    annualization = np.sqrt(float(TRADING_DAYS_PER_YEAR))
+    volatility = Decimal(str(np.std(return_array, ddof=1) * annualization))
+    downside = Decimal(
+        str(np.sqrt(np.mean(np.minimum(return_array, 0.0) ** 2)) * annualization)
+    )
+    wealth = np.cumprod(1.0 + return_array)
+    peaks = np.maximum.accumulate(wealth)
+    maximum_drawdown = Decimal(str(np.min(wealth / peaks - 1.0)))
+    fifth_percentile = Decimal(str(np.quantile(return_array, 0.05, method="linear")))
     return PortfolioRiskEvaluation(
         engine_name="historical_portfolio_risk",
         engine_version=ENGINE_VERSION,
@@ -445,7 +433,7 @@ def calculate_portfolio_risk(
             max(Decimal("0"), -fifth_percentile * Decimal("100"))
         ),
         worst_daily_return_percent=_percent(
-            min(portfolio_returns) * Decimal("100")
+            Decimal(str(np.min(return_array))) * Decimal("100")
         ),
         historical_return_used_for_risk_only=True,
         is_return_forecast=False,
@@ -843,8 +831,10 @@ def _percentile(
 ) -> Decimal:
     if target is None or not values:
         return Decimal("0")
-    favorable = sum(
-        value <= target if higher_is_better else value >= target for value in values
+    favorable = (
+        bisect_right(values, target)
+        if higher_is_better
+        else len(values) - bisect_left(values, target)
     )
     return Decimal(favorable) / Decimal(len(values)) * Decimal("100")
 
@@ -869,7 +859,7 @@ def _score_candidates(
 ) -> list[tuple[dict[str, Any], CandidateQuality]]:
     inputs = {product["isu_code"]: _quality_inputs(product) for product in products}
     columns = {
-        key: [value[key] for value in inputs.values() if value[key] is not None]
+        key: sorted(value[key] for value in inputs.values() if value[key] is not None)
         for key in ("fee", "liquidity", "size", "nav", "tracking")
     }
     scored = []
@@ -989,10 +979,14 @@ def select_educational_candidates(
     sleeves: dict[str, Decimal],
     request: EducationalPortfolioInput,
     history_sources: dict[str, str] | None = None,
+    score_cache: dict[
+        tuple[str, tuple[str, ...]], list[tuple[dict[str, Any], CandidateQuality]]
+    ] | None = None,
 ) -> list[EducationalEtfCandidate]:
     history_sources = history_sources or {}
     counts = _candidate_counts(sleeves, request.max_etfs)
     selected: list[tuple[dict[str, Any], CandidateQuality]] = []
+    selected_codes: set[str] = set()
     output: list[EducationalEtfCandidate] = []
     returns_by_code: dict[str, dict[date, Decimal]] = {}
     correlations_by_pair: dict[tuple[str, str], Decimal | None] = {}
@@ -1031,9 +1025,18 @@ def select_educational_candidates(
             ):
                 continue
             pool.append(product)
-        ranked = _score_candidates(pool)
+        cache_key = (sleeve, tuple(sorted(product["isu_code"] for product in pool)))
+        if score_cache is None:
+            ranked = _score_candidates(pool)
+        else:
+            ranked = score_cache.get(cache_key)
+            if ranked is None:
+                ranked = _score_candidates(pool)
+                score_cache[cache_key] = ranked
         for _ in range(counts[sleeve]):
-            remaining = [item for item in ranked if item not in selected]
+            remaining = [
+                item for item in ranked if item[0]["isu_code"] not in selected_codes
+            ]
             if not remaining:
                 break
             evaluated = []
@@ -1074,6 +1077,7 @@ def select_educational_candidates(
                 evaluated, key=lambda item: (item[0], item[1]["isu_code"])
             )
             selected.append((product, quality))
+            selected_codes.add(product["isu_code"])
             reasons = [
                 "quality_score_uses_cost_liquidity_size_nav_tracking_only",
                 "historical_return_not_used_for_ranking",
@@ -1218,6 +1222,10 @@ def build_educational_portfolio(
     histories: dict[str, dict[date, Decimal]],
     source_as_of: date,
     history_sources: dict[str, str] | None = None,
+    history_as_of: date | None = None,
+    score_cache: dict[
+        tuple[str, tuple[str, ...]], list[tuple[dict[str, Any], CandidateQuality]]
+    ] | None = None,
 ) -> EducationalPortfolioEvaluation:
     sleeves, policy = calculate_target_allocation(request)
     candidates = select_educational_candidates(
@@ -1226,6 +1234,7 @@ def build_educational_portfolio(
         sleeves=sleeves,
         request=request,
         history_sources=history_sources,
+        score_cache=score_cache,
     )
     products_by_code = {product["isu_code"]: product for product in products}
     horizon_years = request.retirement_start_age - request.age
@@ -1233,6 +1242,7 @@ def build_educational_portfolio(
         candidates=candidates,
         histories=histories,
         source_as_of=source_as_of,
+        history_as_of=history_as_of,
     )
     planning_return = calculate_portfolio_planning_return(
         candidates=candidates,

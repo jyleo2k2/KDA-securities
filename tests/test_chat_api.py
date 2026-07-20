@@ -1,4 +1,5 @@
 import json
+import threading
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
@@ -12,6 +13,7 @@ from backend.app.api.deps import (
     get_chat_repository,
     get_chat_service,
     get_optional_chat_repository,
+    get_optional_demo_user_context_repository,
 )
 from backend.app.auth import require_supabase_user_id
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
@@ -671,6 +673,84 @@ def test_authenticated_chat_replays_before_generating_or_persisting() -> None:
     assert response.status_code == 200
     assert final_sse_response(response.text)["idempotency_replayed"] is True
     assert repository.saved == []
+
+
+def test_authenticated_chat_loads_session_and_demo_context_in_parallel() -> None:
+    barrier = threading.Barrier(2, timeout=1)
+
+    class ParallelRepository(FakeChatRepository):
+        def get_latest_conversation_context(self, *, owner_id, session_id):
+            assert (owner_id, session_id) == (OWNER_ID, SESSION_ID)
+            barrier.wait()
+            return None
+
+    class ParallelContextRepository:
+        def get(self, owner_id):
+            assert owner_id == OWNER_ID
+            barrier.wait()
+            return None
+
+        def get_nickname(self, owner_id):
+            assert owner_id == OWNER_ID
+            return None
+
+    repository = ParallelRepository()
+    _override_authenticated_dependencies(repository)
+    app.dependency_overrides[get_optional_demo_user_context_repository] = (
+        lambda: ParallelContextRepository()
+    )
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={
+                    "message": "IRP 위험자산 한도를 알려줘",
+                    "session_id": str(SESSION_ID),
+                },
+                headers=CHAT_HEADERS,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert final_sse_response(response.text)["persisted"] is True
+
+
+def test_demo_context_database_failure_does_not_stop_authenticated_chat() -> None:
+    class ContextRestoringRepository(FakeChatRepository):
+        def get_latest_conversation_context(self, *, owner_id, session_id):
+            assert (owner_id, session_id) == (OWNER_ID, SESSION_ID)
+            return None
+
+    class UnavailableContextRepository:
+        def get(self, owner_id):
+            assert owner_id == OWNER_ID
+            raise psycopg.OperationalError("database unavailable")
+
+        def get_nickname(self, owner_id):
+            assert owner_id == OWNER_ID
+            return None
+
+    repository = ContextRestoringRepository()
+    _override_authenticated_dependencies(repository)
+    app.dependency_overrides[get_optional_demo_user_context_repository] = (
+        lambda: UnavailableContextRepository()
+    )
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={
+                    "message": "IRP 위험자산 한도를 알려줘",
+                    "session_id": str(SESSION_ID),
+                },
+                headers=CHAT_HEADERS,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert final_sse_response(response.text)["persisted"] is True
 
 
 @pytest.mark.parametrize("content", ["not-json", "[]", '"legacy"', "1"])
