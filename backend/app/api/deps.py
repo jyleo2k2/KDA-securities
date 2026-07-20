@@ -25,6 +25,7 @@ from ..chat.user_context import DemoUserContextRepository
 from ..database import get_database_pool
 from ..engine.audit import EngineAuditRepository
 from ..engine.models import AccountType
+from ..etf_market_repository import EtfMarketRepository
 from ..etf_theme_repository import get_default_etf_theme_repository
 from ..etf_theme_verification_repository import (
     PostgresEtfThemeVerificationRepository,
@@ -135,6 +136,18 @@ def get_benchmark_repository(
         settings, detail="Benchmark database is not configured"
     )
     return BenchmarkRepository(database_url, pool=get_database_pool(database_url))
+
+
+def get_etf_market_repository(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> EtfMarketRepository:
+    database_url = _database_url_or_503(
+        settings, detail="KRX ETF market database is not configured"
+    )
+    return EtfMarketRepository(
+        database_url,
+        pool=get_database_pool(database_url),
+    )
 
 
 def get_chat_repository(

@@ -14,6 +14,7 @@ from .api import (
     disclosures,
     engine,
     macro,
+    market,
     pension_accounts,
     retrieval,
     system,
@@ -99,6 +100,9 @@ async def lifespan(app: FastAPI):
             precompute_task.cancel()
             with suppress(asyncio.CancelledError):
                 await precompute_task
+        narrator = get_chat_narrator(settings)
+        if narrator is not None:
+            await asyncio.to_thread(narrator.flush_cache)
         clear_chat_dependencies()
         close_pool(pool)
         get_database_pool.cache_clear()
@@ -122,6 +126,7 @@ def create_app() -> FastAPI:
     _include_eagerly(app, disclosures.router)
     _include_eagerly(app, benchmark.router)
     _include_eagerly(app, pension_accounts.router)
+    _include_eagerly(app, market.router)
     _include_eagerly(app, macro.router)
     _include_eagerly(app, chat.router)
     return app

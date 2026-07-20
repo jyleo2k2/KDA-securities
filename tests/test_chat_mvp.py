@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from pydantic_ai.messages import ModelResponse, TextPart, ThinkingPart
 from pydantic_ai.models.function import FunctionModel
 
+import backend.app.main as main_module
 from backend.app.api import deps
 from backend.app.chat.disclosures import ProviderDisclosure
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
@@ -1135,9 +1136,14 @@ def test_narration_cache_reuses_verified_result() -> None:
     assert second.answer == first.answer
 
 
-def test_narration_cache_never_stores_rejected_fallback() -> None:
+def test_narration_cache_never_stores_rejected_fallback(tmp_path) -> None:
     base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
-    narrator = ClaudeNarrator(api_key="test-key", model="test-model")
+    cache_path = tmp_path / "narration_cache.json"
+    narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=cache_path,
+    )
     calls: list[int] = []
 
     def respond(messages, info) -> ModelResponse:
@@ -1160,6 +1166,8 @@ def test_narration_cache_never_stores_rejected_fallback() -> None:
     assert first.narration_mode == "deterministic"
     assert second.narration_mode == "deterministic"
     assert calls == [1, 1]
+    narrator.flush_cache()
+    assert not cache_path.exists()
 
 
 def test_narration_cache_survives_narrator_restart(tmp_path) -> None:
@@ -1205,6 +1213,93 @@ def test_narration_cache_survives_narrator_restart(tmp_path) -> None:
     assert first.narration_mode == "claude_verified"
     assert second.answer == first.answer
     assert calls == []
+
+
+def test_narration_cache_debounces_disk_persistence(tmp_path, monkeypatch) -> None:
+    narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=tmp_path / "narration_cache.json",
+        cache_persist_debounce_seconds=60,
+    )
+    persist_cache = narrator._persist_cache
+    flush_calls: list[int] = []
+
+    def tracked_persist() -> None:
+        flush_calls.append(1)
+        persist_cache()
+
+    monkeypatch.setattr(narrator, "_persist_cache", tracked_persist)
+
+    narrator._cache_store("first", "첫 내레이션", None)
+    narrator._cache_store("second", "둘째 내레이션", None)
+
+    assert flush_calls == [1]
+
+
+def test_narration_cache_flush_persists_last_debounced_entry(tmp_path) -> None:
+    cache_path = tmp_path / "narration_cache.json"
+    narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=cache_path,
+        cache_persist_debounce_seconds=60,
+    )
+
+    narrator._cache_store("first", "첫 내레이션", None)
+    narrator._cache_store("second", "둘째 내레이션", "근거")
+    narrator.flush_cache()
+
+    reloaded = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=cache_path,
+    )
+    assert reloaded._cache_lookup("first") == ("첫 내레이션", None)
+    assert reloaded._cache_lookup("second") == ("둘째 내레이션", "근거")
+
+
+def test_narration_cache_merges_two_narrator_instances(tmp_path) -> None:
+    cache_path = tmp_path / "narration_cache.json"
+    first = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=cache_path,
+        cache_persist_debounce_seconds=60,
+    )
+    second = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=cache_path,
+        cache_persist_debounce_seconds=60,
+    )
+
+    first._cache_store("first", "첫 내레이션", None)
+    second._cache_store("second", "둘째 내레이션", None)
+
+    reloaded = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=cache_path,
+    )
+    assert reloaded._cache_lookup("first") == ("첫 내레이션", None)
+    assert reloaded._cache_lookup("second") == ("둘째 내레이션", None)
+
+
+def test_lifespan_flushes_narration_cache(monkeypatch) -> None:
+    calls: list[int] = []
+
+    class FakeNarrator:
+        def flush_cache(self) -> None:
+            calls.append(1)
+
+    monkeypatch.setattr(main_module, "get_chat_narrator", lambda _: FakeNarrator())
+    monkeypatch.setattr(main_module, "clear_chat_dependencies", lambda: None)
+
+    with TestClient(app):
+        pass
+
+    assert calls == [1]
 
 
 @pytest.mark.parametrize("content", ["", '{"version": 1, "entries": ['])
@@ -1349,20 +1444,22 @@ def test_guard_allows_colloquial_single_syllable_numeral_homographs(
 
 
 @pytest.mark.parametrize(
-    "candidate",
+    ("candidate", "source"),
     (
-        "IRP 일반 위험자산 한도는 칠십 퍼센트입니다.",
-        "한도는 구백만 원입니다.",
-        "적립금은 삼천만 원까지 가능합니다.",
+        (
+            "IRP 일반 위험자산 한도는 칠십 퍼센트입니다.",
+            "IRP 일반 위험자산 한도는 80%입니다.",
+        ),
+        ("한도는 구백만 원입니다.", "IRP 일반 위험자산 한도는 70%입니다."),
+        ("적립금은 삼천만 원까지 가능합니다.", "IRP 일반 위험자산 한도는 70%입니다."),
     ),
 )
 def test_guard_still_rejects_multisyllable_korean_numerals_absent_from_source(
     candidate: str,
+    source: str,
 ) -> None:
     # 두 글자 이상 한글 숫자 조합(칠십·구백만·삼천만)은 일상어와 겹치지 않으므로
     # 원문에 없으면 계속 거부한다 — 오탐 완화가 실제 조작 수치를 놓치지 않는다.
-    source = "IRP 일반 위험자산 한도는 70%입니다."
-
     assert _adds_unverified_content(candidate, source)
 
 
@@ -1445,6 +1542,92 @@ def test_guard_treats_exact_numeric_notation_variants_as_equivalent(
     # 범위·통화 스케일·날짜의 정확한 동치만 허용한다. 값 추정이나 반올림은 없다.
     assert not _adds_unverified_content(right, left)
     assert not _adds_unverified_content(left, right)
+
+
+@pytest.mark.parametrize(
+    ("candidate", "guard_source", "expected_blocked", "defect_type"),
+    (
+        # H1: 이중부정 뒤의 실제 보장 주장은 차단해야 한다.
+        pytest.param(
+            "원금은 보장되지 않는 게 아니라 보장됩니다.",
+            "규칙 엔진 결과를 설명합니다.",
+            True,
+            "false_negative",
+            id="H1-double-negation-bypasses-guarantee",
+        ),
+        # H2: '담으시면 돼요'는 상품 매수를 권하는 우회 표현이다.
+        pytest.param(
+            "이 상품을 담으시면 돼요.",
+            "규칙 엔진 결과를 설명합니다.",
+            True,
+            "false_negative",
+            id="H2-euphemistic-recommendation",
+        ),
+        # H2: 원금 손실이 없다는 단정은 보장 어휘 없이도 위험 주장이다.
+        pytest.param(
+            "원금이 줄지 않아요.",
+            "규칙 엔진 결과를 설명합니다.",
+            True,
+            "false_negative",
+            id="H2-euphemistic-guarantee",
+        ),
+        # H3: 수식어가 끼어도 수익률 확정 주장은 차단해야 한다.
+        pytest.param(
+            "수익률은 여러 지표를 함께 보면 사실상 확정에 가깝습니다.",
+            "규칙 엔진 결과를 설명합니다.",
+            True,
+            "false_negative",
+            id="H3-guarantee-window-overflow",
+        ),
+        # H4: '보장되는 상품이 아니에요'는 보장 주장을 부정한 안전한 문장이다.
+        pytest.param(
+            "원금 보장되는 상품이 아니에요.",
+            None,
+            False,
+            "false_positive",
+            id="H4-negated-participle-is-safe",
+        ),
+        # H5: 같은 15%를 한글로 쓴 재서술은 새 수치가 아니다.
+        pytest.param(
+            "열다섯 퍼센트를 공제합니다.",
+            "15%를 공제합니다.",
+            False,
+            "false_positive",
+            id="H5-percent-korean-number-notation",
+        ),
+        # H6: 구백만 원과 900만 원은 같은 금액이다.
+        pytest.param(
+            "구백만 원입니다.",
+            "900만 원입니다.",
+            False,
+            "false_positive",
+            id="H6-korean-currency-notation",
+        ),
+        # H7: 점 표기 날짜는 ISO 날짜와 같은 달력값이다.
+        pytest.param(
+            "2026.07.16 기준입니다.",
+            "2026-07-16 기준입니다.",
+            False,
+            "false_positive",
+            id="H7-dotted-date-notation",
+        ),
+    ),
+)
+def test_narrator_guard_adversarial_measurement(
+    candidate: str,
+    guard_source: str | None,
+    expected_blocked: bool,
+    defect_type: str,
+) -> None:
+    """Measure H1-H7 without changing the guard implementation."""
+
+    observed_blocked = (
+        bool(_unsafe_claims(candidate))
+        if guard_source is None
+        else _adds_unverified_content(candidate, guard_source)
+    )
+
+    assert observed_blocked is expected_blocked, defect_type
 
 
 def test_narrator_accepts_limitation_number_and_keeps_tax_closing_notice() -> None:
@@ -1534,7 +1717,7 @@ def test_claude_narrator_preserves_sign_and_percent_semantics(
     (
         "앞으로 수익이 오르고 70%는 보장됩니다.",
         "IRP 매수를 추천합니다. 한도는 70%입니다.",
-        "IRP 일반 위험자산 한도는 칠십 퍼센트입니다.",
+        "IRP 일반 위험자산 한도는 팔십 퍼센트입니다.",
     ),
 )
 def test_claude_narrator_rejects_new_investment_claims_and_korean_numbers(

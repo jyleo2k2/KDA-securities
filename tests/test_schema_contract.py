@@ -35,6 +35,11 @@ LIFECYCLE_SCENARIOS_MIGRATION = next(
 ETF_UNIVERSE_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob("*_add_etf_portfolio_universe.sql")
 )
+ETF_MARKET_SNAPSHOT_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob(
+        "*_add_krx_etf_daily_market_snapshots.sql"
+    )
+)
 ETF_THEME_VERIFICATION_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob(
         "*_add_etf_theme_content_verification.sql"
@@ -55,6 +60,8 @@ DEMO_CUSTOMER_CONTRACT_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob("*_unify_demo_customer_contract.sql")
 )
 BENCHMARK_LOADER = ROOT / "scripts" / "load_benchmark_mock_data.py"
+DEMO_AUTH_PROVISIONER = ROOT / "scripts" / "provision_demo_auth_users.py"
+DEMO_SQL_RENDERER = ROOT / "scripts" / "render_demo_customer_sql.py"
 SEED = ROOT / "supabase" / "seed.sql"
 
 
@@ -359,6 +366,28 @@ def test_etf_universe_is_server_only_and_versioned() -> None:
     assert "drop table" not in sql
 
 
+def test_krx_etf_daily_market_snapshots_are_server_only_and_indexed() -> None:
+    sql = ETF_MARKET_SNAPSHOT_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "create table public.etf_daily_market_snapshots" in sql
+    assert "primary key (base_date, isu_code)" in sql
+    assert "^[0-9a-z]{6}$" in sql
+    assert "trading_volume bigint not null" in sql
+    assert "trading_value_krw numeric not null" in sql
+    assert "ingestion_run_id uuid not null" in sql
+    assert "etf_daily_market_snapshots_volume_idx" in sql
+    assert "(base_date desc, trading_volume desc, isu_code)" in sql
+    assert "etf_daily_market_snapshots_history_idx" in sql
+    assert "(isu_code, base_date desc)" in sql
+    assert (
+        "alter table public.etf_daily_market_snapshots enable row level security" in sql
+    )
+    assert "from public, anon, authenticated" in sql
+    assert "to service_role" in sql
+    assert "to authenticated" not in sql
+    assert "drop table" not in sql
+
+
 def test_etf_theme_verification_is_hash_bound_and_server_only() -> None:
     assert ETF_THEME_VERIFICATION_MIGRATION is not None
     sql = ETF_THEME_VERIFICATION_MIGRATION.read_text(encoding="utf-8").lower()
@@ -485,9 +514,20 @@ def test_demo_customer_runtime_tax_year_stays_on_supported_engine_year() -> None
         encoding="utf-8"
     ).lower()
     loader_source = BENCHMARK_LOADER.read_text(encoding="utf-8").lower()
+    provisioner_source = DEMO_AUTH_PROVISIONER.read_text(encoding="utf-8").lower()
+    renderer_source = DEMO_SQL_RENDERER.read_text(encoding="utf-8").lower()
+    seed_sql = SEED.read_text(encoding="utf-8").lower()
 
-    for source in (migration_sql, loader_source):
+    for source in (migration_sql, loader_source, renderer_source, seed_sql):
         assert "tax_year = 2026" in source
+    assert "demo_context_tax_year = 2026" in provisioner_source
+    for source in (
+        migration_sql,
+        loader_source,
+        provisioner_source,
+        renderer_source,
+        seed_sql,
+    ):
         assert "tax_year = benchmark.tax_year::smallint" not in source
 
 

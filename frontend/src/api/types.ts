@@ -6,6 +6,26 @@
  */
 
 export type AccountType = "dc" | "irp" | "pension_savings";
+
+/**
+ * Account-link screen display code. `db` is presentation metadata only and
+ * must not be passed to the engine's AccountType-based APIs.
+ */
+export type AccountLinkOptionCode = AccountType | "db";
+
+export interface AccountLinkOption {
+  code: AccountLinkOptionCode;
+  display_name: string;
+  category_label: string;
+  diagnosable: boolean;
+  description: string | null;
+}
+
+export interface AccountLinkOptionsResponse {
+  options: AccountLinkOption[];
+  notice: string;
+  data_boundary: "mock";
+}
 export type RiskTreatment =
   | "capital_preservation"
   | "general_risky"
@@ -496,6 +516,7 @@ export interface DemoHeroPortfolio {
   nickname: string;
   representative_age: number;
   customer_context: string;
+  is_demo_login_candidate: boolean;
   scenario_code: string;
   scenario_name: string;
   age_band: string;
@@ -738,6 +759,163 @@ export interface CompletedSurveyProfile {
   loss_tolerance_percent: string | number;
 }
 
+export interface CurrentHoldingInput {
+  isu_code: string;
+  amount_krw: string;
+}
+
+export interface EducationalPortfolioInput {
+  account_type: AccountType;
+  age: number;
+  retirement_start_age: number;
+  risk_profile: RiskProfile;
+  loss_tolerance_percent: string | number;
+  max_etfs?: number;
+  current_holdings: CurrentHoldingInput[];
+  new_contribution_krw: string;
+}
+
+export interface EducationalEtfCandidate {
+  isu_code: string;
+  isu_name: string;
+  sleeve: string;
+  target_percent: string;
+  quality: Record<string, string>;
+  region?: string | null;
+  strategy?: string | null;
+  max_correlation_with_selected: string | null;
+  price_history_source: string;
+  account_eligibility: Record<string, unknown>;
+  reasons: string[];
+}
+
+export interface RebalancingSleeveGuidance {
+  sleeve: string;
+  target_percent: string;
+  current_percent: string;
+  projected_percent_after_contribution: string;
+  drift_before_percent_points: string;
+  drift_after_percent_points: string;
+  contribution_example_krw: string;
+  status: string;
+}
+
+export interface RebalancingGuidance {
+  status: string;
+  drift_threshold_percent_points: string;
+  current_total_krw: string;
+  new_contribution_krw: string;
+  projected_total_krw: string;
+  unclassified_holding_amount_krw: string;
+  contribution_first: boolean;
+  sell_instruction_produced: boolean;
+  sleeves: RebalancingSleeveGuidance[];
+  warnings: string[];
+}
+
+export interface StressScenarioResult {
+  scenario_code: string;
+  estimated_loss_percent: string;
+  sleeve_shocks_percent: Record<string, string>;
+  is_forecast: boolean;
+}
+
+export interface PortfolioRiskEvaluation {
+  engine_name: string;
+  engine_version: string;
+  policy_version: string;
+  usage_label: string;
+  status: string;
+  observation_count: number;
+  observation_start: string | null;
+  observation_end: string | null;
+  annualized_volatility_percent: string | null;
+  annualized_downside_deviation_percent: string | null;
+  maximum_drawdown_percent: string | null;
+  historical_95pct_one_day_loss_percent: string | null;
+  worst_daily_return_percent: string | null;
+  historical_return_used_for_risk_only: boolean;
+  is_return_forecast: boolean;
+  stress_scenarios: StressScenarioResult[];
+  sources: Array<{
+    label: string;
+    reference: string;
+    as_of: string;
+  }>;
+  warnings: string[];
+}
+
+export interface PortfolioPlanningComponent {
+  isu_code: string;
+  isu_name: string;
+  sleeve: string;
+  target_percent: string;
+  cma_assumption_code: string;
+  cma_percent: string;
+  uncertainty_discount_percent: string;
+  annual_cost_drag_percent: string;
+  gross_planning_return_percent: string;
+  net_planning_return_percent: string;
+  proxy_used: boolean;
+  warnings: string[];
+}
+
+export interface PortfolioPlanningEvaluation {
+  engine_name: string;
+  engine_version: string;
+  policy_version: string;
+  cma_policy_id: string;
+  cma_policy_status: string;
+  usage_label: string;
+  retirement_start_age: number;
+  portfolio_horizon_years: number;
+  cma_source_horizon_min_years: number;
+  cma_source_horizon_max_years: number;
+  annual_review_required: boolean;
+  coverage_weight_percent: string;
+  gross_planning_return_percent: string | null;
+  net_planning_return_percent: string | null;
+  conservative_planning_return_percent: string | null;
+  base_planning_return_percent: string | null;
+  is_forecast: boolean;
+  historical_performance_used: boolean;
+  risk_adjustment_included: boolean;
+  components: PortfolioPlanningComponent[];
+  sources: SourceChip[];
+  warnings: string[];
+}
+
+export interface EducationalPortfolioEvaluation {
+  engine_name: string;
+  engine_version: string;
+  policy_version: string;
+  usage_label: string;
+  evaluated_input: EducationalPortfolioInput;
+  strategy_label: string;
+  retirement_start_age: number;
+  planning_horizon_years: number;
+  horizon_to_age_55_years: number;
+  horizon_to_age_60_years: number;
+  raw_risk_target_percent: string;
+  final_general_risk_target_percent: string;
+  account_risk_cap_percent: string | null;
+  account_cap_binding: boolean;
+  loss_tolerance_binding: boolean;
+  stress_loss_proxy_percent: string;
+  target_sleeves: Array<{
+    sleeve: string;
+    target_percent: string;
+    risk_treatment: string;
+    role: string;
+  }>;
+  candidates: EducationalEtfCandidate[];
+  portfolio_risk: PortfolioRiskEvaluation;
+  planning_return: PortfolioPlanningEvaluation;
+  rebalancing: RebalancingGuidance;
+  sources: SourceEvidence[];
+  warnings: string[];
+}
+
 export type MarketRegion = "all" | "kr" | "us";
 
 export interface NewsConversationContext {
@@ -774,8 +952,8 @@ export interface ChatResponse {
   engine_results: unknown[];
   scenario_evaluation?: ScenarioEvaluation | null;
   pension_tax_result?: PensionTaxToolResult | null;
-  educational_portfolio_evaluation?: unknown | null;
-  educational_portfolio_evaluations?: unknown[];
+  educational_portfolio_evaluation?: EducationalPortfolioEvaluation | null;
+  educational_portfolio_evaluations?: EducationalPortfolioEvaluation[];
   limitations: string[];
   conversation_context?: ConversationContext | null;
 }

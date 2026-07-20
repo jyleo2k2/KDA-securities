@@ -16,6 +16,7 @@ vi.mock("../api/client", () => ({
 const baseHero = {
   representative_age: 46,
   customer_context: "가상 고객 설명",
+  is_demo_login_candidate: true,
   scenario_name: "DC형 방치",
   age_band: "40대",
   risk_profile: "balanced",
@@ -55,6 +56,7 @@ const heroes = [
   ...baseHero,
   nickname,
   scenario_code,
+  is_demo_login_candidate: scenario_code !== "pension_payout_transition",
   ...(scenario_code === "overlap_risk_concentration"
     ? {
         total_amount_krw: "190000000.00",

@@ -95,7 +95,7 @@ with user_link (auth_user_id, scenario_code, benchmark_user_id, representative_a
 update public.demo_user_financial_context as context
 set benchmark_user_id = link.benchmark_user_id,
     representative_age = link.representative_age,
-    tax_year = benchmark.tax_year::smallint,
+    tax_year = 2026,
     gross_salary_krw = nullif(benchmark.gross_salary_krw, '')::numeric,
     comprehensive_income_krw = nullif(benchmark.comprehensive_income_krw, '')::numeric,
     pension_savings_contribution_krw = benchmark.pension_savings_contribution_krw::numeric,

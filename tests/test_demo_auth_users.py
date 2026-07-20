@@ -4,6 +4,7 @@ from pathlib import Path
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.engine.scenario import evaluate_mock_scenario
 from scripts.provision_demo_auth_users import (
+    _auth_payload,
     _sync_demo_financial_context,
     _validate_credentials,
     load_manifest,
@@ -26,8 +27,27 @@ def test_demo_manifest_maps_six_unique_users_to_six_scenarios() -> None:
     assert {item["scenario_code"] for item in users} == scenario_codes
     assert len({item["login_id"] for item in users}) == 6
     assert len({item["benchmark_user_id"] for item in users}) == 6
+    assert sum(item["is_demo_login_candidate"] for item in users) == 5
+    assert next(
+        item
+        for item in users
+        if item["scenario_code"] == "pension_payout_transition"
+    )["is_demo_login_candidate"] is False
     assert all(item["login_id"].endswith("@kda-demo.invalid") for item in users)
     assert "password" not in MANIFEST.read_text(encoding="utf-8").lower()
+
+
+def test_auth_payload_keeps_candidate_flag_in_server_managed_metadata() -> None:
+    users = load_manifest(MANIFEST)
+    payout_user = next(
+        item
+        for item in users
+        if item["scenario_code"] == "pension_payout_transition"
+    )
+    payload = _auth_payload(payout_user, {"password": "not-a-real-password"})
+
+    assert payload["app_metadata"]["is_demo_login_candidate"] is False
+    assert "is_demo_login_candidate" not in payload["user_metadata"]
 
 
 def test_prepare_credentials_generates_unique_passwords_once(tmp_path: Path) -> None:
@@ -82,10 +102,11 @@ def test_financial_context_sync_maps_all_users_with_mock_contributions(
 
         def execute(self, query, params) -> None:
             assert "select count(*)" in query
+            assert "min(tax_year)" in query
             assert len(params[0]) == len(self.rows)
 
         def fetchone(self):
-            return (len(self.rows),)
+            return (len(self.rows), 2026, 2026)
 
     cursor = FakeCursor()
 

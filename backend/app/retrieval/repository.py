@@ -19,6 +19,27 @@ from .search_ranking import (
 # RRF(reciprocal rank fusion) 상수 — 관행값 60, 순위 융합의 완만함을 조절한다.
 RRF_K = 60
 
+# 챗봇 RAG에 들어갈 수 있는 검증 문서의 단일 자격 술어다. 현재 코퍼스는 46청크라
+# VIEW·partial index를 추가할 성능상 이득이 없고, DB 세션 마이그레이션도 필요하다.
+# 코퍼스가 커질 때 그 대안을 재검토한다. 이 문자열은 순수 SQL 리터럴만 포함하며,
+# 사용자 입력은 각 쿼리의 %(name)s 바인딩 파라미터로만 전달한다.
+_VERIFIED_KNOWLEDGE_ELIGIBILITY_SQL = """
+                  and kd.license_status = 'permitted'
+                  and kd.document_type in ('official_guide', 'regulation', 'research')
+                  and ds.code in (
+                      'project_verified_knowledge',
+                      'retirement_pension_official_rules'
+                  )
+                  and ds.is_active
+                  and kd.metadata ->> 'data_boundary' = 'verified_knowledge'
+                  and kd.metadata ->> 'contains_personal_data' = 'false'
+                  and kd.metadata ->> 'is_mock' = 'false'
+                  and kc.metadata ->> 'data_boundary' = 'verified_knowledge'
+                  and kc.metadata ->> 'contains_personal_data' = 'false'
+                  and kc.metadata ->> 'is_mock' = 'false'
+                  and kc.metadata ->> 'is_active' is distinct from 'false'
+"""
+
 _NEWS_QUERY_ALIASES: dict[str, tuple[str, ...]] = {
     "irp": ("IRP", "개인형 퇴직연금"),
     "개인형 퇴직연금": ("개인형 퇴직연금", "IRP"),
@@ -120,7 +141,8 @@ class RetrievalRepository:
             connection.cursor() as cursor,
         ):
             cursor.execute(
-                """
+                (
+                    """-- verified knowledge full-text search
                 with prepared_query as (
                     select to_tsquery('simple', %(tsquery)s) as ts_query
                 )
@@ -140,25 +162,15 @@ class RetrievalRepository:
                 join public.data_sources as ds on ds.id = kd.source_id
                 cross join prepared_query
                 where kc.search_vector @@ prepared_query.ts_query
-                  and kd.license_status = 'permitted'
-                  and kd.document_type in ('official_guide', 'regulation', 'research')
-                  and ds.code in (
-                      'project_verified_knowledge',
-                      'retirement_pension_official_rules'
-                  )
-                  and ds.is_active
-                  and kd.metadata ->> 'data_boundary' = 'verified_knowledge'
-                  and kd.metadata ->> 'contains_personal_data' = 'false'
-                  and kd.metadata ->> 'is_mock' = 'false'
-                  and kc.metadata ->> 'data_boundary' = 'verified_knowledge'
-                  and kc.metadata ->> 'contains_personal_data' = 'false'
-                  and kc.metadata ->> 'is_mock' = 'false'
-                  and kc.metadata ->> 'is_active' is distinct from 'false'
+                    """
+                    + _VERIFIED_KNOWLEDGE_ELIGIBILITY_SQL
+                    + """
                 order by ts_rank_cd(
                     kc.search_vector, prepared_query.ts_query
                 ) desc, kc.id
                 limit greatest(1, least(%(limit)s, 200))
-                """,
+                    """
+                ),
                 {"tsquery": tsquery, "limit": limit},
             )
             return [KnowledgeMatch(*row) for row in cursor]
@@ -172,7 +184,8 @@ class RetrievalRepository:
             connection.cursor() as cursor,
         ):
             cursor.execute(
-                """
+                (
+                    """-- verified knowledge hybrid search
                 with prepared_query as (
                     select to_tsquery('simple', %(tsquery)s) as ts_query
                 ),
@@ -189,22 +202,9 @@ class RetrievalRepository:
                     join public.data_sources as ds on ds.id = kd.source_id
                     cross join prepared_query
                     where kc.search_vector @@ prepared_query.ts_query
-                      and kd.license_status = 'permitted'
-                      and kd.document_type in (
-                          'official_guide', 'regulation', 'research'
-                      )
-                      and ds.code in (
-                          'project_verified_knowledge',
-                          'retirement_pension_official_rules'
-                      )
-                      and ds.is_active
-                      and kd.metadata ->> 'data_boundary' = 'verified_knowledge'
-                      and kd.metadata ->> 'contains_personal_data' = 'false'
-                      and kd.metadata ->> 'is_mock' = 'false'
-                      and kc.metadata ->> 'data_boundary' = 'verified_knowledge'
-                      and kc.metadata ->> 'contains_personal_data' = 'false'
-                      and kc.metadata ->> 'is_mock' = 'false'
-                      and kc.metadata ->> 'is_active' is distinct from 'false'
+                    """
+                    + _VERIFIED_KNOWLEDGE_ELIGIBILITY_SQL
+                    + """
                     order by text_score desc, kc.id
                     limit %(candidate_limit)s
                 ),
@@ -226,22 +226,9 @@ class RetrievalRepository:
                         on kd.id = kc.document_id
                     join public.data_sources as ds on ds.id = kd.source_id
                     where kc.embedding is not null
-                      and kd.license_status = 'permitted'
-                      and kd.document_type in (
-                          'official_guide', 'regulation', 'research'
-                      )
-                      and ds.code in (
-                          'project_verified_knowledge',
-                          'retirement_pension_official_rules'
-                      )
-                      and ds.is_active
-                      and kd.metadata ->> 'data_boundary' = 'verified_knowledge'
-                      and kd.metadata ->> 'contains_personal_data' = 'false'
-                      and kd.metadata ->> 'is_mock' = 'false'
-                      and kc.metadata ->> 'data_boundary' = 'verified_knowledge'
-                      and kc.metadata ->> 'contains_personal_data' = 'false'
-                      and kc.metadata ->> 'is_mock' = 'false'
-                      and kc.metadata ->> 'is_active' is distinct from 'false'
+                    """
+                    + _VERIFIED_KNOWLEDGE_ELIGIBILITY_SQL
+                    + """
                     order by
                         kc.embedding <=> %(query_vector)s::extensions.vector,
                         kc.id
@@ -275,7 +262,8 @@ class RetrievalRepository:
                 join public.data_sources as ds on ds.id = kd.source_id
                 order by fused_rank desc, kc.id
                 limit greatest(1, least(%(candidate_limit)s, 200))
-                """,
+                    """
+                ),
                 {
                     "tsquery": tsquery,
                     "query_vector": vector_literal(query_embedding),

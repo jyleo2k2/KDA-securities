@@ -1,4 +1,3 @@
-import inspect
 from uuid import uuid4
 
 import psycopg
@@ -9,6 +8,7 @@ from backend.app.chat.knowledge import (
     LocalMarkdownKnowledgeRepository,
 )
 from backend.app.retrieval.repository import (
+    _VERIFIED_KNOWLEDGE_ELIGIBILITY_SQL,
     KnowledgeMatch,
     RetrievalRepository,
     _news_search_terms,
@@ -225,11 +225,42 @@ def test_fallback_does_not_hide_non_database_programming_errors() -> None:
         repository.search_knowledge("IRP")
 
 
-def test_hybrid_sql_orders_candidates_before_limiting_and_filters_boundaries() -> None:
-    source = inspect.getsource(RetrievalRepository._search_knowledge_hybrid)
+def test_knowledge_search_sql_uses_one_verified_eligibility_predicate(
+    monkeypatch,
+) -> None:
+    statements: list[str] = []
 
-    assert "order by text_score desc, kc.id" in source
-    assert "order by\n                        kc.embedding <=>" in source
-    assert "kd.metadata ->> 'data_boundary' = 'verified_knowledge'" in source
-    assert "kc.metadata ->> 'data_boundary' = 'verified_knowledge'" in source
-    assert "kc.metadata ->> 'is_active' is distinct from 'false'" in source
+    class Cursor:
+        def __enter__(self) -> "Cursor":
+            return self
+
+        def __exit__(self, *_: object) -> None:
+            return None
+
+        def execute(self, statement: str, _: dict[str, object]) -> None:
+            statements.append(statement)
+
+        def __iter__(self):
+            return iter(())
+
+    class Connection:
+        def __enter__(self) -> "Connection":
+            return self
+
+        def __exit__(self, *_: object) -> None:
+            return None
+
+        def cursor(self) -> Cursor:
+            return Cursor()
+
+    repository = RetrievalRepository("postgresql://test")
+    monkeypatch.setattr(repository, "_connection", lambda: Connection())
+
+    repository._search_knowledge_fulltext("irp:*", limit=4)
+    repository._search_knowledge_hybrid("irp:*", [0.0], limit=4)
+
+    assert len(statements) == 2
+    assert _VERIFIED_KNOWLEDGE_ELIGIBILITY_SQL in statements[0]
+    assert statements[1].count(_VERIFIED_KNOWLEDGE_ELIGIBILITY_SQL) == 2
+    assert "order by text_score desc, kc.id" in statements[1]
+    assert "kc.embedding <=> %(query_vector)s::extensions.vector" in statements[1]

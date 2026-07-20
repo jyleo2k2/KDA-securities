@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-20 18:22 KST
-> 확인 기준: `신규작업브랜치` / HEAD `69f1ade` / ETF 테마 승인 RAG·115개 검증 장부 원격 적용·재검증
+> 최종 확인: 2026-07-20 18:39 KST
+> 확인 기준: `신규작업브랜치` / `origin/main` `b795763` 통합 / KRX ETF 일별시장 1,147행·ETF 테마 승인 RAG 및 검증 장부 115/115건 원격 재확인
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -30,7 +30,7 @@
 
 ## 3. 현재 원격 상태
 
-2026-07-20 KST에 승인된 ETF 테마 콘텐츠 검증 migration과 승인 RAG·검증 장부를 적용한 뒤 연결된 Supabase 프로젝트를 재확인했다.
+2026-07-20 KST에 승인된 KRX ETF 일별시장과 ETF 테마 콘텐츠 검증 migration, 데이터 및 승인 RAG를 모두 적용한 뒤 연결된 Supabase 프로젝트를 읽기 전용으로 재확인했다.
 
 | 항목 | 원격 상태 |
 |---|---|
@@ -75,7 +75,7 @@
 
 원격 컬럼 설명 3건(`pension_savings_provider_stats.fee_rate_1y`, `retirement_provider_stats.response_division`, `knowledge_chunks.embedding`)은 `20260718154819_repair_corrupted_column_comments.sql`로 교정했다. 실제 설명을 재조회해 목표 문구와 일치하고 U+FFFD 대체문자가 없음을 확인했다. 테이블·컬럼·데이터·RLS·GRANT는 바뀌지 않았다.
 
-### 현재 43개 테이블의 역할
+### 현재 46개 테이블의 역할
 
 | 영역 | 테이블 |
 |---|---|
@@ -87,13 +87,27 @@
 | RAG·뉴스 | `knowledge_documents`, `knowledge_chunks`, `news_items`, `curated_contents`, `etf_theme_content_reviews`, `etf_theme_content_evidence` |
 | 채팅 | `chat_sessions`, `chat_messages`, `chat_message_evidence`, `chat_request_idempotency` |
 | 사용자·성향·계좌 | `user_profiles`, `profile_question_sets`, `profile_questions`, `profile_question_options`, `investment_profile_assessments`, `investment_profile_answers`, `pension_accounts`, `account_snapshots`, `account_cash_flows`, `financial_products`, `account_holding_snapshots` |
-| ETF 유니버스 | `etf_dataset_versions`, `etf_universe_products`, `etf_return_histories`, `etf_daily_market_snapshots` |
+| ETF 유니버스 | `etf_dataset_versions`, `etf_universe_products`, `etf_return_histories` |
+| ETF 일별 시장 | `etf_daily_market_snapshots` |
 
 ## 4. 현재 작업트리의 진행 중 작업
 
-`신규작업브랜치` HEAD `69f1ade`에서 ETF 테마 챗봇 UI·엔진·RAG 통합 변경을
-작업 중이다. 작업트리는 사용자 요청에 따른 미커밋 변경을 포함하며 stage·commit·
-push는 수행하지 않았다.
+`신규작업브랜치`의 ETF 테마 챗봇 UI·엔진·RAG 변경(`71e896d`)과
+`origin/main`의 KRX 전체 상장 ETF 일별 거래량·FastAPI 변경(`b795763` 기준)을
+이번 통합 작업트리에 함께 반영했다.
+
+- 신규 `20260720080955_add_krx_etf_daily_market_snapshots.sql`은
+  `(base_date, isu_code)` 기준의 거래량·거래대금·NAV 스냅샷과 최신 거래량·종목
+  이력 인덱스를 추가한다. RLS를 활성화하고 브라우저 권한을 회수하며
+  `service_role`만 허용한다.
+- 기존 `data/raw/krx` 원본을 `data_sources`·`ingestion_runs` 근거와 함께 멱등
+  upsert하는 적재 스크립트와 `/market/etfs`, 종목별 `volume-history` API를
+  추가했다.
+- 실제 2026-07-14 KRX 원본 1,147행을 원격 적재했다. 영문 혼합 6자리 코드
+  280개와 거래량 0인 13개도 보존하고 원본·DB 거래량·거래대금 합계가 일치한다.
+- KRX 변경 단독 검증에서는 전체 회귀 834 passed·1 skipped, Ruff,
+  `git diff --check`, FastAPI 원격 조회 1,147건이 통과했다. 이번 통합 결과는
+  아래 검증 기준으로 다시 확인한다.
 
 - `20260720091219_add_etf_theme_content_verification.sql`은 원격 적용 완료다.
   MCP가 기록한 실제 버전에 맞춰 로컬 migration 파일명도 정합화했다.
@@ -109,7 +123,8 @@ push는 수행하지 않았다.
 - 원격 non-null embedding은 45건이고 모두 1024차원이며, HNSW 인덱스도 존재한다.
 - 적용된 파일의 "기존 embedding 값은 전부 null" 주석은 원격 적용 직전 사실과 달랐지만, 적용 이력 파일은 수정하지 않는다. 이 문서에 사실 차이만 기록한다.
 - 원격 migration history의 해당 버전은 statements 배열이 비어 있다(statement count 0). 과거 이력을 repair하거나 조작하지 않는 legacy 예외로 유지한다.
-- 현재 원격 상태는 `vector(1024)` 45건, 비정상 차원 0건이다.
+- 현재 원격 활성 청크 56건은 모두 `vector(1024)` 임베딩을 보유하고 비정상
+  차원은 0건이다. 과거 migration 적용 당시의 45건 기록과 구분한다.
 
 ## 5. PDF 설계 검토 결론
 
@@ -268,6 +283,8 @@ uv run ruff check .
 | DB-08 | 손상된 컬럼 설명 3건 교정 | `REMOTE-APPLIED` | `20260718154819`, COMMENT 3문 전용·실제 설명·불변식 재조회 | 적용 파일 수정 금지 |
 | DB-09 | Auth 유출 비밀번호 보호 | `BLOCKED` | Security Advisor의 `auth_leaked_password_protection` WARN 제거 | Supabase Dashboard 또는 CLI 로그인 후 `password_hibp_enabled` 활성화·Advisor 재조회 |
 | DB-10 | main 원격 DB 런타임 회귀 | `LOCAL-VERIFIED` | Auth/RLS·채팅 persist/replay·RAG·뉴스·공시·ETF·NAVER rollback-only SQL E2E 통과 | main 변경 시 재실행 |
+| DB-11 | KRX 전체 ETF 일별 거래량 DB·API 연결 | `REMOTE-APPLIED` | `20260720080955`, 2026-07-14 전체 1,147행·원본 합계 동등성·RLS/GRANT·FastAPI 원격 E2E 확인 | 일일 갱신 자동화와 보존기간은 후속 결정 |
+| DB-12 | ETF 테마 콘텐츠 검증·승인 RAG 연결 | `REMOTE-APPLIED` | `20260720091219`, 검토·근거 115/115건, 승인 문서 15개·활성 임베딩 청크 56/56건, 챗봇 원격 E2E 확인 | 적용 파일 수정 금지; 검토기한 만료 전 재검증 |
 
 ## 13. 미결정 사항
 
@@ -280,6 +297,38 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-20 17:12 KST KRX 전체 ETF 일별 거래량 연결
+
+- 신규 migration `20260720080955_add_krx_etf_daily_market_snapshots.sql`과
+  KRX 원본 정규화·ingestion run·멱등 upsert 적재기를 추가했다. 원본 JSON은
+  파일에 유지하고 DB에는 조회용 정규화 값과 출처 연결만 저장한다.
+- FastAPI에 `GET /market/etfs`와
+  `GET /market/etfs/{isu_code}/volume-history`를 추가했다. 요청일 이하 최신
+  거래일을 사용하며 거래량·거래대금·순자산 정렬을 화이트리스트로 제한한다.
+- 실제 `20260714.json`은 수신 1,147행·정규화 1,147행·스킵 0행이었다.
+  숫자 전용 코드 가정이 틀렸음을 확인해 `0184E0` 같은 대문자 영숫자 6자리
+  코드 280개를 DB·적재기·API 전체에서 허용했다. 거래량 0인 13개도 유지한다.
+- 원격 적용: 이재용 승인에 따라 `20260720080955`를 적용하고 2026-07-14
+  1,147행을 적재했다. 원본과 DB의 종목 수·거래량 합계 18,155,107,333좌·
+  거래대금 합계 46,862,470,547,267원이 일치한다. 테이블은 516,096바이트이며
+  전체 DB는 111,660,179바이트다.
+- 검증: 최신 `main` 기준 전체 `pytest` 834 passed·1 skipped, `ruff check .`,
+  `git diff --check` 통과. RLS 44/44, `anon` 0·`authenticated` 5·
+  `service_role` 44개 테이블, 신규 테이블 인덱스 3개를 확인했다.
+  `/market/etfs`는 HTTP 200·1,147건, `069500` 이력 API는 HTTP 200·1건이다.
+- Advisor: 신규 보안 WARN은 없고 서버 전용 테이블의 의도된
+  `RLS Enabled No Policy` INFO와 초기 미사용 인덱스 INFO만 추가됐다. 기존
+  `auth_leaked_password_protection` WARN은 DB-09 범위로 유지한다.
+
+### 2026-07-20 16:36 KST
+
+- 작업자/브랜치/기준: Codex / `codex/demo-candidate-tax-year-fix` / `origin/main` `913c96b`.
+- 결정: 대표 시나리오 고객 6명과 Auth 계정은 모두 유지한다. 시연 로그인 후보는 1~5번 5명이며 `pension_payout_transition`은 후보에서 제외하되 타 고객 포트폴리오 데이터로는 계속 사용할 수 있다. 추적 manifest와 서버 관리 Auth `app_metadata`의 `is_demo_login_candidate`를 기준으로 삼는다.
+- 원인·수정: 원격 `demo_user_financial_context.tax_year=2026` 제약과 엔진 지원연도는 올바르다. `scripts/provision_demo_auth_users.py`, SQL 생성기, 로컬 seed가 2025 벤치마크 연도를 주입한 경로를 2026 고정 투영으로 통일했으며 과거 적용 migration과 제약은 수정하지 않았다.
+- 원격 적용: migration 추가·적용 없음. 대화에 노출된 데모 비밀번호 6개를 다시 교체하고 Auth 사용자 6명의 후보 메타데이터를 갱신했다. 같은 실행에서 금융 컨텍스트 6행을 upsert한 뒤 행 수 6, 최소·최대 `tax_year=2026`, 새 비밀번호 로그인 6건, 후보 플래그 5 true/1 false를 검증했다. 자격증명은 Git 제외 `secrets/`에만 보관하고 출력하지 않았다.
+- 로컬 검증: 관련 39개 테스트 통과, 전체 `825 passed, 1 skipped`, `uv run ruff check .` 통과, 프론트 `npm.cmd run build` 통과, `git diff --check` 통과.
+- 남은 작업: 브랜치 커밋·PR·이재용 머지 승인. 원격 migration history 변화는 없다.
 
 ### 2026-07-20 ETF 테마 콘텐츠 검증 통합
 
