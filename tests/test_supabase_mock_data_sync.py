@@ -61,16 +61,18 @@ def test_demo_user_manifest_reproduces_remote_context_and_contributions() -> Non
     }
     expected = {
         "dc_dormant": (0, 0),
-        "tax_contribution_uninvested": (3_000_000, 6_000_000),
-        "overlap_risk_concentration": (1_500_000, 2_000_000),
-        "young_retirement_distance": (2_000_000, 0),
-        "family_budget_pressure": (2_400_000, 2_400_000),
+        "tax_contribution_uninvested": (0, 0),
+        "overlap_risk_concentration": (3_840_000, 4_920_000),
+        "young_retirement_distance": (0, 0),
+        "family_budget_pressure": (0, 7_680_000),
+        "pension_payout_transition": (0, 0),
     }
 
     for scenario_code, (pension_savings, irp) in expected.items():
         user = users[scenario_code]
         assert user["pension_savings_contribution_krw"] == pension_savings
         assert user["irp_contribution_krw"] == irp
+        assert user["benchmark_user_id"].startswith("USR")
 
     script = PROVISION_SCRIPT.read_text(encoding="utf-8")
     assert "pension_savings_contribution_krw" in script

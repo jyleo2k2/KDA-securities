@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
@@ -7,6 +10,40 @@ from backend.app.chat.service import ChatService
 from backend.app.main import app
 
 client = TestClient(app)
+EXAMPLES = (
+    Path(__file__).resolve().parents[1]
+    / "data"
+    / "mock"
+    / "customer_data_examples.json"
+)
+
+
+def test_customer_examples_include_every_common_column_and_nested_row() -> None:
+    examples = json.loads(EXAMPLES.read_text(encoding="utf-8"))
+    assert examples["contract_counts"] == {
+        "customer_columns": 29,
+        "account_columns_excluding_nested_holdings": 23,
+        "benchmark_holding_columns": 6,
+        "detailed_etf_holding_columns": 7,
+    }
+    for example in (
+        examples["benchmark_customer_example"],
+        examples["representative_customer_example"]["benchmark_contract"],
+    ):
+        assert len(example["customer"]) == 29
+        assert example["accounts"]
+        assert all(len(account) - 1 == 23 for account in example["accounts"])
+        assert all(
+            len(holding) == 6
+            for account in example["accounts"]
+            for holding in account["holdings"]
+        )
+
+    representative = examples["representative_customer_example"]
+    assert (
+        representative["demo_identity"]["benchmark_user_id"]
+        == representative["benchmark_contract"]["customer"]["user_id"]
+    )
 
 
 def test_demo_heroes_endpoint_exposes_six_named_profiles_and_etf_links() -> None:
@@ -24,19 +61,37 @@ def test_demo_heroes_endpoint_exposes_six_named_profiles_and_etf_links() -> None
         "윤정희(가상)",
     }
 
-    overlap = next(
-        hero
+    issuer_names = {
+        holding["instrument_name"].split()[0]
         for hero in heroes
-        if hero["scenario_code"] == "overlap_risk_concentration"
-    )
-    etf_codes = {
-        holding["etf_isu_code"]
-        for account in overlap["accounts"]
+        for account in hero["accounts"]
         for holding in account["holdings"]
         if holding["etf_isu_code"] is not None
     }
-    assert etf_codes == {"273130", "379800", "434060"}
-    assert overlap["total_amount_krw"] == "190000000.00"
+    assert issuer_names == {"KODEX", "TIGER", "ACE", "RISE", "SOL", "HANARO"}
+    assert any(
+        holding["instrument_name"].split()[0] == "KODEX"
+        for hero in heroes
+        for account in hero["accounts"]
+        for holding in account["holdings"]
+        if holding["etf_isu_code"] is not None
+    )
+    for hero in heroes:
+        benchmark = hero["benchmark_customer"]
+        assert benchmark["user_id"].startswith("USR")
+        assert "employment_type" in benchmark
+        assert "pension_savings_contribution_krw" in benchmark
+        assert "irp_contribution_krw" in benchmark
+        assert all("source_ids" in account for account in benchmark["accounts"])
+        assert all(
+            "weight" in holding
+            for account in benchmark["accounts"]
+            for holding in account["holdings"]
+        )
+        benchmark_total = sum(
+            int(account["balance_krw"]) for account in benchmark["accounts"]
+        )
+        assert int(hero["total_amount_krw"].split(".")[0]) == benchmark_total
 
 
 def test_demo_hero_stress_is_rule_based_and_not_a_forecast() -> None:
@@ -49,11 +104,11 @@ def test_demo_hero_stress_is_rule_based_and_not_a_forecast() -> None:
     )
     summary = overlap["risk_summary"]
 
-    assert summary["dominant_asset_class"] == "global_equity"
-    assert summary["dominant_asset_percent"] == "68.41"
-    assert summary["general_risky_asset_percent"] == "68.42"
+    assert summary["dominant_asset_class"] == "domestic_equity"
+    assert summary["dominant_asset_percent"] == "38.48"
+    assert summary["general_risky_asset_percent"] == "64.13"
     assert summary["stress_scenario_code"] == "equity_drawdown"
-    assert summary["estimated_stress_loss_percent"] == "28.30"
+    assert summary["estimated_stress_loss_percent"] == "23.28"
     assert summary["is_forecast"] is False
     assert summary["requires_rebalancing_review"] is True
 

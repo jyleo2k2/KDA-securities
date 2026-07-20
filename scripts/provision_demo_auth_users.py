@@ -31,7 +31,7 @@ DEMO_CONTEXT_AS_OF_DATE = date(2026, 7, 16)
 
 def load_manifest(path: Path = DEFAULT_MANIFEST_PATH) -> list[dict[str, Any]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if payload.get("schema_version") != 1:
+    if payload.get("schema_version") != 2:
         raise ValueError("unsupported demo user manifest schema_version")
     users = payload.get("users")
     if not isinstance(users, list) or not users:
@@ -39,6 +39,7 @@ def load_manifest(path: Path = DEFAULT_MANIFEST_PATH) -> list[dict[str, Any]]:
 
     required = {
         "auth_user_id",
+        "benchmark_user_id",
         "scenario_code",
         "nickname",
         "representative_age",
@@ -57,7 +58,7 @@ def load_manifest(path: Path = DEFAULT_MANIFEST_PATH) -> list[dict[str, Any]]:
         if not str(user["login_id"]).endswith("@kda-demo.invalid"):
             raise ValueError("demo login_id must use @kda-demo.invalid")
 
-    for key in ("auth_user_id", "scenario_code", "login_id"):
+    for key in ("auth_user_id", "benchmark_user_id", "scenario_code", "login_id"):
         values = [str(user[key]) for user in users]
         if len(values) != len(set(values)):
             raise ValueError(f"demo user manifest has duplicate {key}")
@@ -154,9 +155,7 @@ def _list_users(
     return users
 
 
-def _auth_payload(
-    user: dict[str, Any], credential: dict[str, str]
-) -> dict[str, Any]:
+def _auth_payload(user: dict[str, Any], credential: dict[str, str]) -> dict[str, Any]:
     return {
         "id": str(user["auth_user_id"]),
         "email": str(user["login_id"]),
@@ -243,9 +242,8 @@ def _sync_demo_financial_context(
             str(user["nickname"]),
             int(user["representative_age"]),
             str(user["customer_context"]),
-            user["pension_savings_contribution_krw"],
-            user["irp_contribution_krw"],
             DEMO_CONTEXT_AS_OF_DATE,
+            str(user["benchmark_user_id"]),
             str(user["scenario_code"]),
         )
         for user in users
@@ -259,6 +257,9 @@ def _sync_demo_financial_context(
                 nickname,
                 representative_age,
                 customer_context,
+                benchmark_user_id,
+                gross_salary_krw,
+                comprehensive_income_krw,
                 pension_savings_contribution_krw,
                 irp_contribution_krw,
                 tax_year,
@@ -270,17 +271,25 @@ def _sync_demo_financial_context(
                 %s,
                 %s,
                 %s,
-                %s,
-                %s,
-                2026,
+                benchmark.user_id,
+                nullif(benchmark.gross_salary_krw, '')::numeric,
+                nullif(benchmark.comprehensive_income_krw, '')::numeric,
+                benchmark.pension_savings_contribution_krw::numeric,
+                benchmark.irp_contribution_krw::numeric,
+                benchmark.tax_year::smallint,
                 %s
             from public.mock_scenarios as scenario
+            join public.benchmark_mock_users as benchmark
+              on benchmark.user_id = %s
             where scenario.code = %s
             on conflict (auth_user_id) do update set
                 scenario_id = excluded.scenario_id,
                 nickname = excluded.nickname,
                 representative_age = excluded.representative_age,
                 customer_context = excluded.customer_context,
+                benchmark_user_id = excluded.benchmark_user_id,
+                gross_salary_krw = excluded.gross_salary_krw,
+                comprehensive_income_krw = excluded.comprehensive_income_krw,
                 pension_savings_contribution_krw =
                     excluded.pension_savings_contribution_krw,
                 irp_contribution_krw = excluded.irp_contribution_krw,
@@ -319,18 +328,12 @@ def provision_users(
     publishable_key = _required_secret(
         settings.supabase_publishable_key, "SUPABASE_PUBLISHABLE_KEY"
     )
-    service_key = _required_secret(
-        settings.supabase_secret_key, "SUPABASE_SECRET_KEY"
-    )
+    service_key = _required_secret(settings.supabase_secret_key, "SUPABASE_SECRET_KEY")
     database_url = _required_secret(settings.database_url, "DATABASE_URL")
 
-    credentials_by_scenario = {
-        item["scenario_code"]: item for item in credentials
-    }
+    credentials_by_scenario = {item["scenario_code"]: item for item in credentials}
     with httpx.Client(timeout=20.0) as client:
-        existing_users = _list_users(
-            client, base_url=base_url, service_key=service_key
-        )
+        existing_users = _list_users(client, base_url=base_url, service_key=service_key)
         by_id = {str(item.get("id")): item for item in existing_users}
         by_email = {str(item.get("email")): item for item in existing_users}
 

@@ -129,9 +129,7 @@ class MockPensionDataTest(unittest.TestCase):
             monthly = account["monthly_contribution_krw"]
             self.assertEqual(account["annual_contribution_krw"], monthly * 12)
             self.assertEqual(account["contribution_status"] == "ACTIVE", monthly > 0)
-            self.assertEqual(
-                account["contribution_frequency"] == "NONE", monthly == 0
-            )
+            self.assertEqual(account["contribution_frequency"] == "NONE", monthly == 0)
             if account["account_type"] == mock_generator.DC:
                 self.assertEqual(
                     monthly,
@@ -172,6 +170,25 @@ class MockPensionDataTest(unittest.TestCase):
 
         for user in users:
             user_accounts = accounts_by_user[user["user_id"]]
+            pension_savings_contribution = sum(
+                account["annual_contribution_krw"]
+                for account in user_accounts
+                if account["account_type"] == mock_generator.PENSION_SAVINGS_FUND
+            )
+            irp_contribution = sum(
+                account["annual_contribution_krw"]
+                for account in user_accounts
+                if account["account_type"] == mock_generator.IRP
+            )
+            self.assertEqual(
+                user["pension_savings_contribution_krw"],
+                pension_savings_contribution,
+            )
+            self.assertEqual(user["irp_contribution_krw"], irp_contribution)
+            self.assertLessEqual(
+                pension_savings_contribution + irp_contribution,
+                mock_generator.COMBINED_PERSONAL_PENSION_CONTRIBUTION_LIMIT_KRW,
+            )
             if user["employment_type"] == mock_generator.SALARIED_EMPLOYEE:
                 self.assertIsNotNone(user["gross_salary_krw"])
                 self.assertIsNone(user["comprehensive_income_krw"])
@@ -189,13 +206,9 @@ class MockPensionDataTest(unittest.TestCase):
                         for account in user_accounts
                     )
                 )
-                threshold = (
-                    mock_generator.COMPREHENSIVE_INCOME_TAX_CREDIT_THRESHOLD_KRW
-                )
+                threshold = mock_generator.COMPREHENSIVE_INCOME_TAX_CREDIT_THRESHOLD_KRW
             expected_rate = (
-                16.5
-                if user["tax_credit_income_amount_krw"] <= threshold
-                else 13.2
+                16.5 if user["tax_credit_income_amount_krw"] <= threshold else 13.2
             )
             self.assertEqual(user["pension_tax_credit_rate_pct"], expected_rate)
             self.assertGreater(user["planned_pension_start_age"], user["age"])
@@ -213,8 +226,7 @@ class MockPensionDataTest(unittest.TestCase):
             pension_savings_eligible = sum(
                 account["tax_credit_eligible_contribution_krw"]
                 for account in user_accounts
-                if account["account_type"]
-                == mock_generator.PENSION_SAVINGS_FUND
+                if account["account_type"] == mock_generator.PENSION_SAVINGS_FUND
             )
             self.assertLessEqual(
                 pension_savings_eligible,
@@ -235,13 +247,9 @@ class MockPensionDataTest(unittest.TestCase):
                 if user["payout_preference"] != "LUMP_SUM" and (
                     expected_years_at_receipt >= 5
                 ):
-                    self.assertEqual(
-                        account["pension_receipt_eligibility"], "ELIGIBLE"
-                    )
+                    self.assertEqual(account["pension_receipt_eligibility"], "ELIGIBLE")
                 if account["account_type"] == mock_generator.DC:
-                    self.assertEqual(
-                        account["tax_credit_eligible_contribution_krw"], 0
-                    )
+                    self.assertEqual(account["tax_credit_eligible_contribution_krw"], 0)
 
             if user["payout_preference"] == "LUMP_SUM":
                 expected_treatment = "NON_PENSION_WITHDRAWAL_REVIEW"
@@ -251,12 +259,8 @@ class MockPensionDataTest(unittest.TestCase):
             ):
                 expected_treatment = "LOW_RATE_SEPARATE_TAX"
             else:
-                expected_treatment = (
-                    "COMPREHENSIVE_OR_16_5_SEPARATE_CHOICE"
-                )
-            self.assertEqual(
-                user["planned_receipt_tax_treatment"], expected_treatment
-            )
+                expected_treatment = "COMPREHENSIVE_OR_16_5_SEPARATE_CHOICE"
+            self.assertEqual(user["planned_receipt_tax_treatment"], expected_treatment)
 
 
 if __name__ == "__main__":

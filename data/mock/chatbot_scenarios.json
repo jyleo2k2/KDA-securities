@@ -3,9 +3,9 @@
     "scenario_code": "dc_dormant",
     "name": "DC형 방치",
     "description": "회사 DC 적립금이 원리금보장 상품에만 머문 방치형 고객\n비고: 납입액에 대한 세액공제혜택 대상인 연금저축펀드와 개인 IRP계좌가 없음",
-    "age_band": "40대",
-    "risk_profile": "balanced",
-    "investment_horizon_years": 20,
+    "age_band": "30대",
+    "risk_profile": "conservative",
+    "investment_horizon_years": 26,
     "accounts": [
       {
         "account_id": "dc_dormant_dc",
@@ -13,10 +13,57 @@
         "label": "회사 DC",
         "holdings": [
           {
-            "holding_id": "deposit",
-            "instrument_name": "원리금보장 모형",
+            "holding_id": "dc_dormant_dc_domestic_equity_0_1",
+            "instrument_name": "HANARO 200TR",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "733217",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "332930"
+          },
+          {
+            "holding_id": "dc_dormant_dc_domestic_equity_0_2",
+            "instrument_name": "SOL AI반도체소부장",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "314236",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "455850"
+          },
+          {
+            "holding_id": "dc_dormant_dc_global_equity_1_1",
+            "instrument_name": "ACE 미국S&P500",
+            "asset_class_code": "global_equity",
+            "amount_krw": "896150",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "360200"
+          },
+          {
+            "holding_id": "dc_dormant_dc_global_equity_1_2",
+            "instrument_name": "KODEX 미국S&P500",
+            "asset_class_code": "global_equity",
+            "amount_krw": "384064",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "379800"
+          },
+          {
+            "holding_id": "dc_dormant_dc_bond_2_1",
+            "instrument_name": "SOL 종합채권(AA-이상)액티브",
+            "asset_class_code": "bond",
+            "amount_krw": "14142969",
+            "risk_treatment": "capital_preservation",
+            "etf_isu_code": "436140"
+          },
+          {
+            "holding_id": "dc_dormant_dc_deposit_3_1",
+            "instrument_name": "원리금보장 상품",
             "asset_class_code": "deposit",
-            "amount_krw": "60000000",
+            "amount_krw": "33000242",
+            "risk_treatment": "capital_preservation"
+          },
+          {
+            "holding_id": "dc_dormant_dc_cash_4_1",
+            "instrument_name": "현금성 자산",
+            "asset_class_code": "cash",
+            "amount_krw": "11509122",
             "risk_treatment": "capital_preservation"
           }
         ]
@@ -27,34 +74,121 @@
     "scenario_code": "tax_contribution_uninvested",
     "name": "세액공제 후 미운용",
     "description": "세액공제를 위해 납입했지만 IRP·연금저축을 실제 운용하지 않은 고객\n비고: 각 계좌별 납입액 세액공제한도를 고려하지 않고 납입했음",
-    "age_band": "30대",
+    "age_band": "40대",
     "risk_profile": "balanced",
-    "investment_horizon_years": 25,
+    "investment_horizon_years": 17,
     "accounts": [
       {
-        "account_id": "tax_irp",
+        "account_id": "tax_contribution_uninvested_irp",
         "account_type": "irp",
         "label": "개인 IRP",
         "holdings": [
           {
-            "holding_id": "irp_cash",
-            "instrument_name": "IRP 현금성 모형",
+            "holding_id": "tax_contribution_uninvested_irp_domestic_equity_0_1",
+            "instrument_name": "SOL 200 Top10",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "700628",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "411540"
+          },
+          {
+            "holding_id": "tax_contribution_uninvested_irp_domestic_equity_0_2",
+            "instrument_name": "RISE 2차전지TOP10",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "300269",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "465330"
+          },
+          {
+            "holding_id": "tax_contribution_uninvested_irp_global_equity_1_1",
+            "instrument_name": "RISE 미국S&P500(H)",
+            "asset_class_code": "global_equity",
+            "amount_krw": "467076",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "453330"
+          },
+          {
+            "holding_id": "tax_contribution_uninvested_irp_global_equity_1_2",
+            "instrument_name": "SOL 글로벌AI반도체탑픽액티브",
+            "asset_class_code": "global_equity",
+            "amount_krw": "200176",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "423170"
+          },
+          {
+            "holding_id": "tax_contribution_uninvested_irp_bond_2_1",
+            "instrument_name": "RISE 종합채권(A-이상)액티브",
+            "asset_class_code": "bond",
+            "amount_krw": "4682906",
+            "risk_treatment": "capital_preservation",
+            "etf_isu_code": "385540"
+          },
+          {
+            "holding_id": "tax_contribution_uninvested_irp_deposit_3_1",
+            "instrument_name": "원리금보장 상품",
+            "asset_class_code": "deposit",
+            "amount_krw": "10926817",
+            "risk_treatment": "capital_preservation"
+          },
+          {
+            "holding_id": "tax_contribution_uninvested_irp_cash_4_1",
+            "instrument_name": "현금성 자산",
             "asset_class_code": "cash",
-            "amount_krw": "30000000",
+            "amount_krw": "20422128",
             "risk_treatment": "capital_preservation"
           }
         ]
       },
       {
-        "account_id": "tax_pension_savings",
+        "account_id": "tax_contribution_uninvested_pension_savings",
         "account_type": "pension_savings",
         "label": "연금저축펀드",
         "holdings": [
           {
-            "holding_id": "pension_cash",
-            "instrument_name": "연금저축 현금성 모형",
+            "holding_id": "tax_contribution_uninvested_pension_savings_domestic_equity_0_1",
+            "instrument_name": "HANARO K고배당",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "136220",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "322410"
+          },
+          {
+            "holding_id": "tax_contribution_uninvested_pension_savings_domestic_equity_0_2",
+            "instrument_name": "TIGER 헬스케어",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "58380",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "143860"
+          },
+          {
+            "holding_id": "tax_contribution_uninvested_pension_savings_global_equity_1_1",
+            "instrument_name": "HANARO 미국S&P500",
+            "asset_class_code": "global_equity",
+            "amount_krw": "90812",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "432840"
+          },
+          {
+            "holding_id": "tax_contribution_uninvested_pension_savings_global_equity_1_2",
+            "instrument_name": "TIGER S&P글로벌헬스케어(합성)",
+            "asset_class_code": "global_equity",
+            "amount_krw": "38919",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "248270"
+          },
+          {
+            "holding_id": "tax_contribution_uninvested_pension_savings_bond_2_1",
+            "instrument_name": "ACE 종합채권(AA-이상)액티브",
+            "asset_class_code": "bond",
+            "amount_krw": "897439",
+            "risk_treatment": "capital_preservation",
+            "etf_isu_code": "356540"
+          },
+          {
+            "holding_id": "tax_contribution_uninvested_pension_savings_cash_3_1",
+            "instrument_name": "현금성 자산",
             "asset_class_code": "cash",
-            "amount_krw": "20000000",
+            "amount_krw": "1758230",
             "risk_treatment": "capital_preservation"
           }
         ]
@@ -65,82 +199,182 @@
     "scenario_code": "overlap_risk_concentration",
     "name": "계좌별 중복·위험 편중",
     "description": "DC·IRP·연금저축에 글로벌주식형 자산이 중복되어 위험자산 편중이 있는 고객",
-    "age_band": "30대",
+    "age_band": "40대",
     "risk_profile": "growth",
-    "investment_horizon_years": 28,
+    "investment_horizon_years": 18,
     "accounts": [
       {
-        "account_id": "overlap_dc",
+        "account_id": "overlap_risk_concentration_dc",
         "account_type": "dc",
         "label": "회사 DC",
         "holdings": [
           {
-            "holding_id": "dc_global_equity",
-            "instrument_name": "KODEX 미국S&P500",
-            "asset_class_code": "global_equity",
-            "amount_krw": "60000000",
+            "holding_id": "overlap_risk_concentration_dc_domestic_equity_0_1",
+            "instrument_name": "HANARO K고배당",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "32851437",
             "risk_treatment": "general_risky",
-            "etf_isu_code": "379800"
+            "etf_isu_code": "322410"
           },
           {
-            "holding_id": "dc_tdf",
-            "instrument_name": "KODEX TDF2050액티브",
-            "asset_class_code": "eligible_tdf",
-            "amount_krw": "20000000",
-            "risk_treatment": "statutory_exception",
-            "statutory_exception": "eligible_tdf",
-            "etf_isu_code": "434060"
+            "holding_id": "overlap_risk_concentration_dc_domestic_equity_0_2",
+            "instrument_name": "TIGER 헬스케어",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "14079188",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "143860"
           },
           {
-            "holding_id": "dc_deposit",
-            "instrument_name": "원리금보장 모형",
+            "holding_id": "overlap_risk_concentration_dc_global_equity_1_1",
+            "instrument_name": "HANARO 미국S&P500",
+            "asset_class_code": "global_equity",
+            "amount_krw": "21901016",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "432840"
+          },
+          {
+            "holding_id": "overlap_risk_concentration_dc_global_equity_1_2",
+            "instrument_name": "TIGER S&P글로벌헬스케어(합성)",
+            "asset_class_code": "global_equity",
+            "amount_krw": "9386150",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "248270"
+          },
+          {
+            "holding_id": "overlap_risk_concentration_dc_bond_2_1",
+            "instrument_name": "ACE 종합채권(AA-이상)액티브",
+            "asset_class_code": "bond",
+            "amount_krw": "12648325",
+            "risk_treatment": "capital_preservation",
+            "etf_isu_code": "356540"
+          },
+          {
+            "holding_id": "overlap_risk_concentration_dc_deposit_3_1",
+            "instrument_name": "원리금보장 상품",
             "asset_class_code": "deposit",
-            "amount_krw": "20000000",
+            "amount_krw": "29512841",
+            "risk_treatment": "capital_preservation"
+          },
+          {
+            "holding_id": "overlap_risk_concentration_dc_cash_4_1",
+            "instrument_name": "현금성 자산",
+            "asset_class_code": "cash",
+            "amount_krw": "3561043",
             "risk_treatment": "capital_preservation"
           }
         ]
       },
       {
-        "account_id": "overlap_irp",
+        "account_id": "overlap_risk_concentration_irp",
         "account_type": "irp",
         "label": "개인 IRP",
         "holdings": [
           {
-            "holding_id": "irp_global_equity",
-            "instrument_name": "KODEX 미국S&P500",
-            "asset_class_code": "global_equity",
-            "amount_krw": "34000000",
+            "holding_id": "overlap_risk_concentration_irp_domestic_equity_0_1",
+            "instrument_name": "ACE AI반도체TOP3+",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "6465060",
             "risk_treatment": "general_risky",
-            "etf_isu_code": "379800"
+            "etf_isu_code": "469150"
           },
           {
-            "holding_id": "irp_bond",
-            "instrument_name": "KODEX 종합채권(AA-이상)액티브",
+            "holding_id": "overlap_risk_concentration_irp_domestic_equity_0_2",
+            "instrument_name": "HANARO 농업융복합산업",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "2770740",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "314700"
+          },
+          {
+            "holding_id": "overlap_risk_concentration_irp_global_equity_1_1",
+            "instrument_name": "ACE 미국S&P500",
+            "asset_class_code": "global_equity",
+            "amount_krw": "4310040",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "360200"
+          },
+          {
+            "holding_id": "overlap_risk_concentration_irp_global_equity_1_2",
+            "instrument_name": "RISE 미국반도체NYSE",
+            "asset_class_code": "global_equity",
+            "amount_krw": "1847160",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "469060"
+          },
+          {
+            "holding_id": "overlap_risk_concentration_irp_bond_2_1",
+            "instrument_name": "HANARO 종합채권(AA-이상)액티브",
             "asset_class_code": "bond",
-            "amount_krw": "16000000",
+            "amount_krw": "1904400",
             "risk_treatment": "capital_preservation",
-            "etf_isu_code": "273130"
+            "etf_isu_code": "461500"
+          },
+          {
+            "holding_id": "overlap_risk_concentration_irp_deposit_3_1",
+            "instrument_name": "원리금보장 상품",
+            "asset_class_code": "deposit",
+            "amount_krw": "4443585",
+            "risk_treatment": "capital_preservation"
+          },
+          {
+            "holding_id": "overlap_risk_concentration_irp_cash_4_1",
+            "instrument_name": "현금성 자산",
+            "asset_class_code": "cash",
+            "amount_krw": "249015",
+            "risk_treatment": "capital_preservation"
           }
         ]
       },
       {
-        "account_id": "overlap_pension_savings",
+        "account_id": "overlap_risk_concentration_pension_savings",
         "account_type": "pension_savings",
         "label": "연금저축펀드",
         "holdings": [
           {
-            "holding_id": "pension_global_equity",
-            "instrument_name": "KODEX 미국S&P500",
-            "asset_class_code": "global_equity",
-            "amount_krw": "36000000",
+            "holding_id": "overlap_risk_concentration_pension_savings_domestic_equity_0_1",
+            "instrument_name": "HANARO 200TR",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "904938",
             "risk_treatment": "general_risky",
-            "etf_isu_code": "379800"
+            "etf_isu_code": "332930"
           },
           {
-            "holding_id": "pension_cash",
-            "instrument_name": "현금성 모형",
+            "holding_id": "overlap_risk_concentration_pension_savings_domestic_equity_0_2",
+            "instrument_name": "SOL 금융지주플러스고배당",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "387830",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "484880"
+          },
+          {
+            "holding_id": "overlap_risk_concentration_pension_savings_global_equity_1_1",
+            "instrument_name": "TIGER 미국배당다우존스",
+            "asset_class_code": "global_equity",
+            "amount_krw": "603292",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "458730"
+          },
+          {
+            "holding_id": "overlap_risk_concentration_pension_savings_global_equity_1_2",
+            "instrument_name": "ACE 글로벌반도체TOP4 Plus",
+            "asset_class_code": "global_equity",
+            "amount_krw": "258554",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "446770"
+          },
+          {
+            "holding_id": "overlap_risk_concentration_pension_savings_bond_2_1",
+            "instrument_name": "SOL 종합채권(AA-이상)액티브",
+            "asset_class_code": "bond",
+            "amount_krw": "1097935",
+            "risk_treatment": "capital_preservation",
+            "etf_isu_code": "436140"
+          },
+          {
+            "holding_id": "overlap_risk_concentration_pension_savings_cash_3_1",
+            "instrument_name": "현금성 자산",
             "asset_class_code": "cash",
-            "amount_krw": "4000000",
+            "amount_krw": "147451",
             "risk_treatment": "capital_preservation"
           }
         ]
@@ -153,39 +387,119 @@
     "description": "노후가 멀게 느껴져 연금 운용과 추가 납입의 우선순위가 낮은 청년층 고객",
     "age_band": "20~39세",
     "risk_profile": "balanced",
-    "investment_horizon_years": 35,
+    "investment_horizon_years": 26,
     "accounts": [
       {
-        "account_id": "young_dc",
+        "account_id": "young_retirement_distance_dc",
         "account_type": "dc",
         "label": "초기 직장 DC",
         "holdings": [
           {
-            "holding_id": "young_dc_deposit",
-            "instrument_name": "초기 DC 원리금보장 모형",
+            "holding_id": "young_retirement_distance_dc_domestic_equity_0_1",
+            "instrument_name": "ACE AI반도체TOP3+",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "2198525",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "469150"
+          },
+          {
+            "holding_id": "young_retirement_distance_dc_domestic_equity_0_2",
+            "instrument_name": "HANARO 농업융복합산업",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "942225",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "314700"
+          },
+          {
+            "holding_id": "young_retirement_distance_dc_global_equity_1_1",
+            "instrument_name": "ACE 미국S&P500",
+            "asset_class_code": "global_equity",
+            "amount_krw": "4082963",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "360200"
+          },
+          {
+            "holding_id": "young_retirement_distance_dc_global_equity_1_2",
+            "instrument_name": "RISE 미국반도체NYSE",
+            "asset_class_code": "global_equity",
+            "amount_krw": "1749842",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "469060"
+          },
+          {
+            "holding_id": "young_retirement_distance_dc_bond_2_1",
+            "instrument_name": "HANARO 종합채권(AA-이상)액티브",
+            "asset_class_code": "bond",
+            "amount_krw": "3839216",
+            "risk_treatment": "capital_preservation",
+            "etf_isu_code": "461500"
+          },
+          {
+            "holding_id": "young_retirement_distance_dc_deposit_3_1",
+            "instrument_name": "원리금보장 상품",
             "asset_class_code": "deposit",
-            "amount_krw": "15000000",
+            "amount_krw": "8958171",
             "risk_treatment": "capital_preservation"
           },
           {
-            "holding_id": "young_dc_cash",
-            "instrument_name": "초기 DC 현금성 모형",
+            "holding_id": "young_retirement_distance_dc_cash_4_1",
+            "instrument_name": "현금성 자산",
             "asset_class_code": "cash",
-            "amount_krw": "3000000",
+            "amount_krw": "919058",
             "risk_treatment": "capital_preservation"
           }
         ]
       },
       {
-        "account_id": "young_pension_savings",
+        "account_id": "young_retirement_distance_pension_savings",
         "account_type": "pension_savings",
         "label": "소액 연금저축펀드",
         "holdings": [
           {
-            "holding_id": "young_pension_cash",
-            "instrument_name": "연금저축 현금성 모형",
+            "holding_id": "young_retirement_distance_pension_savings_domestic_equity_0_1",
+            "instrument_name": "HANARO 200TR",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "79661",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "332930"
+          },
+          {
+            "holding_id": "young_retirement_distance_pension_savings_domestic_equity_0_2",
+            "instrument_name": "SOL 금융지주플러스고배당",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "34140",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "484880"
+          },
+          {
+            "holding_id": "young_retirement_distance_pension_savings_global_equity_1_1",
+            "instrument_name": "TIGER 미국배당다우존스",
+            "asset_class_code": "global_equity",
+            "amount_krw": "147942",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "458730"
+          },
+          {
+            "holding_id": "young_retirement_distance_pension_savings_global_equity_1_2",
+            "instrument_name": "ACE 글로벌반도체TOP4 Plus",
+            "asset_class_code": "global_equity",
+            "amount_krw": "63404",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "446770"
+          },
+          {
+            "holding_id": "young_retirement_distance_pension_savings_bond_2_1",
+            "instrument_name": "SOL 종합채권(AA-이상)액티브",
+            "asset_class_code": "bond",
+            "amount_krw": "188851",
+            "risk_treatment": "capital_preservation",
+            "etf_isu_code": "436140"
+          },
+          {
+            "holding_id": "young_retirement_distance_pension_savings_cash_3_1",
+            "instrument_name": "현금성 자산",
             "asset_class_code": "cash",
-            "amount_krw": "3600000",
+            "amount_krw": "6002",
             "risk_treatment": "capital_preservation"
           }
         ]
@@ -201,76 +515,178 @@
     "investment_horizon_years": 13,
     "accounts": [
       {
-        "account_id": "family_dc",
+        "account_id": "family_budget_pressure_dc",
         "account_type": "dc",
         "label": "회사 DC",
         "holdings": [
           {
-            "holding_id": "family_dc_deposit",
-            "instrument_name": "중년층 DC 원리금보장 모형",
+            "holding_id": "family_budget_pressure_dc_domestic_equity_0_1",
+            "instrument_name": "HANARO 200TR",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "11152530",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "332930"
+          },
+          {
+            "holding_id": "family_budget_pressure_dc_domestic_equity_0_2",
+            "instrument_name": "SOL 금융지주플러스고배당",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "4779655",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "484880"
+          },
+          {
+            "holding_id": "family_budget_pressure_dc_global_equity_1_1",
+            "instrument_name": "TIGER 미국배당다우존스",
+            "asset_class_code": "global_equity",
+            "amount_krw": "7435020",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "458730"
+          },
+          {
+            "holding_id": "family_budget_pressure_dc_global_equity_1_2",
+            "instrument_name": "ACE 글로벌반도체TOP4 Plus",
+            "asset_class_code": "global_equity",
+            "amount_krw": "3186437",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "446770"
+          },
+          {
+            "holding_id": "family_budget_pressure_dc_bond_2_1",
+            "instrument_name": "SOL 종합채권(AA-이상)액티브",
+            "asset_class_code": "bond",
+            "amount_krw": "13305673",
+            "risk_treatment": "capital_preservation",
+            "etf_isu_code": "436140"
+          },
+          {
+            "holding_id": "family_budget_pressure_dc_deposit_3_1",
+            "instrument_name": "원리금보장 상품",
             "asset_class_code": "deposit",
-            "amount_krw": "35000000",
+            "amount_krw": "31046595",
             "risk_treatment": "capital_preservation"
           },
           {
-            "holding_id": "family_dc_global_equity",
-            "instrument_name": "KODEX 미국S&P500",
-            "asset_class_code": "global_equity",
-            "amount_krw": "20000000",
-            "risk_treatment": "general_risky",
-            "etf_isu_code": "379800"
-          },
-          {
-            "holding_id": "family_dc_bond",
-            "instrument_name": "KODEX 종합채권(AA-이상)액티브",
-            "asset_class_code": "bond",
-            "amount_krw": "10000000",
-            "risk_treatment": "capital_preservation",
-            "etf_isu_code": "273130"
+            "holding_id": "family_budget_pressure_dc_cash_4_1",
+            "instrument_name": "현금성 자산",
+            "asset_class_code": "cash",
+            "amount_krw": "3074090",
+            "risk_treatment": "capital_preservation"
           }
         ]
       },
       {
-        "account_id": "family_irp",
+        "account_id": "family_budget_pressure_irp",
         "account_type": "irp",
         "label": "개인 IRP",
         "holdings": [
           {
-            "holding_id": "family_irp_deposit",
-            "instrument_name": "중년층 IRP 원리금보장 모형",
+            "holding_id": "family_budget_pressure_irp_domestic_equity_0_1",
+            "instrument_name": "HANARO 200TR",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "1195498",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "332930"
+          },
+          {
+            "holding_id": "family_budget_pressure_irp_domestic_equity_0_2",
+            "instrument_name": "SOL AI반도체소부장",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "512356",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "455850"
+          },
+          {
+            "holding_id": "family_budget_pressure_irp_global_equity_1_1",
+            "instrument_name": "HANARO 미국S&P500",
+            "asset_class_code": "global_equity",
+            "amount_krw": "796995",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "432840"
+          },
+          {
+            "holding_id": "family_budget_pressure_irp_global_equity_1_2",
+            "instrument_name": "SOL 미국AI반도체칩메이커",
+            "asset_class_code": "global_equity",
+            "amount_krw": "341569",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "479620"
+          },
+          {
+            "holding_id": "family_budget_pressure_irp_bond_2_1",
+            "instrument_name": "RISE 종합채권(A-이상)액티브",
+            "asset_class_code": "bond",
+            "amount_krw": "1477706",
+            "risk_treatment": "capital_preservation",
+            "etf_isu_code": "385540"
+          },
+          {
+            "holding_id": "family_budget_pressure_irp_deposit_3_1",
+            "instrument_name": "원리금보장 상품",
             "asset_class_code": "deposit",
-            "amount_krw": "8000000",
+            "amount_krw": "3447972",
             "risk_treatment": "capital_preservation"
           },
           {
-            "holding_id": "family_irp_cash",
-            "instrument_name": "중년층 IRP 현금성 모형",
+            "holding_id": "family_budget_pressure_irp_cash_4_1",
+            "instrument_name": "현금성 자산",
             "asset_class_code": "cash",
-            "amount_krw": "4000000",
+            "amount_krw": "297904",
             "risk_treatment": "capital_preservation"
           }
         ]
       },
       {
-        "account_id": "family_pension_savings",
+        "account_id": "family_budget_pressure_pension_savings",
         "account_type": "pension_savings",
         "label": "연금저축펀드",
         "holdings": [
           {
-            "holding_id": "family_pension_global_equity",
+            "holding_id": "family_budget_pressure_pension_savings_domestic_equity_0_1",
+            "instrument_name": "SOL 200 Top10",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "1993372",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "411540"
+          },
+          {
+            "holding_id": "family_budget_pressure_pension_savings_domestic_equity_0_2",
+            "instrument_name": "RISE 2차전지TOP10",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "854302",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "465330"
+          },
+          {
+            "holding_id": "family_budget_pressure_pension_savings_global_equity_1_1",
+            "instrument_name": "ACE 미국S&P500",
+            "asset_class_code": "global_equity",
+            "amount_krw": "1328916",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "360200"
+          },
+          {
+            "holding_id": "family_budget_pressure_pension_savings_global_equity_1_2",
             "instrument_name": "KODEX 미국S&P500",
             "asset_class_code": "global_equity",
-            "amount_krw": "5000000",
+            "amount_krw": "569535",
             "risk_treatment": "general_risky",
             "etf_isu_code": "379800"
           },
           {
-            "holding_id": "family_pension_bond",
-            "instrument_name": "KODEX 종합채권(AA-이상)액티브",
+            "holding_id": "family_budget_pressure_pension_savings_bond_2_1",
+            "instrument_name": "ACE 종합채권(AA-이상)액티브",
             "asset_class_code": "bond",
-            "amount_krw": "4000000",
+            "amount_krw": "1555009",
             "risk_treatment": "capital_preservation",
-            "etf_isu_code": "273130"
+            "etf_isu_code": "356540"
+          },
+          {
+            "holding_id": "family_budget_pressure_pension_savings_cash_3_1",
+            "instrument_name": "현금성 자산",
+            "asset_class_code": "cash",
+            "amount_krw": "308866",
+            "risk_treatment": "capital_preservation"
           }
         ]
       }
@@ -281,65 +697,121 @@
     "name": "연금 수령을 시작하는 55세 이상",
     "description": "55세 이상으로 연금 수령을 시작했거나 수령 직전이라 수령 기간·세금·자산 안정성을 실제로 검토하는 설명용 시나리오",
     "age_band": "55세 이상",
-    "risk_profile": "conservative",
-    "investment_horizon_years": 1,
+    "risk_profile": "balanced",
+    "investment_horizon_years": 5,
     "accounts": [
       {
-        "account_id": "payout_irp",
+        "account_id": "pension_payout_transition_irp",
         "account_type": "irp",
         "label": "수령기 IRP",
         "holdings": [
           {
-            "holding_id": "payout_irp_deposit",
-            "instrument_name": "수령기 IRP 원리금보장 모형",
+            "holding_id": "pension_payout_transition_irp_domestic_equity_0_1",
+            "instrument_name": "HANARO 200TR",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "3710832",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "332930"
+          },
+          {
+            "holding_id": "pension_payout_transition_irp_domestic_equity_0_2",
+            "instrument_name": "SOL AI반도체소부장",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "1590356",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "455850"
+          },
+          {
+            "holding_id": "pension_payout_transition_irp_global_equity_1_1",
+            "instrument_name": "HANARO 미국S&P500",
+            "asset_class_code": "global_equity",
+            "amount_krw": "1590387",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "432840"
+          },
+          {
+            "holding_id": "pension_payout_transition_irp_global_equity_1_2",
+            "instrument_name": "SOL 미국AI반도체칩메이커",
+            "asset_class_code": "global_equity",
+            "amount_krw": "681595",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "479620"
+          },
+          {
+            "holding_id": "pension_payout_transition_irp_bond_2_1",
+            "instrument_name": "RISE 종합채권(A-이상)액티브",
+            "asset_class_code": "bond",
+            "amount_krw": "16235599",
+            "risk_treatment": "capital_preservation",
+            "etf_isu_code": "385540"
+          },
+          {
+            "holding_id": "pension_payout_transition_irp_deposit_3_1",
+            "instrument_name": "원리금보장 상품",
             "asset_class_code": "deposit",
-            "amount_krw": "60000000",
+            "amount_krw": "37883218",
             "risk_treatment": "capital_preservation"
           },
           {
-            "holding_id": "payout_irp_bond",
-            "instrument_name": "KODEX 종합채권(AA-이상)액티브",
-            "asset_class_code": "bond",
-            "amount_krw": "30000000",
-            "risk_treatment": "capital_preservation",
-            "etf_isu_code": "273130"
-          },
-          {
-            "holding_id": "payout_irp_cash",
-            "instrument_name": "수령기 IRP 현금성 모형",
+            "holding_id": "pension_payout_transition_irp_cash_4_1",
+            "instrument_name": "현금성 자산",
             "asset_class_code": "cash",
-            "amount_krw": "20000000",
+            "amount_krw": "92028013",
             "risk_treatment": "capital_preservation"
           }
         ]
       },
       {
-        "account_id": "payout_pension_savings",
+        "account_id": "pension_payout_transition_pension_savings",
         "account_type": "pension_savings",
         "label": "수령기 연금저축펀드",
         "holdings": [
           {
-            "holding_id": "payout_pension_bond",
-            "instrument_name": "KODEX 종합채권(AA-이상)액티브",
-            "asset_class_code": "bond",
-            "amount_krw": "25000000",
-            "risk_treatment": "capital_preservation",
-            "etf_isu_code": "273130"
+            "holding_id": "pension_payout_transition_pension_savings_domestic_equity_0_1",
+            "instrument_name": "SOL 200 Top10",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "185099",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "411540"
           },
           {
-            "holding_id": "payout_pension_cash",
-            "instrument_name": "수령기 연금저축 현금성 모형",
-            "asset_class_code": "cash",
-            "amount_krw": "15000000",
-            "risk_treatment": "capital_preservation"
+            "holding_id": "pension_payout_transition_pension_savings_domestic_equity_0_2",
+            "instrument_name": "RISE 2차전지TOP10",
+            "asset_class_code": "domestic_equity",
+            "amount_krw": "79328",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "465330"
           },
           {
-            "holding_id": "payout_pension_global_equity",
+            "holding_id": "pension_payout_transition_pension_savings_global_equity_1_1",
+            "instrument_name": "ACE 미국S&P500",
+            "asset_class_code": "global_equity",
+            "amount_krw": "79328",
+            "risk_treatment": "general_risky",
+            "etf_isu_code": "360200"
+          },
+          {
+            "holding_id": "pension_payout_transition_pension_savings_global_equity_1_2",
             "instrument_name": "KODEX 미국S&P500",
             "asset_class_code": "global_equity",
-            "amount_krw": "5000000",
+            "amount_krw": "33998",
             "risk_treatment": "general_risky",
             "etf_isu_code": "379800"
+          },
+          {
+            "holding_id": "pension_payout_transition_pension_savings_bond_2_1",
+            "instrument_name": "ACE 종합채권(AA-이상)액티브",
+            "asset_class_code": "bond",
+            "amount_krw": "1403408",
+            "risk_treatment": "capital_preservation",
+            "etf_isu_code": "356540"
+          },
+          {
+            "holding_id": "pension_payout_transition_pension_savings_cash_3_1",
+            "instrument_name": "현금성 자산",
+            "asset_class_code": "cash",
+            "amount_krw": "1928839",
+            "risk_treatment": "capital_preservation"
           }
         ]
       }

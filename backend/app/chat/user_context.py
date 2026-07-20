@@ -44,6 +44,7 @@ class DemoUserFinancialContext(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     auth_user_id: UUID
+    benchmark_user_id: str
     nickname: str
     representative_age: int
     customer_context: str
@@ -215,6 +216,7 @@ class DemoUserContextRepository:
                 """
                 select
                     context.auth_user_id,
+                    context.benchmark_user_id,
                     context.nickname,
                     context.representative_age,
                     context.customer_context,
@@ -258,6 +260,7 @@ class DemoUserContextRepository:
                 where context.auth_user_id = %s
                 group by
                     context.auth_user_id,
+                    context.benchmark_user_id,
                     context.nickname,
                     context.representative_age,
                     context.customer_context,
@@ -281,8 +284,8 @@ class DemoUserContextRepository:
 
     @staticmethod
     def _context_from_row(row: Any) -> DemoUserFinancialContext:
-        gross_salary = row[10]
-        comprehensive_income = row[11]
+        gross_salary = row[11]
+        comprehensive_income = row[12]
         if gross_salary is not None:
             income_basis = IncomeBasis.GROSS_SALARY
             income_amount = gross_salary
@@ -296,38 +299,39 @@ class DemoUserContextRepository:
         defaulted: list[str] = []
         if gross_salary is None and comprehensive_income is None:
             defaulted.append("income_amount_krw")
-        if row[12] is None:
-            defaulted.append("irp_contribution_krw")
         if row[13] is None:
+            defaulted.append("irp_contribution_krw")
+        if row[14] is None:
             defaulted.append("pension_savings_contribution_krw")
-        if row[20] == 0:
-            defaulted.append("dc_balance_krw")
         if row[21] == 0:
-            defaulted.append("irp_balance_krw")
+            defaulted.append("dc_balance_krw")
         if row[22] == 0:
+            defaulted.append("irp_balance_krw")
+        if row[23] == 0:
             defaulted.append("pension_savings_balance_krw")
 
         return DemoUserFinancialContext(
             auth_user_id=row[0],
-            nickname=row[1],
-            representative_age=row[2],
-            customer_context=row[3],
-            scenario_code=row[4],
-            scenario_name=row[5],
-            age_band=row[6],
-            risk_profile=row[7],
-            investment_horizon_years=row[8],
-            tax_year=row[9],
+            benchmark_user_id=row[1],
+            nickname=row[2],
+            representative_age=row[3],
+            customer_context=row[4],
+            scenario_code=row[5],
+            scenario_name=row[6],
+            age_band=row[7],
+            risk_profile=row[8],
+            investment_horizon_years=row[9],
+            tax_year=row[10],
             income_basis=income_basis,
             income_amount_krw=income_amount,
-            irp_contribution_krw=row[12] or Decimal("0"),
-            pension_savings_contribution_krw=row[13] or Decimal("0"),
-            as_of_date=row[14],
-            data_kind=row[15],
-            dc_balance_krw=row[16],
-            irp_balance_krw=row[17],
-            pension_savings_balance_krw=row[18],
-            total_pension_balance_krw=row[19],
+            irp_contribution_krw=row[13] or Decimal("0"),
+            pension_savings_contribution_krw=row[14] or Decimal("0"),
+            as_of_date=row[15],
+            data_kind=row[16],
+            dc_balance_krw=row[17],
+            irp_balance_krw=row[18],
+            pension_savings_balance_krw=row[19],
+            total_pension_balance_krw=row[20],
             defaulted_fields=tuple(defaulted),
         )
 

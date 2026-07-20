@@ -110,6 +110,7 @@ _ASSET_CLASS_LABELS = {
     "deposit": "원리금보장형 자산",
     "cash": "현금성 자산",
     "bond": "채권형 자산",
+    "domestic_equity": "국내 주식형 자산",
     "global_equity": "글로벌 주식형 자산",
     "eligible_tdf": "적격 TDF",
 }

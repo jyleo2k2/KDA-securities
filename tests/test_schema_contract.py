@@ -42,6 +42,9 @@ HERO_ETF_MIGRATION = (
     / "20260718090000_link_demo_hero_etf_holdings.sql"
 )
 MOCK_ACCOUNT_BACKFILL_MIGRATION_GLOB = "*_backfill_mock_pension_accounts.sql"
+DEMO_ETF_COMMON_SYNC_MIGRATION_GLOB = (
+    "*_sync_demo_etf_holdings_to_common_accounts.sql"
+)
 SEED = ROOT / "supabase" / "seed.sql"
 
 
@@ -397,3 +400,22 @@ def test_local_seed_replays_the_common_account_backfill() -> None:
     assert "insert into public.account_snapshots" in sql
     assert "insert into public.account_holding_snapshots" in sql
     assert "on conflict (id) do update" in sql
+    assert "expected 86 backfilled mock holdings" in sql
+
+
+def test_demo_etf_holdings_are_resynced_to_common_accounts() -> None:
+    migrations = list(
+        (ROOT / "supabase" / "migrations").glob(
+            DEMO_ETF_COMMON_SYNC_MIGRATION_GLOB
+        )
+    )
+    assert len(migrations) == 1
+
+    sql = migrations[0].read_text(encoding="utf-8").lower()
+    assert "expected 86 detailed mock holdings" in sql
+    assert "delete from public.account_holding_snapshots" in sql
+    assert "insert into public.account_holding_snapshots" in sql
+    assert "expected 86 synced common holdings" in sql
+    assert "synced common holding total does not match source" in sql
+    assert "drop table" not in sql
+    assert "truncate" not in sql

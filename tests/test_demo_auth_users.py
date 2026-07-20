@@ -25,6 +25,7 @@ def test_demo_manifest_maps_six_unique_users_to_six_scenarios() -> None:
     assert len(users) == 6
     assert {item["scenario_code"] for item in users} == scenario_codes
     assert len({item["login_id"] for item in users}) == 6
+    assert len({item["benchmark_user_id"] for item in users}) == 6
     assert all(item["login_id"].endswith("@kda-demo.invalid") for item in users)
     assert "password" not in MANIFEST.read_text(encoding="utf-8").lower()
 
@@ -73,7 +74,8 @@ def test_financial_context_sync_maps_all_users_with_mock_contributions(
             return None
 
         def executemany(self, query, rows) -> None:
-            assert "gross_salary_krw" not in query
+            assert "benchmark_user_id" in query
+            assert "gross_salary_krw" in query
             assert "pension_savings_contribution_krw" in query
             assert "irp_contribution_krw" in query
             self.rows = list(rows)
@@ -106,18 +108,15 @@ def test_financial_context_sync_maps_all_users_with_mock_contributions(
 
     assert len(cursor.rows) == 6
     rows_by_scenario = {row[-1]: row for row in cursor.rows}
-    assert rows_by_scenario["tax_contribution_uninvested"][4:6] == (
-        3_000_000,
-        6_000_000,
-    )
+    assert rows_by_scenario["tax_contribution_uninvested"][-2] == "USR00540"
 
 
 def test_lifecycle_scenarios_have_expected_totals_and_respect_account_caps() -> None:
     repository = LocalScenarioRepository()
     expected_totals = {
-        "young_retirement_distance": "21600000.00",
-        "family_budget_pressure": "86000000.00",
-        "pension_payout_transition": "155000000.00",
+        "young_retirement_distance": "23210000.00",
+        "family_budget_pressure": "88660000.00",
+        "pension_payout_transition": "157430000.00",
     }
 
     for scenario_code, total in expected_totals.items():

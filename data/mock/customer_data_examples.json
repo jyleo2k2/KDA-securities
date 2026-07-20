@@ -1,0 +1,606 @@
+{
+  "schema_version": 1,
+  "contract_counts": {
+    "customer_columns": 29,
+    "account_columns_excluding_nested_holdings": 23,
+    "benchmark_holding_columns": 6,
+    "detailed_etf_holding_columns": 7
+  },
+  "benchmark_customer_example": {
+    "customer": {
+      "user_id": "USR00001",
+      "age": "30",
+      "age_group": "30s",
+      "employment_type": "SALARIED_EMPLOYEE",
+      "gross_salary_krw": "60910000",
+      "comprehensive_income_krw": "",
+      "tax_credit_income_basis": "GROSS_SALARY",
+      "tax_credit_income_amount_krw": "60910000",
+      "tax_year": "2025",
+      "pension_tax_credit_rate_pct": "13.2",
+      "total_tax_credit_eligible_contribution_krw": "0",
+      "estimated_pension_tax_credit_krw": "0",
+      "planned_pension_start_age": "60",
+      "planned_receipt_years": "1",
+      "planned_annual_total_pension_receipt_krw": "249250000",
+      "planned_annual_personal_pension_receipt_krw": "130580000",
+      "planned_low_rate_pension_tax_pct": "5.5",
+      "planned_receipt_tax_treatment": "NON_PENSION_WITHDRAWAL_REVIEW",
+      "risk_profile": "STABLE",
+      "preferred_management_type": "PRINCIPAL_GUARANTEED",
+      "retirement_fund_attitude": "STABILITY_FIRST",
+      "investment_readiness": "NEEDS_GUIDANCE",
+      "payout_preference": "LUMP_SUM",
+      "primary_outside_asset": "SECURITIES",
+      "mock_scenario": "DC_NEGLECT",
+      "data_kind": "MOCK",
+      "source_ids": "KIRI_2025_20|KEF_RETIREMENT_AWARENESS_2025|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_V1|ASSUMPTION_V2|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1",
+      "pension_savings_contribution_krw": "0",
+      "irp_contribution_krw": "0"
+    },
+    "accounts": [
+      {
+        "account_id": "ACC000001",
+        "user_id": "USR00001",
+        "account_type": "DC",
+        "balance_krw": "118670000",
+        "monthly_contribution_krw": "420000",
+        "annual_contribution_krw": "5040000",
+        "contribution_status": "ACTIVE",
+        "contribution_frequency": "MONTHLY_EQUIVALENT",
+        "account_open_year": "2021",
+        "contribution_years": "5",
+        "planned_contribution_years_at_receipt": "35",
+        "pension_receipt_eligibility": "NOT_APPLICABLE_LUMP_SUM",
+        "tax_credit_eligible_contribution_krw": "0",
+        "estimated_tax_credit_krw": "0",
+        "planned_annual_pension_receipt_krw": "118670000",
+        "planned_receipt_tax_treatment": "DEFERRED_RETIREMENT_INCOME_RULE",
+        "risky_asset_ratio": "0.06076527084229516",
+        "safe_asset_ratio": "0.7190020122923275",
+        "cash_ratio": "0.22023271686537732",
+        "trailing_12m_return_pct": "1.89",
+        "return_period_end": "2025-12-31",
+        "data_kind": "MOCK",
+        "source_ids": "KIRI_2025_20|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1",
+        "holdings": [
+          {
+            "account_id": "ACC000001",
+            "asset_class": "EQUITY_KR",
+            "weight": "0.027344",
+            "amount_krw": "3244912",
+            "data_kind": "MOCK",
+            "source_ids": "KIRI_2025_20|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+          },
+          {
+            "account_id": "ACC000001",
+            "asset_class": "EQUITY_GLOBAL",
+            "weight": "0.033421",
+            "amount_krw": "3966070",
+            "data_kind": "MOCK",
+            "source_ids": "KIRI_2025_20|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+          },
+          {
+            "account_id": "ACC000001",
+            "asset_class": "BOND",
+            "weight": "0.215701",
+            "amount_krw": "25597238",
+            "data_kind": "MOCK",
+            "source_ids": "KIRI_2025_20|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+          },
+          {
+            "account_id": "ACC000001",
+            "asset_class": "PRINCIPAL_GUARANTEED",
+            "weight": "0.503301",
+            "amount_krw": "59726730",
+            "data_kind": "MOCK",
+            "source_ids": "KIRI_2025_20|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+          },
+          {
+            "account_id": "ACC000001",
+            "asset_class": "CASH",
+            "weight": "0.220233",
+            "amount_krw": "26135050",
+            "data_kind": "MOCK",
+            "source_ids": "KIRI_2025_20|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+          }
+        ]
+      },
+      {
+        "account_id": "ACC000002",
+        "user_id": "USR00001",
+        "account_type": "IRP",
+        "balance_krw": "130580000",
+        "monthly_contribution_krw": "0",
+        "annual_contribution_krw": "0",
+        "contribution_status": "INACTIVE",
+        "contribution_frequency": "NONE",
+        "account_open_year": "2022",
+        "contribution_years": "4",
+        "planned_contribution_years_at_receipt": "34",
+        "pension_receipt_eligibility": "NOT_APPLICABLE_LUMP_SUM",
+        "tax_credit_eligible_contribution_krw": "0",
+        "estimated_tax_credit_krw": "0",
+        "planned_annual_pension_receipt_krw": "130580000",
+        "planned_receipt_tax_treatment": "NON_PENSION_WITHDRAWAL_REVIEW",
+        "risky_asset_ratio": "0.30231653722855534",
+        "safe_asset_ratio": "0.5741922396768211",
+        "cash_ratio": "0.12349122309462354",
+        "trailing_12m_return_pct": "2.8",
+        "return_period_end": "2025-12-31",
+        "data_kind": "MOCK",
+        "source_ids": "KOSTAT_RETIREMENT_2024|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|KIRI_PENSION_CONTRIBUTION_2022|KIRI_REPLACEMENT_RATE_2023|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1",
+        "holdings": [
+          {
+            "account_id": "ACC000002",
+            "asset_class": "EQUITY_KR",
+            "weight": "0.136042",
+            "amount_krw": "17764364",
+            "data_kind": "MOCK",
+            "source_ids": "KOSTAT_RETIREMENT_2024|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|KIRI_PENSION_CONTRIBUTION_2022|KIRI_REPLACEMENT_RATE_2023|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+          },
+          {
+            "account_id": "ACC000002",
+            "asset_class": "EQUITY_GLOBAL",
+            "weight": "0.166274",
+            "amount_krw": "21712059",
+            "data_kind": "MOCK",
+            "source_ids": "KOSTAT_RETIREMENT_2024|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|KIRI_PENSION_CONTRIBUTION_2022|KIRI_REPLACEMENT_RATE_2023|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+          },
+          {
+            "account_id": "ACC000002",
+            "asset_class": "BOND",
+            "weight": "0.172258",
+            "amount_krw": "22493450",
+            "data_kind": "MOCK",
+            "source_ids": "KOSTAT_RETIREMENT_2024|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|KIRI_PENSION_CONTRIBUTION_2022|KIRI_REPLACEMENT_RATE_2023|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+          },
+          {
+            "account_id": "ACC000002",
+            "asset_class": "PRINCIPAL_GUARANTEED",
+            "weight": "0.401935",
+            "amount_krw": "52484672",
+            "data_kind": "MOCK",
+            "source_ids": "KOSTAT_RETIREMENT_2024|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|KIRI_PENSION_CONTRIBUTION_2022|KIRI_REPLACEMENT_RATE_2023|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+          },
+          {
+            "account_id": "ACC000002",
+            "asset_class": "CASH",
+            "weight": "0.123491",
+            "amount_krw": "16125455",
+            "data_kind": "MOCK",
+            "source_ids": "KOSTAT_RETIREMENT_2024|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|KIRI_PENSION_CONTRIBUTION_2022|KIRI_REPLACEMENT_RATE_2023|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+          }
+        ]
+      }
+    ]
+  },
+  "representative_customer_example": {
+    "demo_identity": {
+      "auth_user_id": "2f5cae61-5f80-4040-b3c2-9f33c4d93e03",
+      "benchmark_user_id": "USR03419",
+      "scenario_code": "overlap_risk_concentration",
+      "nickname": "정민재(가상)",
+      "representative_age": 42,
+      "age_band": "40대",
+      "login_id": "minjae32@kda-demo.invalid",
+      "customer_context": "DC·IRP·연금저축에 글로벌주식형 자산이 중복되어 위험자산 편중이 있는 고객",
+      "pension_savings_contribution_krw": 3840000,
+      "irp_contribution_krw": 4920000
+    },
+    "benchmark_contract": {
+      "customer": {
+        "user_id": "USR03419",
+        "age": "42",
+        "age_group": "40s",
+        "employment_type": "SALARIED_EMPLOYEE",
+        "gross_salary_krw": "97500000",
+        "comprehensive_income_krw": "",
+        "tax_credit_income_basis": "GROSS_SALARY",
+        "tax_credit_income_amount_krw": "97500000",
+        "tax_year": "2025",
+        "pension_tax_credit_rate_pct": "13.2",
+        "total_tax_credit_eligible_contribution_krw": "8760000",
+        "estimated_pension_tax_credit_krw": "1156320",
+        "planned_pension_start_age": "60",
+        "planned_receipt_years": "1",
+        "planned_annual_total_pension_receipt_krw": "149330000",
+        "planned_annual_personal_pension_receipt_krw": "25390000",
+        "planned_low_rate_pension_tax_pct": "5.5",
+        "planned_receipt_tax_treatment": "NON_PENSION_WITHDRAWAL_REVIEW",
+        "risk_profile": "ACTIVE",
+        "preferred_management_type": "ACTIVE_INVESTMENT",
+        "retirement_fund_attitude": "STABILITY_FIRST",
+        "investment_readiness": "NEEDS_GUIDANCE",
+        "payout_preference": "LUMP_SUM",
+        "primary_outside_asset": "INSURANCE_PENSION",
+        "mock_scenario": "OVERLAP_RISK",
+        "data_kind": "MOCK",
+        "source_ids": "KIRI_2025_20|KEF_RETIREMENT_AWARENESS_2025|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_V1|ASSUMPTION_V2|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1",
+        "pension_savings_contribution_krw": "3840000",
+        "irp_contribution_krw": "4920000"
+      },
+      "accounts": [
+        {
+          "account_id": "ACC005722",
+          "user_id": "USR03419",
+          "account_type": "DC",
+          "balance_krw": "123940000",
+          "monthly_contribution_krw": "680000",
+          "annual_contribution_krw": "8160000",
+          "contribution_status": "ACTIVE",
+          "contribution_frequency": "MONTHLY_EQUIVALENT",
+          "account_open_year": "2010",
+          "contribution_years": "16",
+          "planned_contribution_years_at_receipt": "34",
+          "pension_receipt_eligibility": "NOT_APPLICABLE_LUMP_SUM",
+          "tax_credit_eligible_contribution_krw": "0",
+          "estimated_tax_credit_krw": "0",
+          "planned_annual_pension_receipt_krw": "123940000",
+          "planned_receipt_tax_treatment": "DEFERRED_RETIREMENT_INCOME_RULE",
+          "risky_asset_ratio": "0.631093913846073",
+          "safe_asset_ratio": "0.3401740783108824",
+          "cash_ratio": "0.028732007843044506",
+          "trailing_12m_return_pct": "10.32",
+          "return_period_end": "2025-12-31",
+          "data_kind": "MOCK",
+          "source_ids": "KIRI_2025_20|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1",
+          "holdings": [
+            {
+              "account_id": "ACC005722",
+              "asset_class": "EQUITY_KR",
+              "weight": "0.378656",
+              "amount_krw": "46930625",
+              "data_kind": "MOCK",
+              "source_ids": "KIRI_2025_20|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+            },
+            {
+              "account_id": "ACC005722",
+              "asset_class": "EQUITY_GLOBAL",
+              "weight": "0.252438",
+              "amount_krw": "31287166",
+              "data_kind": "MOCK",
+              "source_ids": "KIRI_2025_20|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+            },
+            {
+              "account_id": "ACC005722",
+              "asset_class": "BOND",
+              "weight": "0.102052",
+              "amount_krw": "12648325",
+              "data_kind": "MOCK",
+              "source_ids": "KIRI_2025_20|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+            },
+            {
+              "account_id": "ACC005722",
+              "asset_class": "PRINCIPAL_GUARANTEED",
+              "weight": "0.238122",
+              "amount_krw": "29512841",
+              "data_kind": "MOCK",
+              "source_ids": "KIRI_2025_20|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+            },
+            {
+              "account_id": "ACC005722",
+              "asset_class": "CASH",
+              "weight": "0.028732",
+              "amount_krw": "3561043",
+              "data_kind": "MOCK",
+              "source_ids": "KIRI_2025_20|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+            }
+          ]
+        },
+        {
+          "account_id": "ACC005723",
+          "user_id": "USR03419",
+          "account_type": "IRP",
+          "balance_krw": "21990000",
+          "monthly_contribution_krw": "410000",
+          "annual_contribution_krw": "4920000",
+          "contribution_status": "ACTIVE",
+          "contribution_frequency": "MONTHLY",
+          "account_open_year": "2011",
+          "contribution_years": "15",
+          "planned_contribution_years_at_receipt": "33",
+          "pension_receipt_eligibility": "NOT_APPLICABLE_LUMP_SUM",
+          "tax_credit_eligible_contribution_krw": "4920000",
+          "estimated_tax_credit_krw": "649440",
+          "planned_annual_pension_receipt_krw": "21990000",
+          "planned_receipt_tax_treatment": "NON_PENSION_WITHDRAWAL_REVIEW",
+          "risky_asset_ratio": "0.7",
+          "safe_asset_ratio": "0.28867574362236953",
+          "cash_ratio": "0.011324256377630522",
+          "trailing_12m_return_pct": "16.51",
+          "return_period_end": "2025-12-31",
+          "data_kind": "MOCK",
+          "source_ids": "KOSTAT_RETIREMENT_2024|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|KIRI_PENSION_CONTRIBUTION_2022|KIRI_REPLACEMENT_RATE_2023|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1",
+          "holdings": [
+            {
+              "account_id": "ACC005723",
+              "asset_class": "EQUITY_KR",
+              "weight": "0.420000",
+              "amount_krw": "9235800",
+              "data_kind": "MOCK",
+              "source_ids": "KOSTAT_RETIREMENT_2024|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|KIRI_PENSION_CONTRIBUTION_2022|KIRI_REPLACEMENT_RATE_2023|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+            },
+            {
+              "account_id": "ACC005723",
+              "asset_class": "EQUITY_GLOBAL",
+              "weight": "0.280000",
+              "amount_krw": "6157200",
+              "data_kind": "MOCK",
+              "source_ids": "KOSTAT_RETIREMENT_2024|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|KIRI_PENSION_CONTRIBUTION_2022|KIRI_REPLACEMENT_RATE_2023|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+            },
+            {
+              "account_id": "ACC005723",
+              "asset_class": "BOND",
+              "weight": "0.086603",
+              "amount_krw": "1904400",
+              "data_kind": "MOCK",
+              "source_ids": "KOSTAT_RETIREMENT_2024|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|KIRI_PENSION_CONTRIBUTION_2022|KIRI_REPLACEMENT_RATE_2023|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+            },
+            {
+              "account_id": "ACC005723",
+              "asset_class": "PRINCIPAL_GUARANTEED",
+              "weight": "0.202073",
+              "amount_krw": "4443585",
+              "data_kind": "MOCK",
+              "source_ids": "KOSTAT_RETIREMENT_2024|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|KIRI_PENSION_CONTRIBUTION_2022|KIRI_REPLACEMENT_RATE_2023|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+            },
+            {
+              "account_id": "ACC005723",
+              "asset_class": "CASH",
+              "weight": "0.011324",
+              "amount_krw": "249015",
+              "data_kind": "MOCK",
+              "source_ids": "KOSTAT_RETIREMENT_2024|MOEL_FSS_RETIREMENT_2025|RETIREMENT_CONTRIBUTION_2024|KIRI_PENSION_CONTRIBUTION_2022|KIRI_REPLACEMENT_RATE_2023|ASSUMPTION_V1|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+            }
+          ]
+        },
+        {
+          "account_id": "ACC005724",
+          "user_id": "USR03419",
+          "account_type": "PENSION_SAVINGS_FUND",
+          "balance_krw": "3400000",
+          "monthly_contribution_krw": "320000",
+          "annual_contribution_krw": "3840000",
+          "contribution_status": "ACTIVE",
+          "contribution_frequency": "QUARTERLY",
+          "account_open_year": "2011",
+          "contribution_years": "15",
+          "planned_contribution_years_at_receipt": "33",
+          "pension_receipt_eligibility": "NOT_APPLICABLE_LUMP_SUM",
+          "tax_credit_eligible_contribution_krw": "3840000",
+          "estimated_tax_credit_krw": "506880",
+          "planned_annual_pension_receipt_krw": "3400000",
+          "planned_receipt_tax_treatment": "NON_PENSION_WITHDRAWAL_REVIEW",
+          "risky_asset_ratio": "0.6337107779694976",
+          "safe_asset_ratio": "0.32292223969479017",
+          "cash_ratio": "0.04336698233571221",
+          "trailing_12m_return_pct": "7.09",
+          "return_period_end": "2025-12-31",
+          "data_kind": "MOCK",
+          "source_ids": "FSC_FSS_PSA_2025|KIRI_PENSION_CONTRIBUTION_2022|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_V1|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1",
+          "holdings": [
+            {
+              "account_id": "ACC005724",
+              "asset_class": "EQUITY_KR",
+              "weight": "0.380226",
+              "amount_krw": "1292768",
+              "data_kind": "MOCK",
+              "source_ids": "FSC_FSS_PSA_2025|KIRI_PENSION_CONTRIBUTION_2022|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_V1|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+            },
+            {
+              "account_id": "ACC005724",
+              "asset_class": "EQUITY_GLOBAL",
+              "weight": "0.253484",
+              "amount_krw": "861846",
+              "data_kind": "MOCK",
+              "source_ids": "FSC_FSS_PSA_2025|KIRI_PENSION_CONTRIBUTION_2022|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_V1|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+            },
+            {
+              "account_id": "ACC005724",
+              "asset_class": "BOND",
+              "weight": "0.322922",
+              "amount_krw": "1097935",
+              "data_kind": "MOCK",
+              "source_ids": "FSC_FSS_PSA_2025|KIRI_PENSION_CONTRIBUTION_2022|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_V1|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+            },
+            {
+              "account_id": "ACC005724",
+              "asset_class": "CASH",
+              "weight": "0.043368",
+              "amount_krw": "147451",
+              "data_kind": "MOCK",
+              "source_ids": "FSC_FSS_PSA_2025|KIRI_PENSION_CONTRIBUTION_2022|NTS_PENSION_TAX_2025|INCOME_TAX_DECREE_PENSION_RECEIPT|ASSUMPTION_V1|ASSUMPTION_CONTRIBUTION_V1|ASSUMPTION_TAX_SCENARIO_V1"
+            }
+          ]
+        }
+      ]
+    },
+    "detailed_etf_portfolio": {
+      "scenario_code": "overlap_risk_concentration",
+      "name": "계좌별 중복·위험 편중",
+      "description": "DC·IRP·연금저축에 글로벌주식형 자산이 중복되어 위험자산 편중이 있는 고객",
+      "age_band": "40대",
+      "risk_profile": "growth",
+      "investment_horizon_years": 18,
+      "accounts": [
+        {
+          "account_id": "overlap_risk_concentration_dc",
+          "account_type": "dc",
+          "label": "회사 DC",
+          "holdings": [
+            {
+              "holding_id": "overlap_risk_concentration_dc_domestic_equity_0_1",
+              "instrument_name": "HANARO K고배당",
+              "asset_class_code": "domestic_equity",
+              "amount_krw": "32851437",
+              "risk_treatment": "general_risky",
+              "etf_isu_code": "322410"
+            },
+            {
+              "holding_id": "overlap_risk_concentration_dc_domestic_equity_0_2",
+              "instrument_name": "TIGER 헬스케어",
+              "asset_class_code": "domestic_equity",
+              "amount_krw": "14079188",
+              "risk_treatment": "general_risky",
+              "etf_isu_code": "143860"
+            },
+            {
+              "holding_id": "overlap_risk_concentration_dc_global_equity_1_1",
+              "instrument_name": "HANARO 미국S&P500",
+              "asset_class_code": "global_equity",
+              "amount_krw": "21901016",
+              "risk_treatment": "general_risky",
+              "etf_isu_code": "432840"
+            },
+            {
+              "holding_id": "overlap_risk_concentration_dc_global_equity_1_2",
+              "instrument_name": "TIGER S&P글로벌헬스케어(합성)",
+              "asset_class_code": "global_equity",
+              "amount_krw": "9386150",
+              "risk_treatment": "general_risky",
+              "etf_isu_code": "248270"
+            },
+            {
+              "holding_id": "overlap_risk_concentration_dc_bond_2_1",
+              "instrument_name": "ACE 종합채권(AA-이상)액티브",
+              "asset_class_code": "bond",
+              "amount_krw": "12648325",
+              "risk_treatment": "capital_preservation",
+              "etf_isu_code": "356540"
+            },
+            {
+              "holding_id": "overlap_risk_concentration_dc_deposit_3_1",
+              "instrument_name": "원리금보장 상품",
+              "asset_class_code": "deposit",
+              "amount_krw": "29512841",
+              "risk_treatment": "capital_preservation"
+            },
+            {
+              "holding_id": "overlap_risk_concentration_dc_cash_4_1",
+              "instrument_name": "현금성 자산",
+              "asset_class_code": "cash",
+              "amount_krw": "3561043",
+              "risk_treatment": "capital_preservation"
+            }
+          ]
+        },
+        {
+          "account_id": "overlap_risk_concentration_irp",
+          "account_type": "irp",
+          "label": "개인 IRP",
+          "holdings": [
+            {
+              "holding_id": "overlap_risk_concentration_irp_domestic_equity_0_1",
+              "instrument_name": "ACE AI반도체TOP3+",
+              "asset_class_code": "domestic_equity",
+              "amount_krw": "6465060",
+              "risk_treatment": "general_risky",
+              "etf_isu_code": "469150"
+            },
+            {
+              "holding_id": "overlap_risk_concentration_irp_domestic_equity_0_2",
+              "instrument_name": "HANARO 농업융복합산업",
+              "asset_class_code": "domestic_equity",
+              "amount_krw": "2770740",
+              "risk_treatment": "general_risky",
+              "etf_isu_code": "314700"
+            },
+            {
+              "holding_id": "overlap_risk_concentration_irp_global_equity_1_1",
+              "instrument_name": "ACE 미국S&P500",
+              "asset_class_code": "global_equity",
+              "amount_krw": "4310040",
+              "risk_treatment": "general_risky",
+              "etf_isu_code": "360200"
+            },
+            {
+              "holding_id": "overlap_risk_concentration_irp_global_equity_1_2",
+              "instrument_name": "RISE 미국반도체NYSE",
+              "asset_class_code": "global_equity",
+              "amount_krw": "1847160",
+              "risk_treatment": "general_risky",
+              "etf_isu_code": "469060"
+            },
+            {
+              "holding_id": "overlap_risk_concentration_irp_bond_2_1",
+              "instrument_name": "HANARO 종합채권(AA-이상)액티브",
+              "asset_class_code": "bond",
+              "amount_krw": "1904400",
+              "risk_treatment": "capital_preservation",
+              "etf_isu_code": "461500"
+            },
+            {
+              "holding_id": "overlap_risk_concentration_irp_deposit_3_1",
+              "instrument_name": "원리금보장 상품",
+              "asset_class_code": "deposit",
+              "amount_krw": "4443585",
+              "risk_treatment": "capital_preservation"
+            },
+            {
+              "holding_id": "overlap_risk_concentration_irp_cash_4_1",
+              "instrument_name": "현금성 자산",
+              "asset_class_code": "cash",
+              "amount_krw": "249015",
+              "risk_treatment": "capital_preservation"
+            }
+          ]
+        },
+        {
+          "account_id": "overlap_risk_concentration_pension_savings",
+          "account_type": "pension_savings",
+          "label": "연금저축펀드",
+          "holdings": [
+            {
+              "holding_id": "overlap_risk_concentration_pension_savings_domestic_equity_0_1",
+              "instrument_name": "HANARO 200TR",
+              "asset_class_code": "domestic_equity",
+              "amount_krw": "904938",
+              "risk_treatment": "general_risky",
+              "etf_isu_code": "332930"
+            },
+            {
+              "holding_id": "overlap_risk_concentration_pension_savings_domestic_equity_0_2",
+              "instrument_name": "SOL 금융지주플러스고배당",
+              "asset_class_code": "domestic_equity",
+              "amount_krw": "387830",
+              "risk_treatment": "general_risky",
+              "etf_isu_code": "484880"
+            },
+            {
+              "holding_id": "overlap_risk_concentration_pension_savings_global_equity_1_1",
+              "instrument_name": "TIGER 미국배당다우존스",
+              "asset_class_code": "global_equity",
+              "amount_krw": "603292",
+              "risk_treatment": "general_risky",
+              "etf_isu_code": "458730"
+            },
+            {
+              "holding_id": "overlap_risk_concentration_pension_savings_global_equity_1_2",
+              "instrument_name": "ACE 글로벌반도체TOP4 Plus",
+              "asset_class_code": "global_equity",
+              "amount_krw": "258554",
+              "risk_treatment": "general_risky",
+              "etf_isu_code": "446770"
+            },
+            {
+              "holding_id": "overlap_risk_concentration_pension_savings_bond_2_1",
+              "instrument_name": "SOL 종합채권(AA-이상)액티브",
+              "asset_class_code": "bond",
+              "amount_krw": "1097935",
+              "risk_treatment": "capital_preservation",
+              "etf_isu_code": "436140"
+            },
+            {
+              "holding_id": "overlap_risk_concentration_pension_savings_cash_3_1",
+              "instrument_name": "현금성 자산",
+              "asset_class_code": "cash",
+              "amount_krw": "147451",
+              "risk_treatment": "capital_preservation"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
