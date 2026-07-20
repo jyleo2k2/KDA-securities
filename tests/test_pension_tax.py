@@ -97,6 +97,50 @@ def test_unknown_income_returns_both_display_rate_scenarios() -> None:
     assert {
         item.local_inclusive_display_rate_percent for item in result.rate_scenarios
     } == {Decimal("13.2"), Decimal("16.5")}
+    assert result.additional_tax_credit_krw is None
+
+
+def test_tax_credit_reports_remaining_regular_combined_limit() -> None:
+    result = calculate_pension_tax_credit(
+        scenario(
+            income_amount_krw="55000001",
+            pension_savings={
+                "balance_krw": "0",
+                "current_year_contribution_krw": "4900000",
+            },
+            irp={
+                "balance_krw": "0",
+                "current_year_contribution_krw": "0",
+            },
+        ).to_tax_credit_input()
+    )
+
+    assert result.remaining_eligible_contribution_krw == Decimal("4100000")
+    assert result.additional_tax_credit_krw == Decimal("541200")
+    assert result.limit_usage_percent == Decimal("54.44")
+
+
+@pytest.mark.parametrize(
+    "contribution",
+    ["9000000", "12000000"],
+)
+def test_tax_credit_remaining_limit_never_becomes_negative(contribution: str) -> None:
+    result = calculate_pension_tax_credit(
+        scenario(
+            pension_savings={
+                "balance_krw": "0",
+                "current_year_contribution_krw": "0",
+            },
+            irp={
+                "balance_krw": "0",
+                "current_year_contribution_krw": contribution,
+            },
+        ).to_tax_credit_input()
+    )
+
+    assert result.remaining_eligible_contribution_krw == Decimal("0")
+    assert result.additional_tax_credit_krw == Decimal("0")
+    assert result.limit_usage_percent == Decimal("100")
 
 
 def test_tax_credit_combines_irp_and_dc_employee_contributions() -> None:

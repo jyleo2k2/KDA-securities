@@ -147,6 +147,14 @@ class SourceChip(BaseModel):
     as_of: date
 
 
+class StrategyPresentation(BaseModel):
+    strategy_id: str
+    display_name: str
+    summary: str
+    risk_badge: str
+    character_key: str
+
+
 class AssetClassWeight(BaseModel):
     asset_class: AssetClass
     amount_krw: Decimal
@@ -386,6 +394,7 @@ class PensionCalculatorYear(BaseModel):
 
 class PensionCalculatorStrategy(BaseModel):
     strategy_id: str
+    presentation: StrategyPresentation
     risk_profile: RiskProfile
     net_annual_return_percent: Decimal
     growth_percent: Decimal
