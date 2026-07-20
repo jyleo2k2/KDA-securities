@@ -6,6 +6,70 @@ alter table public.benchmark_mock_users
     add column if not exists pension_savings_contribution_krw text not null default '0',
     add column if not exists irp_contribution_krw text not null default '0';
 
+-- Older remote benchmark rows predate the generator's combined KRW 18m cap.
+-- Apply the same proportional, KRW 10k-unit allocation before deriving the
+-- user-level contribution columns. Rows already within the limit are untouched.
+with personal_accounts as (
+    select
+        account_id,
+        user_id,
+        monthly_contribution_krw::numeric as monthly_contribution_krw,
+        sum(monthly_contribution_krw::numeric) over (
+            partition by user_id
+        ) as total_monthly_contribution_krw,
+        1500000::numeric as monthly_personal_pension_limit_krw
+    from public.benchmark_mock_accounts
+    where account_type in ('IRP', 'PENSION_SAVINGS_FUND')
+), base_allocations as (
+    select
+        *,
+        monthly_contribution_krw
+            * monthly_personal_pension_limit_krw
+            / total_monthly_contribution_krw
+            / 10000 as exact_units
+    from personal_accounts
+    where total_monthly_contribution_krw
+        > monthly_personal_pension_limit_krw
+), allocations_with_remainder as (
+    select
+        *,
+        floor(exact_units)::integer as whole_units,
+        exact_units - floor(exact_units) as fractional_units,
+        150 - sum(floor(exact_units)::integer) over (
+            partition by user_id
+        ) as remaining_units
+    from base_allocations
+), ranked_allocations as (
+    select
+        *,
+        row_number() over (
+            partition by user_id
+            order by fractional_units desc, account_id
+        ) as allocation_rank
+    from allocations_with_remainder
+), capped as (
+    select
+        account_id,
+        (
+            whole_units
+            + case when allocation_rank <= remaining_units then 1 else 0 end
+        ) * 10000 as target_monthly_krw
+    from ranked_allocations
+)
+update public.benchmark_mock_accounts as account
+set monthly_contribution_krw = capped.target_monthly_krw::text,
+    annual_contribution_krw = (capped.target_monthly_krw * 12)::text,
+    contribution_status = case
+        when capped.target_monthly_krw = 0 then 'INACTIVE'
+        else 'ACTIVE'
+    end,
+    contribution_frequency = case
+        when capped.target_monthly_krw = 0 then 'NONE'
+        else account.contribution_frequency
+    end
+from capped
+where account.account_id = capped.account_id;
+
 with contribution as (
     select
         user_id,
@@ -52,7 +116,7 @@ with user_link (auth_user_id, scenario_code, benchmark_user_id, representative_a
 update public.demo_user_financial_context as context
 set benchmark_user_id = link.benchmark_user_id,
     representative_age = link.representative_age,
-    tax_year = benchmark.tax_year::smallint,
+    tax_year = 2026,
     gross_salary_krw = nullif(benchmark.gross_salary_krw, '')::numeric,
     comprehensive_income_krw = nullif(benchmark.comprehensive_income_krw, '')::numeric,
     pension_savings_contribution_krw = benchmark.pension_savings_contribution_krw::numeric,

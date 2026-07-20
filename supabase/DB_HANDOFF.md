@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-20 13:49 KST
-> 확인 기준: `codex/unify-demo-customer-data-main-sync` / `origin/main` `5409a33` / 고객 계약·대표 ETF 공통계좌 동기화 로컬 검증
+> 최종 확인: 2026-07-20 14:39 KST
+> 확인 기준: `codex/supabase-customer-deploy` / `origin/main` `c4e8eb8` / 고객 계약·대표 ETF 공통계좌 원격 적용·재검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -30,12 +30,12 @@
 
 ## 3. 현재 원격 상태
 
-2026-07-19 KST에 승인된 COMMENT migration을 적용한 뒤 연결된 Supabase 프로젝트를 읽기 전용으로 재확인했다.
+2026-07-20 KST에 승인된 고객 계약·대표 ETF 공통계좌 migration을 적용한 뒤 연결된 Supabase 프로젝트를 읽기 전용으로 재확인했다.
 
 | 항목 | 원격 상태 |
 |---|---|
 | public 기본 테이블 | 43개 |
-| 적용 마이그레이션 | 18개(`20260715005435` ~ `20260720034015`) |
+| 적용 마이그레이션 | 20개(`20260715005435` ~ `20260720044230`) |
 | RLS | 43/43 활성화 |
 | `anon` 테이블 권한 | 없음 |
 | `authenticated` 권한 | 사용자 소유 엔진 결과·채팅 관련 5개 테이블 |
@@ -57,17 +57,18 @@
 | `knowledge_chunks` | 45 |
 | `mock_scenarios` | 6 |
 | `mock_accounts` | 13 |
-| `mock_holdings` | 26 |
+| `mock_holdings` | 86 |
 | `demo_user_financial_context` | 6 |
 | `benchmark_mock_users` | 10,000 |
 | `benchmark_mock_accounts` | 16,900 |
 | `benchmark_mock_holdings` | 79,381 |
 | `profile_question_sets` / `profile_questions` / `profile_question_options` | 1 / 6 / 30 |
-| `pension_accounts` / `account_snapshots` / `account_cash_flows` / `financial_products` / `account_holding_snapshots` | 모두 0 |
+| `pension_accounts` / `account_snapshots` / `account_holding_snapshots` | 13 / 13 / 86 |
+| `account_cash_flows` / `financial_products` | 0 / 0 |
 
 원격에서 직접 수정된 시나리오 설명 5건과 대표 고객 납입액 5건은 `20260718131917_sync_modified_mock_data.sql`로 migration history에 정식 반영했다. 적용 전후 값과 `updated_at`이 모두 같아 데이터 재기록 없이 이력만 정상 추가됐음을 확인했다.
 
-`20260720044229_unify_demo_customer_contract.sql`과 `20260720044230_sync_demo_etf_holdings_to_common_accounts.sql`은 **로컬 검증·원격 미적용** 상태다. 첫 migration은 1만 명 사용자 전원에 연금저축펀드/개인 IRP 당해연도 납입액 컬럼을 추가하고 대표 6명을 1만 명의 실제 사용자 6행·계좌 13행에 연결하며, 대표 보유내역을 원본 계좌 잔액을 보존한 86행으로 교체한다. 두 번째 migration은 이미 원격 적용된 공통 계좌 backfill을 건드리지 않고 해당 13개 계좌·스냅샷·86개 상세 ETF 보유내역을 재동기화한다. KODEX·TIGER·ACE·RISE·SOL·HANARO 적격 ETF와 현금·원리금보장 항목을 사용하며, 원격의 현재 6/13/26 및 공통계좌 13/13/26 건수는 두 migration 적용 전 값이다.
+`20260720044229_unify_demo_customer_contract.sql`과 `20260720044230_sync_demo_etf_holdings_to_common_accounts.sql`은 **원격 적용 완료** 상태다. 첫 migration은 원격 구버전 벤치마크 계좌 10명의 개인연금 합산 납입액을 생성기와 같은 비례·1만 원 단위 규칙으로 보정한 뒤, 1만 명 사용자 전원에 연금저축펀드/개인 IRP 당해연도 납입액 컬럼을 추가하고 대표 6명을 실제 사용자 6행·계좌 13행에 연결하며 대표 보유내역을 86행으로 교체한다. 두 번째 migration은 공통 계좌 13개·스냅샷 13개·상세 ETF 보유 86개로 재동기화한다. 원격 재조회 결과 납입한도·세율·사용자 납입액 투영·legacy/common 잔액 불일치는 모두 0건이고 KODEX·TIGER·ACE·RISE·SOL·HANARO 6개 브랜드가 모두 존재한다.
 
 원격 컬럼 설명 3건(`pension_savings_provider_stats.fee_rate_1y`, `retirement_provider_stats.response_division`, `knowledge_chunks.embedding`)은 `20260718154819_repair_corrupted_column_comments.sql`로 교정했다. 실제 설명을 재조회해 목표 문구와 일치하고 U+FFFD 대체문자가 없음을 확인했다. 테이블·컬럼·데이터·RLS·GRANT는 바뀌지 않았다.
 
@@ -261,7 +262,7 @@ uv run ruff check .
 | DB-03 | 공통 계좌 구조 backfill | `REMOTE-APPLIED` | 기존 6/13/26을 `pension_accounts`·snapshot·holding 구조로 이관하고 금액·엔진 결과 동등 | `20260720034015`; source/target 6·13/26→13/13/26, 금액 불일치 0, nullable 원금·ETF 코드 인덱스·RLS/GRANT 재검증 완료 |
 | DB-03A | 생애주기 대표 고객·Auth 준비 | `REMOTE-APPLIED` | 시나리오 6·계좌 13·보유 26, synthetic demo Auth 사용자 6개 존재 | 데모 로그인 smoke는 다음 인증 가능 세션에서 재검증 |
 | DB-03B | 원격 직접 수정 목데이터 Git 동기화 | `REMOTE-APPLIED` | `20260718131917`, 시나리오 설명 5건·대표 고객 납입액 5건 일치·재적용 시 무변경 확인 | 적용 파일 수정 금지 |
-| DB-03C | 1만 명 공통 납입 계약·대표 6명 기준행/ETF 상세화 | `LOCAL-VERIFIED` | `20260720044229`·`20260720044230`, 사용자 10,000·계좌 16,900·보유 79,381 생성 검증, 대표 legacy/common 6/13/86·6개 운용사 | 원격 적용은 별도 승인 후 수행 |
+| DB-03C | 1만 명 공통 납입 계약·대표 6명 기준행/ETF 상세화 | `REMOTE-APPLIED` | `20260720044229`·`20260720044230`, 사용자 10,000·계좌 16,900·보유 79,381, 대표 legacy/common 6/13/86·6개 운용사, 납입한도·세율·잔액 불일치 0 | 적용 파일 수정 금지; 배포 보정 PR 머지 후 파일명·본문 고정 |
 | DB-04 | 챗봇 Postgres scenario repository 연결 | `LOCAL-VERIFIED` | DB 우선·JSON fallback과 원격 채팅 저장·replay E2E 통과 | `/engine/mock-scenario` DB 전환 여부 별도 결정 |
 | DB-04A | 사용자 연금계좌 repository·API 연결 | `LOCAL-VERIFIED` | 신규 공통 계좌 구조 조회·Auth 소유권·엔진 입력 변환 E2E | 실제 Supabase Bearer-token으로 `/me/pension-accounts`가 mock 계좌·보유를 반환함을 E2E 확인. 다음은 commit·push·PR |
 | DB-05 | 기존 mock account tables 정리 | `BLOCKED` | 코드·SQL 참조 0, 별도 승인·복구 계획 | DB-04 안정화 전 삭제 금지 |
@@ -282,6 +283,15 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-20 14:39 KST
+
+- 승인/적용: 이재용의 원격 Supabase 적용 승인을 전달받아 `20260720044229`와 `20260720044230`을 CLI `db push`로 적용했다. migration history 20개가 로컬과 1:1로 일치한다.
+- 사전 정합화: 원격에 `20260718172329_repair_market_news_is_active`로 적용됐지만 로컬 파일명이 `20260719184500`이던 기존 불일치를 이력 조작 없이 파일명만 원격 버전에 맞췄다. `migration repair`는 사용하지 않았다.
+- 적용 중 발견·보정: 첫 시도에서 대표 고객 런타임 `tax_year=2025`가 기존 2026 엔진 제약과 충돌해 전체 롤백됐다. 대표 컨텍스트는 2026을 유지하도록 migration·loader를 교정했다. 두 번째 시도에서는 구버전 원격 벤치마크 10명이 합산 납입 1,800만 원을 초과해 전체 롤백됐다. 생성기와 같은 비례·1만 원 단위 보정 SQL을 추가했으며 18개 영향 계좌의 목표값이 최신 로컬 CSV와 모두 일치함을 적용 전에 확인했다.
+- 원격 검증: 사용자 10,000·계좌 16,900·보유 79,381 유지, 개인연금 납입한도 위반 0, 사용자 납입액 투영 불일치 0, 소득구간별 16.5%/13.2% 세율 불일치 0. 대표 고객 6명·계좌 13개·legacy 보유 86개와 공통 계좌/스냅샷/보유 13/13/86, 양쪽 잔액 불일치 0, ETF 6개 브랜드를 확인했다.
+- 보안/회귀: public 테이블 RLS 43/43, 권한 `anon` 0·`authenticated` 5·`service_role` 43, CLI Advisor WARN 이상 0건. 전체 `pytest` 721 passed·1 skipped, Ruff와 `git diff --check` 통과.
+- 주의: `db push` 후 로컬 Docker가 없어 pg-delta 카탈로그 캐시 생성 경고가 있었으나 원격 적용과 이력 기록은 정상 완료됐다. 이번 보정 코드와 핸드오프 문서는 별도 PR로 main에 반영해야 한다.
 
 ### 2026-07-20 13:49 KST
 

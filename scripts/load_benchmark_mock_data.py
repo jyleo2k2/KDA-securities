@@ -30,7 +30,7 @@ def _sync_demo_links(cursor: psycopg.Cursor) -> None:
         update public.demo_user_financial_context as context
         set benchmark_user_id = benchmark.user_id,
             representative_age = benchmark.age::smallint,
-            tax_year = benchmark.tax_year::smallint,
+            tax_year = 2026,
             gross_salary_krw = nullif(benchmark.gross_salary_krw, '')::numeric,
             comprehensive_income_krw = nullif(benchmark.comprehensive_income_krw, '')::numeric,
             pension_savings_contribution_krw = benchmark.pension_savings_contribution_krw::numeric,
