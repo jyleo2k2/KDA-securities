@@ -26,6 +26,7 @@ from ..engine.audit import EngineAuditRepository
 from ..engine.models import AccountType
 from ..etf_universe_database import PostgresPortfolioUniverseRepository
 from ..ingestion.embeddings import get_query_embedder
+from ..macro_evidence import MacroEvidenceRepository
 from ..market_evidence_repository import KrxMarketEvidenceRepository
 from ..pension_accounts_repository import PensionAccountRepository
 from ..portfolio_universe_repository import (
@@ -193,8 +194,14 @@ def get_optional_demo_user_context_repository(
     )
 
 
-@lru_cache(maxsize=1)
-def _chat_service(database_url: str) -> ChatService:
+def get_macro_evidence_repository(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> MacroEvidenceRepository:
+    return MacroEvidenceRepository(settings.macro_evidence_report_path)
+
+
+@lru_cache(maxsize=4)
+def _chat_service(database_url: str, macro_evidence_report_path: str) -> ChatService:
     pool: ConnectionPool | None = (
         get_database_pool(database_url) if database_url else None
     )
@@ -229,6 +236,7 @@ def _chat_service(database_url: str) -> ChatService:
             get_portfolio_universe_repository,
             database_url=database_url,
         ),
+        macro_evidence=MacroEvidenceRepository(Path(macro_evidence_report_path)),
     )
 
 
@@ -241,7 +249,7 @@ def get_chat_service(
         if settings.database_url is not None
         else ""
     )
-    return _chat_service(database_url)
+    return _chat_service(database_url, str(settings.macro_evidence_report_path))
 
 
 @lru_cache(maxsize=1)

@@ -56,12 +56,14 @@ const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   news: "연금 뉴스",
   pension_tax: "세액공제·중도해지",
   educational_portfolio: "연금 운용전략",
+  macro_evidence: "거시지표 근거",
   out_of_scope: "지원 범위 안내",
 };
 
 const BOUNDARY_LABELS: Record<DataBoundary, string> = {
   verified_knowledge: "검증 지식",
   official_disclosure: "공식 공시",
+  official_statistics: "공식 통계",
   news_metadata: "뉴스 메타데이터",
   mock: "목데이터",
   engine: "규칙 엔진",

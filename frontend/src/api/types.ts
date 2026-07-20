@@ -557,11 +557,13 @@ export type ChatIntent =
   | "news"
   | "pension_tax"
   | "educational_portfolio"
+  | "macro_evidence"
   | "out_of_scope";
 
 export type DataBoundary =
   | "verified_knowledge"
   | "official_disclosure"
+  | "official_statistics"
   | "news_metadata"
   | "mock"
   | "engine"

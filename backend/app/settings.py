@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     bok_ecos_api_key: SecretStr | None = None
     kosis_api_key: SecretStr | None = None
     fred_api_key: SecretStr | None = None
+    macro_evidence_report_path: Path = Path(
+        "data/cache/macro/macro_evidence_latest.json"
+    )
     naver_api_hub_client_id: SecretStr | None = None
     naver_api_hub_client_secret: SecretStr | None = None
     database_url: SecretStr | None = None
