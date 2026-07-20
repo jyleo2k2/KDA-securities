@@ -15,6 +15,7 @@ from backend.app.engine import (
     AccountType,
     EducationalPortfolioInput,
     EducationalRiskProfile,
+    classify_etf_theme_matches,
     classify_etf_themes,
     normalize_kis_holdings,
     select_theme_etf_candidates,
@@ -22,6 +23,13 @@ from backend.app.engine import (
 from backend.app.etf_theme_repository import EtfThemeRepository
 
 CATALOG_PATH = Path("data/reference/etf_theme_catalog.json")
+EXPECTED_RESEARCH_SOURCE_URLS = (
+    "https://chatgpt.com/share/6a5dbc76-9c4c-83ee-9b7f-7729b384befe",
+    "https://chatgpt.com/share/6a5dbc89-8868-83ee-8d75-2f68d6e1bffc",
+    "https://chatgpt.com/share/6a5d9df1-9eb0-83e8-a285-0d2aec036054",
+    "https://chatgpt.com/share/6a5dbc9e-9d78-83e8-bb9c-5c2007c15d35",
+    "https://chatgpt.com/share/6a5dbca9-74bc-83e8-9f83-7f105074a7be",
+)
 
 
 def _theme_repository() -> EtfThemeRepository:
@@ -89,6 +97,8 @@ class _Universe:
 def test_catalog_has_exactly_twenty_three_themes() -> None:
     repository = _theme_repository()
 
+    assert repository.catalog.catalog_version == "2026-07-20.3"
+    assert repository.catalog.source_urls == EXPECTED_RESEARCH_SOURCE_URLS
     assert [theme.number for theme in repository.list()] == list(range(1, 24))
     assert len({theme.theme_id for theme in repository.list()}) == 23
     assert all(theme.plain_summary for theme in repository.list())
@@ -173,12 +183,37 @@ def test_themes_nine_through_twenty_three_classify_etf_text() -> None:
 def test_theme_classification_can_be_many_to_many() -> None:
     repository = _theme_repository()
 
+    matches = classify_etf_theme_matches(
+        repository.catalog,
+        isu_name="AI 반도체 모빌리티 ETF",
+    )
     matched = classify_etf_themes(
         repository.catalog,
         isu_name="AI 반도체 모빌리티 ETF",
     )
 
     assert {"ai_software", "semiconductor", "automotive_mobility"} <= set(matched)
+    assert matched == tuple(match.theme_id for match in matches)
+    assert all(match.is_ambiguous for match in matches)
+    assert all("isu_name" in match.matched_sources for match in matches)
+    assert all(match.matched_terms for match in matches)
+
+
+def test_theme_classification_evidence_identifies_kis_source_field() -> None:
+    repository = _theme_repository()
+
+    matches = classify_etf_theme_matches(
+        repository.catalog,
+        isu_name="테스트 ETF",
+        kis_index_name="KRX 반도체 지수",
+        kis_industry_name="전기전자",
+    )
+
+    semiconductor = next(
+        match for match in matches if match.theme_id == "semiconductor"
+    )
+    assert semiconductor.matched_sources == ("kis_index_name",)
+    assert "반도체" in semiconductor.matched_terms
 
 
 def test_kis_component_weights_are_preserved_and_sorted() -> None:
@@ -254,7 +289,7 @@ def test_query_planner_routes_theme_and_holding_request() -> None:
     assert plan.requests_theme_holdings is True
 
 
-def test_all_themes_route_three_content_question_types() -> None:
+def test_all_themes_route_five_content_question_types() -> None:
     repository = _theme_repository()
 
     for theme in repository.list():
@@ -266,6 +301,12 @@ def test_all_themes_route_three_content_question_types() -> None:
             (
                 f"{theme.name} 테마에 투자할 때 고려할 점은 뭐야?"
             ): ThemeContentTopic.INVESTMENT_CONSIDERATIONS,
+            (
+                f"{theme.name} 테마 성과에 영향을 주는 요인은 뭐야?"
+            ): ThemeContentTopic.PERFORMANCE_DRIVERS,
+            (
+                f"{theme.name} 테마의 고유 위험은 뭐야?"
+            ): ThemeContentTopic.RISKS,
         }
         for question, expected_topic in cases.items():
             plan = plan_question(question, theme_repository=repository)
@@ -363,6 +404,16 @@ def test_chat_overview_only_explains_theme_and_analogy() -> None:
     assert response.sections[0].blocks[-1].text == (
         "디지털 산업에 필요한 쌀과 두뇌 부품에 투자하는 ETF입니다."
     )
+    assert [item.follow_up_id for item in response.suggested_follow_ups] == [
+        "theme_performance_drivers",
+        "theme_risks",
+        "theme_candidates",
+    ]
+    assert all(
+        plan_question(item.message, theme_repository=_theme_repository()).intent
+        == ChatIntent.ETF_THEME
+        for item in response.suggested_follow_ups
+    )
 
 
 def test_chat_introduces_exactly_three_representative_companies() -> None:
@@ -404,10 +455,43 @@ def test_chat_separates_three_benefits_and_three_risks() -> None:
 
     assert response.data_mode == "theme_investment_considerations"
     assert [block.title for block in response.sections[0].blocks] == [
-        "기대할 수 있는 점 3가지",
+        "살펴볼 기회 요인 3가지",
         "주의할 위험 3가지",
     ]
     assert [len(block.items) for block in response.sections[0].blocks] == [3, 3]
+
+
+def test_chat_separates_performance_drivers_from_future_predictions() -> None:
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        theme_repository=_theme_repository(),
+    )
+
+    response = service.ask(
+        ChatRequest(message="반도체 테마 성과에 영향을 주는 요인은 뭐야?")
+    )
+
+    assert response.data_mode == "theme_performance_drivers"
+    assert response.sections[0].blocks[0].title == "성과를 좌우할 관찰 요인"
+    assert response.sections[0].blocks[0].items
+    assert any("수익률을 예측하지 않습니다" in item for item in response.limitations)
+
+
+def test_chat_answers_theme_risks_without_repeating_benefits() -> None:
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        theme_repository=_theme_repository(),
+    )
+
+    response = service.ask(ChatRequest(message="반도체 테마의 고유 위험은 뭐야?"))
+
+    assert response.data_mode == "theme_risks"
+    assert [block.title for block in response.sections[0].blocks] == [
+        "주의할 위험 3가지"
+    ]
+    assert len(response.sections[0].blocks[0].items) == 3
 
 
 def test_chat_uses_requested_safer_profile_for_theme_guardrail() -> None:

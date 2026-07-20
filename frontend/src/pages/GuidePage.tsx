@@ -78,13 +78,34 @@ const PENSION_TAX_PROMPT = /세액\s*공제|중도\s*해지|연금\s*외\s*수�
 const DEFAULT_TYPING_INTERVAL_MS = 50;
 
 export const ETF_THEME_CARDS = [
-  { title: "AI·소프트웨어", message: "AI·소프트웨어 테마의 특징과 위험을 알려줘." },
-  { title: "반도체", message: "반도체 테마의 특징과 위험을 알려줘." },
-  { title: "2차전지·배터리", message: "2차전지·배터리 테마의 특징과 위험을 알려줘." },
-  { title: "바이오·헬스케어", message: "바이오·헬스케어 테마의 특징과 위험을 알려줘." },
-  { title: "신재생·친환경", message: "신재생·친환경 테마의 특징과 위험을 알려줘." },
-  { title: "자동차·모빌리티", message: "자동차·모빌리티 테마의 특징과 위험을 알려줘." },
+  { number: 1, title: "AI·소프트웨어", message: "AI·소프트웨어 테마가 뭐야?" },
+  { number: 2, title: "반도체", message: "반도체 테마가 뭐야?" },
+  { number: 3, title: "신재생·친환경", message: "신재생·친환경 테마가 뭐야?" },
+  { number: 4, title: "바이오·헬스케어", message: "바이오·헬스케어 테마가 뭐야?" },
+  { number: 5, title: "2차전지·배터리", message: "2차전지·배터리 테마가 뭐야?" },
+  { number: 6, title: "건설·기계·인프라", message: "건설·기계·인프라 테마가 뭐야?" },
+  { number: 7, title: "자동차·모빌리티", message: "자동차·모빌리티 테마가 뭐야?" },
+  { number: 8, title: "그룹주", message: "그룹주 테마가 뭐야?" },
+  { number: 9, title: "에너지·정유", message: "에너지·정유 테마가 뭐야?" },
+  { number: 10, title: "미디어·엔터·게임", message: "미디어·엔터·게임 테마가 뭐야?" },
+  { number: 11, title: "원자력·전력", message: "원자력·전력 테마가 뭐야?" },
+  { number: 12, title: "리츠·부동산", message: "리츠·부동산 테마가 뭐야?" },
+  { number: 13, title: "로봇", message: "로봇 테마가 뭐야?" },
+  { number: 14, title: "은행·금융", message: "은행·금융 테마가 뭐야?" },
+  { number: 15, title: "방산·우주", message: "방산·우주 테마가 뭐야?" },
+  { number: 16, title: "소비재·음식료", message: "소비재·음식료 테마가 뭐야?" },
+  { number: 17, title: "금·원자재", message: "금·원자재 테마가 뭐야?" },
+  { number: 18, title: "코리아밸류업", message: "코리아밸류업 테마가 뭐야?" },
+  { number: 19, title: "ESG", message: "ESG 테마가 뭐야?" },
+  { number: 20, title: "철강·소재", message: "철강·소재 테마가 뭐야?" },
+  { number: 21, title: "양자컴퓨팅", message: "양자컴퓨팅 테마가 뭐야?" },
+  { number: 22, title: "메타버스", message: "메타버스 테마가 뭐야?" },
+  { number: 23, title: "조선", message: "조선 테마가 뭐야?" },
 ] as const;
+const INITIAL_ETF_THEME_CARD_COUNT = 5;
+const REMAINING_ETF_THEME_CARD_COUNT = (
+  ETF_THEME_CARDS.length - INITIAL_ETF_THEME_CARD_COUNT
+);
 
 function numericText(value: string | number, unit: string): string {
   if (unit.toUpperCase() === "KRW") {
@@ -667,6 +688,7 @@ export function GuidePage({
   const [input, setInput] = useState("");
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
   const [chatCards, setChatCards] = useState<ChatCard[]>([]);
+  const [allEtfThemesVisible, setAllEtfThemesVisible] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState(initialScenarioCode ?? "");
   const [userContext, setUserContext] =
     useState<DemoUserFinancialContext | null>(null);
@@ -1570,7 +1592,7 @@ export function GuidePage({
                   <span>테마의 구성과 유의점을 교육용으로 확인해 보세요.</span>
                 </header>
                 <div className="sector-card-grid" aria-label="ETF 섹터 카드">
-                  {ETF_THEME_CARDS.map((card) => (
+                  {ETF_THEME_CARDS.slice(0, INITIAL_ETF_THEME_CARD_COUNT).map((card) => (
                     <button
                       type="button"
                       key={card.title}
@@ -1578,7 +1600,35 @@ export function GuidePage({
                       onClick={() => void submitPrompt(card.message)}
                     >
                       <span className="sector-card-icon"><Icon name="chart" size={19} /></span>
-                      <span><small>ETF 테마</small><strong>{card.title}</strong></span>
+                      <span><small>ETF 테마 {card.number}</small><strong>{card.title}</strong></span>
+                      <Icon name="chevron" size={16} />
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="sector-card-toggle"
+                    aria-expanded={allEtfThemesVisible}
+                    aria-label={allEtfThemesVisible
+                      ? "ETF 테마 목록 접기"
+                      : `나머지 ETF 테마 ${REMAINING_ETF_THEME_CARD_COUNT}개 더보기`}
+                    onClick={() => setAllEtfThemesVisible((visible) => !visible)}
+                  >
+                    <span className="sector-card-icon"><Icon name="chart" size={19} /></span>
+                    <span>
+                      <small>{allEtfThemesVisible ? "ETF 테마 목록" : `+${REMAINING_ETF_THEME_CARD_COUNT}개`}</small>
+                      <strong>{allEtfThemesVisible ? "접기" : "더보기"}</strong>
+                    </span>
+                    <Icon name="chevron" size={16} />
+                  </button>
+                  {allEtfThemesVisible && ETF_THEME_CARDS.slice(INITIAL_ETF_THEME_CARD_COUNT).map((card) => (
+                    <button
+                      type="button"
+                      key={card.title}
+                      aria-label={`${card.title} ETF 테마 설명 보기`}
+                      onClick={() => void submitPrompt(card.message)}
+                    >
+                      <span className="sector-card-icon"><Icon name="chart" size={19} /></span>
+                      <span><small>ETF 테마 {card.number}</small><strong>{card.title}</strong></span>
                       <Icon name="chevron" size={16} />
                     </button>
                   ))}

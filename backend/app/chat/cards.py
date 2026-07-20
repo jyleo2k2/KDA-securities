@@ -230,4 +230,55 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
                 message="연금계좌의 위험자산 한도는 어떻게 적용돼?",
             )
         ]
+    if response.intent == ChatIntent.ETF_THEME and response.sections:
+        marker = " 테마"
+        title = response.sections[0].title
+        marker_position = title.find(marker)
+        if marker_position <= 0:
+            return []
+        theme_name = title[:marker_position]
+        follow_ups: list[SuggestedFollowUp] = []
+        if response.data_mode != "theme_performance_drivers":
+            follow_ups.append(
+                SuggestedFollowUp(
+                    follow_up_id="theme_performance_drivers",
+                    label="성과 관찰요인",
+                    message=(
+                        f"{theme_name} 테마 성과에 영향을 주는 요인은 뭐야?"
+                    ),
+                )
+            )
+        if response.data_mode not in {
+            "theme_risks",
+            "theme_investment_considerations",
+        }:
+            follow_ups.append(
+                SuggestedFollowUp(
+                    follow_up_id="theme_risks",
+                    label="고유 위험",
+                    message=f"{theme_name} 테마의 고유 위험은 뭐야?",
+                )
+            )
+        if response.data_mode != "theme_candidates":
+            follow_ups.append(
+                SuggestedFollowUp(
+                    follow_up_id="theme_candidates",
+                    label="내 계좌 후보 비교",
+                    message=(
+                        f"내 연금계좌에서 {theme_name} ETF 후보를 비교해줘"
+                    ),
+                )
+            )
+        elif not any(
+            section.title.endswith("주요 구성종목")
+            for section in response.sections
+        ):
+            follow_ups.append(
+                SuggestedFollowUp(
+                    follow_up_id="theme_holdings",
+                    label="구성종목 확인",
+                    message=f"{theme_name} ETF 구성종목 비중을 보여줘",
+                )
+            )
+        return follow_ups[:3]
     return []

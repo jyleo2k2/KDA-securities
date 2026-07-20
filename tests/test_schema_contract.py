@@ -375,6 +375,8 @@ def test_etf_theme_verification_is_hash_bound_and_server_only() -> None:
     assert "overview" in sql
     assert "representative_companies" in sql
     assert "investment_considerations" in sql
+    assert "performance_drivers" in sql
+    assert "risks" in sql
     assert "status in ('draft', 'verified', 'rejected')" in sql
     assert "knowledge_documents" in sql
     assert "knowledge_chunks" in sql

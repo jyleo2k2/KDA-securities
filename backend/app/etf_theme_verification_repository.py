@@ -15,6 +15,8 @@ _TOPICS = {
     "overview",
     "representative_companies",
     "investment_considerations",
+    "performance_drivers",
+    "risks",
 }
 
 
@@ -63,6 +65,10 @@ def etf_theme_content_sha256(theme: EtfThemeDefinition, topic: str) -> str:
             "benefits": list(theme.benefits),
             "risks": list(theme.risks),
         }
+    elif topic == "performance_drivers":
+        payload = list(theme.performance_drivers)
+    elif topic == "risks":
+        payload = list(theme.risks)
     else:
         raise ValueError(f"unsupported ETF theme content topic: {topic}")
     canonical = json.dumps(

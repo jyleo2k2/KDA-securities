@@ -66,6 +66,8 @@ def test_theme_content_hash_changes_only_with_the_selected_topic() -> None:
     considerations_hash = etf_theme_content_sha256(
         theme, "investment_considerations"
     )
+    driver_hash = etf_theme_content_sha256(theme, "performance_drivers")
+    risks_hash = etf_theme_content_sha256(theme, "risks")
     changed = theme.model_copy(
         update={"one_line_analogy": "검증 해시 변경용 비유입니다."}
     )
@@ -75,6 +77,8 @@ def test_theme_content_hash_changes_only_with_the_selected_topic() -> None:
     assert considerations_hash == etf_theme_content_sha256(
         changed, "investment_considerations"
     )
+    assert driver_hash == etf_theme_content_sha256(changed, "performance_drivers")
+    assert risks_hash == etf_theme_content_sha256(changed, "risks")
 
 
 def test_verified_theme_topic_omits_only_the_draft_limitation() -> None:
@@ -94,7 +98,7 @@ def test_verified_theme_topic_omits_only_the_draft_limitation() -> None:
 
     assert len(reader.requests) == 1
     assert reader.requests[0][:3] == (
-        "2026-07-20.2",
+        "2026-07-20.3",
         "semiconductor",
         "overview",
     )

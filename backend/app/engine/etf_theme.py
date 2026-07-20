@@ -114,6 +114,17 @@ class ThemeCandidateEvaluation(BaseModel):
     limitations: tuple[str, ...] = ()
 
 
+class ThemeClassificationMatch(BaseModel):
+    """Explain one deterministic theme match without changing its rank or scope."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    theme_id: str = Field(pattern=r"^[a-z0-9_]+$")
+    matched_terms: tuple[str, ...] = Field(min_length=1)
+    matched_sources: tuple[str, ...] = Field(min_length=1)
+    is_ambiguous: bool
+
+
 def _normalized(text: str) -> str:
     return re.sub(r"\s+", " ", text.upper()).strip()
 
@@ -169,14 +180,60 @@ def classify_etf_themes(
     kis_index_name: str = "",
     kis_industry_name: str = "",
 ) -> tuple[str, ...]:
+    return tuple(
+        match.theme_id
+        for match in classify_etf_theme_matches(
+            catalog,
+            isu_name=isu_name,
+            kis_index_name=kis_index_name,
+            kis_industry_name=kis_industry_name,
+        )
+    )
+
+
+def classify_etf_theme_matches(
+    catalog: EtfThemeCatalog,
+    *,
+    isu_name: str,
+    kis_index_name: str = "",
+    kis_industry_name: str = "",
+) -> tuple[ThemeClassificationMatch, ...]:
+    """Return the same many-to-many matches with auditable term/source evidence."""
+
+    source_texts = (
+        ("isu_name", _normalized(isu_name)),
+        ("kis_index_name", _normalized(kis_index_name)),
+        ("kis_industry_name", _normalized(kis_industry_name)),
+    )
     text = _normalized(" ".join((isu_name, kis_index_name, kis_industry_name)))
-    matched: list[str] = []
+    matched: list[tuple[EtfThemeDefinition, tuple[str, ...]]] = []
     for theme in catalog.themes:
         if any(_contains_term(text, term) for term in theme.exclude_terms):
             continue
-        if any(_contains_term(text, term) for term in theme.include_terms):
-            matched.append(theme.theme_id)
-    return tuple(matched)
+        matched_terms = tuple(
+            term for term in theme.include_terms if _contains_term(text, term)
+        )
+        if matched_terms:
+            matched.append((theme, matched_terms))
+
+    is_ambiguous = len(matched) > 1
+    results: list[ThemeClassificationMatch] = []
+    for theme, matched_terms in matched:
+        matched_sources = tuple(
+            source
+            for source, source_text in source_texts
+            if source_text
+            and any(_contains_term(source_text, term) for term in matched_terms)
+        )
+        results.append(
+            ThemeClassificationMatch(
+                theme_id=theme.theme_id,
+                matched_terms=matched_terms,
+                matched_sources=matched_sources or ("combined_fields",),
+                is_ambiguous=is_ambiguous,
+            )
+        )
+    return tuple(results)
 
 
 def normalize_kis_holdings(rows: object) -> tuple[KisComponentHolding, ...]:

@@ -1,13 +1,14 @@
 {
   "schema_version": 3,
-  "catalog_version": "2026-07-20.2",
+  "catalog_version": "2026-07-20.3",
   "as_of_date": "2026-07-20",
   "content_status": "service_interpretation_from_user_supplied_research",
   "source_urls": [
-    "https://chatgpt.com/share/6a5cd84f-5b44-83ee-ae0c-960ad47c618e",
-    "https://chatgpt.com/share/6a5cd863-ab24-83e8-a07d-09cbda7e4136",
-    "https://chatgpt.com/share/6a5cd871-80b4-83e8-885d-02ffb145f571",
-    "https://chatgpt.com/share/6a5cec1b-9724-83e8-ba43-17f4268994ca"
+    "https://chatgpt.com/share/6a5dbc76-9c4c-83ee-9b7f-7729b384befe",
+    "https://chatgpt.com/share/6a5dbc89-8868-83ee-8d75-2f68d6e1bffc",
+    "https://chatgpt.com/share/6a5d9df1-9eb0-83e8-a285-0d2aec036054",
+    "https://chatgpt.com/share/6a5dbc9e-9d78-83e8-bb9c-5c2007c15d35",
+    "https://chatgpt.com/share/6a5dbca9-74bc-83e8-9f83-7f105074a7be"
   ],
   "themes": [
     {

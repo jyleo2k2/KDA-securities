@@ -270,12 +270,45 @@ describe("GuidePage chat history deletion", () => {
       name: "챗봇에게 무엇이든 물어보세요",
     })).toBeInTheDocument();
     const sectorCards = await screen.findByLabelText("ETF 섹터 카드");
-    expect(within(sectorCards).getAllByRole("button")).toHaveLength(
-      ETF_THEME_CARDS.length,
+    expect(ETF_THEME_CARDS).toHaveLength(23);
+    expect(ETF_THEME_CARDS.map((card) => card.number)).toEqual(
+      Array.from({ length: 23 }, (_, index) => index + 1),
     );
+    const initialButtons = within(sectorCards).getAllByRole("button");
+    expect(initialButtons).toHaveLength(6);
+    expect(within(sectorCards).getAllByRole("button", {
+      name: /ETF 테마 설명 보기$/,
+    })).toHaveLength(5);
     expect(within(sectorCards).getByRole("button", {
       name: "반도체 ETF 테마 설명 보기",
     })).toBeInTheDocument();
+    expect(within(sectorCards).queryByRole("button", {
+      name: "건설·기계·인프라 ETF 테마 설명 보기",
+    })).not.toBeInTheDocument();
+
+    const moreButton = within(sectorCards).getByRole("button", {
+      name: "나머지 ETF 테마 18개 더보기",
+    });
+    expect(initialButtons[5]).toBe(moreButton);
+    expect(moreButton).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(moreButton);
+
+    expect(within(sectorCards).getAllByRole("button", {
+      name: /ETF 테마 설명 보기$/,
+    })).toHaveLength(23);
+    expect(within(sectorCards).getByRole("button", {
+      name: "조선 ETF 테마 설명 보기",
+    })).toBeInTheDocument();
+    const collapseButton = within(sectorCards).getByRole("button", {
+      name: "ETF 테마 목록 접기",
+    });
+    expect(collapseButton).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(collapseButton);
+
+    expect(within(sectorCards).getAllByRole("button")).toHaveLength(6);
+    expect(within(sectorCards).queryByRole("button", {
+      name: "조선 ETF 테마 설명 보기",
+    })).not.toBeInTheDocument();
   });
 });
 

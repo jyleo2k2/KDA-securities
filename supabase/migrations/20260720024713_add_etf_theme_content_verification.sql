@@ -17,7 +17,9 @@ create table public.etf_theme_content_reviews (
                 topic in (
                     'overview',
                     'representative_companies',
-                    'investment_considerations'
+                    'investment_considerations',
+                    'performance_drivers',
+                    'risks'
                 )
             ),
     content_sha256 text not null
@@ -82,6 +84,7 @@ create table public.etf_theme_content_evidence (
                     'company_profile',
                     'benefit',
                     'risk',
+                    'performance_driver',
                     'service_interpretation'
                 )
             ),

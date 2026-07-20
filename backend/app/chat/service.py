@@ -1166,14 +1166,14 @@ class ChatService:
                     kind=SectionKind.SERVICE_EXPLANATION,
                     title=f"{theme.name} 테마 투자 시 고려할 점",
                     content=(
-                        "기대할 수 있는 점과 함께 감수해야 할 위험을 "
+                        "살펴볼 기회 요인과 함께 감수해야 할 위험을 "
                         "같이 살펴보세요."
                     ),
                     evidence_ids=verified_source_ids or [catalog_source_id],
                     blocks=[
                         AnswerBlock(
                             kind=AnswerBlockKind.BULLETS,
-                            title="기대할 수 있는 점 3가지",
+                            title="살펴볼 기회 요인 3가지",
                             items=list(theme.benefits),
                         ),
                         AnswerBlock(
@@ -1184,8 +1184,50 @@ class ChatService:
                     ],
                 )
             ]
-            answer = f"{theme.name} 테마의 이점 3개와 위험 3개를 정리했습니다."
+            answer = f"{theme.name} 테마의 기회 요인 3개와 위험 3개를 정리했습니다."
             data_mode = "theme_investment_considerations"
+        elif topic == ThemeContentTopic.PERFORMANCE_DRIVERS:
+            sections = [
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title=f"{theme.name} 테마 성과의 관찰 요인",
+                    content=(
+                        "미래 수익률 예측이 아니라 테마 가격과 사업 환경에 "
+                        "영향을 줄 수 있어 확인할 요인입니다."
+                    ),
+                    evidence_ids=verified_source_ids or [catalog_source_id],
+                    blocks=[
+                        AnswerBlock(
+                            kind=AnswerBlockKind.BULLETS,
+                            title="성과를 좌우할 관찰 요인",
+                            items=list(theme.performance_drivers),
+                        )
+                    ],
+                )
+            ]
+            answer = f"{theme.name} 테마에서 확인할 성과 관찰 요인을 정리했습니다."
+            data_mode = "theme_performance_drivers"
+        elif topic == ThemeContentTopic.RISKS:
+            sections = [
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title=f"{theme.name} 테마의 주요 위험",
+                    content=(
+                        "테마 편입 전에 변동성과 손실 가능성을 키울 수 있는 "
+                        "고유 위험을 먼저 확인하세요."
+                    ),
+                    evidence_ids=verified_source_ids or [catalog_source_id],
+                    blocks=[
+                        AnswerBlock(
+                            kind=AnswerBlockKind.BULLETS,
+                            title="주의할 위험 3가지",
+                            items=list(theme.risks),
+                        )
+                    ],
+                )
+            ]
+            answer = f"{theme.name} 테마의 주요 위험 3개를 정리했습니다."
+            data_mode = "theme_risks"
         else:
             sections = [
                 AnswerSection(
