@@ -176,6 +176,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .message-bubble { border-radius: 5px 18px 18px 18px; background: #fff; border: 1px solid #e3e8e2; box-shadow: 0 5px 20px rgba(30,60,46,.035); overflow: hidden; }
 .user .message-bubble { padding: 12px 17px; border: 0; border-radius: 18px 5px 18px 18px; background: #173f30; color: #f6faf6; box-shadow: none; }
 .message-copy { margin: 0; white-space: pre-wrap; font-size: 13px; line-height: 1.72; }
+.typing-answer { cursor: pointer; }
 .answer-content { padding: 17px 18px; }
 .answer-meta { display: flex; align-items: center; gap: 9px; margin-bottom: 11px; color: #9aa49e; font-size: 9px; }
 .intent-pill { display: inline-flex; align-items: center; min-height: 21px; padding: 0 8px; border-radius: 20px; background: #eef4d9; color: #5a7130; font-weight: 700; }

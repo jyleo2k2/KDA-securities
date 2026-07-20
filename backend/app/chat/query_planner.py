@@ -36,6 +36,7 @@ class QueryPlan(BaseModel):
     intent: ChatIntent
     account_types: tuple[AccountType, ...] = ()
     news_query: str | None = Field(default=None, min_length=1, max_length=200)
+    requests_event_strategy: bool = False
     max_results: int = Field(default=3, ge=1, le=5)
     combines_account_rules: bool = False
     requests_tax_credit: bool = False
@@ -52,6 +53,8 @@ class QueryPlan(BaseModel):
             raise ValueError("news intent requires news_query")
         if self.intent != ChatIntent.NEWS and self.news_query is not None:
             raise ValueError("news_query is only valid for news intent")
+        if self.intent != ChatIntent.NEWS and self.requests_event_strategy:
+            raise ValueError("event strategy requires news intent")
         if self.intent == ChatIntent.OUT_OF_SCOPE and self.blocked_reason is None:
             raise ValueError("out_of_scope intent requires blocked_reason")
         if self.intent != ChatIntent.OUT_OF_SCOPE and self.blocked_reason is not None:
@@ -134,6 +137,12 @@ _COMBINED_ACCOUNT_RULE = re.compile(
 )
 _DISCLOSURE_TERMS = re.compile(r"공시|수익률|수수료|적립금|준비금|사업자|회사")
 _NEWS_TERMS = re.compile(r"뉴스|기사|소식")
+_NEWS_EVENT_STRATEGY_TERMS = re.compile(
+    r"이벤트\s*드리븐|뉴스\s*기반|"
+    r"실시간.{0,20}(?:운용|투자|포트폴리오|전략|리밸런싱)|"
+    r"(?:운용|투자|포트폴리오|전략|리밸런싱).{0,20}실시간",
+    re.I,
+)
 _MACRO_EVIDENCE_TERMS = re.compile(
     r"기준\s*금리|소비자\s*물가|물가\s*상승률|인플레이션|"
     r"기대\s*수명|거시\s*(?:지표|환경)|연방\s*기금|"
@@ -345,11 +354,14 @@ def plan_question(
     intent_matches = {
         ChatIntent.MOCK_PORTFOLIO: _SCENARIO_TERMS.search(normalized) is not None,
         ChatIntent.PENSION_TAX: requests_tax_credit or requests_withdrawal_tax,
-        ChatIntent.NEWS: _NEWS_TERMS.search(normalized) is not None,
-    ChatIntent.ETF_THEME: theme is not None,
-    ChatIntent.MACRO_EVIDENCE: (
-        _MACRO_EVIDENCE_TERMS.search(normalized) is not None
-    ),
+        ChatIntent.NEWS: (
+            _NEWS_TERMS.search(normalized) is not None
+            or _NEWS_EVENT_STRATEGY_TERMS.search(normalized) is not None
+        ),
+        ChatIntent.ETF_THEME: theme is not None,
+        ChatIntent.MACRO_EVIDENCE: (
+            _MACRO_EVIDENCE_TERMS.search(normalized) is not None
+        ),
         ChatIntent.EDUCATIONAL_PORTFOLIO: (
             _EDUCATIONAL_PORTFOLIO_TERMS.search(normalized) is not None
         ),
@@ -407,6 +419,9 @@ def plan_question(
             intent=ChatIntent.NEWS,
             account_types=account_types,
             news_query=news_query,
+            requests_event_strategy=(
+                _NEWS_EVENT_STRATEGY_TERMS.search(normalized) is not None
+            ),
             max_results=max_results,
         )
     if intent == ChatIntent.MACRO_EVIDENCE:

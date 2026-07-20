@@ -29,6 +29,17 @@ def test_prewarming_prompts_are_catalog_messages() -> None:
     assert set(SUGGESTED_CHAT_PROMPTS) <= catalog_messages
 
 
+def test_live_news_card_requires_completed_survey() -> None:
+    card = next(
+        card for card in CHAT_CARDS if card.card_id == "live_news_event_strategy"
+    )
+
+    assert [condition.value for condition in card.conditions] == ["requires_survey"]
+    plan = plan_question(card.message)
+    assert plan.intent == ChatIntent.NEWS
+    assert plan.requests_event_strategy is True
+
+
 def test_cards_endpoint_returns_static_catalog() -> None:
     with TestClient(app) as client:
         response = client.get("/chat/cards")

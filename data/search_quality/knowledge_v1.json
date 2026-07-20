@@ -24,7 +24,7 @@
     {
       "id": "dc-employer-contribution",
       "query": "DC형 회사 부담금",
-      "expected_source_url": "project://docs/20_리서치/연금_기초.md",
+      "expected_source_url": "project://docs/40_규제/퇴직연금_미납부담금_보호.md",
       "required_content_terms": ["DC", "회사", "부담금"]
     },
     {
@@ -62,7 +62,7 @@
     {
       "id": "dc-statement-notice",
       "query": "DC 운용현황 통지",
-      "expected_source_url": "project://docs/20_리서치/연금_기초.md",
+      "expected_source_url": "project://docs/40_규제/퇴직연금_가입자교육.md",
       "required_content_terms": ["DC", "운용현황", "통지"]
     },
     {

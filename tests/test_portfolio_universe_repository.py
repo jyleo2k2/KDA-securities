@@ -60,6 +60,7 @@ def test_repository_prefers_kis_adjusted_close_and_keeps_253_rows(tmp_path) -> N
 
     assert len(repository.histories["069500"]) == 253
     assert repository.history_sources == {"069500": "kis_adjusted_close"}
+    assert repository.latest_history_as_of == max(repository.histories["069500"])
     assert repository.history_source_counts == {"kis_adjusted_close": 1}
 
 
