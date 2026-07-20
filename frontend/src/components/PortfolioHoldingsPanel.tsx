@@ -5,6 +5,7 @@ import type {
   CompletedSurveyProfile,
   EducationalPortfolioEvaluation,
   EducationalPortfolioInput,
+  PortfolioPlanningEvaluation,
   PortfolioRiskEvaluation,
 } from "../api/types";
 
@@ -112,6 +113,72 @@ function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
       </div>
       <p className="portfolio-risk-note">
         위 과거 지표는 제안 목표비중을 고정해 측정한 위험 참고치이며 수익률 예측이 아닙니다. 스트레스 값도 발생확률이나 미래 손실 예측이 아닌 교육용 정책 시나리오입니다.
+      </p>
+    </section>
+  );
+}
+
+function PortfolioPlanningReview({
+  planning,
+}: {
+  planning: PortfolioPlanningEvaluation;
+}) {
+  return (
+    <section className="portfolio-planning-review" aria-labelledby="portfolio-planning-title">
+      <header>
+        <span>승인된 교육용 계획가정</span>
+        <h4 id="portfolio-planning-title">장기 계획수익률 가정 근거</h4>
+        <p>
+          정책 {planning.cma_policy_id} · CMA {planning.cma_source_horizon_min_years}~{planning.cma_source_horizon_max_years}년 기준
+          {planning.annual_review_required ? " · 매년 재검토" : ""}
+        </p>
+      </header>
+
+      <div className="portfolio-planning-metrics">
+        <div><span>기준 계획가정</span><strong>{optionalPercent(planning.base_planning_return_percent)}</strong><small>CMA·비용 반영</small></div>
+        <div><span>보수 계획가정</span><strong>{optionalPercent(planning.conservative_planning_return_percent)}</strong><small>불확실성 추가 할인</small></div>
+        <div><span>비용 차감 전</span><strong>{optionalPercent(planning.gross_planning_return_percent)}</strong><small>불확실성 반영</small></div>
+        <div><span>비용 차감 후</span><strong>{optionalPercent(planning.net_planning_return_percent)}</strong><small>연간 비용까지 차감</small></div>
+      </div>
+
+      <div className="portfolio-planning-table-wrap">
+        <table className="portfolio-planning-table">
+          <thead>
+            <tr>
+              <th>ETF</th>
+              <th>목표비중</th>
+              <th>CMA</th>
+              <th>불확실성</th>
+              <th>연간 비용</th>
+            </tr>
+          </thead>
+          <tbody>
+            {planning.components.map((component) => (
+              <tr key={component.isu_code}>
+                <th>{component.isu_name}<small>{component.isu_code}{component.proxy_used ? " · 대체 CMA" : ""}</small></th>
+                <td>{percent(component.target_percent)}</td>
+                <td>{percent(component.cma_percent)}</td>
+                <td>-{percent(component.uncertainty_discount_percent)}</td>
+                <td>-{percent(component.annual_cost_drag_percent)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="planning-source-chips" aria-label="장기 계획가정 출처">
+        {planning.sources.map((source) => (
+          /^https?:\/\//.test(source.reference) ? (
+            <a href={source.reference} target="_blank" rel="noreferrer" key={`${source.label}-${source.reference}`}>
+              {source.label} · {dateText(source.as_of)}
+            </a>
+          ) : (
+            <span key={`${source.label}-${source.reference}`}>{source.label} · {dateText(source.as_of)}</span>
+          )
+        ))}
+      </div>
+      <p className="portfolio-planning-note">
+        엔진 산출 커버리지 {percent(planning.coverage_weight_percent)} · {planning.historical_performance_used ? "과거 수익률 사용" : "과거 수익률 미사용"} · {planning.is_forecast ? "예측값" : "미래 수익률 예측이 아닙니다"}. 위험·스트레스는 위 카드에서 별도로 확인하세요.
       </p>
     </section>
   );
@@ -372,6 +439,7 @@ export function EducationalPortfolioReview({
       </div>
 
       <PortfolioRiskReview risk={evaluation.portfolio_risk} />
+      <PortfolioPlanningReview planning={evaluation.planning_return} />
 
       {Number(rebalancing.unclassified_holding_amount_krw) > 0 && (
         <p className="portfolio-review-warning">

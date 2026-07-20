@@ -122,7 +122,55 @@ describe("EducationalPortfolioReview", () => {
         sources: [],
         warnings: [],
       },
-      planning_return: {},
+      planning_return: {
+        engine_name: "portfolio_long_term_planning_return",
+        engine_version: "test",
+        policy_version: "test",
+        cma_policy_id: "jpm_2026_usd_educational_v1",
+        cma_policy_status: "approved_for_educational_planning_only",
+        usage_label: "annualized_long_term_planning_assumption_not_forecast",
+        retirement_start_age: 60,
+        portfolio_horizon_years: 25,
+        cma_source_horizon_min_years: 10,
+        cma_source_horizon_max_years: 15,
+        annual_review_required: true,
+        coverage_weight_percent: "45.0000",
+        gross_planning_return_percent: "6.3000",
+        net_planning_return_percent: "6.2000",
+        conservative_planning_return_percent: "6.2000",
+        base_planning_return_percent: "6.7000",
+        is_forecast: false,
+        historical_performance_used: false,
+        risk_adjustment_included: false,
+        components: [{
+          isu_code: "069500",
+          isu_name: "KODEX 200",
+          sleeve: "core_equity",
+          target_percent: "45.0000",
+          cma_assumption_code: "us_large_cap",
+          cma_percent: "6.8000",
+          uncertainty_discount_percent: "0.5000",
+          annual_cost_drag_percent: "0.1000",
+          gross_planning_return_percent: "6.3000",
+          net_planning_return_percent: "6.2000",
+          proxy_used: true,
+          warnings: [],
+        }],
+        sources: [{
+          label: "J.P. Morgan 2026 Long-Term Capital Market Assumptions",
+          reference: "https://example.com/cma",
+          as_of: "2025-09-30",
+        }, {
+          label: "연금 코파일럿 CMA 매핑·불확실성 할인 정책",
+          reference: "backend/app/engine/educational_portfolio.py",
+          as_of: "2026-07-16",
+        }, {
+          label: "계좌별 ETF 비용 마스터",
+          reference: "data/cache/returns",
+          as_of: "2026-07-16",
+        }],
+        warnings: [],
+      },
       rebalancing: {
         status: "calculated",
         drift_threshold_percent_points: "5.0000",
@@ -159,6 +207,14 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.getByText("주식시장 급락")).toBeInTheDocument();
     expect(screen.getByText("-18.5%")).toBeInTheDocument();
     expect(screen.getByText(/수익률 예측이 아닙니다/)).toBeInTheDocument();
+    expect(screen.getByText("장기 계획수익률 가정 근거")).toBeInTheDocument();
+    expect(screen.getByText("6.7%")).toBeInTheDocument();
+    expect(screen.getAllByText("6.2%")).toHaveLength(2);
+    expect(screen.getByText(/대체 CMA/)).toBeInTheDocument();
+    expect(screen.getByText("-0.5%")).toBeInTheDocument();
+    expect(screen.getByText("-0.1%")).toBeInTheDocument();
+    expect(screen.getByText(/과거 수익률 미사용/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /J.P. Morgan 2026/ })).toHaveAttribute("href", "https://example.com/cma");
 
     rerender(<EducationalPortfolioReview evaluation={{
       ...evaluation,
