@@ -36,7 +36,7 @@ from ..retrieval.knowledge_policy import (
     contains_unsafe_rag_content,
 )
 from ..retrieval.repository import KnowledgeMatch, KnowledgeSearch, NewsMatch
-from .cards import build_suggested_follow_ups
+from .handlers.cards import with_suggested_follow_ups
 from .handlers._shared import blocked_response
 from .disclosures import ProviderDisclosure
 from .live_news import (
@@ -1090,9 +1090,7 @@ class ChatService:
         response = self._with_context(
             self._attach_visualizations(response), original_request, resolved_plan
         )
-        return response.model_copy(
-            update={"suggested_follow_ups": build_suggested_follow_ups(response)}
-        )
+        return with_suggested_follow_ups(response)
 
     def _etf_theme_response(
         self,
