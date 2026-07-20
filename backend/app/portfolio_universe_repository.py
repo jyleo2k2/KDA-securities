@@ -36,6 +36,9 @@ class PortfolioUniverseRepository:
             (max(history) for history in histories.values() if history),
             default=as_of,
         )
+        self.score_cache: dict[
+            tuple[str, tuple[str, ...]], list[tuple[dict[str, Any], Any]]
+        ] = {}
         self.source_path = source_path
 
     @classmethod

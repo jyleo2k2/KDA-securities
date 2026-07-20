@@ -157,6 +157,8 @@ def test_candidate_selection_calculates_each_daily_return_series_once(
     original_correlation = (
         portfolio_module._calculate_return_correlation_from_returns
     )
+    original_score = portfolio_module._score_candidates
+    score_calls: Counter[tuple[str, ...]] = Counter()
 
     def counted(history):
         calls[id(history)] += 1
@@ -166,30 +168,48 @@ def test_candidate_selection_calculates_each_daily_return_series_once(
         correlation_calls[tuple(sorted((id(first), id(second))))] += 1
         return original_correlation(first, second)
 
+    def counted_score(pool):
+        score_calls[tuple(product["isu_code"] for product in pool)] += 1
+        return original_score(pool)
+
     monkeypatch.setattr(portfolio_module, "_daily_returns", counted)
     monkeypatch.setattr(
         portfolio_module,
         "_calculate_return_correlation_from_returns",
         counted_correlation,
     )
+    monkeypatch.setattr(portfolio_module, "_score_candidates", counted_score)
 
-    select_educational_candidates(
-        products=products,
-        histories=histories,
-        sleeves={
+    selection_args = {
+        "products": products,
+        "histories": histories,
+        "sleeves": {
             "core_equity": Decimal("55"),
             "tactical": Decimal("15"),
             "real_assets": Decimal("0"),
             "fixed_income": Decimal("25"),
             "cash": Decimal("5"),
         },
-        request=_request(),
+        "request": _request(),
+    }
+    score_cache = {}
+    select_educational_candidates(
+        **selection_args,
+        score_cache=score_cache,
     )
 
     assert calls
     assert max(calls.values()) == 1
     assert correlation_calls
     assert max(correlation_calls.values()) == 1
+
+    select_educational_candidates(
+        **selection_args,
+        score_cache=score_cache,
+    )
+
+    assert score_calls
+    assert max(score_calls.values()) == 1
 
 
 def test_large_tactical_sleeve_is_split_across_two_candidates() -> None:

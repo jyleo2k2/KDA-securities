@@ -985,6 +985,9 @@ def select_educational_candidates(
     sleeves: dict[str, Decimal],
     request: EducationalPortfolioInput,
     history_sources: dict[str, str] | None = None,
+    score_cache: dict[
+        tuple[str, tuple[str, ...]], list[tuple[dict[str, Any], CandidateQuality]]
+    ] | None = None,
 ) -> list[EducationalEtfCandidate]:
     history_sources = history_sources or {}
     counts = _candidate_counts(sleeves, request.max_etfs)
@@ -1027,7 +1030,14 @@ def select_educational_candidates(
             ):
                 continue
             pool.append(product)
-        ranked = _score_candidates(pool)
+        cache_key = (sleeve, tuple(sorted(product["isu_code"] for product in pool)))
+        if score_cache is None:
+            ranked = _score_candidates(pool)
+        else:
+            ranked = score_cache.get(cache_key)
+            if ranked is None:
+                ranked = _score_candidates(pool)
+                score_cache[cache_key] = ranked
         for _ in range(counts[sleeve]):
             remaining = [item for item in ranked if item not in selected]
             if not remaining:
@@ -1215,6 +1225,9 @@ def build_educational_portfolio(
     source_as_of: date,
     history_sources: dict[str, str] | None = None,
     history_as_of: date | None = None,
+    score_cache: dict[
+        tuple[str, tuple[str, ...]], list[tuple[dict[str, Any], CandidateQuality]]
+    ] | None = None,
 ) -> EducationalPortfolioEvaluation:
     sleeves, policy = calculate_target_allocation(request)
     candidates = select_educational_candidates(
@@ -1223,6 +1236,7 @@ def build_educational_portfolio(
         sleeves=sleeves,
         request=request,
         history_sources=history_sources,
+        score_cache=score_cache,
     )
     products_by_code = {product["isu_code"]: product for product in products}
     horizon_years = request.retirement_start_age - request.age

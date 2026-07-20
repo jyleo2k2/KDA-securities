@@ -159,6 +159,7 @@ def educational_portfolio(
         source_as_of=repository.as_of,
         history_sources=repository.history_sources,
         history_as_of=repository.latest_history_as_of,
+        score_cache=repository.score_cache,
     )
 
 
