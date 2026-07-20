@@ -31,6 +31,7 @@ import { ChatConversation } from "../components/ChatConversation";
 import { ChatSessionList } from "../components/ChatSessionList";
 import { ChatRecommendations } from "../components/ChatRecommendations";
 import { ChatVisualizations } from "../components/ChatVisualizations";
+import { ChatScenarioSelector } from "../components/ChatScenarioSelector";
 import type {
   AnswerBlock,
   CompletedSurveyProfile,
@@ -1396,32 +1397,13 @@ export function GuidePage({
           {(historyError || auth.error) && <p className="auth-error">{historyError || auth.error}</p>}
         </div>
 
-        <div className="sidebar-section">
-          <p className="sidebar-label">목계좌 시나리오</p>
-          {userContext ? (
-            <div className="user-context-card">
-              <strong>{userContext.nickname}</strong>
-              <span>{userContext.scenario_name} · 가상 목데이터</span>
-              <small>
-                총 연금자산 {Number(userContext.total_pension_balance_krw).toLocaleString("ko-KR")}원
-                <br />기준일 {userContext.as_of_date}
-              </small>
-            </div>
-          ) : (
-            <div className="scenario-list">
-            <button className={!selectedScenario ? "active" : ""} type="button" onClick={() => setSelectedScenario("")}>
-              <span className="scenario-icon"><Icon name="book" size={17} /></span>
-              <span><strong>선택 안 함</strong><small>일반 제도 질문</small></span>
-            </button>
-            {scenarios.map((scenario) => (
-              <button className={selectedScenario === scenario.code ? "active" : ""} type="button" key={scenario.code} onClick={() => { setSelectedScenario(scenario.code); setIsSidebarOpen(false); }}>
-                <span className="scenario-icon"><Icon name="database" size={17} /></span>
-                <span><strong>{scenario.name}</strong><small>{scenario.age_band} · {scenario.investment_horizon_years}년 · {scenario.risk_profile}</small></span>
-              </button>
-            ))}
-            </div>
-          )}
-        </div>
+        <ChatScenarioSelector
+          scenarios={scenarios}
+          selectedScenario={selectedScenario}
+          userContext={userContext}
+          onSelect={(code) => { setSelectedScenario(code); setIsSidebarOpen(false); }}
+          renderIcon={(name) => <Icon name={name} size={17} />}
+        />
 
         {!userContext && <details className="tax-input-panel">
           <summary>세액공제·중도해지 선택 입력</summary>
