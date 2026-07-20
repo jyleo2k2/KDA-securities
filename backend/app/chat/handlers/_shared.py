@@ -21,6 +21,8 @@ from ..live_news import (
     LiveMarketNewsSnapshot,
 )
 from ..models import (
+    ChatIntent,
+    ChatRequest,
     DataBoundary,
     NumericEvidence,
     SourceEvidence,
@@ -95,6 +97,22 @@ _SELECTED_SCENARIO_DIAGNOSIS_TERMS = re.compile(
     r"|지금\s*(?:뭘|무엇을).{0,20}(?:먼저\s*)?확인"
     r"|(?:현재|보유).{0,20}(?:ETF|포트폴리오|리밸런싱|운용\s*전략)"
 )
+
+
+def is_selected_scenario_diagnosis_request(
+    request: ChatRequest,
+    plan: QueryPlan,
+) -> bool:
+    return (
+        request.scenario_code is not None
+        and plan.intent
+        in (
+            ChatIntent.ACCOUNT_RULE,
+            ChatIntent.EDUCATIONAL_PORTFOLIO,
+            ChatIntent.OUT_OF_SCOPE,
+        )
+        and _SELECTED_SCENARIO_DIAGNOSIS_TERMS.search(request.message) is not None
+    )
 _ASSET_CLASS_LABELS = {
     "deposit": "원리금보장형 자산",
     "cash": "현금성 자산",
