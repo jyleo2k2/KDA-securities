@@ -1,4 +1,3 @@
-import statistics
 from bisect import bisect_left, bisect_right
 from collections import defaultdict
 from datetime import date
@@ -333,12 +332,6 @@ def _stress_results(
         )
         for code, shocks in STRESS_POLICY.items()
     ]
-
-
-def _quantile(values: list[Decimal], probability: Decimal) -> Decimal:
-    if probability != Decimal("0.05"):
-        raise ValueError("only the 5th percentile is supported")
-    return statistics.quantiles(values, n=20, method="inclusive")[0]
 
 
 def calculate_portfolio_risk(
