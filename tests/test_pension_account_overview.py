@@ -39,6 +39,20 @@ def test_specific_risk_rule_does_not_expand_to_overview() -> None:
     assert plan.account_rule_topic is None
 
 
+def test_recommended_account_comparison_uses_deterministic_overview() -> None:
+    message = "DC형, IRP, 연금저축은 뭐가 달라?"
+    plan = plan_question(message)
+    response = _service().ask(ChatRequest(message=message))
+    section_text = "\n".join(section.content for section in response.sections)
+
+    assert plan.intent is ChatIntent.ACCOUNT_RULE
+    assert plan.account_rule_topic is AccountRuleTopic.PENSION_ACCOUNT_OVERVIEW
+    assert response.data_mode == "verified_pension_account_overview"
+    assert "IRP" in section_text
+    assert "원칙적으로 적립금의 70%까지" in section_text
+    assert response.sources
+
+
 @pytest.mark.parametrize(
     ("message", "topic"),
     (
@@ -50,6 +64,10 @@ def test_specific_risk_rule_does_not_expand_to_overview() -> None:
         ),
         ("IRP를 중도인출하면 어떻게 돼?", AccountRuleTopic.NON_PENSION_WITHDRAWAL),
         ("연금계좌를 해지하면?", AccountRuleTopic.NON_PENSION_WITHDRAWAL),
+        (
+            "연금계좌를 중도에 해지하면 어떻게 돼?",
+            AccountRuleTopic.NON_PENSION_WITHDRAWAL,
+        ),
         ("IRP 중도해지 세금은?", AccountRuleTopic.NON_PENSION_WITHDRAWAL),
     ),
 )

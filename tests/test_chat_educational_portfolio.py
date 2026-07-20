@@ -193,6 +193,30 @@ def test_chat_does_not_collect_age_when_survey_is_missing() -> None:
     assert "수령 개시 나이" not in response.answer
 
 
+def test_custom_portfolio_card_uses_completed_survey_age_and_profile() -> None:
+    response = _service().ask(
+        ChatRequest(
+            message="내 상황에 맞는 연금저축전략을 알려줘.",
+            survey_profile=_completed_survey(),
+        )
+    )
+
+    assert response.data_mode == "engine_educational_planning"
+    assert response.educational_portfolio_evaluation is not None
+    evaluated = response.educational_portfolio_evaluation.evaluated_input
+    assert evaluated.age == 25
+    assert evaluated.risk_profile == EducationalRiskProfile.RISK_NEUTRAL
+
+
+def test_custom_portfolio_card_requests_survey_when_profile_is_missing() -> None:
+    response = _service().ask(
+        ChatRequest(message="내 상황에 맞는 연금저축전략을 알려줘.")
+    )
+
+    assert response.data_mode == "survey_required"
+    assert response.educational_portfolio_evaluation is None
+
+
 def test_chat_explains_available_risk_profiles_before_selection() -> None:
     messages = (
         "투자성향에 대해 뭐가 있어?",

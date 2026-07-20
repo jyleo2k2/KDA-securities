@@ -52,6 +52,53 @@ const CHAT_SESSION: ChatSessionSummary = {
   created_at: "2026-07-19T00:00:00Z",
   updated_at: "2026-07-19T00:00:00Z",
 };
+const RECOMMENDED_CHAT_CARDS: ChatCard[] = [
+  {
+    card_id: "news_market",
+    title: "오늘 증시 뉴스",
+    message: "오늘 증시 뉴스 알려줘.",
+    intent: "news",
+    conditions: [],
+    priority: 10,
+    preview: null,
+  },
+  {
+    card_id: "tax_credit",
+    title: "연금세액공제",
+    message: "올해 받을 수 있는 연금세액공제가 궁금해.",
+    intent: "pension_tax",
+    conditions: [],
+    priority: 20,
+    preview: null,
+  },
+  {
+    card_id: "withdrawal_tax",
+    title: "중도해지 세금",
+    message: "연금계좌를 중도에 해지하면 어떻게 돼?",
+    intent: "account_rule",
+    conditions: [],
+    priority: 30,
+    preview: null,
+  },
+  {
+    card_id: "account_diff",
+    title: "연금계좌별 차이",
+    message: "DC형, IRP, 연금저축은 뭐가 달라?",
+    intent: "account_rule",
+    conditions: [],
+    priority: 40,
+    preview: null,
+  },
+  {
+    card_id: "edu_portfolio",
+    title: "맞춤형 포트폴리오",
+    message: "내 상황에 맞는 연금저축전략을 알려줘.",
+    intent: "educational_portfolio",
+    conditions: [],
+    priority: 50,
+    preview: null,
+  },
+];
 const THEME_RESPONSE: ChatResponse = {
   intent: "etf_theme",
   answer: "조선 테마를 초보자도 이해하기 쉽게 설명했습니다.",
@@ -90,6 +137,92 @@ const THEME_RESPONSE: ChatResponse = {
   engine_results: [],
   limitations: [],
   conversation_context: null,
+};
+
+const REPRESENTATIVE_COMPANY_RESPONSE: ChatResponse = {
+  ...THEME_RESPONSE,
+  answer: "반도체 테마를 이해하기 위한 대표기업 3곳입니다.",
+  data_mode: "theme_representative_companies",
+  sections: [
+    {
+      kind: "service_explanation",
+      title: "반도체 테마 대표기업 3곳",
+      content: "테마의 서로 다른 역할을 이해하기 위한 대표 사례입니다.",
+      evidence_ids: [],
+      blocks: [
+        {
+          kind: "callout",
+          title: "Samsung Electronics",
+          text: "테마에서의 역할: 메모리 반도체를 만들고 시스템반도체 생산도 담당합니다. 메모리와 파운드리를 함께 보유해 공급망의 여러 단계를 보여줍니다.\n\n쉽게 말하면: 데이터를 저장하는 메모리 칩을 대량 생산하고 다른 회사가 설계한 칩도 대신 만들어 주는 회사입니다.",
+          items: [],
+          headers: [],
+          rows: [],
+        },
+        {
+          kind: "callout",
+          title: "NVIDIA",
+          text: "테마에서의 역할: AI 연산용 칩을 설계하고 관련 소프트웨어를 제공합니다. AI 반도체 수요를 보여주는 대표 사례입니다.\n\n쉽게 말하면: AI 계산을 빠르게 처리하도록 돕는 칩과 프로그램을 만드는 회사입니다.",
+          items: [],
+          headers: [],
+          rows: [],
+        },
+        {
+          kind: "callout",
+          title: "TSMC",
+          text: "테마에서의 역할: 여러 반도체 설계회사의 칩을 위탁 생산합니다. 설계와 생산이 나뉘는 구조를 보여주는 대표 사례입니다.\n\n쉽게 말하면: 다른 회사가 설계한 반도체를 첨단 공장에서 대신 만들어 주는 회사입니다.",
+          items: [],
+          headers: [],
+          rows: [],
+        },
+      ],
+    },
+  ],
+  suggested_follow_ups: [],
+};
+
+const THEME_CONSIDERATIONS_RESPONSE: ChatResponse = {
+  ...THEME_RESPONSE,
+  answer: "반도체 테마 ETF에 투자할 때의 이점 3개와 위험 3개를 쉽게 정리했습니다.",
+  data_mode: "theme_investment_considerations",
+  sections: [
+    {
+      kind: "service_explanation",
+      title: "반도체 테마 ETF 장단점",
+      content: "이점과 손실 가능성을 키울 수 있는 위험을 같이 확인해 보세요.",
+      evidence_ids: [],
+      blocks: [
+        {
+          kind: "bullets",
+          title: "투자할 때의 이점 3가지",
+          text: "",
+          items: [
+            "인공지능과 데이터센터 성장의 수혜를 받을 수 있습니다.",
+            "반도체 공급망에 분산 투자할 수 있습니다.",
+            "높은 기술력을 갖춘 기업에 접근할 수 있습니다.",
+          ],
+          headers: [],
+          rows: [],
+        },
+        {
+          kind: "bullets",
+          title: "주의할 위험 3가지",
+          text: "",
+          items: [
+            "재고와 설비투자 순환에 따라 실적 변동이 크게 나타날 수 있습니다.",
+            "미세공정 경쟁과 대규모 투자 실패가 기업 수익성을 훼손할 수 있습니다.",
+            "수출규제와 지정학적 공급망 재편의 영향을 크게 받을 수 있습니다.",
+          ],
+          headers: [],
+          rows: [],
+        },
+      ],
+    },
+  ],
+  suggested_follow_ups: [],
+  limitations: [
+    "테마 편입은 상품의 미래 성과를 뜻하지 않습니다.",
+    "수익률을 예측하지 않습니다.",
+  ],
 };
 
 describe("GuidePage chat history deletion", () => {
@@ -302,6 +435,44 @@ describe("GuidePage chat history deletion", () => {
     expect(within(card).getAllByText(/공식 출처/)).toHaveLength(3);
   });
 
+  it("renders only the five requested recommendation cards without spark icons", async () => {
+    vi.mocked(getChatCards).mockResolvedValue({ cards: RECOMMENDED_CHAT_CARDS });
+    render(<GuidePage surveyProfile={null} />);
+
+    const carousel = await screen.findByLabelText("챗봇 추천 질문");
+    const buttons = within(carousel).getAllByRole("button");
+
+    expect(buttons).toHaveLength(5);
+    expect(buttons.map((button) => button.textContent)).toEqual(
+      RECOMMENDED_CHAT_CARDS.map(
+        (card) => `추천 질문${card.title}${card.message}`,
+      ),
+    );
+    expect(carousel.querySelector(".design-prompt-icon")).toBeNull();
+  });
+
+  it.each(RECOMMENDED_CHAT_CARDS)(
+    "sends the exact message when $title is clicked",
+    async (card) => {
+      vi.mocked(getChatCards).mockResolvedValue({ cards: [card] });
+      vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+        response: THEME_RESPONSE,
+        persisted: false,
+        session_id: null,
+      });
+      render(<GuidePage surveyProfile={null} />);
+
+      const carousel = await screen.findByLabelText("챗봇 추천 질문");
+      fireEvent.click(within(carousel).getByRole("button", { name: new RegExp(card.title) }));
+
+      await waitFor(() => {
+        expect(vi.mocked(sendAuthenticatedChatStream).mock.calls[0]?.[0]).toBe(
+          card.message,
+        );
+      });
+    },
+  );
+
   it("separates question and ETF theme cards on the empty chat screen", async () => {
     render(<GuidePage surveyProfile={null} />);
 
@@ -396,6 +567,89 @@ describe("GuidePage chat history deletion", () => {
     expect(vi.mocked(sendAuthenticatedChatStream).mock.calls[0]?.[0]).toBe(
       "조선 테마 대표기업은 뭐야?",
     );
+  });
+
+  it("renders representative companies as two readable labeled paragraphs", async () => {
+    vi.mocked(getStoredChatMessages).mockResolvedValue([
+      {
+        message_id: "company-question",
+        question_message_id: null,
+        role: "user",
+        content: "반도체 테마 대표기업은 뭐야?",
+        response: null,
+        model_name: null,
+        created_at: "2026-07-20T00:00:00Z",
+        evidence: [],
+      },
+      {
+        message_id: "company-answer",
+        question_message_id: "company-question",
+        role: "assistant",
+        content: REPRESENTATIVE_COMPANY_RESPONSE.answer,
+        response: REPRESENTATIVE_COMPANY_RESPONSE,
+        model_name: null,
+        created_at: "2026-07-20T00:00:01Z",
+        evidence: [],
+      },
+    ]);
+    render(<GuidePage surveyProfile={null} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
+    const companyName = await screen.findByText("Samsung Electronics");
+    const companyCard = companyName.closest(".answer-callout");
+
+    expect(companyName.tagName).toBe("STRONG");
+    expect(companyCard).not.toBeNull();
+    const roleLabel = within(companyCard as HTMLElement).getByText("테마에서의 역할:");
+    const plainLabel = within(companyCard as HTMLElement).getByText("쉽게 말하면:");
+    expect(roleLabel.tagName).toBe("STRONG");
+    expect(plainLabel.tagName).toBe("STRONG");
+    expect(companyCard?.querySelectorAll("p")).toHaveLength(2);
+    expect(within(companyCard as HTMLElement).queryByText("대표 사례로 보는 이유:"))
+      .not.toBeInTheDocument();
+  });
+
+  it("keeps every ETF theme paragraph as a separate uniformly spaced item", async () => {
+    vi.mocked(getStoredChatMessages).mockResolvedValue([
+      {
+        message_id: "considerations-question",
+        question_message_id: null,
+        role: "user",
+        content: "반도체 테마 ETF 장단점을 알려줘",
+        response: null,
+        model_name: null,
+        created_at: "2026-07-20T00:00:00Z",
+        evidence: [],
+      },
+      {
+        message_id: "considerations-answer",
+        question_message_id: "considerations-question",
+        role: "assistant",
+        content: THEME_CONSIDERATIONS_RESPONSE.answer,
+        response: THEME_CONSIDERATIONS_RESPONSE,
+        model_name: null,
+        created_at: "2026-07-20T00:00:01Z",
+        evidence: [],
+      },
+    ]);
+    render(<GuidePage surveyProfile={null} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
+    const answerLead = await screen.findByText(THEME_CONSIDERATIONS_RESPONSE.answer);
+    const answerContent = answerLead.closest(".answer-content");
+    const riskHeading = screen.getByText("주의할 위험 3가지");
+    const riskList = riskHeading.parentElement?.querySelector(".answer-bullets");
+    const limitations = answerContent?.querySelectorAll(".limitation-box p");
+
+    expect(answerContent).toHaveClass("theme-answer-content");
+    expect(riskList?.querySelectorAll("li")).toHaveLength(3);
+    expect(within(riskList as HTMLElement).getByText(
+      "미세공정 경쟁과 대규모 투자 실패가 기업 수익성을 훼손할 수 있습니다.",
+    ).tagName).toBe("LI");
+    expect(within(riskList as HTMLElement).getByText(
+      "수출규제와 지정학적 공급망 재편의 영향을 크게 받을 수 있습니다.",
+    ).tagName).toBe("LI");
+    expect(limitations).toHaveLength(2);
   });
 });
 
