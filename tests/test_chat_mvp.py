@@ -1444,20 +1444,22 @@ def test_guard_allows_colloquial_single_syllable_numeral_homographs(
 
 
 @pytest.mark.parametrize(
-    "candidate",
+    ("candidate", "source"),
     (
-        "IRP 일반 위험자산 한도는 칠십 퍼센트입니다.",
-        "한도는 구백만 원입니다.",
-        "적립금은 삼천만 원까지 가능합니다.",
+        (
+            "IRP 일반 위험자산 한도는 칠십 퍼센트입니다.",
+            "IRP 일반 위험자산 한도는 80%입니다.",
+        ),
+        ("한도는 구백만 원입니다.", "IRP 일반 위험자산 한도는 70%입니다."),
+        ("적립금은 삼천만 원까지 가능합니다.", "IRP 일반 위험자산 한도는 70%입니다."),
     ),
 )
 def test_guard_still_rejects_multisyllable_korean_numerals_absent_from_source(
     candidate: str,
+    source: str,
 ) -> None:
     # 두 글자 이상 한글 숫자 조합(칠십·구백만·삼천만)은 일상어와 겹치지 않으므로
     # 원문에 없으면 계속 거부한다 — 오탐 완화가 실제 조작 수치를 놓치지 않는다.
-    source = "IRP 일반 위험자산 한도는 70%입니다."
-
     assert _adds_unverified_content(candidate, source)
 
 
@@ -1715,7 +1717,7 @@ def test_claude_narrator_preserves_sign_and_percent_semantics(
     (
         "앞으로 수익이 오르고 70%는 보장됩니다.",
         "IRP 매수를 추천합니다. 한도는 70%입니다.",
-        "IRP 일반 위험자산 한도는 칠십 퍼센트입니다.",
+        "IRP 일반 위험자산 한도는 팔십 퍼센트입니다.",
     ),
 )
 def test_claude_narrator_rejects_new_investment_claims_and_korean_numbers(
