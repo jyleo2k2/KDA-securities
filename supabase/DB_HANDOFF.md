@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-20 22:14 KST
-> 확인 기준: `신규작업브랜치` / ETF 테마 카탈로그 `2026-07-20.4` 승인 RAG 재적재·검증 장부 115/115건 원격 확인
+> 최종 확인: 2026-07-20 23:50 KST
+> 확인 기준: `profile/assessment-api` / 투자성향 저장·조회 API와 확인 이력 migration 로컬 구현·원격 읽기 재검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -286,6 +286,7 @@ uv run ruff check .
 | DB-10 | main 원격 DB 런타임 회귀 | `LOCAL-VERIFIED` | Auth/RLS·채팅 persist/replay·RAG·뉴스·공시·ETF·NAVER rollback-only SQL E2E 통과 | main 변경 시 재실행 |
 | DB-11 | KRX 전체 ETF 일별 거래량 DB·API 연결 | `REMOTE-APPLIED` | `20260720080955`, 2026-07-14 전체 1,147행·원본 합계 동등성·RLS/GRANT·FastAPI 원격 E2E 확인 | 일일 갱신 자동화와 보존기간은 후속 결정 |
 | DB-12 | ETF 테마 콘텐츠 검증·승인 RAG 연결 | `REMOTE-APPLIED` | `20260720091219`, `.4` 검토·근거 115/115건(`.3` 포함 총 230/230), 승인 문서 15개·활성 임베딩 청크 56/56건 | 적용 파일 수정 금지; 챗봇 화면 E2E·검토기한 만료 전 재검증 |
+| DB-13 | 투자성향 진단 저장·조회 API | `LOCAL-VERIFIED` | POST/GET·24개월 KST 정책·append-only 확인 이력·RLS·소유자 스코프·전체 회귀 통과 | 신규 `20260720144500_add_investment_profile_confirmations.sql` 원격 적용은 이재용 승인 대기 |
 
 ## 13. 미결정 사항
 
@@ -298,6 +299,16 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-20 23:50 KST 투자성향 진단 저장·조회 API
+
+- 작업자/브랜치: Codex / `profile/assessment-api` / `origin/main` `76d286e` 기반 별도 worktree.
+- 원격 읽기 재검증: 프로젝트 `ACTIVE_HEALTHY`, 적용 migration 22개, profile question set/question/option은 1/6/30, assessment/answer는 0/0, 만료일·두 확인 토글 컬럼은 기존 public 스키마에 없음.
+- 로컬 변경: API 전용 wrapper POST/GET, 기존 순수 엔진 결과를 저장하는 소유자 스코프 repository, KST 24개월 유효기간 정책, append-only `investment_profile_confirmations` migration·RLS·소유자 인덱스, REST 계약 문서와 테스트를 추가했다.
+- 원격 적용: 없음. migration `20260720144500_add_investment_profile_confirmations.sql`은 `LOCAL-DRAFT`이며 이재용 승인 전 적용 금지.
+- Advisor: 기존 `auth_leaked_password_protection` WARN과 서버 전용 테이블의 RLS deny-by-default INFO를 재확인했다. 이번 신규 테이블은 RLS SELECT/INSERT 소유자 정책과 authenticated 권한 회수로 별도 노출하지 않는다.
+- 검증: 관련 정책·API·repository·SQL 계약 37 passed, 전체 `uv run pytest` 921 passed·1 skipped, `uv run ruff check .`·`git diff --check` 통과.
+- 다음: commit·push·Draft PR. 원격 migration 적용은 PR과 별도로 이재용 승인 요청.
 
 ### 2026-07-20 22:07 KST ETF 테마 성과 관찰 요인 구체화
 
