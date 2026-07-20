@@ -20,8 +20,6 @@ import {
   getMyPensionContext,
   getScenarios,
   getStoredChatMessages,
-  sendAuthenticatedChatStream,
-  sendChatStream,
 } from "../api/client";
 import { conicGradient } from "../charts";
 import {
@@ -38,7 +36,6 @@ import type {
   ChatVisualization,
   DataBoundary,
   DemoUserFinancialContext,
-  EducationalPortfolioInput,
   IncomeBasis,
   IrpDeferredIncomeStatus,
   IsaTransferEligibilityStatus,
@@ -48,16 +45,7 @@ import type {
   WithdrawalReason,
 } from "../api/types";
 import { useSupabaseAuth } from "../auth/useSupabaseAuth";
-
-interface ConversationMessage {
-  id: string;
-  role: "user" | "assistant";
-  text: string;
-  response?: ChatResponse;
-  failedPrompt?: string;
-  failedEducationalPortfolio?: EducationalPortfolioInput;
-  createdAt: Date;
-}
+import { useChatStream, type ConversationMessage } from "../hooks/useChatStream";
 
 const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   account_rule: "계좌 규칙",
@@ -82,7 +70,6 @@ const BOUNDARY_LABELS: Record<DataBoundary, string> = {
   unavailable: "미지원",
 };
 
-const PENSION_TAX_PROMPT = /세액\s*공제|중도\s*해지|연금\s*외\s*수령|16\.5\s*%/;
 const DEFAULT_TYPING_INTERVAL_MS = 50;
 
 export const ETF_THEME_CARDS = [
@@ -825,7 +812,6 @@ export function GuidePage({
   const auth = useSupabaseAuth();
   const accessToken = auth.session?.access_token;
   const authenticatedUserId = auth.session?.user.id ?? null;
-  const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [input, setInput] = useState("");
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
   const [chatCards, setChatCards] = useState<ChatCard[]>([]);
@@ -833,10 +819,6 @@ export function GuidePage({
   const [selectedScenario, setSelectedScenario] = useState(initialScenarioCode ?? "");
   const [userContext, setUserContext] =
     useState<DemoUserFinancialContext | null>(null);
-  const [isSending, setIsSending] = useState(false);
-  const [sendingStage, setSendingStage] = useState("답변을 준비하고 있습니다.");
-  const [streamingAnswer, setStreamingAnswer] = useState("");
-  const [streamingAnswerIsNarration, setStreamingAnswerIsNarration] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [serverReady, setServerReady] = useState<boolean | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
@@ -882,7 +864,6 @@ export function GuidePage({
   const authGenerationRef = useRef(0);
   const conversationGenerationRef = useRef(0);
   const sessionListGenerationRef = useRef(0);
-  const sendingRef = useRef(false);
 
   const authStatusLabel = auth.loading
     ? "로그인 확인 중"
@@ -930,15 +911,6 @@ export function GuidePage({
     hasSurvey: surveyProfile !== null,
     hasAuth: auth.session !== null,
   }), [auth.session, chatCards, selectedScenario, surveyProfile, userContext?.scenario_code]);
-
-  const usedFollowUpMessages = useMemo(
-    () => new Set(
-      messages
-        .filter((message) => message.role === "user")
-        .map((message) => message.text.trim()),
-    ),
-    [messages],
-  );
 
   const pensionTaxInput = useMemo<PensionTaxScenarioInput | undefined>(() => {
     if (!pensionSavingsBalance.trim() || !irpBalance.trim()) return undefined;
@@ -995,6 +967,48 @@ export function GuidePage({
     withdrawalReason,
   ]);
 
+  const {
+    isSending,
+    messages,
+    resetStream,
+    sendingStage,
+    setMessages,
+    streamingAnswer,
+    streamingAnswerIsNarration,
+    submitPrompt,
+  } = useChatStream({
+    accessToken,
+    authenticatedUserId,
+    activeSessionId,
+    conversationContext,
+    conversationGenerationRef,
+    deletingSessionId,
+    pensionTaxInput,
+    selectedScenario,
+    surveyProfile,
+    isCurrentOperation,
+    onAuthenticatedError: setHistoryError,
+    onConversationContext: setConversationContext,
+    onComplete: () => textareaRef.current?.focus(),
+    onInputClear: () => setInput(""),
+    onPersistedSession: (sessionId, token, userId) => {
+      setActiveSessionId(sessionId);
+      void refreshChatSessions(token, userId);
+    },
+    onServerReady: setServerReady,
+    onStart: () => setHistoryLoading(false),
+    getAuthGeneration: () => authGenerationRef.current,
+  });
+
+  const usedFollowUpMessages = useMemo(
+    () => new Set(
+      messages
+        .filter((message) => message.role === "user")
+        .map((message) => message.text.trim()),
+    ),
+    [messages],
+  );
+
   useEffect(() => {
     // 백엔드는 임베더 로딩 때문에 프론트보다 늦게 뜨고, --reload로 잠깐 끊기기도
     // 한다. 한 번 실패하고 포기하면 서버가 살아나도 "API 연결 필요"로 굳으므로
@@ -1037,8 +1051,7 @@ export function GuidePage({
     if (authChanged) {
       authGenerationRef.current += 1;
       sessionListGenerationRef.current += 1;
-      sendingRef.current = false;
-      setIsSending(false);
+      resetStream();
       setHistoryLoading(false);
       setDeletingSessionId(null);
     }
@@ -1123,13 +1136,12 @@ export function GuidePage({
 
   function startNewChat() {
     conversationGenerationRef.current += 1;
-    sendingRef.current = false;
+    resetStream();
     setMessages([]);
     setActiveSessionId(null);
     setConversationContext(null);
     setHistoryError(null);
     setHistoryLoading(false);
-    setIsSending(false);
     setIsSidebarOpen(false);
   }
 
@@ -1153,7 +1165,7 @@ export function GuidePage({
     if (authSubmitting) return;
     authGenerationRef.current += 1;
     conversationGenerationRef.current += 1;
-    sendingRef.current = false;
+    resetStream();
     setAuthSubmitting(true);
       setMessages([]);
       setChatSessions([]);
@@ -1162,7 +1174,6 @@ export function GuidePage({
       setUserContext(null);
     setHistoryError(null);
     setHistoryLoading(false);
-    setIsSending(false);
     try {
       await auth.signOut();
     } catch (error) {
@@ -1178,8 +1189,7 @@ export function GuidePage({
     const requestUserId = authenticatedUserId;
     const authGeneration = authGenerationRef.current;
     const conversationGeneration = ++conversationGenerationRef.current;
-    sendingRef.current = false;
-    setIsSending(false);
+    resetStream();
     setHistoryLoading(true);
     setHistoryError(null);
     try {
@@ -1298,150 +1308,6 @@ export function GuidePage({
         setDeletingSessionId((current) => (
           current === session.session_id ? null : current
         ));
-      }
-    }
-  }
-
-  async function submitPrompt(
-    prompt: string,
-    educationalPortfolio?: EducationalPortfolioInput,
-  ) {
-    const normalized = prompt.trim();
-    if (normalized.length < 2 || sendingRef.current || deletingSessionId) return;
-
-    const requestToken = accessToken ?? null;
-    const requestUserId = authenticatedUserId;
-    const authGeneration = authGenerationRef.current;
-    const conversationGeneration = ++conversationGenerationRef.current;
-    sendingRef.current = true;
-    setHistoryLoading(false);
-
-    const userMessage: ConversationMessage = {
-      id: crypto.randomUUID(),
-      role: "user",
-      text: normalized,
-      createdAt: new Date(),
-    };
-    const idempotencyKey = crypto.randomUUID();
-    setMessages((current) => [...current, userMessage]);
-    setInput("");
-    setIsSending(true);
-    setSendingStage("질문을 확인하고 있습니다.");
-    setStreamingAnswer("");
-    setStreamingAnswerIsNarration(false);
-
-    const appendAnswerDelta = (delta: string) => {
-      if (isCurrentOperation(
-        authGeneration,
-        requestUserId,
-        requestToken,
-        conversationGeneration,
-      )) setStreamingAnswer((current) => current + delta);
-    };
-    const replaceWithNarration = (answer: string) => {
-      if (isCurrentOperation(
-        authGeneration,
-        requestUserId,
-        requestToken,
-        conversationGeneration,
-      )) {
-        setStreamingAnswerIsNarration(true);
-        setStreamingAnswer(answer);
-      }
-    };
-
-    const taxInput = !requestToken && PENSION_TAX_PROMPT.test(normalized)
-      ? pensionTaxInput
-      : undefined;
-
-    try {
-      const streamed = requestToken
-        ? await sendAuthenticatedChatStream(
-            normalized,
-            requestToken,
-            setSendingStage,
-            appendAnswerDelta,
-            replaceWithNarration,
-            undefined,
-            activeSessionId || undefined,
-            idempotencyKey,
-            conversationContext,
-            taxInput,
-            surveyProfile,
-            educationalPortfolio,
-          )
-        : await sendChatStream(
-            normalized,
-            setSendingStage,
-            appendAnswerDelta,
-            replaceWithNarration,
-            {
-              scenarioCode: selectedScenario || undefined,
-              conversationContext,
-              pensionTax: taxInput,
-              surveyProfile,
-              educationalPortfolio,
-            },
-          );
-      const persisted = streamed.persisted ? streamed : null;
-      const response = streamed.response;
-      if (!isCurrentOperation(
-        authGeneration,
-        requestUserId,
-        requestToken,
-        conversationGeneration,
-      )) return;
-      setMessages((current) => [...current, {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        text: response.answer,
-        response,
-        createdAt: new Date(),
-      }]);
-      setConversationContext(
-        response.conversation_context ?? conversationContext,
-      );
-      if (persisted?.persisted && persisted.session_id) {
-        setActiveSessionId(persisted.session_id);
-        void refreshChatSessions(requestToken!, requestUserId!);
-      }
-      setServerReady(true);
-    } catch (error) {
-      if (!isCurrentOperation(
-        authGeneration,
-        requestUserId,
-        requestToken,
-        conversationGeneration,
-      )) return;
-      const message = requestToken
-        ? authenticatedErrorMessage(error)
-        : error instanceof Error
-          ? error.message
-          : "서버 연결을 확인해 주세요.";
-      if (requestToken) setHistoryError(message);
-      setMessages((current) => [...current, {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        text: message,
-        failedPrompt: normalized,
-        failedEducationalPortfolio: educationalPortfolio,
-        createdAt: new Date(),
-      }]);
-      setServerReady(
-        error instanceof ApiError && error.status !== 503,
-      );
-    } finally {
-      if (isCurrentOperation(
-        authGeneration,
-        requestUserId,
-        requestToken,
-        conversationGeneration,
-      )) {
-        sendingRef.current = false;
-        setIsSending(false);
-        setStreamingAnswer("");
-        setStreamingAnswerIsNarration(false);
-        textareaRef.current?.focus();
       }
     }
   }
