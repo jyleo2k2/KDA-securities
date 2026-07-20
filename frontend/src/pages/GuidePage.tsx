@@ -29,6 +29,8 @@ import {
 import { ChatComposer } from "../components/ChatComposer";
 import { ChatConversation } from "../components/ChatConversation";
 import { ChatSessionList } from "../components/ChatSessionList";
+import { ChatRecommendations } from "../components/ChatRecommendations";
+import { ChatVisualizations } from "../components/ChatVisualizations";
 import type {
   AnswerBlock,
   CompletedSurveyProfile,
@@ -726,12 +728,12 @@ function AssistantMessage({
 
       <NewsCards response={response} />
 
-      {response.visualizations.map((visualization, index) => (
-        <VisualizationCard
-          visualization={visualization}
-          key={`${visualization.kind}-${index}`}
-        />
-      ))}
+      <ChatVisualizations
+        visualizations={response.visualizations}
+        renderVisualization={(visualization, index) => (
+          <VisualizationCard visualization={visualization} key={`${visualization.kind}-${index}`} />
+        )}
+      />
 
       {response.intent !== "etf_theme" && followUpCards}
 
@@ -1574,13 +1576,10 @@ export function GuidePage({
                   <p>추천 질문</p>
                   <h2 id="chat-question-heading">챗봇에게 무엇이든 물어보세요</h2>
                 </header>
-                <div className="prompt-carousel" aria-label="챗봇 추천 질문">
-                  {visibleChatCards.filter((card) => card.intent !== "etf_theme").map((card) => (
-                    <button type="button" key={card.card_id} onClick={() => void submitPrompt(card.message)}>
-                      <span className="design-prompt-copy"><small>추천 질문</small><strong>{card.title}</strong><em>{card.message}</em></span>
-                    </button>
-                  ))}
-                </div>
+                <ChatRecommendations
+                  cards={visibleChatCards.filter((card) => card.intent !== "etf_theme")}
+                  onSelect={(message) => void submitPrompt(message)}
+                />
               </section>
 
               <section className="chat-home-card-section holdings-section" aria-labelledby="holdings-heading">
