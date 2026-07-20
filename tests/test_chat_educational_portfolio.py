@@ -220,6 +220,72 @@ def test_chat_explains_available_risk_profiles_before_selection() -> None:
             assert label in response.sections[0].content
 
 
+def test_chat_explains_age_band_and_risk_style_portfolio_framework() -> None:
+    response = _service().ask(
+        ChatRequest(message="20대부터 50대까지 투자스타일별 ETF 운용전략을 알려줘")
+    )
+
+    assert response.intent == ChatIntent.EDUCATIONAL_PORTFOLIO
+    assert response.data_mode == "age_style_portfolio_guide"
+    assert response.educational_portfolio_evaluation is None
+    assert response.numeric_evidence == []
+    assert "연령대의 운용 초점과 투자성향별 설계를 함께 적용" in response.answer
+    assert [section.title for section in response.sections] == [
+        "연령대별 운용 초점",
+        "투자스타일별 포트폴리오 설계",
+    ]
+    for age_band in ("20대", "30대", "40대", "50대"):
+        assert age_band in response.sections[0].content
+    for profile in (
+        "안정형",
+        "안정추구형",
+        "위험중립형",
+        "적극투자형",
+        "공격투자형",
+    ):
+        assert profile in response.sections[1].content
+    assert "DC·IRP" in response.limitations[0]
+    assert "70%" in response.limitations[0]
+    assert "만 55~60세" in response.sections[0].content
+    assert "분기" in response.sections[1].content
+    assert "매년" in response.sections[1].content
+
+
+def test_chat_applies_user_selected_retirement_start_age_to_engine() -> None:
+    response = _service().ask(
+        ChatRequest(
+            message="연금 수령은 58세로 선택하고 위험중립형 ETF 포트폴리오를 보여줘",
+            survey_profile=_completed_survey(),
+        )
+    )
+
+    assert response.data_mode == "engine_educational_planning"
+    assert response.educational_portfolio_evaluation is not None
+    evaluation = response.educational_portfolio_evaluation
+    assert evaluation.retirement_start_age == 58
+    assert evaluation.planning_horizon_years == 33
+    assert evaluation.planning_return.retirement_start_age == 58
+    assert evaluation.planning_return.is_forecast is False
+    assert response.conversation_context is not None
+    assert response.conversation_context.survey_profile is not None
+    assert response.conversation_context.survey_profile.retirement_start_age == 58
+    assert "분기마다" in response.sections[0].content
+    assert "매년" in response.sections[0].content
+
+
+def test_chat_rejects_retirement_start_age_outside_supported_range() -> None:
+    response = _service().ask(
+        ChatRequest(
+            message="연금 수령은 61세로 하고 ETF 포트폴리오를 보여줘",
+            survey_profile=_completed_survey(),
+        )
+    )
+
+    assert response.data_mode == "retirement_age_selection"
+    assert response.educational_portfolio_evaluation is None
+    assert "만 55세부터 60세" in response.answer
+
+
 def test_completed_survey_is_kept_for_follow_up_strategy_question() -> None:
     first = _service().ask(
         ChatRequest(

@@ -478,6 +478,15 @@ _RISK_PROFILE_PORTFOLIO_REQUEST = re.compile(
     r"포트폴리오|자산\s*배분|연금\s*(?:운용|투자)\s*전략|"
     r"운용\s*전략|투자\s*전략|수익률|설계"
 )
+_AGE_STYLE_PORTFOLIO_GUIDE = re.compile(
+    r"(?:나이|연령)\s*대?별|20\s*대.{0,30}50\s*대"
+)
+_STYLE_COMPARISON = re.compile(r"투자\s*(?:성향|스타일)\s*별")
+_RETIREMENT_START_AGE = re.compile(
+    r"(?:연금\s*)?(?:수령|은퇴)(?:\s*개시)?(?:\s*(?:시점)?(?:은|을|를))?"
+    r"\s*(\d{2,3})\s*세"
+    r"|(\d{2,3})\s*세(?:부터)?(?:로)?\s*(?:연금\s*)?(?:수령|은퇴)"
+)
 _STRATEGY_LABELS = {
     "capital_preservation_core": "자본보전 중심 전략",
     "defensive_diversified_core": "방어적 분산 전략",
@@ -520,6 +529,21 @@ def _requests_risk_profile_guide(message: str) -> bool:
     if _RISK_PROFILE_PORTFOLIO_REQUEST.search(message):
         return False
     return any(pattern.search(message) for pattern in _RISK_PROFILE_GUIDE_PATTERNS)
+
+
+def _requests_age_style_portfolio_guide(message: str) -> bool:
+    return (
+        _AGE_STYLE_PORTFOLIO_GUIDE.search(message) is not None
+        and _STYLE_COMPARISON.search(message) is not None
+        and _RISK_PROFILE_PORTFOLIO_REQUEST.search(message) is not None
+    )
+
+
+def _mentioned_retirement_start_age(message: str) -> int | None:
+    match = _RETIREMENT_START_AGE.search(message)
+    if match is None:
+        return None
+    return int(match.group(1) or match.group(2))
 
 
 def _strategy_summary(evaluation: EducationalPortfolioEvaluation) -> str:
@@ -585,6 +609,12 @@ def _rebalancing_summary(evaluation: EducationalPortfolioEvaluation) -> str:
             parts.append("현재 입력에서는 모든 자산군이 허용 범위 안이에요.")
         if rebalancing.status == "partial_unclassified_holdings":
             parts.append("분류되지 않은 보유자산은 따로 확인해야 해요.")
+    parts.extend(
+        [
+            "분기마다 목표비중 이탈을 점검해요.",
+            "매년 나이·투자성향·연금 수령 시점과 계획가정을 다시 확인해요.",
+        ]
+    )
     return " ".join(parts)
 
 
@@ -766,7 +796,27 @@ class ChatService:
                         else None
                     )
                 )
-                if _requests_risk_profile_guide(original_request.message):
+                retirement_start_age = _mentioned_retirement_start_age(
+                    original_request.message
+                )
+                if retirement_start_age is not None and not (
+                    55 <= retirement_start_age <= 60
+                ):
+                    response = self._retirement_age_selection_guide()
+                elif retirement_start_age is not None and survey_profile is not None:
+                    survey_profile = survey_profile.model_copy(
+                        update={"retirement_start_age": retirement_start_age}
+                    )
+                    original_request = original_request.model_copy(
+                        update={"survey_profile": survey_profile}
+                    )
+                if retirement_start_age is not None and not (
+                    55 <= retirement_start_age <= 60
+                ):
+                    pass
+                elif _requests_age_style_portfolio_guide(original_request.message):
+                    response = self._age_style_portfolio_guide()
+                elif _requests_risk_profile_guide(original_request.message):
                     response = self._risk_profile_selection_guide()
                 elif survey_profile is None:
                     response = self._completed_survey_required()
@@ -1688,6 +1738,77 @@ class ChatService:
                 "완료된 설문 결과보다 위험한 투자성향의 포트폴리오는 "
                 "제안하지 않습니다.",
                 "투자성향을 선택하기 전에는 ETF 포트폴리오를 계산하지 않습니다.",
+            ],
+        )
+
+    @staticmethod
+    def _retirement_age_selection_guide() -> ChatResponse:
+        return ChatResponse(
+            intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+            answer=(
+                "연금 수령 개시 시점은 만 55세부터 60세 사이에서 선택해 주세요. "
+                "선택한 나이까지의 운용기간으로 포트폴리오와 장기 계획수익률을 "
+                "다시 계산해요."
+            ),
+            data_mode="retirement_age_selection",
+            limitations=[
+                "계획수익률은 미래 수익 예측이나 보장값이 아닙니다.",
+                "실제 연금 수령 가능 여부와 세금은 계좌 조건을 별도로 확인합니다.",
+            ],
+        )
+
+    @staticmethod
+    def _age_style_portfolio_guide() -> ChatResponse:
+        return ChatResponse(
+            intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+            answer=(
+                "연령대의 운용 초점과 투자성향별 설계를 함께 적용해요. "
+                "나이는 운용기간과 방어 필요성을, 투자성향은 위험자산 활용 "
+                "정도를 정하는 기준이에요."
+            ),
+            data_mode="age_style_portfolio_guide",
+            sections=[
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title="연령대별 운용 초점",
+                    content=(
+                        "20대: 긴 운용기간을 활용해 정기 납입과 넓은 분산을 "
+                        "우선해요.\n"
+                        "30대: 성장자산을 유지하면서 납입 여력과 생활목표를 "
+                        "함께 점검해요.\n"
+                        "40대: 계좌 간 중복과 집중위험을 줄이고 방어자산을 "
+                        "점진적으로 보강해요.\n"
+                        "50대: 연금 수령 시점에 맞춰 하락위험·유동성·인출 "
+                        "준비를 우선해요.\n\n"
+                        "연금 수령 개시는 만 55~60세에서 직접 선택하며, 선택한 "
+                        "시점까지의 운용기간으로 설계를 다시 계산해요."
+                    ),
+                ),
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title="투자스타일별 포트폴리오 설계",
+                    content=(
+                        "안정형: 원리금보장·단기채·현금성 자산을 중심으로 "
+                        "변동성을 낮춰요.\n"
+                        "안정추구형: 채권을 중심에 두고 분산 주식·실물자산을 "
+                        "제한적으로 더해요.\n"
+                        "위험중립형: 주식과 채권을 균형 있게 두고 실물자산을 "
+                        "보조로 활용해요.\n"
+                        "적극투자형: 분산 주식 ETF를 성장 핵심으로 두고 채권을 "
+                        "하락 완충재로 유지해요.\n"
+                        "공격투자형: 성장자산 비중을 높이되 전술자산은 상한을 "
+                        "두고 최소 방어자산을 유지해요.\n\n"
+                        "운용 후에는 분기마다 목표비중 이탈을 점검하고, 매년 "
+                        "나이·투자성향·수령 시점과 계획가정을 다시 확인해요. "
+                        "새 납입금은 부족한 자산군에 먼저 배분해요."
+                    ),
+                ),
+            ],
+            limitations=[
+                "DC·IRP는 일반 위험자산 70% 한도를 계좌별로 적용합니다.",
+                "개인 포트폴리오 비중과 ETF 후보는 완료된 설문 결과를 넘지 "
+                "않는 범위에서 규칙 엔진이 계산합니다.",
+                "상품 주문이나 자동 리밸런싱은 수행하지 않습니다.",
             ],
         )
 
