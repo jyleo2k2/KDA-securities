@@ -41,6 +41,7 @@ HERO_ETF_MIGRATION = (
     / "migrations"
     / "20260718090000_link_demo_hero_etf_holdings.sql"
 )
+MOCK_ACCOUNT_BACKFILL_MIGRATION_GLOB = "*_backfill_mock_pension_accounts.sql"
 SEED = ROOT / "supabase" / "seed.sql"
 
 
@@ -357,3 +358,42 @@ def test_demo_hero_etf_links_are_additive_and_use_verified_universe() -> None:
     assert "count(*) = 253" in sql
     assert "benchmark_mock" not in sql
     assert "drop table" not in sql
+
+
+def test_mock_accounts_are_backfilled_into_common_account_tables() -> None:
+    migrations = list(
+        (ROOT / "supabase" / "migrations").glob(
+            MOCK_ACCOUNT_BACKFILL_MIGRATION_GLOB
+        )
+    )
+    assert len(migrations) == 1
+
+    sql = migrations[0].read_text(encoding="utf-8").lower()
+
+    assert "insert into public.pension_accounts" in sql
+    assert "insert into public.account_snapshots" in sql
+    assert "insert into public.account_holding_snapshots" in sql
+    assert "alter column contributed_principal_krw drop not null" in sql
+    assert "add column etf_isu_code text" in sql
+    assert "account_holding_snapshots_etf_isu_code_idx" in sql
+    assert "holding.etf_isu_code" in sql
+    assert "null::numeric" in sql
+    assert "on conflict (id) do update" in sql
+    assert "expected 6 mock scenarios" in sql
+    assert "expected 13 mock accounts" in sql
+    assert "expected 26 mock holdings" in sql
+    assert "mock account balance does not equal holding total" in sql
+    assert "backfilled account balance does not match source" in sql
+    assert "backfilled holding total does not match source" in sql
+
+    for forbidden in ("drop table", "truncate", "delete from"):
+        assert forbidden not in sql
+
+
+def test_local_seed_replays_the_common_account_backfill() -> None:
+    sql = SEED.read_text(encoding="utf-8").lower()
+
+    assert "insert into public.pension_accounts" in sql
+    assert "insert into public.account_snapshots" in sql
+    assert "insert into public.account_holding_snapshots" in sql
+    assert "on conflict (id) do update" in sql
