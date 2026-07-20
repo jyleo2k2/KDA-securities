@@ -33,6 +33,8 @@ class ThemeContentTopic(StrEnum):
     OVERVIEW = "overview"
     REPRESENTATIVE_COMPANIES = "representative_companies"
     INVESTMENT_CONSIDERATIONS = "investment_considerations"
+    PERFORMANCE_DRIVERS = "performance_drivers"
+    RISKS = "risks"
 
 
 class QueryPlan(BaseModel):
@@ -148,7 +150,16 @@ _THEME_REPRESENTATIVE_COMPANY_TERMS = re.compile(
 _THEME_CONSIDERATION_TERMS = re.compile(
     r"(?:투자|편입).{0,15}(?:고려|주의|유의|살펴)"
     r"|(?:고려|주의|유의|살펴).{0,12}(?:점|사항)"
-    r"|장점|이점|위험|리스크|단점"
+    r"|장점|이점"
+)
+_THEME_PERFORMANCE_DRIVER_TERMS = re.compile(
+    r"(?:성과|수익|가격).{0,18}(?:영향|요인|좌우|움직)"
+    r"|(?:영향|관찰|체크).{0,12}(?:요인|지표)"
+    r"|가격\s*동인"
+)
+_THEME_RISK_TERMS = re.compile(
+    r"고유\s*(?:위험|리스크)|핵심\s*(?:위험|리스크)"
+    r"|주의할\s*(?:위험|리스크)|위험|리스크|단점"
 )
 _COMBINE_WORDS = (
     r"(?:합쳐(?:서)?|합산(?:해서)?|통합(?:해서)?|묶어(?:서)?|"
@@ -464,9 +475,15 @@ def plan_question(
         asks_considerations = (
             _THEME_CONSIDERATION_TERMS.search(normalized) is not None
         )
+        asks_performance_drivers = (
+            _THEME_PERFORMANCE_DRIVER_TERMS.search(normalized) is not None
+        )
+        asks_risks = _THEME_RISK_TERMS.search(normalized) is not None
         requests_candidates = requests_holdings or (
             not asks_representative_companies
             and not asks_considerations
+            and not asks_performance_drivers
+            and not asks_risks
             and _THEME_CANDIDATE_TERMS.search(normalized) is not None
         )
         content_topic = (
@@ -474,6 +491,10 @@ def plan_question(
             if requests_candidates
             else ThemeContentTopic.REPRESENTATIVE_COMPANIES
             if asks_representative_companies
+            else ThemeContentTopic.PERFORMANCE_DRIVERS
+            if asks_performance_drivers
+            else ThemeContentTopic.RISKS
+            if asks_risks
             else ThemeContentTopic.INVESTMENT_CONSIDERATIONS
             if asks_considerations
             else ThemeContentTopic.OVERVIEW

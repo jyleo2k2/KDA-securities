@@ -38,7 +38,9 @@
 
 ## 검증 경계
 
-- 이 문서는 사용자가 제공한 네 개의 ChatGPT 공유 대화를 구조화한 서비스 해석이다.
+- 이 문서는 사용자가 제공한 다섯 개의 ChatGPT 공유 대화를 구조화한 서비스 해석이다.
+- 공유 대화는 조사 출처일 뿐 공식 근거가 아니다. 대화에 포함된 공식 링크와
+  해당 링크가 뒷받침하는 문장을 별도로 대조한 뒤에만 승인 지식으로 승격한다.
 - 아직 공식 발행기관 문서로 교차 검증하지 않았으므로 `data/knowledge/approved_documents.json`에 등록하지 않으며 승인 RAG 지식으로 사용하지 않는다.
 - 챗봇은 이 내용을 `서비스 설명`으로 표시하고, 사실 확정이나 미래 수익 전망으로 표현하지 않는다.
 - 대표기업 정보는 각 기업 공식 홈페이지 URL과 기준일을 함께 표시하되, ETF 편입 사실이나 투자 추천을 뜻하지 않는다.
@@ -54,7 +56,8 @@
 
 ## 사용자 제공 조사 링크
 
-- <https://chatgpt.com/share/6a5cd84f-5b44-83ee-ae0c-960ad47c618e>
-- <https://chatgpt.com/share/6a5cd863-ab24-83e8-a07d-09cbda7e4136>
-- <https://chatgpt.com/share/6a5cd871-80b4-83e8-885d-02ffb145f571>
-- <https://chatgpt.com/share/6a5cec1b-9724-83e8-ba43-17f4268994ca>
+- <https://chatgpt.com/share/6a5dbc76-9c4c-83ee-9b7f-7729b384befe> — 1~12번 테마 소개
+- <https://chatgpt.com/share/6a5dbc89-8868-83ee-8d75-2f68d6e1bffc> — 13~23번 테마 소개
+- <https://chatgpt.com/share/6a5d9df1-9eb0-83e8-a285-0d2aec036054> — 1~7번 테마 상세 조사
+- <https://chatgpt.com/share/6a5dbc9e-9d78-83e8-bb9c-5c2007c15d35> — 8~16번 테마 상세 조사
+- <https://chatgpt.com/share/6a5dbca9-74bc-83e8-9f83-7f105074a7be> — 17~23번 테마 상세 조사
