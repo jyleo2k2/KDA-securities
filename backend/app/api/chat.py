@@ -184,11 +184,14 @@ def _sse(event: str, payload: dict[str, object]) -> str:
     return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
-def _answer_delta_events(answer: str, *, chunk_size: int = 24) -> list[str]:
-    return [
-        _sse("answer_delta", {"delta": answer[index : index + chunk_size]})
-        for index in range(0, len(answer), chunk_size)
-    ]
+def _answer_delta_events(answer: str) -> list[str]:
+    """Send the safety-checked answer in one SSE event.
+
+    The event name remains ``answer_delta`` so existing SSE clients retain the
+    same contract. Typing feedback is a presentation concern in the frontend.
+    """
+
+    return [_sse("answer_delta", {"delta": answer})]
 
 
 def _log_stream_latency(
