@@ -3,6 +3,13 @@ import type { Session } from "@supabase/supabase-js";
 
 import { isSupabaseConfigured, supabase } from "./supabase";
 
+const DEMO_LOGIN_DOMAIN = "@kda-demo.invalid";
+
+export function normalizeLoginId(loginId: string): string {
+  const value = loginId.trim();
+  return value.includes("@") ? value : `${value}${DEMO_LOGIN_DOMAIN}`;
+}
+
 export interface SupabaseAuthState {
   session: Session | null;
   loading: boolean;
@@ -50,7 +57,7 @@ export function useSupabaseAuth(): SupabaseAuthState {
     }
     setError(null);
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
+      email: normalizeLoginId(email),
       password,
     });
     if (signInError) {
