@@ -792,6 +792,38 @@ export interface RebalancingGuidance {
   warnings: string[];
 }
 
+export interface StressScenarioResult {
+  scenario_code: string;
+  estimated_loss_percent: string;
+  sleeve_shocks_percent: Record<string, string>;
+  is_forecast: boolean;
+}
+
+export interface PortfolioRiskEvaluation {
+  engine_name: string;
+  engine_version: string;
+  policy_version: string;
+  usage_label: string;
+  status: string;
+  observation_count: number;
+  observation_start: string | null;
+  observation_end: string | null;
+  annualized_volatility_percent: string | null;
+  annualized_downside_deviation_percent: string | null;
+  maximum_drawdown_percent: string | null;
+  historical_95pct_one_day_loss_percent: string | null;
+  worst_daily_return_percent: string | null;
+  historical_return_used_for_risk_only: boolean;
+  is_return_forecast: boolean;
+  stress_scenarios: StressScenarioResult[];
+  sources: Array<{
+    label: string;
+    reference: string;
+    as_of: string;
+  }>;
+  warnings: string[];
+}
+
 export interface EducationalPortfolioEvaluation {
   engine_name: string;
   engine_version: string;
@@ -816,7 +848,7 @@ export interface EducationalPortfolioEvaluation {
     role: string;
   }>;
   candidates: EducationalEtfCandidate[];
-  portfolio_risk: unknown;
+  portfolio_risk: PortfolioRiskEvaluation;
   planning_return: unknown;
   rebalancing: RebalancingGuidance;
   sources: SourceEvidence[];
