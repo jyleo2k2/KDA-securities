@@ -1,0 +1,69 @@
+{
+  "schema_version": "structural-ensemble-cma-inputs-2026-07-20.1",
+  "as_of_date": "2026-07-20",
+  "usage": "교육용 장기 계획가정 후보 입력이며 미래 실현수익률 예측값이 아니다.",
+  "is_forecast": false,
+  "sources": {
+    "jpm_2026": {
+      "label": "J.P. Morgan 2026 Long-Term Capital Market Assumptions",
+      "reference": "https://am.jpmorgan.com/content/dam/jpm-am-aem/global/en/insights/portfolio-insights/ltcma/noindex/ltcma-full-report.pdf",
+      "as_of": "2025-09-30",
+      "horizon_years": "10-15",
+      "currency": "USD"
+    },
+    "vanguard_2026_q1": {
+      "label": "Vanguard Capital Markets Model forecasts",
+      "reference": "https://www.vanguardsouthamerica.com/en/home/insights/economic-market-outlook/vanguard-capital-markets-model-forecasts-2026",
+      "as_of": "2026-03-31",
+      "horizon_years": "10",
+      "currency": "USD"
+    }
+  },
+  "assumptions": {
+    "cash": [
+      {"provider": "jpm_2026", "percent": "3.1000", "definition": "U.S. cash"},
+      {"provider": "vanguard_2026_q1", "percent": "3.4000", "definition": "U.S. cash range midpoint 2.9%-3.9%"}
+    ],
+    "us_10y_treasury": [
+      {"provider": "jpm_2026", "percent": "4.6000", "definition": "10-year U.S. government bonds"}
+    ],
+    "us_investment_grade_credit": [
+      {"provider": "jpm_2026", "percent": "5.2000", "definition": "U.S. investment grade credit"},
+      {"provider": "vanguard_2026_q1", "percent": "4.8000", "definition": "U.S. credit range midpoint 4.3%-5.3%"}
+    ],
+    "us_high_yield": [
+      {"provider": "jpm_2026", "percent": "6.1000", "definition": "U.S. high yield credit"},
+      {"provider": "vanguard_2026_q1", "percent": "5.2000", "definition": "U.S. high-yield corporate range midpoint 4.7%-5.7%"}
+    ],
+    "us_large_cap_equity": [
+      {"provider": "jpm_2026", "percent": "6.7000", "definition": "U.S. large cap equities"},
+      {"provider": "vanguard_2026_q1", "percent": "5.8000", "definition": "U.S. large-cap range midpoint 4.8%-6.8%"}
+    ],
+    "global_equity": [
+      {"provider": "jpm_2026", "percent": "7.0000", "definition": "Global equities"}
+    ],
+    "emerging_markets_equity": [
+      {"provider": "jpm_2026", "percent": "7.8000", "definition": "Emerging markets equity"},
+      {"provider": "vanguard_2026_q1", "percent": "4.6000", "definition": "Emerging markets equities range midpoint 3.6%-5.6%"}
+    ],
+    "global_reit": [
+      {"provider": "jpm_2026", "percent": "8.7000", "definition": "Global REITs"}
+    ],
+    "broad_commodities": [
+      {"provider": "jpm_2026", "percent": "4.6000", "definition": "Broad commodities"},
+      {"provider": "vanguard_2026_q1", "percent": "5.4000", "definition": "Commodities range midpoint 4.4%-6.4%"}
+    ],
+    "gold": [
+      {"provider": "jpm_2026", "percent": "5.5000", "definition": "Gold"}
+    ],
+    "global_60_40": [
+      {"provider": "jpm_2026", "percent": "6.4000", "definition": "Global 60/40 portfolio"}
+    ]
+  },
+  "unavailable_inputs": [
+    "자산군별 독립 구조적 빌딩블록 숫자 스냅샷",
+    "시장가중 균형수익률과 신뢰도",
+    "동일 정의 자산군의 장기 실현 잔차 시계열",
+    "구조적 앙상블 자체의 독립 다중 빈티지 외부표본 검증"
+  ]
+}

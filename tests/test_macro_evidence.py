@@ -158,6 +158,38 @@ def test_fred_client_skips_missing_observations_and_sanitizes_errors():
             raise AssertionError("MacroApiError was not raised")
 
 
+def test_fred_client_can_lock_a_point_in_time_vintage():
+    captured_request = None
+
+    def handler(request: httpx.Request):
+        nonlocal captured_request
+        captured_request = request
+        return httpx.Response(
+            200,
+            json={"observations": [{"date": "2015-12-31", "value": "2.27"}]},
+        )
+
+    with _client(handler) as client:
+        response, rows = fetch_fred_series(
+            client,
+            api_key="fred-secret",
+            metric_id="us_treasury_10y",
+            series_id="DGS10",
+            label="미국 10년 국채금리",
+            unit="%",
+            observation_start="2015-01-01",
+            observation_end="2015-12-31",
+            realtime_as_of="2015-12-31",
+        )
+
+    assert captured_request is not None
+    assert captured_request.url.params["realtime_start"] == "2015-12-31"
+    assert captured_request.url.params["realtime_end"] == "2015-12-31"
+    assert response.request_params["realtime_start"] == "2015-12-31"
+    assert "api_key" not in response.request_params
+    assert rows[0].dimensions["realtime_as_of"] == "2015-12-31"
+
+
 def _observation(metric_id: str, period: str, value: str) -> MacroObservation:
     return MacroObservation(
         metric_id=metric_id,

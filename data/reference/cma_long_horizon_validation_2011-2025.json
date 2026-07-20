@@ -1,0 +1,60 @@
+{
+  "schema_version": "cma-long-horizon-validation-reference-2026-07-20.1",
+  "as_of_date": "2025-09-30",
+  "usage": "사후 교육용 CMA 장기 정확도 검증 입력이며 미래 수익률 예측값이 아니다.",
+  "is_forecast": false,
+  "source": {
+    "publisher": "J.P. Morgan Asset Management",
+    "title": "2026 Long-Term Capital Market Assumptions Methodology Handbook",
+    "url": "https://am.jpmorgan.com/content/dam/jpm-am-aem/global/en/insights/portfolio-insights/ltcma/noindex/ltcma-methodology-handbook.pdf",
+    "page": 29,
+    "pdf_sha256": "2cff6079c2f534dcc75985f62cab28711c2b29eb606af42eefc5f8fc9293adc5",
+    "transcription": "Exhibit 1의 표시 숫자를 2026-07-20에 사람이 전사하고 렌더링 이미지로 재확인"
+  },
+  "scenario": {
+    "vintage": 2011,
+    "publisher_horizon_years": 15,
+    "calendar_elapsed_years_through_2025_09": 14.75,
+    "initial_wealth_usd_million": 100,
+    "cma_compound_return_percent": 6.5,
+    "cma_volatility_percent": 10.6,
+    "allocation": [
+      {
+        "weight_percent": 60,
+        "index": "MSCI AC World Index"
+      },
+      {
+        "weight_percent": 40,
+        "index": "Bloomberg Barclays US Aggregate Bond Index"
+      }
+    ],
+    "projected_rebalancing": "annual",
+    "realized_proxy_rebalancing": "monthly",
+    "taxes": "excluded",
+    "cash_flows": "excluded"
+  },
+  "path": [
+    {"label": "2011", "percentile_5": 91, "median": 106, "percentile_95": 125, "realized": 99},
+    {"label": "2012", "percentile_5": 90, "median": 113, "percentile_95": 143, "realized": 110},
+    {"label": "2013", "percentile_5": 91, "median": 121, "percentile_95": 160, "realized": 124},
+    {"label": "2014", "percentile_5": 93, "median": 129, "percentile_95": 178, "realized": 130},
+    {"label": "2015", "percentile_5": 95, "median": 137, "percentile_95": 197, "realized": 129},
+    {"label": "2016", "percentile_5": 98, "median": 146, "percentile_95": 217, "realized": 136},
+    {"label": "2017", "percentile_5": 101, "median": 155, "percentile_95": 238, "realized": 157},
+    {"label": "2018", "percentile_5": 105, "median": 165, "percentile_95": 261, "realized": 149},
+    {"label": "2019", "percentile_5": 108, "median": 176, "percentile_95": 286, "realized": 177},
+    {"label": "2020", "percentile_5": 112, "median": 187, "percentile_95": 313, "realized": 201},
+    {"label": "2021", "percentile_5": 117, "median": 200, "percentile_95": 342, "realized": 222},
+    {"label": "2022", "percentile_5": 121, "median": 213, "percentile_95": 373, "realized": 186},
+    {"label": "2023", "percentile_5": 126, "median": 226, "percentile_95": 406, "realized": 215},
+    {"label": "2024", "percentile_5": 131, "median": 241, "percentile_95": 442, "realized": 238},
+    {"label": "2025-09", "percentile_5": 137, "median": 257, "percentile_95": 481, "realized": 270}
+  ],
+  "limitations": [
+    "공급자가 자기 모델을 평가한 단일 빈티지·단일 60/40 배분 사례다.",
+    "5~95백분위 구간은 폭이 넓으므로 구간 포함만으로 점예측 정확도를 입증할 수 없다.",
+    "예측은 연간 리밸런싱, 실현 프록시는 월간 리밸런싱이라 조건이 완전히 같지 않다.",
+    "공식 자료는 2025년 9월까지를 15년 구간으로 표기하므로 15년 관례 CAGR과 14.75년 달력 CAGR을 모두 보고한다.",
+    "지수 수익률이며 실제 ETF의 보수·추적오차·세금·거래비용을 포함하지 않는다."
+  ]
+}
