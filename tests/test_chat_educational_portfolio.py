@@ -293,6 +293,30 @@ def test_chat_does_not_collect_age_when_survey_is_missing() -> None:
     assert "수령 개시 나이" not in response.answer
 
 
+def test_custom_portfolio_card_uses_completed_survey_age_and_profile() -> None:
+    response = _service().ask(
+        ChatRequest(
+            message="내 상황에 맞는 연금저축전략을 알려줘.",
+            survey_profile=_completed_survey(),
+        )
+    )
+
+    assert response.data_mode == "engine_educational_planning"
+    assert response.educational_portfolio_evaluation is not None
+    evaluated = response.educational_portfolio_evaluation.evaluated_input
+    assert evaluated.age == 25
+    assert evaluated.risk_profile == EducationalRiskProfile.RISK_NEUTRAL
+
+
+def test_custom_portfolio_card_requests_survey_when_profile_is_missing() -> None:
+    response = _service().ask(
+        ChatRequest(message="내 상황에 맞는 연금저축전략을 알려줘.")
+    )
+
+    assert response.data_mode == "survey_required"
+    assert response.educational_portfolio_evaluation is None
+
+
 def test_chat_explains_available_risk_profiles_before_selection() -> None:
     messages = (
         "투자성향에 대해 뭐가 있어?",
@@ -318,6 +342,62 @@ def test_chat_explains_available_risk_profiles_before_selection() -> None:
         ):
             assert label in response.answer
             assert label in response.sections[0].content
+
+
+def test_chat_explains_portfolio_strategy_for_all_five_risk_profiles() -> None:
+    response = _service().ask(
+        ChatRequest(
+            message=(
+                "안정형, 안정추구형, 위험중립형, 적극투자형, 공격투자형 각각 "
+                "어떤 전략으로 포트폴리오를 설계하고 투자하는지 알려줘"
+            )
+        )
+    )
+
+    assert response.intent == ChatIntent.EDUCATIONAL_PORTFOLIO
+    assert response.data_mode == "risk_profile_portfolio_guide"
+    assert response.educational_portfolio_evaluation is None
+    assert response.numeric_evidence == []
+    assert "다섯 투자성향" in response.answer
+    assert [section.title for section in response.sections] == [
+        "안정형 연금운용 전략",
+        "안정추구형 연금운용 전략",
+        "위험중립형 연금운용 전략",
+        "적극투자형 연금운용 전략",
+        "공격투자형 연금운용 전략",
+        "공통 실행 원칙",
+    ]
+    expected_strategies = (
+        "자본보전 중심 전략",
+        "방어적 분산 전략",
+        "코어·위성 전략",
+        "성장 코어·위성 전략",
+        "바벨형 성장·전술 전략",
+    )
+    for section, strategy in zip(
+        response.sections[:5], expected_strategies, strict=True
+    ):
+        assert strategy in section.content
+        assert "설계:" in section.content
+        assert "운용:" in section.content
+    common = response.sections[-1].content
+    assert "비용" in common
+    assert "추적오차" in common
+    assert "새 납입금" in common
+    assert "분기" in common
+    assert "매년" in common
+    assert "DC·IRP" in response.limitations[0]
+    assert "70%" in response.limitations[0]
+    assert "자동" in response.limitations[-1]
+
+
+def test_style_by_style_portfolio_question_does_not_require_completed_survey() -> None:
+    response = _service().ask(
+        ChatRequest(message="5가지 투자스타일별 연금운용 포트폴리오 전략을 비교해줘")
+    )
+
+    assert response.data_mode == "risk_profile_portfolio_guide"
+    assert response.educational_portfolio_evaluation is None
 
 
 def test_chat_explains_age_band_and_risk_style_portfolio_framework() -> None:

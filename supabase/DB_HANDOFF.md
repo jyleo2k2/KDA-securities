@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-20 16:36 KST
-> 확인 기준: `codex/demo-candidate-tax-year-fix` / `origin/main` `913c96b` / 로그인 후보 5명·대표 금융 컨텍스트 2026 원격 재동기화 검증
+> 최종 확인: 2026-07-20 18:39 KST
+> 확인 기준: `신규작업브랜치` / `origin/main` `b795763` 통합 / KRX ETF 일별시장 1,147행·ETF 테마 승인 RAG 및 검증 장부 115/115건 원격 재확인
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -30,20 +30,20 @@
 
 ## 3. 현재 원격 상태
 
-2026-07-20 KST에 승인된 고객 계약·대표 ETF 공통계좌 migration을 적용한 뒤 연결된 Supabase 프로젝트를 읽기 전용으로 재확인했다.
+2026-07-20 KST에 승인된 KRX ETF 일별시장과 ETF 테마 콘텐츠 검증 migration, 데이터 및 승인 RAG를 모두 적용한 뒤 연결된 Supabase 프로젝트를 읽기 전용으로 재확인했다.
 
 | 항목 | 원격 상태 |
 |---|---|
-| public 기본 테이블 | 43개 |
-| 적용 마이그레이션 | 20개(`20260715005435` ~ `20260720044230`) |
-| RLS | 43/43 활성화 |
+| public 기본 테이블 | 46개 |
+| 적용 마이그레이션 | 22개(`20260715005435` ~ `20260720091219`) |
+| RLS | 46/46 활성화 |
 | `anon` 테이블 권한 | 없음 |
 | `authenticated` 권한 | 사용자 소유 엔진 결과·채팅 관련 5개 테이블 |
-| `service_role` 권한 | 43개 테이블 |
+| `service_role` 권한 | 46개 테이블 |
 | `knowledge_chunks.embedding` 타입 | `vector(1024)` |
 | HNSW 인덱스 | `knowledge_chunks_embedding_hnsw_idx` 존재 |
 | PostgreSQL / 프로젝트 상태 | 17.6 / `ACTIVE_HEALTHY` |
-| Supabase MCP 현재 연결 | 마지막 정리 조회에서 `401 token_revoked`; 재인증 필요 |
+| Supabase MCP 현재 연결 | 정상 |
 
 ### 원격 주요 행 수
 
@@ -53,8 +53,11 @@
 | `retirement_provider_stats` | 126 |
 | `financial_institutions` | 102 |
 | `news_items` | 15 |
-| `knowledge_documents` | 10 |
-| `knowledge_chunks` | 45 |
+| `knowledge_documents` | 15 |
+| 활성·BGE-M3 임베딩 `knowledge_chunks` | 56 / 56 |
+| `etf_theme_content_reviews` | 115 |
+| `etf_theme_content_evidence` | 115 |
+| `etf_daily_market_snapshots` | 1,147 |
 | `mock_scenarios` | 6 |
 | `mock_accounts` | 13 |
 | `mock_holdings` | 86 |
@@ -72,7 +75,7 @@
 
 원격 컬럼 설명 3건(`pension_savings_provider_stats.fee_rate_1y`, `retirement_provider_stats.response_division`, `knowledge_chunks.embedding`)은 `20260718154819_repair_corrupted_column_comments.sql`로 교정했다. 실제 설명을 재조회해 목표 문구와 일치하고 U+FFFD 대체문자가 없음을 확인했다. 테이블·컬럼·데이터·RLS·GRANT는 바뀌지 않았다.
 
-### 현재 43개 테이블의 역할
+### 현재 46개 테이블의 역할
 
 | 영역 | 테이블 |
 |---|---|
@@ -81,30 +84,38 @@
 | 자산·목계좌 | `asset_classes`, `mock_scenarios`, `mock_accounts`, `mock_holdings` |
 | 목 벤치마크 | `mock_public_profiles`, `mock_public_portfolios`, `mock_public_portfolio_holdings` |
 | 규칙·감사 | `rule_sets`, `pension_rules`, `engine_runs`, `engine_run_evidence` |
-| RAG·뉴스 | `knowledge_documents`, `knowledge_chunks`, `news_items`, `curated_contents` |
+| RAG·뉴스 | `knowledge_documents`, `knowledge_chunks`, `news_items`, `curated_contents`, `etf_theme_content_reviews`, `etf_theme_content_evidence` |
 | 채팅 | `chat_sessions`, `chat_messages`, `chat_message_evidence`, `chat_request_idempotency` |
 | 사용자·성향·계좌 | `user_profiles`, `profile_question_sets`, `profile_questions`, `profile_question_options`, `investment_profile_assessments`, `investment_profile_answers`, `pension_accounts`, `account_snapshots`, `account_cash_flows`, `financial_products`, `account_holding_snapshots` |
 | ETF 유니버스 | `etf_dataset_versions`, `etf_universe_products`, `etf_return_histories` |
+| ETF 일별 시장 | `etf_daily_market_snapshots` |
 
 ## 4. 현재 작업트리의 진행 중 작업
 
-`codex/pension-account-backfill` 브랜치의
-`output/worktrees/pension-account-backfill` 전용 worktree에서 DB-03 공통 계좌
-구조 backfill을 작업한다.
+`신규작업브랜치`의 ETF 테마 챗봇 UI·엔진·RAG 변경(`71e896d`)과
+`origin/main`의 KRX 전체 상장 ETF 일별 거래량·FastAPI 변경(`b795763` 기준)을
+이번 통합 작업트리에 함께 반영했다.
 
-- 기준은 `origin/main` `557e8f1`이며, 신규
-  `20260720034015_backfill_mock_pension_accounts.sql`과 seed·계약 테스트가
-  아직 커밋 전이다. 원격 적용은 완료됐고, MCP가 부여한 실제 버전에 맞춰
-  SQL 본문을 바꾸지 않고 파일명만 정합화했다.
-- 원격 사전검증에서 기존 목데이터 6/13/26, 계좌 잔액과 보유합계 불일치
-  0건, 신규 `pension_accounts`·snapshot·holding 0건을 확인했다.
-- 로컬 17번째 파일 `20260719184500_repair_market_news_is_active.sql`은
-  원격에서 같은 이름이 `20260718172329`로 기록되어 버전이 어긋나 있다.
-  2026-07-20에 원격 `statements` 1건과 로컬 SQL을 대조했으며 공백을 제외하면
-  동일했다. 원격에는 해당 DDL이 이미 적용돼 있으므로 기존 적용 이력은
-  repair·재적용하지 않고, 새 DB-03만 별도 적용한다.
-- DB-03 원격 migration은 이재용의 명시적 승인 후 적용했다. PR 머지는 별도
-  승인 전까지 금지한다.
+- 신규 `20260720080955_add_krx_etf_daily_market_snapshots.sql`은
+  `(base_date, isu_code)` 기준의 거래량·거래대금·NAV 스냅샷과 최신 거래량·종목
+  이력 인덱스를 추가한다. RLS를 활성화하고 브라우저 권한을 회수하며
+  `service_role`만 허용한다.
+- 기존 `data/raw/krx` 원본을 `data_sources`·`ingestion_runs` 근거와 함께 멱등
+  upsert하는 적재 스크립트와 `/market/etfs`, 종목별 `volume-history` API를
+  추가했다.
+- 실제 2026-07-14 KRX 원본 1,147행을 원격 적재했다. 영문 혼합 6자리 코드
+  280개와 거래량 0인 13개도 보존하고 원본·DB 거래량·거래대금 합계가 일치한다.
+- KRX 변경 단독 검증에서는 전체 회귀 834 passed·1 skipped, Ruff,
+  `git diff --check`, FastAPI 원격 조회 1,147건이 통과했다. 이번 통합 결과는
+  아래 검증 기준으로 다시 확인한다.
+
+- `20260720091219_add_etf_theme_content_verification.sql`은 원격 적용 완료다.
+  MCP가 기록한 실제 버전에 맞춰 로컬 migration 파일명도 정합화했다.
+- 승인 지식 문서 15개·활성 청크 56개를 멱등 적재했고, 활성 청크 56개 모두
+  `BAAI/bge-m3` 1024차원 임베딩을 보유한다.
+- 카탈로그 `2026-07-20.3`의 23개 테마 × 5개 질문 유형 115건을 모두
+  `verified`로 적재하고 공식 URL·활성 RAG 청크 근거 115건과 연결했다.
+- migration repair, db reset, 기존 이력 수정은 수행하지 않았다.
 
 ### 임베딩 마이그레이션 주의사항
 
@@ -112,7 +123,8 @@
 - 원격 non-null embedding은 45건이고 모두 1024차원이며, HNSW 인덱스도 존재한다.
 - 적용된 파일의 "기존 embedding 값은 전부 null" 주석은 원격 적용 직전 사실과 달랐지만, 적용 이력 파일은 수정하지 않는다. 이 문서에 사실 차이만 기록한다.
 - 원격 migration history의 해당 버전은 statements 배열이 비어 있다(statement count 0). 과거 이력을 repair하거나 조작하지 않는 legacy 예외로 유지한다.
-- 현재 원격 상태는 `vector(1024)` 45건, 비정상 차원 0건이다.
+- 현재 원격 활성 청크 56건은 모두 `vector(1024)` 임베딩을 보유하고 비정상
+  차원은 0건이다. 과거 migration 적용 당시의 45건 기록과 구분한다.
 
 ## 5. PDF 설계 검토 결론
 
@@ -271,6 +283,8 @@ uv run ruff check .
 | DB-08 | 손상된 컬럼 설명 3건 교정 | `REMOTE-APPLIED` | `20260718154819`, COMMENT 3문 전용·실제 설명·불변식 재조회 | 적용 파일 수정 금지 |
 | DB-09 | Auth 유출 비밀번호 보호 | `BLOCKED` | Security Advisor의 `auth_leaked_password_protection` WARN 제거 | Supabase Dashboard 또는 CLI 로그인 후 `password_hibp_enabled` 활성화·Advisor 재조회 |
 | DB-10 | main 원격 DB 런타임 회귀 | `LOCAL-VERIFIED` | Auth/RLS·채팅 persist/replay·RAG·뉴스·공시·ETF·NAVER rollback-only SQL E2E 통과 | main 변경 시 재실행 |
+| DB-11 | KRX 전체 ETF 일별 거래량 DB·API 연결 | `REMOTE-APPLIED` | `20260720080955`, 2026-07-14 전체 1,147행·원본 합계 동등성·RLS/GRANT·FastAPI 원격 E2E 확인 | 일일 갱신 자동화와 보존기간은 후속 결정 |
+| DB-12 | ETF 테마 콘텐츠 검증·승인 RAG 연결 | `REMOTE-APPLIED` | `20260720091219`, 검토·근거 115/115건, 승인 문서 15개·활성 임베딩 청크 56/56건, 챗봇 원격 E2E 확인 | 적용 파일 수정 금지; 검토기한 만료 전 재검증 |
 
 ## 13. 미결정 사항
 
@@ -284,6 +298,44 @@ uv run ruff check .
 
 ## 14. 작업 로그
 
+### 2026-07-20 18:43 KST 신규작업브랜치 main 통합
+
+- `신규작업브랜치`의 ETF 테마 챗봇·검증 장부 변경을 보존한 채
+  `origin/main` `b795763`을 병합했다. 충돌은 이 문서 한 파일에서만 발생했고,
+  KRX 일별시장 `20260720080955`와 ETF 테마 검증 `20260720091219`의 원격 적용
+  상태·행 수·작업 로그를 모두 유지하는 의미 병합으로 해결했다.
+- 병합 커밋은 `2c51ea2`, 프론트 테스트의 중복 안내 문구 단언 보정은
+  `d7d8760`이다. 병합 전 ETF 테마 커밋 `71e896d`는 복구 태그
+  `archive/20260720-before-etf-category-main-sync`로 보존했다.
+- 검증: 승인 지식 manifest 문서 15개·청크 56개 유효, 관련 백엔드 281건
+  통과, 전체 백엔드 852 passed·1 skipped, 프론트 20건 통과, 프로덕션 빌드,
+  Ruff, `git diff --check` 통과. `origin/main`은 현재 HEAD의 조상이며 재병합
+  시 충돌이 없음을 확인했다.
+- 원격 Supabase 쓰기·migration 적용·repair·reset은 수행하지 않았다.
+
+### 2026-07-20 17:12 KST KRX 전체 ETF 일별 거래량 연결
+
+- 신규 migration `20260720080955_add_krx_etf_daily_market_snapshots.sql`과
+  KRX 원본 정규화·ingestion run·멱등 upsert 적재기를 추가했다. 원본 JSON은
+  파일에 유지하고 DB에는 조회용 정규화 값과 출처 연결만 저장한다.
+- FastAPI에 `GET /market/etfs`와
+  `GET /market/etfs/{isu_code}/volume-history`를 추가했다. 요청일 이하 최신
+  거래일을 사용하며 거래량·거래대금·순자산 정렬을 화이트리스트로 제한한다.
+- 실제 `20260714.json`은 수신 1,147행·정규화 1,147행·스킵 0행이었다.
+  숫자 전용 코드 가정이 틀렸음을 확인해 `0184E0` 같은 대문자 영숫자 6자리
+  코드 280개를 DB·적재기·API 전체에서 허용했다. 거래량 0인 13개도 유지한다.
+- 원격 적용: 이재용 승인에 따라 `20260720080955`를 적용하고 2026-07-14
+  1,147행을 적재했다. 원본과 DB의 종목 수·거래량 합계 18,155,107,333좌·
+  거래대금 합계 46,862,470,547,267원이 일치한다. 테이블은 516,096바이트이며
+  전체 DB는 111,660,179바이트다.
+- 검증: 최신 `main` 기준 전체 `pytest` 834 passed·1 skipped, `ruff check .`,
+  `git diff --check` 통과. RLS 44/44, `anon` 0·`authenticated` 5·
+  `service_role` 44개 테이블, 신규 테이블 인덱스 3개를 확인했다.
+  `/market/etfs`는 HTTP 200·1,147건, `069500` 이력 API는 HTTP 200·1건이다.
+- Advisor: 신규 보안 WARN은 없고 서버 전용 테이블의 의도된
+  `RLS Enabled No Policy` INFO와 초기 미사용 인덱스 INFO만 추가됐다. 기존
+  `auth_leaked_password_protection` WARN은 DB-09 범위로 유지한다.
+
 ### 2026-07-20 16:36 KST
 
 - 작업자/브랜치/기준: Codex / `codex/demo-candidate-tax-year-fix` / `origin/main` `913c96b`.
@@ -295,10 +347,15 @@ uv run ruff check .
 
 ### 2026-07-20 ETF 테마 콘텐츠 검증 통합
 
-- 신규 로컬 migration `20260720024713_add_etf_theme_content_verification.sql`은 테마·질문 유형별 payload SHA-256 검토 장부와 승인 지식 문서·청크·공식 URL 근거 연결을 추가한다.
+- 김태형의 엔진 산식 변경 합의와 이재용의 원격 적용 승인을 전달받았다. 테마 ETF 후보 순위는 거래대금 중앙값 내림차순, 동률 시 총보수 오름차순으로 변경했다. 두 값이 없는 상품은 순위에서 제외한다.
+- 원격 migration `20260720091219_add_etf_theme_content_verification.sql`은 테마·질문 유형별 payload SHA-256 검토 장부와 승인 지식 문서·청크·공식 URL 근거 연결을 추가한다.
 - 두 신규 테이블은 RLS를 활성화하고 `public`·`anon`·`authenticated` 권한을 회수하며 `service_role`만 접근한다.
 - 런타임은 `verified` 상태, 해시, 검토기한, 승인 지식 metadata, 활성 청크와 공식 URL이 모두 유효할 때만 해당 문구를 검증 완료로 표시한다. DB 미적용·장애·불일치는 기존 초안 표기를 유지한다.
-- 원격 적용은 하지 않았다. migration과 검증 데이터 적재는 이재용의 별도 승인 후 진행한다.
+- 승인 RAG는 문서 15개·활성 청크 56개이며 전부 BGE-M3 1024차원 임베딩을 보유한다. ETF 테마 승인 문서는 공식 URL 27개와 고유 테마 표식 23개를 포함한다.
+- 카탈로그 `2026-07-20.3`의 `overview`, `representative_companies`, `investment_considerations`, `performance_drivers`, `risks`가 각각 23건으로 총 115건이고, 검증 해시·근거 링크·활성 청크가 모두 115/115 일치한다. 최소 재검토일은 2027-01-16이다.
+- 원격 챗봇 E2E에서 조선 테마 개요가 `verified_knowledge` 출처 1건을 반환하고 `공식 문서 검증 전 초안` 한계를 제거했다. 후속 버튼은 `테마 대표기업`, `테마 장단점`, `테마 ETF상품` 3개다.
+- 검증: 백엔드 전체 `832 passed, 1 skipped`, 프런트 `16 passed`, 프로덕션 빌드, Ruff, 승인 매니페스트 검증을 통과했다. 원격 하이브리드 검색 품질은 24/24 기준 Hit@5·Hit@1·MRR@5 모두 1.000이다.
+- Advisor의 신규 두 테이블 `RLS Enabled No Policy` INFO는 브라우저 직접 접근을 막는 의도된 서버 전용 deny-by-default 설계다. 프로젝트 기존 WARN인 Auth 유출 비밀번호 보호 비활성화와 기존 성능 INFO는 이번 범위에서 변경하지 않았다. [RLS INFO 설명](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy) · [Auth WARN 조치 안내](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)
 
 ### 2026-07-20 14:39 KST
 

@@ -94,6 +94,13 @@
       "critical_top1": true
     },
     {
+      "id": "etf-theme-approved-basis",
+      "query": "ETF 테마 카탈로그 2026-07-20.3 질문 유형 5종",
+      "expected_source_url": "project://docs/20_리서치/ETF_테마/README.md",
+      "required_content_terms": ["23개 테마", "승인", "카탈로그"],
+      "critical_top1": true
+    },
+    {
       "id": "retirement-pension-2025-performance",
       "query": "2025년 퇴직연금 적립금 501.4조 수익률 6.5%",
       "expected_source_url": "project://docs/20_리서치/퇴직연금_2025_운용현황.md",

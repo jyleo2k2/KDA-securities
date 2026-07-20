@@ -4,6 +4,7 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from backend.app.api.deps import get_retrieval_repository
+from backend.app.engine.models import AccountType
 from backend.app.engine.profile import QUESTIONS
 from backend.app.main import app
 from backend.app.retrieval.repository import KnowledgeMatch
@@ -39,6 +40,66 @@ def test_route_paths_cover_engine_tools_and_data_reads() -> None:
         "/macro/evidence",
         "/macro/analog-regimes",
         "/macro/analog-regimes/etf-outcomes",
+        "/accounts/link-options",
+    }
+
+
+def test_account_link_options_are_static_mock_metadata() -> None:
+    response = client.get("/accounts/link-options")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data_boundary"] == "mock"
+    assert body["notice"] == (
+        "\ud604\uc7ac MVP\ub294 \ubaa9\ub370\uc774\ud130 "
+        "\uae30\ubc18 \uc870\ud68c\xb7\ubd84\uc11d "
+        "\ud654\uba74\uc785\ub2c8\ub2e4. \uc2e4\uc81c "
+        "\uacc4\uc88c \uc5f0\uacb0, \uacc4\uc88c \uc774\uc804, "
+        "\uc790\ub3d9 \ub9e4\ub9e4\ub294 \ubc1c\uc0dd\ud558\uc9c0 "
+        "\uc54a\uc2b5\ub2c8\ub2e4."
+    )
+    assert body["options"] == [
+        {
+            "code": "dc",
+            "display_name": "DC\ud615 \ud1f4\uc9c1\uc5f0\uae08",
+            "category_label": "\uc9c1\uc811 \uc6b4\uc6a9 \uacc4\uc88c",
+            "diagnosable": True,
+            "description": None,
+        },
+        {
+            "code": "irp",
+            "display_name": "IRP",
+            "category_label": "\uac1c\uc778 \uc5f0\uae08\uacc4\uc88c",
+            "diagnosable": True,
+            "description": None,
+        },
+        {
+            "code": "pension_savings",
+            "display_name": "\uc5f0\uae08\uc800\ucd95",
+            "category_label": "\uac1c\uc778 \uc5f0\uae08\uacc4\uc88c",
+            "diagnosable": True,
+            "description": None,
+        },
+        {
+            "code": "db",
+            "display_name": "DB\ud615 \ud1f4\uc9c1\uc5f0\uae08",
+            "category_label": "\ud68c\uc0ac \uc6b4\uc6a9 \uacc4\uc88c",
+            "diagnosable": False,
+            "description": (
+                "\uac00\uc785 \uc5ec\ubd80\ub9cc "
+                "\ud655\uc778\ud558\uba70 \uc6b4\uc6a9 "
+                "\uc9c4\ub2e8\uc5d0\uc11c\ub294 "
+                "\uc81c\uc678\ub429\ub2c8\ub2e4."
+            ),
+        },
+    ]
+
+
+def test_account_link_options_do_not_expand_engine_account_type() -> None:
+    assert {account_type.value for account_type in AccountType} == {
+        "dc",
+        "irp",
+        "pension_savings",
     }
 
 

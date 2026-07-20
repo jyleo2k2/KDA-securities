@@ -193,9 +193,19 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .answer-blocks { display: grid; gap: 11px; padding: 0 0 13px; }
 .rich-answer-section[open] p { max-height: none; overflow: visible; padding: 0; }
 .answer-callout { padding: 12px; border-radius: 10px; background: #e9f2d7; }
-.answer-callout strong, .answer-formula strong, .answer-table-title { display: block; margin-bottom: 5px; color: #294838; font-size: 10px; }
+.answer-callout > strong, .answer-formula strong, .answer-table-title { display: block; margin-bottom: 5px; color: #294838; font-size: 10px; }
 .answer-callout p { color: #345342; font-weight: 650; }
+.answer-callout-copy { display: grid; gap: 10px; }
+.answer-callout-copy p { font-weight: 500; line-height: 1.75; }
+.answer-callout-copy p strong { display: inline; margin: 0; color: #294838; font-size: inherit; font-weight: 800; }
 .answer-bullets { display: grid; gap: 6px; margin: 0; padding-left: 18px; color: #5e6d65; font-size: 11px; line-height: 1.6; }
+.theme-answer-content { --theme-paragraph-gap: 10px; }
+.theme-answer-content .rich-answer-section > p + .answer-blocks { margin-top: var(--theme-paragraph-gap); }
+.theme-answer-content .answer-blocks,
+.theme-answer-content .answer-bullets,
+.theme-answer-content .answer-callout-copy { gap: var(--theme-paragraph-gap); }
+.theme-answer-content .limitation-box p { margin: 0; }
+.theme-answer-content .limitation-box p + p { margin-top: var(--theme-paragraph-gap); }
 .answer-table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid #dde5da; border-radius: 9px; background: #fff; }
 .answer-table-title { margin: 0; padding: 9px 10px 0; }
 .answer-table-wrap table { width: 100%; min-width: 560px; border-collapse: collapse; color: #53645a; font-size: 9px; line-height: 1.45; }
@@ -338,7 +348,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .chat-home-card-section .prompt-carousel { margin-top: 16px; }
 .prompt-carousel { display: flex; gap: 12px; margin-top: 40px; overflow-x: auto; padding: 2px 20% 8px 0; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .prompt-carousel::-webkit-scrollbar { display: none; }
-.prompt-carousel button { flex: 0 0 calc(50% - 6px); min-height: 118px; display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; padding: 17px; scroll-snap-align: start; border: 1.5px solid #ecefe9; border-radius: 21px; background: #fff; color: #364940; text-align: left; box-shadow: none; }
+.prompt-carousel button { flex: 0 0 calc(50% - 6px); min-height: 118px; display: grid; grid-template-columns: 1fr; align-items: center; padding: 17px; scroll-snap-align: start; border: 1.5px solid #ecefe9; border-radius: 21px; background: #fff; color: #364940; text-align: left; box-shadow: none; }
 .prompt-carousel .design-prompt-copy { display: grid; gap: 5px; }.prompt-carousel .design-prompt-copy em { color: #65736b; font-size: 11px; font-style: normal; line-height: 1.4; }
 .sector-card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
 .sector-card-grid button { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 9px; min-height: 78px; padding: 12px; border: 1px solid #e3ebe1; border-radius: 16px; background: #fbfdf9; color: #284436; text-align: left; cursor: pointer; }
@@ -384,7 +394,6 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .rebalance-status { display: inline-flex; padding: 3px 6px; border-radius: 999px; background: #eef2ec; color: #526359; }.status-underweight_after_contribution { background: #fff0cf; color: #8a6110; }.status-overweight_review_only { background: #ffebe7; color: #9b4638; }.status-within_drift_band { background: #e3f5e8; color: #197149; }
 .portfolio-review-warning, .portfolio-review-disclaimer { margin: 0; padding: 9px 11px; border-radius: 9px; font-size: 9px; line-height: 1.55; }.portfolio-review-warning { background: #fff2dd; color: #805c24; }.portfolio-review-disclaimer { background: #eef1ed; color: #66736b; }
 .follow-up-cards { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }.follow-up-cards button { display: inline-flex; align-items: center; gap: 3px; padding: 8px 10px; border: 1px solid #d9e4d3; border-radius: 999px; background: #f6faf3; color: #365445; font-size: 11px; cursor: pointer; }.projection-series { display: grid; gap: 10px; }.projection-series-row { display: grid; gap: 5px; color: #586b60; font-size: 10px; }.projection-points { display: flex; gap: 5px; overflow-x: auto; }.projection-points span { display: grid; min-width: 66px; gap: 3px; padding: 7px; border-radius: 7px; background: #eaf2e4; color: #748076; }.projection-points b { color: #234435; font-size: 11px; }
-.guide-tab .design-prompt-icon { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 17px; background: #fff3cc; color: #e8a600; }
 .guide-tab .design-prompt-copy { display: grid; gap: 6px; min-width: 0; text-align: left; }
 .guide-tab .design-prompt-copy small { color: #9aa39c; font-size: 13px; font-weight: 700; }
 .guide-tab .design-prompt-copy strong { color: #111; font-size: 17px; font-weight: 700; line-height: 1.45; letter-spacing: -.7px; }

@@ -39,7 +39,31 @@ OBJ_STKPRC_IDX, CMPPREVDD_IDX, FLUC_RT_IDX
 
 KRX는 평일 휴장일에도 ETF 목록을 반환할 수 있으며 이때 가격 필드는 빈 문자열이다. 따라서 `row_count`는 수신 행, `usable_row_count`는 `TDD_CLSPRC`가 있는 계산 가능 행으로 분리한다. 휴장일을 0행 응답으로 가정하지 않는다.
 
-## 4. 과거 시장근거 엔진
+## 4. 전체 상장 ETF 일별 거래량 조회
+
+`TDD_CLSPRC`가 있는 기준일 응답은 연금계좌 적격성이나 253관측 조건으로
+필터링하지 않고 `etf_daily_market_snapshots`에 종목별 1행으로 정규화한다.
+휴장일 플레이스홀더는 적재하지 않는다. 원본 JSON은 기존 `data/raw/krx/`에
+보존하고 DB 행은 `data_sources`·`ingestion_runs`와 연결한다.
+
+- `ACC_TRDVOL` → `trading_volume`(좌)
+- `ACC_TRDVAL` → `trading_value_krw`(원)
+- 종목코드는 `0184E0`처럼 영문이 섞인 KRX 6자리 코드도 보존한다.
+- 기준일·종목코드 복합 기본키로 재실행을 멱등 upsert한다.
+- 브라우저의 테이블 직접 접근은 차단하고 FastAPI만 조회한다.
+- `GET /market/etfs`: 요청일 이하 최신 거래일의 전체 ETF를 거래량·거래대금·순자산 순으로 조회한다.
+- `GET /market/etfs/{isu_code}/volume-history`: 적재된 종목별 일별 거래량 이력을 오래된 날짜부터 반환한다.
+- 이 경로는 일별 확정 통계이며 장중 실시간 시세로 표시하지 않는다.
+
+기본 적재는 최신 계산 가능 원본 1일이다. 과거일은 같은 명령에 `--date`를
+지정해 필요한 날짜만 추가 적재한다.
+
+```powershell
+uv run python scripts/load_krx_etf_market_snapshot.py
+uv run python scripts/load_krx_etf_market_snapshot.py --date 2026-07-16
+```
+
+## 5. 과거 시장근거 엔진
 
 ETF별 최근 253개 실제 거래 관측으로 다음을 계산한다. 현재 상장되어 있어도 253개 관측이 없거나 보고일 종가가 없는 상품은 운용 후보에서 제외한다.
 
@@ -60,7 +84,7 @@ NAV·거래대금·순자산·기초지수와 현재 상장 여부를 제공한�
 
 출력 파일은 `data/cache/krx/etf_market_evidence_YYYY-MM-DD.json`이다. 상품 목록에는 보고일 KRX 상장 목록에 포함되고 253개 관측과 보고일 종가가 모두 있는 ETF만 싣는다. 상장폐지 상품과 관측 부족 상품의 개별 항목은 제외하고 제외 건수만 기록한다. 원본은 감사·재현을 위해 수정하지 않는다.
 
-## 5. 사용 금지·추가 데이터
+## 6. 사용 금지·추가 데이터
 
 - 과거수익률을 미래 기대수익률로 변환하지 않는다.
 - 기초지수명이 같은 상품끼리도 총보수·분배금·복제방식이 없으면 최종 순위를 만들지 않는다.
@@ -68,7 +92,7 @@ NAV·거래대금·순자산·기초지수와 현재 상장 여부를 제공한�
 - 계좌별 매수 가능 여부, DC·IRP 위험자산 분류, 법정 예외는 금융회사·공식 상품 마스터로 별도 검증한다.
 - 총보수·실부담비용·분배금 포함 총수익률은 KRX 일별 API 밖의 데이터다.
 
-## 6. 재현 명령
+## 7. 재현 명령
 
 ```powershell
 uv --cache-dir .uv-cache run python -m backend.app.ingestion.krx --from-date 2020-01-02 --to-date 2026-07-14 --workers 8

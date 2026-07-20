@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "catalog_version": "2026-07-20.3",
+  "knowledge_document_id": "etf-theme-23-approved-basis",
+  "reviewer": "이호연(조장), 이재용(총괄)",
+  "verified_at": "2026-07-20T00:00:00+09:00",
+  "review_due_date": "2027-01-16",
+  "themes": [
+    {"theme_id":"ai_software","source_label":"국가법령정보센터 인공지능기본법","publisher":"국가법령정보센터","official_source_url":"https://www.law.go.kr/lsInfoP.do?ancYnChk=0&lsId=014820"},
+    {"theme_id":"semiconductor","source_label":"대한민국 정책브리핑 반도체 정책자료","publisher":"대한민국 정책브리핑","official_source_url":"https://www.korea.kr/special/policyCurationView.do?newsId=148868225"},
+    {"theme_id":"renewable_green","source_label":"국가법령정보센터 신에너지 및 재생에너지 법령","publisher":"국가법령정보센터","official_source_url":"https://www.law.go.kr/LSW/lsLawLinkInfo.do?ancYnChk=&chrClsCd=010202&lsJoLnkSeq=1012697749"},
+    {"theme_id":"bio_healthcare","source_label":"국가법령정보센터 보건의료기술 진흥법","publisher":"국가법령정보센터","official_source_url":"https://www.law.go.kr/LSW/lsLawLinkInfo.do?chrClsCd=010202&lsId=000219&lsJoLnkSeq=1001084480&print=print"},
+    {"theme_id":"secondary_battery","source_label":"대한민국 정책브리핑 이차전지 정책자료","publisher":"대한민국 정책브리핑","official_source_url":"https://www.korea.kr/news/policyNewsView.do?newsId=156689142"},
+    {"theme_id":"construction_machinery_infra","source_label":"국가법령정보센터 건설산업기본법","publisher":"국가법령정보센터","official_source_url":"https://www.law.go.kr/lsInfoP.do?ancYnChk=0&lsId=001808"},
+    {"theme_id":"automotive_mobility","source_label":"한국교통안전공단 모빌리티지원센터","publisher":"한국교통안전공단","official_source_url":"https://main.kotsa.or.kr/portal/contents.do?menuCode=12080100"},
+    {"theme_id":"business_groups","source_label":"국가법령정보센터 공정거래법 기업집단 정의","publisher":"국가법령정보센터","official_source_url":"https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0002&lsiSeq=285951&urlMode=lsScJoRltInfoR"},
+    {"theme_id":"energy_refining","source_label":"국가법령정보센터 에너지법 정의","publisher":"국가법령정보센터","official_source_url":"https://www.law.go.kr/LSW/lsLawLinkInfo.do?chrClsCd=010202&lsJoLnkSeq=900473007"},
+    {"theme_id":"media_entertainment_gaming","source_label":"국가법령정보센터 게임산업진흥법","publisher":"국가법령정보센터","official_source_url":"https://law.go.kr/LSW/lsInfoP.do?ancYnChk=0&lsId=010196"},
+    {"theme_id":"nuclear_power_grid","source_label":"전력거래소 전력시장 안내","publisher":"전력거래소","official_source_url":"https://www.kpx.or.kr/menu.es?mid=a10301010000"},
+    {"theme_id":"reit_real_estate","source_label":"국토교통부 리츠정보시스템","publisher":"국토교통부","official_source_url":"https://reits.molit.go.kr/pub/intro/info/infoReits01?pmn=4"},
+    {"theme_id":"robotics","source_label":"산업통상자원부 지능형로봇 기본계획","publisher":"산업통상자원부","official_source_url":"https://www.motir.go.kr/kor/article/ATCLc01b2801b/69079/view"},
+    {"theme_id":"bank_finance","source_label":"금융위원회 금융기관 안내","publisher":"금융위원회","official_source_url":"https://www.fsc.go.kr/kids/kd020101"},
+    {"theme_id":"defense_space","source_label":"방위사업청 방위산업발전 기본계획","publisher":"방위사업청","official_source_url":"https://www.dapa.go.kr/dapa/na/ntt/selectNttInfo.do?bbsId=243&menuId=757&nttSn=45959"},
+    {"theme_id":"consumer_food","source_label":"S&P Dow Jones Indices GICS 소비재 분류","publisher":"S&P Dow Jones Indices","official_source_url":"https://www.spglobal.com/spdji/en/landing/topic/gics/"},
+    {"theme_id":"gold_commodities","source_label":"한국거래소 KRX금시장 안내","publisher":"한국거래소","official_source_url":"https://open.krx.co.kr/contents/OPN/01/01050201/OPN01050201.jsp"},
+    {"theme_id":"korea_value_up","source_label":"한국거래소 기업 밸류업 안내","publisher":"한국거래소","official_source_url":"https://kind.krx.co.kr/valueup/intro.do?method=valueupIntroMain"},
+    {"theme_id":"esg","source_label":"한국거래소 ESG 포털","publisher":"한국거래소","official_source_url":"https://esg.krx.co.kr/contents/01/01010100/ESG01010100.jsp"},
+    {"theme_id":"steel_materials","source_label":"대한민국 정책브리핑 철강산업 고도화 방안","publisher":"대한민국 정책브리핑","official_source_url":"https://www.korea.kr/news/policyNewsView.do?newsId=148953928"},
+    {"theme_id":"quantum_computing","source_label":"NIST Quantum Computing Explained","publisher":"NIST","official_source_url":"https://www.nist.gov/quantum-information-science/quantum-computing-explained"},
+    {"theme_id":"metaverse","source_label":"국가법령정보센터 가상융합산업 진흥법","publisher":"국가법령정보센터","official_source_url":"https://www.law.go.kr/lsInfoP.do?lsiSeq=260801"},
+    {"theme_id":"shipbuilding","source_label":"산업통상자원부 K-조선 미래비전","publisher":"산업통상자원부","official_source_url":"https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/171828/view"}
+  ]
+}

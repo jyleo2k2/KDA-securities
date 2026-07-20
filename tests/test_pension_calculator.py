@@ -168,6 +168,21 @@ def test_default_strategy_counts_match_profile_rules() -> None:
     assert sum(strategy.default_visible for strategy in aggressive.strategies) == 3
 
 
+def test_strategies_include_display_metadata() -> None:
+    strategies = calculate_pension(_input()).strategies
+
+    assert {strategy.presentation.strategy_id for strategy in strategies} == {
+        strategy.strategy_id for strategy in strategies
+    }
+    aggressive = next(
+        strategy
+        for strategy in strategies
+        if strategy.strategy_id == "barbell_growth_tactical"
+    )
+    assert aggressive.presentation.display_name == "테마 집중 전략"
+    assert aggressive.presentation.risk_badge == "공격투자형"
+
+
 def test_out_of_profile_strategy_is_never_default_visible() -> None:
     for profile in RiskProfile:
         result = calculate_pension(_input(risk_profile=profile))

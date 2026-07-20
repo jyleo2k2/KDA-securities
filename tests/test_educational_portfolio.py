@@ -2,19 +2,25 @@ from collections import Counter
 from datetime import date, timedelta
 from decimal import Decimal
 
+import pytest
+
 import backend.app.engine.educational_portfolio as portfolio_module
 from backend.app.engine.educational_portfolio import (
+    CandidateQuality,
     CurrentHolding,
+    EducationalEtfCandidate,
     EducationalPortfolioInput,
     RiskProfile,
+    _build_asset_class_allocation,
     _candidate_counts,
+    _display_asset_class,
     _percentile,
     build_educational_portfolio,
     calculate_return_correlation,
     calculate_target_allocation,
     select_educational_candidates,
 )
-from backend.app.engine.models import AccountType
+from backend.app.engine.models import AccountType, AssetClass
 
 
 def _request(
@@ -303,6 +309,84 @@ def test_portfolio_uses_full_allocation_products_for_defensive_sleeves() -> None
     assert result.planning_return.is_forecast is False
     assert result.planning_return.historical_performance_used is False
     assert result.planning_horizon_years == 3
+
+
+def test_asset_class_allocation_includes_all_display_buckets_and_corrects_rounding(
+) -> None:
+    quality = CandidateQuality(
+        total_score=Decimal("100"),
+        fee_efficiency=Decimal("100"),
+        liquidity=Decimal("100"),
+        size=Decimal("100"),
+        nav_quality=Decimal("100"),
+        tracking_quality=Decimal("100"),
+        history_depth=Decimal("100"),
+    )
+    candidates = [
+        EducationalEtfCandidate(
+            isu_code="DOMESTIC",
+            isu_name="국내 ETF",
+            sleeve="core_equity",
+            target_percent=Decimal("50"),
+            quality=quality,
+            asset_class=AssetClass.DOMESTIC_EQUITY,
+            region="south_korea",
+            strategy="broad_market",
+            max_correlation_with_selected=None,
+            price_history_source="test",
+            account_eligibility={},
+            reasons=[],
+        ),
+        EducationalEtfCandidate(
+            isu_code="GLOBAL",
+            isu_name="해외 ETF",
+            sleeve="core_equity",
+            target_percent=Decimal("49.9999"),
+            quality=quality,
+            asset_class=AssetClass.GLOBAL_EQUITY,
+            region="united_states",
+            strategy="broad_market",
+            max_correlation_with_selected=None,
+            price_history_source="test",
+            account_eligibility={},
+            reasons=[],
+        ),
+    ]
+
+    allocation, warnings = _build_asset_class_allocation(candidates)
+
+    assert [item.asset_class for item in allocation] == [
+        AssetClass.DOMESTIC_EQUITY,
+        AssetClass.GLOBAL_EQUITY,
+        AssetClass.BOND,
+        AssetClass.ALTERNATIVE,
+        AssetClass.CASH,
+    ]
+    assert sum((item.target_percent for item in allocation), Decimal("0")) == 100
+    assert warnings == []
+
+
+@pytest.mark.parametrize(
+    ("classification", "expected"),
+    [
+        (
+            {"asset_class": "equity", "region": "south_korea"},
+            AssetClass.DOMESTIC_EQUITY,
+        ),
+        (
+            {"asset_class": "equity", "region": "united_states"},
+            AssetClass.GLOBAL_EQUITY,
+        ),
+        ({"asset_class": "fixed_income"}, AssetClass.BOND),
+        ({"asset_class": "real_estate"}, AssetClass.ALTERNATIVE),
+        ({"asset_class": "cash_equivalent"}, AssetClass.CASH),
+        ({"asset_class": "equity"}, None),
+    ],
+)
+def test_candidate_asset_class_uses_existing_product_classification(
+    classification: dict[str, str], expected: AssetClass | None
+) -> None:
+    assert _display_asset_class(classification) == expected
 
 
 def test_retirement_start_age_changes_horizon_and_glidepath() -> None:

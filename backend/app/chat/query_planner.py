@@ -143,14 +143,14 @@ _THEME_HOLDING_TERMS = re.compile(
     re.I,
 )
 _THEME_REPRESENTATIVE_COMPANY_TERMS = re.compile(
-    r"(?:대표|주요|관련)\s*(?:기업|회사)"
+    r"(?:대표|주요|관련)\s*(?:테마\s*)?(?:기업|회사)"
     r"|(?:기업|회사).{0,12}(?:뭐|무엇|어디|알려|소개)"
     r"|어떤\s*(?:기업|회사)|대표\s*종목"
 )
 _THEME_CONSIDERATION_TERMS = re.compile(
     r"(?:투자|편입).{0,15}(?:고려|주의|유의|살펴)"
     r"|(?:고려|주의|유의|살펴).{0,12}(?:점|사항)"
-    r"|장점|이점"
+    r"|장단점|장점|이점"
 )
 _THEME_PERFORMANCE_DRIVER_TERMS = re.compile(
     r"(?:성과|수익|가격).{0,18}(?:영향|요인|좌우|움직)"
@@ -323,7 +323,14 @@ def _account_rule_topic(
     if _ACCOUNT_OVERVIEW_NARROW_TERMS.search(message):
         return None
     asks_for_overview = _ACCOUNT_OVERVIEW_WORDS.search(message) is not None
-    if asks_for_overview and re.search(r"연금\s*계좌", message):
+    compares_all_accounts = set(account_types) == {
+        AccountType.DC,
+        AccountType.IRP,
+        AccountType.PENSION_SAVINGS,
+    }
+    if asks_for_overview and (
+        re.search(r"연금\s*계좌", message) or compares_all_accounts
+    ):
         return AccountRuleTopic.PENSION_ACCOUNT_OVERVIEW
     return None
 
@@ -494,10 +501,10 @@ def plan_question(
             if asks_representative_companies
             else ThemeContentTopic.PERFORMANCE_DRIVERS
             if asks_performance_drivers
-            else ThemeContentTopic.RISKS
-            if asks_risks
             else ThemeContentTopic.INVESTMENT_CONSIDERATIONS
             if asks_considerations
+            else ThemeContentTopic.RISKS
+            if asks_risks
             else ThemeContentTopic.OVERVIEW
         )
         return QueryPlan(

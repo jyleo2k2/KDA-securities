@@ -24,6 +24,7 @@ from .models import (
     PensionCalculatorYear,
     RiskProfile,
 )
+from .strategy_presentation import get_strategy_presentation
 
 KRW_QUANTUM = Decimal("1")
 ONE_HUNDRED = Decimal("100")
@@ -114,6 +115,7 @@ def _build_strategies(
     return [
         PensionCalculatorStrategy(
             strategy_id=strategy_id,
+            presentation=get_strategy_presentation(strategy_id),
             risk_profile=profile,
             net_annual_return_percent=annual_return,
             growth_percent=weights.growth_percent,

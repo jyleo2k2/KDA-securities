@@ -33,107 +33,39 @@ class ChatCardCatalog(BaseModel):
 
 CHAT_CARDS = (
     ChatCard(
-        card_id="portfolio_diag",
-        title="내 연금 진단",
-        message="내 연금 포트폴리오를 진단해 줘.",
-        intent=ChatIntent.MOCK_PORTFOLIO,
-        conditions=[CardCondition.REQUIRES_SCENARIO],
-        priority=5,
-    ),
-    ChatCard(
-        card_id="edu_portfolio",
-        title="성향별 포트폴리오",
-        message="내 성향에 맞는 연금 포트폴리오 예시를 보여줘.",
-        intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
-        conditions=[CardCondition.REQUIRES_SURVEY],
-        priority=8,
-    ),
-    ChatCard(
-        card_id="news_kr",
-        title="오늘 국내 증시 뉴스",
-        message="오늘 국내 증시 뉴스 알려줘.",
+        card_id="news_market",
+        title="오늘 증시 뉴스",
+        message="오늘 증시 뉴스 알려줘.",
         intent=ChatIntent.NEWS,
         priority=10,
     ),
     ChatCard(
-        card_id="live_news_event_strategy",
-        title="실시간 뉴스 전술 가이드",
-        message="실시간 뉴스 기반 이벤트 드리븐 운용전략을 알려줘.",
-        intent=ChatIntent.NEWS,
-        conditions=[CardCondition.REQUIRES_SURVEY],
-        priority=12,
-    ),
-    ChatCard(
-        card_id="return_diag",
-        title="계좌 수익률 진단",
-        message="내 IRP·연금저축 수익률을 진단해 줄래?",
-        intent=ChatIntent.MOCK_PORTFOLIO,
-        conditions=[CardCondition.REQUIRES_SCENARIO],
-        priority=15,
-    ),
-    ChatCard(
-        card_id="age_strategy",
-        title="나이별 저축 전략",
-        message="내 나이에 맞는 연금 저축 전략을 알려줘.",
-        intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
-        conditions=[CardCondition.REQUIRES_SURVEY],
-        priority=18,
-    ),
-    ChatCard(
-        card_id="news_us",
-        title="미국 증시 뉴스",
-        message="미국 증시 뉴스 알려줘.",
-        intent=ChatIntent.NEWS,
-        priority=20,
-    ),
-    ChatCard(
-        card_id="etf_theme_semiconductor",
-        title="반도체 ETF 테마",
-        message="반도체 테마의 특징과 위험을 알려줘.",
-        intent=ChatIntent.ETF_THEME,
-        priority=25,
-    ),
-    ChatCard(
-        card_id="macro_evidence",
-        title="거시환경 근거",
-        message="BOK·KOSIS·FRED 거시환경 근거를 보여줘.",
-        intent=ChatIntent.MACRO_EVIDENCE,
-        priority=25,
-    ),
-    ChatCard(
         card_id="tax_credit",
-        title="연금 세액공제",
-        message="올해 받을 수 있는 연금 세액공제가 궁금해.",
+        title="연금세액공제",
+        message="올해 받을 수 있는 연금세액공제가 궁금해.",
         intent=ChatIntent.PENSION_TAX,
-        priority=30,
+        priority=20,
     ),
     ChatCard(
         card_id="withdrawal_tax",
         title="중도해지 세금",
-        message="연금저축을 중도에 해지하면 세금이 얼마나 나와?",
-        intent=ChatIntent.PENSION_TAX,
-        priority=40,
+        message="연금계좌를 중도에 해지하면 어떻게 돼?",
+        intent=ChatIntent.ACCOUNT_RULE,
+        priority=30,
     ),
     ChatCard(
         card_id="account_diff",
-        title="계좌별 차이",
-        message="DC형·IRP·연금저축은 뭐가 달라?",
+        title="연금계좌별 차이",
+        message="DC형, IRP, 연금저축은 뭐가 달라?",
         intent=ChatIntent.ACCOUNT_RULE,
+        priority=40,
+    ),
+    ChatCard(
+        card_id="edu_portfolio",
+        title="맞춤형 포트폴리오",
+        message="내 상황에 맞는 연금저축전략을 알려줘.",
+        intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
         priority=50,
-    ),
-    ChatCard(
-        card_id="risk_cap",
-        title="위험자산 한도",
-        message="IRP에서 위험자산은 몇 퍼센트까지 담을 수 있어?",
-        intent=ChatIntent.ACCOUNT_RULE,
-        priority=60,
-    ),
-    ChatCard(
-        card_id="provider_compare",
-        title="IRP 사업자 비교",
-        message="증권사별 IRP 수익률을 비교해 줘.",
-        intent=ChatIntent.PROVIDER_DISCLOSURE,
-        priority=70,
     ),
 )
 
@@ -238,7 +170,15 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
             return []
         theme_name = title[:marker_position]
         follow_ups: list[SuggestedFollowUp] = []
-        if response.data_mode != "theme_performance_drivers":
+        if response.data_mode == "theme_overview":
+            follow_ups.append(
+                SuggestedFollowUp(
+                    follow_up_id="theme_representative_companies",
+                    label="테마 대표기업",
+                    message=f"{theme_name} 테마 대표기업은 뭐야?",
+                )
+            )
+        elif response.data_mode != "theme_performance_drivers":
             follow_ups.append(
                 SuggestedFollowUp(
                     follow_up_id="theme_performance_drivers",
@@ -254,19 +194,19 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
         }:
             follow_ups.append(
                 SuggestedFollowUp(
-                    follow_up_id="theme_risks",
-                    label="고유 위험",
-                    message=f"{theme_name} 테마의 고유 위험은 뭐야?",
+                    follow_up_id="theme_pros_cons",
+                    label="테마 장단점",
+                    message=(
+                        f"{theme_name} 테마 ETF에 투자할 때 장단점을 알려줘"
+                    ),
                 )
             )
         if response.data_mode != "theme_candidates":
             follow_ups.append(
                 SuggestedFollowUp(
-                    follow_up_id="theme_candidates",
-                    label="내 계좌 후보 비교",
-                    message=(
-                        f"내 연금계좌에서 {theme_name} ETF 후보를 비교해줘"
-                    ),
+                    follow_up_id="theme_products",
+                    label="테마 ETF상품",
+                    message=f"{theme_name} 테마 ETF상품 3개를 보여줘",
                 )
             )
         elif not any(

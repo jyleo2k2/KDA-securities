@@ -19,6 +19,7 @@ from .diagnostics import (
 )
 from .educational_portfolio import (
     CurrentHolding,
+    EducationalAssetClassAllocation,
     EducationalEtfCandidate,
     EducationalPortfolioEvaluation,
     EducationalPortfolioInput,
@@ -99,6 +100,7 @@ from .models import (
     ScenarioHoldingInput,
     ScenarioPortfolioInput,
     StatutoryException,
+    StrategyPresentation,
 )
 from .pension_calculator import calculate_pension
 from .pension_tax import (
@@ -148,6 +150,7 @@ from .strategy import (
     evaluate_profit_lock,
     evaluate_risk_budget,
 )
+from .strategy_presentation import get_strategy_presentation
 
 __all__ = [
     "AccountContribution",
@@ -169,6 +172,7 @@ __all__ = [
     "DiagnosticFinding",
     "CurrentHolding",
     "EducationalEtfCandidate",
+    "EducationalAssetClassAllocation",
     "EducationalPortfolioEvaluation",
     "EducationalPortfolioInput",
     "EducationalRiskProfile",
@@ -230,6 +234,7 @@ __all__ = [
     "SimulationEvaluation",
     "SimulationInput",
     "StatutoryException",
+    "StrategyPresentation",
     "SleeveTarget",
     "SurveyAnswer",
     "ThemeCandidateEvaluation",
@@ -264,6 +269,7 @@ __all__ = [
     "evaluate_historical_returns",
     "evaluate_profit_lock",
     "evaluate_risk_budget",
+    "get_strategy_presentation",
     "normalize_kis_holdings",
     "resolve_theme",
     "select_theme_etf_candidates",
