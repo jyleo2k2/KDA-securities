@@ -19,7 +19,6 @@ import {
   ETF_THEME_CARDS,
   filterChatCards,
   GuidePage,
-  TypingAnswer,
 } from "./GuidePage";
 
 vi.mock("../api/client", () => ({
@@ -741,34 +740,3 @@ describe("filterChatCards", () => {
   });
 });
 
-describe("TypingAnswer", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("skips the engine-answer animation on click and shows narration immediately", () => {
-    vi.useFakeTimers();
-    const { rerender } = render(
-      <TypingAnswer animate intervalMs={50} text="첫 번째 검증 답변입니다." />,
-    );
-
-    fireEvent.click(screen.getByRole("button", {
-      name: "답변 타이핑을 건너뛰려면 클릭하세요",
-    }));
-    expect(screen.getByText("첫 번째 검증 답변입니다.")).toBeInTheDocument();
-
-    rerender(
-      <TypingAnswer animate={false} intervalMs={50} text="검증된 내레이션입니다." />,
-    );
-    expect(screen.getByText("검증된 내레이션입니다.")).toBeInTheDocument();
-
-    act(() => vi.advanceTimersByTime(500));
-    expect(screen.queryByText("첫 번째 검증 답변입니다.")).not.toBeInTheDocument();
-  });
-
-  it("shows the complete answer immediately when the injected interval is zero", () => {
-    render(<TypingAnswer animate intervalMs={0} text="즉시 표시 답변입니다." />);
-
-    expect(screen.getByText("즉시 표시 답변입니다.")).toBeInTheDocument();
-  });
-});

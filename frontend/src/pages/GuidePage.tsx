@@ -20,10 +20,16 @@ import {
   getMyPensionContext,
   getScenarios,
   getStoredChatMessages,
-  sendAuthenticatedChatStream,
-  sendChatStream,
 } from "../api/client";
-import { conicGradient } from "../charts";
+import { ChatVisualization } from "../components/ChatVisualization";
+import { ChatIcon as Icon } from "../components/ChatIcon";
+import {
+  ChatEtfThemeCards,
+  ChatQuestionRecommendations,
+} from "../components/ChatRecommendations";
+import { ChatSessionList } from "../components/ChatSessionList";
+import { ChatComposer, ChatMessageList } from "../components/ChatConversation";
+import { ChatTypingAnswer } from "../components/ChatTypingAnswer";
 import {
   EducationalPortfolioReview,
   PortfolioHoldingsPanel,
@@ -35,10 +41,8 @@ import type {
   ConversationContext,
   ChatResponse,
   ChatSessionSummary,
-  ChatVisualization,
   DataBoundary,
   DemoUserFinancialContext,
-  EducationalPortfolioInput,
   IncomeBasis,
   IrpDeferredIncomeStatus,
   IsaTransferEligibilityStatus,
@@ -48,16 +52,7 @@ import type {
   WithdrawalReason,
 } from "../api/types";
 import { useSupabaseAuth } from "../auth/useSupabaseAuth";
-
-interface ConversationMessage {
-  id: string;
-  role: "user" | "assistant";
-  text: string;
-  response?: ChatResponse;
-  failedPrompt?: string;
-  failedEducationalPortfolio?: EducationalPortfolioInput;
-  createdAt: Date;
-}
+import { useChatStream, type ConversationMessage } from "../hooks/useChatStream";
 
 const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   account_rule: "계좌 규칙",
@@ -82,7 +77,6 @@ const BOUNDARY_LABELS: Record<DataBoundary, string> = {
   unavailable: "미지원",
 };
 
-const PENSION_TAX_PROMPT = /세액\s*공제|중도\s*해지|연금\s*외\s*수령|16\.5\s*%/;
 const DEFAULT_TYPING_INTERVAL_MS = 50;
 
 export const ETF_THEME_CARDS = [
@@ -110,11 +104,6 @@ export const ETF_THEME_CARDS = [
   { number: 22, title: "메타버스", message: "메타버스 테마가 뭐야?" },
   { number: 23, title: "조선", message: "조선 테마가 뭐야?" },
 ] as const;
-const INITIAL_ETF_THEME_CARD_COUNT = 5;
-const REMAINING_ETF_THEME_CARD_COUNT = (
-  ETF_THEME_CARDS.length - INITIAL_ETF_THEME_CARD_COUNT
-);
-
 function numericText(value: string | number, unit: string): string {
   if (unit.toUpperCase() === "KRW") {
     return `${Number(value).toLocaleString("ko-KR")}원`;
@@ -144,147 +133,10 @@ export function filterChatCards(
     .sort((left, right) => left.priority - right.priority);
 }
 
-function Icon({
-  name,
-  size = 20,
-}: {
-  name: "spark" | "send" | "book" | "database" | "chevron" | "shield" | "refresh" | "sun" | "chart" | "star" | "trash";
-  size?: number;
-}) {
-  const paths = {
-    spark: <path d="M12 2l1.7 4.6L18 8.3l-4.3 1.7L12 14.5 10.3 10 6 8.3l4.3-1.7L12 2Zm6 10 .9 2.2L21 15l-2.1.8L18 18l-.9-2.2L15 15l2.1-.8L18 12ZM6 14l1.2 3.1L10 18.2l-2.8 1.1L6 22l-1.2-2.7L2 18.2l2.8-1.1L6 14Z" />,
-    send: <path d="m21 3-7.6 18-4.2-7.1L2 9.7 21 3Zm0 0L9.2 13.9" />,
-    book: <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14Z" />,
-    database: <><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></>,
-    chevron: <path d="m9 18 6-6-6-6" />,
-    shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Zm-3-10 2 2 4-4" />,
-    refresh: <path d="M20 11a8.1 8.1 0 1 0 2 5M20 4v7h-7" />,
-    sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" /></>,
-    chart: <><path d="M4 20V4M4 20h16" /><path d="m8 15 3-4 3 2 5-6" /></>,
-    star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />,
-    trash: <path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6" />,
-  };
-  return <svg aria-hidden="true" viewBox="0 0 24 24" width={size} height={size}>{paths[name]}</svg>;
-}
-
 function SourceLink({ locator, children }: { locator: string; children: ReactNode }) {
   const isWeb = /^https?:\/\//.test(locator);
   if (!isWeb) return <span>{children}</span>;
   return <a href={locator} target="_blank" rel="noreferrer">{children}</a>;
-}
-
-function VisualizationCard({ visualization }: { visualization: ChatVisualization }) {
-  if (visualization.kind === "tax_summary") {
-    return (
-      <section className="allocation-chart tax-visualization" aria-label={visualization.title}>
-        <h3>{visualization.title}</h3>
-        <p className="visualization-description">{visualization.description}</p>
-        <div className="tax-summary-grid">
-          {visualization.items.map((item) => (
-            <div key={item.label}>
-              <span>{item.label}</span>
-              <strong>{numericText(item.value, item.unit)}</strong>
-            </div>
-          ))}
-        </div>
-      </section>
-    );
-  }
-
-  if (visualization.kind === "risk_cap") {
-    const current = visualization.items.find((item) => item.role === "current");
-    const limit = visualization.items.find((item) => item.role === "limit");
-    const displayed = current ?? limit;
-    const percent = Math.min(Number(displayed?.value ?? 0), 100);
-    const summary = current && limit
-      ? `${numericText(current.value, current.unit)} / 기준 ${numericText(limit.value, limit.unit)}`
-      : `최대 ${numericText(limit?.value ?? 0, limit?.unit ?? "%")}`;
-
-    return (
-      <section className="allocation-chart" aria-label={visualization.title}>
-        <h3>{visualization.title}</h3>
-        <p className="visualization-description">{visualization.description}</p>
-        <div className="allocation-row">
-          <div><span>위험자산</span><strong>{summary}</strong></div>
-          <div className="allocation-track" role="img" aria-label={`위험자산 ${summary}`}>
-            <span style={{ width: `${percent}%` }} />
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  if (visualization.kind === "stress_scenarios" || visualization.kind === "disclosure_comparison") {
-    return (
-      <section className="allocation-chart" aria-label={visualization.title}>
-        <h3>{visualization.title}</h3>
-        <p className="visualization-description">{visualization.description}</p>
-        <div className="tax-summary-grid">
-          {visualization.items.map((item) => (
-            <div key={item.label}>
-              <span>{item.label}</span>
-              <strong>{numericText(item.value, item.unit)}</strong>
-            </div>
-          ))}
-        </div>
-      </section>
-    );
-  }
-
-  if (visualization.series?.length) {
-    return (
-      <section className="allocation-chart" aria-label={visualization.title}>
-        <h3>{visualization.title}</h3>
-        <p className="visualization-description">{visualization.description}</p>
-        <div className="projection-series">
-          {visualization.series.map((series) => (
-            <div className="projection-series-row" key={series.label}>
-              <strong>{series.label}</strong>
-              <div className="projection-points">
-                {series.points.map((point) => (
-                  <span key={`${series.label}-${point.position}`} title={`${point.label} ${numericText(point.value, series.unit)}`}>
-                    {point.label}<b>{numericText(point.value, series.unit)}</b>
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-    );
-  }
-
-  const colors = ["#4f8a70", "#84ad67", "#d8a45e", "#7183b1", "#bf7d70"];
-  const gradientStops = conicGradient(
-    visualization.items.map((item) => Number(item.value)),
-    colors,
-  );
-
-  return (
-    <section className="allocation-chart" aria-label={visualization.title}>
-      <h3>{visualization.title}</h3>
-      <p className="visualization-description">{visualization.description}</p>
-      <div className="allocation-pie-layout">
-        <div
-          aria-label={visualization.items.map((item) => `${item.label} ${item.value}%`).join(", ")}
-          className="allocation-donut"
-          role="img"
-          style={{ background: `conic-gradient(${gradientStops})` }}
-        >
-          <span>전체<br /><strong>100%</strong></span>
-        </div>
-        <ul className="allocation-legend">
-          {visualization.items.map((item, index) => (
-            <li key={item.label}>
-              <i style={{ backgroundColor: colors[index % colors.length] }} />
-              <span>{item.label}</span>
-              <strong>{item.value}%</strong>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
-  );
 }
 
 function NewsCards({ response }: { response: ChatResponse }) {
@@ -575,100 +427,6 @@ function MacroRegimeOutcomeCards({ response }: { response: ChatResponse }) {
   );
 }
 
-function usePrefersReducedMotion(): boolean {
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => (
-    typeof window !== "undefined"
-    && typeof window.matchMedia === "function"
-    && window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  ));
-
-  useEffect(() => {
-    if (typeof window.matchMedia !== "function") return undefined;
-    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const updatePreference = () => setPrefersReducedMotion(mediaQuery.matches);
-    updatePreference();
-    mediaQuery.addEventListener("change", updatePreference);
-    return () => mediaQuery.removeEventListener("change", updatePreference);
-  }, []);
-
-  return prefersReducedMotion;
-}
-
-export function TypingAnswer({
-  text,
-  animate,
-  intervalMs = DEFAULT_TYPING_INTERVAL_MS,
-  onProgress,
-}: {
-  text: string;
-  animate: boolean;
-  intervalMs?: number;
-  onProgress?: () => void;
-}) {
-  const prefersReducedMotion = usePrefersReducedMotion();
-  const [displayedText, setDisplayedText] = useState("");
-  const [skipped, setSkipped] = useState(false);
-  const onProgressRef = useRef(onProgress);
-  const showWholeAnswer = !animate || intervalMs <= 0 || prefersReducedMotion || skipped;
-  const renderedText = showWholeAnswer ? text : displayedText;
-
-  useEffect(() => {
-    onProgressRef.current = onProgress;
-  }, [onProgress]);
-
-  useEffect(() => {
-    if (showWholeAnswer) {
-      setDisplayedText(text);
-      return undefined;
-    }
-
-    // A token contains one visible word and its surrounding whitespace, so
-    // Korean line breaks and spaces are preserved without animating characters.
-    const tokens = text.match(/\s*\S+\s*/g) ?? (text ? [text] : []);
-    let tokenIndex = 0;
-    let timer: number | undefined;
-    setDisplayedText("");
-
-    const revealNextToken = () => {
-      tokenIndex += 1;
-      setDisplayedText(tokens.slice(0, tokenIndex).join(""));
-      if (tokenIndex < tokens.length) {
-        timer = window.setTimeout(revealNextToken, intervalMs);
-      }
-    };
-
-    revealNextToken();
-    return () => window.clearTimeout(timer);
-  }, [animate, intervalMs, prefersReducedMotion, skipped, text]);
-
-  useEffect(() => {
-    if (renderedText) onProgressRef.current?.();
-  }, [renderedText]);
-
-  const completeImmediately = () => {
-    setSkipped(true);
-    setDisplayedText(text);
-  };
-
-  return (
-    <div
-      className="typing-answer"
-      onClick={completeImmediately}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          completeImmediately();
-        }
-      }}
-      role="button"
-      tabIndex={0}
-      aria-label="답변 타이핑을 건너뛰려면 클릭하세요"
-    >
-      <p className="message-copy">{renderedText}</p>
-    </div>
-  );
-}
-
 function AssistantMessage({
   response,
   text,
@@ -737,7 +495,7 @@ function AssistantMessage({
       <NewsCards response={response} />
 
       {response.visualizations.map((visualization, index) => (
-        <VisualizationCard
+        <ChatVisualization
           visualization={visualization}
           key={`${visualization.kind}-${index}`}
         />
@@ -825,7 +583,6 @@ export function GuidePage({
   const auth = useSupabaseAuth();
   const accessToken = auth.session?.access_token;
   const authenticatedUserId = auth.session?.user.id ?? null;
-  const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [input, setInput] = useState("");
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
   const [chatCards, setChatCards] = useState<ChatCard[]>([]);
@@ -833,10 +590,6 @@ export function GuidePage({
   const [selectedScenario, setSelectedScenario] = useState(initialScenarioCode ?? "");
   const [userContext, setUserContext] =
     useState<DemoUserFinancialContext | null>(null);
-  const [isSending, setIsSending] = useState(false);
-  const [sendingStage, setSendingStage] = useState("답변을 준비하고 있습니다.");
-  const [streamingAnswer, setStreamingAnswer] = useState("");
-  const [streamingAnswerIsNarration, setStreamingAnswerIsNarration] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [serverReady, setServerReady] = useState<boolean | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
@@ -882,7 +635,6 @@ export function GuidePage({
   const authGenerationRef = useRef(0);
   const conversationGenerationRef = useRef(0);
   const sessionListGenerationRef = useRef(0);
-  const sendingRef = useRef(false);
 
   const authStatusLabel = auth.loading
     ? "로그인 확인 중"
@@ -930,15 +682,6 @@ export function GuidePage({
     hasSurvey: surveyProfile !== null,
     hasAuth: auth.session !== null,
   }), [auth.session, chatCards, selectedScenario, surveyProfile, userContext?.scenario_code]);
-
-  const usedFollowUpMessages = useMemo(
-    () => new Set(
-      messages
-        .filter((message) => message.role === "user")
-        .map((message) => message.text.trim()),
-    ),
-    [messages],
-  );
 
   const pensionTaxInput = useMemo<PensionTaxScenarioInput | undefined>(() => {
     if (!pensionSavingsBalance.trim() || !irpBalance.trim()) return undefined;
@@ -995,6 +738,48 @@ export function GuidePage({
     withdrawalReason,
   ]);
 
+  const {
+    isSending,
+    messages,
+    resetStream,
+    sendingStage,
+    setMessages,
+    streamingAnswer,
+    streamingAnswerIsNarration,
+    submitPrompt,
+  } = useChatStream({
+    accessToken,
+    authenticatedUserId,
+    activeSessionId,
+    conversationContext,
+    conversationGenerationRef,
+    deletingSessionId,
+    pensionTaxInput,
+    selectedScenario,
+    surveyProfile,
+    isCurrentOperation,
+    onAuthenticatedError: setHistoryError,
+    onConversationContext: setConversationContext,
+    onComplete: () => textareaRef.current?.focus(),
+    onInputClear: () => setInput(""),
+    onPersistedSession: (sessionId, token, userId) => {
+      setActiveSessionId(sessionId);
+      void refreshChatSessions(token, userId);
+    },
+    onServerReady: setServerReady,
+    onStart: () => setHistoryLoading(false),
+    getAuthGeneration: () => authGenerationRef.current,
+  });
+
+  const usedFollowUpMessages = useMemo(
+    () => new Set(
+      messages
+        .filter((message) => message.role === "user")
+        .map((message) => message.text.trim()),
+    ),
+    [messages],
+  );
+
   useEffect(() => {
     // 백엔드는 임베더 로딩 때문에 프론트보다 늦게 뜨고, --reload로 잠깐 끊기기도
     // 한다. 한 번 실패하고 포기하면 서버가 살아나도 "API 연결 필요"로 굳으므로
@@ -1037,8 +822,7 @@ export function GuidePage({
     if (authChanged) {
       authGenerationRef.current += 1;
       sessionListGenerationRef.current += 1;
-      sendingRef.current = false;
-      setIsSending(false);
+      resetStream();
       setHistoryLoading(false);
       setDeletingSessionId(null);
     }
@@ -1123,13 +907,12 @@ export function GuidePage({
 
   function startNewChat() {
     conversationGenerationRef.current += 1;
-    sendingRef.current = false;
+    resetStream();
     setMessages([]);
     setActiveSessionId(null);
     setConversationContext(null);
     setHistoryError(null);
     setHistoryLoading(false);
-    setIsSending(false);
     setIsSidebarOpen(false);
   }
 
@@ -1153,7 +936,7 @@ export function GuidePage({
     if (authSubmitting) return;
     authGenerationRef.current += 1;
     conversationGenerationRef.current += 1;
-    sendingRef.current = false;
+    resetStream();
     setAuthSubmitting(true);
       setMessages([]);
       setChatSessions([]);
@@ -1162,7 +945,6 @@ export function GuidePage({
       setUserContext(null);
     setHistoryError(null);
     setHistoryLoading(false);
-    setIsSending(false);
     try {
       await auth.signOut();
     } catch (error) {
@@ -1178,8 +960,7 @@ export function GuidePage({
     const requestUserId = authenticatedUserId;
     const authGeneration = authGenerationRef.current;
     const conversationGeneration = ++conversationGenerationRef.current;
-    sendingRef.current = false;
-    setIsSending(false);
+    resetStream();
     setHistoryLoading(true);
     setHistoryError(null);
     try {
@@ -1302,150 +1083,6 @@ export function GuidePage({
     }
   }
 
-  async function submitPrompt(
-    prompt: string,
-    educationalPortfolio?: EducationalPortfolioInput,
-  ) {
-    const normalized = prompt.trim();
-    if (normalized.length < 2 || sendingRef.current || deletingSessionId) return;
-
-    const requestToken = accessToken ?? null;
-    const requestUserId = authenticatedUserId;
-    const authGeneration = authGenerationRef.current;
-    const conversationGeneration = ++conversationGenerationRef.current;
-    sendingRef.current = true;
-    setHistoryLoading(false);
-
-    const userMessage: ConversationMessage = {
-      id: crypto.randomUUID(),
-      role: "user",
-      text: normalized,
-      createdAt: new Date(),
-    };
-    const idempotencyKey = crypto.randomUUID();
-    setMessages((current) => [...current, userMessage]);
-    setInput("");
-    setIsSending(true);
-    setSendingStage("질문을 확인하고 있습니다.");
-    setStreamingAnswer("");
-    setStreamingAnswerIsNarration(false);
-
-    const appendAnswerDelta = (delta: string) => {
-      if (isCurrentOperation(
-        authGeneration,
-        requestUserId,
-        requestToken,
-        conversationGeneration,
-      )) setStreamingAnswer((current) => current + delta);
-    };
-    const replaceWithNarration = (answer: string) => {
-      if (isCurrentOperation(
-        authGeneration,
-        requestUserId,
-        requestToken,
-        conversationGeneration,
-      )) {
-        setStreamingAnswerIsNarration(true);
-        setStreamingAnswer(answer);
-      }
-    };
-
-    const taxInput = !requestToken && PENSION_TAX_PROMPT.test(normalized)
-      ? pensionTaxInput
-      : undefined;
-
-    try {
-      const streamed = requestToken
-        ? await sendAuthenticatedChatStream(
-            normalized,
-            requestToken,
-            setSendingStage,
-            appendAnswerDelta,
-            replaceWithNarration,
-            undefined,
-            activeSessionId || undefined,
-            idempotencyKey,
-            conversationContext,
-            taxInput,
-            surveyProfile,
-            educationalPortfolio,
-          )
-        : await sendChatStream(
-            normalized,
-            setSendingStage,
-            appendAnswerDelta,
-            replaceWithNarration,
-            {
-              scenarioCode: selectedScenario || undefined,
-              conversationContext,
-              pensionTax: taxInput,
-              surveyProfile,
-              educationalPortfolio,
-            },
-          );
-      const persisted = streamed.persisted ? streamed : null;
-      const response = streamed.response;
-      if (!isCurrentOperation(
-        authGeneration,
-        requestUserId,
-        requestToken,
-        conversationGeneration,
-      )) return;
-      setMessages((current) => [...current, {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        text: response.answer,
-        response,
-        createdAt: new Date(),
-      }]);
-      setConversationContext(
-        response.conversation_context ?? conversationContext,
-      );
-      if (persisted?.persisted && persisted.session_id) {
-        setActiveSessionId(persisted.session_id);
-        void refreshChatSessions(requestToken!, requestUserId!);
-      }
-      setServerReady(true);
-    } catch (error) {
-      if (!isCurrentOperation(
-        authGeneration,
-        requestUserId,
-        requestToken,
-        conversationGeneration,
-      )) return;
-      const message = requestToken
-        ? authenticatedErrorMessage(error)
-        : error instanceof Error
-          ? error.message
-          : "서버 연결을 확인해 주세요.";
-      if (requestToken) setHistoryError(message);
-      setMessages((current) => [...current, {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        text: message,
-        failedPrompt: normalized,
-        failedEducationalPortfolio: educationalPortfolio,
-        createdAt: new Date(),
-      }]);
-      setServerReady(
-        error instanceof ApiError && error.status !== 503,
-      );
-    } finally {
-      if (isCurrentOperation(
-        authGeneration,
-        requestUserId,
-        requestToken,
-        conversationGeneration,
-      )) {
-        sendingRef.current = false;
-        setIsSending(false);
-        setStreamingAnswer("");
-        setStreamingAnswerIsNarration(false);
-        textareaRef.current?.focus();
-      }
-    }
-  }
-
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     void submitPrompt(input);
@@ -1479,50 +1116,16 @@ export function GuidePage({
                 <span><strong>대화 저장 중</strong><small>{auth.session.user.email ?? "인증 사용자"}</small></span>
                 <button type="button" onClick={() => void handleLogout()} disabled={authSubmitting}>로그아웃</button>
               </div>
-              <p className="sidebar-label history-label">저장된 대화</p>
-              <div className="history-list">
-                {historyLoading && chatSessions.length === 0 ? (
-                  <p className="auth-note">대화 이력을 불러오는 중...</p>
-                ) : chatSessions.length === 0 ? (
-                  <p className="auth-note">아직 저장된 대화가 없습니다.</p>
-                ) : chatSessions.map((session) => {
-                  const title = session.title || "새 대화";
-                  const deleting = deletingSessionId === session.session_id;
-                  const disabled = historyLoading || isSending || deletingSessionId !== null;
-                  return (
-                    <div
-                      className={`history-item ${activeSessionId === session.session_id ? "active" : ""}`}
-                      key={session.session_id}
-                    >
-                      <button
-                        className="history-open"
-                        data-session-id={session.session_id}
-                        type="button"
-                        onClick={() => void loadStoredSession(session.session_id)}
-                        disabled={disabled}
-                      >
-                        <strong>{title}</strong>
-                        <small>{new Date(session.updated_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</small>
-                      </button>
-                      <button
-                        className="history-delete"
-                        type="button"
-                        aria-label={`대화 삭제: ${title}`}
-                        title="대화 삭제"
-                        onClick={() => void deleteStoredSession(session)}
-                        disabled={disabled}
-                      >
-                        {deleting ? "…" : <Icon name="trash" size={14} />}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-              {deleteStatus && (
-                <p className="auth-note" role="status" aria-live="polite">
-                  {deleteStatus}
-                </p>
-              )}
+              <ChatSessionList
+                activeSessionId={activeSessionId}
+                chatSessions={chatSessions}
+                deleteStatus={deleteStatus}
+                deletingSessionId={deletingSessionId}
+                historyLoading={historyLoading}
+                isSending={isSending}
+                onDelete={(session) => void deleteStoredSession(session)}
+                onLoad={(sessionId) => void loadStoredSession(sessionId)}
+              />
             </>
           ) : auth.configured ? (
             <>
@@ -1726,19 +1329,10 @@ export function GuidePage({
                 </div>
               )}
 
-              <section className="chat-home-card-section" aria-labelledby="chat-question-heading">
-                <header className="chat-home-section-heading">
-                  <p>추천 질문</p>
-                  <h2 id="chat-question-heading">챗봇에게 무엇이든 물어보세요</h2>
-                </header>
-                <div className="prompt-carousel" aria-label="챗봇 추천 질문">
-                  {visibleChatCards.filter((card) => card.intent !== "etf_theme").map((card) => (
-                    <button type="button" key={card.card_id} onClick={() => void submitPrompt(card.message)}>
-                      <span className="design-prompt-copy"><small>추천 질문</small><strong>{card.title}</strong><em>{card.message}</em></span>
-                    </button>
-                  ))}
-                </div>
-              </section>
+              <ChatQuestionRecommendations
+                cards={visibleChatCards.filter((card) => card.intent !== "etf_theme")}
+                onSubmit={(message) => void submitPrompt(message)}
+              />
 
               <section className="chat-home-card-section holdings-section" aria-labelledby="holdings-heading">
                 <header className="chat-home-section-heading">
@@ -1756,127 +1350,58 @@ export function GuidePage({
                 />
               </section>
 
-              <section className="chat-home-card-section etf-theme-section" aria-labelledby="etf-theme-heading">
-                <header className="chat-home-section-heading">
-                  <p>ETF 테마</p>
-                  <h2 id="etf-theme-heading">ETF 섹터 알아보기</h2>
-                  <span>테마의 구성과 유의점을 교육용으로 확인해 보세요.</span>
-                </header>
-                <div className="sector-card-grid" aria-label="ETF 섹터 카드">
-                  {ETF_THEME_CARDS.slice(0, INITIAL_ETF_THEME_CARD_COUNT).map((card) => (
-                    <button
-                      type="button"
-                      key={card.title}
-                      aria-label={`${card.title} ETF 테마 설명 보기`}
-                      onClick={() => void submitPrompt(card.message)}
-                    >
-                      <span className="sector-card-icon"><Icon name="chart" size={19} /></span>
-                      <span><small>ETF 테마 {card.number}</small><strong>{card.title}</strong></span>
-                      <Icon name="chevron" size={16} />
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    className="sector-card-toggle"
-                    aria-expanded={allEtfThemesVisible}
-                    aria-label={allEtfThemesVisible
-                      ? "ETF 테마 목록 접기"
-                      : `나머지 ETF 테마 ${REMAINING_ETF_THEME_CARD_COUNT}개 더보기`}
-                    onClick={() => setAllEtfThemesVisible((visible) => !visible)}
-                  >
-                    <span className="sector-card-icon"><Icon name="chart" size={19} /></span>
-                    <span>
-                      <small>{allEtfThemesVisible ? "ETF 테마 목록" : `+${REMAINING_ETF_THEME_CARD_COUNT}개`}</small>
-                      <strong>{allEtfThemesVisible ? "접기" : "더보기"}</strong>
-                    </span>
-                    <Icon name="chevron" size={16} />
-                  </button>
-                  {allEtfThemesVisible && ETF_THEME_CARDS.slice(INITIAL_ETF_THEME_CARD_COUNT).map((card) => (
-                    <button
-                      type="button"
-                      key={card.title}
-                      aria-label={`${card.title} ETF 테마 설명 보기`}
-                      onClick={() => void submitPrompt(card.message)}
-                    >
-                      <span className="sector-card-icon"><Icon name="chart" size={19} /></span>
-                      <span><small>ETF 테마 {card.number}</small><strong>{card.title}</strong></span>
-                      <Icon name="chevron" size={16} />
-                    </button>
-                  ))}
-                </div>
-              </section>
+              <ChatEtfThemeCards
+                allVisible={allEtfThemesVisible}
+                onSubmit={(message) => void submitPrompt(message)}
+                onToggle={() => setAllEtfThemesVisible((visible) => !visible)}
+                themeCards={ETF_THEME_CARDS}
+              />
 
               <p className="capability-note">연금 도우미는 참고용 정보를 제공하며, 실제 투자·가입 결정은 본인의 판단과 전문가 상담을 거쳐 주세요.</p>
             </div>
           ) : (
-            <div className="message-list">
-              {messages.map((message) => (
-                <div
-                  className={`message-row ${message.role}`}
-                  key={message.id}
-                  ref={message.id === messages[messages.length - 1]?.id ? latestMessageRef : undefined}
-                >
-                  {message.role === "assistant" && <div className="assistant-avatar"><Icon name="spark" size={16} /></div>}
-                  <div className="message-group">
-                    <div className="message-bubble">
-                      <AssistantMessage
-                        onFollowUp={(prompt) => void submitPrompt(prompt)}
-                        response={message.response}
-                        text={message.text}
-                        usedFollowUpMessages={usedFollowUpMessages}
-                      />
-                    </div>
-                    {message.failedPrompt && (
-                      <button className="retry-button" type="button" onClick={() => void submitPrompt(message.failedPrompt!, message.failedEducationalPortfolio)} disabled={isSending || deletingSessionId !== null}>
-                        <Icon name="refresh" size={15} /> 다시 시도
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {isSending && (
-                <div className="message-row assistant">
-                  <div className="assistant-avatar"><Icon name="spark" size={16} /></div>
-                  {streamingAnswer ? (
-                    <div className="message-bubble" aria-live="polite">
-                      <TypingAnswer
-                        animate={!streamingAnswerIsNarration}
-                        intervalMs={typingIntervalMs}
-                        onProgress={() => conversationEndRef.current?.scrollIntoView({
-                          behavior: "smooth",
-                          block: "end",
-                        })}
-                        text={streamingAnswer}
-                      />
-                    </div>
-                  ) : (
-                    <div className="message-bubble typing" aria-label={sendingStage}>
-                      <span /><span /><span /><small>{sendingStage}</small>
-                    </div>
-                  )}
-                </div>
+            <ChatMessageList
+              conversationEndRef={conversationEndRef}
+              deletingSessionId={deletingSessionId}
+              isSending={isSending}
+              latestMessageRef={latestMessageRef}
+              messages={messages}
+              onRetry={(message) => void submitPrompt(message.failedPrompt!, message.failedEducationalPortfolio)}
+              renderMessage={(message) => (
+                <AssistantMessage
+                  onFollowUp={(prompt) => void submitPrompt(prompt)}
+                  response={message.response}
+                  text={message.text}
+                  usedFollowUpMessages={usedFollowUpMessages}
+                />
               )}
-              <div ref={conversationEndRef} />
-            </div>
+              renderStreamingAnswer={() => streamingAnswer ? (
+                <div className="message-bubble" aria-live="polite">
+                  <ChatTypingAnswer
+                    animate={!streamingAnswerIsNarration}
+                    intervalMs={typingIntervalMs}
+                    onProgress={() => conversationEndRef.current?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "end",
+                    })}
+                    text={streamingAnswer}
+                  />
+                </div>
+              ) : null}
+              sendingStage={sendingStage}
+            />
           )}
         </div>
 
-        <div className="composer-wrap">
-          <form className="composer" onSubmit={handleSubmit}>
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(event) => setInput(event.target.value.slice(0, 1000))}
-              onKeyDown={handleKeyDown}
-              placeholder="연금에 대해 무엇이든 물어보세요"
-              rows={1}
-              aria-label="질문 입력"
-              disabled={isSending || deletingSessionId !== null}
-            />
-            <button type="submit" disabled={input.trim().length < 2 || isSending || deletingSessionId !== null} aria-label="질문 보내기"><Icon name="send" size={20} /></button>
-          </form>
-          <p>AI 답변은 투자 판단을 돕는 정보이며, 미래 수익을 보장하지 않습니다.</p>
-        </div>
+        <ChatComposer
+          deletingSessionId={deletingSessionId}
+          input={input}
+          isSending={isSending}
+          onChange={setInput}
+          onKeyDown={handleKeyDown}
+          onSubmit={handleSubmit}
+          textareaRef={textareaRef}
+        />
       </main>
     </div>
   );
