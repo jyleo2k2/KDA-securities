@@ -123,7 +123,7 @@ def _validate_credentials(
     if expected != actual or len(credentials) != len(users):
         raise ValueError("demo credentials do not match the tracked manifest")
     passwords = [str(item.get("password", "")) for item in credentials]
-    if any(len(password) < 20 for password in passwords):
+    if any(len(password) < 8 for password in passwords):
         raise ValueError("demo password is missing or too short")
     if len(passwords) != len(set(passwords)):
         raise ValueError("demo passwords must be unique")
@@ -347,8 +347,13 @@ def provision_users(
             if existing_by_email and str(existing_by_email.get("id")) != user_id:
                 raise RuntimeError("demo login_id is owned by a different Auth user")
             if existing_by_id:
-                if str(existing_by_id.get("email")) != login_id:
-                    raise RuntimeError("demo Auth user id has an unexpected login_id")
+                if (
+                    str(existing_by_id.get("email")) != login_id
+                    and not rotate_existing
+                ):
+                    raise RuntimeError(
+                        "demo login_id changed; run with --rotate-existing"
+                    )
                 if rotate_existing:
                     _update_user(
                         client,

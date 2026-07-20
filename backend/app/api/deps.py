@@ -27,6 +27,7 @@ from ..engine.models import AccountType
 from ..etf_universe_database import PostgresPortfolioUniverseRepository
 from ..ingestion.embeddings import get_query_embedder
 from ..market_evidence_repository import KrxMarketEvidenceRepository
+from ..pension_accounts_repository import PensionAccountRepository
 from ..portfolio_universe_repository import (
     DEFAULT_RETURN_ROOT,
     PortfolioUniverseRepository,
@@ -159,6 +160,18 @@ def get_demo_user_context_repository(
         settings, detail="User pension context database is not configured"
     )
     return DemoUserContextRepository(
+        database_url,
+        pool=get_database_pool(database_url),
+    )
+
+
+def get_pension_account_repository(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> PensionAccountRepository:
+    database_url = _database_url_or_503(
+        settings, detail="User pension accounts database is not configured"
+    )
+    return PensionAccountRepository(
         database_url,
         pool=get_database_pool(database_url),
     )

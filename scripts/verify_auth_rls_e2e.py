@@ -129,6 +129,37 @@ def _verify_naver_start_sql(database_url: str) -> None:
         raise RuntimeError("NAVER rollback verification changed ingestion_runs")
 
 
+def _attach_temporary_demo_context(database_url: str, *, user_id: str) -> None:
+    """Attach the disposable Auth user to one existing synthetic scenario."""
+    with psycopg.connect(database_url) as connection, connection.cursor() as cursor:
+        cursor.execute(
+            """
+            insert into public.demo_user_financial_context (
+                auth_user_id,
+                scenario_id,
+                nickname,
+                representative_age,
+                customer_context,
+                tax_year,
+                as_of_date
+            )
+            select
+                %s::uuid,
+                scenario.id,
+                '원격 계좌 E2E 임시 사용자',
+                35,
+                '원격 계좌 API 검증 전용 임시 컨텍스트',
+                2026,
+                date '2026-07-16'
+            from public.mock_scenarios as scenario
+            where scenario.code = 'dc_dormant'
+            """,
+            (user_id,),
+        )
+        if cursor.rowcount != 1:
+            raise RuntimeError("temporary demo context was not created")
+
+
 def main() -> None:
     from backend.app.settings import Settings
 
@@ -168,6 +199,7 @@ def main() -> None:
                 email=user_b_email,
                 password=password,
             )
+            _attach_temporary_demo_context(database_url, user_id=user_a_id)
             created = client.post(
                 f"{base_url}/rest/v1/chat_sessions",
                 headers={
@@ -208,6 +240,22 @@ def main() -> None:
 
                 app.dependency_overrides[get_chat_narrator] = lambda: None
                 with TestClient(app) as api_client:
+                    pension_accounts = api_client.get(
+                        "/me/pension-accounts",
+                        headers={"Authorization": f"Bearer {token_a}"},
+                    )
+                    pension_accounts.raise_for_status()
+                    pension_payload = pension_accounts.json()
+                    accounts = pension_payload.get("accounts")
+                    if (
+                        pension_payload.get("data_boundary") != "mock"
+                        or not isinstance(accounts, list)
+                        or not accounts
+                        or not accounts[0].get("holdings")
+                    ):
+                        raise RuntimeError(
+                            "pension accounts API returned no demo holdings"
+                        )
                     idempotency_key = str(uuid4())
                     chat_headers = {
                         "Authorization": f"Bearer {token_a}",
@@ -302,8 +350,8 @@ def main() -> None:
 
             _verify_naver_start_sql(database_url)
             print(
-                "PASS: Auth/RLS, chat persistence/replay, RAG/news/disclosures/ETF, "
-                "and rollback-only NAVER SQL"
+                "PASS: Auth/RLS, pension accounts API, chat persistence/replay, "
+                "RAG/news/disclosures/ETF, and rollback-only NAVER SQL"
             )
         finally:
             if session_id is not None:

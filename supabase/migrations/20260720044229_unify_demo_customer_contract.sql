@@ -1,4 +1,6 @@
 -- Unify the 10k benchmark contract and the six detailed demo customers.
+-- This unapplied migration is ordered after the already-applied common-account
+-- backfill so the legacy 26-holding snapshot can be upgraded to 86 holdings.
 
 alter table public.benchmark_mock_users
     add column if not exists pension_savings_contribution_krw text not null default '0',

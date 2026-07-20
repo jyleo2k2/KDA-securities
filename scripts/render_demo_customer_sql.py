@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MOCK_DIR = ROOT / "data" / "mock"
 MIGRATION = (
-    ROOT / "supabase" / "migrations" / "20260720022220_unify_demo_customer_contract.sql"
+    ROOT / "supabase" / "migrations" / "20260720044229_unify_demo_customer_contract.sql"
 )
 SEED = ROOT / "supabase" / "seed.sql"
 SEED_START = "-- BEGIN GENERATED DEMO CUSTOMER CONTRACT V2"
@@ -167,6 +167,8 @@ join public.asset_classes as asset on asset.code = seed.asset_class_code;
 def main() -> None:
     sync_sql = _sync_sql()
     migration_sql = f"""-- Unify the 10k benchmark contract and the six detailed demo customers.
+-- This unapplied migration is ordered after the already-applied common-account
+-- backfill so the legacy 26-holding snapshot can be upgraded to 86 holdings.
 
 alter table public.benchmark_mock_users
     add column if not exists pension_savings_contribution_krw text not null default '0',
@@ -324,9 +326,13 @@ comment on column public.mock_accounts.benchmark_account_id is
 
     seed_text = SEED.read_text(encoding="utf-8")
     if SEED_START in seed_text:
-        seed_text = seed_text.split(SEED_START, 1)[0].rstrip() + "\n"
+        prefix, existing_tail = seed_text.split(SEED_START, 1)
+        _, suffix = existing_tail.split(SEED_END, 1)
+        seed_text = prefix.rstrip() + "\n"
+    else:
+        suffix = ""
     seed_tail = f"\n{SEED_START}\n{sync_sql}\n{SEED_END}\n"
-    SEED.write_text(seed_text + seed_tail, encoding="utf-8")
+    SEED.write_text(seed_text + seed_tail + suffix.lstrip("\n"), encoding="utf-8")
     print(f"rendered {MIGRATION.name} and seed sync")
 
 

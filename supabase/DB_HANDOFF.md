@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-19 01:21 KST
-> 확인 기준: `codex/supabase-current-state-docs` / `origin/main` `c7e097f` / Supabase MCP·원격 FastAPI E2E 재검증
+> 최종 확인: 2026-07-20 13:49 KST
+> 확인 기준: `codex/unify-demo-customer-data-main-sync` / `origin/main` `5409a33` / 고객 계약·대표 ETF 공통계좌 동기화 로컬 검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -35,7 +35,7 @@
 | 항목 | 원격 상태 |
 |---|---|
 | public 기본 테이블 | 43개 |
-| 적용 마이그레이션 | 16개(`20260715005435` ~ `20260718154819`) |
+| 적용 마이그레이션 | 18개(`20260715005435` ~ `20260720034015`) |
 | RLS | 43/43 활성화 |
 | `anon` 테이블 권한 | 없음 |
 | `authenticated` 권한 | 사용자 소유 엔진 결과·채팅 관련 5개 테이블 |
@@ -67,7 +67,7 @@
 
 원격에서 직접 수정된 시나리오 설명 5건과 대표 고객 납입액 5건은 `20260718131917_sync_modified_mock_data.sql`로 migration history에 정식 반영했다. 적용 전후 값과 `updated_at`이 모두 같아 데이터 재기록 없이 이력만 정상 추가됐음을 확인했다.
 
-`20260720022220_unify_demo_customer_contract.sql`은 **로컬 검증 완료·원격 미적용** 상태다. 1만 명 사용자 전원에 연금저축펀드/개인 IRP 당해연도 납입액 컬럼을 추가하고, 대표 6명을 1만 명의 실제 사용자 6행·계좌 13행에 연결한다. 적용 시 대표 보유내역은 원본 계좌 잔액을 보존한 86행으로 교체되며 KODEX·TIGER·ACE·RISE·SOL·HANARO의 적격 ETF와 현금·원리금보장 항목을 사용한다. 원격의 현재 6/13/26 건수는 이 migration을 적용하기 전 값이므로 혼동하지 않는다.
+`20260720044229_unify_demo_customer_contract.sql`과 `20260720044230_sync_demo_etf_holdings_to_common_accounts.sql`은 **로컬 검증·원격 미적용** 상태다. 첫 migration은 1만 명 사용자 전원에 연금저축펀드/개인 IRP 당해연도 납입액 컬럼을 추가하고 대표 6명을 1만 명의 실제 사용자 6행·계좌 13행에 연결하며, 대표 보유내역을 원본 계좌 잔액을 보존한 86행으로 교체한다. 두 번째 migration은 이미 원격 적용된 공통 계좌 backfill을 건드리지 않고 해당 13개 계좌·스냅샷·86개 상세 ETF 보유내역을 재동기화한다. KODEX·TIGER·ACE·RISE·SOL·HANARO 적격 ETF와 현금·원리금보장 항목을 사용하며, 원격의 현재 6/13/26 및 공통계좌 13/13/26 건수는 두 migration 적용 전 값이다.
 
 원격 컬럼 설명 3건(`pension_savings_provider_stats.fee_rate_1y`, `retirement_provider_stats.response_division`, `knowledge_chunks.embedding`)은 `20260718154819_repair_corrupted_column_comments.sql`로 교정했다. 실제 설명을 재조회해 목표 문구와 일치하고 U+FFFD 대체문자가 없음을 확인했다. 테이블·컬럼·데이터·RLS·GRANT는 바뀌지 않았다.
 
@@ -87,12 +87,23 @@
 
 ## 4. 현재 작업트리의 진행 중 작업
 
-`codex/supabase-current-state-docs` 브랜치의 `C:\dev\kda-supabase-comments` 전용 worktree에서 원격 적용 후 버전 정합화, 런타임 E2E, 문서 최신화를 작업한다.
+`codex/pension-account-backfill` 브랜치의
+`output/worktrees/pension-account-backfill` 전용 worktree에서 DB-03 공통 계좌
+구조 backfill을 작업한다.
 
-- MCP가 실행 시각 버전 `20260718154819`를 부여해 로컬 파일명을 같은 버전으로 정합화했다. SQL SHA-256 `DF0E4E...25E6925DF`는 변경 전후 같다.
-- `20260718154819_repair_corrupted_column_comments.sql`은 `COMMENT ON COLUMN` 3문만 포함하며 이미 원격 적용됐다.
-- [`DB_SESSION_GUIDE.md`](./DB_SESSION_GUIDE.md)는 고정 운영 절차, 이 문서는 동적 상태 SSOT로 분리한다.
-- 원격 migration 적용 승인은 이번 요청으로 충족했지만 PR 머지는 별도 명시적 승인 전까지 금지한다.
+- 기준은 `origin/main` `557e8f1`이며, 신규
+  `20260720034015_backfill_mock_pension_accounts.sql`과 seed·계약 테스트가
+  아직 커밋 전이다. 원격 적용은 완료됐고, MCP가 부여한 실제 버전에 맞춰
+  SQL 본문을 바꾸지 않고 파일명만 정합화했다.
+- 원격 사전검증에서 기존 목데이터 6/13/26, 계좌 잔액과 보유합계 불일치
+  0건, 신규 `pension_accounts`·snapshot·holding 0건을 확인했다.
+- 로컬 17번째 파일 `20260719184500_repair_market_news_is_active.sql`은
+  원격에서 같은 이름이 `20260718172329`로 기록되어 버전이 어긋나 있다.
+  2026-07-20에 원격 `statements` 1건과 로컬 SQL을 대조했으며 공백을 제외하면
+  동일했다. 원격에는 해당 DDL이 이미 적용돼 있으므로 기존 적용 이력은
+  repair·재적용하지 않고, 새 DB-03만 별도 적용한다.
+- DB-03 원격 migration은 이재용의 명시적 승인 후 적용했다. PR 머지는 별도
+  승인 전까지 금지한다.
 
 ### 임베딩 마이그레이션 주의사항
 
@@ -247,12 +258,12 @@ uv run ruff check .
 | DB-01 | 사용자·성향·계좌 스키마 승인 | `REMOTE-APPLIED` | `user_profiles`, 현금흐름 포함, 커뮤니티 제외, 매핑 보류 계약이 원격 스키마에 반영 | 적용 파일 수정 금지 |
 | DB-02 | Additive domain migration | `REMOTE-APPLIED` | `20260716001737`, 11개 테이블·RLS·정책·권한·행 수 재검증 | 적용 파일 수정 금지 |
 | DB-02A | 성향 답변 복합 FK 인덱스 | `REMOTE-APPLIED` | `(option_id, question_id)` covering index·Advisor 미인덱스 FK 0건 | 적용 파일 수정 금지 |
-| DB-03 | 공통 계좌 구조 backfill | `LOCAL-DRAFT` | 기존 6/13/26을 `pension_accounts`·snapshot·holding 구조로 이관하고 금액·엔진 결과 동등 | 별도 additive migration·계약 테스트 작성 |
+| DB-03 | 공통 계좌 구조 backfill | `REMOTE-APPLIED` | 기존 6/13/26을 `pension_accounts`·snapshot·holding 구조로 이관하고 금액·엔진 결과 동등 | `20260720034015`; source/target 6·13/26→13/13/26, 금액 불일치 0, nullable 원금·ETF 코드 인덱스·RLS/GRANT 재검증 완료 |
 | DB-03A | 생애주기 대표 고객·Auth 준비 | `REMOTE-APPLIED` | 시나리오 6·계좌 13·보유 26, synthetic demo Auth 사용자 6개 존재 | 데모 로그인 smoke는 다음 인증 가능 세션에서 재검증 |
 | DB-03B | 원격 직접 수정 목데이터 Git 동기화 | `REMOTE-APPLIED` | `20260718131917`, 시나리오 설명 5건·대표 고객 납입액 5건 일치·재적용 시 무변경 확인 | 적용 파일 수정 금지 |
-| DB-03C | 1만 명 공통 납입 계약·대표 6명 기준행/ETF 상세화 | `LOCAL-VERIFIED` | `20260720022220`, 사용자 10,000·계좌 16,900·보유 79,381 생성 검증, 대표 6/13/86·6개 운용사 | 원격 적용은 별도 승인 후 수행 |
+| DB-03C | 1만 명 공통 납입 계약·대표 6명 기준행/ETF 상세화 | `LOCAL-VERIFIED` | `20260720044229`·`20260720044230`, 사용자 10,000·계좌 16,900·보유 79,381 생성 검증, 대표 legacy/common 6/13/86·6개 운용사 | 원격 적용은 별도 승인 후 수행 |
 | DB-04 | 챗봇 Postgres scenario repository 연결 | `LOCAL-VERIFIED` | DB 우선·JSON fallback과 원격 채팅 저장·replay E2E 통과 | `/engine/mock-scenario` DB 전환 여부 별도 결정 |
-| DB-04A | 사용자 연금계좌 repository·API 연결 | `LOCAL-DRAFT` | 신규 공통 계좌 구조 조회·Auth 소유권·엔진 입력 변환 E2E | DB-03 backfill 후 구현 |
+| DB-04A | 사용자 연금계좌 repository·API 연결 | `LOCAL-VERIFIED` | 신규 공통 계좌 구조 조회·Auth 소유권·엔진 입력 변환 E2E | 실제 Supabase Bearer-token으로 `/me/pension-accounts`가 mock 계좌·보유를 반환함을 E2E 확인. 다음은 commit·push·PR |
 | DB-05 | 기존 mock account tables 정리 | `BLOCKED` | 코드·SQL 참조 0, 별도 승인·복구 계획 | DB-04 안정화 전 삭제 금지 |
 | DB-06 | 커뮤니티 리뷰 | `BLOCKED` | 포트폴리오 FK·RLS·신고·보존 정책 승인 | 핵심 계좌 연동 후 검토 |
 | DB-07 | ETF 포트폴리오 유니버스 스키마·조회 연결 | `REMOTE-APPLIED` | `20260717054500`, 상품 2,507행·이력 217,833행·RLS/권한·120개 동등성·API E2E 확인 | 적용 파일 수정 금지, 다음 데이터 버전 적재 시 ready 전환 계약 유지 |
@@ -271,6 +282,93 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-20 13:49 KST
+
+- main 통합: 고객 계약 PR #77이 최신 `main`과 충돌해 별도 worktree에서
+  `origin/main` `5409a33`을 병합했다. 대표 고객의 1만 명 기준 나이·계좌·소득은
+  유지하고, main의 짧은 로그인 ID를 함께 보존했다.
+- migration 순서: 원격 적용 완료 `20260720034015`는 수정하지 않았다. 원격
+  미적용 고객 계약을 `20260720044229`로 재정렬하고, legacy 86개 상세 보유를
+  공통 계좌 13개·스냅샷 13개·보유 86개로 동기화하는
+  `20260720044230`을 CLI로 추가했다. 두 파일 모두 원격 미적용이다.
+- 검증: 변경 전체 Ruff 통과, 전체 pytest `704 passed, 1 skipped`, 모든 SQL
+  migration `pglast` 파싱, seed의 86개 공통 보유 계약을 통과했다. 고객데이터
+  병합 대상 시크릿 패턴 검사도 0건이다.
+- 다음 작업: 충돌 해결 커밋을 PR #77 브랜치에 push하고 GitHub 병합 상태를
+  확인한다. 원격 Supabase migration 적용은 별도 승인 전 수행하지 않는다.
+
+### 2026-07-20 12:42 KST
+
+- API E2E: `verify_auth_rls_e2e.py`에 폐기형 Auth 사용자를 `dc_dormant`
+  시나리오에 임시 연결하는 검증을 추가했다. 실제 Bearer token으로
+  `GET /me/pension-accounts`를 호출해 `data_boundary=mock`, 비어 있지 않은
+  계좌·보유내역을 확인했다.
+- 정리·회귀: 스크립트는 Auth/RLS, 연금계좌 API, 채팅 replay, RAG·뉴스·공시·ETF,
+  rollback-only NAVER SQL을 통과했다. 종료 후 임시 demo context는 0건임을
+  원격에서 재조회했다. 계약 테스트 25건과 스크립트 Ruff도 통과했다.
+- 다음 작업: 변경 범위를 다시 검토한 뒤 명시적 stage·commit·push와 Draft PR을
+  생성한다. main push·PR 머지는 하지 않는다.
+
+### 2026-07-20 12:20 KST
+
+- 승인·원격 적용: 이재용 총괄의 명시적 승인 후 MCP로
+  `backfill_mock_pension_accounts`를 적용했다. 원격 migration version은
+  `20260720034015`이며, 로컬 신규 파일도 같은 버전으로 이름만 정합화했다.
+  `migration repair`, reset, 기존 mock 데이터 삭제는 수행하지 않았다.
+- 사후 동등성: source 시나리오/계좌/보유는 6/13/26, 신규 공통 구조는
+  account/snapshot/holding 13/13/26이고 잔액·보유합계 불일치는 0건이다.
+  `contributed_principal_krw` nullable, `etf_isu_code` 컬럼·partial index도
+  실제 카탈로그에서 확인했다.
+- 보안·런타임: public 43개 테이블의 RLS 43/43, 테이블 권한은 anon 0·
+  authenticated 5·service_role 43으로 적용 전과 같았다. 원격
+  `verify_auth_rls_e2e.py`는 Auth/RLS, 채팅, RAG·뉴스·공시·ETF, rollback-only
+  NAVER SQL을 통과했다. 신규 repository도 기존 demo Auth 컨텍스트에서
+  목계좌 1개·보유 1개를 읽어 `AggregationInput`으로 변환했다.
+- 남은 검증: 새 `GET /me/pension-accounts`의 실제 Bearer-token API E2E와
+  PR stage·commit·push·리뷰는 아직 수행하지 않았다.
+
+### 2026-07-20 11:48 KST
+
+- 작업자/브랜치/기준: Codex / `codex/pension-account-backfill` /
+  `origin/main` `557e8f1`; 별도 ignored worktree에서 작업했다.
+- 시작 상태: main과 origin/main은 동일하고 원래 worktree는 clean이었다.
+  지정 MEMORY 경로는 확인 불가였다. Supabase CLI 2.109.1과 현재
+  `migration new` 도움말을 확인했다.
+- TDD/변경: backfill migration과 seed 재현 계약이 없는 상태에서 신규 테스트
+  2건이 실패함을 먼저 확인했다. CLI로
+  `20260720024530_backfill_mock_pension_accounts.sql`을 생성해 기존
+  6/13/26을 `pension_accounts`·`account_snapshots`·
+  `account_holding_snapshots`으로 멱등 이관하도록 작성했다. 기존
+  mock 테이블은 유지한다.
+- 데이터 의미: 기존 목데이터에는 누적 납입원금 사실이 없으므로 평가액을
+  납입원금으로 꾸며내지 않는다. `contributed_principal_krw`의 NOT NULL을
+  완화하고 backfill 값은 NULL로 보존한다. 계좌·스냅샷·보유 UUID는 자연키와
+  기준일로 결정론 생성한다. 기존 목보유의 KRX 종목코드는 신규 nullable
+  `account_holding_snapshots.etf_isu_code`에 보존한다.
+- DB-04A: `PensionAccountRepository`와 인증
+  `GET /me/pension-accounts`를 추가했다. 본인 실계좌가 있으면 그것만 읽고,
+  없을 때만 `demo_user_financial_context`로 연결된 목시나리오 계좌를
+  사용한다. 계좌별 최신 스냅샷만 읽으며 잔액·보유합계 불일치는 엔진 변환
+  전에 차단한다. 응답은 현재 보유 ETF 코드와 원금 미확인 NULL을 유지하고
+  `AggregationInput`으로 결정론 변환할 수 있다. REST·보유 스냅샷 계약 변경이다.
+- 원격 읽기 검증: 프로젝트는 `ACTIVE_HEALTHY`, public 테이블 43개 모두
+  RLS 활성이다. source 6/13/26, 잔액·보유합계 불일치 0건, target
+  account/snapshot/holding 0/0/0을 확인했다. 원격 쓰기는 수행하지 않았다.
+- 드리프트 판정: 원격 migration은 17개이며
+  `repair_market_news_is_active`가 `20260718172329`로 기록되어 있지만
+  main의 로컬 파일은 `20260719184500`이다. 원격 statement 1건과 로컬 SQL은
+  공백을 제외하면 동일하다. 기존 이력을 수정·repair·재적용하지 않는다.
+- 로컬 검증: 최초 신규 계약 2건 실패 후 계약 테스트 21건을 통과했다.
+  누락된 잠금 의존성을 `uv sync --frozen`으로 설치하고 쓰기 가능한
+  `--basetemp`를 지정했다. DB-04A 타깃 37건과 최종 전체 회귀
+  686건 통과·1건 스킵을 확인했다.
+  `uv run ruff check --no-cache .`와 `git diff --check`도 통과했다.
+- 원격 적용: 없음. DB-03은 `LOCAL-DRAFT`; 이재용 승인 전 적용·push·PR
+  머지를 하지 않는다.
+- 다음 작업: SQL 리뷰와 전체 회귀, migration drift의 동일 DDL 판정을 마쳤다.
+  이재용의 DB-03 원격 적용 승인을 받은 뒤 target 13/13/26,
+  금액·위험처리·엔진 결과 동등성을 원격에서 재검증한다.
 
 ### 2026-07-19 01:21 KST
 

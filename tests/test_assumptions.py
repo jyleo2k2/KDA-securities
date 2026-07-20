@@ -56,6 +56,7 @@ def test_matrix_covers_modeled_bands_and_all_profiles() -> None:
         AgeBand.AGE_30S,
         AgeBand.AGE_40S,
         AgeBand.AGE_50_54,
+        AgeBand.AT_OR_ABOVE_55,
     }
     for cells in ALLOCATION_MATRIX.values():
         assert set(cells) == set(RiskProfile)
@@ -64,6 +65,10 @@ def test_matrix_covers_modeled_bands_and_all_profiles() -> None:
                 weights.growth_percent + weights.safe_percent + weights.cash_percent
             )
             assert total == Decimal("100")
+
+    assert ALLOCATION_MATRIX[AgeBand.AT_OR_ABOVE_55] == ALLOCATION_MATRIX[
+        AgeBand.AGE_50_54
+    ]
 
 
 def test_dc_irp_matrix_growth_never_exceeds_70_percent() -> None:

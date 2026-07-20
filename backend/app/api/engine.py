@@ -28,6 +28,8 @@ from ..engine import (
     EtfPlanningReturnInput,
     NonPensionWithdrawalEvaluation,
     NonPensionWithdrawalInput,
+    PensionCalculatorEvaluation,
+    PensionCalculatorInput,
     PensionTaxCreditEvaluation,
     PensionTaxCreditInput,
     PortfolioInput,
@@ -42,6 +44,7 @@ from ..engine import (
     build_allocation_example,
     build_educational_portfolio,
     calculate_etf_planning_return,
+    calculate_pension,
     calculate_pension_tax_credit,
     estimate_non_pension_withdrawal_tax,
     evaluate_account_diagnostics,
@@ -184,6 +187,18 @@ def simulation(inputs: SimulationInput) -> SimulationEvaluation:
     """Project balances under approved assumption scenarios (not forecasts)."""
 
     return simulate_accumulation(inputs)
+
+
+@router.post(
+    "/engine/pension-calculator",
+    response_model=PensionCalculatorEvaluation,
+)
+def pension_calculator(
+    inputs: PensionCalculatorInput,
+) -> PensionCalculatorEvaluation:
+    """Calculate an educational accumulation and pension payout scenario."""
+
+    return calculate_pension(inputs)
 
 
 @router.post(
