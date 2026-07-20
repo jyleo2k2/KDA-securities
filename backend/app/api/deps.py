@@ -64,10 +64,12 @@ def _database_url_or_503(settings: Settings, *, detail: str) -> str:
 def get_engine_audit_repository(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> EngineAuditRepository:
+    database_url = _database_url_or_503(
+        settings, detail="Engine audit database is not configured"
+    )
     return EngineAuditRepository(
-        _database_url_or_503(
-            settings, detail="Engine audit database is not configured"
-        )
+        database_url,
+        pool=get_database_pool(database_url),
     )
 
 
