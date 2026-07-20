@@ -7,7 +7,7 @@
       "nickname": "박준호(가상)",
       "representative_age": 46,
       "age_band": "40대",
-      "login_id": "demo.dc-dormant@kda-demo.invalid",
+      "login_id": "junho46@kda-demo.invalid",
       "customer_context": "회사 DC 적립금이 원리금보장 상품에만 머문 방치형 고객\n비고: 납입액에 대한 세액공제혜택 대상인 연금저축펀드와 개인 IRP계좌가 없음",
       "pension_savings_contribution_krw": 0,
       "irp_contribution_krw": 0
@@ -18,7 +18,7 @@
       "nickname": "이서연(가상)",
       "representative_age": 34,
       "age_band": "30대",
-      "login_id": "demo.tax-idle@kda-demo.invalid",
+      "login_id": "seoyeon34@kda-demo.invalid",
       "customer_context": "세액공제를 위해 납입했지만 IRP·연금저축을 실제 운용하지 않은 고객\n비고: 각 계좌별 납입액 세액공제한도를 고려하지 않고 납입했음",
       "pension_savings_contribution_krw": 3000000,
       "irp_contribution_krw": 6000000
@@ -29,7 +29,7 @@
       "nickname": "정민재(가상)",
       "representative_age": 32,
       "age_band": "30대",
-      "login_id": "demo.overlap-risk@kda-demo.invalid",
+      "login_id": "minjae32@kda-demo.invalid",
       "customer_context": "DC·IRP·연금저축에 글로벌주식형 자산이 중복되어 위험자산 편중이 있는 고객",
       "pension_savings_contribution_krw": 1500000,
       "irp_contribution_krw": 2000000
@@ -40,7 +40,7 @@
       "nickname": "김하린(가상)",
       "representative_age": 29,
       "age_band": "20~39세",
-      "login_id": "demo.young@kda-demo.invalid",
+      "login_id": "harin29@kda-demo.invalid",
       "customer_context": "노후가 멀게 느껴져 연금 운용과 추가 납입의 우선순위가 낮은 청년층 고객",
       "pension_savings_contribution_krw": 2000000,
       "irp_contribution_krw": 0
@@ -51,7 +51,7 @@
       "nickname": "최지훈(가상)",
       "representative_age": 47,
       "age_band": "40~54세",
-      "login_id": "demo.family@kda-demo.invalid",
+      "login_id": "jihoon47@kda-demo.invalid",
       "customer_context": "자녀·주거비로 추가 납입은 빠듯하지만 노후 준비를 걱정하기 시작한 중년층 고객",
       "pension_savings_contribution_krw": 2400000,
       "irp_contribution_krw": 2400000
@@ -62,7 +62,7 @@
       "nickname": "윤정희(가상)",
       "representative_age": 60,
       "age_band": "55세 이상",
-      "login_id": "demo.payout@kda-demo.invalid",
+      "login_id": "jeonghee60@kda-demo.invalid",
       "customer_context": "연금 수령을 시작했거나 수령 직전이라 인출·세금·안정성을 검토하는 고객",
       "pension_savings_contribution_krw": null,
       "irp_contribution_krw": null

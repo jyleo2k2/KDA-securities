@@ -18,11 +18,11 @@ from .models import (
     SourceChip,
 )
 
-ASSUMPTION_VERSION = "2026-07-15.1"
+ASSUMPTION_VERSION = "2026-07-20.1"
 ASSUMPTION_SOURCE = SourceChip(
     label="수익률 가정 모델",
     reference="docs/30_스펙/수익률_가정_모델.md",
-    as_of=date(2026, 7, 15),
+    as_of=date(2026, 7, 20),
 )
 ANNUAL_COST_PERCENT = Decimal("0.5")
 DISPLAY_PERCENT_QUANTUM = Decimal("0.1")
@@ -56,8 +56,8 @@ def _weights(growth: str, safe: str, cash: str) -> AllocationWeights:
     )
 
 
-# 성장/안전/현금. AT_OR_ABOVE_55 is intentionally absent: at or after age 55
-# the engine shows the current balance only and produces no projection.
+# 성장/안전/현금. The approved pension-calculator contract extends the
+# AGE_50_54 allocation unchanged for ages 55 and above (2026-07-20 decision).
 ALLOCATION_MATRIX: dict[AgeBand, dict[RiskProfile, AllocationWeights]] = {
     AgeBand.AGE_20S: {
         RiskProfile.STABLE: _weights("20", "30", "50"),
@@ -81,6 +81,13 @@ ALLOCATION_MATRIX: dict[AgeBand, dict[RiskProfile, AllocationWeights]] = {
         RiskProfile.AGGRESSIVE: _weights("65", "35", "0"),
     },
     AgeBand.AGE_50_54: {
+        RiskProfile.STABLE: _weights("0", "50", "50"),
+        RiskProfile.STABLE_SEEKING: _weights("0", "75", "25"),
+        RiskProfile.RISK_NEUTRAL: _weights("20", "70", "10"),
+        RiskProfile.ACTIVE: _weights("35", "60", "5"),
+        RiskProfile.AGGRESSIVE: _weights("50", "50", "0"),
+    },
+    AgeBand.AT_OR_ABOVE_55: {
         RiskProfile.STABLE: _weights("0", "50", "50"),
         RiskProfile.STABLE_SEEKING: _weights("0", "75", "25"),
         RiskProfile.RISK_NEUTRAL: _weights("20", "70", "10"),

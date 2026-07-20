@@ -41,12 +41,12 @@ DB형, 연금저축보험, 연금저축신탁은 생성하지 않는다. 연금�
 
 | 시나리오 코드 | 대표 고객 | 연령대 | 로그인 ID | 대표 상황 |
 |---|---|---|---|---|
-| `dc_dormant` | 박준호(가상) | 40대 | `demo.dc-dormant@kda-demo.invalid` | DC 적립금이 원리금보장 상품에 머문 방치형 |
-| `tax_contribution_uninvested` | 이서연(가상) | 30대 | `demo.tax-idle@kda-demo.invalid` | 세액공제를 위해 납입했지만 자금을 운용하지 않은 유형 |
-| `overlap_risk_concentration` | 정민재(가상) | 30대 | `demo.overlap-risk@kda-demo.invalid` | 여러 연금계좌에 같은 위험자산이 중복된 유형 |
-| `young_retirement_distance` | 김하린(가상) | 20~39세 | `demo.young@kda-demo.invalid` | 노후가 멀게 느껴져 연금 운용의 우선순위가 낮은 유형 |
-| `family_budget_pressure` | 최지훈(가상) | 40~54세 | `demo.family@kda-demo.invalid` | 자녀·주거비로 납입이 빠듯하지만 노후를 걱정하기 시작한 유형 |
-| `pension_payout_transition` | 윤정희(가상) | 55세 이상 | `demo.payout@kda-demo.invalid` | 연금 수령을 시작했거나 수령 직전인 유형 |
+| `dc_dormant` | 박준호(가상) | 40대 | `junho46` | DC 적립금이 원리금보장 상품에 머문 방치형 |
+| `tax_contribution_uninvested` | 이서연(가상) | 30대 | `seoyeon34` | 세액공제를 위해 납입했지만 자금을 운용하지 않은 유형 |
+| `overlap_risk_concentration` | 정민재(가상) | 30대 | `minjae32` | 여러 연금계좌에 같은 위험자산이 중복된 유형 |
+| `young_retirement_distance` | 김하린(가상) | 20~39세 | `harin29` | 노후가 멀게 느껴져 연금 운용의 우선순위가 낮은 유형 |
+| `family_budget_pressure` | 최지훈(가상) | 40~54세 | `jihoon47` | 자녀·주거비로 납입이 빠듯하지만 노후를 걱정하기 시작한 유형 |
+| `pension_payout_transition` | 윤정희(가상) | 55세 이상 | `jeonghee60` | 연금 수령을 시작했거나 수령 직전인 유형 |
 
 로그인 ID와 고객 매핑은 `demo_scenario_users.json`에 저장한다. 실제 비밀번호는
 Git에 커밋하지 않고 아래 명령으로 `secrets/demo_scenario_auth.json`에 생성한다.

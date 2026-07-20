@@ -54,6 +54,8 @@ from .models import (
     AssumptionScenario,
     HistoricalReturnEvaluation,
     HoldingInput,
+    PensionCalculatorEvaluation,
+    PensionCalculatorInput,
     PortfolioInput,
     ProfitLockEvaluation,
     ProfitLockInput,
@@ -70,6 +72,7 @@ from .models import (
     ScenarioPortfolioInput,
     StatutoryException,
 )
+from .pension_calculator import calculate_pension
 from .pension_tax import (
     IncomeBasis,
     IrpDeferredIncomeStatus,
@@ -158,6 +161,8 @@ __all__ = [
     "PortfolioPlanningEvaluation",
     "PortfolioRiskEvaluation",
     "PensionAccountTaxInput",
+    "PensionCalculatorEvaluation",
+    "PensionCalculatorInput",
     "PensionTaxCreditInput",
     "PensionTaxCreditEvaluation",
     "PensionTaxScenarioInput",
@@ -194,6 +199,7 @@ __all__ = [
     "build_educational_portfolio",
     "calculate_etf_planning_return",
     "calculate_historical_etf_metrics",
+    "calculate_pension",
     "calculate_pension_tax_credit",
     "calculate_portfolio_planning_return",
     "calculate_portfolio_risk",
