@@ -292,6 +292,7 @@ def fetch_fred_series(
     observation_start: str,
     observation_end: str,
     units: str = "lin",
+    realtime_as_of: str | None = None,
 ) -> tuple[RawMacroResponse, list[MacroObservation]]:
     request_params: dict[str, str | int] = {
         "series_id": series_id,
@@ -301,6 +302,9 @@ def fetch_fred_series(
         "sort_order": "asc",
         "units": units,
     }
+    if realtime_as_of is not None:
+        request_params["realtime_start"] = realtime_as_of
+        request_params["realtime_end"] = realtime_as_of
     try:
         response = client.get(
             FRED_ENDPOINT, params={"api_key": api_key, **request_params}
@@ -336,7 +340,15 @@ def fetch_fred_series(
                 value=_decimal(value, source="FRED", field="value"),
                 unit=unit,
                 source_reference=f"https://fred.stlouisfed.org/series/{series_id}",
-                dimensions={"series_id": series_id, "units_transform": units},
+                dimensions={
+                    "series_id": series_id,
+                    "units_transform": units,
+                    **(
+                        {"realtime_as_of": realtime_as_of}
+                        if realtime_as_of is not None
+                        else {}
+                    ),
+                },
             )
         )
     observations.sort(key=lambda observation: observation.period)

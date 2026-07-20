@@ -181,7 +181,8 @@ _NEWS_EVENT_STRATEGY_TERMS = re.compile(
 _MACRO_EVIDENCE_TERMS = re.compile(
     r"기준\s*금리|소비자\s*물가|물가\s*상승률|인플레이션|"
     r"기대\s*수명|거시\s*(?:지표|환경)|연방\s*기금|"
-    r"미국\s*10년\s*국채|기대\s*인플레이션",
+    r"미국\s*10년\s*국채|기대\s*인플레이션|"
+    r"유사\s*국면|과거\s*국면|최대\s*낙폭",
     re.I,
 )
 _RULE_TERMS = re.compile(

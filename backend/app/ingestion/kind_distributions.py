@@ -168,6 +168,8 @@ def collect_kind_distributions(
                         receipt_number=row.receipt_number,
                         submitted_at=row.submitted_at,
                         source_url=source_url,
+                        isu_code=row.isu_code,
+                        isu_name=row.isu_name,
                     )
                 )
             except (KindDisclosureError, KeyError, json.JSONDecodeError) as exc:

@@ -495,6 +495,86 @@ function MacroEvidenceCards({ response }: { response: ChatResponse }) {
   );
 }
 
+const REGIME_GAP_LABELS: Record<string, string> = {
+  total_return_history_unavailable: "총수익 이력 없음",
+  verified_total_return_basis_unavailable: "총수익 기준 미확인",
+  source_chip_unavailable: "출처 확인 필요",
+  start_observation_unavailable: "시작 관측 부족",
+  end_observation_unavailable: "종료 관측 부족",
+  outcome_window_incomplete: "관측 구간 부족",
+};
+
+function regimeMonth(value: string): string {
+  const [year, month] = value.split("-");
+  return `${year}년 ${Number(month)}월`;
+}
+
+function drawdownText(value: string | number): string {
+  const parsed = Math.abs(Number(value));
+  return parsed === 0 ? "0%" : `-${numericText(parsed, "%")}`;
+}
+
+function MacroRegimeOutcomeCards({ response }: { response: ChatResponse }) {
+  const evaluation = response.macro_regime_etf_outcomes;
+  if (!evaluation) return null;
+
+  return (
+    <section className="macro-regime-card" aria-label="과거 유사국면 ETF 근거 카드">
+      <header>
+        <span>과거 실적 근거</span>
+        <h3>유사국면 이후 ETF 총수익률·최대낙폭</h3>
+        <p>국면 다음 달 첫 거래일부터 계산한 실제 관측값이며 미래 예측이나 자동 리밸런싱 신호가 아니에요.</p>
+      </header>
+      <div className="macro-regime-list">
+        {evaluation.groups.map((group, groupIndex) => (
+          <details key={group.regime_period} open={groupIndex === 0}>
+            <summary>
+              <strong>{regimeMonth(group.regime_period)} 유사국면</strong>
+              <span>유사도 거리 {Number(group.distance).toFixed(4)}</span>
+            </summary>
+            <div className="macro-regime-etfs">
+              {group.etfs.map((etf) => (
+                <article key={`${group.regime_period}-${etf.isu_code}`}>
+                  <div className="macro-regime-etf-heading">
+                    <strong>{etf.isu_name}</strong>
+                    <span>{etf.isu_code}</span>
+                  </div>
+                  <div className="macro-regime-horizons">
+                    {etf.horizons.map((horizon) => (
+                      <div key={horizon.horizon_months}>
+                        <span>{horizon.horizon_months}개월</span>
+                        <strong className={Number(horizon.total_return_percent) >= 0 ? "positive" : "negative"}>
+                          {numericText(horizon.total_return_percent, "%")}
+                        </strong>
+                        <small>최대낙폭 {drawdownText(horizon.maximum_drawdown_percent)}</small>
+                        <em>{horizon.start_date} ~ {horizon.end_date}</em>
+                      </div>
+                    ))}
+                    {etf.gaps.map((gap) => (
+                      <div className="unavailable" key={`gap-${gap.horizon_months}`}>
+                        <span>{gap.horizon_months}개월</span>
+                        <strong>관측 부족</strong>
+                        <small>{REGIME_GAP_LABELS[gap.reason] ?? gap.reason}</small>
+                      </div>
+                    ))}
+                  </div>
+                  {etf.source && (
+                    <SourceLink locator={etf.source.reference}>
+                      <span className="macro-regime-source-chip">
+                        {etf.source.label} · {etf.source.as_of}
+                      </span>
+                    </SourceLink>
+                  )}
+                </article>
+              ))}
+            </div>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function usePrefersReducedMotion(): boolean {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => (
     typeof window !== "undefined"
@@ -638,6 +718,7 @@ function AssistantMessage({
       )}
 
       <MacroEvidenceCards response={response} />
+      <MacroRegimeOutcomeCards response={response} />
 
       {response.intent !== "mock_portfolio" && response.intent !== "macro_evidence" && response.numeric_evidence.length > 0 && (
         <div className="number-grid" aria-label="수치 근거">

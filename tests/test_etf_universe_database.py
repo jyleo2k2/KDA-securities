@@ -249,7 +249,7 @@ def test_reads_latest_ready_universe_for_one_account() -> None:
     assert repository.history_sources == {"069500": "kis_adjusted_close"}
     assert repository.source_path.as_posix().endswith("etf_dataset_versions/7")
     assert connection.cursor_obj.executed[1][1] == (7, "dc")
-    assert connection.cursor_obj.executed[2][1] == (7, "dc")
+    assert connection.cursor_obj.executed[2][1] == (7, "dc", 253)
 
 
 def test_rejects_database_without_ready_universe() -> None:

@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "policy_version": "style-planning-backtest-vintages-2026-07-20.1",
+  "usage_label": "historical_point_in_time_inputs_for_short_horizon_calibration",
+  "vintages": [
+    {
+      "vintage_id": "jpm_ltcma_2023",
+      "split": "training",
+      "formation_date": "2023-01-27",
+      "source_horizon_years": [10, 15],
+      "cma_percent": {
+        "us_large_cap_equity": "7.9000",
+        "global_equity": "8.5000",
+        "emerging_markets_equity": "10.1000"
+      },
+      "regional_revision_signals": {
+        "south_korea": {
+          "growth_revision_percent_point": "0.0000",
+          "inflation_revision_percent_point": "0.0000",
+          "policy_rate_revision_percent_point": "0.0000",
+          "missing_signal_ids": [
+            "growth_revision",
+            "inflation_revision",
+            "policy_rate_revision"
+          ]
+        },
+        "united_states": {
+          "growth_revision_percent_point": "-0.7333",
+          "inflation_revision_percent_point": "0.1667",
+          "policy_rate_revision_percent_point": "0.7667",
+          "missing_signal_ids": []
+        },
+        "global": {
+          "growth_revision_percent_point": "-0.1000",
+          "inflation_revision_percent_point": "0.0000",
+          "policy_rate_revision_percent_point": "0.0000",
+          "missing_signal_ids": [
+            "inflation_revision",
+            "policy_rate_revision"
+          ]
+        }
+      },
+      "sources": [
+        {
+          "label": "J.P. Morgan 2023 LTCMA USD matrix and archived assumptions page",
+          "as_of": "2023-01-27",
+          "reference": "https://am.jpmorgan.com/content/dam/jpm-am-aem/global/en/insights/portfolio-insights/ltcma/assumptions-currencies/2023/matrix-usd.pdf"
+        },
+        {
+          "label": "Federal Reserve September 2022 SEP versus June 2022",
+          "as_of": "2022-09-21",
+          "reference": "https://www.federalreserve.gov/monetarypolicy/fomcprojtabl20220921.htm"
+        },
+        {
+          "label": "IMF October 2022 WEO versus July 2022 update",
+          "as_of": "2022-10-11",
+          "reference": "https://www.imf.org/en/publications/weo/issues/2022/10/11/world-economic-outlook-october-2022"
+        }
+      ]
+    },
+    {
+      "vintage_id": "jpm_ltcma_2024",
+      "split": "training",
+      "formation_date": "2023-10-17",
+      "source_horizon_years": [10, 15],
+      "cma_percent": {
+        "us_large_cap_equity": "7.0000",
+        "global_equity": "7.8000",
+        "emerging_markets_equity": "8.8000"
+      },
+      "regional_revision_signals": {
+        "south_korea": {
+          "growth_revision_percent_point": "0.0000",
+          "inflation_revision_percent_point": "0.0000",
+          "policy_rate_revision_percent_point": "0.0000",
+          "missing_signal_ids": [
+            "growth_revision",
+            "inflation_revision",
+            "policy_rate_revision"
+          ]
+        },
+        "united_states": {
+          "growth_revision_percent_point": "0.5000",
+          "inflation_revision_percent_point": "0.0667",
+          "policy_rate_revision_percent_point": "0.3333",
+          "missing_signal_ids": []
+        },
+        "global": {
+          "growth_revision_percent_point": "-0.0500",
+          "inflation_revision_percent_point": "0.3500",
+          "policy_rate_revision_percent_point": "0.0000",
+          "missing_signal_ids": [
+            "policy_rate_revision"
+          ]
+        }
+      },
+      "sources": [
+        {
+          "label": "J.P. Morgan 2024 LTCMA release",
+          "as_of": "2023-10-17",
+          "reference": "https://am.jpmorgan.com/us/en/asset-management/institutional/about-us/media/press-releases/jp-morgan-releases-2024-long-term-capital-market-assumptions-revealing-opportunities-to-build-upon-6040-portfolio-as-economy-enters-period-of-transition/"
+        },
+        {
+          "label": "J.P. Morgan 2024 LTCMA executive summary with 2024/2023 assumptions",
+          "as_of": "2023-10-17",
+          "reference": "https://am.jpmorgan.com/content/dam/jpm-am-aem/asiapacific/jp/ja/insights/portfolio-insights/2024-ltcma-executive-summary.pdf"
+        },
+        {
+          "label": "Federal Reserve September 2023 SEP versus June 2023",
+          "as_of": "2023-09-20",
+          "reference": "https://www.federalreserve.gov/monetarypolicy/fomcprojtabl20230920.htm"
+        },
+        {
+          "label": "IMF October 2023 WEO versus July 2023 update",
+          "as_of": "2023-10-10",
+          "reference": "https://www.imf.org/en/publications/weo/issues/2023/10/10/world-economic-outlook-october-2023"
+        }
+      ]
+    },
+    {
+      "vintage_id": "jpm_ltcma_2025",
+      "split": "holdout",
+      "formation_date": "2024-10-21",
+      "source_horizon_years": [10, 15],
+      "cma_percent": {
+        "us_large_cap_equity": "6.7000",
+        "global_equity": "7.1000",
+        "emerging_markets_equity": "7.2000"
+      },
+      "regional_revision_signals": {
+        "south_korea": {
+          "growth_revision_percent_point": "0.0000",
+          "inflation_revision_percent_point": "0.0000",
+          "policy_rate_revision_percent_point": "0.0000",
+          "missing_signal_ids": [
+            "growth_revision",
+            "inflation_revision",
+            "policy_rate_revision"
+          ]
+        },
+        "united_states": {
+          "growth_revision_percent_point": "-0.0333",
+          "inflation_revision_percent_point": "-0.1667",
+          "policy_rate_revision_percent_point": "-0.5333",
+          "missing_signal_ids": []
+        },
+        "global": {
+          "growth_revision_percent_point": "0.0000",
+          "inflation_revision_percent_point": "0.0000",
+          "policy_rate_revision_percent_point": "0.0000",
+          "missing_signal_ids": [
+            "inflation_revision",
+            "policy_rate_revision"
+          ]
+        }
+      },
+      "sources": [
+        {
+          "label": "J.P. Morgan 2025 LTCMA release",
+          "as_of": "2024-10-21",
+          "reference": "https://am.jpmorgan.com/us/en/asset-management/institutional/about-us/media/press-releases/jp-morgan-unveils-2025-long-term-capital-market-assumptions/"
+        },
+        {
+          "label": "Federal Reserve September 2024 SEP versus June 2024",
+          "as_of": "2024-09-18",
+          "reference": "https://www.federalreserve.gov/monetarypolicy/fomcprojtabl20240918.htm"
+        },
+        {
+          "label": "IMF July 2024 WEO update versus April 2024",
+          "as_of": "2024-07-16",
+          "reference": "https://www.imf.org/en/publications/weo/issues/2024/07/16/world-economic-outlook-update-july-2024"
+        }
+      ]
+    }
+  ],
+  "calculation_notes": [
+    "Formation dates use conservative public-availability dates; the 2023 vintage uses the dated official J.P. Morgan public page because the archived release states only December 2022.",
+    "Federal Reserve signals are arithmetic means of overlapping annual median revisions in real GDP growth, PCE inflation, and the federal funds rate.",
+    "IMF signals use the mean revision for the two published world-growth years; unavailable inflation or policy-rate revisions are neutralized to zero and marked missing.",
+    "The 2025-vintage IMF October 2024 WEO was published after the CMA formation date and is therefore excluded.",
+    "South Korea revisions are neutralized where a consistent point-in-time official revision series was not reconstructed; no later observation is substituted."
+  ],
+  "limitations": [
+    "J.P. Morgan CMA values target a 10-to-15-year horizon and are not designed for one-year tactical forecasts.",
+    "The available KIS adjusted-price history begins in 2020, so this file supports a 12-month calibration backtest only.",
+    "Current classifications and the currently listed pension-eligible universe create classification and survivorship bias.",
+    "Historical ETF fee vintages are unavailable, so the backtest compares gross planning assumptions with gross total returns and excludes costs."
+  ]
+}

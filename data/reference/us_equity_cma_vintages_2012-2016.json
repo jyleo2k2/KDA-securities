@@ -1,0 +1,63 @@
+{
+  "schema_version": "us-equity-cma-vintages-2026-07-20.1",
+  "usage": "미국 대형주 CMA와 이후 10년 실현수익의 교육용 사후 비교이며 미래 예측값이 아니다.",
+  "is_forecast": false,
+  "asset_definition": {
+    "cma": "J.P. Morgan U.S. Large Cap, USD compound total return",
+    "realized_proxy": "Fama-French U.S. value-weight market total return (Mkt-RF + RF)",
+    "horizon_years": 10
+  },
+  "archive": {
+    "label": "J.P. Morgan Long-Term Capital Market Assumptions Archive",
+    "reference": "https://am.jpmorgan.com/it/it/asset-management/adv/insights/portfolio-insights/ltcma/Archive/",
+    "retrieval_note": "공식 아카이브는 보고서와 발행일을 열거하지만 2026-07-20 현재 일부 과거 PDF 링크는 HTTP 404다. 값은 검색 색인에 남은 공식 PDF 표에서 전사했으며 생산 채택 근거로 사용하지 않는다."
+  },
+  "vintages": [
+    {
+      "cma_label_year": 2012,
+      "formation_year": 2011,
+      "as_of": "2011-10-31",
+      "expected_return_percent": "8.0000",
+      "source_url": "https://am.jpmorgan.com/content/dam/jpm-am-aem/global/en/insights/portfolio-insights/ltcma/archive/LTCMA-2012.pdf",
+      "source_evidence": "공식 2012 표: U.S. Large Cap 8.00%, EPS growth 5.25%, dividend yield 2.75%, P/E impact zero"
+    },
+    {
+      "cma_label_year": 2013,
+      "formation_year": 2012,
+      "as_of": "2012-09-30",
+      "expected_return_percent": "7.2500",
+      "source_url": "https://am.jpmorgan.com/content/dam/jpm-am-aem/global/en/insights/portfolio-insights/ltcma/archive/LTCMA-2013.pdf",
+      "source_evidence": "공식 2013 표: US Large Cap (local) 7.25%"
+    },
+    {
+      "cma_label_year": 2014,
+      "formation_year": 2013,
+      "as_of": "2013-09-30",
+      "expected_return_percent": "7.5000",
+      "source_url": "https://am.jpmorgan.com/content/dam/jpm-am-aem/global/en/insights/portfolio-insights/ltcma/archive/LTCMA-2014.pdf",
+      "source_evidence": "공식 2014 표: U.S. large cap equity 7.50%"
+    },
+    {
+      "cma_label_year": 2015,
+      "formation_year": 2014,
+      "as_of": "2014-09-30",
+      "expected_return_percent": "6.5000",
+      "source_url": "https://am.jpmorgan.com/content/dam/jpm-am-aem/global/en/insights/portfolio-insights/ltcma/archive/LTCMA-2016.pdf",
+      "source_evidence": "공식 2016 보고서의 2015/2016 비교표: 2015 U.S. large cap equity 6.50%"
+    },
+    {
+      "cma_label_year": 2016,
+      "formation_year": 2015,
+      "as_of": "2015-09-30",
+      "expected_return_percent": "7.0000",
+      "source_url": "https://am.jpmorgan.com/content/dam/jpm-am-aem/global/en/insights/portfolio-insights/ltcma/archive/LTCMA-2016.pdf",
+      "source_evidence": "공식 2016 보고서의 2015/2016 비교표: 2016 U.S. large cap equity 7.00%"
+    }
+  ],
+  "limitations": [
+    "연속 형성연도의 10년 실현 구간은 서로 9년씩 겹치므로 독립 표본 5개가 아니다.",
+    "CMA는 미국 대형주, 실현 프록시는 CRSP 기반 미국 전체 가치가중 시장이라 정의가 완전히 같지 않다.",
+    "Damodaran과 Fama-French 과거 입력은 현재 공개본이며 당시 배포본 아카이브가 아니다.",
+    "과거 PDF 링크의 현재 404로 원문 SHA-256 재검증이 불가능한 빈티지가 있다."
+  ]
+}

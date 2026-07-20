@@ -28,6 +28,7 @@ from backend.app.portfolio_universe_repository import (
     DEFAULT_KRX_ROOT,
     DEFAULT_RETURN_ROOT,
     HISTORY_FILE_LOOKBACK,
+    HISTORY_OBSERVATIONS,
     PortfolioUniverseRepository,
 )
 
@@ -77,6 +78,47 @@ class PostgresPortfolioUniverseRepository:
         with self._connection_factory(self._database_url) as connection:
             yield connection
 
+    def _historical_histories(
+        self,
+        version_id: int,
+        account_type: AccountType,
+        isu_codes: set[str],
+    ) -> tuple[dict[str, dict[date, Decimal]], dict[str, str]]:
+        if not isu_codes:
+            return {}, {}
+        with self._connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
+                select h.isu_code, h.observed_on, h.index_value, h.source
+                from public.etf_return_histories h
+                join public.etf_universe_products p
+                  on p.version_id = h.version_id
+                 and p.isu_code = h.isu_code
+                where h.version_id = %s
+                  and p.account_type = %s
+                  and h.isu_code = any(%s)
+                order by h.isu_code, h.observed_on
+                """,
+                (version_id, account_type.value, sorted(isu_codes)),
+            )
+            rows = cursor.fetchall()
+        histories: dict[str, dict[date, Decimal]] = defaultdict(dict)
+        sources: dict[str, str] = {}
+        for isu_code, observed_on, index_value, source in rows:
+            code = str(isu_code)
+            parsed_date = (
+                observed_on
+                if isinstance(observed_on, date)
+                else date.fromisoformat(str(observed_on))
+            )
+            histories[code][parsed_date] = Decimal(str(index_value))
+            existing = sources.setdefault(code, str(source))
+            if existing != source:
+                raise PortfolioUniverseLoadError(
+                    f"ETF history has mixed sources: {code}"
+                )
+        return dict(histories), sources
+
     def latest(self, account_type: AccountType) -> PortfolioUniverseRepository:
         with self._connection() as connection, connection.cursor() as cursor:
             cursor.execute(
@@ -113,15 +155,28 @@ class PostgresPortfolioUniverseRepository:
 
             cursor.execute(
                 """
-                select h.isu_code, h.observed_on, h.index_value, h.source
-                from public.etf_return_histories h
-                join public.etf_universe_products p
-                  on p.version_id = h.version_id
-                 and p.isu_code = h.isu_code
-                where h.version_id = %s and p.account_type = %s
-                order by h.isu_code, h.observed_on
+                with ranked as (
+                    select
+                        h.isu_code,
+                        h.observed_on,
+                        h.index_value,
+                        h.source,
+                        row_number() over (
+                            partition by h.isu_code
+                            order by h.observed_on desc
+                        ) as history_rank
+                    from public.etf_return_histories h
+                    join public.etf_universe_products p
+                      on p.version_id = h.version_id
+                     and p.isu_code = h.isu_code
+                    where h.version_id = %s and p.account_type = %s
+                )
+                select isu_code, observed_on, index_value, source
+                from ranked
+                where history_rank <= %s
+                order by isu_code, observed_on
                 """,
-                (version_id, account_type.value),
+                (version_id, account_type.value, HISTORY_OBSERVATIONS),
             )
             history_rows = cursor.fetchall()
 
@@ -171,8 +226,9 @@ class PostgresPortfolioUniverseRepository:
             histories=dict(histories),
             history_sources=history_sources,
             as_of=as_of,
-            source_path=(
-                Path("database") / "etf_dataset_versions" / str(version_id)
+            source_path=(Path("database") / "etf_dataset_versions" / str(version_id)),
+            historical_history_loader=lambda isu_codes: self._historical_histories(
+                version_id, account_type, isu_codes
             ),
         )
 
@@ -217,9 +273,7 @@ def _dataset_source_files(
         for code in kis_codes:
             path = adjusted_directory / f"{code}.json"
             if path.exists():
-                label = (
-                    f"kis/adjusted_prices/{adjusted_directory.name}/{path.name}"
-                )
+                label = f"kis/adjusted_prices/{adjusted_directory.name}/{path.name}"
                 sources[label] = path
 
     event_paths = sorted(event_root.glob("etf_corporate_events_*.json"))
@@ -280,9 +334,27 @@ def load_portfolio_universe(
     )
 
     # 같은 종목이 둘 이상 계좌에서 적격이면 이력이 동일하므로 종목당 1행으로 합친다.
-    combined_histories: dict[str, dict[date, tuple[Decimal, str]]] = {}
+    all_codes = {
+        str(product["isu_code"])
+        for repo in repositories.values()
+        for product in repo.products
+    }
+    history_repository = max(repositories.values(), key=lambda repo: len(repo.products))
+    full_histories, full_sources = history_repository.load_total_return_histories(
+        all_codes
+    )
+    combined_histories: dict[str, dict[date, tuple[Decimal, str]]] = {
+        isu_code: {
+            observed_on: (value, full_sources[isu_code])
+            for observed_on, value in history.items()
+        }
+        for isu_code, history in full_histories.items()
+        if isu_code in full_sources
+    }
     for repo in repositories.values():
         for isu_code, history in repo.histories.items():
+            if isu_code in combined_histories:
+                continue
             source = repo.history_sources[isu_code]
             bucket = combined_histories.setdefault(isu_code, {})
             for observed_on, value in history.items():

@@ -29,6 +29,7 @@ from ..macro_evidence import (
     MacroEvidenceSnapshot,
     MacroEvidenceUnavailable,
     MacroMetric,
+    attach_etf_outcomes,
 )
 from ..retrieval.knowledge_policy import (
     contains_sensitive_personal_data,
@@ -90,6 +91,11 @@ from .tools import (
 )
 
 logger = logging.getLogger(__name__)
+_MACRO_ANALOG_OUTCOME_TERMS = re.compile(
+    r"유사\s*국면|과거\s*국면|최대\s*낙폭|"
+    r"(?:3|6|12)\s*(?:·|/|,|개월)",
+    re.I,
+)
 
 
 class DisclosureSearch(Protocol):
@@ -2951,6 +2957,24 @@ class ChatService:
                 ],
             ),
         ]
+        macro_outcomes = None
+        macro_outcome_limitations: list[str] = []
+        if request.current_holdings and self._macro_evidence is not None:
+            try:
+                macro_snapshot = self._macro_evidence.analog_regimes()
+                enriched_snapshot = attach_etf_outcomes(
+                    macro_snapshot,
+                    repository=repository,
+                    isu_codes=[
+                        holding.isu_code for holding in request.current_holdings
+                    ],
+                )
+                macro_outcomes = enriched_snapshot.etf_outcomes
+            except (MacroEvidenceUnavailable, FileNotFoundError, ValueError) as exc:
+                logger.warning("Historical ETF outcome evidence unavailable: %s", exc)
+                macro_outcome_limitations.append(
+                    "과거 유사국면 이후 ETF 총수익률 근거를 불러오지 못했습니다."
+                )
         return ChatResponse(
             intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
             answer=(
@@ -2963,10 +2987,12 @@ class ChatService:
             sections=sections,
             educational_portfolio_evaluation=evaluation,
             educational_portfolio_evaluations=[evaluation],
+            macro_regime_etf_outcomes=macro_outcomes,
             limitations=[
                 "설명은 규칙 엔진 결과 코드와 수치만 정해진 문장으로 변환합니다.",
                 "CMA는 10~15년 전략배분 기준이며 매년 재검토합니다.",
                 "상품 선택·주문·자동 리밸런싱은 수행하지 않습니다.",
+                *macro_outcome_limitations,
             ],
         )
 
@@ -3118,6 +3144,52 @@ class ChatService:
     def _macro_evidence_response(self, request: ChatRequest) -> ChatResponse:
         if self._macro_evidence is None:
             return self._macro_evidence_unavailable()
+        if _MACRO_ANALOG_OUTCOME_TERMS.search(request.message):
+            portfolio_request = request.educational_portfolio
+            if portfolio_request is None or not portfolio_request.current_holdings:
+                return ChatResponse(
+                    intent=ChatIntent.MACRO_EVIDENCE,
+                    answer=(
+                        "현재 보유 ETF를 먼저 입력하면 각 과거 유사국면 이후의 "
+                        "실제 총수익률과 최대낙폭을 보여드릴게요."
+                    ),
+                    data_mode="etf_selection_required",
+                    limitations=[
+                        "ETF 코드 없이 임의 상품을 선택하거나 성과 수치를 "
+                        "만들지 않습니다."
+                    ],
+                )
+            if self._portfolio_universe_loader is None:
+                return self._macro_evidence_unavailable()
+            try:
+                repository = self._portfolio_universe_loader(
+                    portfolio_request.account_type
+                )
+                snapshot = attach_etf_outcomes(
+                    self._macro_evidence.analog_regimes(),
+                    repository=repository,
+                    isu_codes=[
+                        holding.isu_code
+                        for holding in portfolio_request.current_holdings
+                    ],
+                )
+            except (MacroEvidenceUnavailable, FileNotFoundError, ValueError):
+                return self._macro_evidence_unavailable()
+            return ChatResponse(
+                intent=ChatIntent.MACRO_EVIDENCE,
+                answer=(
+                    "입력한 ETF의 과거 유사국면 이후 실제 성과를 정리했어요. "
+                    "미래 예측이나 리밸런싱 신호로 사용하지 않아요."
+                ),
+                data_mode="historical_macro_regime_etf_outcomes",
+                macro_regime_etf_outcomes=snapshot.etf_outcomes,
+                limitations=[
+                    "총수익지수의 과거 관측값만 사용하며 미래 성과를 "
+                    "의미하지 않습니다.",
+                    "ETF 상장 전이거나 구간 경계 관측이 부족하면 해당 "
+                    "기간을 비워 둡니다.",
+                ],
+            )
         try:
             snapshot = self._macro_evidence.latest()
         except MacroEvidenceUnavailable:

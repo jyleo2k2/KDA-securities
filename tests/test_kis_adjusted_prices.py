@@ -1,5 +1,6 @@
 import json
 from datetime import date
+from pathlib import Path
 
 import httpx
 import pytest
@@ -121,6 +122,57 @@ def test_product_collection_writes_adjusted_price_contract(tmp_path) -> None:
     assert payload["return_basis"] == "adjusted_close_price_not_total_return"
     assert payload["modified_observation_count"] == 1
     assert payload["observations"][0]["date"] == "2026-07-14"
+
+
+def test_product_collection_refetches_cached_boundary_for_earlier_start(
+    tmp_path,
+) -> None:
+    raw_path = (
+        tmp_path
+        / "raw"
+        / "adjusted_daily_itemchartprice"
+        / "069500"
+        / "20200102.json"
+    )
+    raw_path.parent.mkdir(parents=True)
+    raw_path.write_text(
+        json.dumps(_payload([_row("20200102")])),
+        encoding="utf-8",
+    )
+    request_count = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        return httpx.Response(
+            200,
+            json=_payload([_row("20200102"), _row("20191231")]),
+        )
+
+    with httpx.Client(
+        base_url=KIS_BASE_URL, transport=httpx.MockTransport(handler)
+    ) as client:
+        result = _collect_product(
+            client=client,
+            app_key="app-key",
+            app_secret="app-secret",
+            access_token="token",
+            product={"isu_code": "069500", "isu_name": "KODEX 200"},
+            start_date=date(2019, 1, 1),
+            end_date=date(2020, 1, 2),
+            raw_root=tmp_path / "raw",
+            cache_root=tmp_path / "cache",
+            delay_seconds=0,
+            force=False,
+        )
+
+    payload = json.loads(Path(result.cache_path).read_text(encoding="utf-8"))
+    assert request_count == 1
+    assert result.status == "fetched"
+    assert payload["page_evidence"][0]["status"] == (
+        "refetched_for_extended_start"
+    )
+    assert payload["history_start"] == "2019-12-31"
 
 
 def test_universe_loader_accepts_only_unique_pension_etfs(tmp_path) -> None:

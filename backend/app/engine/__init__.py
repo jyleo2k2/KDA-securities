@@ -51,6 +51,20 @@ from .etf_theme import (
     resolve_theme,
     select_theme_etf_candidates,
 )
+from .macro_regime import (
+    MacroAnalogRegimeEvaluation,
+    MacroRegimeMatch,
+    MonthlyMacroRegimeObservation,
+    calculate_macro_analog_regimes,
+)
+from .macro_regime_outcomes import (
+    EtfPostRegimeOutcome,
+    MacroRegimeEtfOutcomeEvaluation,
+    MacroRegimeOutcomeGroup,
+    RegimeHorizonOutcome,
+    RegimeOutcomeGap,
+    calculate_post_regime_etf_outcomes,
+)
 from .market_evidence import (
     EtfObservation,
     HistoricalEtfMetrics,
@@ -162,6 +176,7 @@ __all__ = [
     "EducationalPortfolioEvaluation",
     "EducationalPortfolioInput",
     "EducationalRiskProfile",
+    "EtfPostRegimeOutcome",
     "EtfObservation",
     "EtfThemeCatalog",
     "EtfThemeDefinition",
@@ -176,6 +191,11 @@ __all__ = [
     "IrpDeferredIncomeStatus",
     "KrxEtfEvidenceProduct",
     "KisComponentHolding",
+    "MacroAnalogRegimeEvaluation",
+    "MacroRegimeEtfOutcomeEvaluation",
+    "MacroRegimeMatch",
+    "MacroRegimeOutcomeGroup",
+    "MonthlyMacroRegimeObservation",
     "RepresentativeCompany",
     "NonPensionWithdrawalInput",
     "NonPensionWithdrawalEvaluation",
@@ -197,6 +217,8 @@ __all__ = [
     "ProfitLockInput",
     "ReturnSubperiod",
     "RelativeEtfRiskPercentiles",
+    "RegimeHorizonOutcome",
+    "RegimeOutcomeGap",
     "RebalancingGuidance",
     "RiskCapEvaluation",
     "RiskBudgetEvaluation",
@@ -227,6 +249,8 @@ __all__ = [
     "build_educational_portfolio",
     "calculate_etf_planning_return",
     "calculate_historical_etf_metrics",
+    "calculate_macro_analog_regimes",
+    "calculate_post_regime_etf_outcomes",
     "calculate_pension",
     "calculate_pension_tax_credit",
     "calculate_portfolio_planning_return",
