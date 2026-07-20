@@ -27,6 +27,29 @@ LOSS_TOLERANCE = {
 }
 
 
+def summarize_portfolio_risk_coverage(
+    scenarios: list[dict[str, Any]],
+) -> dict[str, Any]:
+    status_counts = Counter(
+        scenario["portfolio_risk"]["status"] for scenario in scenarios
+    )
+    observation_counts = [
+        scenario["portfolio_risk"]["observation_count"] for scenario in scenarios
+    ]
+    return {
+        "status_counts": dict(sorted(status_counts.items())),
+        "minimum_observation_count": min(observation_counts, default=0),
+        "maximum_observation_count": max(observation_counts, default=0),
+        "stress_scenario_result_count": sum(
+            len(scenario["portfolio_risk"]["stress_scenarios"])
+            for scenario in scenarios
+        ),
+        "missing_source_count": sum(
+            not scenario["portfolio_risk"]["sources"] for scenario in scenarios
+        ),
+    }
+
+
 def build_portfolio_examples(
     *,
     return_root: Path,
@@ -121,6 +144,7 @@ def build_portfolio_examples(
         "candidate_history_source_counts": dict(
             sorted(candidate_history_source_counts.items())
         ),
+        "portfolio_risk_coverage": summarize_portfolio_risk_coverage(scenarios),
         "limitations": [
             "These are educational examples, not individualized advice.",
             "Historical returns are excluded from ETF candidate ranking.",
@@ -189,6 +213,7 @@ def main() -> int:
                 "candidate_history_source_counts": report[
                     "candidate_history_source_counts"
                 ],
+                "portfolio_risk_coverage": report["portfolio_risk_coverage"],
                 "output_path": output_path.as_posix(),
             },
             ensure_ascii=False,
