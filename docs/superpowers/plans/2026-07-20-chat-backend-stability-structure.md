@@ -105,6 +105,29 @@
 - [ ] 금지 경로·루트 진입점 미수정과 Task별 커밋 경계를 확인한다.
 - [ ] PR 본문에 Task 2·3 표, 문서 제안, 이동 체크리스트, diff stat, 계약 변경 여부를 기록한다.
 
+## Task 5 결과 (2026-07-21)
+
+- `service.py`는 생성자, `plan()`, `ask()` 오케스트레이션만 남겼다.
+- 포트폴리오·시나리오, 세제, 계좌 규칙, 공시·뉴스, 응답 표시를 `handlers/`로 이동했다.
+- 각 핸들러는 `ChatService` 대신 필요한 저장소·로더·요청 값을 명시적으로 받는다.
+- 계약 변경: 없음. SSE와 `ChatResponse` 형식은 유지했다.
+
+| 그룹 | 모듈 | 커밋 |
+|---|---|---|
+| 공용·표시 | `_shared.py`, `presentation.py` | `a312a97`, `d86c06b` |
+| 세제 | `pension_tax.py` | `941a97f` |
+| 계좌 규칙 | `account_rules.py` | `17e456b` |
+| 시나리오·포트폴리오 | `scenarios.py`, `portfolio.py` | `ed291df`, `705a181` |
+| 공시·뉴스 | `disclosures_news.py` | `f15c03c` |
+
+### PR 본문용 검증
+
+| 검사 | 결과 |
+|---|---|
+| `uv run pytest` | `914 passed, 1 skipped` |
+| `uv run ruff check .` | 실패: 기존 `narrator.py` 가드 재노출 import 25건 및 기존 테스트 줄 길이 1건. 가드 로직 변경 금지 범위라 미수정 |
+| 금지 경로 | `repository.py`, `user_context.py`, `retrieval/**`, `supabase/**`, 루트 진입점 미수정 |
+
 ---
 
 ## Task 2 감사 결과 (2026-07-20)

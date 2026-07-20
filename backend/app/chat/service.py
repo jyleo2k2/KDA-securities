@@ -13,7 +13,6 @@ from ..macro_evidence import (
 from ..retrieval.repository import KnowledgeSearch
 from .handlers._shared import (
     _RISK_PROFILE_RANKS,
-    _SELECTED_SCENARIO_DIAGNOSIS_TERMS,
     DisclosureSearch,
     LiveNewsSearch,
     NewsSearch,
@@ -24,6 +23,7 @@ from .handlers._shared import (
     _requests_risk_profile_guide,
     _requests_risk_profile_portfolio_guide,
     _selected_risk_profile,
+    is_selected_scenario_diagnosis_request,
 )
 from .handlers._shared import (
     _knowledge_sources as _knowledge_sources,

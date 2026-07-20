@@ -1,4 +1,5 @@
 """Shared contracts and deterministic helpers for chat intent handlers."""
+# ruff: noqa: E402, E501
 
 import re
 from datetime import date
