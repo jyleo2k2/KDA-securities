@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-20 16:36 KST
-> 확인 기준: `codex/demo-candidate-tax-year-fix` / `origin/main` `913c96b` / 로그인 후보 5명·대표 금융 컨텍스트 2026 원격 재동기화 검증
+> 최종 확인: 2026-07-20 17:12 KST
+> 확인 기준: `codex/etf-volume-api` / `origin/main` `913c96b` / 전체 ETF 일별 거래량 migration·1,147행 적재·원격 API E2E 검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -30,20 +30,20 @@
 
 ## 3. 현재 원격 상태
 
-2026-07-20 KST에 승인된 고객 계약·대표 ETF 공통계좌 migration을 적용한 뒤 연결된 Supabase 프로젝트를 읽기 전용으로 재확인했다.
+2026-07-20 KST에 승인된 전체 ETF 일별 거래량 migration과 최신 KRX 스냅샷을 적용한 뒤 연결된 Supabase 프로젝트를 읽기 전용으로 재확인했다.
 
 | 항목 | 원격 상태 |
 |---|---|
-| public 기본 테이블 | 43개 |
-| 적용 마이그레이션 | 20개(`20260715005435` ~ `20260720044230`) |
-| RLS | 43/43 활성화 |
+| public 기본 테이블 | 44개 |
+| 적용 마이그레이션 | 21개(`20260715005435` ~ `20260720080955`) |
+| RLS | 44/44 활성화 |
 | `anon` 테이블 권한 | 없음 |
 | `authenticated` 권한 | 사용자 소유 엔진 결과·채팅 관련 5개 테이블 |
-| `service_role` 권한 | 43개 테이블 |
+| `service_role` 권한 | 44개 테이블 |
 | `knowledge_chunks.embedding` 타입 | `vector(1024)` |
 | HNSW 인덱스 | `knowledge_chunks_embedding_hnsw_idx` 존재 |
 | PostgreSQL / 프로젝트 상태 | 17.6 / `ACTIVE_HEALTHY` |
-| Supabase MCP 현재 연결 | 마지막 정리 조회에서 `401 token_revoked`; 재인증 필요 |
+| Supabase MCP 현재 연결 | 정상 |
 
 ### 원격 주요 행 수
 
@@ -65,6 +65,7 @@
 | `profile_question_sets` / `profile_questions` / `profile_question_options` | 1 / 6 / 30 |
 | `pension_accounts` / `account_snapshots` / `account_holding_snapshots` | 13 / 13 / 86 |
 | `account_cash_flows` / `financial_products` | 0 / 0 |
+| `etf_daily_market_snapshots` | 1,147 |
 
 원격에서 직접 수정된 시나리오 설명 5건과 대표 고객 납입액 5건은 `20260718131917_sync_modified_mock_data.sql`로 migration history에 정식 반영했다. 적용 전후 값과 `updated_at`이 모두 같아 데이터 재기록 없이 이력만 정상 추가됐음을 확인했다.
 
@@ -72,7 +73,7 @@
 
 원격 컬럼 설명 3건(`pension_savings_provider_stats.fee_rate_1y`, `retirement_provider_stats.response_division`, `knowledge_chunks.embedding`)은 `20260718154819_repair_corrupted_column_comments.sql`로 교정했다. 실제 설명을 재조회해 목표 문구와 일치하고 U+FFFD 대체문자가 없음을 확인했다. 테이블·컬럼·데이터·RLS·GRANT는 바뀌지 않았다.
 
-### 현재 43개 테이블의 역할
+### 현재 44개 테이블의 역할
 
 | 영역 | 테이블 |
 |---|---|
@@ -85,8 +86,25 @@
 | 채팅 | `chat_sessions`, `chat_messages`, `chat_message_evidence`, `chat_request_idempotency` |
 | 사용자·성향·계좌 | `user_profiles`, `profile_question_sets`, `profile_questions`, `profile_question_options`, `investment_profile_assessments`, `investment_profile_answers`, `pension_accounts`, `account_snapshots`, `account_cash_flows`, `financial_products`, `account_holding_snapshots` |
 | ETF 유니버스 | `etf_dataset_versions`, `etf_universe_products`, `etf_return_histories` |
+| ETF 일별 시장 | `etf_daily_market_snapshots` |
 
 ## 4. 현재 작업트리의 진행 중 작업
+
+`codex/etf-volume-api` 브랜치의 `output/worktrees/etf-volume-api` 전용
+worktree에서 KRX 전체 상장 ETF 일별 거래량을 Supabase·FastAPI에 연결했다.
+
+- 신규 `20260720080955_add_krx_etf_daily_market_snapshots.sql`은
+  `(base_date, isu_code)` 기준의 거래량·거래대금·NAV 스냅샷과 최신 거래량·종목
+  이력 인덱스를 추가한다. RLS를 활성화하고 브라우저 권한을 회수하며
+  `service_role`만 허용한다.
+- 기존 `data/raw/krx` 원본을 `data_sources`·`ingestion_runs` 근거와 함께 멱등
+  upsert하는 적재 스크립트와 `/market/etfs`, 종목별 `volume-history` API를
+  추가했다.
+- 실제 2026-07-14 KRX 원본 1,147행을 원격 적재했다. 영문 혼합 6자리 코드
+  280개와 거래량 0인 13개도 보존하고 원본·DB 거래량·거래대금 합계가 일치한다.
+- 최신 `main` 기준 전체 회귀 834 passed·1 skipped, Ruff·`git diff --check`가
+  통과했다. RLS 44/44, `anon` 0·`authenticated` 5·`service_role` 44개 테이블,
+  FastAPI 원격 조회 1,147건을 재검증했다.
 
 `codex/pension-account-backfill` 브랜치의
 `output/worktrees/pension-account-backfill` 전용 worktree에서 DB-03 공통 계좌
@@ -271,6 +289,7 @@ uv run ruff check .
 | DB-08 | 손상된 컬럼 설명 3건 교정 | `REMOTE-APPLIED` | `20260718154819`, COMMENT 3문 전용·실제 설명·불변식 재조회 | 적용 파일 수정 금지 |
 | DB-09 | Auth 유출 비밀번호 보호 | `BLOCKED` | Security Advisor의 `auth_leaked_password_protection` WARN 제거 | Supabase Dashboard 또는 CLI 로그인 후 `password_hibp_enabled` 활성화·Advisor 재조회 |
 | DB-10 | main 원격 DB 런타임 회귀 | `LOCAL-VERIFIED` | Auth/RLS·채팅 persist/replay·RAG·뉴스·공시·ETF·NAVER rollback-only SQL E2E 통과 | main 변경 시 재실행 |
+| DB-11 | KRX 전체 ETF 일별 거래량 DB·API 연결 | `REMOTE-APPLIED` | `20260720080955`, 2026-07-14 전체 1,147행·원본 합계 동등성·RLS/GRANT·FastAPI 원격 E2E 확인 | 일일 갱신 자동화와 보존기간은 후속 결정 |
 
 ## 13. 미결정 사항
 
@@ -283,6 +302,29 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-20 17:12 KST KRX 전체 ETF 일별 거래량 연결
+
+- 신규 migration `20260720080955_add_krx_etf_daily_market_snapshots.sql`과
+  KRX 원본 정규화·ingestion run·멱등 upsert 적재기를 추가했다. 원본 JSON은
+  파일에 유지하고 DB에는 조회용 정규화 값과 출처 연결만 저장한다.
+- FastAPI에 `GET /market/etfs`와
+  `GET /market/etfs/{isu_code}/volume-history`를 추가했다. 요청일 이하 최신
+  거래일을 사용하며 거래량·거래대금·순자산 정렬을 화이트리스트로 제한한다.
+- 실제 `20260714.json`은 수신 1,147행·정규화 1,147행·스킵 0행이었다.
+  숫자 전용 코드 가정이 틀렸음을 확인해 `0184E0` 같은 대문자 영숫자 6자리
+  코드 280개를 DB·적재기·API 전체에서 허용했다. 거래량 0인 13개도 유지한다.
+- 원격 적용: 이재용 승인에 따라 `20260720080955`를 적용하고 2026-07-14
+  1,147행을 적재했다. 원본과 DB의 종목 수·거래량 합계 18,155,107,333좌·
+  거래대금 합계 46,862,470,547,267원이 일치한다. 테이블은 516,096바이트이며
+  전체 DB는 111,660,179바이트다.
+- 검증: 최신 `main` 기준 전체 `pytest` 834 passed·1 skipped, `ruff check .`,
+  `git diff --check` 통과. RLS 44/44, `anon` 0·`authenticated` 5·
+  `service_role` 44개 테이블, 신규 테이블 인덱스 3개를 확인했다.
+  `/market/etfs`는 HTTP 200·1,147건, `069500` 이력 API는 HTTP 200·1건이다.
+- Advisor: 신규 보안 WARN은 없고 서버 전용 테이블의 의도된
+  `RLS Enabled No Policy` INFO와 초기 미사용 인덱스 INFO만 추가됐다. 기존
+  `auth_leaked_password_protection` WARN은 DB-09 범위로 유지한다.
 
 ### 2026-07-20 16:36 KST
 
