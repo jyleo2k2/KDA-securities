@@ -28,6 +28,7 @@ import {
   ChatQuestionRecommendations,
 } from "../components/ChatRecommendations";
 import { ChatSessionList } from "../components/ChatSessionList";
+import { ChatComposer, ChatMessageList } from "../components/ChatConversation";
 import {
   EducationalPortfolioReview,
   PortfolioHoldingsPanel,
@@ -1452,74 +1453,48 @@ export function GuidePage({
               <p className="capability-note">연금 도우미는 참고용 정보를 제공하며, 실제 투자·가입 결정은 본인의 판단과 전문가 상담을 거쳐 주세요.</p>
             </div>
           ) : (
-            <div className="message-list">
-              {messages.map((message) => (
-                <div
-                  className={`message-row ${message.role}`}
-                  key={message.id}
-                  ref={message.id === messages[messages.length - 1]?.id ? latestMessageRef : undefined}
-                >
-                  {message.role === "assistant" && <div className="assistant-avatar"><Icon name="spark" size={16} /></div>}
-                  <div className="message-group">
-                    <div className="message-bubble">
-                      <AssistantMessage
-                        onFollowUp={(prompt) => void submitPrompt(prompt)}
-                        response={message.response}
-                        text={message.text}
-                        usedFollowUpMessages={usedFollowUpMessages}
-                      />
-                    </div>
-                    {message.failedPrompt && (
-                      <button className="retry-button" type="button" onClick={() => void submitPrompt(message.failedPrompt!, message.failedEducationalPortfolio)} disabled={isSending || deletingSessionId !== null}>
-                        <Icon name="refresh" size={15} /> 다시 시도
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {isSending && (
-                <div className="message-row assistant">
-                  <div className="assistant-avatar"><Icon name="spark" size={16} /></div>
-                  {streamingAnswer ? (
-                    <div className="message-bubble" aria-live="polite">
-                      <TypingAnswer
-                        animate={!streamingAnswerIsNarration}
-                        intervalMs={typingIntervalMs}
-                        onProgress={() => conversationEndRef.current?.scrollIntoView({
-                          behavior: "smooth",
-                          block: "end",
-                        })}
-                        text={streamingAnswer}
-                      />
-                    </div>
-                  ) : (
-                    <div className="message-bubble typing" aria-label={sendingStage}>
-                      <span /><span /><span /><small>{sendingStage}</small>
-                    </div>
-                  )}
-                </div>
+            <ChatMessageList
+              conversationEndRef={conversationEndRef}
+              deletingSessionId={deletingSessionId}
+              isSending={isSending}
+              latestMessageRef={latestMessageRef}
+              messages={messages}
+              onRetry={(message) => void submitPrompt(message.failedPrompt!, message.failedEducationalPortfolio)}
+              renderMessage={(message) => (
+                <AssistantMessage
+                  onFollowUp={(prompt) => void submitPrompt(prompt)}
+                  response={message.response}
+                  text={message.text}
+                  usedFollowUpMessages={usedFollowUpMessages}
+                />
               )}
-              <div ref={conversationEndRef} />
-            </div>
+              renderStreamingAnswer={() => streamingAnswer ? (
+                <div className="message-bubble" aria-live="polite">
+                  <TypingAnswer
+                    animate={!streamingAnswerIsNarration}
+                    intervalMs={typingIntervalMs}
+                    onProgress={() => conversationEndRef.current?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "end",
+                    })}
+                    text={streamingAnswer}
+                  />
+                </div>
+              ) : null}
+              sendingStage={sendingStage}
+            />
           )}
         </div>
 
-        <div className="composer-wrap">
-          <form className="composer" onSubmit={handleSubmit}>
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(event) => setInput(event.target.value.slice(0, 1000))}
-              onKeyDown={handleKeyDown}
-              placeholder="연금에 대해 무엇이든 물어보세요"
-              rows={1}
-              aria-label="질문 입력"
-              disabled={isSending || deletingSessionId !== null}
-            />
-            <button type="submit" disabled={input.trim().length < 2 || isSending || deletingSessionId !== null} aria-label="질문 보내기"><Icon name="send" size={20} /></button>
-          </form>
-          <p>AI 답변은 투자 판단을 돕는 정보이며, 미래 수익을 보장하지 않습니다.</p>
-        </div>
+        <ChatComposer
+          deletingSessionId={deletingSessionId}
+          input={input}
+          isSending={isSending}
+          onChange={setInput}
+          onKeyDown={handleKeyDown}
+          onSubmit={handleSubmit}
+          textareaRef={textareaRef}
+        />
       </main>
     </div>
   );
