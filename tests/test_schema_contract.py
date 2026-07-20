@@ -35,6 +35,11 @@ LIFECYCLE_SCENARIOS_MIGRATION = next(
 ETF_UNIVERSE_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob("*_add_etf_portfolio_universe.sql")
 )
+ETF_MARKET_SNAPSHOT_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob(
+        "*_add_krx_etf_daily_market_snapshots.sql"
+    )
+)
 ETF_THEME_VERIFICATION_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob(
         "*_add_etf_theme_content_verification.sql"
@@ -357,6 +362,28 @@ def test_etf_universe_is_server_only_and_versioned() -> None:
     assert "to service_role" in sql
     assert "etf_dataset_versions_id_seq" in sql
     assert "grant usage, select on sequence" in sql
+    assert "to authenticated" not in sql
+    assert "drop table" not in sql
+
+
+def test_krx_etf_daily_market_snapshots_are_server_only_and_indexed() -> None:
+    sql = ETF_MARKET_SNAPSHOT_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "create table public.etf_daily_market_snapshots" in sql
+    assert "primary key (base_date, isu_code)" in sql
+    assert "^[0-9a-z]{6}$" in sql
+    assert "trading_volume bigint not null" in sql
+    assert "trading_value_krw numeric not null" in sql
+    assert "ingestion_run_id uuid not null" in sql
+    assert "etf_daily_market_snapshots_volume_idx" in sql
+    assert "(base_date desc, trading_volume desc, isu_code)" in sql
+    assert "etf_daily_market_snapshots_history_idx" in sql
+    assert "(isu_code, base_date desc)" in sql
+    assert (
+        "alter table public.etf_daily_market_snapshots enable row level security" in sql
+    )
+    assert "from public, anon, authenticated" in sql
+    assert "to service_role" in sql
     assert "to authenticated" not in sql
     assert "drop table" not in sql
 

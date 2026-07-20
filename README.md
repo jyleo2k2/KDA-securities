@@ -71,6 +71,8 @@ uv run uvicorn backend.app.main:app --reload
 | `GET /chat/demo/scenarios` | 발표용 목계좌 시나리오 3종 확인 |
 | `POST /engine/pension-tax-credit` | 연금저축·IRP 당해연도 납입액의 세액공제 교육용 추정 |
 | `POST /engine/non-pension-withdrawal-estimate` | 연금외수령 시 기타소득 원천징수 최대 추정 |
+| `GET /market/etfs` | KRX 기준일 전체 상장 ETF 거래량·거래대금 조회 |
+| `GET /market/etfs/{isu_code}/volume-history` | 종목별 적재된 일별 거래량 이력 조회 |
 
 `POST /chat/demo` 예시:
 
