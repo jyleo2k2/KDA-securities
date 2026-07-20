@@ -6,6 +6,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum
 from typing import Any
 
+import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .models import AccountType, SourceChip
@@ -406,26 +407,16 @@ def calculate_portfolio_risk(
         )
         for observed_on in ordered_dates
     ]
-    mean = sum(portfolio_returns, Decimal("0")) / Decimal(len(portfolio_returns))
-    variance = sum(
-        ((value - mean) ** 2 for value in portfolio_returns), Decimal("0")
-    ) / Decimal(len(portfolio_returns) - 1)
-    volatility = variance.sqrt() * TRADING_DAYS_PER_YEAR.sqrt()
-    downside = (
-        sum(
-            (min(value, Decimal("0")) ** 2 for value in portfolio_returns),
-            Decimal("0"),
-        )
-        / Decimal(len(portfolio_returns))
-    ).sqrt() * TRADING_DAYS_PER_YEAR.sqrt()
-    wealth = Decimal("1")
-    peak = Decimal("1")
-    maximum_drawdown = Decimal("0")
-    for daily_return in portfolio_returns:
-        wealth *= Decimal("1") + daily_return
-        peak = max(peak, wealth)
-        maximum_drawdown = min(maximum_drawdown, wealth / peak - Decimal("1"))
-    fifth_percentile = _quantile(portfolio_returns, Decimal("0.05"))
+    return_array = np.asarray([float(value) for value in portfolio_returns])
+    annualization = np.sqrt(float(TRADING_DAYS_PER_YEAR))
+    volatility = Decimal(str(np.std(return_array, ddof=1) * annualization))
+    downside = Decimal(
+        str(np.sqrt(np.mean(np.minimum(return_array, 0.0) ** 2)) * annualization)
+    )
+    wealth = np.cumprod(1.0 + return_array)
+    peaks = np.maximum.accumulate(wealth)
+    maximum_drawdown = Decimal(str(np.min(wealth / peaks - 1.0)))
+    fifth_percentile = Decimal(str(np.quantile(return_array, 0.05, method="linear")))
     return PortfolioRiskEvaluation(
         engine_name="historical_portfolio_risk",
         engine_version=ENGINE_VERSION,
@@ -442,7 +433,7 @@ def calculate_portfolio_risk(
             max(Decimal("0"), -fifth_percentile * Decimal("100"))
         ),
         worst_daily_return_percent=_percent(
-            min(portfolio_returns) * Decimal("100")
+            Decimal(str(np.min(return_array))) * Decimal("100")
         ),
         historical_return_used_for_risk_only=True,
         is_return_forecast=False,
