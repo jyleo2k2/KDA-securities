@@ -29,6 +29,7 @@ import {
 } from "../components/ChatRecommendations";
 import { ChatSessionList } from "../components/ChatSessionList";
 import { ChatComposer, ChatMessageList } from "../components/ChatConversation";
+import { ChatTypingAnswer } from "../components/ChatTypingAnswer";
 import {
   EducationalPortfolioReview,
   PortfolioHoldingsPanel,
@@ -423,100 +424,6 @@ function MacroRegimeOutcomeCards({ response }: { response: ChatResponse }) {
         ))}
       </div>
     </section>
-  );
-}
-
-function usePrefersReducedMotion(): boolean {
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => (
-    typeof window !== "undefined"
-    && typeof window.matchMedia === "function"
-    && window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  ));
-
-  useEffect(() => {
-    if (typeof window.matchMedia !== "function") return undefined;
-    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const updatePreference = () => setPrefersReducedMotion(mediaQuery.matches);
-    updatePreference();
-    mediaQuery.addEventListener("change", updatePreference);
-    return () => mediaQuery.removeEventListener("change", updatePreference);
-  }, []);
-
-  return prefersReducedMotion;
-}
-
-export function TypingAnswer({
-  text,
-  animate,
-  intervalMs = DEFAULT_TYPING_INTERVAL_MS,
-  onProgress,
-}: {
-  text: string;
-  animate: boolean;
-  intervalMs?: number;
-  onProgress?: () => void;
-}) {
-  const prefersReducedMotion = usePrefersReducedMotion();
-  const [displayedText, setDisplayedText] = useState("");
-  const [skipped, setSkipped] = useState(false);
-  const onProgressRef = useRef(onProgress);
-  const showWholeAnswer = !animate || intervalMs <= 0 || prefersReducedMotion || skipped;
-  const renderedText = showWholeAnswer ? text : displayedText;
-
-  useEffect(() => {
-    onProgressRef.current = onProgress;
-  }, [onProgress]);
-
-  useEffect(() => {
-    if (showWholeAnswer) {
-      setDisplayedText(text);
-      return undefined;
-    }
-
-    // A token contains one visible word and its surrounding whitespace, so
-    // Korean line breaks and spaces are preserved without animating characters.
-    const tokens = text.match(/\s*\S+\s*/g) ?? (text ? [text] : []);
-    let tokenIndex = 0;
-    let timer: number | undefined;
-    setDisplayedText("");
-
-    const revealNextToken = () => {
-      tokenIndex += 1;
-      setDisplayedText(tokens.slice(0, tokenIndex).join(""));
-      if (tokenIndex < tokens.length) {
-        timer = window.setTimeout(revealNextToken, intervalMs);
-      }
-    };
-
-    revealNextToken();
-    return () => window.clearTimeout(timer);
-  }, [animate, intervalMs, prefersReducedMotion, skipped, text]);
-
-  useEffect(() => {
-    if (renderedText) onProgressRef.current?.();
-  }, [renderedText]);
-
-  const completeImmediately = () => {
-    setSkipped(true);
-    setDisplayedText(text);
-  };
-
-  return (
-    <div
-      className="typing-answer"
-      onClick={completeImmediately}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          completeImmediately();
-        }
-      }}
-      role="button"
-      tabIndex={0}
-      aria-label="답변 타이핑을 건너뛰려면 클릭하세요"
-    >
-      <p className="message-copy">{renderedText}</p>
-    </div>
   );
 }
 
@@ -1470,7 +1377,7 @@ export function GuidePage({
               )}
               renderStreamingAnswer={() => streamingAnswer ? (
                 <div className="message-bubble" aria-live="polite">
-                  <TypingAnswer
+                  <ChatTypingAnswer
                     animate={!streamingAnswerIsNarration}
                     intervalMs={typingIntervalMs}
                     onProgress={() => conversationEndRef.current?.scrollIntoView({
