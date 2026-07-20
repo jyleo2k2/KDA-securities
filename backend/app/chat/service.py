@@ -32,14 +32,12 @@ from ..macro_evidence import (
 from ..retrieval.repository import KnowledgeSearch
 from .handlers.cards import with_suggested_follow_ups
 from .handlers._shared import (
+    blocked_response,
     _ACCOUNT_TYPE_LABELS,
     _ASSET_CLASS_LABELS,
     _MACRO_ANALOG_OUTCOME_TERMS,
     _RISK_PROFILE_LABELS,
     _RISK_PROFILE_RANKS,
-    _SELECTED_SCENARIO_DIAGNOSIS_TERMS,
-    _SLEEVE_LABELS,
-    SCENARIO_KEYWORDS,
     DisclosureSearch,
     LiveNewsSearch,
     NewsSearch,
@@ -63,10 +61,7 @@ from .handlers._shared import (
     _scenario_rebalancing_summary,
     _select_knowledge_match,
     _selected_risk_profile,
-    _source_ids,
-    _strategy_summary,
-    _target_portfolio_summary,
-    blocked_response,
+    is_selected_scenario_diagnosis_request,
 )
 from .live_news import (
     LiveMarketNewsSnapshot,
@@ -179,7 +174,7 @@ class ChatService:
             structured_pension_tax=request.pension_tax is not None,
             theme_repository=self._theme_repository,
         )
-        if self._is_selected_scenario_diagnosis_request(request, direct_plan):
+        if is_selected_scenario_diagnosis_request(request, direct_plan):
             return QueryPlan(
                 normalized_message=direct_plan.normalized_message,
                 intent=ChatIntent.MOCK_PORTFOLIO,
@@ -232,21 +227,6 @@ class ChatService:
         ):
             return direct_plan
         return contextual_plan
-
-    @staticmethod
-    def _is_selected_scenario_diagnosis_request(
-        request: ChatRequest, plan: QueryPlan
-    ) -> bool:
-        return (
-            request.scenario_code is not None
-            and plan.intent
-            in (
-                ChatIntent.ACCOUNT_RULE,
-                ChatIntent.EDUCATIONAL_PORTFOLIO,
-                ChatIntent.OUT_OF_SCOPE,
-            )
-            and _SELECTED_SCENARIO_DIAGNOSIS_TERMS.search(request.message) is not None
-        )
 
     def ask(
         self,
