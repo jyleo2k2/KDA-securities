@@ -2445,6 +2445,10 @@ class ChatService:
                 histories=repository.histories,
                 history_sources=repository.history_sources,
                 source_as_of=repository.as_of,
+                history_as_of=getattr(
+                    repository, "latest_history_as_of", repository.as_of
+                ),
+                score_cache=getattr(repository, "score_cache", None),
             )
         except (FileNotFoundError, KeyError, ValueError) as exc:
             logger.warning(

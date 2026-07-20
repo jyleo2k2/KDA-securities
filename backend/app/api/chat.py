@@ -208,9 +208,10 @@ def _log_stream_latency(
         finished_at - narration_started_at if narration_started_at is not None else 0
     )
     logger.info(
-        "chat_stream_latency intent=%s answer_ms=%d narration_ms=%d "
+        "chat_stream_latency intent=%s preparation_ms=%d answer_ms=%d narration_ms=%d "
         "ttfa_ms=%d total_ms=%d",
         intent,
+        (answer_started_at - started_at) * 1000,
         answer_ms * 1000,
         narration_ms * 1000,
         (
@@ -424,26 +425,45 @@ async def chat_authenticated_stream(
 
         request_with_context = request
         if repository is not None and request.session_id is not None:
-            try:
-                request_with_context = await asyncio.to_thread(
+            session_result, context_result = await asyncio.gather(
+                asyncio.to_thread(
                     _restore_session_conversation_context,
                     request,
                     repository,
                     owner_id,
-                )
-            except ChatSessionAccessError:
+                ),
+                asyncio.to_thread(
+                    _load_demo_context,
+                    context_repository,
+                    owner_id,
+                ),
+                return_exceptions=True,
+            )
+            if isinstance(session_result, ChatSessionAccessError):
                 yield _sse("error", {"detail": "Chat session not found"})
                 return
-            except _DATABASE_ERRORS:
+            if isinstance(session_result, _DATABASE_ERRORS):
                 yield _sse("error", {"detail": "Chat database is unavailable"})
                 return
-
+            if isinstance(session_result, BaseException):
+                raise session_result
+            request_with_context = session_result
+            if isinstance(context_result, _DATABASE_ERRORS):
+                context = None
+            elif isinstance(context_result, BaseException):
+                raise context_result
+            else:
+                context = context_result
+        else:
+            try:
+                context = await asyncio.to_thread(
+                    _load_demo_context,
+                    context_repository,
+                    owner_id,
+                )
+            except _DATABASE_ERRORS:
+                context = None
         try:
-            context = await asyncio.to_thread(
-                _load_demo_context,
-                context_repository,
-                owner_id,
-            )
             nickname = await asyncio.to_thread(
                 _load_authenticated_nickname,
                 context_repository,
@@ -451,7 +471,6 @@ async def chat_authenticated_stream(
                 context,
             )
         except _DATABASE_ERRORS:
-            context = None
             nickname = None
         chat_request = _authenticated_request(request_with_context, context)
         started_at = perf_counter()
