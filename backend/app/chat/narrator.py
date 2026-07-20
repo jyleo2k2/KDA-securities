@@ -137,7 +137,11 @@ _UNSAFE_CLAIM_PATTERNS = (
         "guarantee",
         re.compile(
             r"(?:\d[\d,.]*\s*(?:%|퍼센트|프로)|%|퍼센트|프로|"
-            r"수익(?:률)?|원금|손실).{0,15}(?:보장|확정|확실)"
+            # 수익·원금·손실 뒤의 수식어는 길어도 40자까지만 허용한다.
+            # 그보다 먼 보장어를 연결하면 문장 관계가 불명확하므로 보수적으로
+            # 별도 주장으로 보지 않고 결정론 원문을 유지한다.
+            r"수익(?:률)?|원금|손실).{0,40}(?:보장|확정|확실)"
+            r"|원금.{0,15}(?:줄지\s*않|감소하지\s*않|손실이\s*없)"
         ),
     ),
     (
@@ -148,6 +152,9 @@ _UNSAFE_CLAIM_PATTERNS = (
             r"|(?:매수|매도).{0,15}(?:좋|유리)"
             r"|(?:사는|파는)\s*게\s*(?:좋|유리)"
             r"|(?:사세요|파세요|매수하세요|매도하세요|투자하세요)"
+            # '담으시면 돼요'처럼 매수·추천 어휘를 생략한 직접 권유도 차단한다.
+            r"|(?:담으시면|고르시는\s*게|선택하시는\s*게).{0,10}"
+            r"(?:돼|좋|낫|유리)"
         ),
     ),
 )
@@ -160,6 +167,7 @@ _NEGATION = re.compile(
     r"할\s*수\s*없|(?:해서는|하면|해도)\s*안\s*(?:돼|되)|"
     r"안\s*(?:돼|되)|허용되지|금지|아니|없|못|제공하지|의미하지)"
 )
+_DOUBLE_NEGATION_TAIL = re.compile(r"^\s*(?:는|은)?\s*게\s*아니라")
 
 
 def _number_tokens(text: str) -> set[tuple[Decimal, str, str]]:
@@ -282,7 +290,12 @@ def _unsafe_claim_instances(text: str) -> set[tuple[str, str]]:
     for category, pattern in _UNSAFE_CLAIM_PATTERNS:
         for match in pattern.finditer(text):
             suffix = text[match.end() : match.end() + 24]
-            if _NEGATION.search(suffix) is None:
+            negation = _NEGATION.search(suffix)
+            # '보장되지 않는 게 아니라 보장됩니다'는 이중부정으로 결국 보장
+            # 주장이다. 직접 부정 다음의 '게 아니라'만 좁게 예외 처리한다.
+            if negation is None or _DOUBLE_NEGATION_TAIL.search(
+                suffix[negation.end() :]
+            ):
                 normalized_match = re.sub(
                     r"[^0-9A-Za-z가-힣%]+", "", match.group()
                 ).casefold()
