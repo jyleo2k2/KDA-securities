@@ -980,8 +980,8 @@ export function GuidePage({
               {loginPanelOpen && (
                 <form className="login-form" onSubmit={handleLogin}>
                   <label>
-                    <span>이메일</span>
-                    <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+                    <span>로그인 ID</span>
+                    <input type="text" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" placeholder="예: seoyeon34" required />
                   </label>
                   <label>
                     <span>비밀번호</span>
