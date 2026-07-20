@@ -1298,8 +1298,11 @@ def test_narration_precompute_covers_scenarios_and_suggested_prompts(
 
     deps.precompute_chat_narrations(get_settings())
 
-    assert len(requests) == 18
-    assert len(warmed) == 18
+    expected_count = len(deps.LocalScenarioRepository().list()) * len(
+        deps.SUGGESTED_CHAT_PROMPTS
+    )
+    assert len(requests) == expected_count
+    assert len(warmed) == expected_count
     assert len({request.scenario_code for request in requests}) == 6
 
 

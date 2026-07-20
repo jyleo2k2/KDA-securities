@@ -26,6 +26,9 @@ from ..database import get_database_pool
 from ..engine.audit import EngineAuditRepository
 from ..engine.models import AccountType
 from ..etf_theme_repository import get_default_etf_theme_repository
+from ..etf_theme_verification_repository import (
+    PostgresEtfThemeVerificationRepository,
+)
 from ..etf_universe_database import PostgresPortfolioUniverseRepository
 from ..ingestion.embeddings import get_query_embedder
 from ..macro_evidence import MacroEvidenceRepository
@@ -252,6 +255,11 @@ def _chat_service(
             database_url=database_url,
         ),
         theme_repository=get_default_etf_theme_repository(),
+        theme_verification=(
+            PostgresEtfThemeVerificationRepository(database_url, pool=pool)
+            if database_url
+            else None
+        ),
         macro_evidence=MacroEvidenceRepository(Path(macro_evidence_report_path)),
     )
 

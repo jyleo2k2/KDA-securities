@@ -20,6 +20,10 @@ from ..engine import (
     select_theme_etf_candidates,
 )
 from ..etf_theme_repository import EtfThemeRepository
+from ..etf_theme_verification_repository import (
+    EtfThemeVerificationReader,
+    etf_theme_content_sha256,
+)
 from ..macro_evidence import (
     MacroEvidenceRepository,
     MacroEvidenceSnapshot,
@@ -70,7 +74,13 @@ from .pension_account_overview import (
     build_pension_account_overview_response,
 )
 from .pension_tax_parser import resolve_pension_tax_inputs
-from .query_planner import AccountRuleTopic, BlockedReason, QueryPlan, plan_question
+from .query_planner import (
+    AccountRuleTopic,
+    BlockedReason,
+    QueryPlan,
+    ThemeContentTopic,
+    plan_question,
+)
 from .routing import IntentRouter, NewsFollowUp, NewsFollowUpAction
 from .scenarios import ScenarioRepository
 from .tools import (
@@ -732,6 +742,7 @@ class ChatService:
         live_news: LiveNewsSearch | None = None,
         portfolio_universe_loader: PortfolioUniverseLoader | None = None,
         theme_repository: EtfThemeRepository | None = None,
+        theme_verification: EtfThemeVerificationReader | None = None,
         macro_evidence: MacroEvidenceRepository | None = None,
         router: IntentRouter | None = None,
     ) -> None:
@@ -742,6 +753,7 @@ class ChatService:
         self._live_news = live_news
         self._portfolio_universe_loader = portfolio_universe_loader
         self._theme_repository = theme_repository
+        self._theme_verification = theme_verification
         self._macro_evidence = macro_evidence
         self._router = router or IntentRouter()
 
@@ -1080,57 +1092,148 @@ class ChatService:
                 data_boundary=DataBoundary.ENGINE,
             )
         ]
-        sections = [
-            AnswerSection(
-                kind=SectionKind.SERVICE_EXPLANATION,
-                title=f"{theme.name} 테마",
-                content=theme.plain_summary,
-                evidence_ids=[catalog_source_id],
-                blocks=[
-                    AnswerBlock(
-                        kind=AnswerBlockKind.CALLOUT,
-                        title="분류상 정의",
-                        text=theme.definition,
+        topic = plan.theme_content_topic or ThemeContentTopic.OVERVIEW
+        verified_source_ids: list[str] = []
+        if self._theme_verification is not None:
+            try:
+                verified_evidence = self._theme_verification.verified_evidence(
+                    catalog_version=self._theme_repository.catalog.catalog_version,
+                    theme_id=theme.theme_id,
+                    topic=topic.value,
+                    content_sha256=etf_theme_content_sha256(theme, topic.value),
+                )
+            except Exception:  # noqa: BLE001 — 검증 DB 장애는 초안 표기로 축소
+                logger.warning(
+                    "etf_theme_verification_unavailable theme=%s topic=%s",
+                    theme.theme_id,
+                    topic.value,
+                )
+                verified_evidence = ()
+            for evidence in verified_evidence:
+                verified_source_ids.append(evidence.evidence_id)
+                sources.append(
+                    SourceEvidence(
+                        evidence_id=evidence.evidence_id,
+                        label=evidence.label,
+                        locator=evidence.locator,
+                        publisher=evidence.publisher,
+                        as_of=evidence.as_of,
+                        data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
+                    )
+                )
+        company_source_ids: list[str] = []
+        if topic == ThemeContentTopic.REPRESENTATIVE_COMPANIES:
+            for index, company in enumerate(theme.representative_companies, start=1):
+                source_id = f"company:{theme.theme_id}:{index}"
+                company_source_ids.append(source_id)
+                sources.append(
+                    SourceEvidence(
+                        evidence_id=source_id,
+                        label=f"{company.name} 공식 홈페이지",
+                        locator=company.source_url,
+                        publisher=company.name,
+                        as_of=company.as_of_date,
+                        data_boundary=DataBoundary.ENGINE,
+                    )
+                )
+
+        if topic == ThemeContentTopic.REPRESENTATIVE_COMPANIES:
+            sections = [
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title=f"{theme.name} 테마 대표기업 3곳",
+                    content="테마의 서로 다른 역할을 이해하기 위한 대표 사례입니다.",
+                    evidence_ids=verified_source_ids or company_source_ids,
+                    blocks=[
+                        AnswerBlock(
+                            kind=AnswerBlockKind.CALLOUT,
+                            title=company.name,
+                            text=(
+                                f"{company.theme_role} 쉽게 말하면 "
+                                f"{company.plain_description} 대표 사례로 보는 이유는 "
+                                f"{company.representative_reason}"
+                            ),
+                        )
+                        for company in theme.representative_companies
+                    ],
+                )
+            ]
+            answer = f"{theme.name} 테마를 이해하기 위한 대표기업 3곳입니다."
+            data_mode = "theme_representative_companies"
+        elif topic == ThemeContentTopic.INVESTMENT_CONSIDERATIONS:
+            sections = [
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title=f"{theme.name} 테마 투자 시 고려할 점",
+                    content=(
+                        "기대할 수 있는 점과 함께 감수해야 할 위험을 "
+                        "같이 살펴보세요."
                     ),
-                    AnswerBlock(
-                        kind=AnswerBlockKind.BULLETS,
-                        title="무엇을 담나",
-                        items=list(theme.exposure_segments),
-                    ),
-                    AnswerBlock(
-                        kind=AnswerBlockKind.BULLETS,
-                        title="움직임을 살필 요인",
-                        items=list(theme.performance_drivers),
-                    ),
-                    AnswerBlock(
-                        kind=AnswerBlockKind.BULLETS,
-                        title="살펴볼 점",
-                        items=list(theme.benefits),
-                    ),
-                    AnswerBlock(
-                        kind=AnswerBlockKind.BULLETS,
-                        title="주요 위험",
-                        items=list(theme.risks),
-                    ),
-                    AnswerBlock(
-                        kind=AnswerBlockKind.CALLOUT,
-                        title="한 줄 비유",
-                        text=theme.one_line_analogy,
-                    ),
-                ],
+                    evidence_ids=verified_source_ids or [catalog_source_id],
+                    blocks=[
+                        AnswerBlock(
+                            kind=AnswerBlockKind.BULLETS,
+                            title="기대할 수 있는 점 3가지",
+                            items=list(theme.benefits),
+                        ),
+                        AnswerBlock(
+                            kind=AnswerBlockKind.BULLETS,
+                            title="주의할 위험 3가지",
+                            items=list(theme.risks),
+                        ),
+                    ],
+                )
+            ]
+            answer = f"{theme.name} 테마의 이점 3개와 위험 3개를 정리했습니다."
+            data_mode = "theme_investment_considerations"
+        else:
+            sections = [
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title=f"{theme.name} 테마란?",
+                    content=theme.plain_summary,
+                    evidence_ids=verified_source_ids or [catalog_source_id],
+                    blocks=[
+                        AnswerBlock(
+                            kind=AnswerBlockKind.CALLOUT,
+                            title="분류상 정의",
+                            text=theme.definition,
+                        ),
+                        AnswerBlock(
+                            kind=AnswerBlockKind.BULLETS,
+                            title="어떤 기업·분야를 담나",
+                            items=list(theme.exposure_segments),
+                        ),
+                        AnswerBlock(
+                            kind=AnswerBlockKind.CALLOUT,
+                            title="한 줄 비유",
+                            text=theme.one_line_analogy,
+                        ),
+                    ],
+                )
+            ]
+            answer = f"{theme.name} 테마를 초보자도 이해하기 쉽게 설명했습니다."
+            data_mode = "theme_overview"
+        limitations = []
+        if not verified_source_ids:
+            limitations.append(
+                "테마 설명은 사용자가 제공한 조사 내용을 서비스 분류체계로 "
+                "정리한 것으로 공식 문서 검증 전 초안입니다."
             )
-        ]
-        limitations = [
-            "테마 설명은 사용자가 제공한 조사 내용을 서비스 분류체계로 "
-            "정리한 것으로 공식 문서 검증 전 초안입니다.",
+        limitations.append(
             "테마 편입은 상품의 미래 성과를 뜻하지 않으며 "
-            "수익률을 예측하지 않습니다.",
-        ]
+            "수익률을 예측하지 않습니다."
+        )
+        if topic == ThemeContentTopic.REPRESENTATIVE_COMPANIES:
+            limitations.append(
+                "대표기업은 테마 이해를 위한 사례이며 특정 ETF의 실제 편입종목이나 "
+                "매수 추천을 뜻하지 않습니다."
+            )
         if not plan.requests_theme_candidates:
             return ChatResponse(
                 intent=ChatIntent.ETF_THEME,
-                answer=f"{theme.name} 테마의 구조와 판단할 위험을 정리했습니다.",
-                data_mode="theme_overview",
+                answer=answer,
+                data_mode=data_mode,
                 sections=sections,
                 sources=sources,
                 limitations=limitations,

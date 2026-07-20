@@ -1,6 +1,6 @@
 {
-  "schema_version": 2,
-  "catalog_version": "2026-07-20.1",
+  "schema_version": 3,
+  "catalog_version": "2026-07-20.2",
   "as_of_date": "2026-07-20",
   "content_status": "service_interpretation_from_user_supplied_research",
   "source_urls": [
@@ -23,6 +23,32 @@
       "exposure_segments": ["생성형 AI, 빅데이터, 클라우드 기업","기업용 소프트웨어와 구독형 서비스 기업","사이버보안, 로봇 소프트웨어 기업","일부 ETF는 AI용 반도체 기업도 포함"],
       "performance_drivers": ["기업의 AI·클라우드 투자와 소프트웨어 사용료·구독자 증가"],
       "one_line_analogy": "기업과 산업의 두뇌와 운영체제에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "Microsoft",
+          "theme_role": "클라우드와 기업용 소프트웨어, 생성형 AI 서비스를 함께 제공합니다.",
+          "plain_description": "기업이 문서 작성, 데이터 관리, 인터넷 서버 운영과 AI 활용을 할 수 있게 도구와 기반 시설을 제공하는 회사입니다.",
+          "representative_reason": "소프트웨어 구독, 클라우드, AI 플랫폼을 한 회사에서 폭넓게 보여주기 때문입니다.",
+          "source_url": "https://www.microsoft.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Alphabet",
+          "theme_role": "검색·광고, 클라우드와 AI 모델·서비스를 운영합니다.",
+          "plain_description": "구글 검색과 유튜브를 운영하고, 기업이 데이터와 AI를 사용할 수 있는 클라우드 기술도 제공하는 회사입니다.",
+          "representative_reason": "대규모 데이터와 AI 기술이 소비자 서비스와 기업용 서비스에 연결되는 사례이기 때문입니다.",
+          "source_url": "https://abc.xyz/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Salesforce",
+          "theme_role": "고객관리 중심의 구독형 기업 소프트웨어를 제공합니다.",
+          "plain_description": "기업이 고객 정보, 영업 과정과 상담 기록을 인터넷에서 관리하도록 돕는 소프트웨어 회사입니다.",
+          "representative_reason": "기업용 구독 소프트웨어가 반복 매출을 만드는 구조를 이해하기 좋은 사례이기 때문입니다.",
+          "source_url": "https://www.salesforce.com/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "산업 전반의 자동화와 디지털 전환 수요에 폭넓게 접근할 수 있습니다.",
         "반복 매출을 만드는 구독형 소프트웨어 기업을 함께 담을 수 있습니다.",
@@ -47,6 +73,32 @@
       "exposure_segments": ["반도체를 설계하는 기업","실제 칩을 생산하는 기업","메모리 반도체 기업","반도체 장비·소재·부품 기업"],
       "performance_drivers": ["스마트폰·PC 판매 회복, AI 데이터센터 투자, 자동차용 반도체 수요 증가"],
       "one_line_analogy": "디지털 산업에 필요한 쌀과 두뇌 부품에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "Samsung Electronics",
+          "theme_role": "메모리 반도체를 만들고 시스템반도체 생산도 담당합니다.",
+          "plain_description": "데이터를 저장하는 메모리 칩을 대량 생산하고 다른 회사가 설계한 칩도 대신 만들어 주는 종합 반도체 회사입니다.",
+          "representative_reason": "메모리와 파운드리를 함께 보유해 반도체 공급망의 여러 단계를 보여주기 때문입니다.",
+          "source_url": "https://www.samsung.com/global/ir/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "NVIDIA",
+          "theme_role": "AI 연산에 쓰이는 그래픽처리장치와 관련 소프트웨어를 설계합니다.",
+          "plain_description": "AI가 많은 계산을 빠르게 처리하도록 돕는 고성능 칩과 이를 사용하는 프로그램 환경을 만드는 회사입니다.",
+          "representative_reason": "AI 데이터센터용 반도체 수요를 이해하기 가장 직접적인 설계기업 사례이기 때문입니다.",
+          "source_url": "https://www.nvidia.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "TSMC",
+          "theme_role": "여러 반도체 설계회사의 칩을 위탁 생산합니다.",
+          "plain_description": "칩 설계도는 다른 회사에서 받고, 첨단 공장에서 실제 반도체를 만들어 주는 파운드리 회사입니다.",
+          "representative_reason": "설계와 생산이 나뉘는 반도체 산업 구조를 잘 보여주는 기업이기 때문입니다.",
+          "source_url": "https://www.tsmc.com/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "인공지능·데이터센터·자동차 전장 확대로 늘어나는 연산 수요에 참여할 수 있습니다.",
         "설계·제조·장비·소재로 이어지는 공급망에 분산 투자할 수 있습니다.",
@@ -71,6 +123,32 @@
       "exposure_segments": ["태양광과 풍력","수소와 연료전지","전력망과 에너지저장장치","폐기물 처리와 재활용","탄소저감·수처리 기술"],
       "performance_drivers": ["각국의 친환경 정책·보조금 확대와 화석연료 가격 상승에 따른 대체에너지 필요성"],
       "one_line_analogy": "미래의 전기와 환경 인프라에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "Vestas",
+          "theme_role": "풍력발전용 터빈을 만들고 유지보수 서비스를 제공합니다.",
+          "plain_description": "바람의 힘을 전기로 바꾸는 거대한 풍력발전기를 설계하고 설치·관리하는 회사입니다.",
+          "representative_reason": "재생에너지 발전설비 산업을 직접 보여주는 대표적인 풍력기업이기 때문입니다.",
+          "source_url": "https://www.vestas.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "First Solar",
+          "theme_role": "태양광 발전에 사용하는 박막형 태양광 모듈을 생산합니다.",
+          "plain_description": "햇빛을 전기로 바꾸는 태양광 패널을 만들어 대규모 발전소에 공급하는 회사입니다.",
+          "representative_reason": "태양광 제조와 발전 프로젝트 수요의 연결을 이해하기 좋은 사례이기 때문입니다.",
+          "source_url": "https://www.firstsolar.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "NextEra Energy",
+          "theme_role": "전력회사를 운영하면서 풍력·태양광 발전 자산도 개발합니다.",
+          "plain_description": "가정과 기업에 전기를 공급하고 재생에너지 발전소를 건설·운영하는 에너지 회사입니다.",
+          "representative_reason": "친환경 설비가 실제 전력 생산과 공급으로 이어지는 과정을 보여주기 때문입니다.",
+          "source_url": "https://www.nexteraenergy.com/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "전력 생산과 산업 공정의 저탄소 전환에 장기적으로 참여할 수 있습니다.",
         "발전설비뿐 아니라 전력망·저장장치·효율화 기술에 분산할 수 있습니다.",
@@ -95,6 +173,32 @@
       "exposure_segments": ["제약회사와 신약개발 기업","바이오의약품 기업","의료기기와 진단기기 기업","병원·건강관리 서비스 기업","디지털 헬스케어 기업"],
       "performance_drivers": ["신약 임상시험·허가·판매 성과와 고령화에 따른 의료 수요 증가"],
       "one_line_analogy": "사람의 생명과 건강을 지키는 기술에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "Eli Lilly",
+          "theme_role": "당뇨병, 비만과 여러 질환의 의약품을 연구·개발하고 판매합니다.",
+          "plain_description": "질병을 치료하는 새 약을 연구하고 임상시험과 허가를 거쳐 환자에게 공급하는 제약회사입니다.",
+          "representative_reason": "신약 연구 성과와 허가·판매가 기업가치로 연결되는 구조를 보여주기 때문입니다.",
+          "source_url": "https://www.lilly.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Johnson & Johnson",
+          "theme_role": "의약품과 의료기기 사업을 함께 운영합니다.",
+          "plain_description": "질병 치료제뿐 아니라 수술과 진단에 쓰이는 의료기기도 만드는 종합 헬스케어 회사입니다.",
+          "representative_reason": "제약과 의료기기라는 서로 다른 헬스케어 수요를 함께 보여주기 때문입니다.",
+          "source_url": "https://www.jnj.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Samsung Biologics",
+          "theme_role": "바이오의약품을 다른 제약사를 대신해 개발·생산합니다.",
+          "plain_description": "제약회사가 만든 바이오 신약 설계에 맞춰 대규모 공장에서 의약품을 생산해 주는 회사입니다.",
+          "representative_reason": "바이오의약품 위탁개발·생산이라는 공급망 역할을 이해하기 좋은 사례이기 때문입니다.",
+          "source_url": "https://samsungbiologics.com/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "고령화와 의료 접근성 확대에 따른 구조적 수요를 살펴볼 수 있습니다.",
         "신약·진단·의료기기 등 서로 다른 성장 동인에 분산할 수 있습니다.",
@@ -119,6 +223,32 @@
       "exposure_segments": ["리튬·니켈 등 원료 기업","양극재·음극재·분리막·전해액 기업","배터리 셀 제조기업","배터리 생산장비 기업","폐배터리 재활용 기업"],
       "performance_drivers": ["전기차 판매와 에너지저장장치 수요 증가"],
       "one_line_analogy": "전기차와 친환경 전력의 연료통에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "LG Energy Solution",
+          "theme_role": "전기차와 에너지저장장치용 배터리 셀을 생산합니다.",
+          "plain_description": "전기차가 달리고 전력망이 전기를 저장할 수 있도록 충전식 배터리를 만드는 회사입니다.",
+          "representative_reason": "배터리 공급망의 중심인 셀 제조기업을 보여주는 사례이기 때문입니다.",
+          "source_url": "https://www.lgensol.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Samsung SDI",
+          "theme_role": "자동차와 전자기기용 배터리 및 배터리 소재를 개발·생산합니다.",
+          "plain_description": "전기차와 각종 기기에 들어가는 충전식 배터리를 만들고 성능과 안전성을 높이는 기술을 개발하는 회사입니다.",
+          "representative_reason": "고성능 배터리 기술과 완성차 수요의 관계를 살펴보기 좋은 사례이기 때문입니다.",
+          "source_url": "https://www.samsungsdi.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Panasonic Energy",
+          "theme_role": "전기차와 산업용 원통형 배터리를 생산합니다.",
+          "plain_description": "작은 원통 모양의 배터리를 대량 생산해 전기차와 산업 장비에 공급하는 회사입니다.",
+          "representative_reason": "배터리 형태와 고객사 공급계약이 산업 경쟁력에 미치는 영향을 보여주기 때문입니다.",
+          "source_url": "https://www.panasonic.com/global/energy/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "전기차와 에너지저장장치 확산에 필요한 핵심 부품 수요에 접근할 수 있습니다.",
         "셀 제조부터 소재·장비·재활용까지 공급망을 나누어 볼 수 있습니다.",
@@ -143,6 +273,32 @@
       "exposure_segments": ["건설회사와 플랜트 기업","굴착기·크레인 등 건설기계 기업","시멘트·철강·건축자재 기업","전력망·철도·통신 인프라 기업"],
       "performance_drivers": ["정부 사회간접자본 투자, 해외 건설 수주·재건 사업, 부동산 경기"],
       "one_line_analogy": "도시와 산업의 뼈대와 골격을 만드는 기업에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "Caterpillar",
+          "theme_role": "건설·광산 현장에서 쓰는 중장비와 엔진을 생산합니다.",
+          "plain_description": "도로, 건물과 광산을 만들 때 흙을 파고 자재를 옮기는 대형 기계를 만드는 회사입니다.",
+          "representative_reason": "인프라 투자가 건설기계 수요로 이어지는 구조를 보여주기 때문입니다.",
+          "source_url": "https://www.caterpillar.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Deere & Company",
+          "theme_role": "농업·건설용 기계와 자동화 장비를 생산합니다.",
+          "plain_description": "농장과 공사 현장에서 사람의 작업을 대신하는 트랙터와 각종 장비를 만드는 회사입니다.",
+          "representative_reason": "기계 수요와 자동화 기술이 함께 발전하는 사례이기 때문입니다.",
+          "source_url": "https://www.deere.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "HD Hyundai Infracore",
+          "theme_role": "굴착기·휠로더와 산업용 엔진을 생산합니다.",
+          "plain_description": "건설 현장에서 땅을 파고 자재를 옮기는 장비와 그 장비를 움직이는 엔진을 만드는 회사입니다.",
+          "representative_reason": "국내 건설기계 기업의 해외 인프라 수요 노출을 보여주기 때문입니다.",
+          "source_url": "https://www.hd-infracore.com/en/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "노후 인프라 교체와 도시·물류망 투자에 참여할 수 있습니다.",
         "건설사뿐 아니라 기계·장비·소재 기업으로 투자 대상을 넓힐 수 있습니다.",
@@ -167,6 +323,32 @@
       "exposure_segments": ["완성차 제조기업","자동차 부품기업","전기차와 수소차","자율주행과 차량용 소프트웨어","충전 인프라와 스마트 모빌리티"],
       "performance_drivers": ["자동차 판매량, 고급차·전기차 판매 비중, 수출기업의 환율 여건"],
       "one_line_analogy": "자동차뿐 아니라 미래의 이동수단 전체에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "Hyundai Motor",
+          "theme_role": "내연기관차·전기차·수소차를 개발하고 세계 시장에 판매합니다.",
+          "plain_description": "여러 종류의 자동차를 설계·생산하고 차량 소프트웨어와 미래 이동 서비스도 개발하는 회사입니다.",
+          "representative_reason": "완성차 제조에서 전동화·모빌리티로 확장되는 흐름을 보여주기 때문입니다.",
+          "source_url": "https://www.hyundai.com/worldwide/en/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Toyota Motor",
+          "theme_role": "자동차를 대규모로 생산하며 하이브리드·전동화 기술을 개발합니다.",
+          "plain_description": "세계 여러 지역에서 자동차를 만들고 연료를 덜 쓰는 차량과 전기차 기술을 함께 발전시키는 회사입니다.",
+          "representative_reason": "생산 규모와 다양한 동력 기술을 가진 전통 완성차 사례이기 때문입니다.",
+          "source_url": "https://global.toyota/en/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Tesla",
+          "theme_role": "전기차와 충전·에너지저장, 차량 소프트웨어를 제공합니다.",
+          "plain_description": "배터리로 달리는 자동차를 만들고 충전망과 소프트웨어로 차량 기능을 계속 개선하는 회사입니다.",
+          "representative_reason": "전기차와 소프트웨어 중심 자동차의 결합을 보여주기 때문입니다.",
+          "source_url": "https://www.tesla.com/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "전동화와 소프트웨어 중심 차량 전환에 참여할 수 있습니다.",
         "완성차·부품·반도체·소프트웨어로 이어지는 밸류체인에 분산할 수 있습니다.",
@@ -191,6 +373,32 @@
       "exposure_segments": ["전자 계열사","금융 계열사","건설 계열사","화학 계열사","바이오 계열사"],
       "performance_drivers": ["그룹 대표 기업 실적과 사업 재편·합병·상장·배당 확대"],
       "one_line_analogy": "한 산업이 아니라 특정 기업집단의 가족 전체에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "Samsung C&T",
+          "theme_role": "건설·상사·패션·리조트 사업과 주요 계열사 지분을 보유합니다.",
+          "plain_description": "여러 사업을 직접 운영하면서 삼성 계열사의 지분도 가진 그룹 대표 성격의 회사입니다.",
+          "representative_reason": "사업회사와 계열사 지분가치가 함께 반영되는 그룹주 구조를 보여주기 때문입니다.",
+          "source_url": "https://www.samsungcnt.com/eng/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "SK Inc.",
+          "theme_role": "SK그룹의 투자와 사업 포트폴리오 관리를 담당합니다.",
+          "plain_description": "여러 SK 계열사의 지분을 보유하고 그룹의 새 사업 투자 방향을 관리하는 회사입니다.",
+          "representative_reason": "지주회사의 계열사 가치와 신사업 투자를 함께 이해할 수 있기 때문입니다.",
+          "source_url": "https://www.sk-inc.com/en/m/about/overview.aspx",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "LG Corp.",
+          "theme_role": "LG그룹 계열사의 지분과 그룹 브랜드·투자 전략을 관리합니다.",
+          "plain_description": "전자, 화학, 통신 등 여러 LG 계열사를 연결하고 그룹 전체의 방향을 관리하는 지주회사입니다.",
+          "representative_reason": "다양한 산업 계열사를 하나의 그룹 관점에서 보는 사례이기 때문입니다.",
+          "source_url": "https://www.lgcorp.com/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "한 기업집단 안의 여러 산업과 계열사에 함께 접근할 수 있습니다.",
         "그룹의 자본력과 신사업 투자, 계열사 협업 가능성을 살펴볼 수 있습니다.",
@@ -215,6 +423,32 @@
       "exposure_segments": ["석유·천연가스 탐사 및 생산 기업","원유를 가공하는 정유회사","석유화학 기업","원유·가스 운송 및 저장 기업","에너지 관련 장비·서비스 기업"],
       "performance_drivers": ["국제유가·천연가스 가격과 정유사의 정제마진"],
       "one_line_analogy": "산업과 운송에 필요한 전통적인 연료 공급망에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "Exxon Mobil",
+          "theme_role": "원유·가스 개발부터 정유와 화학제품 생산까지 운영합니다.",
+          "plain_description": "땅속의 석유와 가스를 찾아 생산하고 이를 연료와 화학제품으로 가공하는 종합 에너지 회사입니다.",
+          "representative_reason": "에너지 공급망의 상류와 하류 사업을 함께 보여주기 때문입니다.",
+          "source_url": "https://corporate.exxonmobil.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Chevron",
+          "theme_role": "원유·천연가스를 생산하고 연료로 가공·판매합니다.",
+          "plain_description": "석유와 가스를 개발해 운송 연료와 산업용 에너지로 공급하는 회사입니다.",
+          "representative_reason": "국제 에너지 가격이 생산과 정유사업에 미치는 영향을 보여주기 때문입니다.",
+          "source_url": "https://www.chevron.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "SK Innovation",
+          "theme_role": "정유·석유화학과 에너지 관련 사업을 운영합니다.",
+          "plain_description": "원유를 휘발유와 각종 소재로 가공하고 에너지 사업을 운영하는 국내 기업입니다.",
+          "representative_reason": "국내 정유사의 정제마진과 사업 다각화를 살펴보기 좋은 사례이기 때문입니다.",
+          "source_url": "https://www.skinnovation.com/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "에너지 수요와 정제마진 상승이 기업 현금흐름에 반영될 수 있습니다.",
         "자원개발·운송·정유·서비스 등 공급망 여러 단계에 접근할 수 있습니다.",
@@ -239,6 +473,32 @@
       "exposure_segments": ["영화·드라마·방송 제작사","음악 기획사와 음원 플랫폼","웹툰·웹소설·광고 기업","온라인동영상서비스(OTT)","PC·모바일·콘솔 게임 기업","연예인 팬덤과 공연 관련 기업"],
       "performance_drivers": ["작품·게임·음반 흥행, 해외 매출, 유료 이용자 증가"],
       "one_line_analogy": "사람들의 여가시간과 관심에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "Netflix",
+          "theme_role": "온라인동영상서비스와 영상 콘텐츠 제작·유통을 운영합니다.",
+          "plain_description": "이용자가 월 이용료를 내고 영화와 드라마를 인터넷으로 보는 서비스를 제공하는 회사입니다.",
+          "representative_reason": "구독자와 콘텐츠 흥행이 매출로 연결되는 OTT 구조를 보여주기 때문입니다.",
+          "source_url": "https://about.netflix.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "HYBE",
+          "theme_role": "음악 아티스트와 공연·팬 플랫폼·콘텐츠 사업을 운영합니다.",
+          "plain_description": "가수를 발굴하고 음반, 공연, 영상과 팬 서비스를 여러 나라에 판매하는 엔터테인먼트 회사입니다.",
+          "representative_reason": "하나의 아티스트 지식재산권이 여러 수익원으로 확장되는 사례이기 때문입니다.",
+          "source_url": "https://hybecorp.com/eng/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Nintendo",
+          "theme_role": "게임기와 게임 소프트웨어·캐릭터 지식재산권을 개발합니다.",
+          "plain_description": "게임을 즐기는 기기와 게임을 함께 만들고 유명 캐릭터를 다양한 콘텐츠로 확장하는 회사입니다.",
+          "representative_reason": "게임 하드웨어, 소프트웨어와 지식재산권의 결합을 보여주기 때문입니다.",
+          "source_url": "https://www.nintendo.co.jp/corporate/en/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "성공한 지식재산권을 음원·공연·영상·상품과 게임으로 확장할 수 있습니다.",
         "온라인 플랫폼을 통해 해외 이용자와 매출을 확대할 수 있습니다.",
@@ -263,6 +523,32 @@
       "exposure_segments": ["원자력발전소 설계·건설 기업","원자로와 발전설비 제조기업","원전 부품·정비 기업","우라늄 관련 기업","발전회사와 전력 유틸리티 기업","변압기·전선·송배전 장비 기업"],
       "performance_drivers": ["원전 건설·해외 수주, 전력 수요, 노후 전력망 교체와 송배전 설비 투자"],
       "one_line_analogy": "국가와 산업을 움직이는 전기 생산·배송 시스템에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "GE Vernova",
+          "theme_role": "발전설비와 전력망 장비·소프트웨어를 제공합니다.",
+          "plain_description": "전기를 만드는 발전기부터 멀리 보내는 전력망 장비까지 전력 시스템에 필요한 기술을 공급하는 회사입니다.",
+          "representative_reason": "전력 생산과 송배전 인프라를 함께 보여주는 사례이기 때문입니다.",
+          "source_url": "https://www.gevernova.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Constellation Energy",
+          "theme_role": "원자력발전소를 포함한 대규모 발전 자산을 운영합니다.",
+          "plain_description": "발전소에서 전기를 생산해 기업과 전력시장에 공급하는 에너지 회사입니다.",
+          "representative_reason": "원전 건설기업이 아니라 실제 전력 생산·판매 사업의 흐름을 보여주기 때문입니다.",
+          "source_url": "https://www.constellationenergy.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Doosan Enerbility",
+          "theme_role": "원전 주기기와 가스터빈·발전설비를 제작합니다.",
+          "plain_description": "원자력과 여러 발전소의 핵심 대형 장비를 설계하고 만들어 공급하는 회사입니다.",
+          "representative_reason": "원전 수주가 장비 제작과 장기 정비로 이어지는 구조를 보여주기 때문입니다.",
+          "source_url": "https://www.doosanenerbility.com/en/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "전력수요 증가와 노후 송배전망 교체 투자에 참여할 수 있습니다.",
         "원전 건설·정비와 변압기·케이블 등 장기 수주산업에 접근할 수 있습니다.",
@@ -287,6 +573,32 @@
       "exposure_segments": ["오피스 빌딩","쇼핑몰과 백화점","물류센터","호텔과 리조트","아파트와 임대주택","데이터센터","병원과 요양시설","통신탑과 창고"],
       "performance_drivers": ["임대료·부동산 가격, 공실률·입주율, 금리와 이자 부담"],
       "one_line_analogy": "큰 건물을 직접 사지 않고도 임대료를 나누어 받는 투자입니다.",
+      "representative_companies": [
+        {
+          "name": "Prologis",
+          "theme_role": "물류센터와 창고 부동산을 개발·임대합니다.",
+          "plain_description": "온라인 쇼핑과 유통회사가 상품을 보관·배송하는 데 필요한 대형 물류시설을 빌려주는 회사입니다.",
+          "representative_reason": "전자상거래와 물류 수요가 임대료로 연결되는 리츠 사례이기 때문입니다.",
+          "source_url": "https://www.prologis.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Realty Income",
+          "theme_role": "상업용 부동산을 보유하고 장기 임대료를 받습니다.",
+          "plain_description": "매장과 상업시설을 사서 기업에 장기간 빌려주고 매달 임대료를 받는 리츠입니다.",
+          "representative_reason": "부동산 임대수익과 배당의 관계를 이해하기 쉬운 사례이기 때문입니다.",
+          "source_url": "https://www.realtyincome.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Equinix",
+          "theme_role": "기업의 서버가 들어가는 데이터센터를 운영합니다.",
+          "plain_description": "인터넷과 클라우드 서비스가 안정적으로 작동하도록 서버 공간과 통신 연결을 빌려주는 회사입니다.",
+          "representative_reason": "전통 건물뿐 아니라 디지털 인프라도 리츠 자산이 될 수 있음을 보여주기 때문입니다.",
+          "source_url": "https://www.equinix.com/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "여러 실물 부동산의 임대수익과 자산가치에 소액으로 접근할 수 있습니다.",
         "주식시장 안에서 거래하면서 정기적인 배당 재원을 기대할 수 있습니다.",
@@ -311,6 +623,32 @@
       "exposure_segments": ["산업용 로봇","물류센터 자동화 로봇","수술·재활 등 의료용 로봇","서비스·협동로봇","감속기·센서·모터·카메라","로봇 제어 AI와 소프트웨어"],
       "performance_drivers": ["인건비·인력 부족에 따른 자동화 투자와 AI 기술 발전"],
       "one_line_analogy": "사람의 일을 돕거나 대신하는 기계의 몸과 두뇌에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "ABB",
+          "theme_role": "산업용 로봇과 공장 자동화 장비·소프트웨어를 제공합니다.",
+          "plain_description": "공장에서 로봇팔과 제어장치가 반복 작업을 빠르고 정확하게 하도록 만드는 회사입니다.",
+          "representative_reason": "로봇 본체와 공장 자동화 시스템을 함께 보여주기 때문입니다.",
+          "source_url": "https://global.abb/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "FANUC",
+          "theme_role": "산업용 로봇과 공작기계 제어장치를 생산합니다.",
+          "plain_description": "자동차와 전자제품 공장에서 물건을 조립하고 기계를 정밀하게 움직이는 로봇·제어기를 만드는 회사입니다.",
+          "representative_reason": "제조업 자동화 수요와 로봇 부품 기술을 직접 보여주기 때문입니다.",
+          "source_url": "https://www.fanuc.co.jp/en/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Intuitive Surgical",
+          "theme_role": "로봇 보조 수술 시스템과 관련 장비를 제공합니다.",
+          "plain_description": "의사가 정교한 수술을 할 때 작은 기구를 정확하게 움직이도록 돕는 의료용 로봇을 만드는 회사입니다.",
+          "representative_reason": "로봇 기술이 공장 밖 의료 분야로 확장되는 사례이기 때문입니다.",
+          "source_url": "https://www.intuitive.com/en-us/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "인건비 상승과 인력 부족에 대응하는 자동화 수요에 참여할 수 있습니다.",
         "제조업뿐 아니라 물류·의료·서비스 영역으로 확장되는 시장을 담을 수 있습니다.",
@@ -335,6 +673,32 @@
       "exposure_segments": ["은행과 금융지주회사","증권회사","보험회사","카드회사","자산운용사","핀테크·전자결제 기업","거래소와 금융정보 기업"],
       "performance_drivers": ["대출 성장·연체율과 증시 거래·투자은행 활동"],
       "one_line_analogy": "경제의 혈액인 돈이 흐르는 길목에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "JPMorgan Chase",
+          "theme_role": "예금·대출, 투자은행과 자산관리 사업을 운영합니다.",
+          "plain_description": "개인과 기업의 돈을 맡아 대출하고 기업의 자금조달과 투자도 돕는 종합 금융회사입니다.",
+          "representative_reason": "은행과 자본시장 사업을 함께 가진 대형 금융회사 사례이기 때문입니다.",
+          "source_url": "https://www.jpmorganchase.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "KB Financial Group",
+          "theme_role": "은행·증권·보험·카드 등 여러 금융 계열사를 운영합니다.",
+          "plain_description": "예금과 대출뿐 아니라 투자, 보험과 카드 서비스를 한 그룹에서 제공하는 국내 금융지주회사입니다.",
+          "representative_reason": "국내 금융지주의 여러 수익원과 주주환원을 함께 볼 수 있기 때문입니다.",
+          "source_url": "https://www.kbfg.com/Eng/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Shinhan Financial Group",
+          "theme_role": "은행을 중심으로 카드·증권·보험·자산운용 사업을 운영합니다.",
+          "plain_description": "개인과 기업 고객에게 다양한 금융서비스를 제공하는 국내 금융그룹입니다.",
+          "representative_reason": "금리와 대출뿐 아니라 비은행 사업이 실적에 미치는 영향을 보여주기 때문입니다.",
+          "source_url": "https://www.shinhangroup.com/en/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "금리와 대출 성장, 자본시장 거래 확대가 이익에 반영될 수 있습니다.",
         "배당과 자사주 소각 등 주주환원 정책을 함께 살펴볼 수 있습니다.",
@@ -359,6 +723,32 @@
       "exposure_segments": ["전투기·군함·전차 제조기업","미사일과 방공 시스템 기업","레이더·통신·전자전 장비 기업","탄약과 군수물자 기업","드론 기업","인공위성·발사체·우주통신 기업","항공우주 부품기업"],
       "performance_drivers": ["국방예산·무기 수출 계약과 위성통신·영상·발사 서비스 수요"],
       "one_line_analogy": "국가의 안보와 우주 인프라에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "Lockheed Martin",
+          "theme_role": "전투기·미사일·우주 시스템과 방위전자 장비를 개발합니다.",
+          "plain_description": "정부와 군이 사용하는 항공기, 미사일과 위성 같은 대형 방위 시스템을 만드는 회사입니다.",
+          "representative_reason": "장기 국방계약과 첨단 항공우주 기술을 함께 보여주기 때문입니다.",
+          "source_url": "https://www.lockheedmartin.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "RTX",
+          "theme_role": "항공기 엔진과 미사일·레이더·방공 시스템을 제공합니다.",
+          "plain_description": "민간 항공기 부품과 군사용 탐지·방어 장비를 모두 만드는 항공우주·방산 회사입니다.",
+          "representative_reason": "민간 항공과 방산 매출이 함께 존재하는 산업 구조를 보여주기 때문입니다.",
+          "source_url": "https://www.rtx.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Hanwha Aerospace",
+          "theme_role": "항공엔진·지상 방산장비와 우주 발사체 관련 사업을 운영합니다.",
+          "plain_description": "군이 사용하는 장비와 항공우주 부품을 만들고 해외에도 공급하는 국내 방산기업입니다.",
+          "representative_reason": "국내 방산 수출과 우주사업 확장을 함께 살펴볼 수 있기 때문입니다.",
+          "source_url": "https://www.hanwhaaerospace.com/eng/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "국방비 확대와 무기 재고 보충에 따른 장기 수요를 살펴볼 수 있습니다.",
         "높은 기술·보안 진입장벽과 장기 수주잔고를 가진 기업에 접근할 수 있습니다.",
@@ -383,6 +773,32 @@
       "exposure_segments": ["식품과 음료","생필품·생활용품","대형마트와 식료품 유통","의류와 화장품","가구와 가전","백화점과 면세점","외식과 여행","명품과 레저용품"],
       "performance_drivers": ["소비 증가, 가격 전가력, 원재료 가격, 해외 판매"],
       "one_line_analogy": "사람들이 매일 쓰고 먹는 생활비 지출에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "Nestlé",
+          "theme_role": "식품·음료와 영양·반려동물 제품을 세계 시장에 판매합니다.",
+          "plain_description": "사람들이 반복해서 사는 커피, 식품과 생활 밀착형 제품을 여러 나라에 공급하는 회사입니다.",
+          "representative_reason": "일상 소비의 반복수요와 글로벌 브랜드 힘을 보여주기 때문입니다.",
+          "source_url": "https://www.nestle.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "The Coca-Cola Company",
+          "theme_role": "음료 브랜드와 원액을 개발해 세계 유통망에 공급합니다.",
+          "plain_description": "잘 알려진 음료 브랜드를 만들고 여러 지역의 유통회사와 함께 소비자에게 판매하는 회사입니다.",
+          "representative_reason": "브랜드 인지도와 가격 결정력이 소비재 기업에 중요한 이유를 보여주기 때문입니다.",
+          "source_url": "https://www.coca-colacompany.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "CJ CheilJedang",
+          "theme_role": "가공식품과 식품소재·바이오 사업을 운영합니다.",
+          "plain_description": "가정에서 먹는 식품을 만들고 한국 식문화를 해외 시장에도 판매하는 국내 회사입니다.",
+          "representative_reason": "국내 식품 수요와 K-푸드 해외 성장을 함께 볼 수 있기 때문입니다.",
+          "source_url": "https://www.cj.co.kr/en/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "식품·생활용품의 반복수요를 통해 경기 둔화기에 방어력을 기대할 수 있습니다.",
         "강한 브랜드의 가격 결정력이 비용 상승을 일부 전가하는 데 도움을 줄 수 있습니다.",
@@ -407,6 +823,32 @@
       "exposure_segments": ["금 현물 또는 실물 추종 ETF","원유·구리·농산물 선물 추종 ETF","금광·구리광산·에너지 등 원자재 생산기업 ETF"],
       "performance_drivers": ["금: 물가·시장 불안, 금리·달러 가치, 안전자산 수요","산업용 원자재: 세계 경기, 건설·제조업, 공급 차질, 전력망·데이터센터 투자"],
       "one_line_analogy": "금은 시장의 비상금, 산업용 원자재는 경제를 움직이는 기초 재료입니다.",
+      "representative_companies": [
+        {
+          "name": "Newmont",
+          "theme_role": "금과 일부 금속을 탐사·채굴하고 판매합니다.",
+          "plain_description": "땅속에서 금을 찾아 광산을 개발하고 채굴한 금을 시장에 공급하는 회사입니다.",
+          "representative_reason": "금 가격과 광산 생산비가 기업 실적에 함께 영향을 주는 구조를 보여주기 때문입니다.",
+          "source_url": "https://www.newmont.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Barrick Gold",
+          "theme_role": "대형 금광과 구리광산을 개발·운영합니다.",
+          "plain_description": "여러 나라의 광산에서 금과 구리를 생산하는 자원개발 회사입니다.",
+          "representative_reason": "귀금속과 산업금속의 서로 다른 수급을 함께 보여주기 때문입니다.",
+          "source_url": "https://www.barrick.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Freeport-McMoRan",
+          "theme_role": "구리를 중심으로 금·몰리브덴 등 금속을 생산합니다.",
+          "plain_description": "전선, 전력망과 산업 설비에 많이 쓰이는 구리를 광산에서 생산하는 회사입니다.",
+          "representative_reason": "세계 경기와 전력 인프라 투자가 산업금속 수요로 이어지는 사례이기 때문입니다.",
+          "source_url": "https://www.fcx.com/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "주식·채권과 다른 가격요인으로 포트폴리오를 분산할 수 있습니다.",
         "물가·통화가치와 지정학적 불안 변화에 대응하는 자산을 살펴볼 수 있습니다.",
@@ -431,6 +873,32 @@
       "exposure_segments": ["배당 확대","자사주 매입·소각","현금의 효율적 사용","저수익 사업 정리","경영 투명성과 주주권 강화","자기자본이익률 개선"],
       "performance_drivers": ["배당·자사주 소각의 실제 실행, 수익성·자본 효율성 개선, 국내시장 저평가 완화"],
       "one_line_analogy": "실력에 비해 낮게 평가된 기업 중 주주 대우와 회사 살림을 개선하려는 기업에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "Samsung Electronics",
+          "theme_role": "대형 수출기업으로서 배당·자사주와 자본 활용 정책이 시장의 평가 대상이 됩니다.",
+          "plain_description": "많은 현금과 글로벌 사업을 가진 기업이 주주에게 이익을 어떻게 돌려주는지 살펴보는 대표 사례입니다.",
+          "representative_reason": "국내시장 비중이 크고 자본효율과 주주환원 변화의 영향도 크기 때문입니다.",
+          "source_url": "https://www.samsung.com/global/ir/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Hyundai Motor",
+          "theme_role": "수익성 개선과 배당·자사주 등 주주환원 정책을 비교할 수 있는 완성차 기업입니다.",
+          "plain_description": "자동차 사업에서 번 돈을 미래 투자와 주주환원에 어떻게 나누는지 살펴볼 수 있는 회사입니다.",
+          "representative_reason": "글로벌 경쟁력과 국내시장 저평가 논의를 함께 볼 수 있기 때문입니다.",
+          "source_url": "https://www.hyundai.com/worldwide/en/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "KB Financial Group",
+          "theme_role": "배당과 자사주 소각 등 금융지주의 주주환원 정책을 보여줍니다.",
+          "plain_description": "금융회사가 벌어들인 이익과 보유 자본을 성장, 안전성, 주주환원에 어떻게 배분하는지 볼 수 있는 회사입니다.",
+          "representative_reason": "자본효율과 주주환원이 기업가치에 미치는 영향을 이해하기 좋기 때문입니다.",
+          "source_url": "https://www.kbfg.com/Eng/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "자본효율과 주주환원 개선을 추진하는 국내 기업에 분산 투자할 수 있습니다.",
         "저평가 해소와 지배구조 개선이라는 국내시장 변화에 접근할 수 있습니다.",
@@ -455,6 +923,32 @@
       "exposure_segments": ["탄소·에너지·오염 관리","근로자 안전·인권과 고객 보호","협력업체·지역사회 책임","이사회·경영진 투명성","회계·공시 신뢰성","소액주주 권리"],
       "performance_drivers": ["기관의 책임투자, 관련 규제, 사고·소송·규제 위험 관리"],
       "one_line_analogy": "매출과 이익뿐 아니라 환경·사회적 책임·경영 태도까지 함께 보는 투자입니다.",
+      "representative_companies": [
+        {
+          "name": "Schneider Electric",
+          "theme_role": "전력관리와 에너지효율·산업 자동화 기술을 제공합니다.",
+          "plain_description": "건물과 공장이 전기를 덜 낭비하고 안전하게 사용하도록 장비와 소프트웨어를 제공하는 회사입니다.",
+          "representative_reason": "환경 효율과 산업 경쟁력이 함께 연결되는 사업 사례이기 때문입니다.",
+          "source_url": "https://www.se.com/ww/en/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Microsoft",
+          "theme_role": "디지털 서비스 운영과 함께 환경·보안·인권·지배구조 정책을 공개합니다.",
+          "plain_description": "대형 기술기업이 사업 성장뿐 아니라 데이터 보호, 에너지 사용과 책임경영을 어떻게 관리하는지 볼 수 있는 회사입니다.",
+          "representative_reason": "환경·사회·지배구조 이슈가 동시에 존재하는 글로벌 플랫폼 기업이기 때문입니다.",
+          "source_url": "https://www.microsoft.com/en-us/corporate-responsibility/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Ørsted",
+          "theme_role": "해상풍력을 중심으로 재생에너지 사업을 개발·운영합니다.",
+          "plain_description": "화석연료 중심 사업에서 재생에너지 발전 중심으로 전환해 온 에너지 회사입니다.",
+          "representative_reason": "기업의 친환경 사업 전환과 그 과정의 비용·실행 위험을 함께 보여주기 때문입니다.",
+          "source_url": "https://orsted.com/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "환경·노동·지배구조 관련 장기 위험을 기업선정에 반영할 수 있습니다.",
         "규제와 공급망 기준 변화에 대응하는 기업에 접근할 수 있습니다.",
@@ -479,6 +973,32 @@
       "exposure_segments": ["철강과 특수강","알루미늄·구리·아연 등 비철금속","화학소재와 산업용 소재","탄소섬유·복합소재","배터리·반도체용 첨단소재","금속 가공과 소재 유통"],
       "performance_drivers": ["건설·자동차·조선·기계 수요, 인프라 투자, 제품 가격과 원료비의 차이"],
       "one_line_analogy": "건물·자동차·선박을 만드는 데 필요한 산업의 뼈와 피부에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "POSCO Holdings",
+          "theme_role": "철강을 중심으로 친환경 소재와 원료 관련 사업을 운영합니다.",
+          "plain_description": "자동차, 건물과 선박에 쓰이는 철강재를 만들고 미래 소재 사업에도 투자하는 국내 기업입니다.",
+          "representative_reason": "철강 가격과 원료비, 국내 제조업 수요의 관계를 보여주기 때문입니다.",
+          "source_url": "https://www.posco-inc.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "ArcelorMittal",
+          "theme_role": "세계 여러 지역에서 철강을 생산·판매합니다.",
+          "plain_description": "광산 원료를 확보하고 자동차·건설용 철강제품을 대규모로 만드는 글로벌 철강회사입니다.",
+          "representative_reason": "세계 경기와 철강 공급조정이 실적에 미치는 영향을 보여주기 때문입니다.",
+          "source_url": "https://corporate.arcelormittal.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Rio Tinto",
+          "theme_role": "철광석·알루미늄·구리 등 산업 원료를 채굴·공급합니다.",
+          "plain_description": "철강과 전력망, 자동차를 만드는 데 필요한 광물과 금속 원료를 생산하는 회사입니다.",
+          "representative_reason": "소재기업의 원가가 시작되는 광산·원료 공급 단계를 보여주기 때문입니다.",
+          "source_url": "https://www.riotinto.com/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "인프라·건설·자동차·조선 생산 확대에 필요한 소재 수요에 접근할 수 있습니다.",
         "제품가격 상승과 공급조정이 이익에 반영되는 경기순환을 살펴볼 수 있습니다.",
@@ -503,6 +1023,32 @@
       "exposure_segments": ["신약·신소재·금융·물류·AI·암호 활용 분야","양자컴퓨터 개발 기업","대형 클라우드·IT 기업","반도체·정밀장비 기업","레이저·광학·센서·극저온 장비 기업","양자통신과 보안 기업"],
       "performance_drivers": ["계산 성능·오류율 개선, 정부·연구기관·기업 투자, 상업 계약·유료 서비스"],
       "one_line_analogy": "일부 문제의 계산 방식을 바꿀 수 있는 차세대 초고성능 계산 기술에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "IBM",
+          "theme_role": "양자컴퓨터 하드웨어와 클라우드 기반 양자 개발도구를 제공합니다.",
+          "plain_description": "연구자와 기업이 인터넷을 통해 양자컴퓨터를 시험하고 프로그램을 만들 수 있도록 장비와 소프트웨어를 제공하는 회사입니다.",
+          "representative_reason": "양자 하드웨어·소프트웨어·클라우드 생태계를 함께 보여주기 때문입니다.",
+          "source_url": "https://www.ibm.com/quantum",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "IonQ",
+          "theme_role": "이온트랩 방식의 양자컴퓨터를 개발하고 클라우드로 제공합니다.",
+          "plain_description": "전하를 띤 원자를 정밀하게 제어해 양자 계산을 수행하는 전용 컴퓨터를 만드는 회사입니다.",
+          "representative_reason": "양자컴퓨팅 전문기업의 기술개발과 상용화 과정을 보여주기 때문입니다.",
+          "source_url": "https://ionq.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "D-Wave Quantum",
+          "theme_role": "최적화 문제에 특화된 양자 어닐링 시스템과 서비스를 제공합니다.",
+          "plain_description": "많은 선택지 중 더 나은 조합을 찾는 문제를 풀도록 설계된 양자 시스템을 만드는 회사입니다.",
+          "representative_reason": "양자컴퓨터에도 서로 다른 방식과 용도가 있음을 보여주기 때문입니다.",
+          "source_url": "https://www.dwavequantum.com/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "신약·소재·암호·최적화 문제를 다루는 새로운 연산기술에 참여할 수 있습니다.",
         "전용 하드웨어부터 소프트웨어·클라우드까지 생태계 전반을 살펴볼 수 있습니다.",
@@ -527,6 +1073,32 @@
       "exposure_segments": ["가상현실·증강현실 기기","온라인 게임과 가상세계 플랫폼","3차원 그래픽과 콘텐츠 제작도구","아바타와 디지털 아이템","클라우드·데이터센터·반도체·디스플레이","가상공연·교육·회의 서비스","디지털 트윈"],
       "performance_drivers": ["가상현실 기기 가격·사용자 수와 게임·교육·업무·산업 현장의 활용 확대"],
       "one_line_analogy": "생활하고 일하는 공간을 현실에서 디지털 세계로 확장하는 기술에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "Meta Platforms",
+          "theme_role": "소셜 플랫폼과 가상현실 기기·몰입형 소프트웨어를 개발합니다.",
+          "plain_description": "사람들이 온라인에서 소통하는 서비스와 가상공간에 들어가기 위한 기기·기술을 만드는 회사입니다.",
+          "representative_reason": "플랫폼 이용자와 가상현실 하드웨어 투자를 함께 보여주기 때문입니다.",
+          "source_url": "https://about.meta.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Roblox",
+          "theme_role": "이용자가 가상공간과 게임을 만들고 함께 즐기는 플랫폼을 운영합니다.",
+          "plain_description": "사용자가 직접 디지털 공간과 놀이를 만들고 다른 사람과 경험하는 온라인 플랫폼 회사입니다.",
+          "representative_reason": "사용자 제작 콘텐츠와 가상경제가 결합되는 구조를 보여주기 때문입니다.",
+          "source_url": "https://corp.roblox.com/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Unity Software",
+          "theme_role": "게임과 실시간 3차원 콘텐츠를 만드는 개발도구를 제공합니다.",
+          "plain_description": "개발자가 게임, 가상공간과 산업용 3차원 화면을 만들 수 있도록 제작 도구를 제공하는 회사입니다.",
+          "representative_reason": "메타버스 콘텐츠를 만드는 기반 소프트웨어 역할을 보여주기 때문입니다.",
+          "source_url": "https://unity.com/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "몰입형 기기와 3차원 콘텐츠·소프트웨어 생태계 성장에 접근할 수 있습니다.",
         "게임뿐 아니라 제조·교육·의료의 디지털트윈 활용을 함께 볼 수 있습니다.",
@@ -551,6 +1123,32 @@
       "exposure_segments": ["컨테이너선","유조선","액화천연가스 운반선","벌크선","해양플랜트","군함과 특수선","선박용 엔진","조선 기자재와 부품"],
       "performance_drivers": ["선박 발주·건조가격, 노후선 교체, 친환경 연료 규제, LNG 운송, 군함 수요와 수주 인식 시차"],
       "one_line_analogy": "세계 무역과 에너지 운송에 필요한 거대한 이동수단을 만드는 산업에 투자하는 ETF입니다.",
+      "representative_companies": [
+        {
+          "name": "HD Hyundai Heavy Industries",
+          "theme_role": "상선·특수선과 선박용 엔진을 설계·건조합니다.",
+          "plain_description": "컨테이너선과 에너지 운반선 같은 대형 선박을 주문받아 오랜 기간에 걸쳐 만드는 회사입니다.",
+          "representative_reason": "선박 건조와 엔진·해양 사업을 함께 보여주는 국내 대표 조선사이기 때문입니다.",
+          "source_url": "https://english.hhi.co.kr/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Hanwha Ocean",
+          "theme_role": "상선·해양플랜트와 잠수함 등 특수선을 건조합니다.",
+          "plain_description": "민간 화물을 운반하는 배부터 해양설비와 군사용 선박까지 만드는 조선회사입니다.",
+          "representative_reason": "상선 경기와 방산·해양 사업이 함께 존재하는 구조를 보여주기 때문입니다.",
+          "source_url": "https://www.hanwhaocean.com/en/",
+          "as_of_date": "2026-07-20"
+        },
+        {
+          "name": "Samsung Heavy Industries",
+          "theme_role": "고부가가치 선박과 해양플랜트를 설계·건조합니다.",
+          "plain_description": "액화천연가스 운반선과 바다 위 에너지 설비처럼 기술 난도가 높은 선박·설비를 만드는 회사입니다.",
+          "representative_reason": "친환경·고부가 선박 수주와 건조 기술 경쟁을 보여주기 때문입니다.",
+          "source_url": "https://www.samsungshi.com/Eng/",
+          "as_of_date": "2026-07-20"
+        }
+      ],
       "benefits": [
         "높은 수주잔고를 통해 중장기 매출 흐름을 살펴볼 수 있습니다.",
         "LNG선·친환경 선박·특수선 중심의 교체 수요에 참여할 수 있습니다.",

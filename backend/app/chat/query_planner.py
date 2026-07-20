@@ -29,6 +29,12 @@ class AccountRuleTopic(StrEnum):
     NON_PENSION_WITHDRAWAL = "non_pension_withdrawal"
 
 
+class ThemeContentTopic(StrEnum):
+    OVERVIEW = "overview"
+    REPRESENTATIVE_COMPANIES = "representative_companies"
+    INVESTMENT_CONSIDERATIONS = "investment_considerations"
+
+
 class QueryPlan(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -43,6 +49,7 @@ class QueryPlan(BaseModel):
     requests_withdrawal_tax: bool = False
     account_rule_topic: AccountRuleTopic | None = None
     theme_id: str | None = None
+    theme_content_topic: ThemeContentTopic | None = None
     requests_theme_candidates: bool = False
     requests_theme_holdings: bool = False
     blocked_reason: BlockedReason | None = None
@@ -71,10 +78,13 @@ class QueryPlan(BaseModel):
             and self.account_rule_topic is not None
         ):
             raise ValueError("account_rule_topic requires account_rule intent")
-        if self.intent == ChatIntent.ETF_THEME and self.theme_id is None:
-            raise ValueError("etf_theme intent requires theme_id")
+        if self.intent == ChatIntent.ETF_THEME and (
+            self.theme_id is None or self.theme_content_topic is None
+        ):
+            raise ValueError("etf_theme intent requires theme fields")
         if self.intent != ChatIntent.ETF_THEME and (
             self.theme_id is not None
+            or self.theme_content_topic is not None
             or self.requests_theme_candidates
             or self.requests_theme_holdings
         ):
@@ -125,7 +135,21 @@ _PRODUCT_LEVEL = re.compile(r"개별\s*상품|상품\s*추천|상품\s*비교|�
 _THEME_CANDIDATE_TERMS = re.compile(
     r"상품|종목|후보|추천|비교|보수|거래\s*대금|순자산", re.I
 )
-_THEME_HOLDING_TERMS = re.compile(r"구성\s*종목|편입\s*종목|보유\s*종목|종목\s*비중")
+_THEME_HOLDING_TERMS = re.compile(
+    r"구성\s*종목|편입\s*종목|보유\s*종목|종목\s*비중"
+    r"|ETF.{0,8}대표\s*종목",
+    re.I,
+)
+_THEME_REPRESENTATIVE_COMPANY_TERMS = re.compile(
+    r"(?:대표|주요|관련)\s*(?:기업|회사)"
+    r"|(?:기업|회사).{0,12}(?:뭐|무엇|어디|알려|소개)"
+    r"|어떤\s*(?:기업|회사)|대표\s*종목"
+)
+_THEME_CONSIDERATION_TERMS = re.compile(
+    r"(?:투자|편입).{0,15}(?:고려|주의|유의|살펴)"
+    r"|(?:고려|주의|유의|살펴).{0,12}(?:점|사항)"
+    r"|장점|이점|위험|리스크|단점"
+)
 _COMBINE_WORDS = (
     r"(?:합쳐(?:서)?|합산(?:해서)?|통합(?:해서)?|묶어(?:서)?|"
     r"전체(?:로)?|한꺼번에|둘을\s*같이|같이\s*묶어)"
@@ -434,16 +458,34 @@ def plan_question(
     if intent == ChatIntent.ETF_THEME:
         assert theme is not None
         requests_holdings = _THEME_HOLDING_TERMS.search(normalized) is not None
+        asks_representative_companies = (
+            _THEME_REPRESENTATIVE_COMPANY_TERMS.search(normalized) is not None
+        )
+        asks_considerations = (
+            _THEME_CONSIDERATION_TERMS.search(normalized) is not None
+        )
+        requests_candidates = requests_holdings or (
+            not asks_representative_companies
+            and not asks_considerations
+            and _THEME_CANDIDATE_TERMS.search(normalized) is not None
+        )
+        content_topic = (
+            ThemeContentTopic.OVERVIEW
+            if requests_candidates
+            else ThemeContentTopic.REPRESENTATIVE_COMPANIES
+            if asks_representative_companies
+            else ThemeContentTopic.INVESTMENT_CONSIDERATIONS
+            if asks_considerations
+            else ThemeContentTopic.OVERVIEW
+        )
         return QueryPlan(
             normalized_message=normalized,
             intent=ChatIntent.ETF_THEME,
             account_types=account_types,
             max_results=max_results,
             theme_id=theme.theme_id,
-            requests_theme_candidates=(
-                requests_holdings
-                or _THEME_CANDIDATE_TERMS.search(normalized) is not None
-            ),
+            theme_content_topic=content_topic,
+            requests_theme_candidates=requests_candidates,
             requests_theme_holdings=requests_holdings,
         )
     if intent == ChatIntent.EDUCATIONAL_PORTFOLIO:
