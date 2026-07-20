@@ -650,9 +650,11 @@ class InvalidStoredResponseChatService(ChatService):
 
 
 def test_demo_stream_runtime_error_emits_error_event() -> None:
-    app.dependency_overrides[get_chat_service] = lambda: InvalidStoredResponseChatService(
-        knowledge=LocalMarkdownKnowledgeRepository(),
-        scenarios=LocalScenarioRepository(),
+    app.dependency_overrides[get_chat_service] = (
+        lambda: InvalidStoredResponseChatService(
+            knowledge=LocalMarkdownKnowledgeRepository(),
+            scenarios=LocalScenarioRepository(),
+        )
     )
     app.dependency_overrides[get_chat_narrator] = lambda: None
     try:
