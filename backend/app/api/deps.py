@@ -32,6 +32,7 @@ from ..etf_theme_verification_repository import (
 )
 from ..etf_universe_database import PostgresPortfolioUniverseRepository
 from ..ingestion.embeddings import get_query_embedder
+from ..investment_profile_repository import InvestmentProfileRepository
 from ..macro_evidence import MacroEvidenceRepository
 from ..market_evidence_repository import KrxMarketEvidenceRepository
 from ..pension_accounts_repository import PensionAccountRepository
@@ -192,6 +193,18 @@ def get_pension_account_repository(
         settings, detail="User pension accounts database is not configured"
     )
     return PensionAccountRepository(
+        database_url,
+        pool=get_database_pool(database_url),
+    )
+
+
+def get_investment_profile_repository(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> InvestmentProfileRepository:
+    database_url = _database_url_or_503(
+        settings, detail="Investment profile database is not configured"
+    )
+    return InvestmentProfileRepository(
         database_url,
         pool=get_database_pool(database_url),
     )

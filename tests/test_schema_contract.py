@@ -321,6 +321,31 @@ def test_profile_answer_composite_fk_has_a_covering_index() -> None:
     assert "(option_id, question_id)" in sql
 
 
+def test_profile_confirmations_are_append_only_and_owner_scoped() -> None:
+    migrations = list(
+        (ROOT / "supabase" / "migrations").glob(
+            "*_add_investment_profile_confirmations.sql"
+        )
+    )
+    assert len(migrations) == 1
+
+    sql = migrations[0].read_text(encoding="utf-8").lower()
+    assert "create table public.investment_profile_confirmations" in sql
+    assert "assessment_id uuid not null unique" in sql
+    assert "owner_id uuid not null" in sql
+    assert "investment_advice_desired boolean not null" in sql
+    assert "investor_information_provided boolean not null" in sql
+    assert (
+        "not (not investor_information_provided and investment_advice_desired)"
+        in sql
+    )
+    assert "enable row level security" in sql
+    assert "for select to authenticated" in sql
+    assert "for insert to authenticated" in sql
+    assert "owner_id = (select auth.uid())" in sql
+    assert "for update" not in sql
+
+
 def test_seed_contains_all_six_demo_scenarios() -> None:
     sql = SEED.read_text(encoding="utf-8")
 
