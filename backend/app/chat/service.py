@@ -38,8 +38,6 @@ from .handlers._shared import (
     NewsSearch,
     PortfolioUniverseLoader,
     _decimal_text,
-    _knowledge_evidence_id,
-    _knowledge_sources,
     _knowledge_topic,
     _krw_text,
     _mentioned_retirement_start_age,
@@ -47,17 +45,19 @@ from .handlers._shared import (
     _news_metadata_line,
     _news_summary_block,
     _one_decimal,
-    _plain_knowledge_excerpt,
     _rebalancing_summary,
     _requests_age_style_portfolio_guide,
     _requests_risk_profile_guide,
     _requests_risk_profile_portfolio_guide,
     _scenario_holdings_summary,
     _scenario_rebalancing_summary,
-    _select_knowledge_match,
     _selected_risk_profile,
     is_selected_scenario_diagnosis_request,
 )
+from .handlers._shared import (
+    _knowledge_sources as _knowledge_sources,
+)
+from .handlers.account_rules import blocked_response, handle_account_rule
 from .handlers.pension_tax import pension_tax_response
 from .handlers.presentation import build_capabilities, finalize_response
 from .live_news import (
@@ -79,19 +79,13 @@ from .models import (
     NumericEvidence,
     SectionKind,
     SourceEvidence,
-    extract_numeric_claims,
 )
 from .news_event_strategy import (
     NEWS_EVENT_POLICY_AS_OF,
     NEWS_EVENT_POLICY_VERSION,
     classify_news_event,
 )
-from .pension_account_overview import (
-    build_deferred_pension_topic_response,
-    build_pension_account_overview_response,
-)
 from .query_planner import (
-    AccountRuleTopic,
     BlockedReason,
     QueryPlan,
     ThemeContentTopic,
@@ -209,7 +203,7 @@ class ChatService:
                 or request.scenario_code is not None
             )
         ):
-            response = self._blocked_response(resolved_plan.blocked_reason)
+            response = blocked_response(resolved_plan.blocked_reason)
         else:
             request = request.model_copy(
                 update={
@@ -375,19 +369,13 @@ class ChatService:
                 account_type = resolved_plan.account_types[0]
                 response = self._disclosure_response(request, account_type)
             elif resolved_plan.intent == ChatIntent.ACCOUNT_RULE:
-                if (
-                    resolved_plan.account_rule_topic
-                    == AccountRuleTopic.PENSION_ACCOUNT_OVERVIEW
-                ):
-                    response = build_pension_account_overview_response()
-                elif resolved_plan.account_rule_topic is not None:
-                    response = build_deferred_pension_topic_response(
-                        resolved_plan.account_rule_topic
-                    )
-                else:
-                    response = self._account_rule_response(request, resolved_plan)
+                response = handle_account_rule(
+                    request,
+                    resolved_plan,
+                    knowledge=self._knowledge,
+                )
             else:
-                response = self._blocked_response(BlockedReason.UNSUPPORTED)
+                response = blocked_response(BlockedReason.UNSUPPORTED)
         return finalize_response(response, original_request, resolved_plan)
 
     def _etf_theme_response(
@@ -920,132 +908,6 @@ class ChatService:
                 selected_risk_profile=selected_profile,
             ),
         )
-
-    @staticmethod
-    def _blocked_response(reason: BlockedReason) -> ChatResponse:
-        return blocked_response(reason)
-
-    def _account_rule_response(
-        self, request: ChatRequest, plan: QueryPlan
-    ) -> ChatResponse:
-        topic, suffix, title, heading, required = _knowledge_topic(
-            request.message, plan
-        )
-        query = " ".join(
-            item
-            for item in (
-                request.message,
-                suffix,
-                *(_ACCOUNT_TYPE_LABELS[item] for item in plan.account_types),
-            )
-            if item
-        )
-        matches = self._knowledge.search_knowledge(query, limit=8)
-        if not matches:
-            return ChatResponse(
-                intent=ChatIntent.ACCOUNT_RULE,
-                answer="검증된 근거 문서를 찾지 못해 답변을 만들지 않았어요.",
-                data_mode="verified_knowledge",
-                limitations=["질문을 계좌 유형과 함께 더 구체적으로 입력해 주세요."],
-            )
-        match = _select_knowledge_match(
-            matches,
-            title=title,
-            heading=heading,
-            required=required,
-        )
-        if match is None:
-            return ChatResponse(
-                intent=ChatIntent.ACCOUNT_RULE,
-                answer=(
-                    "검증 근거의 안전성과 질문 주제 적합성을 확인하지 못해 "
-                    "답변을 만들지 않았어요."
-                ),
-                data_mode="verified_knowledge",
-                limitations=["공식 근거를 재검토한 뒤 다시 안내해야 합니다."],
-            )
-        sources = _knowledge_sources([match])
-        if (
-            AccountType.PENSION_SAVINGS in plan.account_types
-            and self._is_eligibility_question(request.message)
-        ):
-            return ChatResponse(
-                intent=ChatIntent.ACCOUNT_RULE,
-                answer=(
-                    "연금저축의 상품별 적격성은 공식 상품 식별자와 금융회사 "
-                    "편입 목록으로 확인해야 해요. 현재 챗봇에는 그 데이터가 "
-                    "없어서 개별 상품의 편입 가능 여부를 확정하지 않아요."
-                ),
-                data_mode="verified_knowledge",
-                sources=sources,
-                limitations=[
-                    "상품별 적격성은 공식 상품 데이터로 별도 확인해야 합니다."
-                ],
-            )
-        excerpt = _plain_knowledge_excerpt(match.content, heading=heading)
-        if topic == "tax_rate":
-            excerpt = "\n".join(
-                line
-                for line in excerpt.splitlines()
-                if not ("최대" in line and "환급" in line)
-            )
-        if not excerpt:
-            return ChatResponse(
-                intent=ChatIntent.ACCOUNT_RULE,
-                answer="검증된 근거에서 답변에 쓸 대목을 찾지 못했어요.",
-                data_mode="verified_knowledge",
-                sources=sources,
-                limitations=["질문을 계좌 유형과 함께 더 구체적으로 입력해 주세요."],
-            )
-        answer = (
-            "공식 근거에서 확인한 내용이에요.\n\n"
-            f"{excerpt}\n\n"
-            "개인 상황에 적용하기 전에는 아래 출처와 기준일을 함께 봐 주세요."
-        )
-        risk_question = topic == "risk_cap"
-        risk_label = (
-            "DC형·IRP 위험자산 한도(연금저축 동일 한도 없음)"
-            if "DC형·IRP에 적용" in excerpt
-            and "연금저축펀드에는 동일한 한도가 없다" in excerpt
-            else f"{match.title} 위험자산 한도"
-        )
-        numeric = [
-            NumericEvidence(
-                label=(
-                    risk_label
-                    if risk_question and unit == "%"
-                    else f"{match.title} 답변 수치 {index}"
-                ),
-                value=value,
-                unit=unit,
-                evidence_id=sources[0].evidence_id,
-                basis="검증된 지식 문서에서 직접 발췌",
-            )
-            for index, (value, unit) in enumerate(
-                sorted(extract_numeric_claims(answer)), start=1
-            )
-        ]
-
-        return ChatResponse(
-            intent=ChatIntent.ACCOUNT_RULE,
-            answer=answer,
-            data_mode="verified_knowledge",
-            sections=[
-                AnswerSection(
-                    kind=SectionKind.FACT,
-                    title="근거에서 확인한 내용",
-                    content=excerpt,
-                    evidence_ids=[_knowledge_evidence_id(match)],
-                )
-            ],
-            sources=sources,
-            numeric_evidence=numeric,
-            limitations=["상품별 적격성은 공식 상품 데이터로 별도 확인해야 합니다."],
-        )
-
-    @staticmethod
-    def _is_eligibility_question(message: str) -> bool:
-        return any(term in message for term in ("편입", "적격", "가능한 상품"))
 
     def _custom_portfolio(self, request: ChatRequest) -> ChatResponse:
         assert request.portfolio is not None
