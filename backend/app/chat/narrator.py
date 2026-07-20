@@ -13,6 +13,7 @@ from collections.abc import Iterable
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 from pathlib import Path
+from time import monotonic
 
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, NativeOutput
@@ -31,6 +32,7 @@ logger = logging.getLogger(__name__)
 # 엔진 답변이 결정론이므로 같은 프롬프트는 같은 검증 내레이션을 재사용한다.
 NARRATION_CACHE_MAX_ENTRIES = 256
 NARRATION_CACHE_VERSION = 1
+NARRATION_CACHE_PERSIST_DEBOUNCE_SECONDS = 5.0
 _NARRATION_CACHE_FILE_LOCK = threading.Lock()
 
 NARRATABLE_INTENTS = {
@@ -319,17 +321,26 @@ class ClaudeNarrator:
         api_key: str,
         model: str,
         cache_path: Path | None = None,
+        cache_persist_debounce_seconds: float = (
+            NARRATION_CACHE_PERSIST_DEBOUNCE_SECONDS
+        ),
     ) -> None:
         if not api_key.strip() or not model.strip():
             raise ValueError("api_key and model are required")
+        if cache_persist_debounce_seconds < 0:
+            raise ValueError("cache_persist_debounce_seconds must be non-negative")
         self._model = model.strip()
         self._api_key = api_key.strip()
         self._cache_path = cache_path
+        self._cache_persist_debounce_seconds = cache_persist_debounce_seconds
         # 검증 통과 내레이션만 저장하는 LRU 캐시(폴백은 저장하지 않는다).
         self._narration_cache: OrderedDict[str, tuple[str, str | None]] = (
             OrderedDict()
         )
         self._narration_cache_lock = threading.Lock()
+        self._cache_dirty = False
+        self._cache_generation = 0
+        self._last_cache_persisted_at: float | None = None
         self._load_persistent_cache()
         self.agent: Agent[None, NarrationOutput] = self._build_agent()
 
@@ -419,6 +430,8 @@ class ClaudeNarrator:
     def _merge_cache(
         self,
         entries: OrderedDict[str, tuple[str, str | None]],
+        *,
+        mark_dirty: bool = False,
     ) -> None:
         with self._narration_cache_lock:
             for key, value in entries.items():
@@ -426,6 +439,9 @@ class ClaudeNarrator:
                 self._narration_cache.move_to_end(key)
             while len(self._narration_cache) > NARRATION_CACHE_MAX_ENTRIES:
                 self._narration_cache.popitem(last=False)
+            if mark_dirty and entries:
+                self._cache_dirty = True
+                self._cache_generation += 1
 
     def _load_persistent_cache(self) -> None:
         self._merge_cache(self._read_persistent_cache())
@@ -437,9 +453,11 @@ class ClaudeNarrator:
             with _NARRATION_CACHE_FILE_LOCK:
                 merged = self._read_persistent_cache()
                 with self._narration_cache_lock:
-                    for key, value in self._narration_cache.items():
-                        merged[key] = value
-                        merged.move_to_end(key)
+                    cache_entries = OrderedDict(self._narration_cache)
+                    cache_generation = self._cache_generation
+                for key, value in cache_entries.items():
+                    merged[key] = value
+                    merged.move_to_end(key)
                 while len(merged) > NARRATION_CACHE_MAX_ENTRIES:
                     merged.popitem(last=False)
                 payload = {
@@ -462,8 +480,28 @@ class ClaudeNarrator:
                     encoding="utf-8",
                 )
                 temporary.replace(self._cache_path)
+                with self._narration_cache_lock:
+                    self._last_cache_persisted_at = monotonic()
+                    if self._cache_generation == cache_generation:
+                        self._cache_dirty = False
         except OSError:
             logger.warning("narration_cache_persist_failed")
+
+    def flush_cache(self, *, force: bool = True) -> None:
+        """Persist dirty verified narrations without delaying every request."""
+        if self._cache_path is None:
+            return
+        with self._narration_cache_lock:
+            if not self._cache_dirty:
+                return
+            if (
+                not force
+                and self._last_cache_persisted_at is not None
+                and monotonic() - self._last_cache_persisted_at
+                < self._cache_persist_debounce_seconds
+            ):
+                return
+        self._persist_cache()
 
     def _cache_lookup(self, key: str) -> tuple[str, str | None] | None:
         with self._narration_cache_lock:
@@ -480,7 +518,10 @@ class ClaudeNarrator:
             self._narration_cache.move_to_end(key)
             while len(self._narration_cache) > NARRATION_CACHE_MAX_ENTRIES:
                 self._narration_cache.popitem(last=False)
-        self._persist_cache()
+            if self._cache_path is not None:
+                self._cache_dirty = True
+                self._cache_generation += 1
+        self.flush_cache(force=False)
 
     def precompute(self, responses: Iterable[ChatResponse]) -> None:
         """Populate cache through a disposable narrator, never the request agent."""
@@ -490,12 +531,14 @@ class ClaudeNarrator:
                 api_key=self._api_key,
                 model=self._model,
                 cache_path=self._cache_path,
+                cache_persist_debounce_seconds=self._cache_persist_debounce_seconds,
             )
             for response in responses:
                 warmer.narrate(response)
             with warmer._narration_cache_lock:
                 warmed = OrderedDict(warmer._narration_cache)
-            self._merge_cache(warmed)
+            self._merge_cache(warmed, mark_dirty=True)
+            self.flush_cache(force=False)
         except Exception:  # noqa: BLE001 — 프리컴퓨트 실패는 요청 경로와 격리
             logger.warning("narration_precompute_failed")
 

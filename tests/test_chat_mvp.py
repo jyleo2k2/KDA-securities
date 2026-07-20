@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from pydantic_ai.messages import ModelResponse, TextPart, ThinkingPart
 from pydantic_ai.models.function import FunctionModel
 
+import backend.app.main as main_module
 from backend.app.api import deps
 from backend.app.chat.disclosures import ProviderDisclosure
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
@@ -1135,9 +1136,14 @@ def test_narration_cache_reuses_verified_result() -> None:
     assert second.answer == first.answer
 
 
-def test_narration_cache_never_stores_rejected_fallback() -> None:
+def test_narration_cache_never_stores_rejected_fallback(tmp_path) -> None:
     base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
-    narrator = ClaudeNarrator(api_key="test-key", model="test-model")
+    cache_path = tmp_path / "narration_cache.json"
+    narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=cache_path,
+    )
     calls: list[int] = []
 
     def respond(messages, info) -> ModelResponse:
@@ -1160,6 +1166,8 @@ def test_narration_cache_never_stores_rejected_fallback() -> None:
     assert first.narration_mode == "deterministic"
     assert second.narration_mode == "deterministic"
     assert calls == [1, 1]
+    narrator.flush_cache()
+    assert not cache_path.exists()
 
 
 def test_narration_cache_survives_narrator_restart(tmp_path) -> None:
@@ -1205,6 +1213,93 @@ def test_narration_cache_survives_narrator_restart(tmp_path) -> None:
     assert first.narration_mode == "claude_verified"
     assert second.answer == first.answer
     assert calls == []
+
+
+def test_narration_cache_debounces_disk_persistence(tmp_path, monkeypatch) -> None:
+    narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=tmp_path / "narration_cache.json",
+        cache_persist_debounce_seconds=60,
+    )
+    persist_cache = narrator._persist_cache
+    flush_calls: list[int] = []
+
+    def tracked_persist() -> None:
+        flush_calls.append(1)
+        persist_cache()
+
+    monkeypatch.setattr(narrator, "_persist_cache", tracked_persist)
+
+    narrator._cache_store("first", "첫 내레이션", None)
+    narrator._cache_store("second", "둘째 내레이션", None)
+
+    assert flush_calls == [1]
+
+
+def test_narration_cache_flush_persists_last_debounced_entry(tmp_path) -> None:
+    cache_path = tmp_path / "narration_cache.json"
+    narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=cache_path,
+        cache_persist_debounce_seconds=60,
+    )
+
+    narrator._cache_store("first", "첫 내레이션", None)
+    narrator._cache_store("second", "둘째 내레이션", "근거")
+    narrator.flush_cache()
+
+    reloaded = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=cache_path,
+    )
+    assert reloaded._cache_lookup("first") == ("첫 내레이션", None)
+    assert reloaded._cache_lookup("second") == ("둘째 내레이션", "근거")
+
+
+def test_narration_cache_merges_two_narrator_instances(tmp_path) -> None:
+    cache_path = tmp_path / "narration_cache.json"
+    first = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=cache_path,
+        cache_persist_debounce_seconds=60,
+    )
+    second = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=cache_path,
+        cache_persist_debounce_seconds=60,
+    )
+
+    first._cache_store("first", "첫 내레이션", None)
+    second._cache_store("second", "둘째 내레이션", None)
+
+    reloaded = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=cache_path,
+    )
+    assert reloaded._cache_lookup("first") == ("첫 내레이션", None)
+    assert reloaded._cache_lookup("second") == ("둘째 내레이션", None)
+
+
+def test_lifespan_flushes_narration_cache(monkeypatch) -> None:
+    calls: list[int] = []
+
+    class FakeNarrator:
+        def flush_cache(self) -> None:
+            calls.append(1)
+
+    monkeypatch.setattr(main_module, "get_chat_narrator", lambda _: FakeNarrator())
+    monkeypatch.setattr(main_module, "clear_chat_dependencies", lambda: None)
+
+    with TestClient(app):
+        pass
+
+    assert calls == [1]
 
 
 @pytest.mark.parametrize("content", ["", '{"version": 1, "entries": ['])
