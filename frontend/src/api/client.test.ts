@@ -36,6 +36,48 @@ describe("chat SSE parser", () => {
     expect(replacements).toEqual(["검증 내레이션"]);
     expect(result.response.answer).toBe("검증 내레이션");
   });
+
+  it("sends current holdings as structured educational portfolio input", async () => {
+    const encoder = new TextEncoder();
+    const body = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(
+          'event: response\ndata: {"response":{"answer":"분석 완료"}}\n\n',
+        ));
+        controller.close();
+      },
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(body));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await sendChatStream(
+      "현재 보유 ETF를 점검해줘",
+      () => undefined,
+      () => undefined,
+      () => undefined,
+      {
+        educationalPortfolio: {
+          account_type: "irp",
+          age: 35,
+          retirement_start_age: 60,
+          risk_profile: "risk_neutral",
+          loss_tolerance_percent: "20",
+          max_etfs: 7,
+          current_holdings: [{ isu_code: "069500", amount_krw: "10000000" }],
+          new_contribution_krw: "1000000",
+        },
+      },
+    );
+
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(request.body as string)).toMatchObject({
+      educational_portfolio: {
+        account_type: "irp",
+        current_holdings: [{ isu_code: "069500", amount_krw: "10000000" }],
+        new_contribution_krw: "1000000",
+      },
+    });
+  });
 });
 
 describe("chat session deletion", () => {

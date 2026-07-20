@@ -22,6 +22,10 @@ import {
   sendChatStream,
 } from "../api/client";
 import { conicGradient } from "../charts";
+import {
+  EducationalPortfolioReview,
+  PortfolioHoldingsPanel,
+} from "../components/PortfolioHoldingsPanel";
 import type {
   AnswerBlock,
   CompletedSurveyProfile,
@@ -32,6 +36,7 @@ import type {
   ChatVisualization,
   DataBoundary,
   DemoUserFinancialContext,
+  EducationalPortfolioInput,
   IncomeBasis,
   IrpDeferredIncomeStatus,
   IsaTransferEligibilityStatus,
@@ -48,6 +53,7 @@ interface ConversationMessage {
   text: string;
   response?: ChatResponse;
   failedPrompt?: string;
+  failedEducationalPortfolio?: EducationalPortfolioInput;
   createdAt: Date;
 }
 
@@ -566,6 +572,8 @@ function AssistantMessage({
           ))}
         </div>
       )}
+
+      <EducationalPortfolioReview evaluation={response.educational_portfolio_evaluation} />
 
       <NewsCards response={response} />
 
@@ -1130,7 +1138,10 @@ export function GuidePage({
     }
   }
 
-  async function submitPrompt(prompt: string) {
+  async function submitPrompt(
+    prompt: string,
+    educationalPortfolio?: EducationalPortfolioInput,
+  ) {
     const normalized = prompt.trim();
     if (normalized.length < 2 || sendingRef.current || deletingSessionId) return;
 
@@ -1193,6 +1204,7 @@ export function GuidePage({
             conversationContext,
             taxInput,
             surveyProfile,
+            educationalPortfolio,
           )
         : await sendChatStream(
             normalized,
@@ -1204,6 +1216,7 @@ export function GuidePage({
               conversationContext,
               pensionTax: taxInput,
               surveyProfile,
+              educationalPortfolio,
             },
           );
       const persisted = streamed.persisted ? streamed : null;
@@ -1247,6 +1260,7 @@ export function GuidePage({
         role: "assistant",
         text: message,
         failedPrompt: normalized,
+        failedEducationalPortfolio: educationalPortfolio,
         createdAt: new Date(),
       }]);
       setServerReady(
@@ -1563,6 +1577,22 @@ export function GuidePage({
                 </div>
               </section>
 
+              <section className="chat-home-card-section holdings-section" aria-labelledby="holdings-heading">
+                <header className="chat-home-section-heading">
+                  <p>내 ETF 점검</p>
+                  <h2 id="holdings-heading">현재 보유 ETF 리밸런싱 가이드</h2>
+                  <span>평가금액을 입력하면 계좌 한도와 자산군 편중을 규칙 엔진으로 점검합니다.</span>
+                </header>
+                <PortfolioHoldingsPanel
+                  surveyProfile={surveyProfile}
+                  disabled={isSending || deletingSessionId !== null}
+                  onAnalyze={(portfolio) => void submitPrompt(
+                    "현재 보유 ETF의 중복도와 계좌 한도, 리밸런싱 가이드를 보여줘",
+                    portfolio,
+                  )}
+                />
+              </section>
+
               <section className="chat-home-card-section etf-theme-section" aria-labelledby="etf-theme-heading">
                 <header className="chat-home-section-heading">
                   <p>ETF 테마</p>
@@ -1601,7 +1631,7 @@ export function GuidePage({
                       <AssistantMessage onFollowUp={(prompt) => void submitPrompt(prompt)} response={message.response} text={message.text} />
                     </div>
                     {message.failedPrompt && (
-                      <button className="retry-button" type="button" onClick={() => void submitPrompt(message.failedPrompt!)} disabled={isSending || deletingSessionId !== null}>
+                      <button className="retry-button" type="button" onClick={() => void submitPrompt(message.failedPrompt!, message.failedEducationalPortfolio)} disabled={isSending || deletingSessionId !== null}>
                         <Icon name="refresh" size={15} /> 다시 시도
                       </button>
                     )}

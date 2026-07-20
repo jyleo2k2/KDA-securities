@@ -738,6 +738,91 @@ export interface CompletedSurveyProfile {
   loss_tolerance_percent: string | number;
 }
 
+export interface CurrentHoldingInput {
+  isu_code: string;
+  amount_krw: string;
+}
+
+export interface EducationalPortfolioInput {
+  account_type: AccountType;
+  age: number;
+  retirement_start_age: number;
+  risk_profile: RiskProfile;
+  loss_tolerance_percent: string | number;
+  max_etfs?: number;
+  current_holdings: CurrentHoldingInput[];
+  new_contribution_krw: string;
+}
+
+export interface EducationalEtfCandidate {
+  isu_code: string;
+  isu_name: string;
+  sleeve: string;
+  target_percent: string;
+  quality: Record<string, string>;
+  region?: string | null;
+  strategy?: string | null;
+  max_correlation_with_selected: string | null;
+  price_history_source: string;
+  account_eligibility: Record<string, unknown>;
+  reasons: string[];
+}
+
+export interface RebalancingSleeveGuidance {
+  sleeve: string;
+  target_percent: string;
+  current_percent: string;
+  projected_percent_after_contribution: string;
+  drift_before_percent_points: string;
+  drift_after_percent_points: string;
+  contribution_example_krw: string;
+  status: string;
+}
+
+export interface RebalancingGuidance {
+  status: string;
+  drift_threshold_percent_points: string;
+  current_total_krw: string;
+  new_contribution_krw: string;
+  projected_total_krw: string;
+  unclassified_holding_amount_krw: string;
+  contribution_first: boolean;
+  sell_instruction_produced: boolean;
+  sleeves: RebalancingSleeveGuidance[];
+  warnings: string[];
+}
+
+export interface EducationalPortfolioEvaluation {
+  engine_name: string;
+  engine_version: string;
+  policy_version: string;
+  usage_label: string;
+  evaluated_input: EducationalPortfolioInput;
+  strategy_label: string;
+  retirement_start_age: number;
+  planning_horizon_years: number;
+  horizon_to_age_55_years: number;
+  horizon_to_age_60_years: number;
+  raw_risk_target_percent: string;
+  final_general_risk_target_percent: string;
+  account_risk_cap_percent: string | null;
+  account_cap_binding: boolean;
+  loss_tolerance_binding: boolean;
+  stress_loss_proxy_percent: string;
+  target_sleeves: Array<{
+    sleeve: string;
+    target_percent: string;
+    risk_treatment: string;
+    role: string;
+  }>;
+  candidates: EducationalEtfCandidate[];
+  portfolio_risk: unknown;
+  planning_return: unknown;
+  rebalancing: RebalancingGuidance;
+  sources: SourceEvidence[];
+  warnings: string[];
+}
+
 export type MarketRegion = "all" | "kr" | "us";
 
 export interface NewsConversationContext {
@@ -774,8 +859,8 @@ export interface ChatResponse {
   engine_results: unknown[];
   scenario_evaluation?: ScenarioEvaluation | null;
   pension_tax_result?: PensionTaxToolResult | null;
-  educational_portfolio_evaluation?: unknown | null;
-  educational_portfolio_evaluations?: unknown[];
+  educational_portfolio_evaluation?: EducationalPortfolioEvaluation | null;
+  educational_portfolio_evaluations?: EducationalPortfolioEvaluation[];
   limitations: string[];
   conversation_context?: ConversationContext | null;
 }

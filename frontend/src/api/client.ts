@@ -7,6 +7,7 @@ import type {
   ChatSessionSummary,
   DemoUserFinancialContext,
   DemoHeroPortfolio,
+  EducationalPortfolioInput,
   PensionTaxScenarioInput,
   ProfileEvaluation,
   ProfileSurveyInput,
@@ -193,6 +194,7 @@ interface ChatBodyOptions {
   conversationContext?: ConversationContext | null;
   pensionTax?: PensionTaxScenarioInput;
   surveyProfile?: CompletedSurveyProfile | null;
+  educationalPortfolio?: EducationalPortfolioInput;
 }
 
 function buildChatBody(message: string, options?: ChatBodyOptions) {
@@ -206,6 +208,9 @@ function buildChatBody(message: string, options?: ChatBodyOptions) {
     ...(options?.pensionTax ? { pension_tax: options.pensionTax } : {}),
     ...(options?.surveyProfile
       ? { survey_profile: options.surveyProfile }
+      : {}),
+    ...(options?.educationalPortfolio
+      ? { educational_portfolio: options.educationalPortfolio }
       : {}),
   };
 }
@@ -238,6 +243,7 @@ export function sendAuthenticatedChatStream(
   conversationContext?: ConversationContext | null,
   pensionTax?: PensionTaxScenarioInput,
   surveyProfile?: CompletedSurveyProfile | null,
+  educationalPortfolio?: EducationalPortfolioInput,
 ): Promise<ChatStreamResult> {
   return apiPostStream(
     "/chat/stream",
@@ -247,6 +253,7 @@ export function sendAuthenticatedChatStream(
       conversationContext,
       pensionTax,
       surveyProfile,
+      educationalPortfolio,
     }),
     onPhase,
     onAnswerDelta,

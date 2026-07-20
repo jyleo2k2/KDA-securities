@@ -324,6 +324,31 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .sector-card-grid button:hover { border-color: #a9d8ba; background: #f4fbf4; }
 .sector-card-grid button > span:last-of-type { display: grid; gap: 3px; min-width: 0; }.sector-card-grid button small { color: #819087; font-size: 9px; }.sector-card-grid button strong { color: #243d2f; font-size: 12px; line-height: 1.35; }.sector-card-grid button > svg { color: #8ba394; }
 .sector-card-icon { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 10px; background: #dff3e5; color: #16824b; }
+.holdings-input-form { display: grid; gap: 18px; margin-top: 17px; padding: 18px; border: 1px solid #dfe8dd; border-radius: 18px; background: #f9fcf8; }
+.holdings-input-form fieldset { display: grid; gap: 12px; margin: 0; padding: 0; border: 0; }
+.holdings-input-form legend, .holdings-form-field > label { color: #243d2f; font-size: 12px; font-weight: 800; }
+.holdings-field-help, .holdings-form-field small { margin: 0; color: #77867d; font-size: 10px; line-height: 1.5; }
+.holdings-form-field { display: grid; gap: 7px; }
+.holdings-input-form input, .holdings-input-form select { width: 100%; min-width: 0; height: 42px; padding: 0 12px; border: 1px solid #d8e2d6; border-radius: 11px; background: #fff; color: #17251f; font: inherit; font-size: 12px; outline: none; }
+.holdings-input-form input:focus, .holdings-input-form select:focus { border-color: #18a860; box-shadow: 0 0 0 3px rgba(24, 168, 96, .1); }
+.holding-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) auto; gap: 8px; align-items: end; }
+.holding-row label { display: grid; gap: 5px; min-width: 0; color: #67766d; font-size: 10px; font-weight: 700; }
+.holding-add, .holding-remove, .holdings-analyze { border: 0; cursor: pointer; font: inherit; font-weight: 800; }
+.holding-add { justify-self: start; padding: 7px 10px; border-radius: 9px; background: #e9f5eb; color: #117646; font-size: 10px; }
+.holding-remove { height: 42px; padding: 0 8px; border-radius: 9px; background: #f5eeee; color: #9a4a4a; font-size: 9px; }
+.holdings-analyze { min-height: 46px; border-radius: 13px; background: #18a860; color: #fff; font-size: 12px; }
+.holding-add:disabled, .holding-remove:disabled, .holdings-analyze:disabled { cursor: default; opacity: .55; }
+.holdings-form-error { margin: 0; padding: 9px 11px; border-radius: 9px; background: #fff0ee; color: #a43b32; font-size: 10px; line-height: 1.5; }
+.holdings-required-panel { display: grid; gap: 7px; margin-top: 17px; padding: 18px; border: 1px solid #e2e8df; border-radius: 16px; background: #fafcf9; }
+.holdings-required-panel strong { color: #263d31; font-size: 12px; }.holdings-required-panel p { margin: 0; color: #738078; font-size: 10px; line-height: 1.55; }.holdings-required-panel a { justify-self: start; color: #0c8150; font-size: 11px; font-weight: 800; }
+.portfolio-review { display: grid; gap: 14px; margin-top: 15px; padding: 16px; border: 1px solid #dce8dc; border-radius: 16px; background: #f8fcf7; }
+.portfolio-review > header { display: grid; gap: 3px; }.portfolio-review > header > span { color: #16864e; font-size: 9px; font-weight: 800; }.portfolio-review h3 { margin: 0; color: #1c3327; font-size: 15px; }.portfolio-review > header p { margin: 0; color: #748178; font-size: 10px; }
+.portfolio-review-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }.portfolio-review-summary div { display: grid; gap: 4px; padding: 10px; border-radius: 11px; background: #fff; }.portfolio-review-summary span { color: #7b887f; font-size: 9px; }.portfolio-review-summary strong { color: #214333; font-size: 11px; line-height: 1.4; }
+.overlap-check { display: grid; gap: 6px; padding: 12px; border-radius: 11px; background: #eef6ec; }.overlap-check strong { color: #234634; font-size: 11px; }.overlap-check p, .overlap-check small { margin: 0; color: #607268; font-size: 9px; line-height: 1.55; }.overlap-check small { color: #7d8b83; }
+.portfolio-review-table-wrap { overflow-x: auto; border: 1px solid #e2e9df; border-radius: 11px; background: #fff; }
+.portfolio-review-table { width: 100%; min-width: 540px; border-collapse: collapse; color: #53655b; font-size: 9px; }.portfolio-review-table th, .portfolio-review-table td { padding: 9px 8px; border-bottom: 1px solid #edf1eb; text-align: right; white-space: nowrap; }.portfolio-review-table th:first-child { text-align: left; }.portfolio-review-table thead th { background: #f3f7f1; color: #617067; font-weight: 800; }.portfolio-review-table tbody tr:last-child th, .portfolio-review-table tbody tr:last-child td { border-bottom: 0; }
+.rebalance-status { display: inline-flex; padding: 3px 6px; border-radius: 999px; background: #eef2ec; color: #526359; }.status-underweight_after_contribution { background: #fff0cf; color: #8a6110; }.status-overweight_review_only { background: #ffebe7; color: #9b4638; }.status-within_drift_band { background: #e3f5e8; color: #197149; }
+.portfolio-review-warning, .portfolio-review-disclaimer { margin: 0; padding: 9px 11px; border-radius: 9px; font-size: 9px; line-height: 1.55; }.portfolio-review-warning { background: #fff2dd; color: #805c24; }.portfolio-review-disclaimer { background: #eef1ed; color: #66736b; }
 .follow-up-cards { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }.follow-up-cards button { display: inline-flex; align-items: center; gap: 3px; padding: 8px 10px; border: 1px solid #d9e4d3; border-radius: 999px; background: #f6faf3; color: #365445; font-size: 11px; cursor: pointer; }.projection-series { display: grid; gap: 10px; }.projection-series-row { display: grid; gap: 5px; color: #586b60; font-size: 10px; }.projection-points { display: flex; gap: 5px; overflow-x: auto; }.projection-points span { display: grid; min-width: 66px; gap: 3px; padding: 7px; border-radius: 7px; background: #eaf2e4; color: #748076; }.projection-points b { color: #234435; font-size: 11px; }
 .guide-tab .design-prompt-icon { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 17px; background: #fff3cc; color: #e8a600; }
 .guide-tab .design-prompt-copy { display: grid; gap: 6px; min-width: 0; text-align: left; }
@@ -348,6 +373,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   .chat-home-section-heading h2 { font-size: 18px; }
   .sector-card-grid { gap: 8px; }
   .sector-card-grid button { min-height: 73px; padding: 10px; }
+  .holding-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); }
+  .holding-remove { grid-column: 1 / -1; justify-self: end; height: 30px; }
   .prompt-carousel { margin-top: 32px; padding-right: 25%; }.prompt-carousel button { flex-basis: calc(50% - 6px); min-height: 106px; }
   .guide-tab .design-prompt-copy strong { font-size: 16px; }
 }
