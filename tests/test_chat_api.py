@@ -573,6 +573,43 @@ class UnavailableRepository(FakeChatRepository):
         raise psycopg.OperationalError("database unavailable")
 
 
+class InvalidStoredResponseRepository(FakeChatRepository):
+    def __init__(self, failing_operation: str) -> None:
+        super().__init__()
+        self.failing_operation = failing_operation
+
+    def find_idempotent_exchange(self, **kwargs) -> SavedChatExchange | None:
+        if self.failing_operation == "find":
+            raise RuntimeError("stored response is invalid")
+        return super().find_idempotent_exchange(**kwargs)
+
+    def save_exchange(self, **kwargs) -> SavedChatExchange:
+        if self.failing_operation == "save":
+            raise RuntimeError("stored response is invalid")
+        return super().save_exchange(**kwargs)
+
+
+@pytest.mark.parametrize("failing_operation", ["find", "save"])
+def test_invalid_stored_response_emits_stream_error(failing_operation: str) -> None:
+    _override_authenticated_dependencies(
+        InvalidStoredResponseRepository(failing_operation)
+    )
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={"message": "IRP 위험자산 한도를 알려줘"},
+                headers=CHAT_HEADERS,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert ("error", {"detail": "Chat database is unavailable"}) in parse_sse(
+        response.text
+    )
+
+
 def test_delete_database_failure_returns_service_unavailable() -> None:
     _override_authenticated_dependencies(UnavailableRepository())
     try:
@@ -605,6 +642,32 @@ def test_database_failure_is_distinct_from_auth_failure() -> None:
 class UnavailableChatService(ChatService):
     def ask(self, request, *, plan=None):
         raise psycopg.OperationalError("retrieval unavailable")
+
+
+class InvalidStoredResponseChatService(ChatService):
+    def ask(self, request, *, plan=None):
+        raise RuntimeError("stored response is invalid")
+
+
+def test_demo_stream_runtime_error_emits_error_event() -> None:
+    app.dependency_overrides[get_chat_service] = lambda: InvalidStoredResponseChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+    )
+    app.dependency_overrides[get_chat_narrator] = lambda: None
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/demo/stream",
+                json={"message": "IRP 위험자산 한도를 알려줘"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert ("error", {"detail": "Chat data source is unavailable"}) in parse_sse(
+        response.text
+    )
 
 
 def test_retrieval_failure_does_not_leave_an_orphan_question() -> None:

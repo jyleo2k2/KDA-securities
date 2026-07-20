@@ -238,6 +238,10 @@ async def _stream_answer(
     except _DATABASE_ERRORS:
         yield _sse("error", {"detail": "Chat data source is unavailable"})
         return
+    except RuntimeError:
+        logger.exception("Chat stream received an invalid stored response")
+        yield _sse("error", {"detail": "Chat data source is unavailable"})
+        return
     stream_before_narration = (
         narrator is not None
         and response.intent in NARRATABLE_INTENTS
@@ -409,6 +413,10 @@ async def chat_authenticated_stream(
             except _DATABASE_ERRORS:
                 yield _sse("error", {"detail": "Chat database is unavailable"})
                 return
+            except RuntimeError:
+                logger.exception("Chat replay contained an invalid stored response")
+                yield _sse("error", {"detail": "Chat database is unavailable"})
+                return
             if replayed is not None and replayed.response is not None:
                 yield _sse(
                     "response",
@@ -491,6 +499,10 @@ async def chat_authenticated_stream(
         except _DATABASE_ERRORS:
             yield _sse("error", {"detail": "Chat data source is unavailable"})
             return
+        except RuntimeError:
+            logger.exception("Chat stream received an invalid stored response")
+            yield _sse("error", {"detail": "Chat data source is unavailable"})
+            return
         stream_before_narration = (
             narrator is not None
             and allow_narration
@@ -557,6 +569,10 @@ async def chat_authenticated_stream(
             yield _sse("error", {"detail": "Chat session not found"})
             return
         except _DATABASE_ERRORS:
+            yield _sse("error", {"detail": "Chat database is unavailable"})
+            return
+        except RuntimeError:
+            logger.exception("Chat save produced an invalid stored response")
             yield _sse("error", {"detail": "Chat database is unavailable"})
             return
         final_response = saved.response or response
