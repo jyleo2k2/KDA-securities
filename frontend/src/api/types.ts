@@ -6,6 +6,26 @@
  */
 
 export type AccountType = "dc" | "irp" | "pension_savings";
+
+/**
+ * Account-link screen display code. `db` is presentation metadata only and
+ * must not be passed to the engine's AccountType-based APIs.
+ */
+export type AccountLinkOptionCode = AccountType | "db";
+
+export interface AccountLinkOption {
+  code: AccountLinkOptionCode;
+  display_name: string;
+  category_label: string;
+  diagnosable: boolean;
+  description: string | null;
+}
+
+export interface AccountLinkOptionsResponse {
+  options: AccountLinkOption[];
+  notice: string;
+  data_boundary: "mock";
+}
 export type RiskTreatment =
   | "capital_preservation"
   | "general_risky"
