@@ -592,11 +592,13 @@ export type ChatIntent =
   | "pension_tax"
   | "etf_theme"
   | "educational_portfolio"
+  | "macro_evidence"
   | "out_of_scope";
 
 export type DataBoundary =
   | "verified_knowledge"
   | "official_disclosure"
+  | "official_statistics"
   | "news_metadata"
   | "mock"
   | "engine"

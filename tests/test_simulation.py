@@ -153,6 +153,24 @@ def test_assumption_language_is_locked() -> None:
     assert evaluation.assumption_notice.startswith("미래 예측이 아니라")
     assert "교육용 가정 시나리오" in evaluation.assumption_notice
     assert evaluation.evidence[0].reference == "docs/30_스펙/수익률_가정_모델.md"
+    assert evaluation.assumption_version == "2026-07-20.2"
+    assert evaluation.inflation_percent == Decimal("2.0")
+    assert evaluation.evidence[1].reference.startswith("https://www.bok.or.kr/")
+
+
+def test_user_inflation_override_does_not_claim_bok_default_source() -> None:
+    evaluation = simulate_accumulation(
+        SimulationInput(
+            current_age=35,
+            risk_profile=RiskProfile.ACTIVE,
+            current_balance_krw=TEN_MILLION,
+            monthly_contribution_krw=MONTHLY,
+            inflation_percent=Decimal("3.0"),
+        )
+    )
+
+    assert evaluation.inflation_percent == Decimal("3.0")
+    assert all("bok.or.kr" not in source.reference for source in evaluation.evidence)
 
 
 def test_simulation_is_deterministic() -> None:

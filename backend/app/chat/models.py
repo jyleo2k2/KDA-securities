@@ -89,12 +89,14 @@ class ChatIntent(StrEnum):
     PENSION_TAX = "pension_tax"
     EDUCATIONAL_PORTFOLIO = "educational_portfolio"
     ETF_THEME = "etf_theme"
+    MACRO_EVIDENCE = "macro_evidence"
     OUT_OF_SCOPE = "out_of_scope"
 
 
 class DataBoundary(StrEnum):
     VERIFIED_KNOWLEDGE = "verified_knowledge"
     OFFICIAL_DISCLOSURE = "official_disclosure"
+    OFFICIAL_STATISTICS = "official_statistics"
     NEWS_METADATA = "news_metadata"
     NEWS_SUMMARY = "news_summary"
     MOCK = "mock"

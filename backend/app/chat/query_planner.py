@@ -134,6 +134,12 @@ _COMBINED_ACCOUNT_RULE = re.compile(
 )
 _DISCLOSURE_TERMS = re.compile(r"공시|수익률|수수료|적립금|준비금|사업자|회사")
 _NEWS_TERMS = re.compile(r"뉴스|기사|소식")
+_MACRO_EVIDENCE_TERMS = re.compile(
+    r"기준\s*금리|소비자\s*물가|물가\s*상승률|인플레이션|"
+    r"기대\s*수명|거시\s*(?:지표|환경)|연방\s*기금|"
+    r"미국\s*10년\s*국채|기대\s*인플레이션",
+    re.I,
+)
 _RULE_TERMS = re.compile(
     r"규칙|제도|한도|세금|인출|차이|위험자산|예외|적격|연금|TDF", re.I
 )
@@ -206,6 +212,7 @@ _INTENT_PRIORITY = (
     ChatIntent.MOCK_PORTFOLIO,
     ChatIntent.PENSION_TAX,
     ChatIntent.NEWS,
+    ChatIntent.MACRO_EVIDENCE,
     ChatIntent.ETF_THEME,
     ChatIntent.EDUCATIONAL_PORTFOLIO,
     ChatIntent.PROVIDER_DISCLOSURE,
@@ -339,7 +346,10 @@ def plan_question(
         ChatIntent.MOCK_PORTFOLIO: _SCENARIO_TERMS.search(normalized) is not None,
         ChatIntent.PENSION_TAX: requests_tax_credit or requests_withdrawal_tax,
         ChatIntent.NEWS: _NEWS_TERMS.search(normalized) is not None,
-        ChatIntent.ETF_THEME: theme is not None,
+    ChatIntent.ETF_THEME: theme is not None,
+    ChatIntent.MACRO_EVIDENCE: (
+        _MACRO_EVIDENCE_TERMS.search(normalized) is not None
+    ),
         ChatIntent.EDUCATIONAL_PORTFOLIO: (
             _EDUCATIONAL_PORTFOLIO_TERMS.search(normalized) is not None
         ),
@@ -397,6 +407,13 @@ def plan_question(
             intent=ChatIntent.NEWS,
             account_types=account_types,
             news_query=news_query,
+            max_results=max_results,
+        )
+    if intent == ChatIntent.MACRO_EVIDENCE:
+        return QueryPlan(
+            normalized_message=normalized,
+            intent=ChatIntent.MACRO_EVIDENCE,
+            account_types=account_types,
             max_results=max_results,
         )
     if intent == ChatIntent.ETF_THEME:

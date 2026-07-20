@@ -40,6 +40,11 @@ def test_cards_endpoint_returns_static_catalog() -> None:
     ]
     assert all(card["preview"] is None for card in payload["cards"])
     assert all(isinstance(card["conditions"], list) for card in payload["cards"])
+    assert any(
+        card["card_id"] == "macro_evidence"
+        and card["message"] == "BOK·KOSIS·FRED 거시환경 근거를 보여줘."
+        for card in payload["cards"]
+    )
 
 
 def test_follow_up_cards_are_bounded_and_route_safely() -> None:

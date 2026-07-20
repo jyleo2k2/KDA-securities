@@ -379,3 +379,25 @@ def test_educational_portfolio_questions_reach_input_collection(
 
     assert plan.intent == ChatIntent.EDUCATIONAL_PORTFOLIO
     assert plan.blocked_reason is None
+
+
+@pytest.mark.parametrize(
+    "message",
+    (
+        "한국 기준금리와 소비자물가를 알려줘",
+        "65세 기대수명 공식 통계를 보여줘",
+        "미국 10년 국채금리와 기대인플레이션을 알려줘",
+    ),
+)
+def test_macro_questions_route_to_official_evidence(message: str) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent is ChatIntent.MACRO_EVIDENCE
+    assert plan.blocked_reason is None
+
+
+def test_explicit_macro_request_takes_priority_over_etf_theme() -> None:
+    plan = plan_question("반도체 ETF 테마와 한국 기준금리 거시지표를 같이 보여줘")
+
+    assert plan.intent is ChatIntent.MACRO_EVIDENCE
+    assert plan.blocked_reason is None

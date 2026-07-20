@@ -18,10 +18,15 @@ from .models import (
     SourceChip,
 )
 
-ASSUMPTION_VERSION = "2026-07-20.1"
+ASSUMPTION_VERSION = "2026-07-20.2"
 ASSUMPTION_SOURCE = SourceChip(
     label="수익률 가정 모델",
     reference="docs/30_스펙/수익률_가정_모델.md",
+    as_of=date(2026, 7, 20),
+)
+INFLATION_ASSUMPTION_SOURCE = SourceChip(
+    label="한국은행 물가안정목표 기반 기본 물가가정 2.0%",
+    reference="https://www.bok.or.kr/portal/main/contents.do?menuNo=200291",
     as_of=date(2026, 7, 20),
 )
 ANNUAL_COST_PERCENT = Decimal("0.5")

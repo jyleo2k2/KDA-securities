@@ -16,6 +16,7 @@ from .assumptions import (
     ALLOCATION_MATRIX,
     ASSUMPTION_SOURCE,
     ASSUMPTION_VERSION,
+    INFLATION_ASSUMPTION_SOURCE,
     age_band,
     net_annual_return_percent,
 )
@@ -29,9 +30,9 @@ from .models import (
 from .portfolio import MONEY_QUANTUM
 
 ENGINE_NAME = "accumulation_simulation"
-ENGINE_VERSION = "2026-07-15.1"
+ENGINE_VERSION = "2026-07-20.2"
 TARGET_AGE = 55
-# TODO: 확인 필요 — 물가 가정 수치는 미확정(스펙에는 공식만 존재), 잠정 2.0%.
+# 승인된 기본 실질가치 환산 가정. 최신 CPI 관측값으로 자동 변경하지 않는다.
 DEFAULT_INFLATION_PERCENT = Decimal("2.0")
 ASSUMPTION_NOTICE = (
     "미래 예측이 아니라 사용자가 선택하는 교육용 가정 시나리오다. "
@@ -129,7 +130,7 @@ def simulate_accumulation(inputs: SimulationInput) -> SimulationEvaluation:
             projections=[],
             band_segments=[],
             assumption_notice=ASSUMPTION_NOTICE,
-            evidence=[ASSUMPTION_SOURCE],
+            evidence=_simulation_evidence(inputs),
         )
 
     months = years * 12
@@ -196,5 +197,12 @@ def simulate_accumulation(inputs: SimulationInput) -> SimulationEvaluation:
         projections=projections,
         band_segments=band_segments,
         assumption_notice=ASSUMPTION_NOTICE,
-        evidence=[ASSUMPTION_SOURCE],
+        evidence=_simulation_evidence(inputs),
     )
+
+
+def _simulation_evidence(inputs: SimulationInput) -> list[SourceChip]:
+    evidence = [ASSUMPTION_SOURCE]
+    if inputs.inflation_percent == DEFAULT_INFLATION_PERCENT:
+        evidence.append(INFLATION_ASSUMPTION_SOURCE)
+    return evidence
