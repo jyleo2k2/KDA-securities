@@ -229,6 +229,71 @@ export interface SimulationEvaluation {
   evidence: SourceChip[];
 }
 
+// ── /engine/pension-calculator ──
+export interface PensionCalculatorInput {
+  current_age: number;
+  contribution_end_age: number;
+  monthly_contribution_krw: string;
+  current_balance_krw?: string;
+  account_type: AccountType;
+  risk_profile: RiskProfile;
+  strategy_id?: string | null;
+  payout_years?: number;
+  scenario?: AssumptionScenario;
+}
+
+export interface PensionCalculatorHeadline {
+  total_krw: string;
+  total_principal_krw: string;
+  total_gain_krw: string;
+  monthly_payout_pretax_krw: string;
+  monthly_payout_after_tax_krw: string;
+  contribution_years: number;
+}
+
+export interface PensionCalculatorYear {
+  year_index: number;
+  age: number;
+  cumulative_principal_krw: string;
+  cumulative_gain_krw: string;
+  balance_krw: string;
+}
+
+export interface PensionCalculatorStrategy {
+  strategy_id: string;
+  risk_profile: RiskProfile;
+  net_annual_return_percent: string;
+  growth_percent: string;
+  safe_percent: string;
+  cash_percent: string;
+  within_profile: boolean;
+  default_visible: boolean;
+}
+
+export interface PensionCalculatorTax {
+  withholding_rate_percent_by_year: string[];
+  effective_rate_percent: string;
+  annual_payout_krw: string;
+  exceeds_annual_15m_threshold: boolean;
+  deferred_severance_excluded: true;
+}
+
+export interface PensionCalculatorAssumption {
+  version: string;
+  scenario: AssumptionScenario;
+  source: SourceChip;
+  notice: string;
+}
+
+export interface PensionCalculatorEvaluation {
+  headline: PensionCalculatorHeadline;
+  yearly: PensionCalculatorYear[];
+  strategies: PensionCalculatorStrategy[];
+  tax: PensionCalculatorTax;
+  assumption: PensionCalculatorAssumption;
+  warnings: string[];
+}
+
 // ── /engine/allocation-example ──
 export interface AllocationExampleInput {
   current_age: number;

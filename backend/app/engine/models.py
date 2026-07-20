@@ -1,6 +1,7 @@
 from datetime import date
 from decimal import Decimal
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -323,3 +324,96 @@ class ScenarioEvaluation(BaseModel):
     asset_allocations: list[AssetAllocation]
     duplicated_asset_classes: list[str]
     source: SourceChip
+
+
+class PensionCalculatorInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    current_age: int = Field(ge=20, le=69)
+    contribution_end_age: int = Field(ge=55, le=70)
+    monthly_contribution_krw: Decimal = Field(
+        ge=0,
+        le=Decimal("10000000"),
+        allow_inf_nan=False,
+    )
+    current_balance_krw: Decimal = Field(
+        default=Decimal("0"),
+        ge=0,
+        allow_inf_nan=False,
+    )
+    account_type: AccountType
+    risk_profile: RiskProfile
+    strategy_id: str | None = None
+    payout_years: int = Field(default=20, ge=5, le=40)
+    scenario: AssumptionScenario = AssumptionScenario.BASE
+
+    @model_validator(mode="after")
+    def validate_calculation_scope(self) -> "PensionCalculatorInput":
+        if self.contribution_end_age <= self.current_age:
+            raise ValueError("contribution_end_age must be greater than current_age")
+        if (
+            self.monthly_contribution_krw == 0
+            and self.current_balance_krw == 0
+        ):
+            raise ValueError("a balance or monthly contribution is required")
+        if self.strategy_id is not None:
+            from .educational_portfolio import PROFILE_POLICY
+
+            known_strategy_ids = {
+                str(policy["strategy"]) for policy in PROFILE_POLICY.values()
+            }
+            if self.strategy_id not in known_strategy_ids:
+                raise ValueError("strategy_id is not a known educational strategy")
+        return self
+
+
+class PensionCalculatorHeadline(BaseModel):
+    total_krw: Decimal
+    total_principal_krw: Decimal
+    total_gain_krw: Decimal
+    monthly_payout_pretax_krw: Decimal
+    monthly_payout_after_tax_krw: Decimal
+    contribution_years: int
+
+
+class PensionCalculatorYear(BaseModel):
+    year_index: int
+    age: int
+    cumulative_principal_krw: Decimal
+    cumulative_gain_krw: Decimal
+    balance_krw: Decimal
+
+
+class PensionCalculatorStrategy(BaseModel):
+    strategy_id: str
+    risk_profile: RiskProfile
+    net_annual_return_percent: Decimal
+    growth_percent: Decimal
+    safe_percent: Decimal
+    cash_percent: Decimal
+    within_profile: bool
+    default_visible: bool
+
+
+class PensionCalculatorTax(BaseModel):
+    withholding_rate_percent_by_year: list[Decimal]
+    effective_rate_percent: Decimal
+    annual_payout_krw: Decimal
+    exceeds_annual_15m_threshold: bool
+    deferred_severance_excluded: Literal[True]
+
+
+class PensionCalculatorAssumption(BaseModel):
+    version: str
+    scenario: AssumptionScenario
+    source: SourceChip
+    notice: str
+
+
+class PensionCalculatorEvaluation(BaseModel):
+    headline: PensionCalculatorHeadline
+    yearly: list[PensionCalculatorYear]
+    strategies: list[PensionCalculatorStrategy]
+    tax: PensionCalculatorTax
+    assumption: PensionCalculatorAssumption
+    warnings: list[str]
