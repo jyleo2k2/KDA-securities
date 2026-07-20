@@ -16,6 +16,7 @@ from starlette.responses import StreamingResponse
 
 from ..auth import require_supabase_user_id
 from ..chat import ChatRequest, ChatResponse, ChatService
+from ..chat.cards import ChatCardCatalog, chat_card_catalog
 from ..chat.heroes import DemoHeroPortfolio, build_demo_heroes
 from ..chat.models import ChatCapabilities, ChatIntent, ScenarioSummary
 from ..chat.narrator import NARRATABLE_INTENTS, ClaudeNarrator
@@ -278,6 +279,11 @@ def chat_capabilities(
     service: Annotated[ChatService, Depends(get_chat_service)],
 ) -> ChatCapabilities:
     return service.capabilities()
+
+
+@router.get("/chat/cards", response_model=ChatCardCatalog)
+def chat_cards() -> ChatCardCatalog:
+    return chat_card_catalog()
 
 
 @router.get("/chat/demo/scenarios", response_model=list[ScenarioSummary])

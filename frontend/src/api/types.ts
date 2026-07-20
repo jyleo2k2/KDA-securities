@@ -626,7 +626,7 @@ export interface BenchmarkSummary {
   account_type_stats: BenchmarkAccountTypeStat[];
 }
 
-export type VisualizationKind = "asset_allocation" | "risk_cap" | "tax_summary";
+export type VisualizationKind = "asset_allocation" | "risk_cap" | "tax_summary" | "sleeve_allocation" | "stress_scenarios" | "disclosure_comparison" | "accumulation_projection";
 export type VisualizationDatumRole = "segment" | "current" | "limit" | "value";
 
 export interface VisualizationDatum {
@@ -636,6 +636,18 @@ export interface VisualizationDatum {
   role: VisualizationDatumRole;
 }
 
+export interface VisualizationPoint {
+  position: number;
+  label: string;
+  value: string;
+}
+
+export interface VisualizationSeries {
+  label: string;
+  unit: string;
+  points: VisualizationPoint[];
+}
+
 export interface ChatVisualization {
   kind: VisualizationKind;
   title: string;
@@ -643,6 +655,29 @@ export interface ChatVisualization {
   data_boundary: DataBoundary;
   evidence_ids: string[];
   items: VisualizationDatum[];
+  series: VisualizationSeries[];
+}
+
+export interface SuggestedFollowUp {
+  follow_up_id: string;
+  label: string;
+  message: string;
+}
+
+export type ChatCardCondition = "requires_scenario" | "requires_survey" | "requires_auth";
+
+export interface ChatCard {
+  card_id: string;
+  title: string;
+  message: string;
+  intent: ChatIntent;
+  conditions: ChatCardCondition[];
+  priority: number;
+  preview: string | null;
+}
+
+export interface ChatCardCatalog {
+  cards: ChatCard[];
 }
 
 export interface CompletedSurveyProfile {
@@ -683,6 +718,7 @@ export interface ChatResponse {
   sections: AnswerSection[];
   news_items: ChatNewsItem[];
   visualizations: ChatVisualization[];
+  suggested_follow_ups: SuggestedFollowUp[];
   sources: SourceEvidence[];
   numeric_evidence: NumericEvidence[];
   engine_results: unknown[];

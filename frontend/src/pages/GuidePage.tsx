@@ -13,6 +13,7 @@ import {
 import {
   ApiError,
   deleteChatSession,
+  getChatCards,
   getChatSessions,
   getMyPensionContext,
   getScenarios,
@@ -23,6 +24,7 @@ import {
 import { conicGradient } from "../charts";
 import type {
   CompletedSurveyProfile,
+  ChatCard,
   ConversationContext,
   ChatResponse,
   ChatSessionSummary,
@@ -46,24 +48,6 @@ interface ConversationMessage {
   failedPrompt?: string;
   createdAt: Date;
 }
-
-const SUGGESTED_PROMPTS = [
-  {
-    category: "든든한 노후 설계",
-    prompt: "내 나이에 맞는 연금 저축 전략을 알려줘.",
-    icon: "sun" as const,
-  },
-  {
-    category: "한눈에 보는 자산",
-    prompt: "내 IRP·연금저축 수익률을 진단해 줄래?",
-    icon: "chart" as const,
-  },
-  {
-    category: "놓치기 쉬운 혜택",
-    prompt: "올해 받을 수 있는 연금 세액공제가 궁금해.",
-    icon: "star" as const,
-  },
-];
 
 const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   account_rule: "계좌 규칙",
@@ -100,6 +84,20 @@ function displayText(value: string): string {
 
 function newsDate(value?: string | null): string | null {
   return value ? new Date(value).toLocaleDateString("ko-KR") : null;
+}
+
+export function filterChatCards(
+  cards: ChatCard[],
+  state: { hasScenario: boolean; hasSurvey: boolean; hasAuth: boolean },
+): ChatCard[] {
+  const visible = {
+    requires_scenario: state.hasScenario,
+    requires_survey: state.hasSurvey,
+    requires_auth: state.hasAuth,
+  };
+  return [...cards]
+    .filter((card) => card.conditions.every((condition) => visible[condition] === true))
+    .sort((left, right) => left.priority - right.priority);
 }
 
 function Icon({
@@ -167,6 +165,46 @@ function VisualizationCard({ visualization }: { visualization: ChatVisualization
           <div className="allocation-track" role="img" aria-label={`위험자산 ${summary}`}>
             <span style={{ width: `${percent}%` }} />
           </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (visualization.kind === "stress_scenarios" || visualization.kind === "disclosure_comparison") {
+    return (
+      <section className="allocation-chart" aria-label={visualization.title}>
+        <h3>{visualization.title}</h3>
+        <p className="visualization-description">{visualization.description}</p>
+        <div className="tax-summary-grid">
+          {visualization.items.map((item) => (
+            <div key={item.label}>
+              <span>{item.label}</span>
+              <strong>{numericText(item.value, item.unit)}</strong>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (visualization.series?.length) {
+    return (
+      <section className="allocation-chart" aria-label={visualization.title}>
+        <h3>{visualization.title}</h3>
+        <p className="visualization-description">{visualization.description}</p>
+        <div className="projection-series">
+          {visualization.series.map((series) => (
+            <div className="projection-series-row" key={series.label}>
+              <strong>{series.label}</strong>
+              <div className="projection-points">
+                {series.points.map((point) => (
+                  <span key={`${series.label}-${point.position}`} title={`${point.label} ${numericText(point.value, series.unit)}`}>
+                    {point.label}<b>{numericText(point.value, series.unit)}</b>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
     );
@@ -247,7 +285,15 @@ function NewsCards({ response }: { response: ChatResponse }) {
   );
 }
 
-function AssistantMessage({ response, text }: { response?: ChatResponse; text: string }) {
+function AssistantMessage({
+  response,
+  text,
+  onFollowUp,
+}: {
+  response?: ChatResponse;
+  text: string;
+  onFollowUp?: (message: string) => void;
+}) {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   if (!response) return <p className="message-copy">{text}</p>;
@@ -282,6 +328,16 @@ function AssistantMessage({ response, text }: { response?: ChatResponse; text: s
           key={`${visualization.kind}-${index}`}
         />
       ))}
+
+      {(response.suggested_follow_ups ?? []).length > 0 && (
+        <div className="follow-up-cards" aria-label="이어서 물어보기">
+          {response.suggested_follow_ups.map((followUp) => (
+            <button key={followUp.follow_up_id} onClick={() => onFollowUp?.(followUp.message)} type="button">
+              {followUp.label}<Icon name="chevron" size={14} />
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* narration_reasoning은 thinking 요약이라 대부분 영어로 나와 화면에 노출하지 않는다.
           응답 필드는 그대로 유지해 디버깅·로그에서 확인한다. */}
@@ -354,6 +410,7 @@ export function GuidePage({
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [input, setInput] = useState("");
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
+  const [chatCards, setChatCards] = useState<ChatCard[]>([]);
   const [selectedScenario, setSelectedScenario] = useState(initialScenarioCode ?? "");
   const [userContext, setUserContext] =
     useState<DemoUserFinancialContext | null>(null);
@@ -427,6 +484,12 @@ export function GuidePage({
     [scenarios, selectedScenario],
   );
 
+  const visibleChatCards = useMemo(() => filterChatCards(chatCards, {
+    hasScenario: Boolean(selectedScenario || userContext?.scenario_code),
+    hasSurvey: surveyProfile !== null,
+    hasAuth: auth.session !== null,
+  }), [auth.session, chatCards, selectedScenario, surveyProfile, userContext?.scenario_code]);
+
   const pensionTaxInput = useMemo<PensionTaxScenarioInput | undefined>(() => {
     if (!pensionSavingsBalance.trim() || !irpBalance.trim()) return undefined;
     if (incomeBasis !== "unknown" && !incomeAmount.trim()) return undefined;
@@ -469,10 +532,11 @@ export function GuidePage({
     let retryTimer: number | undefined;
 
     const check = () => {
-      getScenarios()
-        .then((scenarioData) => {
+      Promise.all([getScenarios(), getChatCards()])
+        .then(([scenarioData, catalog]) => {
           if (cancelled) return;
           setScenarios(scenarioData);
+          setChatCards(catalog.cards);
           setServerReady(true);
         })
         .catch(() => {
@@ -1129,14 +1193,14 @@ export function GuidePage({
                 </div>
               )}
 
-              <div className="prompt-grid design-prompt-grid">
-                {SUGGESTED_PROMPTS.map(({ category, prompt, icon }) => (
-                  <button type="button" key={prompt} onClick={() => void submitPrompt(prompt)}>
-                    <span className="design-prompt-icon"><Icon name={icon} size={27} /></span>
-                    <span className="design-prompt-copy"><small>{category}</small><strong>{prompt}</strong></span>
-                  </button>
-                ))}
-              </div>
+                <div className="prompt-carousel" aria-label="추천 질문">
+                  {visibleChatCards.map((card) => (
+                    <button type="button" key={card.card_id} onClick={() => void submitPrompt(card.message)}>
+                      <span className="design-prompt-icon"><Icon name="spark" size={24} /></span>
+                      <span className="design-prompt-copy"><small>추천 질문</small><strong>{card.title}</strong><em>{card.message}</em></span>
+                    </button>
+                  ))}
+                </div>
 
               <p className="capability-note">연금 도우미는 참고용 정보를 제공하며, 실제 투자·가입 결정은 본인의 판단과 전문가 상담을 거쳐 주세요.</p>
             </div>
@@ -1151,7 +1215,7 @@ export function GuidePage({
                   {message.role === "assistant" && <div className="assistant-avatar"><Icon name="spark" size={16} /></div>}
                   <div className="message-group">
                     <div className="message-bubble">
-                      <AssistantMessage response={message.response} text={message.text} />
+                      <AssistantMessage onFollowUp={(prompt) => void submitPrompt(prompt)} response={message.response} text={message.text} />
                     </div>
                     {message.failedPrompt && (
                       <button className="retry-button" type="button" onClick={() => void submitPrompt(message.failedPrompt!)} disabled={isSending || deletingSessionId !== null}>

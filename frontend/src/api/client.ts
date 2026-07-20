@@ -1,5 +1,6 @@
 import type {
   BenchmarkSummary,
+  ChatCardCatalog,
   CompletedSurveyProfile,
   ConversationContext,
   ChatResponse,
@@ -170,6 +171,10 @@ export function getBenchmarkSummary(): Promise<BenchmarkSummary> {
 
 export function getScenarios(): Promise<ScenarioSummary[]> {
   return apiGet("/chat/demo/scenarios");
+}
+
+export function getChatCards(): Promise<ChatCardCatalog> {
+  return apiGet("/chat/cards");
 }
 
 export function getDemoHeroes(): Promise<DemoHeroPortfolio[]> {

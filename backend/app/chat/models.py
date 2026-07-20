@@ -113,6 +113,10 @@ class VisualizationKind(StrEnum):
     ASSET_ALLOCATION = "asset_allocation"
     RISK_CAP = "risk_cap"
     TAX_SUMMARY = "tax_summary"
+    SLEEVE_ALLOCATION = "sleeve_allocation"
+    STRESS_SCENARIOS = "stress_scenarios"
+    DISCLOSURE_COMPARISON = "disclosure_comparison"
+    ACCUMULATION_PROJECTION = "accumulation_projection"
 
 
 class VisualizationDatumRole(StrEnum):
@@ -264,6 +268,14 @@ class ChatNewsItem(BaseModel):
         return self
 
 
+class SuggestedFollowUp(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    follow_up_id: str
+    label: str
+    message: str
+
+
 class VisualizationDatum(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -271,6 +283,22 @@ class VisualizationDatum(BaseModel):
     value: Decimal
     unit: str
     role: VisualizationDatumRole
+
+
+class VisualizationPoint(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    position: int
+    label: str
+    value: Decimal
+
+
+class VisualizationSeries(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label: str
+    unit: str
+    points: list[VisualizationPoint] = Field(default_factory=list)
 
 
 class ChatVisualization(BaseModel):
@@ -282,6 +310,7 @@ class ChatVisualization(BaseModel):
     data_boundary: DataBoundary
     evidence_ids: list[str] = Field(default_factory=list)
     items: list[VisualizationDatum] = Field(min_length=1)
+    series: list[VisualizationSeries] = Field(default_factory=list)
 
 
 class ChatResponse(BaseModel):
@@ -298,6 +327,7 @@ class ChatResponse(BaseModel):
     sections: list[AnswerSection] = Field(default_factory=list)
     news_items: list[ChatNewsItem] = Field(default_factory=list)
     visualizations: list[ChatVisualization] = Field(default_factory=list)
+    suggested_follow_ups: list[SuggestedFollowUp] = Field(default_factory=list)
     sources: list[SourceEvidence] = Field(default_factory=list)
     numeric_evidence: list[NumericEvidence] = Field(default_factory=list)
     engine_results: list[RiskCapEvaluation] = Field(default_factory=list)

@@ -6,15 +6,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   deleteChatSession,
+  getChatCards,
   getChatSessions,
   getMyPensionContext,
   getScenarios,
   getStoredChatMessages,
   sendAuthenticatedChatStream,
 } from "../api/client";
-import type { ChatSessionSummary } from "../api/types";
+import type { ChatCard, ChatSessionSummary } from "../api/types";
 import { useSupabaseAuth } from "../auth/useSupabaseAuth";
-import { GuidePage } from "./GuidePage";
+import { filterChatCards, GuidePage } from "./GuidePage";
 
 vi.mock("../api/client", () => ({
   ApiError: class ApiError extends Error {
@@ -26,6 +27,7 @@ vi.mock("../api/client", () => ({
     }
   },
   deleteChatSession: vi.fn(),
+  getChatCards: vi.fn(),
   getChatSessions: vi.fn(),
   getMyPensionContext: vi.fn(),
   getScenarios: vi.fn(),
@@ -61,6 +63,7 @@ describe("GuidePage chat history deletion", () => {
       signOut: vi.fn(),
     } as unknown as ReturnType<typeof useSupabaseAuth>);
     vi.mocked(getScenarios).mockResolvedValue([]);
+    vi.mocked(getChatCards).mockResolvedValue({ cards: [] });
     vi.mocked(getChatSessions).mockResolvedValue([CHAT_SESSION]);
     vi.mocked(getMyPensionContext).mockResolvedValue({
       scenario_code: "",
@@ -200,5 +203,45 @@ describe("GuidePage chat history deletion", () => {
       await Promise.resolve();
     });
     expect(screen.queryByRole("button", { name: "대화 삭제: IRP 규칙" })).not.toBeInTheDocument();
+  });
+});
+
+describe("filterChatCards", () => {
+  it("hides unknown and unmet conditions, then sorts by priority", () => {
+    const cards: ChatCard[] = [
+      {
+        card_id: "always",
+        title: "항상",
+        message: "오늘 국내 증시 뉴스 알려줘.",
+        intent: "news",
+        conditions: [],
+        priority: 20,
+        preview: null,
+      },
+      {
+        card_id: "survey",
+        title: "설문",
+        message: "내 나이에 맞는 연금 저축 전략을 알려줘.",
+        intent: "educational_portfolio",
+        conditions: ["requires_survey"],
+        priority: 10,
+        preview: null,
+      },
+      {
+        card_id: "unknown",
+        title: "미지",
+        message: "테스트",
+        intent: "news",
+        conditions: ["future_condition" as never],
+        priority: 1,
+        preview: null,
+      },
+    ];
+
+    expect(filterChatCards(cards, {
+      hasScenario: false,
+      hasSurvey: true,
+      hasAuth: false,
+    }).map((card) => card.card_id)).toEqual(["survey", "always"]);
   });
 });
