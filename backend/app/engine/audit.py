@@ -1,9 +1,12 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import UUID
 
 import psycopg
 from psycopg.types.json import Jsonb
+from psycopg_pool import ConnectionPool
 
 from .models import RiskCapEvaluation, RiskCapEvidence
 
@@ -31,10 +34,22 @@ def validate_rule_parameters(
 class EngineAuditRepository:
     """Persist an already-computed deterministic result and its source chips."""
 
-    def __init__(self, database_url: str) -> None:
+    def __init__(
+        self, database_url: str, *, pool: ConnectionPool | None = None
+    ) -> None:
         if not database_url:
             raise ValueError("database_url is required")
         self._database_url = database_url
+        self._pool = pool
+
+    @contextmanager
+    def _connection(self) -> Iterator[psycopg.Connection]:
+        if self._pool is None:
+            with psycopg.connect(self._database_url) as connection:
+                yield connection
+            return
+        with self._pool.connection() as connection:
+            yield connection
 
     def record(
         self,
@@ -47,7 +62,7 @@ class EngineAuditRepository:
             raise RuntimeError("one engine run must use exactly one rule version")
         rule_version = rule_versions.pop()
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connection() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
