@@ -22,6 +22,11 @@ import {
   getStoredChatMessages,
 } from "../api/client";
 import { ChatVisualization } from "../components/ChatVisualization";
+import { ChatIcon as Icon } from "../components/ChatIcon";
+import {
+  ChatEtfThemeCards,
+  ChatQuestionRecommendations,
+} from "../components/ChatRecommendations";
 import {
   EducationalPortfolioReview,
   PortfolioHoldingsPanel,
@@ -96,11 +101,6 @@ export const ETF_THEME_CARDS = [
   { number: 22, title: "메타버스", message: "메타버스 테마가 뭐야?" },
   { number: 23, title: "조선", message: "조선 테마가 뭐야?" },
 ] as const;
-const INITIAL_ETF_THEME_CARD_COUNT = 5;
-const REMAINING_ETF_THEME_CARD_COUNT = (
-  ETF_THEME_CARDS.length - INITIAL_ETF_THEME_CARD_COUNT
-);
-
 function numericText(value: string | number, unit: string): string {
   if (unit.toUpperCase() === "KRW") {
     return `${Number(value).toLocaleString("ko-KR")}원`;
@@ -128,29 +128,6 @@ export function filterChatCards(
   return [...cards]
     .filter((card) => card.conditions.every((condition) => visible[condition] === true))
     .sort((left, right) => left.priority - right.priority);
-}
-
-function Icon({
-  name,
-  size = 20,
-}: {
-  name: "spark" | "send" | "book" | "database" | "chevron" | "shield" | "refresh" | "sun" | "chart" | "star" | "trash";
-  size?: number;
-}) {
-  const paths = {
-    spark: <path d="M12 2l1.7 4.6L18 8.3l-4.3 1.7L12 14.5 10.3 10 6 8.3l4.3-1.7L12 2Zm6 10 .9 2.2L21 15l-2.1.8L18 18l-.9-2.2L15 15l2.1-.8L18 12ZM6 14l1.2 3.1L10 18.2l-2.8 1.1L6 22l-1.2-2.7L2 18.2l2.8-1.1L6 14Z" />,
-    send: <path d="m21 3-7.6 18-4.2-7.1L2 9.7 21 3Zm0 0L9.2 13.9" />,
-    book: <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14Z" />,
-    database: <><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></>,
-    chevron: <path d="m9 18 6-6-6-6" />,
-    shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Zm-3-10 2 2 4-4" />,
-    refresh: <path d="M20 11a8.1 8.1 0 1 0 2 5M20 4v7h-7" />,
-    sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" /></>,
-    chart: <><path d="M4 20V4M4 20h16" /><path d="m8 15 3-4 3 2 5-6" /></>,
-    star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />,
-    trash: <path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6" />,
-  };
-  return <svg aria-hidden="true" viewBox="0 0 24 24" width={size} height={size}>{paths[name]}</svg>;
 }
 
 function SourceLink({ locator, children }: { locator: string; children: ReactNode }) {
@@ -1477,19 +1454,10 @@ export function GuidePage({
                 </div>
               )}
 
-              <section className="chat-home-card-section" aria-labelledby="chat-question-heading">
-                <header className="chat-home-section-heading">
-                  <p>추천 질문</p>
-                  <h2 id="chat-question-heading">챗봇에게 무엇이든 물어보세요</h2>
-                </header>
-                <div className="prompt-carousel" aria-label="챗봇 추천 질문">
-                  {visibleChatCards.filter((card) => card.intent !== "etf_theme").map((card) => (
-                    <button type="button" key={card.card_id} onClick={() => void submitPrompt(card.message)}>
-                      <span className="design-prompt-copy"><small>추천 질문</small><strong>{card.title}</strong><em>{card.message}</em></span>
-                    </button>
-                  ))}
-                </div>
-              </section>
+              <ChatQuestionRecommendations
+                cards={visibleChatCards.filter((card) => card.intent !== "etf_theme")}
+                onSubmit={(message) => void submitPrompt(message)}
+              />
 
               <section className="chat-home-card-section holdings-section" aria-labelledby="holdings-heading">
                 <header className="chat-home-section-heading">
@@ -1507,55 +1475,12 @@ export function GuidePage({
                 />
               </section>
 
-              <section className="chat-home-card-section etf-theme-section" aria-labelledby="etf-theme-heading">
-                <header className="chat-home-section-heading">
-                  <p>ETF 테마</p>
-                  <h2 id="etf-theme-heading">ETF 섹터 알아보기</h2>
-                  <span>테마의 구성과 유의점을 교육용으로 확인해 보세요.</span>
-                </header>
-                <div className="sector-card-grid" aria-label="ETF 섹터 카드">
-                  {ETF_THEME_CARDS.slice(0, INITIAL_ETF_THEME_CARD_COUNT).map((card) => (
-                    <button
-                      type="button"
-                      key={card.title}
-                      aria-label={`${card.title} ETF 테마 설명 보기`}
-                      onClick={() => void submitPrompt(card.message)}
-                    >
-                      <span className="sector-card-icon"><Icon name="chart" size={19} /></span>
-                      <span><small>ETF 테마 {card.number}</small><strong>{card.title}</strong></span>
-                      <Icon name="chevron" size={16} />
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    className="sector-card-toggle"
-                    aria-expanded={allEtfThemesVisible}
-                    aria-label={allEtfThemesVisible
-                      ? "ETF 테마 목록 접기"
-                      : `나머지 ETF 테마 ${REMAINING_ETF_THEME_CARD_COUNT}개 더보기`}
-                    onClick={() => setAllEtfThemesVisible((visible) => !visible)}
-                  >
-                    <span className="sector-card-icon"><Icon name="chart" size={19} /></span>
-                    <span>
-                      <small>{allEtfThemesVisible ? "ETF 테마 목록" : `+${REMAINING_ETF_THEME_CARD_COUNT}개`}</small>
-                      <strong>{allEtfThemesVisible ? "접기" : "더보기"}</strong>
-                    </span>
-                    <Icon name="chevron" size={16} />
-                  </button>
-                  {allEtfThemesVisible && ETF_THEME_CARDS.slice(INITIAL_ETF_THEME_CARD_COUNT).map((card) => (
-                    <button
-                      type="button"
-                      key={card.title}
-                      aria-label={`${card.title} ETF 테마 설명 보기`}
-                      onClick={() => void submitPrompt(card.message)}
-                    >
-                      <span className="sector-card-icon"><Icon name="chart" size={19} /></span>
-                      <span><small>ETF 테마 {card.number}</small><strong>{card.title}</strong></span>
-                      <Icon name="chevron" size={16} />
-                    </button>
-                  ))}
-                </div>
-              </section>
+              <ChatEtfThemeCards
+                allVisible={allEtfThemesVisible}
+                onSubmit={(message) => void submitPrompt(message)}
+                onToggle={() => setAllEtfThemesVisible((visible) => !visible)}
+                themeCards={ETF_THEME_CARDS}
+              />
 
               <p className="capability-note">연금 도우미는 참고용 정보를 제공하며, 실제 투자·가입 결정은 본인의 판단과 전문가 상담을 거쳐 주세요.</p>
             </div>
