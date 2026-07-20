@@ -27,7 +27,7 @@
 
 ## 핫존 (별도 승인 없이 수정 금지)
 
-- `narrator.py`의 검증 가드: `_number_tokens`, `_korean_number_tokens`, `_unsafe_claim_instances`, `_adds_unverified_content`, `_NEGATION` 및 관련 정규식 — 가드 보강 전용 태스크에서만 수정한다.
+- `narration_guard.py`의 검증 가드: `_number_tokens`, `_korean_number_tokens`, `_unsafe_claim_instances`, `_adds_unverified_content`, `_NEGATION` 및 관련 정규식 — 가드 보강 전용 태스크에서만 수정한다.
 - 내레이터 프리워밍: 반드시 버리는(throwaway) Agent로 호출한다. `self.agent`를 부팅 스레드 이벤트루프에서 `run_sync`하면 이후 요청이 무한 행에 빠진다(실측 재현). 회귀 테스트 `test_narrator_prewarm_uses_throwaway_agent`를 절대 깨지 않는다.
 - 성능 구성 고정(2026-07-18 실측): Haiku + thinking OFF(Haiku는 adaptive 미지원, enabled는 오히려 느림), 결정론 내레이션 LRU 캐시, 서버측 프롬프트 캐싱.
 
