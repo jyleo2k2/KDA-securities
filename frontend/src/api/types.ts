@@ -824,6 +824,46 @@ export interface PortfolioRiskEvaluation {
   warnings: string[];
 }
 
+export interface PortfolioPlanningComponent {
+  isu_code: string;
+  isu_name: string;
+  sleeve: string;
+  target_percent: string;
+  cma_assumption_code: string;
+  cma_percent: string;
+  uncertainty_discount_percent: string;
+  annual_cost_drag_percent: string;
+  gross_planning_return_percent: string;
+  net_planning_return_percent: string;
+  proxy_used: boolean;
+  warnings: string[];
+}
+
+export interface PortfolioPlanningEvaluation {
+  engine_name: string;
+  engine_version: string;
+  policy_version: string;
+  cma_policy_id: string;
+  cma_policy_status: string;
+  usage_label: string;
+  retirement_start_age: number;
+  portfolio_horizon_years: number;
+  cma_source_horizon_min_years: number;
+  cma_source_horizon_max_years: number;
+  annual_review_required: boolean;
+  coverage_weight_percent: string;
+  gross_planning_return_percent: string | null;
+  net_planning_return_percent: string | null;
+  conservative_planning_return_percent: string | null;
+  base_planning_return_percent: string | null;
+  is_forecast: boolean;
+  historical_performance_used: boolean;
+  risk_adjustment_included: boolean;
+  components: PortfolioPlanningComponent[];
+  sources: SourceChip[];
+  warnings: string[];
+}
+
 export interface EducationalPortfolioEvaluation {
   engine_name: string;
   engine_version: string;
@@ -849,7 +889,7 @@ export interface EducationalPortfolioEvaluation {
   }>;
   candidates: EducationalEtfCandidate[];
   portfolio_risk: PortfolioRiskEvaluation;
-  planning_return: unknown;
+  planning_return: PortfolioPlanningEvaluation;
   rebalancing: RebalancingGuidance;
   sources: SourceEvidence[];
   warnings: string[];
