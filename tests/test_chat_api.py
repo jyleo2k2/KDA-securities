@@ -199,6 +199,7 @@ def test_demo_chat_streams_progress_before_final_response() -> None:
         block for block in blocks if block.startswith("event: response")
     )
     final = json.loads(final_block.split("data: ", 1)[1])
+    assert len(deltas) == 1
     assert "".join(deltas) == final["response"]["answer"]
 
 
@@ -252,6 +253,7 @@ def test_demo_stream_sends_engine_answer_before_verified_narration() -> None:
     assert event_names.index("answer_delta") < event_names.index(
         "narration_update"
     )
+    assert event_names.count("answer_delta") == 1
     assert streamed_answer == engine_answer
     assert narration["answer"].startswith("검증된 설명")
     assert final_sse_response(response.text)["response"]["answer"] == narration[
