@@ -99,6 +99,9 @@ async def lifespan(app: FastAPI):
             precompute_task.cancel()
             with suppress(asyncio.CancelledError):
                 await precompute_task
+        narrator = get_chat_narrator(settings)
+        if narrator is not None:
+            await asyncio.to_thread(narrator.flush_cache)
         clear_chat_dependencies()
         close_pool(pool)
         get_database_pool.cache_clear()
