@@ -38,9 +38,10 @@ DB형, 연금저축보험, 연금저축신탁은 생성하지 않는다. 연금�
 
 ## 앱 시연용 대표 고객 6명
 
-합성 고객 10,000명은 통계·벤치마크용이며 Auth 사용자가 아니다. 앱에서 직접
-로그인해 시연하는 대표 고객은 10,000명 중 실제 6개 기준 행을 골라 상세화한
-고객이다. `benchmark_user_id`와 `benchmark_account_id`로 기준 사용자·계좌를
+합성 고객 10,000명은 통계·벤치마크용이며 Auth 사용자가 아니다. 대표 고객은
+10,000명 중 실제 6개 기준 행을 골라 상세화한 고객이다. 이 중 1~5번만 시연 로그인
+후보이고 `pension_payout_transition`은 데이터·Auth 계정을 유지하되 로그인 후보에서
+제외한다. `benchmark_user_id`와 `benchmark_account_id`로 기준 사용자·계좌를
 연결하므로 사용자 29개 컬럼, 계좌 23개 컬럼, 보유자산 6개 컬럼이 빠지지 않는다.
 `GET /chat/demo/heroes`의 `benchmark_customer`에서 한 명 단위 전체 공통 계약을
 확인할 수 있고, `accounts`는 같은 계좌 잔액을 실제 적격 ETF로 상세 분해한 값이다.
@@ -52,7 +53,11 @@ DB형, 연금저축보험, 연금저축신탁은 생성하지 않는다. 연금�
 | `overlap_risk_concentration` | 정민재(가상) | 42세 | `minjae32` | 여러 연금계좌에 같은 위험자산이 중복된 유형 |
 | `young_retirement_distance` | 김하린(가상) | 29세 | `harin29` | 노후가 멀게 느껴져 연금 운용의 우선순위가 낮은 유형 |
 | `family_budget_pressure` | 최지훈(가상) | 47세 | `jihoon47` | 자녀·주거비로 납입이 빠듯하지만 노후를 걱정하기 시작한 유형 |
-| `pension_payout_transition` | 윤정희(가상) | 55세 | `jeonghee60` | 연금 수령을 시작했거나 수령 직전인 유형 |
+| `pension_payout_transition` | 윤정희(가상) | 55세 | `jeonghee60` | 연금 수령을 시작했거나 수령 직전인 유형(시연 로그인 후보 제외) |
+
+후보 여부의 추적 기준은 `demo_scenario_users.json`의
+`is_demo_login_candidate`이다. 6번 고객은 타 고객 포트폴리오 목록에는 계속 포함될
+수 있지만 시연 로그인 계정의 임의 선택 대상에는 포함하지 않는다.
 
 대표 6명의 ETF 상세 보유는 최신 ready 유니버스에서 계좌 적격성과 253개 과거
 수익 관측을 확인한 상품만 사용한다. KODEX·TIGER·ACE·RISE·SOL·HANARO의 광범위

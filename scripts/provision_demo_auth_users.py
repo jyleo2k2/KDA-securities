@@ -3,6 +3,9 @@
 The tracked manifest contains stable user ids and login ids, but never
 passwords. Passwords are generated into the gitignored ``secrets/`` folder.
 Remote provisioning requires server-only Supabase keys in ``.env``.
+
+Five users are presentation login candidates. The payout-transition user stays
+available as scenario data and as an Auth user, but is excluded from that pool.
 """
 
 from __future__ import annotations
@@ -27,11 +30,13 @@ if str(REPOSITORY_ROOT) not in sys.path:
 DEFAULT_MANIFEST_PATH = REPOSITORY_ROOT / "data" / "mock" / "demo_scenario_users.json"
 DEFAULT_CREDENTIALS_PATH = REPOSITORY_ROOT / "secrets" / "demo_scenario_auth.json"
 DEMO_CONTEXT_AS_OF_DATE = date(2026, 7, 16)
+DEMO_CONTEXT_TAX_YEAR = 2026
+NON_CANDIDATE_SCENARIO_CODE = "pension_payout_transition"
 
 
 def load_manifest(path: Path = DEFAULT_MANIFEST_PATH) -> list[dict[str, Any]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if payload.get("schema_version") != 2:
+    if payload.get("schema_version") != 3:
         raise ValueError("unsupported demo user manifest schema_version")
     users = payload.get("users")
     if not isinstance(users, list) or not users:
@@ -45,6 +50,7 @@ def load_manifest(path: Path = DEFAULT_MANIFEST_PATH) -> list[dict[str, Any]]:
         "representative_age",
         "age_band",
         "login_id",
+        "is_demo_login_candidate",
         "customer_context",
         "pension_savings_contribution_krw",
         "irp_contribution_krw",
@@ -57,11 +63,26 @@ def load_manifest(path: Path = DEFAULT_MANIFEST_PATH) -> list[dict[str, Any]]:
             raise ValueError("demo auth_user_id must be UUID v4")
         if not str(user["login_id"]).endswith("@kda-demo.invalid"):
             raise ValueError("demo login_id must use @kda-demo.invalid")
+        if not isinstance(user["is_demo_login_candidate"], bool):
+            raise ValueError("is_demo_login_candidate must be boolean")
 
     for key in ("auth_user_id", "benchmark_user_id", "scenario_code", "login_id"):
         values = [str(user[key]) for user in users]
         if len(values) != len(set(values)):
             raise ValueError(f"demo user manifest has duplicate {key}")
+    candidates = [user for user in users if user["is_demo_login_candidate"]]
+    excluded = next(
+        (
+            user
+            for user in users
+            if user["scenario_code"] == NON_CANDIDATE_SCENARIO_CODE
+        ),
+        None,
+    )
+    if len(candidates) != 5 or excluded is None or excluded["is_demo_login_candidate"]:
+        raise ValueError(
+            "demo login candidates must be five users excluding payout transition"
+        )
     return users
 
 
@@ -169,6 +190,7 @@ def _auth_payload(user: dict[str, Any], credential: dict[str, str]) -> dict[str,
         "app_metadata": {
             "account_kind": "synthetic_demo",
             "demo_scenario_code": str(user["scenario_code"]),
+            "is_demo_login_candidate": bool(user["is_demo_login_candidate"]),
         },
     }
 
@@ -212,6 +234,7 @@ def _verify_sign_in(
     base_url: str,
     publishable_key: str,
     credential: dict[str, str],
+    expected_demo_login_candidate: bool,
 ) -> None:
     response = client.post(
         f"{base_url}/auth/v1/token",
@@ -230,6 +253,8 @@ def _verify_sign_in(
     app_metadata = user.get("app_metadata", {})
     if app_metadata.get("demo_scenario_code") != credential["scenario_code"]:
         raise RuntimeError("demo login returned an unexpected scenario mapping")
+    if app_metadata.get("is_demo_login_candidate") is not expected_demo_login_candidate:
+        raise RuntimeError("demo login returned an unexpected candidate flag")
 
 
 def _sync_demo_financial_context(
@@ -242,6 +267,7 @@ def _sync_demo_financial_context(
             str(user["nickname"]),
             int(user["representative_age"]),
             str(user["customer_context"]),
+            DEMO_CONTEXT_TAX_YEAR,
             DEMO_CONTEXT_AS_OF_DATE,
             str(user["benchmark_user_id"]),
             str(user["scenario_code"]),
@@ -276,7 +302,7 @@ def _sync_demo_financial_context(
                 nullif(benchmark.comprehensive_income_krw, '')::numeric,
                 benchmark.pension_savings_contribution_krw::numeric,
                 benchmark.irp_contribution_krw::numeric,
-                benchmark.tax_year::smallint,
+                %s::smallint,
                 %s
             from public.mock_scenarios as scenario
             join public.benchmark_mock_users as benchmark
@@ -302,15 +328,15 @@ def _sync_demo_financial_context(
         )
         cursor.execute(
             """
-            select count(*)
+            select count(*), min(tax_year), max(tax_year)
             from public.demo_user_financial_context
             where auth_user_id = any(%s::uuid[])
             """,
             ([row[0] for row in rows],),
         )
         result = cursor.fetchone()
-        if result is None or result[0] != len(rows):
-            raise RuntimeError("demo financial context mapping is incomplete")
+        if result != (len(rows), DEMO_CONTEXT_TAX_YEAR, DEMO_CONTEXT_TAX_YEAR):
+            raise RuntimeError("demo financial context mapping or tax year is invalid")
 
 
 def provision_users(
@@ -332,6 +358,7 @@ def provision_users(
     database_url = _required_secret(settings.database_url, "DATABASE_URL")
 
     credentials_by_scenario = {item["scenario_code"]: item for item in credentials}
+    users_by_scenario = {str(item["scenario_code"]): item for item in users}
     with httpx.Client(timeout=20.0) as client:
         existing_users = _list_users(client, base_url=base_url, service_key=service_key)
         by_id = {str(item.get("id")): item for item in existing_users}
@@ -371,11 +398,15 @@ def provision_users(
                 )
 
         for credential in credentials:
+            expected_user = users_by_scenario[credential["scenario_code"]]
             _verify_sign_in(
                 client,
                 base_url=base_url,
                 publishable_key=publishable_key,
                 credential=credential,
+                expected_demo_login_candidate=bool(
+                    expected_user["is_demo_login_candidate"]
+                ),
             )
     _sync_demo_financial_context(database_url, users)
 
