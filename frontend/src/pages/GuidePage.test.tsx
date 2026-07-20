@@ -13,7 +13,7 @@ import {
   getStoredChatMessages,
   sendAuthenticatedChatStream,
 } from "../api/client";
-import type { ChatCard, ChatSessionSummary } from "../api/types";
+import type { ChatCard, ChatResponse, ChatSessionSummary } from "../api/types";
 import { useSupabaseAuth } from "../auth/useSupabaseAuth";
 import {
   ETF_THEME_CARDS,
@@ -51,6 +51,45 @@ const CHAT_SESSION: ChatSessionSummary = {
   title: "IRP 규칙",
   created_at: "2026-07-19T00:00:00Z",
   updated_at: "2026-07-19T00:00:00Z",
+};
+const THEME_RESPONSE: ChatResponse = {
+  intent: "etf_theme",
+  answer: "조선 테마를 초보자도 이해하기 쉽게 설명했습니다.",
+  data_mode: "theme_overview",
+  narration_mode: "deterministic",
+  sections: [
+    {
+      kind: "service_explanation",
+      title: "조선 테마란?",
+      content: "선박과 조선 기자재 기업을 담는 테마입니다.",
+      evidence_ids: [],
+      blocks: [],
+    },
+  ],
+  news_items: [],
+  visualizations: [],
+  suggested_follow_ups: [
+    {
+      follow_up_id: "theme_representative_companies",
+      label: "테마 대표기업",
+      message: "조선 테마 대표기업은 뭐야?",
+    },
+    {
+      follow_up_id: "theme_pros_cons",
+      label: "테마 장단점",
+      message: "조선 테마 ETF에 투자할 때 장단점을 알려줘",
+    },
+    {
+      follow_up_id: "theme_products",
+      label: "테마 ETF상품",
+      message: "조선 테마 ETF상품 3개를 보여줘",
+    },
+  ],
+  sources: [],
+  numeric_evidence: [],
+  engine_results: [],
+  limitations: [],
+  conversation_context: null,
 };
 
 describe("GuidePage chat history deletion", () => {
@@ -309,6 +348,54 @@ describe("GuidePage chat history deletion", () => {
     expect(within(sectorCards).queryByRole("button", {
       name: "조선 ETF 테마 설명 보기",
     })).not.toBeInTheDocument();
+  });
+
+  it("places ETF follow-ups below the theme section and hides a clicked question", async () => {
+    vi.mocked(getStoredChatMessages).mockResolvedValue([
+      {
+        message_id: "theme-question",
+        question_message_id: null,
+        role: "user",
+        content: "조선 테마가 뭐야?",
+        response: null,
+        model_name: null,
+        created_at: "2026-07-20T00:00:00Z",
+        evidence: [],
+      },
+      {
+        message_id: "theme-answer",
+        question_message_id: "theme-question",
+        role: "assistant",
+        content: THEME_RESPONSE.answer,
+        response: THEME_RESPONSE,
+        model_name: null,
+        created_at: "2026-07-20T00:00:01Z",
+        evidence: [],
+      },
+    ]);
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      response: THEME_RESPONSE,
+      persisted: false,
+      session_id: null,
+    });
+    render(<GuidePage surveyProfile={null} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
+    const themeSection = (await screen.findByText("조선 테마란?")).closest("details");
+    const followUps = screen.getByLabelText("이어서 물어보기");
+    expect(themeSection?.nextElementSibling).toBe(followUps);
+    expect(within(followUps).getByRole("button", {
+      name: /테마 ETF상품/,
+    })).toBeInTheDocument();
+
+    fireEvent.click(within(followUps).getByRole("button", { name: /테마 대표기업/ }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: /테마 대표기업/ })).not.toBeInTheDocument();
+    });
+    expect(vi.mocked(sendAuthenticatedChatStream).mock.calls[0]?.[0]).toBe(
+      "조선 테마 대표기업은 뭐야?",
+    );
   });
 });
 

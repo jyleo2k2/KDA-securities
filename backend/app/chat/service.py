@@ -208,6 +208,10 @@ def _decimal_text(value: Decimal) -> str:
     return format(value.normalize(), "f")
 
 
+def _krw_text(value: Decimal) -> str:
+    return f"{value.quantize(Decimal('1'), rounding=ROUND_HALF_UP):,.0f}원"
+
+
 def _one_decimal(value: Decimal) -> Decimal:
     return value.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
 
@@ -1149,8 +1153,9 @@ class ChatService:
                             kind=AnswerBlockKind.CALLOUT,
                             title=company.name,
                             text=(
-                                f"{company.theme_role} 쉽게 말하면 "
-                                f"{company.plain_description} 대표 사례로 보는 이유는 "
+                                f"테마에서의 역할: {company.theme_role} "
+                                f"쉽게 말하면: {company.plain_description} "
+                                "대표 사례로 보는 이유: "
                                 f"{company.representative_reason}"
                             ),
                         )
@@ -1164,16 +1169,17 @@ class ChatService:
             sections = [
                 AnswerSection(
                     kind=SectionKind.SERVICE_EXPLANATION,
-                    title=f"{theme.name} 테마 투자 시 고려할 점",
+                    title=f"{theme.name} 테마 ETF 장단점",
                     content=(
-                        "살펴볼 기회 요인과 함께 감수해야 할 위험을 "
-                        "같이 살펴보세요."
+                        f"{theme.name} 테마 ETF를 볼 때 기대할 수 있는 이점과 "
+                        "손실 가능성을 키울 수 있는 위험을 쉬운 말로 "
+                        "같이 확인해 보세요."
                     ),
                     evidence_ids=verified_source_ids or [catalog_source_id],
                     blocks=[
                         AnswerBlock(
                             kind=AnswerBlockKind.BULLETS,
-                            title="살펴볼 기회 요인 3가지",
+                            title="투자할 때의 이점 3가지",
                             items=list(theme.benefits),
                         ),
                         AnswerBlock(
@@ -1184,7 +1190,10 @@ class ChatService:
                     ],
                 )
             ]
-            answer = f"{theme.name} 테마의 기회 요인 3개와 위험 3개를 정리했습니다."
+            answer = (
+                f"{theme.name} 테마 ETF에 투자할 때의 이점 3개와 "
+                "위험 3개를 쉽게 정리했습니다."
+            )
             data_mode = "theme_investment_considerations"
         elif topic == ThemeContentTopic.PERFORMANCE_DRIVERS:
             sections = [
@@ -1359,6 +1368,7 @@ class ChatService:
 
         numeric: list[NumericEvidence] = []
         candidate_rows: list[list[str]] = []
+        candidate_blocks: list[AnswerBlock] = []
         holding_sections: list[AnswerSection] = []
         holding_source_ids: set[str] = set()
         successful_accounts = 0
@@ -1408,7 +1418,7 @@ class ChatService:
                     data_boundary=DataBoundary.ENGINE,
                 )
             )
-            for candidate in evaluation.candidates:
+            for rank, candidate in enumerate(evaluation.candidates, start=1):
                 fee_text = "확인 필요"
                 if candidate.fee_percent is not None:
                     fee_text = f"{_decimal_text(candidate.fee_percent)}%"
@@ -1421,13 +1431,44 @@ class ChatService:
                             basis="계좌별 ETF 실데이터 마스터",
                         )
                     )
+                trading_value_text = "확인 필요"
+                if candidate.median_daily_trading_value_krw is not None:
+                    trading_value_text = _krw_text(
+                        candidate.median_daily_trading_value_krw
+                    )
+                    numeric.append(
+                        NumericEvidence(
+                            label=f"{candidate.isu_name} 일별 거래대금 중앙값",
+                            value=candidate.median_daily_trading_value_krw,
+                            unit="KRW",
+                            evidence_id=master_source_id,
+                            basis="계좌별 ETF 실데이터 마스터의 관측기간 중앙값",
+                        )
+                    )
                 candidate_rows.append(
                     [
                         _ACCOUNT_TYPE_LABELS[account_type],
                         candidate.isu_name,
                         candidate.isu_code,
+                        trading_value_text,
                         fee_text,
                     ]
+                )
+                candidate_blocks.append(
+                    AnswerBlock(
+                        kind=AnswerBlockKind.CALLOUT,
+                        title=(
+                            f"{_ACCOUNT_TYPE_LABELS[account_type]} {rank}. "
+                            f"{candidate.isu_name}"
+                        ),
+                        text=(
+                            f"이 계좌에서 편입 가능한 {theme.name} 테마 비교 "
+                            f"후보예요. 일별 거래대금 중앙값은 "
+                            f"{trading_value_text}, 총보수는 {fee_text}예요. "
+                            "거래대금은 거래 편의를, 총보수는 보유 비용을 "
+                            "비교하는 지표이며 미래 수익률을 뜻하지 않아요."
+                        ),
+                    )
                 )
                 if not plan.requests_theme_holdings or not candidate.top_holdings:
                     continue
@@ -1494,18 +1535,26 @@ class ChatService:
             sections.append(
                 AnswerSection(
                     kind=SectionKind.SERVICE_EXPLANATION,
-                    title="성향·계좌 범위 안의 비교 후보",
+                    title=f"{theme.name} 테마 ETF상품",
                     content=(
-                        "계좌 적격성, 투자성향 슬리브와 비수익률 품질지표를 "
-                        "통과한 교육용 비교 후보입니다."
+                        "계좌 적격성과 투자성향 범위를 먼저 적용한 뒤, "
+                        "일별 거래대금 중앙값이 높은 순서로 정렬했어요. "
+                        "거래대금이 같으면 총보수가 낮은 상품이 앞서요."
                     ),
                     evidence_ids=master_ids,
                     blocks=[
                         AnswerBlock(
                             kind=AnswerBlockKind.TABLE,
-                            headers=["계좌", "ETF", "종목코드", "총보수"],
+                            headers=[
+                                "계좌",
+                                "ETF",
+                                "종목코드",
+                                "일별 거래대금 중앙값",
+                                "총보수",
+                            ],
                             rows=candidate_rows,
-                        )
+                        ),
+                        *candidate_blocks,
                     ],
                 )
             )

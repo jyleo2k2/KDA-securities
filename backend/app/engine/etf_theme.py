@@ -274,6 +274,57 @@ def _decimal(value: object) -> Decimal | None:
     return parsed if parsed.is_finite() else None
 
 
+def _rank_theme_products(
+    products: list[dict[str, object]],
+) -> tuple[list[tuple[dict[str, object], CandidateQuality]], int]:
+    quality_by_code = {
+        str(product["isu_code"]): quality
+        for product, quality in _score_candidates(products)
+    }
+    rankable: list[
+        tuple[
+            dict[str, object],
+            CandidateQuality,
+            Decimal,
+            Decimal,
+            Decimal | None,
+        ]
+    ] = []
+    excluded_count = 0
+    for product in products:
+        metrics = product.get("implementation_metrics")
+        cost = product.get("cost")
+        if not isinstance(metrics, dict):
+            metrics = {}
+        if not isinstance(cost, dict):
+            cost = {}
+        liquidity = _decimal(metrics.get("median_daily_trading_value_krw"))
+        fee = _decimal(cost.get("kis_total_expense_ratio_percent"))
+        if liquidity is None or fee is None:
+            excluded_count += 1
+            continue
+        code = str(product["isu_code"])
+        rankable.append(
+            (
+                product,
+                quality_by_code[code],
+                liquidity,
+                fee,
+                _decimal(metrics.get("median_net_assets_krw")),
+            )
+        )
+    rankable.sort(
+        key=lambda item: (
+            -item[2],
+            item[3],
+            item[4] is None,
+            -(item[4] or Decimal("0")),
+            str(item[0]["isu_code"]),
+        )
+    )
+    return [(product, quality) for product, quality, *_ in rankable], excluded_count
+
+
 def select_theme_etf_candidates(
     *,
     catalog: EtfThemeCatalog,
@@ -318,7 +369,18 @@ def select_theme_etf_candidates(
             ),
         )
 
-    ranked = _score_candidates(pool)[:limit]
+    ranked, excluded_count = _rank_theme_products(pool)
+    ranked = ranked[:limit]
+    if not ranked:
+        return ThemeCandidateEvaluation(
+            theme_id=theme.theme_id,
+            theme_name=theme.name,
+            account_type=request.account_type,
+            status="profile_or_data_unavailable",
+            limitations=(
+                "거래대금과 총보수가 모두 확인되는 테마 ETF가 없습니다.",
+            ),
+        )
     candidates: list[ThemeEtfCandidate] = []
     for product, quality in ranked:
         code = str(product["isu_code"])
@@ -359,7 +421,8 @@ def select_theme_etf_candidates(
                 reasons=(
                     "account_specific_eligible_universe",
                     "theme_matched_from_etf_name_or_kis_index",
-                    "quality_score_excludes_historical_return",
+                    "ranked_by_median_daily_trading_value_desc",
+                    "lower_fee_breaks_liquidity_ties",
                     "kis_component_weights_preserved_as_reported",
                 ),
             )
@@ -370,9 +433,16 @@ def select_theme_etf_candidates(
         account_type=request.account_type,
         status="ok",
         candidates=tuple(candidates),
-        limitations=(
-            "교육용 비교 후보이며 매수 순위나 주문 지시가 아닙니다.",
-            "한국투자증권 구성종목 배열이 비어 있는 ETF는 "
-            "비중 근거를 표시하지 않습니다.",
+        limitations=tuple(
+            item
+            for item in (
+                "교육용 비교 후보이며 매수 순위나 주문 지시가 아닙니다.",
+                "거래대금 또는 총보수가 없는 ETF는 순위에서 제외했습니다."
+                if excluded_count
+                else None,
+                "한국투자증권 구성종목 배열이 비어 있는 ETF는 "
+                "비중 근거를 표시하지 않습니다.",
+            )
+            if item is not None
         ),
     )

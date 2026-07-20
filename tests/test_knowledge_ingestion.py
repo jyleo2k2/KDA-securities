@@ -104,9 +104,10 @@ def test_chunk_markdown_keeps_headings_and_max_size() -> None:
 def test_approved_manifest_loads_only_verified_non_mock_documents() -> None:
     documents = load_approved_documents()
 
-    assert len(documents) == 14
+    assert len(documents) == 15
     assert {
         "etf-comparison-metrics",
+        "etf-theme-23-approved-basis",
         "pension-deposit-protection",
         "pension-receipt-taxation",
         "retirement-pension-2025-performance",
