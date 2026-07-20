@@ -238,7 +238,15 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
             return []
         theme_name = title[:marker_position]
         follow_ups: list[SuggestedFollowUp] = []
-        if response.data_mode != "theme_performance_drivers":
+        if response.data_mode == "theme_overview":
+            follow_ups.append(
+                SuggestedFollowUp(
+                    follow_up_id="theme_representative_companies",
+                    label="테마 대표기업",
+                    message=f"{theme_name} 테마 대표기업은 뭐야?",
+                )
+            )
+        elif response.data_mode != "theme_performance_drivers":
             follow_ups.append(
                 SuggestedFollowUp(
                     follow_up_id="theme_performance_drivers",
@@ -254,19 +262,19 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
         }:
             follow_ups.append(
                 SuggestedFollowUp(
-                    follow_up_id="theme_risks",
-                    label="고유 위험",
-                    message=f"{theme_name} 테마의 고유 위험은 뭐야?",
+                    follow_up_id="theme_pros_cons",
+                    label="테마 장단점",
+                    message=(
+                        f"{theme_name} 테마 ETF에 투자할 때 장단점을 알려줘"
+                    ),
                 )
             )
         if response.data_mode != "theme_candidates":
             follow_ups.append(
                 SuggestedFollowUp(
-                    follow_up_id="theme_candidates",
-                    label="내 계좌 후보 비교",
-                    message=(
-                        f"내 연금계좌에서 {theme_name} ETF 후보를 비교해줘"
-                    ),
+                    follow_up_id="theme_products",
+                    label="테마 ETF상품",
+                    message=f"{theme_name} 테마 ETF상품 3개를 보여줘",
                 )
             )
         elif not any(

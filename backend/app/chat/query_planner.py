@@ -150,7 +150,7 @@ _THEME_REPRESENTATIVE_COMPANY_TERMS = re.compile(
 _THEME_CONSIDERATION_TERMS = re.compile(
     r"(?:투자|편입).{0,15}(?:고려|주의|유의|살펴)"
     r"|(?:고려|주의|유의|살펴).{0,12}(?:점|사항)"
-    r"|장점|이점"
+    r"|장단점|장점|이점"
 )
 _THEME_PERFORMANCE_DRIVER_TERMS = re.compile(
     r"(?:성과|수익|가격).{0,18}(?:영향|요인|좌우|움직)"
@@ -493,10 +493,10 @@ def plan_question(
             if asks_representative_companies
             else ThemeContentTopic.PERFORMANCE_DRIVERS
             if asks_performance_drivers
-            else ThemeContentTopic.RISKS
-            if asks_risks
             else ThemeContentTopic.INVESTMENT_CONSIDERATIONS
             if asks_considerations
+            else ThemeContentTopic.RISKS
+            if asks_risks
             else ThemeContentTopic.OVERVIEW
         )
         return QueryPlan(

@@ -1,6 +1,7 @@
 // chatbot-mvp 브랜치의 챗 화면을 연금가이드 탭으로 이식한 것.
 // 스타일은 src/index.css의 .app-shell 계열 클래스를 사용한다.
 import {
+  Fragment,
   useEffect,
   useMemo,
   useRef,
@@ -558,14 +559,29 @@ function AssistantMessage({
   response,
   text,
   onFollowUp,
+  usedFollowUpMessages,
 }: {
   response?: ChatResponse;
   text: string;
   onFollowUp?: (message: string) => void;
+  usedFollowUpMessages: ReadonlySet<string>;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   if (!response) return <p className="message-copy">{text}</p>;
+
+  const visibleFollowUps = (response.suggested_follow_ups ?? []).filter(
+    (followUp) => !usedFollowUpMessages.has(followUp.message.trim()),
+  );
+  const followUpCards = visibleFollowUps.length > 0 ? (
+    <div className="follow-up-cards" aria-label="이어서 물어보기">
+      {visibleFollowUps.map((followUp) => (
+        <button key={followUp.follow_up_id} onClick={() => onFollowUp?.(followUp.message)} type="button">
+          {followUp.label}<Icon name="chevron" size={14} />
+        </button>
+      ))}
+    </div>
+  ) : null;
 
   return (
     <div className="answer-content">
@@ -605,31 +621,26 @@ function AssistantMessage({
         />
       ))}
 
-      {(response.suggested_follow_ups ?? []).length > 0 && (
-        <div className="follow-up-cards" aria-label="이어서 물어보기">
-          {response.suggested_follow_ups.map((followUp) => (
-            <button key={followUp.follow_up_id} onClick={() => onFollowUp?.(followUp.message)} type="button">
-              {followUp.label}<Icon name="chevron" size={14} />
-            </button>
-          ))}
-        </div>
-      )}
+      {response.intent !== "etf_theme" && followUpCards}
 
       {/* narration_reasoning은 thinking 요약이라 대부분 영어로 나와 화면에 노출하지 않는다.
           응답 필드는 그대로 유지해 디버깅·로그에서 확인한다. */}
 
       {response.sections.map((section, index) => (
-        <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} key={`${section.title}-${index}`} open={response.intent === "educational_portfolio" || response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || section.kind === "limitation"}>
-          <summary><span>{section.title}</span><small>내용 보기</small></summary>
-          {section.blocks?.length ? (
-            <>
-              {section.content && <p>{displayText(section.content)}</p>}
-              <AnswerBlocks blocks={section.blocks} />
-            </>
-          ) : (
-            <p>{displayText(section.content)}</p>
-          )}
-        </details>
+        <Fragment key={`${section.title}-${index}`}>
+          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={response.intent === "educational_portfolio" || response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || section.kind === "limitation"}>
+            <summary><span>{section.title}</span><small>내용 보기</small></summary>
+            {section.blocks?.length ? (
+              <>
+                {section.content && <p>{displayText(section.content)}</p>}
+                <AnswerBlocks blocks={section.blocks} />
+              </>
+            ) : (
+              <p>{displayText(section.content)}</p>
+            )}
+          </details>
+          {response.intent === "etf_theme" && index === 0 && followUpCards}
+        </Fragment>
       ))}
 
       {response.limitations.length > 0 && (
@@ -797,6 +808,15 @@ export function GuidePage({
     hasSurvey: surveyProfile !== null,
     hasAuth: auth.session !== null,
   }), [auth.session, chatCards, selectedScenario, surveyProfile, userContext?.scenario_code]);
+
+  const usedFollowUpMessages = useMemo(
+    () => new Set(
+      messages
+        .filter((message) => message.role === "user")
+        .map((message) => message.text.trim()),
+    ),
+    [messages],
+  );
 
   const pensionTaxInput = useMemo<PensionTaxScenarioInput | undefined>(() => {
     if (!pensionSavingsBalance.trim() || !irpBalance.trim()) return undefined;
@@ -1678,7 +1698,12 @@ export function GuidePage({
                   {message.role === "assistant" && <div className="assistant-avatar"><Icon name="spark" size={16} /></div>}
                   <div className="message-group">
                     <div className="message-bubble">
-                      <AssistantMessage onFollowUp={(prompt) => void submitPrompt(prompt)} response={message.response} text={message.text} />
+                      <AssistantMessage
+                        onFollowUp={(prompt) => void submitPrompt(prompt)}
+                        response={message.response}
+                        text={message.text}
+                        usedFollowUpMessages={usedFollowUpMessages}
+                      />
                     </div>
                     {message.failedPrompt && (
                       <button className="retry-button" type="button" onClick={() => void submitPrompt(message.failedPrompt!, message.failedEducationalPortfolio)} disabled={isSending || deletingSessionId !== null}>

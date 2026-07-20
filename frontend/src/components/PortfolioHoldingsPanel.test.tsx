@@ -206,7 +206,7 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.getByText("12.3%")).toBeInTheDocument();
     expect(screen.getByText("주식시장 급락")).toBeInTheDocument();
     expect(screen.getByText("-18.5%")).toBeInTheDocument();
-    expect(screen.getByText(/수익률 예측이 아닙니다/)).toBeInTheDocument();
+    expect(screen.getAllByText(/수익률 예측이 아닙니다/)).toHaveLength(2);
     expect(screen.getByText("장기 계획수익률 가정 근거")).toBeInTheDocument();
     expect(screen.getByText("6.7%")).toBeInTheDocument();
     expect(screen.getAllByText("6.2%")).toHaveLength(2);
