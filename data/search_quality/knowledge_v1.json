@@ -120,6 +120,40 @@
       "expected_source_url": "project://docs/40_규제/연금계좌_예금자보호.md",
       "required_content_terms": ["IRP", "ETF", "예금자보호", "투자손실"],
       "critical_top1": true
+    },
+    {
+      "id": "retirement-pension-participant-education",
+      "query": "DC형 퇴직연금 가입자 교육 회사 매년 1회",
+      "expected_source_url": "project://docs/40_규제/퇴직연금_가입자교육.md",
+      "required_content_terms": ["매년 1회", "사용자", "가입자 교육"],
+      "critical_top1": true
+    },
+    {
+      "id": "retirement-pension-unpaid-contributions",
+      "query": "회사가 DC 부담금을 안 내면 지연이자 우선변제",
+      "expected_source_url": "project://docs/40_규제/퇴직연금_미납부담금_보호.md",
+      "required_content_terms": ["미납 부담금", "지연이자", "우선변제"],
+      "critical_top1": true
+    },
+    {
+      "id": "retirement-benefit-irp-transfer-exceptions",
+      "query": "퇴직금 IRP로 받아야 하나 55세 일시금 예외",
+      "expected_source_url": "project://docs/40_규제/퇴직급여_IRP_이전_예외.md",
+      "required_content_terms": ["IRP", "55세", "일시금"],
+      "critical_top1": true
+    },
+    {
+      "id": "small-business-retirement-pension-fund",
+      "query": "푸른씨앗 50명 미만 100명 미만 가입 대상",
+      "expected_source_url": "project://docs/40_규제/중소기업퇴직연금기금_푸른씨앗.md",
+      "required_content_terms": ["50명", "100명", "푸른씨앗"],
+      "critical_top1": true
+    },
+    {
+      "id": "irp-withdrawal-evidence",
+      "query": "IRP 의료비 중도인출 요양 증빙",
+      "expected_source_url": "project://docs/40_규제/퇴직연금_수령_중도인출.md",
+      "required_content_terms": ["의료비", "요양", "증빙"]
     }
   ]
 }
