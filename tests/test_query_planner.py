@@ -198,6 +198,29 @@ def test_named_mock_scenario_wins_over_tax_credit_word() -> None:
     assert plan.intent == ChatIntent.MOCK_PORTFOLIO
 
 
+@pytest.mark.parametrize(
+    "message",
+    (
+        "실시간 뉴스 기반 이벤트 드리븐 운용전략을 알려줘",
+        "이벤트 드리븐 전략을 알려줘",
+        "국내 실시간 뉴스 기반 운용전략을 보여줘",
+    ),
+)
+def test_explicit_live_news_strategy_routes_to_event_strategy(message: str) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent == ChatIntent.NEWS
+    assert plan.requests_event_strategy is True
+    assert plan.news_query is not None
+
+
+def test_ordinary_pension_strategy_does_not_trigger_live_news() -> None:
+    plan = plan_question("내 나이와 투자성향에 맞는 연금 운용전략을 알려줘")
+
+    assert plan.intent == ChatIntent.EDUCATIONAL_PORTFOLIO
+    assert plan.requests_event_strategy is False
+
+
 def test_bare_account_wording_does_not_shadow_tax_credit_intent() -> None:
     plan = plan_question("내 계좌 세액공제 얼마야?")
 

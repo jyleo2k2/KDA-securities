@@ -33,6 +33,10 @@ from ..retrieval.knowledge_policy import (
 from ..retrieval.repository import KnowledgeMatch, KnowledgeSearch, NewsMatch
 from .cards import build_suggested_follow_ups
 from .disclosures import ProviderDisclosure
+from .live_news import (
+    LiveMarketNewsSnapshot,
+    LiveNewsUnavailable,
+)
 from .models import (
     AnswerBlock,
     AnswerBlockKind,
@@ -56,6 +60,11 @@ from .models import (
     extract_numeric_claims,
 )
 from .narrator import contains_unsafe_financial_claim
+from .news_event_strategy import (
+    NEWS_EVENT_POLICY_AS_OF,
+    NEWS_EVENT_POLICY_VERSION,
+    classify_news_event,
+)
 from .pension_account_overview import (
     build_deferred_pension_topic_response,
     build_pension_account_overview_response,
@@ -97,6 +106,15 @@ class NewsSearch(Protocol):
     ) -> list[NewsMatch]: ...
 
     def news_by_ids(self, item_ids: tuple[str, ...]) -> list[NewsMatch]: ...
+
+
+class LiveNewsSearch(Protocol):
+    def fetch_market_news(
+        self,
+        *,
+        region: str | None,
+        limit: int,
+    ) -> LiveMarketNewsSnapshot: ...
 
 
 class PortfolioUniverse(Protocol):
@@ -711,6 +729,7 @@ class ChatService:
         scenarios: ScenarioRepository,
         disclosures: DisclosureSearch | None = None,
         news: NewsSearch | None = None,
+        live_news: LiveNewsSearch | None = None,
         portfolio_universe_loader: PortfolioUniverseLoader | None = None,
         theme_repository: EtfThemeRepository | None = None,
         macro_evidence: MacroEvidenceRepository | None = None,
@@ -720,6 +739,7 @@ class ChatService:
         self._scenarios = scenarios
         self._disclosures = disclosures
         self._news = news
+        self._live_news = live_news
         self._portfolio_universe_loader = portfolio_universe_loader
         self._theme_repository = theme_repository
         self._macro_evidence = macro_evidence
@@ -736,6 +756,7 @@ class ChatService:
                 "연금저축·IRP 연금외수령 16.5% 간이 추정",
                 "근거·기준일·실데이터/목데이터 경계 표시",
                 "한국은행·KOSIS·FRED 공식 거시지표 근거 조회",
+                "실시간 NAVER 뉴스 이벤트·ETF 테마 분류",
             ],
             conditional=[
                 "Supabase 실적재 후 회사·사업자 과거 공시 비교",
@@ -987,13 +1008,21 @@ class ChatService:
                         and original_request.conversation_context.news is not None
                         else ()
                     )
-                    response = self._news_response(
-                        request,
-                        search_query=resolved_plan.news_query,
-                        max_results=resolved_plan.max_results,
-                        exclude_item_ids=exclude_item_ids,
-                        preferred_topics=preferred_news_topics,
-                    )
+                    if resolved_plan.requests_event_strategy:
+                        response = self._event_strategy_response(
+                            original_request,
+                            search_query=resolved_plan.news_query,
+                            max_results=resolved_plan.max_results,
+                            preferred_topics=preferred_news_topics,
+                        )
+                    else:
+                        response = self._news_response(
+                            request,
+                            search_query=resolved_plan.news_query,
+                            max_results=resolved_plan.max_results,
+                            exclude_item_ids=exclude_item_ids,
+                            preferred_topics=preferred_news_topics,
+                        )
             elif resolved_plan.intent == ChatIntent.MACRO_EVIDENCE:
                 response = self._macro_evidence_response(request)
             elif resolved_plan.intent == ChatIntent.PROVIDER_DISCLOSURE:
@@ -3291,6 +3320,265 @@ class ChatService:
                 if is_market_news
                 else None
             ),
+        )
+
+    def _event_strategy_response(
+        self,
+        request: ChatRequest,
+        *,
+        search_query: str,
+        max_results: int,
+        preferred_topics: tuple[str, ...],
+    ) -> ChatResponse:
+        region = search_query.partition(":")[2] or None
+        live_snapshot: LiveMarketNewsSnapshot | None = None
+        if self._live_news is not None:
+            try:
+                live_snapshot = self._live_news.fetch_market_news(
+                    region=region,
+                    limit=min(max_results, 3),
+                )
+            except LiveNewsUnavailable:
+                logger.warning("live_news_lookup_failed")
+
+        topics_by_evidence: dict[str, tuple[str, ...]] = {}
+        if live_snapshot is not None and live_snapshot.items:
+            sources = [
+                SourceEvidence(
+                    evidence_id=f"live-news:{item.item_id}",
+                    label=item.title,
+                    locator=item.original_url,
+                    publisher=item.publisher,
+                    as_of=item.published_at,
+                    data_boundary=DataBoundary.NEWS_METADATA,
+                )
+                for item in live_snapshot.items
+            ]
+            news_items = [
+                ChatNewsItem(
+                    evidence_id=f"live-news:{item.item_id}",
+                    title=item.title,
+                    description=item.description,
+                    original_url=item.original_url,
+                    published_at=item.published_at,
+                )
+                for item in live_snapshot.items
+            ]
+            topics_by_evidence = {
+                f"live-news:{item.item_id}": item.topics
+                for item in live_snapshot.items
+            }
+            metadata = "\n".join(
+                f"- {item.title}: {item.description or 'NAVER 설명 없음'}"
+                for item in live_snapshot.items
+            )
+            base = ChatResponse(
+                intent=ChatIntent.NEWS,
+                answer=(
+                    "NAVER 검색 API에서 최신 증시 뉴스 메타데이터를 조회했어요. "
+                    "규칙 기반으로 이벤트와 ETF 산업·테마를 분류했어요."
+                ),
+                data_mode="live_news_event_strategy",
+                news_items=news_items,
+                sections=[
+                    AnswerSection(
+                        kind=SectionKind.EXTERNAL_OPINION,
+                        title="실시간 NAVER 뉴스 메타데이터",
+                        content=metadata,
+                        evidence_ids=_source_ids(sources),
+                    )
+                ],
+                sources=sources,
+                limitations=[
+                    (
+                        "같은 시장의 직전 조회 결과를 짧게 재사용했어요."
+                        if live_snapshot.from_cache
+                        else "이번 질문 시점에 NAVER 검색 API를 조회했어요."
+                    ),
+                    "기사 본문이 아닌 NAVER 제목·설명 메타데이터입니다.",
+                    "뉴스 사실과 외부 의견은 연결된 원문에서 다시 확인해야 해요.",
+                ],
+            )
+            return self._attach_event_strategy(
+                base,
+                request=request,
+                topics_by_evidence=topics_by_evidence,
+            )
+
+        stored = self._news_response(
+            request,
+            search_query=search_query,
+            max_results=max_results,
+            preferred_topics=preferred_topics,
+        )
+        if not stored.news_items:
+            return stored.model_copy(
+                update={
+                    "answer": (
+                        "실시간 NAVER 조회와 저장 뉴스 조회에서 모두 "
+                        "사용 가능한 증시 뉴스를 찾지 못했어요."
+                    ),
+                    "limitations": [
+                        *stored.limitations,
+                        "뉴스를 임의로 생성해 이벤트 전략을 만들지 않아요.",
+                    ],
+                }
+            )
+        stored = stored.model_copy(
+            update={
+                "data_mode": "stored_news_event_strategy",
+                "answer": (
+                    "실시간 NAVER 조회를 사용할 수 없어 최근 저장 뉴스를 "
+                    "이벤트와 ETF 산업·테마로 분류했어요."
+                ),
+                "limitations": [
+                    *stored.limitations,
+                    "실시간 조회가 아니라 최근 저장 뉴스 기반입니다.",
+                ],
+            }
+        )
+        return self._attach_event_strategy(
+            stored,
+            request=request,
+            topics_by_evidence=topics_by_evidence,
+        )
+
+    def _attach_event_strategy(
+        self,
+        response: ChatResponse,
+        *,
+        request: ChatRequest,
+        topics_by_evidence: dict[str, tuple[str, ...]],
+    ) -> ChatResponse:
+        policy_source_id = "policy:live_news_event_strategy"
+        catalog = (
+            self._theme_repository.catalog
+            if self._theme_repository is not None
+            else None
+        )
+        rows: list[list[str]] = []
+        news_source_ids: list[str] = []
+        for item in response.news_items:
+            classification = classify_news_event(
+                title=item.title,
+                description=(
+                    item.description or " ".join(item.summary_lines)
+                ),
+                topics=topics_by_evidence.get(item.evidence_id, ()),
+                theme_catalog=catalog,
+            )
+            theme_names = []
+            if self._theme_repository is not None:
+                theme_names = [
+                    theme.name
+                    for theme_id in classification.theme_ids
+                    if (theme := self._theme_repository.get(theme_id)) is not None
+                ]
+            etf_labels = theme_names or list(classification.etf_groups)
+            rows.append(
+                [
+                    item.title,
+                    " · ".join(classification.event_labels),
+                    " · ".join(etf_labels),
+                    classification.check,
+                ]
+            )
+            news_source_ids.append(item.evidence_id)
+
+        survey = request.survey_profile or (
+            request.conversation_context.survey_profile
+            if request.conversation_context is not None
+            else None
+        )
+        tactical_allowed = (
+            survey is not None
+            and _RISK_PROFILE_RANKS[survey.risk_profile]
+            >= _RISK_PROFILE_RANKS[EducationalRiskProfile.ACTIVE]
+        )
+        if tactical_allowed:
+            strategy_intro = (
+                "현재 설문 성향 범위에서 전술 관찰 가이드를 제공해요. "
+                "뉴스만으로 비중이나 주문을 결정하지 않아요."
+            )
+            strategy_items = [
+                "기존 장기 코어 배분을 먼저 유지하고 테마는 전술 슬리브에서만 검토",
+                "공식 발표·가격·거래대금·ETF 구성종목을 함께 확인",
+                "계좌별 위험자산 한도와 규칙 엔진 목표비중을 먼저 적용",
+                "리밸런싱은 목표비중 이탈과 신규 납입금 기준으로 별도 계산",
+            ]
+        elif survey is None:
+            strategy_intro = (
+                "투자성향 설문이 없어 이벤트·테마 분류만 제공해요. "
+                "공격형 전술 운용 가이드는 성향 확인 뒤에 연결해요."
+            )
+            strategy_items = [
+                "뉴스 단독 매수·매도 금지",
+                "공식 발표와 ETF 구성종목을 먼저 확인",
+            ]
+        else:
+            strategy_intro = (
+                "현재 설문 성향보다 공격적인 이벤트 전술은 제안하지 않아요. "
+                "뉴스와 ETF 산업·테마 분류만 참고용으로 제공해요."
+            )
+            strategy_items = [
+                "장기 코어 배분과 정기 리밸런싱 원칙 유지",
+                "뉴스 단독 매수·매도 금지",
+            ]
+
+        policy_source = SourceEvidence(
+            evidence_id=policy_source_id,
+            label=f"뉴스 이벤트 전략 가이드 정책 {NEWS_EVENT_POLICY_VERSION}",
+            locator="backend/app/chat/news_event_strategy.py",
+            publisher="연금 코파일럿 규칙 정책",
+            as_of=NEWS_EVENT_POLICY_AS_OF,
+            data_boundary=DataBoundary.ENGINE,
+        )
+        sections = [
+            *response.sections,
+            AnswerSection(
+                kind=SectionKind.SERVICE_EXPLANATION,
+                title="이벤트·ETF 산업/테마 분류",
+                content=(
+                    "기사 메타데이터와 기존 ETF 테마 카탈로그를 규칙으로 "
+                    "연결한 관찰 목록입니다."
+                ),
+                evidence_ids=[*news_source_ids, policy_source_id],
+                blocks=[
+                    AnswerBlock(
+                        kind=AnswerBlockKind.TABLE,
+                        headers=["뉴스", "이벤트", "ETF 산업·테마", "추가 확인"],
+                        rows=rows,
+                    )
+                ],
+            ),
+            AnswerSection(
+                kind=SectionKind.SERVICE_EXPLANATION,
+                title="이벤트 드리븐 운용 가이드",
+                content=strategy_intro,
+                evidence_ids=[policy_source_id],
+                blocks=[
+                    AnswerBlock(
+                        kind=AnswerBlockKind.BULLETS,
+                        title="운용 체크",
+                        items=strategy_items,
+                    )
+                ],
+            ),
+        ]
+        return response.model_copy(
+            update={
+                "sections": sections,
+                "sources": [*response.sources, policy_source],
+                "limitations": [
+                    *response.limitations,
+                    "이벤트 분류는 방향성·수익률 예측이나 자동운용 신호가 아닙니다.",
+                ],
+                "conversation_context": ConversationContext(
+                    account_type=(survey.account_type if survey is not None else None),
+                    last_intent=ChatIntent.NEWS,
+                    survey_profile=survey,
+                ),
+            }
         )
 
     def _news_follow_up_response(

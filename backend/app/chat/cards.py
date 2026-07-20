@@ -56,6 +56,14 @@ CHAT_CARDS = (
         priority=10,
     ),
     ChatCard(
+        card_id="live_news_event_strategy",
+        title="실시간 뉴스 전술 가이드",
+        message="실시간 뉴스 기반 이벤트 드리븐 운용전략을 알려줘.",
+        intent=ChatIntent.NEWS,
+        conditions=[CardCondition.REQUIRES_SURVEY],
+        priority=12,
+    ),
+    ChatCard(
         card_id="return_diag",
         title="계좌 수익률 진단",
         message="내 IRP·연금저축 수익률을 진단해 줄래?",
@@ -135,6 +143,22 @@ def chat_card_catalog() -> ChatCardCatalog:
 
 
 def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp]:
+    if response.data_mode in {
+        "live_news_event_strategy",
+        "stored_news_event_strategy",
+    }:
+        return [
+            SuggestedFollowUp(
+                follow_up_id="live_news_kr_strategy",
+                label="국내 뉴스 전술 가이드",
+                message="국내 실시간 뉴스 기반 운용전략을 보여줘",
+            ),
+            SuggestedFollowUp(
+                follow_up_id="live_news_us_strategy",
+                label="미국 뉴스 전술 가이드",
+                message="미국 실시간 뉴스 기반 운용전략을 보여줘",
+            ),
+        ]
     if response.intent == ChatIntent.NEWS and response.news_items:
         follow_ups = [
             SuggestedFollowUp(

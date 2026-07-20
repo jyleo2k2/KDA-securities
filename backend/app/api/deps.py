@@ -14,6 +14,7 @@ from ..chat.knowledge import (
     FallbackKnowledgeRepository,
     LocalMarkdownKnowledgeRepository,
 )
+from ..chat.live_news import NaverLiveNewsSearch
 from ..chat.models import ChatRequest
 from ..chat.narrator import ClaudeNarrator
 from ..chat.repository import ChatRepository
@@ -202,7 +203,12 @@ def get_macro_evidence_repository(
 
 
 @lru_cache(maxsize=4)
-def _chat_service(database_url: str, macro_evidence_report_path: str) -> ChatService:
+def _chat_service(
+    database_url: str,
+    macro_evidence_report_path: str,
+    naver_client_id: str = "",
+    naver_client_secret: str = "",
+) -> ChatService:
     pool: ConnectionPool | None = (
         get_database_pool(database_url) if database_url else None
     )
@@ -233,6 +239,14 @@ def _chat_service(database_url: str, macro_evidence_report_path: str) -> ChatSer
         ),
         disclosures=disclosures,
         news=retrieval,
+        live_news=(
+            NaverLiveNewsSearch(
+                client_id=naver_client_id,
+                client_secret=naver_client_secret,
+            )
+            if naver_client_id and naver_client_secret
+            else None
+        ),
         portfolio_universe_loader=partial(
             get_portfolio_universe_repository,
             database_url=database_url,
@@ -251,7 +265,22 @@ def get_chat_service(
         if settings.database_url is not None
         else ""
     )
-    return _chat_service(database_url, str(settings.macro_evidence_report_path))
+    naver_client_id = (
+        settings.naver_api_hub_client_id.get_secret_value().strip()
+        if settings.naver_api_hub_client_id is not None
+        else ""
+    )
+    naver_client_secret = (
+        settings.naver_api_hub_client_secret.get_secret_value().strip()
+        if settings.naver_api_hub_client_secret is not None
+        else ""
+    )
+    return _chat_service(
+        database_url,
+        str(settings.macro_evidence_report_path),
+        naver_client_id,
+        naver_client_secret,
+    )
 
 
 @lru_cache(maxsize=1)
