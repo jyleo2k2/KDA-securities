@@ -8,12 +8,18 @@ from typing import Any
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from .models import AccountType, SourceChip
+from .models import (
+    AccountType,
+    AssetClass,
+    SourceChip,
+    StrategyPresentation,
+)
 from .planning_return import (
     EtfPlanningReturnInput,
     PlanningReturnSources,
     calculate_etf_planning_return,
 )
+from .strategy_presentation import get_strategy_presentation
 
 ENGINE_NAME = "educational_pension_portfolio"
 ENGINE_VERSION = "2026-07-16.4"
@@ -111,12 +117,19 @@ class EducationalEtfCandidate(BaseModel):
     sleeve: str
     target_percent: Decimal
     quality: CandidateQuality
+    asset_class: AssetClass | None
     region: str | None
     strategy: str | None
     max_correlation_with_selected: Decimal | None
     price_history_source: str
     account_eligibility: dict[str, Any]
     reasons: list[str]
+
+
+class EducationalAssetClassAllocation(BaseModel):
+    asset_class: AssetClass
+    label: str
+    target_percent: Decimal
 
 
 class RebalancingSleeveGuidance(BaseModel):
@@ -218,6 +231,7 @@ class EducationalPortfolioEvaluation(BaseModel):
     usage_label: str
     evaluated_input: EducationalPortfolioInput
     strategy_label: str
+    strategy_presentation: StrategyPresentation
     retirement_start_age: int
     planning_horizon_years: int
     horizon_to_age_55_years: int
@@ -230,6 +244,7 @@ class EducationalPortfolioEvaluation(BaseModel):
     stress_loss_proxy_percent: Decimal
     target_sleeves: list[SleeveTarget]
     candidates: list[EducationalEtfCandidate]
+    asset_class_allocation: list[EducationalAssetClassAllocation]
     portfolio_risk: PortfolioRiskEvaluation
     planning_return: PortfolioPlanningEvaluation
     rebalancing: RebalancingGuidance
@@ -806,6 +821,77 @@ def _product_sleeve(product: dict[str, Any]) -> str | None:
     return None
 
 
+DISPLAY_ASSET_CLASS_ORDER = (
+    (AssetClass.DOMESTIC_EQUITY, "국내 주식형"),
+    (AssetClass.GLOBAL_EQUITY, "해외 주식형"),
+    (AssetClass.BOND, "채권형"),
+    (AssetClass.ALTERNATIVE, "대체"),
+    (AssetClass.CASH, "현금성"),
+)
+
+
+def _display_asset_class(classification: dict[str, Any]) -> AssetClass | None:
+    """Project the existing ETF classification into the five display buckets."""
+
+    asset_class = classification.get("asset_class")
+    region = classification.get("region")
+    if asset_class == "equity":
+        if region == "south_korea":
+            return AssetClass.DOMESTIC_EQUITY
+        if region:
+            return AssetClass.GLOBAL_EQUITY
+        return None
+    if asset_class == "fixed_income":
+        return AssetClass.BOND
+    if asset_class in {"commodity", "real_estate", "alternative"}:
+        return AssetClass.ALTERNATIVE
+    if asset_class == "cash_equivalent":
+        return AssetClass.CASH
+    return None
+
+
+def _build_asset_class_allocation(
+    candidates: list[EducationalEtfCandidate],
+) -> tuple[list[EducationalAssetClassAllocation], list[str]]:
+    totals = {asset_class: Decimal("0") for asset_class, _ in DISPLAY_ASSET_CLASS_ORDER}
+    warnings: list[str] = []
+    for candidate in candidates:
+        asset_class = candidate.asset_class
+        if asset_class == AssetClass.DEPOSIT:
+            asset_class = AssetClass.CASH
+        if asset_class not in totals:
+            warnings.append(f"asset_class_display_unclassified:{candidate.isu_code}")
+            continue
+        totals[asset_class] += candidate.target_percent
+
+    if not warnings:
+        total = sum(totals.values(), Decimal("0"))
+        residual = Decimal("100") - total
+        if abs(residual) <= PERCENT_QUANTUM:
+            highest = min(
+                totals,
+                key=lambda asset_class: (
+                    -totals[asset_class],
+                    [item[0] for item in DISPLAY_ASSET_CLASS_ORDER].index(asset_class),
+                ),
+            )
+            totals[highest] = _percent(totals[highest] + residual)
+        elif residual != 0:
+            warnings.append("asset_class_display_total_not_100")
+
+    return (
+        [
+            EducationalAssetClassAllocation(
+                asset_class=asset_class,
+                label=label,
+                target_percent=_percent(totals[asset_class]),
+            )
+            for asset_class, label in DISPLAY_ASSET_CLASS_ORDER
+        ],
+        warnings,
+    )
+
+
 def _numeric(value: object) -> Decimal | None:
     if value in {None, "", "-"}:
         return None
@@ -1081,6 +1167,7 @@ def select_educational_candidates(
             reasons.append(f"correlation_price_source_{history_source}")
             if maximum is not None:
                 reasons.append("correlation_penalty_applied_above_0_75")
+            classification = product["classification"]
             output.append(
                 EducationalEtfCandidate(
                     isu_code=product["isu_code"],
@@ -1088,8 +1175,9 @@ def select_educational_candidates(
                     sleeve=sleeve,
                     target_percent=Decimal("0"),
                     quality=quality,
-                    region=product["classification"].get("region"),
-                    strategy=product["classification"].get("strategy"),
+                    asset_class=_display_asset_class(classification),
+                    region=classification.get("region"),
+                    strategy=classification.get("strategy"),
                     max_correlation_with_selected=(
                         _percent(maximum * Decimal("100"))
                         if maximum is not None
@@ -1244,6 +1332,9 @@ def build_educational_portfolio(
         portfolio_horizon_years=horizon_years,
         source_as_of=source_as_of,
     )
+    asset_class_allocation, asset_class_warnings = _build_asset_class_allocation(
+        candidates
+    )
     target_sleeves = [
         SleeveTarget(
             sleeve=sleeve,
@@ -1271,6 +1362,9 @@ def build_educational_portfolio(
         usage_label="educational_portfolio_example_not_trade_instruction",
         evaluated_input=request,
         strategy_label=str(policy["strategy_label"]),
+        strategy_presentation=get_strategy_presentation(
+            str(policy["strategy_label"])
+        ),
         retirement_start_age=request.retirement_start_age,
         planning_horizon_years=horizon_years,
         horizon_to_age_55_years=55 - request.age,
@@ -1287,6 +1381,7 @@ def build_educational_portfolio(
         stress_loss_proxy_percent=_percent(policy["stress_loss"]),
         target_sleeves=target_sleeves,
         candidates=candidates,
+        asset_class_allocation=asset_class_allocation,
         portfolio_risk=portfolio_risk,
         planning_return=planning_return,
         rebalancing=calculate_rebalancing_guidance(
@@ -1318,6 +1413,7 @@ def build_educational_portfolio(
         ],
         warnings=[
             "educational_example_not_personalized_investment_advice",
+            *asset_class_warnings,
             "no_order_or_automatic_rebalancing",
             "historical_returns_excluded_from_candidate_ranking",
             "historical_returns_used_for_risk_not_planning_return",

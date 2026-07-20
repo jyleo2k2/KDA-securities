@@ -30,6 +30,7 @@ HIGH_INCOME_TAX_CREDIT_RATE_PERCENT = Decimal("12")
 LOW_INCOME_DISPLAY_RATE_PERCENT = Decimal("16.5")
 HIGH_INCOME_DISPLAY_RATE_PERCENT = Decimal("13.2")
 NON_PENSION_OTHER_INCOME_RATE_PERCENT = Decimal("16.5")
+PERCENT_QUANTUM = Decimal("0.01")
 
 DOCUMENT_SOURCE = SourceChip(
     label="연금계좌 세액공제 및 과세방법",
@@ -426,6 +427,9 @@ class PensionTaxCreditEvaluation(BaseModel):
     total_credit_limit_krw: Decimal
     unused_combined_limit_krw: Decimal
     unused_total_limit_krw: Decimal
+    remaining_eligible_contribution_krw: Decimal
+    additional_tax_credit_krw: Decimal | None
+    limit_usage_percent: Decimal
     rate_determined: bool
     rate_scenarios: list[TaxCreditRateScenario]
     assumption_notice: str
@@ -480,6 +484,10 @@ class PensionTaxToolResult(BaseModel):
 
 def _money(value: Decimal) -> Decimal:
     return value.quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+
+
+def _percent(value: Decimal) -> Decimal:
+    return value.quantize(PERCENT_QUANTUM, rounding=ROUND_HALF_UP)
 
 
 def _rate_scenarios(
@@ -540,6 +548,10 @@ def calculate_pension_tax_credit(
     irp_eligible = min(inputs.irp_contribution_krw, retirement_eligible)
     dc_employee_eligible = retirement_eligible - irp_eligible
     regular_eligible = pension_eligible + retirement_eligible
+    remaining_eligible_contribution = max(
+        COMBINED_CREDIT_LIMIT_KRW - regular_eligible,
+        Decimal("0"),
+    )
     isa_requires_review = (
         inputs.isa_transfer_eligibility_status
         == IsaTransferEligibilityStatus.UNKNOWN
@@ -588,6 +600,15 @@ def calculate_pension_tax_credit(
         )
         for label, income_rate, display_rate in _rate_scenarios(inputs)
     ]
+    additional_tax_credit = (
+        _money(
+            remaining_eligible_contribution
+            * scenarios[0].local_inclusive_display_rate_percent
+            / Decimal("100")
+        )
+        if inputs.income_basis != IncomeBasis.UNKNOWN
+        else None
+    )
     assumption_notice = (
         "예상 세액공제액이며 실제 환급액은 결정세액과 개인별 과세상황에 "
         "따라 줄어들 수 있다. 같은 해 중도해지 추정과는 별도 가정이다."
@@ -638,6 +659,13 @@ def calculate_pension_tax_credit(
             max(COMBINED_CREDIT_LIMIT_KRW - total_eligible, Decimal("0"))
         ),
         unused_total_limit_krw=_money(total_credit_limit - total_eligible),
+        remaining_eligible_contribution_krw=_money(
+            remaining_eligible_contribution
+        ),
+        additional_tax_credit_krw=additional_tax_credit,
+        limit_usage_percent=_percent(
+            regular_eligible * Decimal("100") / COMBINED_CREDIT_LIMIT_KRW
+        ),
         rate_determined=inputs.income_basis != IncomeBasis.UNKNOWN,
         rate_scenarios=scenarios,
         assumption_notice=assumption_notice,
