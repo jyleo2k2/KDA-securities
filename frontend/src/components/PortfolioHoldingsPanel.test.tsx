@@ -97,7 +97,31 @@ describe("EducationalPortfolioReview", () => {
         account_eligibility: {},
         reasons: [],
       }],
-      portfolio_risk: {},
+      portfolio_risk: {
+        engine_name: "historical_portfolio_risk",
+        engine_version: "test",
+        policy_version: "test",
+        usage_label: "historical_risk_measurement_not_return_forecast",
+        status: "complete",
+        observation_count: 252,
+        observation_start: "2025-07-01",
+        observation_end: "2026-07-01",
+        annualized_volatility_percent: "12.3000",
+        annualized_downside_deviation_percent: "7.1000",
+        maximum_drawdown_percent: "15.4000",
+        historical_95pct_one_day_loss_percent: "1.7000",
+        worst_daily_return_percent: "-3.2000",
+        historical_return_used_for_risk_only: true,
+        is_return_forecast: false,
+        stress_scenarios: [{
+          scenario_code: "equity_drawdown",
+          estimated_loss_percent: "-18.5000",
+          sleeve_shocks_percent: { core_equity: "-35.0000" },
+          is_forecast: false,
+        }],
+        sources: [],
+        warnings: [],
+      },
       planning_return: {},
       rebalancing: {
         status: "calculated",
@@ -124,12 +148,31 @@ describe("EducationalPortfolioReview", () => {
       warnings: [],
     } satisfies EducationalPortfolioEvaluation;
 
-    render(<EducationalPortfolioReview evaluation={evaluation} />);
+    const { rerender } = render(<EducationalPortfolioReview evaluation={evaluation} />);
 
     expect(screen.getByText("70.0%")).toBeInTheDocument();
     expect(screen.getByText("분산 주식")).toBeInTheDocument();
     expect(screen.getByText(/최대 과거 가격 동행성은 82.0%/)).toBeInTheDocument();
     expect(screen.getByText(/구성종목 중복률이 아니라/)).toBeInTheDocument();
     expect(screen.getByText(/매도 주문을 만들지 않으며/)).toBeInTheDocument();
+    expect(screen.getByText("12.3%")).toBeInTheDocument();
+    expect(screen.getByText("주식시장 급락")).toBeInTheDocument();
+    expect(screen.getByText("-18.5%")).toBeInTheDocument();
+    expect(screen.getByText(/수익률 예측이 아닙니다/)).toBeInTheDocument();
+
+    rerender(<EducationalPortfolioReview evaluation={{
+      ...evaluation,
+      portfolio_risk: {
+        ...evaluation.portfolio_risk,
+        status: "insufficient_common_history",
+        observation_count: 20,
+        annualized_volatility_percent: null,
+        annualized_downside_deviation_percent: null,
+        maximum_drawdown_percent: null,
+        historical_95pct_one_day_loss_percent: null,
+        worst_daily_return_percent: null,
+      },
+    }} />);
+    expect(screen.getByText(/공통 일간 수익률이 60개 미만/)).toBeInTheDocument();
   });
 });

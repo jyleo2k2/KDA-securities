@@ -5,6 +5,7 @@ import type {
   CompletedSurveyProfile,
   EducationalPortfolioEvaluation,
   EducationalPortfolioInput,
+  PortfolioRiskEvaluation,
 } from "../api/types";
 
 const ACCOUNT_LABELS: Record<AccountType, string> = {
@@ -25,6 +26,12 @@ const REBALANCE_STATUS_LABELS: Record<string, string> = {
   within_drift_band: "허용 범위",
   underweight_after_contribution: "비중 부족",
   overweight_review_only: "비중 초과 점검",
+};
+
+const STRESS_SCENARIO_LABELS: Record<string, string> = {
+  equity_drawdown: "주식시장 급락",
+  rate_inflation_shock: "금리·물가 충격",
+  stagflation: "스태그플레이션",
 };
 
 interface HoldingDraft {
@@ -56,8 +63,58 @@ function percent(value: string): string {
   return Number.isFinite(numeric) ? `${numeric.toFixed(1)}%` : `${value}%`;
 }
 
+function optionalPercent(value: string | null): string {
+  return value === null ? "산출 불가" : percent(value);
+}
+
+function dateText(value: string | null): string {
+  return value === null ? "확인 불가" : value.slice(0, 10);
+}
+
 function sleeveLabel(value: string): string {
   return SLEEVE_LABELS[value] ?? value;
+}
+
+function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
+  const complete = risk.status === "complete";
+
+  return (
+    <section className="portfolio-risk-review" aria-labelledby="portfolio-risk-title">
+      <header>
+        <span>과거 관측 기반</span>
+        <h4 id="portfolio-risk-title">목표 포트폴리오 위험·스트레스</h4>
+        <p>
+          {dateText(risk.observation_start)}~{dateText(risk.observation_end)} · 공통 일간 관측 {risk.observation_count.toLocaleString("ko-KR")}개
+        </p>
+      </header>
+
+      {complete ? (
+        <div className="portfolio-risk-metrics">
+          <div><span>연환산 변동성</span><strong>{optionalPercent(risk.annualized_volatility_percent)}</strong></div>
+          <div><span>연환산 하방편차</span><strong>{optionalPercent(risk.annualized_downside_deviation_percent)}</strong></div>
+          <div><span>과거 최대낙폭</span><strong>{optionalPercent(risk.maximum_drawdown_percent)}</strong></div>
+          <div><span>과거 95% 1일 손실</span><strong>{optionalPercent(risk.historical_95pct_one_day_loss_percent)}</strong></div>
+        </div>
+      ) : (
+        <p className="portfolio-risk-unavailable">
+          후보 ETF의 공통 일간 수익률이 60개 미만이라 과거 위험지표를 산출하지 않았습니다.
+        </p>
+      )}
+
+      <div className="stress-scenario-grid" aria-label="정책 스트레스 시나리오">
+        {risk.stress_scenarios.map((scenario) => (
+          <div key={scenario.scenario_code}>
+            <span>{STRESS_SCENARIO_LABELS[scenario.scenario_code] ?? scenario.scenario_code}</span>
+            <strong>{percent(scenario.estimated_loss_percent)}</strong>
+            <small>정책 충격 가정</small>
+          </div>
+        ))}
+      </div>
+      <p className="portfolio-risk-note">
+        위 과거 지표는 제안 목표비중을 고정해 측정한 위험 참고치이며 수익률 예측이 아닙니다. 스트레스 값도 발생확률이나 미래 손실 예측이 아닌 교육용 정책 시나리오입니다.
+      </p>
+    </section>
+  );
 }
 
 export function PortfolioHoldingsPanel({
@@ -313,6 +370,8 @@ export function EducationalPortfolioReview({
           </tbody>
         </table>
       </div>
+
+      <PortfolioRiskReview risk={evaluation.portfolio_risk} />
 
       {Number(rebalancing.unclassified_holding_amount_krw) > 0 && (
         <p className="portfolio-review-warning">
