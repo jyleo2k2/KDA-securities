@@ -298,6 +298,21 @@ uv run ruff check .
 
 ## 14. 작업 로그
 
+### 2026-07-20 18:43 KST 신규작업브랜치 main 통합
+
+- `신규작업브랜치`의 ETF 테마 챗봇·검증 장부 변경을 보존한 채
+  `origin/main` `b795763`을 병합했다. 충돌은 이 문서 한 파일에서만 발생했고,
+  KRX 일별시장 `20260720080955`와 ETF 테마 검증 `20260720091219`의 원격 적용
+  상태·행 수·작업 로그를 모두 유지하는 의미 병합으로 해결했다.
+- 병합 커밋은 `2c51ea2`, 프론트 테스트의 중복 안내 문구 단언 보정은
+  `d7d8760`이다. 병합 전 ETF 테마 커밋 `71e896d`는 복구 태그
+  `archive/20260720-before-etf-category-main-sync`로 보존했다.
+- 검증: 승인 지식 manifest 문서 15개·청크 56개 유효, 관련 백엔드 281건
+  통과, 전체 백엔드 852 passed·1 skipped, 프론트 20건 통과, 프로덕션 빌드,
+  Ruff, `git diff --check` 통과. `origin/main`은 현재 HEAD의 조상이며 재병합
+  시 충돌이 없음을 확인했다.
+- 원격 Supabase 쓰기·migration 적용·repair·reset은 수행하지 않았다.
+
 ### 2026-07-20 17:12 KST KRX 전체 ETF 일별 거래량 연결
 
 - 신규 migration `20260720080955_add_krx_etf_daily_market_snapshots.sql`과
