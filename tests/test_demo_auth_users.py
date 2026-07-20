@@ -5,6 +5,7 @@ from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.engine.scenario import evaluate_mock_scenario
 from scripts.provision_demo_auth_users import (
     _sync_demo_financial_context,
+    _validate_credentials,
     load_manifest,
     prepare_credentials,
 )
@@ -39,6 +40,21 @@ def test_prepare_credentials_generates_unique_passwords_once(tmp_path: Path) -> 
     assert len(first) == 6
     assert len({item["password"] for item in first}) == 6
     assert all(len(item["password"]) >= 20 for item in first)
+
+
+def test_demo_credentials_allow_short_unique_demo_passwords() -> None:
+    users = load_manifest(MANIFEST)
+    credentials = [
+        {
+            "auth_user_id": user["auth_user_id"],
+            "scenario_code": user["scenario_code"],
+            "login_id": user["login_id"],
+            "password": f"KDA!{index}Demo",
+        }
+        for index, user in enumerate(users, start=1)
+    ]
+
+    _validate_credentials(users, credentials)
 
 
 def test_financial_context_sync_maps_all_users_with_mock_contributions(
