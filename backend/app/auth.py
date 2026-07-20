@@ -2,14 +2,21 @@ from typing import Annotated
 from uuid import UUID
 
 import httpx
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 
 from .settings import Settings, get_settings
+
+
+def get_auth_http_client(request: Request) -> httpx.AsyncClient | None:
+    return getattr(request.app.state, "auth_http_client", None)
 
 
 async def require_supabase_user_id(
     settings: Annotated[Settings, Depends(get_settings)],
     authorization: Annotated[str | None, Header()] = None,
+    client: Annotated[
+        httpx.AsyncClient | None, Depends(get_auth_http_client)
+    ] = None,
 ) -> UUID:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
@@ -29,7 +36,16 @@ async def require_supabase_user_id(
         )
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        if client is None:
+            async with httpx.AsyncClient(timeout=10.0) as fallback_client:
+                response = await fallback_client.get(
+                    f"{settings.supabase_url.rstrip('/')}/auth/v1/user",
+                    headers={
+                        "apikey": settings.supabase_publishable_key.get_secret_value(),
+                        "Authorization": f"Bearer {token}",
+                    },
+                )
+        else:
             response = await client.get(
                 f"{settings.supabase_url.rstrip('/')}/auth/v1/user",
                 headers={

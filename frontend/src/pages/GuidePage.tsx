@@ -77,6 +77,15 @@ const BOUNDARY_LABELS: Record<DataBoundary, string> = {
 const PENSION_TAX_PROMPT = /세액\s*공제|중도\s*해지|연금\s*외\s*수령|16\.5\s*%/;
 const DEFAULT_TYPING_INTERVAL_MS = 50;
 
+export const ETF_THEME_CARDS = [
+  { title: "AI·소프트웨어", message: "AI·소프트웨어 테마의 특징과 위험을 알려줘." },
+  { title: "반도체", message: "반도체 테마의 특징과 위험을 알려줘." },
+  { title: "2차전지·배터리", message: "2차전지·배터리 테마의 특징과 위험을 알려줘." },
+  { title: "바이오·헬스케어", message: "바이오·헬스케어 테마의 특징과 위험을 알려줘." },
+  { title: "신재생·친환경", message: "신재생·친환경 테마의 특징과 위험을 알려줘." },
+  { title: "자동차·모빌리티", message: "자동차·모빌리티 테마의 특징과 위험을 알려줘." },
+] as const;
+
 function numericText(value: string | number, unit: string): string {
   if (unit.toUpperCase() === "KRW") {
     return `${Number(value).toLocaleString("ko-KR")}원`;
@@ -1539,14 +1548,42 @@ export function GuidePage({
                 </div>
               )}
 
-                <div className="prompt-carousel" aria-label="추천 질문">
-                  {visibleChatCards.map((card) => (
+              <section className="chat-home-card-section" aria-labelledby="chat-question-heading">
+                <header className="chat-home-section-heading">
+                  <p>추천 질문</p>
+                  <h2 id="chat-question-heading">챗봇에게 무엇이든 물어보세요</h2>
+                </header>
+                <div className="prompt-carousel" aria-label="챗봇 추천 질문">
+                  {visibleChatCards.filter((card) => card.intent !== "etf_theme").map((card) => (
                     <button type="button" key={card.card_id} onClick={() => void submitPrompt(card.message)}>
                       <span className="design-prompt-icon"><Icon name="spark" size={24} /></span>
                       <span className="design-prompt-copy"><small>추천 질문</small><strong>{card.title}</strong><em>{card.message}</em></span>
                     </button>
                   ))}
                 </div>
+              </section>
+
+              <section className="chat-home-card-section etf-theme-section" aria-labelledby="etf-theme-heading">
+                <header className="chat-home-section-heading">
+                  <p>ETF 테마</p>
+                  <h2 id="etf-theme-heading">ETF 섹터 알아보기</h2>
+                  <span>테마의 구성과 유의점을 교육용으로 확인해 보세요.</span>
+                </header>
+                <div className="sector-card-grid" aria-label="ETF 섹터 카드">
+                  {ETF_THEME_CARDS.map((card) => (
+                    <button
+                      type="button"
+                      key={card.title}
+                      aria-label={`${card.title} ETF 테마 설명 보기`}
+                      onClick={() => void submitPrompt(card.message)}
+                    >
+                      <span className="sector-card-icon"><Icon name="chart" size={19} /></span>
+                      <span><small>ETF 테마</small><strong>{card.title}</strong></span>
+                      <Icon name="chevron" size={16} />
+                    </button>
+                  ))}
+                </div>
+              </section>
 
               <p className="capability-note">연금 도우미는 참고용 정보를 제공하며, 실제 투자·가입 결정은 본인의 판단과 전문가 상담을 거쳐 주세요.</p>
             </div>
