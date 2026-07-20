@@ -117,9 +117,7 @@ class FakeNewsRepository:
 
 
 class SparseNewsRepository(FakeNewsRepository):
-    def recent_market_news(
-        self, *, region=None, days=5, limit=3, exclude_item_ids=()
-    ):
+    def recent_market_news(self, *, region=None, days=5, limit=3, exclude_item_ids=()):
         return super().recent_market_news(
             region=region,
             days=days,
@@ -182,9 +180,7 @@ def test_knowledge_source_uses_document_as_of_date() -> None:
 
 def test_general_account_overview_is_a_verified_rag_excerpt() -> None:
     response = service().ask(
-        ChatRequest(
-            message="DC형·IRP·연금저축은 각각 어떤 계좌야? 차이를 비교해줘"
-        )
+        ChatRequest(message="DC형·IRP·연금저축은 각각 어떤 계좌야? 차이를 비교해줘")
     )
 
     evidence_text = "\n".join(section.content for section in response.sections)
@@ -259,9 +255,7 @@ def test_pension_topics_return_complete_plain_verified_sections(
 
 
 def test_tax_rate_guidance_does_not_card_compound_refund_examples() -> None:
-    response = service().ask(
-        ChatRequest(message="연금계좌 세액공제 공제율을 알려줘")
-    )
+    response = service().ask(ChatRequest(message="연금계좌 세액공제 공제율을 알려줘"))
 
     assert "최대 148만 5천원" not in response.answer
     assert all(
@@ -327,9 +321,7 @@ def test_runtime_rag_guard_rejects_unsafe_approved_chunk(
 def test_combined_accounts_are_explained_with_separate_rules() -> None:
     response = service().ask(
         ChatRequest(
-            message=(
-                "DC와 IRP와 연금저축을 합쳐서 위험자산 70%를 적용하면 돼?"
-            )
+            message=("DC와 IRP와 연금저축을 합쳐서 위험자산 70%를 적용하면 돼?")
         )
     )
 
@@ -375,12 +367,17 @@ def test_mock_overlap_scenario_runs_engine_and_keeps_mock_boundary() -> None:
     assert response.intent == ChatIntent.MOCK_PORTFOLIO
     assert response.scenario_evaluation is not None
     assert response.scenario_evaluation.data_boundary == "mock"
-    assert response.scenario_evaluation.total_amount_krw == Decimal("190000000.00")
-    assert response.scenario_evaluation.duplicated_asset_classes == ["global_equity"]
+    assert response.scenario_evaluation.total_amount_krw == Decimal("149330000.00")
+    assert response.scenario_evaluation.duplicated_asset_classes == [
+        "bond",
+        "cash",
+        "deposit",
+        "domestic_equity",
+        "global_equity",
+    ]
     assert response.visualizations[0].kind == "asset_allocation"
-    assert (
-        sum(item.value for item in response.visualizations[0].items)
-        == Decimal("100.00")
+    assert sum(item.value for item in response.visualizations[0].items) == Decimal(
+        "100.00"
     )
     assert len(response.engine_results) == 3
     assert sum(
@@ -393,13 +390,11 @@ def test_mock_overlap_scenario_runs_engine_and_keeps_mock_boundary() -> None:
     assert response.answer.startswith("점검 결과 큰 문제는 없어요.")
     assert (
         "DC형은 위험자산(주식처럼 가격이 오르내릴 수 있는 자산)이 "
-        "60%로 한도(70%) 안이에요."
-        in response.answer
+        "63.11%로 한도(70%) 안이에요." in response.answer
     )
-    assert "IRP는 위험자산이 68%로 한도(70%) 안이에요." in response.answer
+    assert "IRP는 위험자산이 70%로 한도(70%) 안이에요." in response.answer
     assert any(
-        item.label == "DC형 일반 위험자산 한도"
-        and item.value == Decimal("70.00")
+        item.label == "DC형 일반 위험자산 한도" and item.value == Decimal("70.00")
         for item in response.numeric_evidence
     )
 
@@ -408,18 +403,25 @@ def test_scenario_conclusion_leads_with_limit_breach() -> None:
     base = LocalScenarioRepository().get("overlap_risk_concentration")
     assert base is not None
     dc_account = base.accounts[0]
-    amounts = (Decimal("80000000"), Decimal("19000000"), Decimal("1000000"))
+    risky_holding = next(
+        holding
+        for holding in dc_account.holdings
+        if holding.risk_treatment.value == "general_risky"
+    )
+    safe_holding = next(
+        holding
+        for holding in dc_account.holdings
+        if holding.risk_treatment.value != "general_risky"
+    )
     over_limit_dc = dc_account.model_copy(
         update={
             "holdings": [
-                holding.model_copy(update={"amount_krw": amount})
-                for holding, amount in zip(dc_account.holdings, amounts, strict=True)
+                risky_holding.model_copy(update={"amount_krw": Decimal("80000000")}),
+                safe_holding.model_copy(update={"amount_krw": Decimal("20000000")}),
             ]
         }
     )
-    scenario = base.model_copy(
-        update={"accounts": [over_limit_dc, *base.accounts[1:]]}
-    )
+    scenario = base.model_copy(update={"accounts": [over_limit_dc, *base.accounts[1:]]})
 
     class OverLimitScenarioRepository:
         @staticmethod
@@ -457,13 +459,13 @@ def test_selected_scenario_explains_holdings_and_rebalancing_boundary() -> None:
 
     assert response.intent == ChatIntent.MOCK_PORTFOLIO
     sections = {section.title: section.content for section in response.sections}
-    assert "KODEX 미국S&P500 (379800) 60%" in sections["보유 항목과 비중"]
-    assert "KODEX TDF2050액티브 (434060) 20%" in sections["보유 항목과 비중"]
+    assert "HANARO K고배당 (322410) 26.5%" in sections["보유 항목과 비중"]
+    assert "TIGER 헬스케어 (143860) 11.4%" in sections["보유 항목과 비중"]
     assert "리밸런싱 점검이 필요해요" in sections["리밸런싱 점검"]
     assert "매수·매도 수량은 계산하지 않았어요" in sections["리밸런싱 점검"]
     assert any(
-        item.label == "회사 DC KODEX 미국S&P500 보유 비중"
-        and item.value == Decimal("60.0")
+        item.label == "회사 DC HANARO K고배당 보유 비중"
+        and item.value == Decimal("26.5")
         for item in response.numeric_evidence
     )
 
@@ -547,8 +549,7 @@ def test_disclosure_comparison_uses_only_repository_numbers() -> None:
     assert response.answer.startswith("과거 공시를 찾았어요.")
     assert (
         "테스트증권의 당기 과거 수익률은 4.25%이고, "
-        "3년 연환산 수익률은 3.1%예요."
-        in response.answer
+        "3년 연환산 수익률은 3.1%예요." in response.answer
     )
     assert "4.25%" in response.answer
     assert response.numeric_evidence[0].value == Decimal("4.25")
@@ -994,9 +995,7 @@ def test_narrator_never_receives_untrusted_news(boundary: DataBoundary) -> None:
     assert response == base
 
 
-def _fake_narration_model(
-    text: str, thinking: str | None = None
-) -> FunctionModel:
+def _fake_narration_model(text: str, thinking: str | None = None) -> FunctionModel:
     payload = json.dumps({"narration": text}, ensure_ascii=False)
 
     def respond(messages, info) -> ModelResponse:
@@ -1215,9 +1214,7 @@ def test_warm_chat_dependencies_prewarms_enabled_narrator(monkeypatch) -> None:
         def prewarm(self) -> None:
             calls.append("prewarm")
 
-    monkeypatch.setattr(
-        deps, "get_chat_narrator", lambda settings: FakeNarrator()
-    )
+    monkeypatch.setattr(deps, "get_chat_narrator", lambda settings: FakeNarrator())
 
     deps.warm_chat_dependencies(get_settings())
 
@@ -1237,9 +1234,7 @@ def test_narration_precompute_is_noop_without_api_key(monkeypatch) -> None:
     deps.precompute_chat_narrations(settings)
 
 
-def test_narration_precompute_swallows_dependency_errors(
-    monkeypatch, caplog
-) -> None:
+def test_narration_precompute_swallows_dependency_errors(monkeypatch, caplog) -> None:
     def fail(settings):
         raise RuntimeError("narrator unavailable")
 
@@ -1367,8 +1362,7 @@ def test_guard_allows_negation_attached_after_unsafe_claim(candidate: str) -> No
 def test_guard_rejects_new_guarantee_instance_in_same_category() -> None:
     source = "안정형 성향은 원금 보장형 상품 중심으로 구성합니다."
     candidate = (
-        "안정형 성향은 원금 보장형 상품 중심으로 구성하고, "
-        "수익도 확실히 보장됩니다."
+        "안정형 성향은 원금 보장형 상품 중심으로 구성하고, 수익도 확실히 보장됩니다."
     )
 
     # 둘 다 guarantee 카테고리지만 '수익 확실 보장'은 원문에 없는 별도 주장이다.

@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict
 
 from ..engine.models import ScenarioAccountInput
 from ..engine.scenario import evaluate_mock_scenario
+from .demo_customer_records import BenchmarkCustomerRecord, get_benchmark_customer
 from .scenarios import LocalScenarioRepository
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -57,6 +58,7 @@ class DemoHeroPortfolio(BaseModel):
     asset_allocations: list
     duplicated_asset_classes: list[str]
     risk_summary: DemoHeroRiskSummary
+    benchmark_customer: BenchmarkCustomerRecord
     data_boundary: str = "mock"
 
 
@@ -112,7 +114,17 @@ def build_demo_heroes() -> tuple[DemoHeroPortfolio, ...]:
         if scenario is None:
             continue
         user = users[scenario.scenario_code]
+        benchmark_customer = get_benchmark_customer(user["benchmark_user_id"])
         evaluation = evaluate_mock_scenario(scenario)
+        benchmark_total = sum(
+            (account.balance_krw for account in benchmark_customer.accounts),
+            Decimal("0"),
+        )
+        if evaluation.total_amount_krw != benchmark_total:
+            raise ValueError(
+                "demo scenario total differs from benchmark customer: "
+                f"{scenario.scenario_code}"
+            )
         heroes.append(
             DemoHeroPortfolio(
                 nickname=user["nickname"],
@@ -128,6 +140,7 @@ def build_demo_heroes() -> tuple[DemoHeroPortfolio, ...]:
                 asset_allocations=evaluation.asset_allocations,
                 duplicated_asset_classes=evaluation.duplicated_asset_classes,
                 risk_summary=_risk_summary(scenario, evaluation),
+                benchmark_customer=benchmark_customer,
             )
         )
     return tuple(heroes)

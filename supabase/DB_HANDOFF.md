@@ -67,6 +67,8 @@
 
 원격에서 직접 수정된 시나리오 설명 5건과 대표 고객 납입액 5건은 `20260718131917_sync_modified_mock_data.sql`로 migration history에 정식 반영했다. 적용 전후 값과 `updated_at`이 모두 같아 데이터 재기록 없이 이력만 정상 추가됐음을 확인했다.
 
+`20260720022220_unify_demo_customer_contract.sql`은 **로컬 검증 완료·원격 미적용** 상태다. 1만 명 사용자 전원에 연금저축펀드/개인 IRP 당해연도 납입액 컬럼을 추가하고, 대표 6명을 1만 명의 실제 사용자 6행·계좌 13행에 연결한다. 적용 시 대표 보유내역은 원본 계좌 잔액을 보존한 86행으로 교체되며 KODEX·TIGER·ACE·RISE·SOL·HANARO의 적격 ETF와 현금·원리금보장 항목을 사용한다. 원격의 현재 6/13/26 건수는 이 migration을 적용하기 전 값이므로 혼동하지 않는다.
+
 원격 컬럼 설명 3건(`pension_savings_provider_stats.fee_rate_1y`, `retirement_provider_stats.response_division`, `knowledge_chunks.embedding`)은 `20260718154819_repair_corrupted_column_comments.sql`로 교정했다. 실제 설명을 재조회해 목표 문구와 일치하고 U+FFFD 대체문자가 없음을 확인했다. 테이블·컬럼·데이터·RLS·GRANT는 바뀌지 않았다.
 
 ### 현재 43개 테이블의 역할
@@ -248,6 +250,7 @@ uv run ruff check .
 | DB-03 | 공통 계좌 구조 backfill | `LOCAL-DRAFT` | 기존 6/13/26을 `pension_accounts`·snapshot·holding 구조로 이관하고 금액·엔진 결과 동등 | 별도 additive migration·계약 테스트 작성 |
 | DB-03A | 생애주기 대표 고객·Auth 준비 | `REMOTE-APPLIED` | 시나리오 6·계좌 13·보유 26, synthetic demo Auth 사용자 6개 존재 | 데모 로그인 smoke는 다음 인증 가능 세션에서 재검증 |
 | DB-03B | 원격 직접 수정 목데이터 Git 동기화 | `REMOTE-APPLIED` | `20260718131917`, 시나리오 설명 5건·대표 고객 납입액 5건 일치·재적용 시 무변경 확인 | 적용 파일 수정 금지 |
+| DB-03C | 1만 명 공통 납입 계약·대표 6명 기준행/ETF 상세화 | `LOCAL-VERIFIED` | `20260720022220`, 사용자 10,000·계좌 16,900·보유 79,381 생성 검증, 대표 6/13/86·6개 운용사 | 원격 적용은 별도 승인 후 수행 |
 | DB-04 | 챗봇 Postgres scenario repository 연결 | `LOCAL-VERIFIED` | DB 우선·JSON fallback과 원격 채팅 저장·replay E2E 통과 | `/engine/mock-scenario` DB 전환 여부 별도 결정 |
 | DB-04A | 사용자 연금계좌 repository·API 연결 | `LOCAL-DRAFT` | 신규 공통 계좌 구조 조회·Auth 소유권·엔진 입력 변환 E2E | DB-03 backfill 후 구현 |
 | DB-05 | 기존 mock account tables 정리 | `BLOCKED` | 코드·SQL 참조 0, 별도 승인·복구 계획 | DB-04 안정화 전 삭제 금지 |

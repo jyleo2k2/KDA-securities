@@ -44,6 +44,7 @@ MIGRATION = (
 def _context() -> DemoUserFinancialContext:
     return DemoUserFinancialContext(
         auth_user_id=OWNER_ID,
+        benchmark_user_id="USR09660",
         nickname="박준호(가상)",
         representative_age=46,
         customer_context="DC 적립금 방치형 고객",
@@ -84,15 +85,11 @@ def test_authenticated_planning_distinguishes_explicit_tax_payload() -> None:
 
     assert implicit_chat.pension_tax is not None
     assert (
-        _authenticated_planning_request(
-            implicit_request, implicit_chat
-        ).pension_tax
+        _authenticated_planning_request(implicit_request, implicit_chat).pension_tax
         is None
     )
     assert (
-        _authenticated_planning_request(
-            explicit_request, explicit_chat
-        ).pension_tax
+        _authenticated_planning_request(explicit_request, explicit_chat).pension_tax
         is not None
     )
 
@@ -140,6 +137,7 @@ def test_migration_keeps_demo_context_server_only_and_maps_six_users() -> None:
 def test_repository_normalizes_missing_database_values_to_zero() -> None:
     row = (
         OWNER_ID,
+        "USR09660",
         "박준호(가상)",
         46,
         "DC 방치형",

@@ -152,6 +152,7 @@ COMPREHENSIVE_INCOME_TAX_CREDIT_THRESHOLD_KRW = 45_000_000
 TAX_CREDIT_RATE_WITH_LOCAL = {"LOWER_INCOME": 0.165, "HIGHER_INCOME": 0.132}
 PENSION_SAVINGS_TAX_CREDIT_LIMIT_KRW = 6_000_000
 COMBINED_PENSION_TAX_CREDIT_LIMIT_KRW = 9_000_000
+COMBINED_PERSONAL_PENSION_CONTRIBUTION_LIMIT_KRW = 18_000_000
 PRIVATE_PENSION_SEPARATE_TAX_THRESHOLD_KRW = 15_000_000
 
 PROFILE_RISK_TARGET = {
@@ -403,9 +404,7 @@ def sample_allocation(
 ) -> tuple[float, float, float]:
     baseline = RISKY_MEAN[account_type][age_group]
     max_risky = 0.70 if account_type in (DC, IRP) else 0.95
-    profile_adjusted_mean = (
-        baseline + PROFILE_RISK_TARGET[risk_profile]
-    ) / 2.0
+    profile_adjusted_mean = (baseline + PROFILE_RISK_TARGET[risk_profile]) / 2.0
 
     if scenario == "DC_NEGLECT" and account_type == DC:
         risky_mean = profile_adjusted_mean * 0.35
@@ -485,12 +484,58 @@ def tax_credit_rate(income_basis: str, income_amount: int) -> float:
         if income_basis == "GROSS_SALARY"
         else COMPREHENSIVE_INCOME_TAX_CREDIT_THRESHOLD_KRW
     )
-    income_band = (
-        "LOWER_INCOME"
-        if income_amount <= threshold
-        else "HIGHER_INCOME"
-    )
+    income_band = "LOWER_INCOME" if income_amount <= threshold else "HIGHER_INCOME"
     return TAX_CREDIT_RATE_WITH_LOCAL[income_band]
+
+
+def cap_personal_pension_contributions(accounts: list[dict]) -> None:
+    """Apply the annual KRW 18m IRP + pension-savings contribution limit.
+
+    Contributions are generated as KRW 10k monthly equivalents. When the two
+    personal-pension accounts exceed KRW 1.5m per month, the cap is allocated
+    proportionally and any remaining KRW 10k units are assigned by fractional
+    remainder and stable account id.
+    """
+
+    personal_accounts_by_user: dict[str, list[dict]] = defaultdict(list)
+    for account in accounts:
+        if account["account_type"] in (IRP, PENSION_SAVINGS_FUND):
+            personal_accounts_by_user[account["user_id"]].append(account)
+
+    monthly_limit = COMBINED_PERSONAL_PENSION_CONTRIBUTION_LIMIT_KRW // 12
+    unit = 10_000
+    for user_accounts in personal_accounts_by_user.values():
+        total_monthly = sum(
+            account["monthly_contribution_krw"] for account in user_accounts
+        )
+        if total_monthly <= monthly_limit:
+            continue
+
+        allocations: list[tuple[dict, int, float]] = []
+        allocated = 0
+        for account in user_accounts:
+            exact_units = (
+                account["monthly_contribution_krw"]
+                * monthly_limit
+                / total_monthly
+                / unit
+            )
+            whole_units = math.floor(exact_units)
+            monthly = whole_units * unit
+            allocations.append((account, monthly, exact_units - whole_units))
+            allocated += monthly
+
+        remaining_units = (monthly_limit - allocated) // unit
+        ranked = sorted(allocations, key=lambda item: (-item[2], item[0]["account_id"]))
+        bonus_ids = {item[0]["account_id"] for item in ranked[:remaining_units]}
+        for account, monthly, _ in allocations:
+            if account["account_id"] in bonus_ids:
+                monthly += unit
+            account["monthly_contribution_krw"] = monthly
+            account["annual_contribution_krw"] = monthly * 12
+            account["contribution_status"] = "ACTIVE" if monthly else "INACTIVE"
+            if monthly == 0:
+                account["contribution_frequency"] = "NONE"
 
 
 def planned_pension_tax_rate(planned_start_age: int) -> float:
@@ -571,6 +616,13 @@ def apply_tax_scenarios(
             account for account in user_accounts if account["account_type"] == IRP
         ]
 
+        user["pension_savings_contribution_krw"] = sum(
+            account["annual_contribution_krw"] for account in pension_savings_accounts
+        )
+        user["irp_contribution_krw"] = sum(
+            account["annual_contribution_krw"] for account in irp_accounts
+        )
+
         remaining_limit = COMBINED_PENSION_TAX_CREDIT_LIMIT_KRW
         for account in pension_savings_accounts:
             eligible = min(
@@ -619,8 +671,7 @@ def apply_tax_scenarios(
             if account["account_type"] in (IRP, PENSION_SAVINGS_FUND)
         )
         total_receipt = sum(
-            account["planned_annual_pension_receipt_krw"]
-            for account in user_accounts
+            account["planned_annual_pension_receipt_krw"] for account in user_accounts
         )
         if user["payout_preference"] == "LUMP_SUM":
             treatment = "NON_PENSION_WITHDRAWAL_REVIEW"
@@ -630,8 +681,7 @@ def apply_tax_scenarios(
             treatment = "COMPREHENSIVE_OR_16_5_SEPARATE_CHOICE"
 
         user["total_tax_credit_eligible_contribution_krw"] = sum(
-            account["tax_credit_eligible_contribution_krw"]
-            for account in user_accounts
+            account["tax_credit_eligible_contribution_krw"] for account in user_accounts
         )
         user["estimated_pension_tax_credit_krw"] = sum(
             account["estimated_tax_credit_krw"] for account in user_accounts
@@ -655,15 +705,11 @@ def generate_records(user_count: int, seed: int) -> tuple[list[dict], list[dict]
     tax_rng = random.Random(seed + 2)
     age_group_counts = allocate_counts(user_count, AGE_GROUP_WEIGHTS)
     age_groups = [
-        group
-        for group, count in age_group_counts.items()
-        for _ in range(count)
+        group for group, count in age_group_counts.items() for _ in range(count)
     ]
     scenario_counts = allocate_counts(user_count, SCENARIO_WEIGHTS)
     scenarios = [
-        scenario
-        for scenario, count in scenario_counts.items()
-        for _ in range(count)
+        scenario for scenario, count in scenario_counts.items() for _ in range(count)
     ]
     rng.shuffle(age_groups)
     rng.shuffle(scenarios)
@@ -722,9 +768,7 @@ def generate_records(user_count: int, seed: int) -> tuple[list[dict], list[dict]
         start=1,
     ):
         age = rng.randint(*AGE_RANGES[age_group])
-        risk_profile = PREFERRED_MANAGEMENT_TO_RISK_PROFILE[
-            preferred_management_type
-        ]
+        risk_profile = PREFERRED_MANAGEMENT_TO_RISK_PROFILE[preferred_management_type]
         user_id = f"USR{index:05d}"
         employment_type = employment_types_by_scenario[scenario].pop()
         if employment_type == SALARIED_EMPLOYEE:
@@ -833,6 +877,7 @@ def generate_records(user_count: int, seed: int) -> tuple[list[dict], list[dict]
 
     calibrate_balances(accounts)
     calibrate_returns(accounts)
+    cap_personal_pension_contributions(accounts)
     apply_tax_scenarios(users, accounts, tax_rng)
     return users, accounts
 
@@ -981,9 +1026,7 @@ def validate_and_summarize(
     tax_income_by_user = {
         user["user_id"]: user["tax_credit_income_amount_krw"] for user in users
     }
-    gross_salary_by_user = {
-        user["user_id"]: user["gross_salary_krw"] for user in users
-    }
+    gross_salary_by_user = {user["user_id"]: user["gross_salary_krw"] for user in users}
     user_record_by_id = {user["user_id"]: user for user in users}
     account_rows_by_user: dict[str, list[dict]] = defaultdict(list)
     for account in accounts:
@@ -1004,14 +1047,37 @@ def validate_and_summarize(
             errors.append(f"non-employee owns DC account: {user['user_id']}")
             break
         eligible_total = sum(
-            account["tax_credit_eligible_contribution_krw"]
-            for account in user_accounts
+            account["tax_credit_eligible_contribution_krw"] for account in user_accounts
         )
         pension_savings_eligible = sum(
             account["tax_credit_eligible_contribution_krw"]
             for account in user_accounts
             if account["account_type"] == PENSION_SAVINGS_FUND
         )
+        pension_savings_contribution = sum(
+            account["annual_contribution_krw"]
+            for account in user_accounts
+            if account["account_type"] == PENSION_SAVINGS_FUND
+        )
+        irp_contribution = sum(
+            account["annual_contribution_krw"]
+            for account in user_accounts
+            if account["account_type"] == IRP
+        )
+        if (
+            pension_savings_contribution + irp_contribution
+            > COMBINED_PERSONAL_PENSION_CONTRIBUTION_LIMIT_KRW
+        ):
+            errors.append(f"combined contribution limit exceeded: {user['user_id']}")
+            break
+        if user["pension_savings_contribution_krw"] != pension_savings_contribution:
+            errors.append(
+                f"user pension-savings contribution mismatch: {user['user_id']}"
+            )
+            break
+        if user["irp_contribution_krw"] != irp_contribution:
+            errors.append(f"user IRP contribution mismatch: {user['user_id']}")
+            break
         if eligible_total > COMBINED_PENSION_TAX_CREDIT_LIMIT_KRW:
             errors.append(f"combined tax-credit limit exceeded: {user['user_id']}")
             break
@@ -1029,8 +1095,7 @@ def validate_and_summarize(
             errors.append(f"user estimated tax-credit mismatch: {user['user_id']}")
             break
         if user["planned_annual_total_pension_receipt_krw"] != sum(
-            account["planned_annual_pension_receipt_krw"]
-            for account in user_accounts
+            account["planned_annual_pension_receipt_krw"] for account in user_accounts
         ):
             errors.append(f"user planned receipt mismatch: {user['user_id']}")
             break
@@ -1165,8 +1230,7 @@ def validate_and_summarize(
             ),
             "mean_planned_annual_pension_receipt_krw": round(
                 statistics.fmean(
-                    account["planned_annual_pension_receipt_krw"]
-                    for account in group
+                    account["planned_annual_pension_receipt_krw"] for account in group
                 )
             ),
             "mean_trailing_12m_return_pct": round(statistics.fmean(returns), 2),
@@ -1190,9 +1254,7 @@ def validate_and_summarize(
                 statistics.fmean(account["balance_krw"] for account in group)
             )
 
-    risk_profile_by_user = {
-        user["user_id"]: user["risk_profile"] for user in users
-    }
+    risk_profile_by_user = {user["user_id"]: user["risk_profile"] for user in users}
     risk_profile_mean_risky_asset_ratio = {}
     for risk_profile in sorted(set(risk_profile_by_user.values())):
         group = [
@@ -1222,14 +1284,10 @@ def validate_and_summarize(
             sorted(Counter(user["risk_profile"] for user in users).items())
         ),
         "preferred_management_type_counts": dict(
-            sorted(
-                Counter(user["preferred_management_type"] for user in users).items()
-            )
+            sorted(Counter(user["preferred_management_type"] for user in users).items())
         ),
         "retirement_fund_attitude_counts": dict(
-            sorted(
-                Counter(user["retirement_fund_attitude"] for user in users).items()
-            )
+            sorted(Counter(user["retirement_fund_attitude"] for user in users).items())
         ),
         "investment_readiness_counts": dict(
             sorted(Counter(user["investment_readiness"] for user in users).items())
@@ -1275,9 +1333,7 @@ def validate_and_summarize(
         ),
         "planned_receipt_tax_treatment_counts": dict(
             sorted(
-                Counter(
-                    user["planned_receipt_tax_treatment"] for user in users
-                ).items()
+                Counter(user["planned_receipt_tax_treatment"] for user in users).items()
             )
         ),
         "tax_credit_eligible_status_counts": dict(
@@ -1305,19 +1361,21 @@ def validate_and_summarize(
             )
         ),
         "mean_tax_credit_income_amount_krw": round(
-            statistics.fmean(
-                user["tax_credit_income_amount_krw"] for user in users
-            )
+            statistics.fmean(user["tax_credit_income_amount_krw"] for user in users)
         ),
         "mean_tax_credit_eligible_contribution_krw": round(
             statistics.fmean(
                 user["total_tax_credit_eligible_contribution_krw"] for user in users
             )
         ),
+        "mean_pension_savings_contribution_krw": round(
+            statistics.fmean(user["pension_savings_contribution_krw"] for user in users)
+        ),
+        "mean_irp_contribution_krw": round(
+            statistics.fmean(user["irp_contribution_krw"] for user in users)
+        ),
         "mean_estimated_pension_tax_credit_krw": round(
-            statistics.fmean(
-                user["estimated_pension_tax_credit_krw"] for user in users
-            )
+            statistics.fmean(user["estimated_pension_tax_credit_krw"] for user in users)
         ),
         "mean_planned_annual_total_pension_receipt_krw": round(
             statistics.fmean(
@@ -1414,6 +1472,8 @@ def generate(output_dir: Path, user_count: int = 10_000, seed: int = 20260714) -
             "mock_scenario",
             "data_kind",
             "source_ids",
+            "pension_savings_contribution_krw",
+            "irp_contribution_krw",
         ],
     )
     write_csv(
