@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..macro_evidence import (
+    MacroAnalogRegimeSnapshot,
     MacroEvidenceRepository,
     MacroEvidenceSnapshot,
     MacroEvidenceUnavailable,
@@ -26,4 +27,19 @@ def macro_evidence(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Current macro evidence is not available",
+        ) from exc
+
+
+@router.get("/macro/analog-regimes", response_model=MacroAnalogRegimeSnapshot)
+def macro_analog_regimes(
+    repository: Annotated[
+        MacroEvidenceRepository, Depends(get_macro_evidence_repository)
+    ],
+) -> MacroAnalogRegimeSnapshot:
+    try:
+        return repository.analog_regimes()
+    except MacroEvidenceUnavailable as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Historical macro regime evidence is not available",
         ) from exc

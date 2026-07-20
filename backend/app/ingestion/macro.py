@@ -5,13 +5,14 @@ from __future__ import annotations
 import argparse
 import json
 from collections.abc import Iterable
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 import httpx
 
+from backend.app.engine.macro_regime import MACRO_REGIME_METRIC_IDS
 from backend.app.settings import Settings
 
 from ._files import atomic_write_bytes, atomic_write_json
@@ -26,6 +27,9 @@ from .macro_clients import (
 )
 
 POLICY_VERSION = "macro-evidence-2026-07-20.1"
+REGIME_POLICY_VERSION = "macro-regime-dataset-2026-07-20.1"
+REGIME_HISTORY_START = date(2008, 1, 1)
+REGIME_MINIMUM_COMPLETE_MONTHS = 60
 
 _FRESHNESS_RULES = {
     "kr_base_rate": ("daily", 7),
@@ -71,6 +75,180 @@ def _observation_payload(observation: MacroObservation) -> dict[str, Any]:
             "as_of": observation.period,
         },
         "dimensions": observation.dimensions,
+    }
+
+
+def _monthly_last(
+    observations: Iterable[MacroObservation],
+) -> dict[date, Decimal]:
+    monthly: dict[date, tuple[date, Decimal]] = {}
+    for observation in observations:
+        observed = date.fromisoformat(observation.period)
+        month = observed.replace(day=1)
+        current = monthly.get(month)
+        if current is None or observed >= current[0]:
+            monthly[month] = (observed, observation.value)
+    return {month: value for month, (_, value) in monthly.items()}
+
+
+def _monthly_average(
+    observations: Iterable[MacroObservation],
+) -> dict[date, Decimal]:
+    grouped: dict[date, list[Decimal]] = {}
+    for observation in observations:
+        observed = date.fromisoformat(observation.period)
+        grouped.setdefault(observed.replace(day=1), []).append(observation.value)
+    return {
+        month: sum(values, Decimal("0")) / Decimal(len(values))
+        for month, values in grouped.items()
+    }
+
+
+def _forward_fill_monthly(
+    values: dict[date, Decimal], *, end_month: date
+) -> dict[date, Decimal]:
+    if not values:
+        return {}
+    start = min(values)
+    result: dict[date, Decimal] = {}
+    current: Decimal | None = None
+    month = start
+    while month <= end_month:
+        if month in values:
+            current = values[month]
+        if current is not None:
+            result[month] = current
+        month = _month_offset(month, 1)
+    return result
+
+
+def _cpi_yoy(observations: Iterable[MacroObservation]) -> dict[date, Decimal]:
+    index_values = _monthly_last(observations)
+    result: dict[date, Decimal] = {}
+    for month, current in index_values.items():
+        prior = index_values.get(_month_offset(month, -12))
+        if prior is not None and prior != 0:
+            result[month] = (current / prior - Decimal("1")) * Decimal("100")
+    return result
+
+
+def build_macro_regime_dataset(
+    observations: list[MacroObservation],
+) -> dict[str, Any]:
+    """Normalize the six approved regime features to complete monthly rows."""
+
+    grouped: dict[str, list[MacroObservation]] = {}
+    for observation in observations:
+        grouped.setdefault(observation.metric_id, []).append(observation)
+
+    raw_requirements = {
+        "kr_base_rate": "kr_base_rate",
+        "kr_cpi_yoy": "kr_cpi_index",
+        "us_federal_funds_rate": "us_federal_funds_rate",
+        "us_cpi_yoy": "us_cpi_yoy",
+        "us_treasury_10y": "us_treasury_10y",
+        "us_breakeven_inflation_10y": "us_breakeven_inflation_10y",
+    }
+    missing = sorted(
+        metric_id
+        for metric_id, raw_metric_id in raw_requirements.items()
+        if not grouped.get(raw_metric_id)
+    )
+    observed_months = [
+        date.fromisoformat(observation.period).replace(day=1)
+        for observation in observations
+    ]
+    end_month = max(observed_months) if observed_months else REGIME_HISTORY_START
+    series = {
+        "kr_base_rate": _forward_fill_monthly(
+            _monthly_last(grouped.get("kr_base_rate", [])), end_month=end_month
+        ),
+        "kr_cpi_yoy": _cpi_yoy(grouped.get("kr_cpi_index", [])),
+        "us_federal_funds_rate": _monthly_last(
+            grouped.get("us_federal_funds_rate", [])
+        ),
+        "us_cpi_yoy": _monthly_last(grouped.get("us_cpi_yoy", [])),
+        "us_treasury_10y": _monthly_average(
+            grouped.get("us_treasury_10y", [])
+        ),
+        "us_breakeven_inflation_10y": _monthly_average(
+            grouped.get("us_breakeven_inflation_10y", [])
+        ),
+    }
+    common_months = (
+        sorted(set.intersection(*(set(values) for values in series.values())))
+        if all(series.values())
+        else []
+    )
+    rows = [
+        {
+            "period": month.isoformat(),
+            "values": {
+                metric_id: _decimal_text(series[metric_id][month])
+                for metric_id in MACRO_REGIME_METRIC_IDS
+            },
+        }
+        for month in common_months
+    ]
+    aggregations = {
+        "kr_base_rate": "month_end_last_observation_forward_filled",
+        "kr_cpi_yoy": "monthly_index_year_over_year",
+        "us_federal_funds_rate": "monthly_observation",
+        "us_cpi_yoy": "monthly_year_over_year_observation",
+        "us_treasury_10y": "monthly_average_of_daily_observations",
+        "us_breakeven_inflation_10y": "monthly_average_of_daily_observations",
+    }
+    definitions = []
+    for metric_id in MACRO_REGIME_METRIC_IDS:
+        raw_metric_id = raw_requirements[metric_id]
+        source_rows = grouped.get(raw_metric_id, [])
+        if not source_rows:
+            continue
+        source = _latest(source_rows)
+        definitions.append(
+            {
+                "metric_id": metric_id,
+                "label": (
+                    "소비자물가지수 전년동월비"
+                    if metric_id == "kr_cpi_yoy"
+                    else source.label
+                ),
+                "unit": "%" if metric_id == "kr_cpi_yoy" else source.unit,
+                "aggregation": aggregations[metric_id],
+                "source": source.source,
+                "source_chip": {
+                    "label": source.label,
+                    "reference": source.source_reference,
+                    "as_of": source.period,
+                },
+            }
+        )
+
+    return {
+        "policy_version": REGIME_POLICY_VERSION,
+        "outcome": (
+            "ready"
+            if not missing and len(rows) >= REGIME_MINIMUM_COMPLETE_MONTHS
+            else "incomplete"
+        ),
+        "frequency": "monthly",
+        "metric_ids": list(MACRO_REGIME_METRIC_IDS),
+        "metric_definitions": definitions,
+        "period_start": rows[0]["period"] if rows else None,
+        "period_end": rows[-1]["period"] if rows else None,
+        "rows": rows,
+        "quality": {
+            "minimum_complete_months": REGIME_MINIMUM_COMPLETE_MONTHS,
+            "complete_month_count": len(rows),
+            "missing_metrics": missing,
+        },
+        "algorithm_usage": {
+            "historical_similarity_evidence": True,
+            "planning_return_input": False,
+            "allocation_weight_input": False,
+            "rebalancing_trigger_input": False,
+            "is_forecast": False,
+        },
     }
 
 
@@ -182,6 +360,7 @@ def build_macro_evidence_report(
                 "ETF 미래수익률·목표비중·리밸런싱 신호로 직접 사용하지 않는다."
             ),
         },
+        "historical_regime_dataset": build_macro_regime_dataset(observations),
     }
 
 
@@ -209,9 +388,9 @@ def run_live_collection(
 ) -> dict[str, Any]:
     observations: list[MacroObservation] = []
     manifests: list[dict[str, Any]] = []
-    start_daily = (as_of - timedelta(days=90)).strftime("%Y%m%d")
-    start_monthly = _month_offset(as_of, -24)
-    fred_start = _month_offset(as_of, -24).isoformat()
+    start_daily = REGIME_HISTORY_START.strftime("%Y%m%d")
+    start_monthly = _month_offset(REGIME_HISTORY_START, -12)
+    fred_start = REGIME_HISTORY_START.isoformat()
 
     with httpx.Client(
         timeout=httpx.Timeout(30.0),

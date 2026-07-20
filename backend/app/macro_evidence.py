@@ -10,6 +10,12 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from .engine.macro_regime import (
+    MacroAnalogRegimeEvaluation,
+    MonthlyMacroRegimeObservation,
+    calculate_macro_analog_regimes,
+)
+
 
 class MacroEvidenceUnavailable(RuntimeError):
     """Raised when the local evidence report cannot be safely served."""
@@ -55,6 +61,32 @@ class MacroEvidenceSnapshot(BaseModel):
     algorithm_usage: MacroAlgorithmUsage
 
 
+class MacroRegimeMetricDefinition(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    metric_id: str
+    label: str
+    unit: str
+    aggregation: str
+    source: str
+    publisher: str
+    source_label: str
+    source_url: str
+    source_as_of: date
+
+
+class MacroAnalogRegimeSnapshot(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    as_of: date
+    dataset_policy_version: str
+    period_start: date
+    period_end: date
+    complete_month_count: int
+    metrics: list[MacroRegimeMetricDefinition]
+    analysis: MacroAnalogRegimeEvaluation
+
+
 _PUBLIC_METRICS = (
     "kr_base_rate",
     "kr_cpi_yoy",
@@ -84,10 +116,18 @@ class MacroEvidenceRepository:
     def __init__(self, report_path: Path) -> None:
         self._report_path = report_path
 
-    def latest(self) -> MacroEvidenceSnapshot:
+    def _root(self) -> dict[str, Any]:
         try:
             payload = json.loads(self._report_path.read_text(encoding="utf-8"))
-            root = _mapping(payload, field="root")
+            return _mapping(payload, field="root")
+        except (OSError, json.JSONDecodeError, TypeError) as exc:
+            raise MacroEvidenceUnavailable(
+                "current macro evidence report is unavailable"
+            ) from exc
+
+    def latest(self) -> MacroEvidenceSnapshot:
+        try:
+            root = self._root()
             latest = _mapping(
                 root.get("latest_observations"), field="latest_observations"
             )
@@ -119,14 +159,57 @@ class MacroEvidenceRepository:
                 algorithm_usage=MacroAlgorithmUsage.model_validate(usage),
             )
         except (
-            OSError,
-            json.JSONDecodeError,
             KeyError,
             TypeError,
             ValidationError,
         ) as exc:
             raise MacroEvidenceUnavailable(
                 "current macro evidence report is unavailable"
+            ) from exc
+
+    def analog_regimes(self) -> MacroAnalogRegimeSnapshot:
+        try:
+            root = self._root()
+            dataset = _mapping(
+                root.get("historical_regime_dataset"),
+                field="historical_regime_dataset",
+            )
+            if dataset.get("outcome") != "ready":
+                raise MacroEvidenceUnavailable(
+                    "historical macro regime evidence is incomplete"
+                )
+            rows_payload = dataset.get("rows")
+            definitions_payload = dataset.get("metric_definitions")
+            if not isinstance(rows_payload, list) or not isinstance(
+                definitions_payload, list
+            ):
+                raise TypeError("historical regime rows are invalid")
+            rows = [
+                MonthlyMacroRegimeObservation.model_validate(row)
+                for row in rows_payload
+            ]
+            definitions = [
+                self._regime_definition(item) for item in definitions_payload
+            ]
+            analysis = calculate_macro_analog_regimes(rows)
+            quality = _mapping(dataset.get("quality"), field="regime_quality")
+            return MacroAnalogRegimeSnapshot(
+                as_of=root["as_of"],
+                dataset_policy_version=dataset["policy_version"],
+                period_start=dataset["period_start"],
+                period_end=dataset["period_end"],
+                complete_month_count=quality["complete_month_count"],
+                metrics=definitions,
+                analysis=analysis,
+            )
+        except (
+            KeyError,
+            TypeError,
+            ValueError,
+            ValidationError,
+        ) as exc:
+            raise MacroEvidenceUnavailable(
+                "historical macro regime evidence is unavailable"
             ) from exc
 
     @staticmethod
@@ -144,4 +227,21 @@ class MacroEvidenceRepository:
             source_label=source_chip["label"],
             source_url=source_chip["reference"],
             basis=payload.get("formula", "공식 API 최신 관측값"),
+        )
+
+    @staticmethod
+    def _regime_definition(payload: object) -> MacroRegimeMetricDefinition:
+        item = _mapping(payload, field="regime_metric_definition")
+        source_chip = _mapping(item.get("source_chip"), field="source_chip")
+        source = str(item["source"])
+        return MacroRegimeMetricDefinition(
+            metric_id=item["metric_id"],
+            label=item["label"],
+            unit=item["unit"],
+            aggregation=item["aggregation"],
+            source=source,
+            publisher=_PUBLISHERS.get(source, source),
+            source_label=source_chip["label"],
+            source_url=source_chip["reference"],
+            source_as_of=source_chip["as_of"],
         )

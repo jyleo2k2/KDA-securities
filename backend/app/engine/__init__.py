@@ -50,6 +50,12 @@ from .etf_theme import (
     resolve_theme,
     select_theme_etf_candidates,
 )
+from .macro_regime import (
+    MacroAnalogRegimeEvaluation,
+    MacroRegimeMatch,
+    MonthlyMacroRegimeObservation,
+    calculate_macro_analog_regimes,
+)
 from .market_evidence import (
     EtfObservation,
     HistoricalEtfMetrics,
@@ -172,6 +178,9 @@ __all__ = [
     "IrpDeferredIncomeStatus",
     "KrxEtfEvidenceProduct",
     "KisComponentHolding",
+    "MacroAnalogRegimeEvaluation",
+    "MacroRegimeMatch",
+    "MonthlyMacroRegimeObservation",
     "RepresentativeCompany",
     "NonPensionWithdrawalInput",
     "NonPensionWithdrawalEvaluation",
@@ -222,6 +231,7 @@ __all__ = [
     "build_educational_portfolio",
     "calculate_etf_planning_return",
     "calculate_historical_etf_metrics",
+    "calculate_macro_analog_regimes",
     "calculate_pension",
     "calculate_pension_tax_credit",
     "calculate_portfolio_planning_return",
