@@ -1222,20 +1222,24 @@ class ChatService:
                     kind=SectionKind.SERVICE_EXPLANATION,
                     title=f"{theme.name} 테마 성과의 관찰 요인",
                     content=(
-                        "미래 수익률 예측이 아니라 테마 가격과 사업 환경에 "
-                        "영향을 줄 수 있어 확인할 요인입니다."
+                        "각 요인이 해당 산업의 주문·매출·비용·가동률에 어떻게 "
+                        "연결되는지 함께 설명합니다. 미래 수익률 예측이 아니라 "
+                        "현재 사업 환경을 점검하는 기준입니다."
                     ),
                     evidence_ids=verified_source_ids or [catalog_source_id],
                     blocks=[
                         AnswerBlock(
                             kind=AnswerBlockKind.BULLETS,
-                            title="성과를 좌우할 관찰 요인",
+                            title="성과를 평가할 관찰 요인 3가지",
                             items=list(theme.performance_drivers),
                         )
                     ],
                 )
             ]
-            answer = f"{theme.name} 테마에서 확인할 성과 관찰 요인을 정리했습니다."
+            answer = (
+                f"{theme.name} 테마에서 확인할 성과 관찰 요인 3개와 "
+                "각각이 중요한 이유를 정리했습니다."
+            )
             data_mode = "theme_performance_drivers"
         elif topic == ThemeContentTopic.RISKS:
             sections = [

@@ -119,7 +119,7 @@ class _Universe:
 def test_catalog_has_exactly_twenty_three_themes() -> None:
     repository = _theme_repository()
 
-    assert repository.catalog.catalog_version == "2026-07-20.3"
+    assert repository.catalog.catalog_version == "2026-07-20.4"
     assert (
         repository.catalog.content_status
         == "project_approved_service_interpretation"
@@ -129,7 +129,15 @@ def test_catalog_has_exactly_twenty_three_themes() -> None:
     assert len({theme.theme_id for theme in repository.list()}) == 23
     assert all(theme.plain_summary for theme in repository.list())
     assert all(theme.exposure_segments for theme in repository.list())
-    assert all(theme.performance_drivers for theme in repository.list())
+    assert all(len(theme.performance_drivers) == 3 for theme in repository.list())
+    forbidden_claims = ("수익률을 보장", "반드시 상승", "오를 것입니다", "수익이 확정")
+    for theme in repository.list():
+        for driver in theme.performance_drivers:
+            label, separator, explanation = driver.partition(":")
+            assert separator == ":"
+            assert label.strip()
+            assert len(explanation.strip()) >= 35
+            assert not any(claim in driver for claim in forbidden_claims)
     assert all(theme.one_line_analogy for theme in repository.list())
     assert all(
         len(theme.representative_companies) == 3 for theme in repository.list()
@@ -707,9 +715,32 @@ def test_chat_separates_performance_drivers_from_future_predictions() -> None:
     )
 
     assert response.data_mode == "theme_performance_drivers"
-    assert response.sections[0].blocks[0].title == "성과를 좌우할 관찰 요인"
-    assert response.sections[0].blocks[0].items
+    assert response.sections[0].blocks[0].title == "성과를 평가할 관찰 요인 3가지"
+    assert len(response.sections[0].blocks[0].items) == 3
+    assert all(":" in item for item in response.sections[0].blocks[0].items)
+    assert "각각이 중요한 이유" in response.answer
     assert any("수익률을 예측하지 않습니다" in item for item in response.limitations)
+
+
+def test_all_theme_performance_answers_explain_why_each_driver_matters() -> None:
+    repository = _theme_repository()
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        theme_repository=repository,
+    )
+
+    for theme in repository.list():
+        response = service.ask(
+            ChatRequest(message=f"{theme.name} 테마 성과에 영향을 주는 요인은 뭐야?")
+        )
+        items = response.sections[0].blocks[0].items
+        assert len(items) == 3
+        for item in items:
+            label, separator, explanation = item.partition(":")
+            assert separator == ":"
+            assert label.strip()
+            assert len(explanation.strip()) >= 35
 
 
 def test_chat_answers_theme_risks_without_repeating_benefits() -> None:
