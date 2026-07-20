@@ -38,6 +38,8 @@ def test_event_master_links_exact_ex_date_and_classifies_explicit_split(
         ],
     )
     distribution_report = {
+        "coverage_start": "2020-01-01",
+        "coverage_end": "2026-07-16",
         "events": [
             {
                 "isu_code": "069500",
@@ -51,6 +53,8 @@ def test_event_master_links_exact_ex_date_and_classifies_explicit_split(
         ]
     }
     ex_date_report = {
+        "coverage_start": "2020-01-01",
+        "coverage_end": "2026-07-16",
         "failure_count": 0,
         "events": [
             {
@@ -82,6 +86,10 @@ def test_event_master_links_exact_ex_date_and_classifies_explicit_split(
     assert cash["timing_basis"] == "exact_kind_ex_distribution_date"
     assert split["status"] == "confirmed_from_explicit_reason"
     assert split["ratio"] == "200.00"
+    assert report["kind_distribution_coverage_start"] == "2020-01-01"
+    assert report["kind_distribution_coverage_end"] == "2026-07-16"
+    assert report["kind_ex_date_coverage_start"] == "2020-01-01"
+    assert report["kind_ex_date_coverage_end"] == "2026-07-16"
 
 
 def test_event_master_does_not_infer_action_from_normal_price_row(tmp_path) -> None:

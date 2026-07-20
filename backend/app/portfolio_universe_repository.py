@@ -185,14 +185,29 @@ def _latest_adjusted_price_directory(root: Path) -> Path | None:
 def _cash_distributions_by_code(
     event_root: Path,
     codes: set[str],
-) -> dict[str, dict[date, Decimal]]:
+) -> tuple[dict[str, dict[date, Decimal]], date | None, date | None]:
     paths = sorted(event_root.glob("etf_corporate_events_*.json"))
     if not paths:
-        return {}
+        return {}, None, None
     payload = json.loads(paths[-1].read_text(encoding="utf-8"))
     events = payload.get("events")
     if not isinstance(events, list):
         raise ValueError("ETF corporate-event cache must contain events")
+    coverage_start = payload.get("kind_distribution_coverage_start")
+    coverage_end = payload.get("kind_distribution_coverage_end")
+    if not coverage_start or not coverage_end:
+        source_files = payload.get("source_files")
+        distribution_path = (
+            Path(str(source_files.get("kind_distributions")))
+            if isinstance(source_files, dict) and source_files.get("kind_distributions")
+            else None
+        )
+        if distribution_path is not None and distribution_path.exists():
+            distribution_report = json.loads(
+                distribution_path.read_text(encoding="utf-8")
+            )
+            coverage_start = distribution_report.get("coverage_start")
+            coverage_end = distribution_report.get("coverage_end")
     distributions: dict[str, dict[date, Decimal]] = defaultdict(dict)
     for event in events:
         if (
@@ -210,7 +225,11 @@ def _cash_distributions_by_code(
         distributions[code][effective_date] = (
             distributions[code].get(effective_date, Decimal("0")) + amount
         )
-    return dict(distributions)
+    return (
+        dict(distributions),
+        date.fromisoformat(str(coverage_start)) if coverage_start else None,
+        date.fromisoformat(str(coverage_end)) if coverage_end else None,
+    )
 
 
 def _total_return_history(
@@ -244,7 +263,9 @@ def _load_adjusted_histories(
     source_root = _latest_adjusted_price_directory(adjusted_price_root)
     if source_root is None:
         return {}, set()
-    distributions_by_code = _cash_distributions_by_code(event_root, codes)
+    distributions_by_code, distribution_start, distribution_end = (
+        _cash_distributions_by_code(event_root, codes)
+    )
     histories: dict[str, dict[date, Decimal]] = {}
     total_return_codes: set[str] = set()
     for code in sorted(codes):
@@ -268,14 +289,24 @@ def _load_adjusted_histories(
             value = _close(str(observation.get("adjusted_close") or ""))
             if value is None:
                 continue
-            parsed.append((date.fromisoformat(str(observation["date"])), value))
+            observed_on = date.fromisoformat(str(observation["date"]))
+            if (
+                distribution_start is not None
+                and distribution_end is not None
+                and not distribution_start <= observed_on <= distribution_end
+            ):
+                continue
+            parsed.append((observed_on, value))
         if parsed:
             histories[code] = _total_return_history(
                 parsed,
                 distributions_by_code.get(code, {}),
                 observation_limit=observation_limit,
             )
-            if code in distributions_by_code:
+            if (
+                distribution_start is not None
+                and distribution_end is not None
+            ) or code in distributions_by_code:
                 total_return_codes.add(code)
     return histories, total_return_codes
 

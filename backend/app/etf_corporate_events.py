@@ -528,6 +528,20 @@ def build_etf_corporate_event_master(
         "engine_name": "etf_corporate_event_evidence",
         "engine_version": "2026-07-20.1",
         "source_files": source_files,
+        "kind_distribution_coverage_start": distribution_report.get(
+            "coverage_start"
+        ),
+        "kind_distribution_coverage_end": distribution_report.get("coverage_end"),
+        "kind_ex_date_coverage_start": (
+            ex_date_report.get("coverage_start")
+            if ex_date_report is not None
+            else None
+        ),
+        "kind_ex_date_coverage_end": (
+            ex_date_report.get("coverage_end")
+            if ex_date_report is not None
+            else None
+        ),
         "event_count": len(events),
         "event_type_counts": dict(sorted(event_type_counts.items())),
         "cash_distribution_count": len(cash_events),

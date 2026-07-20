@@ -44,6 +44,20 @@ def _write_adjusted_history(root, *, policy: str = "0") -> None:
     )
 
 
+def _write_event_master(root) -> None:
+    root.mkdir(parents=True)
+    (root / "etf_corporate_events_2026-07-16.json").write_text(
+        json.dumps(
+            {
+                "kind_distribution_coverage_start": "2025-01-05",
+                "kind_distribution_coverage_end": "2025-09-10",
+                "events": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_repository_prefers_kis_adjusted_close_and_keeps_253_rows(tmp_path) -> None:
     return_root = tmp_path / "returns"
     adjusted_root = tmp_path / "adjusted"
@@ -78,3 +92,29 @@ def test_repository_rejects_non_adjusted_kis_history(tmp_path) -> None:
             krx_root=tmp_path / "krx-not-needed",
             event_root=tmp_path / "events-not-needed",
         )
+
+
+def test_repository_uses_only_kind_covered_dates_for_verified_total_return(
+    tmp_path,
+) -> None:
+    return_root = tmp_path / "returns"
+    adjusted_root = tmp_path / "adjusted"
+    event_root = tmp_path / "events"
+    _write_return_master(return_root)
+    _write_adjusted_history(adjusted_root)
+    _write_event_master(event_root)
+
+    repository = PortfolioUniverseRepository.from_latest_cache(
+        AccountType.DC,
+        return_root=return_root,
+        adjusted_price_root=adjusted_root,
+        krx_root=tmp_path / "krx-not-needed",
+        event_root=event_root,
+    )
+    histories, sources = repository.load_total_return_histories({"069500"})
+
+    assert min(histories["069500"]) == date(2025, 1, 5)
+    assert max(histories["069500"]) == date(2025, 9, 10)
+    assert sources == {
+        "069500": "kis_adjusted_close_plus_kind_cash_distribution"
+    }
