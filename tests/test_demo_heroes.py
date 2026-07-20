@@ -60,6 +60,13 @@ def test_demo_heroes_endpoint_exposes_six_named_profiles_and_etf_links() -> None
         "최지훈(가상)",
         "윤정희(가상)",
     }
+    assert sum(hero["is_demo_login_candidate"] for hero in heroes) == 5
+    payout = next(
+        hero
+        for hero in heroes
+        if hero["scenario_code"] == "pension_payout_transition"
+    )
+    assert payout["is_demo_login_candidate"] is False
 
     issuer_names = {
         holding["instrument_name"].split()[0]

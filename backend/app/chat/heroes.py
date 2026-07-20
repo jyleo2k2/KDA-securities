@@ -48,6 +48,7 @@ class DemoHeroPortfolio(BaseModel):
     nickname: str
     representative_age: int
     customer_context: str
+    is_demo_login_candidate: bool
     scenario_code: str
     scenario_name: str
     age_band: str
@@ -130,6 +131,7 @@ def build_demo_heroes() -> tuple[DemoHeroPortfolio, ...]:
                 nickname=user["nickname"],
                 representative_age=user["representative_age"],
                 customer_context=user["customer_context"],
+                is_demo_login_candidate=user["is_demo_login_candidate"],
                 scenario_code=scenario.scenario_code,
                 scenario_name=scenario.name,
                 age_band=scenario.age_band,

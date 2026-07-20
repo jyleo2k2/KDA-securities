@@ -496,6 +496,7 @@ export interface DemoHeroPortfolio {
   nickname: string;
   representative_age: number;
   customer_context: string;
+  is_demo_login_candidate: boolean;
   scenario_code: string;
   scenario_name: string;
   age_band: string;

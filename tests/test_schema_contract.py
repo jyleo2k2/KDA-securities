@@ -55,6 +55,8 @@ DEMO_CUSTOMER_CONTRACT_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob("*_unify_demo_customer_contract.sql")
 )
 BENCHMARK_LOADER = ROOT / "scripts" / "load_benchmark_mock_data.py"
+DEMO_AUTH_PROVISIONER = ROOT / "scripts" / "provision_demo_auth_users.py"
+DEMO_SQL_RENDERER = ROOT / "scripts" / "render_demo_customer_sql.py"
 SEED = ROOT / "supabase" / "seed.sql"
 
 
@@ -485,9 +487,20 @@ def test_demo_customer_runtime_tax_year_stays_on_supported_engine_year() -> None
         encoding="utf-8"
     ).lower()
     loader_source = BENCHMARK_LOADER.read_text(encoding="utf-8").lower()
+    provisioner_source = DEMO_AUTH_PROVISIONER.read_text(encoding="utf-8").lower()
+    renderer_source = DEMO_SQL_RENDERER.read_text(encoding="utf-8").lower()
+    seed_sql = SEED.read_text(encoding="utf-8").lower()
 
-    for source in (migration_sql, loader_source):
+    for source in (migration_sql, loader_source, renderer_source, seed_sql):
         assert "tax_year = 2026" in source
+    assert "demo_context_tax_year = 2026" in provisioner_source
+    for source in (
+        migration_sql,
+        loader_source,
+        provisioner_source,
+        renderer_source,
+        seed_sql,
+    ):
         assert "tax_year = benchmark.tax_year::smallint" not in source
 
 

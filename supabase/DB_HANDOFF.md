@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-20 14:39 KST
-> 확인 기준: `codex/supabase-customer-deploy` / `origin/main` `c4e8eb8` / 고객 계약·대표 ETF 공통계좌 원격 적용·재검증
+> 최종 확인: 2026-07-20 16:36 KST
+> 확인 기준: `codex/demo-candidate-tax-year-fix` / `origin/main` `913c96b` / 로그인 후보 5명·대표 금융 컨텍스트 2026 원격 재동기화 검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -283,6 +283,15 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-20 16:36 KST
+
+- 작업자/브랜치/기준: Codex / `codex/demo-candidate-tax-year-fix` / `origin/main` `913c96b`.
+- 결정: 대표 시나리오 고객 6명과 Auth 계정은 모두 유지한다. 시연 로그인 후보는 1~5번 5명이며 `pension_payout_transition`은 후보에서 제외하되 타 고객 포트폴리오 데이터로는 계속 사용할 수 있다. 추적 manifest와 서버 관리 Auth `app_metadata`의 `is_demo_login_candidate`를 기준으로 삼는다.
+- 원인·수정: 원격 `demo_user_financial_context.tax_year=2026` 제약과 엔진 지원연도는 올바르다. `scripts/provision_demo_auth_users.py`, SQL 생성기, 로컬 seed가 2025 벤치마크 연도를 주입한 경로를 2026 고정 투영으로 통일했으며 과거 적용 migration과 제약은 수정하지 않았다.
+- 원격 적용: migration 추가·적용 없음. 대화에 노출된 데모 비밀번호 6개를 다시 교체하고 Auth 사용자 6명의 후보 메타데이터를 갱신했다. 같은 실행에서 금융 컨텍스트 6행을 upsert한 뒤 행 수 6, 최소·최대 `tax_year=2026`, 새 비밀번호 로그인 6건, 후보 플래그 5 true/1 false를 검증했다. 자격증명은 Git 제외 `secrets/`에만 보관하고 출력하지 않았다.
+- 로컬 검증: 관련 39개 테스트 통과, 전체 `825 passed, 1 skipped`, `uv run ruff check .` 통과, 프론트 `npm.cmd run build` 통과, `git diff --check` 통과.
+- 남은 작업: 브랜치 커밋·PR·이재용 머지 승인. 원격 migration history 변화는 없다.
 
 ### 2026-07-20 ETF 테마 콘텐츠 검증 통합
 
