@@ -240,12 +240,7 @@ def test_my_portfolio_wording_selects_mock_portfolio_intent(message: str) -> Non
     ("message", "expected_intent"),
     zip(
         SUGGESTED_CHAT_PROMPTS,
-        (
-            ChatIntent.EDUCATIONAL_PORTFOLIO,
-            ChatIntent.MOCK_PORTFOLIO,
-            ChatIntent.PENSION_TAX,
-            ChatIntent.ETF_THEME,
-        ),
+        (ChatIntent.PENSION_TAX,),
         strict=True,
     ),
 )

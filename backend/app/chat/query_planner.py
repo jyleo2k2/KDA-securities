@@ -143,7 +143,7 @@ _THEME_HOLDING_TERMS = re.compile(
     re.I,
 )
 _THEME_REPRESENTATIVE_COMPANY_TERMS = re.compile(
-    r"(?:대표|주요|관련)\s*(?:기업|회사)"
+    r"(?:대표|주요|관련)\s*(?:테마\s*)?(?:기업|회사)"
     r"|(?:기업|회사).{0,12}(?:뭐|무엇|어디|알려|소개)"
     r"|어떤\s*(?:기업|회사)|대표\s*종목"
 )
@@ -322,7 +322,14 @@ def _account_rule_topic(
     if _ACCOUNT_OVERVIEW_NARROW_TERMS.search(message):
         return None
     asks_for_overview = _ACCOUNT_OVERVIEW_WORDS.search(message) is not None
-    if asks_for_overview and re.search(r"연금\s*계좌", message):
+    compares_all_accounts = set(account_types) == {
+        AccountType.DC,
+        AccountType.IRP,
+        AccountType.PENSION_SAVINGS,
+    }
+    if asks_for_overview and (
+        re.search(r"연금\s*계좌", message) or compares_all_accounts
+    ):
         return AccountRuleTopic.PENSION_ACCOUNT_OVERVIEW
     return None
 

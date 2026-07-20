@@ -337,7 +337,7 @@ function AnswerBlocks({ blocks }: { blocks: AnswerBlock[] }) {
           return (
             <div className="answer-callout" key={key}>
               {block.title && <strong>{displayText(block.title)}</strong>}
-              <p>{displayText(block.text ?? "")}</p>
+              <CalloutCopy text={block.text ?? ""} />
             </div>
           );
         }
@@ -386,6 +386,38 @@ function AnswerBlocks({ blocks }: { blocks: AnswerBlock[] }) {
               </tbody>
             </table>
           </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const REPRESENTATIVE_COMPANY_LABELS = [
+  "테마에서의 역할:",
+  "쉽게 말하면:",
+] as const;
+
+function CalloutCopy({ text }: { text: string }) {
+  const paragraphs = text.split(/\n{2,}/);
+  const isRepresentativeCompany =
+    paragraphs.length === REPRESENTATIVE_COMPANY_LABELS.length &&
+    paragraphs.every((paragraph, index) =>
+      paragraph.startsWith(REPRESENTATIVE_COMPANY_LABELS[index]),
+    );
+
+  if (!isRepresentativeCompany) {
+    return <p>{displayText(text)}</p>;
+  }
+
+  return (
+    <div className="answer-callout-copy">
+      {paragraphs.map((paragraph, index) => {
+        const label = REPRESENTATIVE_COMPANY_LABELS[index];
+        const body = paragraph.slice(label.length).trim();
+        return (
+          <p key={label}>
+            <strong>{label}</strong> {displayText(body)}
+          </p>
         );
       })}
     </div>
@@ -584,7 +616,11 @@ function AssistantMessage({
   ) : null;
 
   return (
-    <div className="answer-content">
+    <div
+      className={response.intent === "etf_theme"
+        ? "answer-content theme-answer-content"
+        : "answer-content"}
+    >
       <div className="answer-meta">
         <span className={`intent-pill intent-${response.intent}`}>{INTENT_LABELS[response.intent]}</span>
         <span>{response.narration_mode === "deterministic" ? "검증 답변" : "AI 서술"}</span>
@@ -1612,7 +1648,6 @@ export function GuidePage({
                 <div className="prompt-carousel" aria-label="챗봇 추천 질문">
                   {visibleChatCards.filter((card) => card.intent !== "etf_theme").map((card) => (
                     <button type="button" key={card.card_id} onClick={() => void submitPrompt(card.message)}>
-                      <span className="design-prompt-icon"><Icon name="spark" size={24} /></span>
                       <span className="design-prompt-copy"><small>추천 질문</small><strong>{card.title}</strong><em>{card.message}</em></span>
                     </button>
                   ))}

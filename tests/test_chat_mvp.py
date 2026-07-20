@@ -190,27 +190,20 @@ def test_knowledge_source_uses_document_as_of_date() -> None:
     assert source.as_of == expected
 
 
-def test_general_account_overview_is_a_verified_rag_excerpt() -> None:
+def test_general_account_overview_uses_deterministic_verified_response() -> None:
     response = service().ask(
         ChatRequest(message="DC형·IRP·연금저축은 각각 어떤 계좌야? 차이를 비교해줘")
     )
 
     evidence_text = "\n".join(section.content for section in response.sections)
     assert response.intent == ChatIntent.ACCOUNT_RULE
-    assert response.data_mode == "verified_knowledge"
-    assert "가입 대상:" in evidence_text
-    assert "연금저축펀드" in evidence_text
-    assert "개인형 IRP" in evidence_text
-    assert "DC형 퇴직연금" in evidence_text
-    assert evidence_text in response.answer
-    assert len(evidence_text) <= 850
-    assert "1억원" not in evidence_text
-    assert "예금자보호 주의" not in evidence_text
-    assert evidence_text.splitlines()[-1] == (
-        "- 금융회사 이전: 연금저축펀드: 연금저축 간 계좌이체 가능; "
-        "개인형 IRP: IRP 간 조건부 실물이전 가능; "
-        "DC형 퇴직연금: 회사가 계약한 사업자 범위에서 조건부 이전 가능"
-    )
+    assert response.data_mode == "verified_pension_account_overview"
+    assert response.narration_mode == "deterministic"
+    assert "연금저축·IRP·DC형의 차이" in {
+        section.title for section in response.sections
+    }
+    assert "IRP" in evidence_text
+    assert "원칙적으로 적립금의 70%까지" in evidence_text
     assert response.sources
     assert all(section.evidence_ids for section in response.sections)
 

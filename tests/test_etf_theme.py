@@ -359,6 +359,9 @@ def test_all_themes_route_five_content_question_types() -> None:
                 f"{theme.name} 테마 대표 기업은 뭐가 있어?"
             ): ThemeContentTopic.REPRESENTATIVE_COMPANIES,
             (
+                f"{theme.name} 대표 테마기업은 뭐야?"
+            ): ThemeContentTopic.REPRESENTATIVE_COMPANIES,
+            (
                 f"{theme.name} 테마에 투자할 때 고려할 점은 뭐야?"
             ): ThemeContentTopic.INVESTMENT_CONSIDERATIONS,
             (
@@ -575,9 +578,23 @@ def test_chat_introduces_exactly_three_representative_companies() -> None:
     assert all(
         "테마에서의 역할:" in block.text
         and "쉽게 말하면:" in block.text
-        and "대표 사례로 보는 이유:" in block.text
+        and "대표 사례로 보는 이유:" not in block.text
+        and block.text.count("\n\n") == 1
         for block in response.sections[0].blocks
     )
+    theme = _theme_repository().get("semiconductor")
+    assert theme is not None
+    for block, company in zip(
+        response.sections[0].blocks,
+        theme.representative_companies,
+        strict=True,
+    ):
+        role_paragraph, plain_paragraph = block.text.split("\n\n")
+        assert role_paragraph == (
+            f"테마에서의 역할: {company.theme_role} "
+            f"{company.representative_reason}"
+        )
+        assert plain_paragraph == f"쉽게 말하면: {company.plain_description}"
     assert len(response.sections[0].evidence_ids) == 3
     company_source_count = sum(
         source.evidence_id.startswith("company:") for source in response.sources
@@ -662,6 +679,16 @@ def test_all_theme_overviews_offer_three_representative_companies() -> None:
         details = service.ask(ChatRequest(message=follow_up.message))
         assert details.data_mode == "theme_representative_companies"
         assert len(details.sections[0].blocks) == 3
+        for block, company in zip(
+            details.sections[0].blocks,
+            theme.representative_companies,
+            strict=True,
+        ):
+            assert block.text == (
+                f"테마에서의 역할: {company.theme_role} "
+                f"{company.representative_reason}\n\n"
+                f"쉽게 말하면: {company.plain_description}"
+            )
         assert sum(
             source.evidence_id.startswith(f"company:{theme.theme_id}:")
             for source in details.sources

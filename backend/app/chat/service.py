@@ -1154,9 +1154,8 @@ class ChatService:
                             title=company.name,
                             text=(
                                 f"테마에서의 역할: {company.theme_role} "
-                                f"쉽게 말하면: {company.plain_description} "
-                                "대표 사례로 보는 이유: "
-                                f"{company.representative_reason}"
+                                f"{company.representative_reason}\n\n"
+                                f"쉽게 말하면: {company.plain_description}"
                             ),
                         )
                         for company in theme.representative_companies
