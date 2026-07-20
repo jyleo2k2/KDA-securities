@@ -28,6 +28,7 @@ import {
 } from "../components/PortfolioHoldingsPanel";
 import { ChatComposer } from "../components/ChatComposer";
 import { ChatConversation } from "../components/ChatConversation";
+import { ChatSessionList } from "../components/ChatSessionList";
 import type {
   AnswerBlock,
   CompletedSurveyProfile,
@@ -1350,44 +1351,16 @@ export function GuidePage({
                 <button type="button" onClick={() => void handleLogout()} disabled={authSubmitting}>로그아웃</button>
               </div>
               <p className="sidebar-label history-label">저장된 대화</p>
-              <div className="history-list">
-                {historyLoading && chatSessions.length === 0 ? (
-                  <p className="auth-note">대화 이력을 불러오는 중...</p>
-                ) : chatSessions.length === 0 ? (
-                  <p className="auth-note">아직 저장된 대화가 없습니다.</p>
-                ) : chatSessions.map((session) => {
-                  const title = session.title || "새 대화";
-                  const deleting = deletingSessionId === session.session_id;
-                  const disabled = historyLoading || isSending || deletingSessionId !== null;
-                  return (
-                    <div
-                      className={`history-item ${activeSessionId === session.session_id ? "active" : ""}`}
-                      key={session.session_id}
-                    >
-                      <button
-                        className="history-open"
-                        data-session-id={session.session_id}
-                        type="button"
-                        onClick={() => void loadStoredSession(session.session_id)}
-                        disabled={disabled}
-                      >
-                        <strong>{title}</strong>
-                        <small>{new Date(session.updated_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}</small>
-                      </button>
-                      <button
-                        className="history-delete"
-                        type="button"
-                        aria-label={`대화 삭제: ${title}`}
-                        title="대화 삭제"
-                        onClick={() => void deleteStoredSession(session)}
-                        disabled={disabled}
-                      >
-                        {deleting ? "…" : <Icon name="trash" size={14} />}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+              <ChatSessionList
+                sessions={chatSessions}
+                activeSessionId={activeSessionId}
+                deletingSessionId={deletingSessionId}
+                historyLoading={historyLoading}
+                isSending={isSending}
+                onOpen={(sessionId) => void loadStoredSession(sessionId)}
+                onDelete={(session) => void deleteStoredSession(session)}
+                trashIcon={<Icon name="trash" size={14} />}
+              />
               {deleteStatus && (
                 <p className="auth-note" role="status" aria-live="polite">
                   {deleteStatus}
