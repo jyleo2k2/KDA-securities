@@ -75,9 +75,12 @@ def calculate_pension_tax_credit_tool(
 ) -> PensionTaxCreditEvaluation:
     """Calculate an educational 2026 pension tax-credit estimate.
 
-    Use only for Korean pension-savings and IRP current-year contributions.
-    This returns an estimated credit, not a guaranteed refund.  Never use it
-    for filing, ordering a product, or years other than the validated schema.
+    Use for Korean pension-savings, IRP personal contributions, DC employee
+    additional contributions, and explicitly eligible ISA maturity transfers.
+    Employer DC contributions, deferred retirement income, and pension-account
+    transfers are reported but excluded.  This returns a statutory credit and
+    an estimated local-tax-inclusive effect, not a guaranteed refund.  Never
+    use it for filing, ordering a product, or years outside the schema.
     """
 
     return calculate_pension_tax_credit(inputs)

@@ -87,6 +87,7 @@ from .pension_calculator import calculate_pension
 from .pension_tax import (
     IncomeBasis,
     IrpDeferredIncomeStatus,
+    IsaTransferEligibilityStatus,
     NonPensionWithdrawalEvaluation,
     NonPensionWithdrawalInput,
     PensionAccountTaxInput,
@@ -164,6 +165,7 @@ __all__ = [
     "HistoricalEtfMetrics",
     "HistoricalReturnEvaluation",
     "IncomeBasis",
+    "IsaTransferEligibilityStatus",
     "IrpDeferredIncomeStatus",
     "KrxEtfEvidenceProduct",
     "KisComponentHolding",

@@ -69,10 +69,14 @@ def test_recent_market_news_is_deterministic_and_filters_active_summaries(
     assert "%s::text is null" in cursor.statement
     assert "market_region = %s" in cursor.statement
     assert "summary_status = 'succeeded'" in cursor.statement
+    assert "not (id = any(%s::uuid[]))" in cursor.statement
+    assert "row_number() over" in cursor.statement
+    assert "coalesce(market_topics, array[]::text[])" in cursor.statement
+    assert "topic_match desc" in cursor.statement
     assert "selection_score desc" in cursor.statement
     assert "published_at desc" in cursor.statement
     assert "order by random()" not in cursor.statement
-    assert cursor.params == ("us", "us", [], 5, "us", 3)
+    assert cursor.params == ([], "us", "us", [], 5, "us", 3)
 
 
 def test_recent_market_news_balances_regions_and_excludes_seen_ids(monkeypatch) -> None:
@@ -94,7 +98,25 @@ def test_recent_market_news_balances_regions_and_excludes_seen_ids(monkeypatch) 
     assert "partition by market_region" in cursor.statement
     assert "region_rank = 1" in cursor.statement
     assert "not (id = any(%s::uuid[]))" in cursor.statement
-    assert cursor.params == (None, None, [seen_id], 5, None, 3)
+    assert cursor.params == ([], None, None, [seen_id], 5, None, 3)
+
+
+def test_recent_market_news_prioritizes_preferred_topics(monkeypatch) -> None:
+    cursor = _Cursor()
+    monkeypatch.setattr(
+        repository_module.psycopg,
+        "connect",
+        lambda _: _Connection(cursor),
+    )
+
+    RetrievalRepository("postgresql://test").recent_market_news(
+        preferred_topics=("monetary_policy", "macro"),
+        days=5,
+        limit=3,
+    )
+
+    assert cursor.params[0] == ["monetary_policy", "macro"]
+    assert "topic_match desc" in cursor.statement
 
 
 def test_news_by_ids_preserves_caller_order(monkeypatch) -> None:

@@ -87,6 +87,7 @@ class NewsSearch(Protocol):
         days: int = 5,
         limit: int = 3,
         exclude_item_ids: tuple[str, ...] = (),
+        preferred_topics: tuple[str, ...] = (),
     ) -> list[NewsMatch]: ...
 
     def news_by_ids(self, item_ids: tuple[str, ...]) -> list[NewsMatch]: ...
@@ -636,18 +637,60 @@ def _knowledge_evidence_id(match: KnowledgeMatch) -> str:
     return f"{prefix}:{match.chunk_id}"
 
 
+_OFFICIAL_SOURCE_BY_DOCUMENT = {
+    "project://docs/20_리서치/연금_기초.md": (
+        "퇴직연금제도 안내",
+        "https://www.moel.go.kr/retirementpay.do",
+        "고용노동부",
+    ),
+    "project://docs/40_규제/연금계좌_세액공제.md": (
+        "연금계좌 세액공제 안내",
+        "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7875",
+        "국세청",
+    ),
+    "project://docs/40_규제/퇴직연금_수령_중도인출.md": (
+        "IRP·DC형 중도인출 사유",
+        (
+            "https://m.easylaw.go.kr/MOB/CsmInfoRetrieve.laf?"
+            "ccfNo=2&cciNo=1&cnpClsNo=2&csmSeq=999"
+        ),
+        "찾기쉬운 생활법령",
+    ),
+    "project://docs/40_규제/사전지정운용제도_디폴트옵션.md": (
+        "디폴트옵션과 위험자산 한도 예외",
+        (
+            "https://www.moel.go.kr/news/enews/report/"
+            "enewsView.do?news_seq=13711"
+        ),
+        "고용노동부",
+    ),
+}
+
+
 def _knowledge_sources(matches: list[KnowledgeMatch]) -> list[SourceEvidence]:
-    return [
-        SourceEvidence(
-            evidence_id=_knowledge_evidence_id(match),
-            label=match.title,
-            locator=match.source_url,
-            publisher="연금 코파일럿 검증 지식",
-            as_of=match.as_of_date,
-            data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
+    sources: list[SourceEvidence] = []
+    seen_locators: set[str] = set()
+    for match in matches:
+        official = _OFFICIAL_SOURCE_BY_DOCUMENT.get(match.source_url)
+        label, locator, publisher = official or (
+            match.title,
+            match.source_url,
+            "연금 코파일럿 검증 지식",
         )
-        for match in matches
-    ]
+        if locator in seen_locators:
+            continue
+        seen_locators.add(locator)
+        sources.append(
+            SourceEvidence(
+                evidence_id=_knowledge_evidence_id(match),
+                label=label,
+                locator=locator,
+                publisher=publisher,
+                as_of=match.as_of_date,
+                data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
+            )
+        )
+    return sources
 
 
 def _source_ids(sources: list[SourceEvidence]) -> list[str]:
@@ -780,6 +823,7 @@ class ChatService:
         *,
         plan: QueryPlan | None = None,
         prefer_structured_pension_tax: bool = False,
+        preferred_news_topics: tuple[str, ...] = (),
     ) -> ChatResponse:
         original_request = request
         resolved_plan = plan or self.plan(request)
@@ -939,6 +983,7 @@ class ChatService:
                         search_query=resolved_plan.news_query,
                         max_results=resolved_plan.max_results,
                         exclude_item_ids=exclude_item_ids,
+                        preferred_topics=preferred_news_topics,
                     )
             elif resolved_plan.intent == ChatIntent.PROVIDER_DISCLOSURE:
                 account_type = resolved_plan.account_types[0]
@@ -1359,18 +1404,24 @@ class ChatService:
                         "rule:pension_tax:credit",
                     ],
                     items=[
-                        VisualizationDatum(
-                            label="세액공제 대상 납입액",
-                            value=tax_credit.total_eligible_contribution_krw,
-                            unit="KRW",
-                            role=VisualizationDatumRole.VALUE,
-                        ),
-                        VisualizationDatum(
-                            label="예상 세액공제액",
-                            value=rate.estimated_tax_credit_krw,
-                            unit="KRW",
-                            role=VisualizationDatumRole.VALUE,
-                        ),
+                    VisualizationDatum(
+                        label="세액공제 대상 납입액",
+                        value=tax_credit.total_eligible_contribution_krw,
+                        unit="KRW",
+                        role=VisualizationDatumRole.VALUE,
+                    ),
+                    VisualizationDatum(
+                        label="법정 세액공제액",
+                        value=rate.income_tax_credit_krw,
+                        unit="KRW",
+                        role=VisualizationDatumRole.VALUE,
+                    ),
+                    VisualizationDatum(
+                        label="지방세 포함 예상 절세효과",
+                        value=rate.estimated_total_tax_reduction_effect_krw,
+                        unit="KRW",
+                        role=VisualizationDatumRole.VALUE,
+                    ),
                     ],
                 )
             )
@@ -1707,7 +1758,7 @@ class ChatService:
             SourceEvidence(
                 evidence_id="engine:pension_tax",
                 label="연금계좌 세액공제·연금외수령 규칙 엔진",
-                locator="engine://pension_tax_guidance/2026-07-15.1",
+                locator="engine://pension_tax_guidance/2026-07-20.1",
                 publisher="연금 코파일럿 규칙 엔진",
                 as_of=date(2026, 7, 15),
                 data_boundary=DataBoundary.ENGINE,
@@ -1763,27 +1814,44 @@ class ChatService:
             f"{cls._krw(result.total_eligible_contribution_krw)}이에요. "
             "입력한 납입액은 연금저축 "
             f"{cls._krw(result.pension_savings_contribution_krw)}, IRP "
-            f"{cls._krw(result.irp_contribution_krw)}이에요."
+            f"{cls._krw(result.irp_contribution_krw)}, DC 근로자 추가납입 "
+            f"{cls._krw(result.dc_employee_additional_contribution_krw)}입니다."
         )
+        if result.isa_maturity_transfer_krw > 0:
+            base += (
+                " ISA 만기자금 전환액은 "
+                f"{cls._krw(result.isa_maturity_transfer_krw)}, 추가 한도는 "
+                f"{cls._krw(result.isa_additional_credit_limit_krw)}입니다."
+            )
+        if result.total_excluded_contribution_krw > 0:
+            base += (
+                " 회사 DC 부담금·퇴직급여 이전액·연금계좌 간 이전액 중 "
+                f"{cls._krw(result.total_excluded_contribution_krw)}은 "
+                "세액공제 계산에서 제외했습니다."
+            )
         if result.rate_determined:
             scenario = result.rate_scenarios[0]
             return (
-                f"{base} 표시율 "
-                f"{_decimal_text(scenario.local_inclusive_display_rate_percent)}% 기준 "
-                "예상 세액공제액은 "
-                f"{cls._krw(scenario.estimated_tax_credit_krw)}이에요."
+                f"{base} 소득세법상 세액공제율 "
+                f"{_decimal_text(scenario.income_tax_rate_percent)}% 기준 법정 "
+                f"세액공제액은 {cls._krw(scenario.income_tax_credit_krw)}, "
+                "개인지방소득세 효과를 포함한 예상 절세효과는 "
+                f"{cls._krw(scenario.estimated_total_tax_reduction_effect_krw)}입니다. "
+                "실제 환급액은 결정세액 등에 따라 달라질 수 있습니다."
             )
         ordered = sorted(
             result.rate_scenarios,
-            key=lambda item: item.estimated_tax_credit_krw,
+            key=lambda item: item.income_tax_credit_krw,
         )
         return (
-            f"{base} 소득정보가 없어 표시율 "
-            f"{_decimal_text(ordered[0].local_inclusive_display_rate_percent)}%와 "
-            f"{_decimal_text(ordered[-1].local_inclusive_display_rate_percent)}% "
-            "시나리오로 계산한 예상 세액공제액은 "
-            f"{cls._krw(ordered[0].estimated_tax_credit_krw)}부터 "
-            f"{cls._krw(ordered[-1].estimated_tax_credit_krw)}까지예요."
+            f"{base} 소득정보가 없어 법정 세액공제액은 "
+            f"{cls._krw(ordered[0].income_tax_credit_krw)}부터 "
+            f"{cls._krw(ordered[-1].income_tax_credit_krw)}까지, "
+            "개인지방소득세 효과를 포함한 예상 절세효과는 "
+            f"{cls._krw(ordered[0].estimated_total_tax_reduction_effect_krw)}부터 "
+            f"{cls._krw(ordered[-1].estimated_total_tax_reduction_effect_krw)}"
+            "까지입니다. "
+            "실제 환급액은 결정세액 등에 따라 달라질 수 있습니다."
         )
 
     @staticmethod
@@ -1806,16 +1874,44 @@ class ChatService:
                 basis="사용자 입력",
             ),
             NumericEvidence(
+                label="DC 근로자 본인 추가납입액",
+                value=result.dc_employee_additional_contribution_krw,
+                unit="KRW",
+                evidence_id="user:pension_tax",
+                basis="사용자 입력",
+            ),
+            NumericEvidence(
+                label="세액공제 제외 납입·이전액",
+                value=result.total_excluded_contribution_krw,
+                unit="KRW",
+                evidence_id="engine:pension_tax",
+                basis="회사 DC 부담금·퇴직급여 이전액·연금계좌 간 이전액 제외",
+            ),
+            NumericEvidence(
                 label="합산 세액공제 대상 납입액",
                 value=result.total_eligible_contribution_krw,
                 unit="KRW",
                 evidence_id="engine:pension_tax",
-                basis="2026년 연금저축 600만원·합산 900만원 한도",
+                basis="2026년 일반 합산 900만원 및 적격 ISA 추가 한도",
+            ),
+            NumericEvidence(
+                label="ISA 전환 추가 세액공제 한도",
+                value=result.isa_additional_credit_limit_krw,
+                unit="KRW",
+                evidence_id="engine:pension_tax",
+                basis="적격 ISA 만기자금 전환액의 10%, 누적 최대 300만원",
             ),
         ]
         for scenario in result.rate_scenarios:
             numeric.extend(
                 [
+                    NumericEvidence(
+                        label=f"{scenario.label} 법정 세액공제율",
+                        value=scenario.income_tax_rate_percent,
+                        unit="%",
+                        evidence_id="rule:pension_tax:credit",
+                        basis="소득세법상 세액공제율",
+                    ),
                     NumericEvidence(
                         label=f"{scenario.label} 표시율",
                         value=scenario.local_inclusive_display_rate_percent,
@@ -1824,11 +1920,18 @@ class ChatService:
                         basis="소득세율과 개인지방소득세 효과 포함",
                     ),
                     NumericEvidence(
-                        label=f"{scenario.label} 예상 세액공제액",
-                        value=scenario.estimated_tax_credit_krw,
+                        label=f"{scenario.label} 법정 세액공제액",
+                        value=scenario.income_tax_credit_krw,
                         unit="KRW",
                         evidence_id="engine:pension_tax",
-                        basis="규칙 엔진 계산",
+                        basis="소득세법상 세액공제율 적용",
+                    ),
+                    NumericEvidence(
+                        label=f"{scenario.label} 지방세 포함 예상 절세효과",
+                        value=scenario.estimated_total_tax_reduction_effect_krw,
+                        unit="KRW",
+                        evidence_id="engine:pension_tax",
+                        basis="법정 세액공제액과 개인지방소득세 효과 합산",
                     ),
                 ]
             )
@@ -2936,6 +3039,7 @@ class ChatService:
         search_query: str,
         max_results: int,
         exclude_item_ids: tuple[str, ...] = (),
+        preferred_topics: tuple[str, ...] = (),
     ) -> ChatResponse:
         if self._news is None:
             return ChatResponse(
@@ -2957,6 +3061,7 @@ class ChatService:
                 days=5,
                 limit=market_limit,
                 exclude_item_ids=exclude_item_ids,
+                preferred_topics=preferred_topics,
             )
             if is_market_news
             else self._news.latest_news(search_query, limit=request.max_results)
@@ -3015,6 +3120,11 @@ class ChatService:
             )
         if is_market_news and max_results > 3:
             limitations.append("증시 뉴스는 한 번에 최대 세 건까지 제공해요.")
+        if is_market_news and preferred_topics:
+            limitations.append(
+                "로그인 사용자의 가상 목계좌 자산군과 연관된 뉴스 주제를 "
+                "우선 정렬했습니다."
+            )
         return ChatResponse(
             intent=ChatIntent.NEWS,
             answer=answer_intro + "\n\n" + "\n\n".join(lines),

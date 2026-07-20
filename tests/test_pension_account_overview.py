@@ -20,6 +20,7 @@ def _service() -> ChatService:
     "message",
     (
         "연금계좌 규칙 알려줘",
+        "연금계좌규칙 알려줘",
         "연금계좌가 뭐야?",
         "연금계좌 전체적으로 정리해줘",
     ),
@@ -90,6 +91,12 @@ def test_overview_response_is_structured_without_generic_number_cards() -> None:
     assert all(
         source.data_boundary == "verified_knowledge" for source in response.sources
     )
+    assert all(source.locator.startswith("https://") for source in response.sources)
+    assert {
+        evidence_id
+        for section in response.sections
+        for evidence_id in section.evidence_ids
+    }.issubset({source.evidence_id for source in response.sources})
     for expected in (
         "1,800만 원",
         "900만 원",
@@ -97,6 +104,7 @@ def test_overview_response_is_structured_without_generic_number_cards() -> None:
         "16.5%",
         "ISA",
         "60일",
+        "IRP 또는 DC형 본인 추가납입만으로 900만 원",
     ):
         assert expected in section_text
 

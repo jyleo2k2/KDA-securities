@@ -51,6 +51,11 @@ def test_tax_credit_applies_account_and_combined_limits() -> None:
     assert result.rate_scenarios[0].local_inclusive_display_rate_percent == Decimal(
         "16.5"
     )
+    assert result.rate_scenarios[0].income_tax_credit_krw == Decimal("1350000")
+    assert (
+        result.rate_scenarios[0].estimated_total_tax_reduction_effect_krw
+        == Decimal("1485000")
+    )
     assert result.rate_scenarios[0].estimated_tax_credit_krw == Decimal("1485000")
 
 
@@ -75,6 +80,11 @@ def test_tax_credit_uses_high_income_rate_and_allows_irp_only() -> None:
     assert result.rate_scenarios[0].local_inclusive_display_rate_percent == Decimal(
         "13.2"
     )
+    assert result.rate_scenarios[0].income_tax_credit_krw == Decimal("1080000")
+    assert (
+        result.rate_scenarios[0].estimated_total_tax_reduction_effect_krw
+        == Decimal("1188000")
+    )
     assert result.rate_scenarios[0].estimated_tax_credit_krw == Decimal("1188000")
 
 
@@ -87,6 +97,106 @@ def test_unknown_income_returns_both_display_rate_scenarios() -> None:
     assert {
         item.local_inclusive_display_rate_percent for item in result.rate_scenarios
     } == {Decimal("13.2"), Decimal("16.5")}
+
+
+def test_tax_credit_combines_irp_and_dc_employee_contributions() -> None:
+    result = calculate_pension_tax_credit(
+        scenario(
+            pension_savings={
+                "balance_krw": "0",
+                "current_year_contribution_krw": "0",
+            },
+            irp={
+                "balance_krw": "5000000",
+                "current_year_contribution_krw": "5000000",
+            },
+            dc_employee_additional_contribution_krw="9000000",
+        ).to_tax_credit_input()
+    )
+
+    assert result.retirement_personal_contribution_krw == Decimal("14000000")
+    assert result.retirement_eligible_contribution_krw == Decimal("9000000")
+    assert result.total_eligible_contribution_krw == Decimal("9000000")
+
+
+def test_tax_credit_reports_but_excludes_non_personal_sources() -> None:
+    result = calculate_pension_tax_credit(
+        scenario(
+            pension_savings={
+                "balance_krw": "0",
+                "current_year_contribution_krw": "0",
+            },
+            irp={
+                "balance_krw": "0",
+                "current_year_contribution_krw": "0",
+            },
+            dc_employer_contribution_krw="5000000",
+            irp_deferred_retirement_income_contribution_krw="7000000",
+            pension_account_transfer_contribution_krw="2000000",
+        ).to_tax_credit_input()
+    )
+
+    assert result.total_eligible_contribution_krw == Decimal("0")
+    assert result.total_excluded_contribution_krw == Decimal("14000000")
+
+
+@pytest.mark.parametrize(
+    ("transfer", "expected_extra_limit", "expected_total_eligible"),
+    [
+        ("10000000", "1000000", "10000000"),
+        ("30000000", "3000000", "12000000"),
+        ("50000000", "3000000", "12000000"),
+    ],
+)
+def test_isa_transfer_increases_the_credit_limit(
+    transfer: str,
+    expected_extra_limit: str,
+    expected_total_eligible: str,
+) -> None:
+    result = calculate_pension_tax_credit(
+        scenario(
+            pension_savings={
+                "balance_krw": "0",
+                "current_year_contribution_krw": "0",
+            },
+            irp={
+                "balance_krw": "0",
+                "current_year_contribution_krw": "0",
+            },
+            isa_maturity_transfer_krw=transfer,
+            isa_transfer_eligibility_status="eligible",
+        ).to_tax_credit_input()
+    )
+
+    assert result.isa_additional_credit_limit_krw == Decimal(expected_extra_limit)
+    assert result.total_eligible_contribution_krw == Decimal(expected_total_eligible)
+
+
+def test_isa_transfer_deducts_additional_limit_used_in_prior_tax_year() -> None:
+    result = calculate_pension_tax_credit(
+        scenario(
+            isa_maturity_transfer_krw="30000000",
+            isa_transfer_eligibility_status="eligible",
+            isa_additional_limit_used_prior_tax_year_krw="1000000",
+        ).to_tax_credit_input()
+    )
+
+    assert result.isa_additional_credit_limit_krw == Decimal("2000000")
+    assert result.total_credit_limit_krw == Decimal("11000000")
+    assert result.total_eligible_contribution_krw == Decimal("11000000")
+
+
+def test_unknown_isa_transfer_eligibility_requires_review_without_assumption() -> None:
+    result = calculate_pension_tax_credit(
+        scenario(
+            isa_maturity_transfer_krw="30000000",
+            isa_transfer_eligibility_status="unknown",
+        ).to_tax_credit_input()
+    )
+
+    assert result.isa_transfer_requires_review is True
+    assert result.isa_additional_credit_limit_krw == Decimal("0")
+    assert result.total_eligible_contribution_krw == Decimal("9000000")
 
 
 def test_simple_max_withdrawal_reproduces_document_example() -> None:

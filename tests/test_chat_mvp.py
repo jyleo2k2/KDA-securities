@@ -99,6 +99,7 @@ class FakeNewsRepository:
         days=5,
         limit=3,
         exclude_item_ids=(),
+        preferred_topics=(),
     ):
         assert days == 5
         self.recent_calls.append(
@@ -106,23 +107,33 @@ class FakeNewsRepository:
                 "region": region,
                 "limit": limit,
                 "exclude_item_ids": exclude_item_ids,
+                "preferred_topics": preferred_topics,
             }
         )
         excluded = set(exclude_item_ids)
         return [item for item in self._items() if item.item_id not in excluded][:limit]
 
     def news_by_ids(self, item_ids):
-        by_id = {item.item_id: item for item in self._items()}
-        return [by_id[item_id] for item_id in item_ids if item_id in by_id]
+        items = {item.item_id: item for item in self._items()}
+        return [items[item_id] for item_id in item_ids if item_id in items]
 
 
 class SparseNewsRepository(FakeNewsRepository):
-    def recent_market_news(self, *, region=None, days=5, limit=3, exclude_item_ids=()):
+    def recent_market_news(
+        self,
+        *,
+        region=None,
+        days=5,
+        limit=3,
+        exclude_item_ids=(),
+        preferred_topics=(),
+    ):
         return super().recent_market_news(
             region=region,
             days=days,
             limit=limit,
             exclude_item_ids=exclude_item_ids,
+            preferred_topics=preferred_topics,
         )[:2]
 
 
@@ -316,6 +327,27 @@ def test_runtime_rag_guard_rejects_unsafe_approved_chunk(
     assert response.numeric_evidence == []
     assert response.sections == []
     assert "안전" in response.answer
+
+
+def test_designated_pension_document_exposes_official_source_link() -> None:
+    source = _knowledge_sources(
+        [
+            KnowledgeMatch(
+                chunk_id=2,
+                document_id=UUID("22222222-2222-4222-8222-222222222222"),
+                title="연금계좌 세액공제",
+                source_url="project://docs/40_규제/연금계좌_세액공제.md",
+                content="연금저축·IRP·DC형 본인 추가납입액의 합산 한도",
+                text_rank=1.0,
+                as_of_date=date(2026, 7, 20),
+            )
+        ]
+    )[0]
+
+    assert source.locator == (
+        "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7875"
+    )
+    assert source.publisher == "국세청"
 
 
 def test_combined_accounts_are_explained_with_separate_rules() -> None:

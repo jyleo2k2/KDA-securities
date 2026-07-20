@@ -12,6 +12,7 @@ from decimal import Decimal
 from ..engine import (
     IncomeBasis,
     IrpDeferredIncomeStatus,
+    IsaTransferEligibilityStatus,
     NonPensionWithdrawalInput,
     PensionAccountTaxInput,
     PensionTaxCreditInput,
@@ -21,6 +22,7 @@ from ..engine import (
 
 _PENSION = r"연금\s*저축(?:\s*계좌)?"
 _IRP = r"(?:IRP|개인형\s*퇴직\s*연금(?:\s*계좌)?)"
+_DC = r"(?:DC(?:형)?|확정\s*기여형(?:\s*퇴직\s*연금)?)"
 
 
 def _amount_pattern(prefix: str) -> str:
@@ -90,6 +92,42 @@ def _paired_contributions(message: str) -> tuple[Decimal | None, Decimal | None]
     if match is None:
         return None, None
     return _amount(match, "ps_pair"), _amount(match, "irp_pair")
+
+
+def _dc_contribution(message: str, *, employer: bool) -> Decimal | None:
+    payer = r"(?:회사|사용자|사업주)" if employer else r"(?:근로자|본인|개인)"
+    match = re.search(
+        rf"{_DC}.{{0,18}}?{payer}.{{0,12}}?(?:추가\s*)?(?:납입|부담)(?:액|금액)?"
+        rf"(?:이|은|는|으로)?\s*{_amount_pattern('dc_source')}",
+        message,
+        re.I,
+    )
+    return _amount(match, "dc_source") if match is not None else None
+
+
+def _isa_maturity_transfer(
+    message: str,
+) -> tuple[Decimal | None, IsaTransferEligibilityStatus]:
+    match = re.search(
+        rf"ISA.{{0,20}}?만기.{{0,24}}?(?:연금\s*계좌|IRP|연금\s*저축)"
+        rf".{{0,16}}?(?:전환|이체)(?:액|금액)?(?:이|은|는|으로)?\s*"
+        rf"{_amount_pattern('isa_transfer')}",
+        message,
+        re.I,
+    )
+    if match is None:
+        return None, IsaTransferEligibilityStatus.NONE
+    explicitly_eligible = re.search(
+        r"(?:법정\s*요건|적격).{0,8}(?:확인|충족)|만기.{0,20}60일\s*이내",
+        message,
+        re.I,
+    )
+    status = (
+        IsaTransferEligibilityStatus.ELIGIBLE
+        if explicitly_eligible is not None
+        else IsaTransferEligibilityStatus.UNKNOWN
+    )
+    return _amount(match, "isa_transfer"), status
 
 
 def _income(message: str) -> tuple[IncomeBasis, Decimal | None]:
@@ -169,10 +207,24 @@ def parse_pension_tax_inputs(message: str) -> ParsedPensionTaxInputs:
         irp_contribution = _account_contribution(
             message, _IRP, "irp_contribution"
         )
+    dc_employee_contribution = _dc_contribution(message, employer=False)
+    dc_employer_contribution = _dc_contribution(message, employer=True)
+    isa_transfer, isa_status = _isa_maturity_transfer(message)
     income_basis, income_amount = _income(message)
     missing_credit: list[str] = []
-    if pension_contribution is None and irp_contribution is None:
-        missing_credit.extend(("연금저축 당해연도 납입액", "IRP 당해연도 납입액"))
+    if all(
+        value is None
+        for value in (
+            pension_contribution,
+            irp_contribution,
+            dc_employee_contribution,
+            dc_employer_contribution,
+            isa_transfer,
+        )
+    ):
+        missing_credit.extend(
+            ("연금저축·IRP·DC 본인 당해연도 납입액 또는 ISA 만기 전환액",)
+        )
     pension_contribution = pension_contribution or Decimal("0")
     irp_contribution = irp_contribution or Decimal("0")
     tax_credit = (
@@ -181,6 +233,14 @@ def parse_pension_tax_inputs(message: str) -> ParsedPensionTaxInputs:
             income_amount_krw=income_amount,
             pension_savings_contribution_krw=pension_contribution,
             irp_contribution_krw=irp_contribution,
+            dc_employee_additional_contribution_krw=(
+                dc_employee_contribution or Decimal("0")
+            ),
+            dc_employer_contribution_krw=(
+                dc_employer_contribution or Decimal("0")
+            ),
+            isa_maturity_transfer_krw=isa_transfer or Decimal("0"),
+            isa_transfer_eligibility_status=isa_status,
         )
         if not missing_credit
         else None

@@ -283,9 +283,12 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .guide-tab .menu-button span { width: 24px; height: 3px; margin: 4px auto; background: #111; }
 .guide-tab .design-new-chat { display: inline-flex; align-items: center; gap: 6px; height: 42px; padding: 0 16px; border: 1.5px solid #dce0d8; border-radius: 22px; background: #fff; color: #111; font-size: 14px; font-weight: 700; cursor: pointer; }
 .guide-tab .design-new-chat span { color: #18a860; font-size: 22px; line-height: 1; }
-.guide-tab .design-topbar-actions { display: flex; align-items: center; gap: 14px; margin-left: auto; color: #18a860; }
+.guide-tab .design-topbar-actions { display: flex; align-items: center; gap: 9px; margin-left: auto; color: #18a860; }
+.guide-tab .design-auth-state { color: #68756e; font-size: 10px; font-weight: 800; white-space: nowrap; }
+.guide-tab .design-auth-state.authenticated { color: #087b49; }
 .guide-tab .design-avatar, .guide-tab .design-brand-mark { display: grid; place-items: center; background: #18a860; color: #ffd860; font-weight: 900; }
-.guide-tab .design-avatar { width: 34px; height: 34px; border-radius: 50%; font-size: 17px; }
+.guide-tab .design-avatar { width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; font-size: 17px; cursor: pointer; }
+.guide-tab .design-avatar.anonymous { background: #eef1ed; color: #637169; }
 .guide-tab .welcome.design-welcome { width: 100%; padding: 31px 27px 24px; text-align: left; }
 .guide-tab .design-brand { display: flex; align-items: center; gap: 11px; }
 .guide-tab .design-brand-mark { width: 42px; height: 42px; border-radius: 13px; font-size: 22px; }

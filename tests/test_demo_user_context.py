@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -30,6 +30,7 @@ from backend.app.chat.user_context import (
 )
 from backend.app.engine import AccountType, EducationalRiskProfile, IncomeBasis
 from backend.app.main import app
+from backend.app.retrieval.repository import NewsMatch
 from tests.conftest import FakeChatRepository, final_sse_response
 
 OWNER_ID = UUID("0d3a8c4f-3d6e-4e2e-91a0-7d11a2b71c01")
@@ -64,6 +65,7 @@ def _context() -> DemoUserFinancialContext:
         pension_savings_contribution_krw=Decimal("0"),
         as_of_date=date(2026, 7, 16),
         data_kind="mock",
+        asset_classes=("deposit",),
         defaulted_fields=(
             "income_amount_krw",
             "irp_contribution_krw",
@@ -99,15 +101,62 @@ class FakeContextRepository:
         return _context() if auth_user_id == OWNER_ID else None
 
 
-def _service() -> ChatService:
+class FakeProfileOnlyContextRepository:
+    def get(self, auth_user_id: UUID) -> None:
+        return None
+
+    def get_nickname(self, auth_user_id: UUID) -> str | None:
+        return "김민재" if auth_user_id == OWNER_ID else None
+
+
+class TopicAwareNewsRepository:
+    def __init__(self) -> None:
+        self.preferred_topics: tuple[str, ...] = ()
+
+    def recent_market_news(
+        self,
+        *,
+        region=None,
+        days=5,
+        limit=3,
+        exclude_item_ids=(),
+        preferred_topics=(),
+    ):
+        self.preferred_topics = preferred_topics
+        return [
+            NewsMatch(
+                item_id="11111111-1111-4111-8111-111111111111",
+                title="금리 변화와 채권시장",
+                description=None,
+                original_url="https://example.test/news/1",
+                portal_url=None,
+                published_at=datetime(2026, 7, 19, tzinfo=UTC),
+                summary_lines=("요약 1", "요약 2", "요약 3"),
+            )
+        ][:limit]
+
+    def latest_news(self, search_query, *, limit=10):
+        raise AssertionError("증시뉴스는 market 조회를 사용해야 합니다")
+
+    def news_by_ids(self, item_ids):
+        return []
+
+
+def _service(news=None) -> ChatService:
     return ChatService(
         knowledge=LocalMarkdownKnowledgeRepository(),
         scenarios=LocalScenarioRepository(),
+        news=news,
     )
 
 
-def _override_chat() -> None:
-    context_repository = FakeContextRepository()
+def _override_chat(
+    context_repository: FakeContextRepository
+    | FakeProfileOnlyContextRepository
+    | None = None,
+    news_repository=None,
+) -> None:
+    context_repository = context_repository or FakeContextRepository()
     app.dependency_overrides[require_supabase_user_id] = lambda: OWNER_ID
     app.dependency_overrides[get_optional_chat_repository] = lambda: (
         FakeChatRepository()
@@ -118,7 +167,7 @@ def _override_chat() -> None:
     app.dependency_overrides[get_demo_user_context_repository] = lambda: (
         context_repository
     )
-    app.dependency_overrides[get_chat_service] = _service
+    app.dependency_overrides[get_chat_service] = lambda: _service(news_repository)
     app.dependency_overrides[get_chat_narrator] = lambda: None
 
 
@@ -160,6 +209,7 @@ def test_repository_normalizes_missing_database_values_to_zero() -> None:
         1,
         0,
         0,
+        ("deposit",),
     )
 
     context = DemoUserContextRepository._context_from_row(row)
@@ -175,6 +225,12 @@ def test_repository_normalizes_missing_database_values_to_zero() -> None:
         "pension_savings_contribution_krw",
         "irp_balance_krw",
     }
+    assert context.asset_classes == ("deposit",)
+    assert context.preferred_news_topics == (
+        "monetary_policy",
+        "macro",
+        "fx_rates",
+    )
 
 
 def test_authenticated_profile_uses_database_age_and_all_positive_accounts() -> None:
@@ -345,6 +401,94 @@ def test_authenticated_chat_answers_balance_from_loaded_context() -> None:
     assert payload["sources"][0]["evidence_id"] == "mock:user_context"
     assert "IRP 0원" in payload["answer"]
     assert "연금저축 0원" in payload["answer"]
+
+
+def test_authenticated_news_prioritizes_topics_from_server_owned_assets() -> None:
+    news = TopicAwareNewsRepository()
+    _override_chat(news_repository=news)
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={"message": "증시뉴스 알려줘"},
+                headers={
+                    "Authorization": "Bearer test",
+                    "Idempotency-Key": str(uuid4()),
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = final_sse_response(response.text)["response"]
+    assert news.preferred_topics == _context().preferred_news_topics
+    assert any("자산군과 연관된 뉴스 주제" in item for item in payload["limitations"])
+    assert any(
+        source["evidence_id"] == "mock:user_context"
+        for source in payload["sources"]
+    )
+
+
+def test_authenticated_overview_addresses_server_nickname_once() -> None:
+    _override_chat()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={"message": "연금계좌 규칙 알려줘"},
+                headers={
+                    "Authorization": "Bearer test",
+                    "Idempotency-Key": str(uuid4()),
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = final_sse_response(response.text)["response"]
+    assert payload["data_mode"] == "verified_pension_account_overview"
+    assert payload["salutation"] == "박준호(가상)님"
+
+
+def test_authenticated_deferred_topic_addresses_server_nickname_once() -> None:
+    _override_chat()
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={"message": "연금으로 받을 때 세금은?"},
+                headers={
+                    "Authorization": "Bearer test",
+                    "Idempotency-Key": str(uuid4()),
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = final_sse_response(response.text)["response"]
+    assert payload["data_mode"] == "verified_pension_account_deferred_topic"
+    assert payload["salutation"] == "박준호(가상)님"
+
+
+def test_authenticated_overview_uses_profile_without_financial_context() -> None:
+    _override_chat(FakeProfileOnlyContextRepository())
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={"message": "연금계좌 전체적으로 정리해줘"},
+                headers={
+                    "Authorization": "Bearer test",
+                    "Idempotency-Key": str(uuid4()),
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = final_sse_response(response.text)["response"]
+    assert payload["salutation"] == "김민재님"
 
 
 def test_authenticated_tax_uses_database_context_not_client_values() -> None:

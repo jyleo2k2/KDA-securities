@@ -2,6 +2,7 @@ from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[1]
 _WINDOWS_SCRIPTS = _ROOT / "scripts" / "windows"
+_DEV_SCRIPT = _ROOT / "scripts" / "dev.py"
 
 
 def _read(name: str) -> str:
@@ -52,3 +53,13 @@ def test_shortcut_installer_keeps_non_main_access_explicitly_development_only() 
     assert "if ($IncludeDevelopmentShortcut)" in script
     assert '-AdditionalArguments " -AllowNonMain"' in script
     assert script.count("AllowNonMain") == 1
+
+
+def test_dev_launcher_uses_one_origin_and_requires_database_configuration() -> None:
+    script = _DEV_SCRIPT.read_text(encoding="utf-8")
+
+    assert 'WEB_ORIGIN = f"http://127.0.0.1:{WEB_PORT}"' in script
+    assert 'CHAT_URL = f"{WEB_ORIGIN}/#guide"' in script
+    assert "http://localhost" not in script
+    assert "DATABASE_URL" in script
+    assert "return None" in script

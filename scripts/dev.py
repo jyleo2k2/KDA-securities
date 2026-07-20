@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 import socket
 import subprocess
@@ -21,7 +22,8 @@ ROOT = Path(__file__).resolve().parent.parent
 FRONTEND = ROOT / "frontend"
 API_PORT = 8000
 WEB_PORT = 5173
-WEB_URL = f"http://localhost:{WEB_PORT}"
+WEB_ORIGIN = f"http://127.0.0.1:{WEB_PORT}"
+CHAT_URL = f"{WEB_ORIGIN}/#guide"
 # 프론트는 마운트 때 capabilities를 딱 한 번 부르고 실패하면 "API 연결 필요"로
 # 굳는다(재시도 없음). 그래서 vite가 아니라 이 엔드포인트가 살아난 뒤에 연다.
 API_READY_URL = f"http://127.0.0.1:{API_PORT}/chat/demo/capabilities"
@@ -122,8 +124,14 @@ def _preflight() -> str | None:
             _say(f"포트 {port}({name})가 이미 사용 중입니다.")
             _say("기존에 띄운 서버를 끄고 다시 실행해 주세요.")
             return None
-    if not (ROOT / ".env").is_file():
-        _say(".env가 없어 공시·뉴스·Claude 재서술 없이 뜹니다(계좌 규칙은 정상).")
+    env_path = ROOT / ".env"
+    if not env_path.is_file():
+        _say(".env가 없어 실행을 중단합니다. 프로젝트 루트 설정을 확인해 주세요.")
+        return None
+    env_text = env_path.read_text(encoding="utf-8")
+    if re.search(r"(?m)^\s*DATABASE_URL\s*=\s*\S+", env_text) is None:
+        _say("DATABASE_URL이 비어 있어 실행을 중단합니다.")
+        return None
     _ensure_frontend_dependencies(npm)
     return npm
 
@@ -158,9 +166,9 @@ def main() -> int:
 
     try:
         _say("서버 준비를 기다립니다 (임베더 로딩에 10초 남짓 걸립니다)...")
-        if _wait_until_ready(API_READY_URL) and _wait_until_ready(WEB_URL):
-            _say(f"첫 화면을 엽니다 → {WEB_URL}")
-            webbrowser.open(WEB_URL)
+        if _wait_until_ready(API_READY_URL) and _wait_until_ready(WEB_ORIGIN):
+            _say(f"챗봇 화면을 엽니다 → {CHAT_URL}")
+            webbrowser.open(CHAT_URL)
         else:
             _say("서버가 시간 안에 준비되지 않았습니다. 위 로그를 확인해 주세요.")
         while all(process.poll() is None for process, _ in servers):

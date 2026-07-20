@@ -38,6 +38,7 @@ export type IncomeBasis =
   | "gross_salary"
   | "comprehensive_income"
   | "unknown";
+export type IsaTransferEligibilityStatus = "none" | "eligible" | "unknown";
 export type WithdrawalReason = "general" | "unavoidable" | "unknown";
 export type IrpDeferredIncomeStatus = "none" | "known" | "unknown";
 
@@ -331,6 +332,13 @@ export interface PensionTaxCreditInput {
   income_amount_krw?: string | null;
   pension_savings_contribution_krw: string;
   irp_contribution_krw: string;
+  dc_employee_additional_contribution_krw?: string;
+  dc_employer_contribution_krw?: string;
+  irp_deferred_retirement_income_contribution_krw?: string;
+  pension_account_transfer_contribution_krw?: string;
+  isa_maturity_transfer_krw?: string;
+  isa_transfer_eligibility_status?: IsaTransferEligibilityStatus;
+  isa_additional_limit_used_prior_tax_year_krw?: string;
 }
 
 export interface NonPensionWithdrawalInput {
@@ -348,6 +356,13 @@ export interface PensionTaxScenarioInput {
   income_amount_krw?: string | null;
   pension_savings: PensionAccountTaxInput;
   irp: PensionAccountTaxInput;
+  dc_employee_additional_contribution_krw?: string;
+  dc_employer_contribution_krw?: string;
+  irp_deferred_retirement_income_contribution_krw?: string;
+  pension_account_transfer_contribution_krw?: string;
+  isa_maturity_transfer_krw?: string;
+  isa_transfer_eligibility_status?: IsaTransferEligibilityStatus;
+  isa_additional_limit_used_prior_tax_year_krw?: string;
   withdrawal_reason: WithdrawalReason;
   irp_deferred_income_status: IrpDeferredIncomeStatus;
   irp_deferred_retirement_income_krw?: string | null;
@@ -357,6 +372,9 @@ export interface TaxCreditRateScenario {
   label: string;
   income_tax_rate_percent: string;
   local_inclusive_display_rate_percent: string;
+  income_tax_credit_krw: string;
+  estimated_total_tax_reduction_effect_krw: string;
+  /** @deprecated Use estimated_total_tax_reduction_effect_krw. */
   estimated_tax_credit_krw: string;
 }
 
@@ -367,10 +385,26 @@ export interface PensionTaxCreditEvaluation {
   tax_year: number;
   pension_savings_contribution_krw: string;
   irp_contribution_krw: string;
+  dc_employee_additional_contribution_krw: string;
+  retirement_personal_contribution_krw: string;
+  dc_employer_contribution_krw: string;
+  irp_deferred_retirement_income_contribution_krw: string;
+  pension_account_transfer_contribution_krw: string;
+  total_excluded_contribution_krw: string;
+  isa_maturity_transfer_krw: string;
+  isa_transfer_eligibility_status: IsaTransferEligibilityStatus;
+  isa_transfer_requires_review: boolean;
+  isa_additional_limit_used_prior_tax_year_krw: string;
+  isa_additional_credit_limit_krw: string;
   pension_savings_eligible_contribution_krw: string;
   irp_eligible_contribution_krw: string;
+  dc_employee_eligible_contribution_krw: string;
+  retirement_eligible_contribution_krw: string;
+  regular_eligible_contribution_krw: string;
   total_eligible_contribution_krw: string;
+  total_credit_limit_krw: string;
   unused_combined_limit_krw: string;
+  unused_total_limit_krw: string;
   rate_determined: boolean;
   rate_scenarios: TaxCreditRateScenario[];
   assumption_notice: string;
@@ -782,6 +816,7 @@ export interface DemoUserFinancialContext {
   pension_savings_contribution_krw: string;
   as_of_date: string;
   data_kind: "mock";
+  asset_classes: string[];
   defaulted_fields: string[];
 }
 

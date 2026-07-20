@@ -70,6 +70,18 @@ def _load_demo_context(
     return repository.get(owner_id)
 
 
+def _load_authenticated_nickname(
+    repository: DemoUserContextRepository | None,
+    owner_id: UUID,
+    context: DemoUserFinancialContext | None,
+) -> str | None:
+    if context is not None:
+        return context.nickname
+    if repository is None:
+        return None
+    return repository.get_nickname(owner_id)
+
+
 def _restore_session_conversation_context(
     request: "AuthenticatedChatRequest",
     repository: ChatRepository,
@@ -136,6 +148,7 @@ def _authenticated_response(
     plan: QueryPlan,
     service: ChatService,
     context: DemoUserFinancialContext | None,
+    nickname: str | None,
 ) -> tuple[ChatResponse, bool]:
     direct_context = (
         context is not None
@@ -150,6 +163,7 @@ def _authenticated_response(
             request,
             plan=plan,
             prefer_structured_pension_tax=True,
+            preferred_news_topics=context.preferred_news_topics,
         )
         if context is not None
         else service.ask(request, plan=plan)
@@ -161,11 +175,7 @@ def _authenticated_response(
         "verified_pension_account_deferred_topic",
     }:
         response = response.model_copy(
-            update={
-                "salutation": _format_salutation(
-                    context.nickname if context is not None else None
-                )
-            }
+            update={"salutation": _format_salutation(nickname)}
         )
     return response, True
 
@@ -431,8 +441,15 @@ async def chat_authenticated_stream(
                 context_repository,
                 owner_id,
             )
+            nickname = await asyncio.to_thread(
+                _load_authenticated_nickname,
+                context_repository,
+                owner_id,
+                context,
+            )
         except _DATABASE_ERRORS:
             context = None
+            nickname = None
         chat_request = _authenticated_request(request_with_context, context)
         started_at = perf_counter()
         plan = service.plan(
@@ -447,6 +464,7 @@ async def chat_authenticated_stream(
                 plan=plan,
                 service=service,
                 context=context,
+                nickname=nickname,
             )
         except _DATABASE_ERRORS:
             yield _sse("error", {"detail": "Chat data source is unavailable"})

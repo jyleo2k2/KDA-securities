@@ -34,6 +34,7 @@ import type {
   DemoUserFinancialContext,
   IncomeBasis,
   IrpDeferredIncomeStatus,
+  IsaTransferEligibilityStatus,
   PensionTaxScenarioInput,
   ScenarioSummary,
   StoredChatMessage,
@@ -510,6 +511,14 @@ export function GuidePage({
   const [irpBalance, setIrpBalance] = useState("");
   const [pensionSavingsContribution, setPensionSavingsContribution] = useState("0");
   const [irpContribution, setIrpContribution] = useState("0");
+  const [dcEmployeeContribution, setDcEmployeeContribution] = useState("0");
+  const [dcEmployerContribution, setDcEmployerContribution] = useState("0");
+  const [irpDeferredContribution, setIrpDeferredContribution] = useState("0");
+  const [pensionAccountTransfer, setPensionAccountTransfer] = useState("0");
+  const [isaMaturityTransfer, setIsaMaturityTransfer] = useState("0");
+  const [isaEligibility, setIsaEligibility] =
+    useState<IsaTransferEligibilityStatus>("none");
+  const [isaPriorLimitUsed, setIsaPriorLimitUsed] = useState("0");
   const [incomeBasis, setIncomeBasis] = useState<IncomeBasis>("unknown");
   const [incomeAmount, setIncomeAmount] = useState("");
   const [withdrawalReason, setWithdrawalReason] = useState<WithdrawalReason>("general");
@@ -531,6 +540,19 @@ export function GuidePage({
   const conversationGenerationRef = useRef(0);
   const sessionListGenerationRef = useRef(0);
   const sendingRef = useRef(false);
+
+  const authStatusLabel = auth.loading
+    ? "로그인 확인 중"
+    : auth.session
+      ? "로그인됨"
+      : "로그인 필요";
+  const authAvatarText = auth.loading
+    ? "…"
+    : auth.session
+      ? (userContext?.nickname.trim().charAt(0)
+        || auth.session.user.email?.trim().charAt(0).toUpperCase()
+        || "연")
+      : "!";
 
   currentAuthRef.current = {
     userId: authenticatedUserId,
@@ -570,6 +592,12 @@ export function GuidePage({
     if (!pensionSavingsBalance.trim() || !irpBalance.trim()) return undefined;
     if (incomeBasis !== "unknown" && !incomeAmount.trim()) return undefined;
     if (irpDeferredStatus === "known" && !irpDeferredAmount.trim()) return undefined;
+    if (Number(isaMaturityTransfer || "0") > 0 && isaEligibility === "none") {
+      return undefined;
+    }
+    if (Number(isaPriorLimitUsed || "0") > 0 && isaEligibility !== "eligible") {
+      return undefined;
+    }
     return {
       tax_year: 2026,
       income_basis: incomeBasis,
@@ -582,6 +610,14 @@ export function GuidePage({
         balance_krw: irpBalance,
         current_year_contribution_krw: irpContribution || "0",
       },
+      dc_employee_additional_contribution_krw: dcEmployeeContribution || "0",
+      dc_employer_contribution_krw: dcEmployerContribution || "0",
+      irp_deferred_retirement_income_contribution_krw:
+        irpDeferredContribution || "0",
+      pension_account_transfer_contribution_krw: pensionAccountTransfer || "0",
+      isa_maturity_transfer_krw: isaMaturityTransfer || "0",
+      isa_transfer_eligibility_status: isaEligibility,
+      isa_additional_limit_used_prior_tax_year_krw: isaPriorLimitUsed || "0",
       withdrawal_reason: withdrawalReason,
       irp_deferred_income_status: irpDeferredStatus,
       ...(irpDeferredStatus === "known"
@@ -589,12 +625,19 @@ export function GuidePage({
         : {}),
     };
   }, [
+    dcEmployeeContribution,
+    dcEmployerContribution,
     incomeAmount,
     incomeBasis,
     irpBalance,
     irpContribution,
+    irpDeferredContribution,
     irpDeferredAmount,
     irpDeferredStatus,
+    isaEligibility,
+    isaMaturityTransfer,
+    isaPriorLimitUsed,
+    pensionAccountTransfer,
     pensionSavingsBalance,
     pensionSavingsContribution,
     withdrawalReason,
@@ -658,7 +701,13 @@ export function GuidePage({
     if (!accessToken) {
       setChatSessions([]);
       setUserContext(null);
-      setHistoryError(null);
+      setHistoryError(
+        auth.loading
+          ? null
+          : auth.configured
+            ? "로그인 세션이 없습니다. 로그인하면 저장된 대화를 다시 불러옵니다."
+            : null,
+      );
       setHistoryLoading(false);
       return;
     }
@@ -690,7 +739,7 @@ export function GuidePage({
     return () => {
       active = false;
     };
-  }, [accessToken, authenticatedUserId]);
+  }, [accessToken, authenticatedUserId, auth.configured, auth.loading]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -1182,9 +1231,43 @@ export function GuidePage({
               <input type="number" min="0" inputMode="numeric" value={pensionSavingsContribution} onChange={(event) => setPensionSavingsContribution(event.target.value)} />
             </label>
             <label>
-              <span>올해 IRP 납입액</span>
+              <span>올해 IRP 본인 추가납입액</span>
               <input type="number" min="0" inputMode="numeric" value={irpContribution} onChange={(event) => setIrpContribution(event.target.value)} />
             </label>
+            <label>
+              <span>올해 DC 근로자 본인 추가납입액</span>
+              <input type="number" min="0" inputMode="numeric" value={dcEmployeeContribution} onChange={(event) => setDcEmployeeContribution(event.target.value)} />
+            </label>
+            <label>
+              <span>올해 DC 회사 부담금(공제 제외)</span>
+              <input type="number" min="0" inputMode="numeric" value={dcEmployerContribution} onChange={(event) => setDcEmployerContribution(event.target.value)} />
+            </label>
+            <label>
+              <span>올해 IRP 퇴직급여 이전액(공제 제외)</span>
+              <input type="number" min="0" inputMode="numeric" value={irpDeferredContribution} onChange={(event) => setIrpDeferredContribution(event.target.value)} />
+            </label>
+            <label>
+              <span>연금계좌 간 이전액(공제 제외)</span>
+              <input type="number" min="0" inputMode="numeric" value={pensionAccountTransfer} onChange={(event) => setPensionAccountTransfer(event.target.value)} />
+            </label>
+            <label>
+              <span>ISA 만기자금 연금계좌 전환액</span>
+              <input type="number" min="0" inputMode="numeric" value={isaMaturityTransfer} onChange={(event) => setIsaMaturityTransfer(event.target.value)} />
+            </label>
+            <label>
+              <span>ISA 전환 적격 여부</span>
+              <select value={isaEligibility} onChange={(event) => setIsaEligibility(event.target.value as IsaTransferEligibilityStatus)}>
+                <option value="none">전환액 없음</option>
+                <option value="eligible">법정 요건 확인됨</option>
+                <option value="unknown">확인 필요</option>
+              </select>
+            </label>
+            {isaEligibility === "eligible" && (
+              <label>
+                <span>전년도에 사용한 ISA 추가 한도</span>
+                <input type="number" min="0" max="3000000" inputMode="numeric" value={isaPriorLimitUsed} onChange={(event) => setIsaPriorLimitUsed(event.target.value)} />
+              </label>
+            )}
             <label>
               <span>세액공제 소득 기준</span>
               <select value={incomeBasis} onChange={(event) => setIncomeBasis(event.target.value as IncomeBasis)}>
@@ -1246,7 +1329,18 @@ export function GuidePage({
           <button className="design-new-chat" type="button" onClick={startNewChat}><span>+</span> 새 대화</button>
           <div className="design-topbar-actions">
             <Icon name="database" size={25} />
-            <span className="design-avatar">연</span>
+            <span className={`design-auth-state ${auth.session ? "authenticated" : "anonymous"}`}>
+              {authStatusLabel}
+            </span>
+            <button
+              className={`design-avatar ${auth.session ? "authenticated" : "anonymous"}`}
+              type="button"
+              aria-label={`${authStatusLabel} · 계정 메뉴 열기`}
+              title={authStatusLabel}
+              onClick={() => setIsSidebarOpen(true)}
+            >
+              {authAvatarText}
+            </button>
           </div>
         </header>
 

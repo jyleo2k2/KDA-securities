@@ -11,6 +11,7 @@ from backend.app.chat.narrator import ClaudeNarrator
 from backend.app.chat.pension_tax_parser import parse_pension_tax_inputs
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService
+from backend.app.chat.tools import DC_WITHDRAWAL_EXCLUSION_NOTICE
 from backend.app.engine import PensionTaxScenarioInput
 from backend.app.main import app, get_chat_narrator, get_chat_service
 from tests.conftest import final_sse_response
@@ -82,7 +83,10 @@ def test_natural_language_tax_credit_question_runs_without_form_input() -> None:
     assert "148.5만 원" in response.answer
     assert response.visualizations[0].kind == "tax_summary"
     assert response.visualizations[0].items[0].value == Decimal("9000000")
-    assert response.visualizations[0].items[1].value == Decimal("1485000")
+    assert response.visualizations[0].items[1].label == "법정 세액공제액"
+    assert response.visualizations[0].items[1].value == Decimal("1350000")
+    assert response.visualizations[0].items[2].value == Decimal("1485000")
+    assert DC_WITHDRAWAL_EXCLUSION_NOTICE not in response.answer
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
 
 
@@ -108,6 +112,37 @@ def test_single_irp_contribution_defaults_pension_savings_to_zero() -> None:
     assert parsed.tax_credit is not None
     assert parsed.tax_credit.pension_savings_contribution_krw == Decimal("0")
     assert parsed.tax_credit.irp_contribution_krw == Decimal("3000000")
+
+
+def test_explicit_dc_employee_contribution_is_parsed_as_eligible_source() -> None:
+    parsed = parse_pension_tax_inputs(
+        "DC형 근로자 본인 추가납입액은 900만원이야. 세액공제 계산해줘"
+    )
+
+    assert parsed.tax_credit is not None
+    assert parsed.tax_credit.dc_employee_additional_contribution_krw == Decimal(
+        "9000000"
+    )
+    assert parsed.tax_credit.dc_employer_contribution_krw == Decimal("0")
+
+
+def test_isa_transfer_without_explicit_eligibility_requires_review() -> None:
+    parsed = parse_pension_tax_inputs(
+        "ISA 만기 연금계좌 전환액 3000만원 세액공제 계산해줘"
+    )
+
+    assert parsed.tax_credit is not None
+    assert parsed.tax_credit.isa_maturity_transfer_krw == Decimal("30000000")
+    assert parsed.tax_credit.isa_transfer_eligibility_status == "unknown"
+
+
+def test_isa_transfer_with_explicit_eligibility_is_parsed_as_eligible() -> None:
+    parsed = parse_pension_tax_inputs(
+        "ISA 만기 연금계좌 전환액 3000만원이고 법정 요건을 확인했어"
+    )
+
+    assert parsed.tax_credit is not None
+    assert parsed.tax_credit.isa_transfer_eligibility_status == "eligible"
 
 
 def test_tax_parser_keeps_income_and_both_explicit_contributions() -> None:

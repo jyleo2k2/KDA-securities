@@ -338,6 +338,7 @@ class RetrievalRepository:
         days: int = 5,
         limit: int = 3,
         exclude_item_ids: tuple[str, ...] = (),
+        preferred_topics: tuple[str, ...] = (),
     ) -> list[NewsMatch]:
         if region not in {None, "kr", "us"}:
             raise ValueError("region must be kr, us or None")
@@ -347,21 +348,20 @@ class RetrievalRepository:
                 excluded_ids.append(str(UUID(item_id)))
             except ValueError:
                 continue
+        normalized_topics = list(dict.fromkeys(preferred_topics))[:20]
         with (
             self._connection() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
                 """
-                with eligible as (
+                with candidates as (
                     select
                         id, title, description, original_url,
                         portal_url, published_at, summary_lines,
                         selection_score, market_region,
-                        row_number() over (
-                            partition by market_region
-                            order by selection_score desc, published_at desc, id
-                        ) as region_rank
+                        coalesce(market_topics, array[]::text[])
+                            && %s::text[] as topic_match
                     from public.news_items
                     where selection_policy_version is not null
                       and is_active
@@ -371,6 +371,18 @@ class RetrievalRepository:
                       and published_at <= now()
                       and summary_status = 'succeeded'
                       and cardinality(summary_lines) = 3
+                ), eligible as (
+                    select
+                        *,
+                        row_number() over (
+                            partition by market_region
+                            order by
+                                topic_match desc,
+                                selection_score desc,
+                                published_at desc,
+                                id
+                        ) as region_rank
+                    from candidates
                 )
                 select
                     id::text, title, description, original_url,
@@ -381,12 +393,14 @@ class RetrievalRepository:
                         when %s::text is null and region_rank = 1 then 0
                         else 1
                     end,
+                    topic_match desc,
                     selection_score desc,
                     published_at desc,
                     id
                 limit %s
                 """,
                 (
+                    normalized_topics,
                     region,
                     region,
                     excluded_ids,

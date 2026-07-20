@@ -12,11 +12,13 @@ from .models import (
 )
 from .query_planner import AccountRuleTopic
 
-_AS_OF = date(2026, 7, 18)
+_AS_OF = date(2026, 7, 20)
 _TAX_CREDIT_SOURCE = "rule:pension_overview:tax_credit"
 _RECEIPT_SOURCE = "rule:pension_overview:receipt"
 _TAXATION_SOURCE = "rule:pension_overview:taxation"
 _RETIREMENT_SOURCE = "rule:pension_overview:retirement"
+_RISK_ASSET_SOURCE = "rule:pension_overview:risk_asset"
+_WITHDRAWAL_SOURCE = "rule:pension_overview:withdrawal"
 _LAW_SOURCE = "rule:pension_overview:law"
 PENSION_TOPIC_DEFER_NOTICE = (
     "위 내용은 일반적인 제도 안내이며, 가입 시점·납입 재원·수령 방식·"
@@ -111,7 +113,12 @@ def build_pension_account_overview_response() -> ChatResponse:
                     ),
                 ),
             ],
-            [_TAX_CREDIT_SOURCE, _RETIREMENT_SOURCE, _LAW_SOURCE],
+            [
+                _TAX_CREDIT_SOURCE,
+                _RETIREMENT_SOURCE,
+                _RISK_ASSET_SOURCE,
+                _LAW_SOURCE,
+            ],
         ),
         _section(
             "세액공제 규칙",
@@ -292,9 +299,23 @@ def build_pension_account_overview_response() -> ChatResponse:
                 data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
             ),
             SourceEvidence(
+                evidence_id=_RISK_ASSET_SOURCE,
+                label="디폴트옵션과 위험자산 한도 예외",
+                locator=(
+                    "https://www.moel.go.kr/news/enews/report/"
+                    "enewsView.do?news_seq=13711"
+                ),
+                publisher="고용노동부",
+                as_of=_AS_OF,
+                data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
+            ),
+            SourceEvidence(
                 evidence_id=_LAW_SOURCE,
                 label="소득세법·시행령 연금계좌 규정",
-                locator="https://www.law.go.kr/법령/소득세법",
+                locator=(
+                    "https://law.go.kr/lsLinkCommonInfo.do?"
+                    "lsJoLnkSeq=1021863203"
+                ),
                 publisher="국가법령정보센터",
                 as_of=_AS_OF,
                 data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
@@ -339,10 +360,24 @@ def _deferred_topic_sources(evidence_ids: list[str]) -> list[SourceEvidence]:
             as_of=_AS_OF,
             data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
         ),
+        _WITHDRAWAL_SOURCE: SourceEvidence(
+            evidence_id=_WITHDRAWAL_SOURCE,
+            label="IRP·DC형 중도인출 사유",
+            locator=(
+                "https://m.easylaw.go.kr/MOB/CsmInfoRetrieve.laf?"
+                "ccfNo=2&cciNo=1&cnpClsNo=2&csmSeq=999"
+            ),
+            publisher="찾기쉬운 생활법령",
+            as_of=_AS_OF,
+            data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
+        ),
         _LAW_SOURCE: SourceEvidence(
             evidence_id=_LAW_SOURCE,
             label="소득세법·시행령 연금계좌 규정",
-            locator="https://www.law.go.kr/법령/소득세법",
+            locator=(
+                "https://law.go.kr/lsLinkCommonInfo.do?"
+                "lsJoLnkSeq=1021863203"
+            ),
             publisher="국가법령정보센터",
             as_of=_AS_OF,
             data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
@@ -451,7 +486,7 @@ def build_deferred_pension_topic_response(
         evidence_ids = [
             _RECEIPT_SOURCE,
             _TAXATION_SOURCE,
-            _RETIREMENT_SOURCE,
+            _WITHDRAWAL_SOURCE,
             _LAW_SOURCE,
         ]
         section = _section(

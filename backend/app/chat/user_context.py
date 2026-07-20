@@ -37,6 +37,14 @@ _DIRECT_CONTEXT_QUESTION = re.compile(
     r"내.{0,8}(?:연금|계좌).{0,8}(?:현황|정보|잔액|납입))"
 )
 
+_NEWS_TOPICS_BY_ASSET_CLASS: dict[str, tuple[str, ...]] = {
+    "cash": ("monetary_policy", "macro", "fx_rates"),
+    "deposit": ("monetary_policy", "macro", "fx_rates"),
+    "bond": ("monetary_policy", "macro", "fx_rates", "flows"),
+    "global_equity": ("indices", "sector", "earnings", "fx_rates", "macro"),
+    "eligible_tdf": ("indices", "flows", "macro", "monetary_policy"),
+}
+
 
 class DemoUserFinancialContext(BaseModel):
     """Server-validated context for one of the six synthetic Auth users."""
@@ -64,7 +72,18 @@ class DemoUserFinancialContext(BaseModel):
     pension_savings_contribution_krw: Decimal
     as_of_date: date
     data_kind: str
+    asset_classes: tuple[str, ...] = ()
     defaulted_fields: tuple[str, ...] = ()
+
+    @property
+    def preferred_news_topics(self) -> tuple[str, ...]:
+        return tuple(
+            dict.fromkeys(
+                topic
+                for asset_class in self.asset_classes
+                for topic in _NEWS_TOPICS_BY_ASSET_CLASS.get(asset_class, ())
+            )
+        )
 
     def to_pension_tax_input(self) -> PensionTaxScenarioInput:
         income_basis = (
@@ -251,7 +270,19 @@ class DemoUserContextRepository:
                     count(account.id) filter (where account.account_type = 'dc'),
                     count(account.id) filter (where account.account_type = 'irp'),
                     count(account.id)
-                        filter (where account.account_type = 'pension_savings')
+                        filter (where account.account_type = 'pension_savings'),
+                    coalesce(
+                        (
+                            select array_agg(distinct asset.code order by asset.code)
+                            from public.mock_accounts as holding_account
+                            join public.mock_holdings as holding
+                              on holding.account_id = holding_account.id
+                            join public.asset_classes as asset
+                              on asset.id = holding.asset_class_id
+                            where holding_account.scenario_id = scenario.id
+                        ),
+                        array[]::text[]
+                    ) as asset_classes
                 from public.demo_user_financial_context as context
                 join public.mock_scenarios as scenario
                   on scenario.id = context.scenario_id
@@ -264,6 +295,7 @@ class DemoUserContextRepository:
                     context.nickname,
                     context.representative_age,
                     context.customer_context,
+                    scenario.id,
                     scenario.code,
                     scenario.name,
                     scenario.age_band,
@@ -281,6 +313,19 @@ class DemoUserContextRepository:
             )
             row = cursor.fetchone()
         return self._context_from_row(row) if row is not None else None
+
+    def get_nickname(self, auth_user_id: UUID) -> str | None:
+        with self._connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
+                select nullif(btrim(nickname), '')
+                from public.user_profiles
+                where user_id = %s
+                """,
+                (auth_user_id,),
+            )
+            row = cursor.fetchone()
+        return row[0] if row is not None else None
 
     @staticmethod
     def _context_from_row(row: Any) -> DemoUserFinancialContext:
@@ -332,6 +377,7 @@ class DemoUserContextRepository:
             irp_balance_krw=row[18],
             pension_savings_balance_krw=row[19],
             total_pension_balance_krw=row[20],
+            asset_classes=tuple(row[24]),
             defaulted_fields=tuple(defaulted),
         )
 
@@ -347,7 +393,10 @@ def apply_demo_context_evidence(
     uses_financial_context = bool(
         original_source_ids.intersection({"user:pension_tax", replacement_id})
     )
-    uses_demo_context = uses_financial_context or bool(
+    uses_news_personalization = (
+        response.intent == ChatIntent.NEWS and bool(context.preferred_news_topics)
+    )
+    uses_demo_context = uses_financial_context or uses_news_personalization or bool(
         original_source_ids.intersection({"mock:scenario"})
     )
     sources = []
@@ -378,6 +427,17 @@ def apply_demo_context_evidence(
             )
         else:
             sources.append(source)
+    if uses_news_personalization and replacement_id not in original_source_ids:
+        sources.append(
+            SourceEvidence(
+                evidence_id=replacement_id,
+                label="로그인 사용자 연금 목데이터 자산군",
+                locator="database://demo-user-financial-context/current",
+                publisher="연금 코파일럿 데모 DB",
+                as_of=context.as_of_date,
+                data_boundary=DataBoundary.MOCK,
+            )
+        )
 
     numeric = [
         item.model_copy(
@@ -399,10 +459,15 @@ def apply_demo_context_evidence(
     sections = [
         section.model_copy(
             update={
-                "evidence_ids": [
-                    replacement_id if item == "user:pension_tax" else item
-                    for item in section.evidence_ids
-                ]
+                "evidence_ids": list(
+                    dict.fromkeys(
+                        [
+                            replacement_id if item == "user:pension_tax" else item
+                            for item in section.evidence_ids
+                        ]
+                        + ([replacement_id] if uses_news_personalization else [])
+                    )
+                )
             }
         )
         for section in response.sections
