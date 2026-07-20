@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type FormEvent,
   type KeyboardEvent,
   type ReactNode,
@@ -346,7 +347,7 @@ function AnswerBlocks({ blocks }: { blocks: AnswerBlock[] }) {
         }
         if (block.kind === "bullets") {
           return (
-            <div key={key}>
+            <div className="answer-bullet-block" key={key}>
               {block.title && <strong>{displayText(block.title)}</strong>}
               <ul className="answer-bullets">
                 {block.items.map((item, itemIndex) => (
@@ -396,6 +397,7 @@ const REPRESENTATIVE_COMPANY_LABELS = [
   "테마에서의 역할:",
   "쉽게 말하면:",
 ] as const;
+const THEME_PARAGRAPH_GAP = "10pt";
 
 function CalloutCopy({ text }: { text: string }) {
   const paragraphs = text.split(/\n{2,}/);
@@ -620,6 +622,9 @@ function AssistantMessage({
       className={response.intent === "etf_theme"
         ? "answer-content theme-answer-content"
         : "answer-content"}
+      style={response.intent === "etf_theme"
+        ? { "--theme-paragraph-gap": THEME_PARAGRAPH_GAP } as CSSProperties
+        : undefined}
     >
       <div className="answer-meta">
         <span className={`intent-pill intent-${response.intent}`}>{INTENT_LABELS[response.intent]}</span>

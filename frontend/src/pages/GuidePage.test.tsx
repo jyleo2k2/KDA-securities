@@ -642,6 +642,8 @@ describe("GuidePage chat history deletion", () => {
     const limitations = answerContent?.querySelectorAll(".limitation-box p");
 
     expect(answerContent).toHaveClass("theme-answer-content");
+    expect(answerContent).toHaveStyle("--theme-paragraph-gap: 10pt");
+    expect(riskHeading.parentElement).toHaveClass("answer-bullet-block");
     expect(riskList?.querySelectorAll("li")).toHaveLength(3);
     expect(within(riskList as HTMLElement).getByText(
       "미세공정 경쟁과 대규모 투자 실패가 기업 수익성을 훼손할 수 있습니다.",

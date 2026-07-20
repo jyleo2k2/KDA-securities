@@ -199,8 +199,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .answer-callout-copy p { font-weight: 500; line-height: 1.75; }
 .answer-callout-copy p strong { display: inline; margin: 0; color: #294838; font-size: inherit; font-weight: 800; }
 .answer-bullets { display: grid; gap: 6px; margin: 0; padding-left: 18px; color: #5e6d65; font-size: 11px; line-height: 1.6; }
-.theme-answer-content { --theme-paragraph-gap: 10px; }
 .theme-answer-content .rich-answer-section > p + .answer-blocks { margin-top: var(--theme-paragraph-gap); }
+.theme-answer-content .answer-bullet-block { display: grid; gap: var(--theme-paragraph-gap); }
 .theme-answer-content .answer-blocks,
 .theme-answer-content .answer-bullets,
 .theme-answer-content .answer-callout-copy { gap: var(--theme-paragraph-gap); }
