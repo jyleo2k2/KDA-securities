@@ -8,6 +8,7 @@ from backend.app.engine.educational_portfolio import (
     EducationalPortfolioInput,
     RiskProfile,
     _candidate_counts,
+    _percentile,
     build_educational_portfolio,
     calculate_return_correlation,
     calculate_target_allocation,
@@ -108,6 +109,13 @@ def test_correlation_requires_enough_overlap_and_detects_similarity() -> None:
 
     assert correlation is not None
     assert correlation > Decimal("0.99")
+
+
+def test_percentile_preserves_favorable_ties_in_both_directions() -> None:
+    values = [Decimal("1"), Decimal("2"), Decimal("2"), Decimal("3")]
+
+    assert _percentile(Decimal("2"), values, higher_is_better=True) == Decimal("75")
+    assert _percentile(Decimal("2"), values, higher_is_better=False) == Decimal("75")
 
 
 def test_candidate_selection_calculates_each_daily_return_series_once(

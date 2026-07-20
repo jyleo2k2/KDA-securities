@@ -1,4 +1,5 @@
 import statistics
+from bisect import bisect_left, bisect_right
 from collections import defaultdict
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
@@ -839,8 +840,10 @@ def _percentile(
 ) -> Decimal:
     if target is None or not values:
         return Decimal("0")
-    favorable = sum(
-        value <= target if higher_is_better else value >= target for value in values
+    favorable = (
+        bisect_right(values, target)
+        if higher_is_better
+        else len(values) - bisect_left(values, target)
     )
     return Decimal(favorable) / Decimal(len(values)) * Decimal("100")
 
@@ -865,7 +868,7 @@ def _score_candidates(
 ) -> list[tuple[dict[str, Any], CandidateQuality]]:
     inputs = {product["isu_code"]: _quality_inputs(product) for product in products}
     columns = {
-        key: [value[key] for value in inputs.values() if value[key] is not None]
+        key: sorted(value[key] for value in inputs.values() if value[key] is not None)
         for key in ("fee", "liquidity", "size", "nav", "tracking")
     }
     scored = []
