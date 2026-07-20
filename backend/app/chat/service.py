@@ -531,6 +531,9 @@ _AGE_STYLE_PORTFOLIO_GUIDE = re.compile(
     r"(?:나이|연령)\s*대?별|20\s*대.{0,30}50\s*대"
 )
 _STYLE_COMPARISON = re.compile(r"투자\s*(?:성향|스타일)\s*별")
+_RISK_PROFILE_COMPARISON = re.compile(
+    r"각각|비교|차이|다섯\s*(?:가지|개)|5\s*(?:가지|개)"
+)
 _RETIREMENT_START_AGE = re.compile(
     r"(?:연금\s*)?(?:수령|은퇴)(?:\s*개시)?(?:\s*(?:시점)?(?:은|을|를))?"
     r"\s*(\d{2,3})\s*세"
@@ -586,6 +589,23 @@ def _requests_age_style_portfolio_guide(message: str) -> bool:
         and _STYLE_COMPARISON.search(message) is not None
         and _RISK_PROFILE_PORTFOLIO_REQUEST.search(message) is not None
     )
+
+
+def _requests_risk_profile_portfolio_guide(message: str) -> bool:
+    mentioned_profiles = {
+        profile
+        for pattern, profile in _RISK_PROFILE_PATTERNS
+        if pattern.search(message)
+    }
+    compares_named_profiles = (
+        len(mentioned_profiles) >= 2
+        and _RISK_PROFILE_COMPARISON.search(message) is not None
+    )
+    compares_all_styles = (
+        _STYLE_COMPARISON.search(message) is not None
+        and _RISK_PROFILE_PORTFOLIO_REQUEST.search(message) is not None
+    )
+    return compares_named_profiles or compares_all_styles
 
 
 def _mentioned_retirement_start_age(message: str) -> int | None:
@@ -922,6 +942,8 @@ class ChatService:
                     pass
                 elif _requests_age_style_portfolio_guide(original_request.message):
                     response = self._age_style_portfolio_guide()
+                elif _requests_risk_profile_portfolio_guide(original_request.message):
+                    response = self._risk_profile_portfolio_guide()
                 elif _requests_risk_profile_guide(original_request.message):
                     response = self._risk_profile_selection_guide()
                 elif survey_profile is None:
@@ -2549,6 +2571,101 @@ class ChatService:
                 "완료된 설문 결과보다 위험한 투자성향의 포트폴리오는 "
                 "제안하지 않습니다.",
                 "투자성향을 선택하기 전에는 ETF 포트폴리오를 계산하지 않습니다.",
+            ],
+        )
+
+    @staticmethod
+    def _risk_profile_portfolio_guide() -> ChatResponse:
+        return ChatResponse(
+            intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+            answer=(
+                "다섯 투자성향은 같은 ETF를 단순히 비중만 바꾸는 방식이 아니라, "
+                "성장자산의 역할과 방어자산의 수준, 전술자산의 허용 범위를 "
+                "다르게 설계해요. 실제 비중과 후보 ETF는 완료된 설문과 계좌 "
+                "규칙을 반영해 기존 규칙 엔진이 계산해요."
+            ),
+            data_mode="risk_profile_portfolio_guide",
+            sections=[
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title="안정형 연금운용 전략",
+                    content=(
+                        "전략: 자본보전 중심 전략으로 큰 손실을 피하고 유동성을 "
+                        "확보하는 데 우선순위를 둬요.\n"
+                        "설계: 채권과 현금을 핵심으로 두고, 분산 주식·실물자산은 "
+                        "설문에서 확인된 손실 감내 범위 안에서 보조로만 활용해요. "
+                        "전술자산은 편입하지 않는 것을 기본으로 해요.\n"
+                        "운용: 정기 납입은 방어자산을 중심으로 이어가고, 단기 "
+                        "수익을 좇아 자산 구성을 자주 바꾸지 않아요."
+                    ),
+                ),
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title="안정추구형 연금운용 전략",
+                    content=(
+                        "전략: 방어적 분산 전략으로 안정성을 중심에 두면서 제한된 "
+                        "성장 기회를 함께 활용해요.\n"
+                        "설계: 채권을 핵심으로 두고 넓게 분산한 주식과 실물자산을 "
+                        "보조로 더하며, 현금은 리밸런싱 여유자금으로 유지해요.\n"
+                        "운용: 위험자산이 목표보다 커지면 추가 매수를 멈추고, 새 "
+                        "납입금을 채권·현금 등 부족한 방어자산에 먼저 배분해요."
+                    ),
+                ),
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title="위험중립형 연금운용 전략",
+                    content=(
+                        "전략: 코어·위성 전략으로 장기 성장과 하락 방어의 균형을 "
+                        "추구해요.\n"
+                        "설계: 넓게 분산한 주식과 채권을 두 핵심축으로 두고, "
+                        "실물자산은 물가 대응과 분산을 위한 위성자산으로 활용해요.\n"
+                        "운용: 시장 전망에 따라 한쪽으로 몰기보다 정기 납입과 "
+                        "리밸런싱으로 목표 구성을 꾸준히 유지해요."
+                    ),
+                ),
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title="적극투자형 연금운용 전략",
+                    content=(
+                        "전략: 성장 코어·위성 전략으로 장기 성장자산을 중심에 "
+                        "두되 하락 충격을 흡수할 장치를 남겨요.\n"
+                        "설계: 넓게 분산한 주식 ETF를 핵심으로 두고 채권을 완충재로, "
+                        "실물자산과 전술자산은 상한이 있는 보조자산으로 활용해요.\n"
+                        "운용: 하락기에도 정기 납입 원칙을 유지하되, 전술자산을 "
+                        "추격 매수하지 않고 부족한 핵심자산부터 채워요."
+                    ),
+                ),
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title="공격투자형 연금운용 전략",
+                    content=(
+                        "전략: 바벨형 성장·전술 전략으로 분산 성장자산과 최소 "
+                        "방어자산을 양쪽 축에 두고 높은 변동성을 감수해요.\n"
+                        "설계: 주식 성장 코어를 가장 중요하게 두되 채권·현금 "
+                        "완충재를 없애지 않으며, 전술자산은 별도 상한을 둬 집중을 "
+                        "막아요.\n"
+                        "운용: 테마를 수익률 순으로 쫓지 않고 분산 성장 코어를 먼저 "
+                        "채운 뒤, 허용 범위 안에서만 전술자산을 운용해요."
+                    ),
+                ),
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title="공통 실행 원칙",
+                    content=(
+                        "ETF 후보는 과거 수익률 순위가 아니라 비용, 거래대금, "
+                        "순자산, 괴리율, 추적오차, 관측기간으로 비교해요. 분기마다 "
+                        "목표비중 이탈을 점검하고 새 납입금은 부족한 자산군에 먼저 "
+                        "배분해요. 매년 나이, 설문 투자성향, 손실 감내 수준, 연금 "
+                        "수령 시점을 다시 확인해 목표 구성을 갱신해요."
+                    ),
+                ),
+            ],
+            limitations=[
+                "DC·IRP는 일반 위험자산 70% 한도를 계좌별로 적용합니다.",
+                "개인 비중과 ETF 후보는 완료된 설문보다 위험하지 않은 범위에서 "
+                "규칙 엔진이 계산합니다.",
+                "미래 수익률을 예측하거나 보장하지 않으며 상품 주문과 자동 "
+                "리밸런싱은 수행하지 않습니다.",
             ],
         )
 
