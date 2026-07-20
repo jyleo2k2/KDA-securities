@@ -1,3 +1,5 @@
+from psycopg_pool import ConnectionPool
+
 from backend.app.database import get_database_pool
 
 
@@ -7,6 +9,7 @@ def test_database_pool_uses_configured_connection_bounds() -> None:
     try:
         assert pool.min_size == 2
         assert pool.max_size == 15
+        assert pool._check is ConnectionPool.check_connection
     finally:
         pool.close()
         get_database_pool.cache_clear()
