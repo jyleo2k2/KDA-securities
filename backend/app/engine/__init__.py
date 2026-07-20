@@ -33,6 +33,9 @@ from .educational_portfolio import (
     calculate_return_correlation,
     calculate_target_allocation,
 )
+from .educational_portfolio import (
+    RiskProfile as EducationalRiskProfile,
+)
 from .etf_theme import (
     EtfThemeCatalog,
     EtfThemeDefinition,
@@ -43,9 +46,6 @@ from .etf_theme import (
     normalize_kis_holdings,
     resolve_theme,
     select_theme_etf_candidates,
-)
-from .educational_portfolio import (
-    RiskProfile as EducationalRiskProfile,
 )
 from .market_evidence import (
     EtfObservation,

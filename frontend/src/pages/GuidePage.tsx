@@ -549,7 +549,7 @@ export function GuidePage({
   const authAvatarText = auth.loading
     ? "…"
     : auth.session
-      ? (userContext?.nickname.trim().charAt(0)
+      ? (userContext?.nickname?.trim().charAt(0)
         || auth.session.user.email?.trim().charAt(0).toUpperCase()
         || "연")
       : "!";
