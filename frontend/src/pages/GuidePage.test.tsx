@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -203,6 +203,59 @@ describe("GuidePage chat history deletion", () => {
       await Promise.resolve();
     });
     expect(screen.queryByRole("button", { name: "대화 삭제: IRP 규칙" })).not.toBeInTheDocument();
+  });
+
+  it("shows BOK, KOSIS, and FRED observations as a macro evidence card", async () => {
+    vi.mocked(getChatCards).mockResolvedValue({
+      cards: [{
+        card_id: "macro_evidence",
+        title: "거시환경 근거",
+        message: "BOK·KOSIS·FRED 거시환경 근거를 보여줘.",
+        intent: "macro_evidence",
+        conditions: [],
+        priority: 25,
+        preview: null,
+      }],
+    });
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      persisted: false,
+      response: {
+        intent: "macro_evidence",
+        answer: "공식 거시환경 관측값입니다.",
+        narration_mode: "deterministic",
+        data_mode: "official_macro_observations",
+        numeric_evidence: [
+          { label: "한국은행 기준금리", value: "2.75", unit: "%", evidence_id: "macro:kr_base_rate", basis: "공식 API 최신 관측값" },
+          { label: "65세 여성 기대수명", value: "23.6", unit: "년", evidence_id: "macro:life", basis: "공식 API 최신 관측값" },
+          { label: "미국 10년 국채금리", value: "4.57", unit: "%", evidence_id: "macro:us_treasury_10y", basis: "공식 API 최신 관측값" },
+        ],
+        sources: [
+          { evidence_id: "macro:kr_base_rate", label: "한국은행 기준금리", locator: "https://ecos.bok.or.kr/api/", data_boundary: "official_statistics", publisher: "한국은행 ECOS", as_of: "2026-07-17" },
+          { evidence_id: "macro:life", label: "65세 여성 기대수명", locator: "https://kosis.kr/openapi/", data_boundary: "official_statistics", publisher: "국가데이터처 KOSIS", as_of: "2023-01-01" },
+          { evidence_id: "macro:us_treasury_10y", label: "미국 10년 국채금리", locator: "https://fred.stlouisfed.org/", data_boundary: "official_statistics", publisher: "Federal Reserve Bank of St. Louis", as_of: "2026-07-16" },
+        ],
+        news_items: [],
+        sections: [],
+        visualizations: [],
+        engine_results: [],
+        limitations: ["계획수익률과 목표비중에 직접 사용하지 않습니다."],
+        conversation_context: null,
+      },
+    } as unknown as Awaited<ReturnType<typeof sendAuthenticatedChatStream>>);
+    render(<GuidePage surveyProfile={null} />);
+
+    fireEvent.click(await screen.findByRole("button", {
+      name: /BOK·KOSIS·FRED 거시환경 근거를 보여줘/,
+    }));
+
+    const card = await screen.findByLabelText("거시환경 근거 카드");
+    expect(within(card).getByText("BOK")).toBeInTheDocument();
+    expect(within(card).getByText("KOSIS")).toBeInTheDocument();
+    expect(within(card).getByText("FRED")).toBeInTheDocument();
+    expect(within(card).getByText("2.75%")).toBeInTheDocument();
+    expect(within(card).getByText("23.6년")).toBeInTheDocument();
+    expect(within(card).getByText("4.57%")).toBeInTheDocument();
+    expect(within(card).getAllByText(/공식 출처/)).toHaveLength(3);
   });
 });
 

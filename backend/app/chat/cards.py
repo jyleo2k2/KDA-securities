@@ -79,6 +79,13 @@ CHAT_CARDS = (
         priority=20,
     ),
     ChatCard(
+        card_id="macro_evidence",
+        title="거시환경 근거",
+        message="BOK·KOSIS·FRED 거시환경 근거를 보여줘.",
+        intent=ChatIntent.MACRO_EVIDENCE,
+        priority=25,
+    ),
+    ChatCard(
         card_id="tax_credit",
         title="연금 세액공제",
         message="올해 받을 수 있는 연금 세액공제가 궁금해.",

@@ -2360,7 +2360,9 @@ class ChatService:
         message: str, snapshot: MacroEvidenceSnapshot
     ) -> list[MacroMetric]:
         by_id = {metric.metric_id: metric for metric in snapshot.metrics}
-        if re.search(r"기대\s*수명|장수", message, re.I):
+        if re.search(r"거시\s*(?:환경|지표)", message, re.I):
+            selected = tuple(by_id)
+        elif re.search(r"기대\s*수명|장수", message, re.I):
             selected = (
                 "kr_life_expectancy_65_a1",
                 "kr_life_expectancy_65_a2",
@@ -2376,8 +2378,14 @@ class ChatService:
                 "us_treasury_10y",
                 "us_breakeven_inflation_10y",
             )
-        else:
+        elif re.search(
+            r"한국|기준\s*금리|소비자\s*물가|물가\s*상승률",
+            message,
+            re.I,
+        ):
             selected = ("kr_base_rate", "kr_cpi_yoy")
+        else:
+            selected = tuple(by_id)
         return [by_id[metric_id] for metric_id in selected if metric_id in by_id]
 
     @staticmethod

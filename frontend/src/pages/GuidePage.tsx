@@ -287,6 +287,75 @@ function NewsCards({ response }: { response: ChatResponse }) {
   );
 }
 
+function macroPublisherCode(publisher: string): string {
+  if (publisher.includes("한국은행")) return "BOK";
+  if (publisher.includes("KOSIS")) return "KOSIS";
+  if (publisher.includes("St. Louis")) return "FRED";
+  return "공식 통계";
+}
+
+function MacroEvidenceCards({ response }: { response: ChatResponse }) {
+  if (response.intent !== "macro_evidence") return null;
+
+  const groups = new Map<string, {
+    publisher: string;
+    metrics: Array<{
+      label: string;
+      value: string | number;
+      unit: string;
+      observedAt?: string | null;
+      locator: string;
+    }>;
+  }>();
+  response.sources.forEach((source) => {
+    const numeric = response.numeric_evidence.find(
+      (item) => item.evidence_id === source.evidence_id,
+    );
+    if (!numeric) return;
+    const publisher = source.publisher ?? source.label;
+    const group = groups.get(publisher) ?? { publisher, metrics: [] };
+    group.metrics.push({
+      label: numeric.label,
+      value: numeric.value,
+      unit: numeric.unit,
+      observedAt: source.as_of,
+      locator: source.locator,
+    });
+    groups.set(publisher, group);
+  });
+
+  return (
+    <section className="macro-evidence-card" aria-label="거시환경 근거 카드">
+      <header>
+        <span>거시환경 근거</span>
+        <h3>BOK · KOSIS · FRED 공식 관측</h3>
+        <p>현재 환경을 설명하는 관측값이며 계획수익률·목표비중·리밸런싱 신호에 자동 반영하지 않아요.</p>
+      </header>
+      <div className="macro-provider-list">
+        {Array.from(groups.values()).map((group) => (
+          <article className="macro-provider-card" key={group.publisher}>
+            <div className="macro-provider-heading">
+              <strong>{macroPublisherCode(group.publisher)}</strong>
+              <span>{group.publisher}</span>
+            </div>
+            <div className="macro-metric-grid">
+              {group.metrics.map((metric) => (
+                <SourceLink locator={metric.locator} key={`${group.publisher}-${metric.label}`}>
+                  <span className="macro-metric-item">
+                    <small>{metric.label}</small>
+                    <strong>{numericText(metric.value, metric.unit)}</strong>
+                    <span>공식 출처{metric.observedAt ? ` · ${metric.observedAt.slice(0, 10)}` : ""} <Icon name="chevron" size={12} /></span>
+                  </span>
+                </SourceLink>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function AssistantMessage({
   response,
   text,
@@ -306,11 +375,13 @@ function AssistantMessage({
         <span className={`intent-pill intent-${response.intent}`}>{INTENT_LABELS[response.intent]}</span>
         <span>{response.narration_mode === "deterministic" ? "검증 답변" : "AI 서술"}</span>
       </div>
-      {(response.data_mode !== "news_summary" || response.news_items.length === 0) && (
+      {response.intent !== "macro_evidence" && (response.data_mode !== "news_summary" || response.news_items.length === 0) && (
         <p className="message-copy">{displayText(response.answer)}</p>
       )}
 
-      {response.intent !== "mock_portfolio" && response.numeric_evidence.length > 0 && (
+      <MacroEvidenceCards response={response} />
+
+      {response.intent !== "mock_portfolio" && response.intent !== "macro_evidence" && response.numeric_evidence.length > 0 && (
         <div className="number-grid" aria-label="수치 근거">
           {response.numeric_evidence.map((item, index) => (
             <div className="number-card" key={`${item.evidence_id}-${index}`}>

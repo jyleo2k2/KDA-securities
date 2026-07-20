@@ -185,3 +185,25 @@ def test_chat_macro_answer_does_not_invent_values_when_report_is_missing(
     assert response.data_mode == "unavailable"
     assert response.sources == []
     assert response.numeric_evidence == []
+
+
+def test_chat_macro_environment_returns_all_official_publishers(
+    tmp_path: Path,
+) -> None:
+    chatbot = ChatService(
+        knowledge=EmptyKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        macro_evidence=MacroEvidenceRepository(_report_path(tmp_path)),
+    )
+
+    response = chatbot.ask(
+        ChatRequest(message="BOK·KOSIS·FRED 거시환경 근거를 보여줘")
+    )
+
+    assert response.intent is ChatIntent.MACRO_EVIDENCE
+    assert len(response.numeric_evidence) == 8
+    assert {source.publisher for source in response.sources} == {
+        "한국은행 ECOS",
+        "국가데이터처 KOSIS",
+        "Federal Reserve Bank of St. Louis",
+    }
