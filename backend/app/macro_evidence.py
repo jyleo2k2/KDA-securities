@@ -15,6 +15,11 @@ from .engine.macro_regime import (
     MonthlyMacroRegimeObservation,
     calculate_macro_analog_regimes,
 )
+from .engine.macro_regime_outcomes import (
+    MacroRegimeEtfOutcomeEvaluation,
+    calculate_post_regime_etf_outcomes,
+)
+from .engine.models import SourceChip
 
 
 class MacroEvidenceUnavailable(RuntimeError):
@@ -85,6 +90,7 @@ class MacroAnalogRegimeSnapshot(BaseModel):
     complete_month_count: int
     metrics: list[MacroRegimeMetricDefinition]
     analysis: MacroAnalogRegimeEvaluation
+    etf_outcomes: MacroRegimeEtfOutcomeEvaluation | None = None
 
 
 _PUBLIC_METRICS = (
@@ -102,6 +108,61 @@ _PUBLISHERS = {
     "KOSIS": "국가데이터처 KOSIS",
     "FRED": "Federal Reserve Bank of St. Louis",
 }
+_KIS_MARKET_DATA_REFERENCE = "https://openapi.koreainvestment.com/"
+
+
+def attach_etf_outcomes(
+    snapshot: MacroAnalogRegimeSnapshot,
+    *,
+    repository: Any,
+    isu_codes: list[str],
+) -> MacroAnalogRegimeSnapshot:
+    """Attach realized ETF outcomes from an injected market-data repository."""
+
+    codes = list(dict.fromkeys(isu_codes))
+    if not codes:
+        return snapshot
+    loader = getattr(repository, "load_total_return_histories", None)
+    if callable(loader):
+        histories, history_sources = loader(set(codes))
+    else:
+        histories = {
+            code: repository.histories[code]
+            for code in codes
+            if code in repository.histories
+        }
+        history_sources = {
+            code: repository.history_sources[code]
+            for code in codes
+            if code in repository.history_sources
+        }
+    names_by_code = {
+        str(product["isu_code"]): str(product.get("isu_name") or product["isu_code"])
+        for product in repository.products
+        if isinstance(product, dict) and product.get("isu_code") in codes
+    }
+    source_chips = {
+        code: SourceChip(
+            label=(
+                "한투 수정주가·KIND 현금분배 반영 원화 총수익지수"
+                if source == "kis_adjusted_close_plus_kind_cash_distribution"
+                else "ETF 과거 가격 이력"
+            ),
+            reference=_KIS_MARKET_DATA_REFERENCE,
+            as_of=max(histories[code]),
+        )
+        for code, source in history_sources.items()
+        if code in histories and histories[code]
+    }
+    evaluation = calculate_post_regime_etf_outcomes(
+        matches=snapshot.analysis.matches,
+        isu_codes=codes,
+        names_by_code=names_by_code,
+        histories=histories,
+        history_sources=history_sources,
+        source_chips=source_chips,
+    )
+    return snapshot.model_copy(update={"etf_outcomes": evaluation})
 
 
 def _mapping(value: object, *, field: str) -> dict[str, Any]:

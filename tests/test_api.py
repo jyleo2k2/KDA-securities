@@ -38,6 +38,7 @@ def test_route_paths_cover_engine_tools_and_data_reads() -> None:
         "/disclosures/retirement",
         "/macro/evidence",
         "/macro/analog-regimes",
+        "/macro/analog-regimes/etf-outcomes",
     }
 
 

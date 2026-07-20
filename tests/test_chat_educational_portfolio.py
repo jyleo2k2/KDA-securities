@@ -14,6 +14,12 @@ from backend.app.engine import (
     EducationalPortfolioInput,
     EducationalRiskProfile,
 )
+from backend.app.engine.macro_regime import (
+    MACRO_REGIME_METRIC_IDS,
+    MacroAnalogRegimeEvaluation,
+    MacroRegimeMatch,
+)
+from backend.app.macro_evidence import MacroAnalogRegimeSnapshot
 
 
 def _product(
@@ -95,6 +101,70 @@ class Universe:
     history_sources = {code: "test_total_return" for code in histories}
 
 
+def _macro_outcome_history() -> dict[date, Decimal]:
+    start = date(2024, 2, 1)
+    return {
+        start + timedelta(days=index): Decimal("100") + Decimal(index) / 10
+        for index in range(368)
+    }
+
+
+class OutcomeUniverse(Universe):
+    @staticmethod
+    def load_total_return_histories(isu_codes):
+        histories = {
+            code: _macro_outcome_history() for code in isu_codes if code == "EQ"
+        }
+        return histories, {
+            code: "kis_adjusted_close_plus_kind_cash_distribution" for code in histories
+        }
+
+
+class MacroRepository:
+    @staticmethod
+    def analog_regimes() -> MacroAnalogRegimeSnapshot:
+        values = {metric_id: Decimal("1") for metric_id in MACRO_REGIME_METRIC_IDS}
+        analysis = MacroAnalogRegimeEvaluation(
+            engine_name="historical_macro_regime_similarity",
+            engine_version="test",
+            policy_version="test",
+            current_period=date(2026, 6, 1),
+            current_values=values,
+            current_expanding_z_scores=values,
+            metric_ids=list(MACRO_REGIME_METRIC_IDS),
+            frequency="monthly",
+            standardization="expanding_window_z_score",
+            distance_metric="equal_weight_root_mean_square_distance",
+            top_n=1,
+            minimum_history_months=36,
+            minimum_separation_months=12,
+            excluded_recent_months=12,
+            matches=[
+                MacroRegimeMatch(
+                    period=date(2024, 1, 1),
+                    distance=Decimal("0.2500"),
+                    values=values,
+                    expanding_z_scores=values,
+                )
+            ],
+            is_forecast=False,
+            planning_return_input=False,
+            allocation_weight_input=False,
+            rebalancing_trigger_input=False,
+            historical_outcomes_included=False,
+            limitations=[],
+        )
+        return MacroAnalogRegimeSnapshot(
+            as_of=date(2026, 7, 20),
+            dataset_policy_version="test",
+            period_start=date(2010, 1, 1),
+            period_end=date(2026, 6, 1),
+            complete_month_count=198,
+            metrics=[],
+            analysis=analysis,
+        )
+
+
 def _service() -> ChatService:
     return ChatService(
         knowledge=LocalMarkdownKnowledgeRepository(),
@@ -131,6 +201,36 @@ def test_chatbot_only_explains_structured_portfolio_engine_result() -> None:
     assert "엔진 편입 후보" in sections["위험중립형 투자전략"]
     assert "새 납입금" in sections["위험중립형 투자전략"]
     assert "미래 예측값이 아니라" in sections["장기 계획수익률"]
+
+
+def test_current_holdings_include_realized_macro_regime_evidence_card() -> None:
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        portfolio_universe_loader=lambda account: OutcomeUniverse(),
+        macro_evidence=MacroRepository(),
+    )
+    response = service.ask(
+        ChatRequest(
+            message="현재 보유 ETF 리밸런싱 가이드를 보여줘",
+            educational_portfolio=EducationalPortfolioInput(
+                account_type=AccountType.IRP,
+                age=35,
+                retirement_start_age=60,
+                risk_profile=EducationalRiskProfile.RISK_NEUTRAL,
+                loss_tolerance_percent=Decimal("20"),
+                current_holdings=[{"isu_code": "EQ", "amount_krw": Decimal("1000000")}],
+            ),
+        )
+    )
+
+    assert response.intent == ChatIntent.EDUCATIONAL_PORTFOLIO
+    assert response.macro_regime_etf_outcomes is not None
+    outcome = response.macro_regime_etf_outcomes.groups[0].etfs[0]
+    assert outcome.isu_code == "EQ"
+    assert [item.horizon_months for item in outcome.horizons] == [3, 6, 12]
+    assert outcome.source is not None
+    assert "KIND" in outcome.source.label
 
 
 def test_direct_future_return_prediction_remains_blocked() -> None:

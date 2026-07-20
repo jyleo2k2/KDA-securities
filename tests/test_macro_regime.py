@@ -5,12 +5,18 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from backend.app.api import macro as macro_api
 from backend.app.api.deps import get_macro_evidence_repository
 from backend.app.engine.macro_regime import (
     MACRO_REGIME_METRIC_IDS,
+    MacroRegimeMatch,
     MonthlyMacroRegimeObservation,
     calculate_macro_analog_regimes,
 )
+from backend.app.engine.macro_regime_outcomes import (
+    calculate_post_regime_etf_outcomes,
+)
+from backend.app.engine.models import AccountType, SourceChip
 from backend.app.ingestion.macro import (
     build_macro_evidence_report,
     build_macro_regime_dataset,
@@ -164,6 +170,86 @@ def test_macro_regime_engine_is_deterministic_and_separates_matches() -> None:
     )
 
 
+def _regime_match(period: date) -> MacroRegimeMatch:
+    values = {metric_id: Decimal("1") for metric_id in MACRO_REGIME_METRIC_IDS}
+    return MacroRegimeMatch(
+        period=period,
+        distance=Decimal("0.2500"),
+        values=values,
+        expanding_z_scores=values,
+    )
+
+
+def _outcome_history() -> dict[date, Decimal]:
+    values = {
+        date(2024, 2, 1): "100",
+        date(2024, 3, 1): "120",
+        date(2024, 4, 1): "90",
+        date(2024, 5, 1): "110",
+        date(2024, 6, 3): "115",
+        date(2024, 7, 1): "125",
+        date(2024, 8, 1): "130",
+        date(2024, 9, 2): "128",
+        date(2024, 10, 1): "135",
+        date(2024, 11, 1): "140",
+        date(2024, 12, 2): "138",
+        date(2025, 1, 2): "145",
+        date(2025, 2, 3): "150",
+    }
+    return {observed_on: Decimal(value) for observed_on, value in values.items()}
+
+
+def test_post_regime_etf_outcomes_use_realized_total_return_and_drawdown() -> None:
+    result = calculate_post_regime_etf_outcomes(
+        matches=[_regime_match(date(2024, 1, 1))],
+        isu_codes=["069500"],
+        names_by_code={"069500": "KODEX 200"},
+        histories={"069500": _outcome_history()},
+        history_sources={"069500": "kis_adjusted_close_plus_kind_cash_distribution"},
+        source_chips={
+            "069500": SourceChip(
+                label="한투 수정주가·KIND 현금분배 반영 원화 총수익지수",
+                reference="https://openapi.koreainvestment.com/",
+                as_of=date(2025, 2, 3),
+            )
+        },
+    )
+
+    etf = result.groups[0].etfs[0]
+    assert result.is_forecast is False
+    assert result.rebalancing_trigger_input is False
+    assert [item.horizon_months for item in etf.horizons] == [3, 6, 12]
+    assert etf.horizons[0].total_return_percent == Decimal("10.0000")
+    assert etf.horizons[0].maximum_drawdown_percent == Decimal("25.0000")
+    assert etf.horizons[-1].total_return_percent == Decimal("50.0000")
+    assert etf.gaps == []
+
+
+def test_post_regime_etf_outcomes_keep_missing_periods_explicit() -> None:
+    result = calculate_post_regime_etf_outcomes(
+        matches=[_regime_match(date(2011, 2, 1))],
+        isu_codes=["069500"],
+        names_by_code={"069500": "KODEX 200"},
+        histories={"069500": _outcome_history()},
+        history_sources={"069500": "kis_adjusted_close_plus_kind_cash_distribution"},
+        source_chips={
+            "069500": SourceChip(
+                label="총수익지수",
+                reference="https://openapi.koreainvestment.com/",
+                as_of=date(2025, 2, 3),
+            )
+        },
+    )
+
+    etf = result.groups[0].etfs[0]
+    assert etf.horizons == []
+    assert [gap.reason for gap in etf.gaps] == [
+        "start_observation_unavailable",
+        "start_observation_unavailable",
+        "start_observation_unavailable",
+    ]
+
+
 def test_macro_analog_regime_api_returns_only_sanitized_contract(
     tmp_path: Path,
 ) -> None:
@@ -196,6 +282,56 @@ def test_macro_analog_regime_api_returns_only_sanitized_contract(
     assert "data/raw/macro" not in serialized
     assert "must-not-leak" not in serialized
     assert "private-hash" not in serialized
+
+
+def test_macro_analog_regime_etf_outcome_api_links_selected_codes(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    report = build_macro_evidence_report(
+        observations=_historical_observations(month_count=200),
+        as_of=date(2026, 7, 20),
+    )
+    report_path = tmp_path / "macro.json"
+    report_path.write_text(json.dumps(report), encoding="utf-8")
+    macro_repository = MacroEvidenceRepository(report_path)
+
+    class EtfRepository:
+        products = [{"isu_code": "069500", "isu_name": "KODEX 200"}]
+        histories = {"069500": _outcome_history()}
+        history_sources = {"069500": "kis_adjusted_close_plus_kind_cash_distribution"}
+
+        @staticmethod
+        def load_total_return_histories(isu_codes):
+            assert isu_codes == {"069500"}
+            return EtfRepository.histories, EtfRepository.history_sources
+
+    def load_repository(account_type, database_url=""):
+        assert account_type == AccountType.IRP
+        return EtfRepository()
+
+    monkeypatch.setattr(
+        macro_api,
+        "get_portfolio_universe_repository",
+        load_repository,
+    )
+    app.dependency_overrides[get_macro_evidence_repository] = lambda: macro_repository
+    try:
+        response = TestClient(app).post(
+            "/macro/analog-regimes/etf-outcomes",
+            json={"account_type": "irp", "isu_codes": ["069500"]},
+        )
+    finally:
+        app.dependency_overrides.pop(get_macro_evidence_repository, None)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["etf_outcomes"]["is_forecast"] is False
+    assert len(body["etf_outcomes"]["groups"]) == 5
+    assert all(
+        group["etfs"][0]["isu_code"] == "069500"
+        for group in body["etf_outcomes"]["groups"]
+    )
 
 
 def test_macro_analog_regime_api_fails_closed_without_history(

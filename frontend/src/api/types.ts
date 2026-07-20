@@ -623,6 +623,50 @@ export interface NumericEvidence {
   basis: string;
 }
 
+export interface RegimeHorizonOutcome {
+  horizon_months: number;
+  start_date: string;
+  end_date: string;
+  total_return_percent: string | number;
+  maximum_drawdown_percent: string | number;
+}
+
+export interface RegimeOutcomeGap {
+  horizon_months: number;
+  reason: string;
+}
+
+export interface EtfPostRegimeOutcome {
+  isu_code: string;
+  isu_name: string;
+  history_source?: string | null;
+  source?: SourceChip | null;
+  history_start?: string | null;
+  history_end?: string | null;
+  horizons: RegimeHorizonOutcome[];
+  gaps: RegimeOutcomeGap[];
+}
+
+export interface MacroRegimeOutcomeGroup {
+  regime_period: string;
+  distance: string | number;
+  etfs: EtfPostRegimeOutcome[];
+}
+
+export interface MacroRegimeEtfOutcomeEvaluation {
+  engine_name: string;
+  engine_version: string;
+  policy_version: string;
+  outcome_start_rule: string;
+  boundary_lag_days: number;
+  groups: MacroRegimeOutcomeGroup[];
+  is_forecast: boolean;
+  planning_return_input: boolean;
+  allocation_weight_input: boolean;
+  rebalancing_trigger_input: boolean;
+  limitations: string[];
+}
+
 export type AnswerBlockKind = "callout" | "paragraph" | "bullets" | "table" | "formula";
 
 export interface AnswerBlock {
@@ -934,6 +978,7 @@ export interface ChatResponse {
   pension_tax_result?: PensionTaxToolResult | null;
   educational_portfolio_evaluation?: EducationalPortfolioEvaluation | null;
   educational_portfolio_evaluations?: EducationalPortfolioEvaluation[];
+  macro_regime_etf_outcomes?: MacroRegimeEtfOutcomeEvaluation | null;
   limitations: string[];
   conversation_context?: ConversationContext | null;
 }

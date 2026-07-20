@@ -10,6 +10,7 @@ from ..engine import (
     EducationalPortfolioEvaluation,
     EducationalPortfolioInput,
     EducationalRiskProfile,
+    MacroRegimeEtfOutcomeEvaluation,
     PensionTaxScenarioInput,
     PensionTaxToolResult,
     PortfolioInput,
@@ -395,6 +396,7 @@ class ChatResponse(BaseModel):
     educational_portfolio_evaluations: list[EducationalPortfolioEvaluation] = Field(
         default_factory=list
     )
+    macro_regime_etf_outcomes: MacroRegimeEtfOutcomeEvaluation | None = None
     limitations: list[str] = Field(default_factory=list)
     conversation_context: ConversationContext | None = None
 

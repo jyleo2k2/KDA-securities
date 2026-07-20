@@ -243,6 +243,45 @@ describe("GuidePage chat history deletion", () => {
         sections: [],
         visualizations: [],
         engine_results: [],
+        macro_regime_etf_outcomes: {
+          engine_name: "historical_macro_regime_etf_outcomes",
+          engine_version: "test",
+          policy_version: "test",
+          outcome_start_rule: "first_trading_day_of_month_after_regime",
+          boundary_lag_days: 7,
+          groups: [{
+            regime_period: "2024-01-01",
+            distance: "0.2500",
+            etfs: [{
+              isu_code: "069500",
+              isu_name: "KODEX 200",
+              history_source: "kis_adjusted_close_plus_kind_cash_distribution",
+              source: {
+                label: "한투 수정주가·KIND 현금분배 반영 원화 총수익지수",
+                reference: "https://openapi.koreainvestment.com/",
+                as_of: "2025-02-03",
+              },
+              history_start: "2024-02-01",
+              history_end: "2025-02-03",
+              horizons: [{
+                horizon_months: 3,
+                start_date: "2024-02-01",
+                end_date: "2024-05-01",
+                total_return_percent: "10.0000",
+                maximum_drawdown_percent: "25.0000",
+              }],
+              gaps: [
+                { horizon_months: 6, reason: "end_observation_unavailable" },
+                { horizon_months: 12, reason: "end_observation_unavailable" },
+              ],
+            }],
+          }],
+          is_forecast: false,
+          planning_return_input: false,
+          allocation_weight_input: false,
+          rebalancing_trigger_input: false,
+          limitations: ["historical_similarity_does_not_imply_future_return"],
+        },
         limitations: ["계획수익률과 목표비중에 직접 사용하지 않습니다."],
         conversation_context: null,
       },
@@ -261,6 +300,13 @@ describe("GuidePage chat history deletion", () => {
     expect(within(card).getByText("23.6년")).toBeInTheDocument();
     expect(within(card).getByText("4.57%")).toBeInTheDocument();
     expect(within(card).getAllByText(/공식 출처/)).toHaveLength(3);
+    const outcomeCard = screen.getByLabelText("과거 유사국면 ETF 근거 카드");
+    expect(within(outcomeCard).getByText("2024년 1월 유사국면")).toBeInTheDocument();
+    expect(within(outcomeCard).getByText("KODEX 200")).toBeInTheDocument();
+    expect(within(outcomeCard).getByText("10.0000%")).toBeInTheDocument();
+    expect(within(outcomeCard).getByText("최대낙폭 -25%")).toBeInTheDocument();
+    expect(within(outcomeCard).getAllByText("관측 부족")).toHaveLength(2);
+    expect(within(outcomeCard).getByText(/KIND 현금분배/)).toBeInTheDocument();
   });
 
   it("separates question and ETF theme cards on the empty chat screen", async () => {
