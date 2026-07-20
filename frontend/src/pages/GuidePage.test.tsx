@@ -15,7 +15,7 @@ import {
 } from "../api/client";
 import type { ChatCard, ChatSessionSummary } from "../api/types";
 import { useSupabaseAuth } from "../auth/useSupabaseAuth";
-import { filterChatCards, GuidePage } from "./GuidePage";
+import { ETF_THEME_CARDS, filterChatCards, GuidePage } from "./GuidePage";
 
 vi.mock("../api/client", () => ({
   ApiError: class ApiError extends Error {
@@ -256,6 +256,21 @@ describe("GuidePage chat history deletion", () => {
     expect(within(card).getByText("23.6년")).toBeInTheDocument();
     expect(within(card).getByText("4.57%")).toBeInTheDocument();
     expect(within(card).getAllByText(/공식 출처/)).toHaveLength(3);
+  });
+
+  it("separates question and ETF theme cards on the empty chat screen", async () => {
+    render(<GuidePage surveyProfile={null} />);
+
+    expect(await screen.findByRole("heading", {
+      name: "챗봇에게 무엇이든 물어보세요",
+    })).toBeInTheDocument();
+    const sectorCards = await screen.findByLabelText("ETF 섹터 카드");
+    expect(within(sectorCards).getAllByRole("button")).toHaveLength(
+      ETF_THEME_CARDS.length,
+    );
+    expect(within(sectorCards).getByRole("button", {
+      name: "반도체 ETF 테마 설명 보기",
+    })).toBeInTheDocument();
   });
 });
 

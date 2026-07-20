@@ -307,10 +307,22 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .guide-tab .design-prompt-grid { grid-template-columns: 1fr; gap: 14px; margin-top: 62px; }
 .guide-tab .design-prompt-grid button { min-height: 118px; grid-template-columns: auto 1fr; gap: 18px; padding: 18px 20px; border: 1.5px solid #ecefe9; border-radius: 21px; box-shadow: none; }
 .guide-tab .design-prompt-grid button:hover { transform: none; border-color: #bde3cc; box-shadow: none; }
+.chat-home-card-section { margin-top: 42px; }
+.chat-home-card-section + .chat-home-card-section { margin-top: 38px; padding-top: 34px; border-top: 1px solid #edf0eb; }
+.chat-home-section-heading { display: grid; gap: 4px; }
+.chat-home-section-heading p { margin: 0; color: #18a860; font-size: 11px; font-weight: 800; }
+.chat-home-section-heading h2 { margin: 0; color: #17251f; font-size: 19px; letter-spacing: -.8px; }
+.chat-home-section-heading span { color: #79877f; font-size: 11px; line-height: 1.5; }
+.chat-home-card-section .prompt-carousel { margin-top: 16px; }
 .prompt-carousel { display: flex; gap: 12px; margin-top: 40px; overflow-x: auto; padding: 2px 20% 8px 0; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .prompt-carousel::-webkit-scrollbar { display: none; }
 .prompt-carousel button { flex: 0 0 calc(50% - 6px); min-height: 118px; display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; padding: 17px; scroll-snap-align: start; border: 1.5px solid #ecefe9; border-radius: 21px; background: #fff; color: #364940; text-align: left; box-shadow: none; }
 .prompt-carousel .design-prompt-copy { display: grid; gap: 5px; }.prompt-carousel .design-prompt-copy em { color: #65736b; font-size: 11px; font-style: normal; line-height: 1.4; }
+.sector-card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
+.sector-card-grid button { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 9px; min-height: 78px; padding: 12px; border: 1px solid #e3ebe1; border-radius: 16px; background: #fbfdf9; color: #284436; text-align: left; cursor: pointer; }
+.sector-card-grid button:hover { border-color: #a9d8ba; background: #f4fbf4; }
+.sector-card-grid button > span:last-of-type { display: grid; gap: 3px; min-width: 0; }.sector-card-grid button small { color: #819087; font-size: 9px; }.sector-card-grid button strong { color: #243d2f; font-size: 12px; line-height: 1.35; }.sector-card-grid button > svg { color: #8ba394; }
+.sector-card-icon { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 10px; background: #dff3e5; color: #16824b; }
 .follow-up-cards { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }.follow-up-cards button { display: inline-flex; align-items: center; gap: 3px; padding: 8px 10px; border: 1px solid #d9e4d3; border-radius: 999px; background: #f6faf3; color: #365445; font-size: 11px; cursor: pointer; }.projection-series { display: grid; gap: 10px; }.projection-series-row { display: grid; gap: 5px; color: #586b60; font-size: 10px; }.projection-points { display: flex; gap: 5px; overflow-x: auto; }.projection-points span { display: grid; min-width: 66px; gap: 3px; padding: 7px; border-radius: 7px; background: #eaf2e4; color: #748076; }.projection-points b { color: #234435; font-size: 11px; }
 .guide-tab .design-prompt-icon { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 17px; background: #fff3cc; color: #e8a600; }
 .guide-tab .design-prompt-copy { display: grid; gap: 6px; min-width: 0; text-align: left; }
@@ -330,6 +342,11 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   .guide-tab .welcome.design-welcome { padding: 25px 20px 18px; }
   .guide-tab .design-prompt-grid { margin-top: 42px; }
   .guide-tab .design-prompt-grid button { min-height: 106px; }
+  .chat-home-card-section { margin-top: 32px; }
+  .chat-home-card-section + .chat-home-card-section { margin-top: 30px; padding-top: 27px; }
+  .chat-home-section-heading h2 { font-size: 18px; }
+  .sector-card-grid { gap: 8px; }
+  .sector-card-grid button { min-height: 73px; padding: 10px; }
   .prompt-carousel { margin-top: 32px; padding-right: 25%; }.prompt-carousel button { flex-basis: calc(50% - 6px); min-height: 106px; }
   .guide-tab .design-prompt-copy strong { font-size: 16px; }
 }
