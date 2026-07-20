@@ -12,6 +12,7 @@ from .api import (
     chat,
     disclosures,
     engine,
+    macro,
     pension_accounts,
     retrieval,
     system,
@@ -109,6 +110,7 @@ def create_app() -> FastAPI:
     _include_eagerly(app, disclosures.router)
     _include_eagerly(app, benchmark.router)
     _include_eagerly(app, pension_accounts.router)
+    _include_eagerly(app, macro.router)
     _include_eagerly(app, chat.router)
     return app
 

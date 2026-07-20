@@ -18,6 +18,12 @@ from ..engine import (
     evaluate_mock_scenario,
     evaluate_risk_cap,
 )
+from ..macro_evidence import (
+    MacroEvidenceRepository,
+    MacroEvidenceSnapshot,
+    MacroEvidenceUnavailable,
+    MacroMetric,
+)
 from ..retrieval.knowledge_policy import (
     contains_sensitive_personal_data,
     contains_unsafe_rag_content,
@@ -655,6 +661,7 @@ class ChatService:
         disclosures: DisclosureSearch | None = None,
         news: NewsSearch | None = None,
         portfolio_universe_loader: PortfolioUniverseLoader | None = None,
+        macro_evidence: MacroEvidenceRepository | None = None,
         router: IntentRouter | None = None,
     ) -> None:
         self._knowledge = knowledge
@@ -662,6 +669,7 @@ class ChatService:
         self._disclosures = disclosures
         self._news = news
         self._portfolio_universe_loader = portfolio_universe_loader
+        self._macro_evidence = macro_evidence
         self._router = router or IntentRouter()
 
     def capabilities(self) -> ChatCapabilities:
@@ -673,6 +681,7 @@ class ChatService:
                 "연금저축·IRP 당해연도 납입액 세액공제 간이 계산",
                 "연금저축·IRP 연금외수령 16.5% 간이 추정",
                 "근거·기준일·실데이터/목데이터 경계 표시",
+                "한국은행·KOSIS·FRED 공식 거시지표 근거 조회",
             ],
             conditional=[
                 "Supabase 실적재 후 회사·사업자 과거 공시 비교",
@@ -921,6 +930,8 @@ class ChatService:
                         max_results=resolved_plan.max_results,
                         exclude_item_ids=exclude_item_ids,
                     )
+            elif resolved_plan.intent == ChatIntent.MACRO_EVIDENCE:
+                response = self._macro_evidence_response(request)
             elif resolved_plan.intent == ChatIntent.PROVIDER_DISCLOSURE:
                 account_type = resolved_plan.account_types[0]
                 response = self._disclosure_response(request, account_type)
@@ -2273,6 +2284,117 @@ class ChatService:
             educational_portfolio_evaluation=evaluations[0],
             educational_portfolio_evaluations=evaluations,
             limitations=list(dict.fromkeys(limitations)),
+        )
+
+    def _macro_evidence_response(self, request: ChatRequest) -> ChatResponse:
+        if self._macro_evidence is None:
+            return self._macro_evidence_unavailable()
+        try:
+            snapshot = self._macro_evidence.latest()
+        except MacroEvidenceUnavailable:
+            return self._macro_evidence_unavailable()
+
+        metrics = self._select_macro_metrics(request.message, snapshot)
+        if not metrics:
+            return self._macro_evidence_unavailable()
+        sources = [
+            SourceEvidence(
+                evidence_id=f"macro:{metric.metric_id}",
+                label=metric.source_label,
+                locator=metric.source_url,
+                data_boundary=DataBoundary.OFFICIAL_STATISTICS,
+                publisher=metric.publisher,
+                as_of=metric.observed_at,
+            )
+            for metric in metrics
+        ]
+        numeric_evidence = [
+            NumericEvidence(
+                label=metric.label,
+                value=metric.value,
+                unit=metric.unit,
+                evidence_id=f"macro:{metric.metric_id}",
+                basis=metric.basis,
+            )
+            for metric in metrics
+        ]
+        lines = [
+            (
+                f"{metric.label}은(는) {_decimal_text(metric.value)}"
+                f"{metric.unit}예요 (관측일 {metric.observed_at.isoformat()})."
+            )
+            for metric in metrics
+        ]
+        answer = "\n".join(lines)
+        limitation = (
+            "이 값은 공식 과거·현재 관측치이며 미래 전망이 아니에요. "
+            "계획수익률, 자산배분 비중 또는 리밸런싱 신호에 직접 사용하지 않아요."
+        )
+        return ChatResponse(
+            intent=ChatIntent.MACRO_EVIDENCE,
+            answer=f"{answer}\n\n{limitation}",
+            data_mode="official_macro_observations",
+            sections=[
+                AnswerSection(
+                    kind=SectionKind.FACT,
+                    title="공식 거시지표 관측값",
+                    content=answer,
+                    evidence_ids=_source_ids(sources),
+                ),
+                AnswerSection(
+                    kind=SectionKind.LIMITATION,
+                    title="알고리즘 연결 경계",
+                    content=limitation,
+                ),
+            ],
+            sources=sources,
+            numeric_evidence=numeric_evidence,
+            limitations=[
+                snapshot.algorithm_usage.reason,
+                "보고서 정책 버전: " + snapshot.policy_version,
+            ],
+        )
+
+    @staticmethod
+    def _select_macro_metrics(
+        message: str, snapshot: MacroEvidenceSnapshot
+    ) -> list[MacroMetric]:
+        by_id = {metric.metric_id: metric for metric in snapshot.metrics}
+        if re.search(r"거시\s*(?:환경|지표)", message, re.I):
+            selected = tuple(by_id)
+        elif re.search(r"기대\s*수명|장수", message, re.I):
+            selected = (
+                "kr_life_expectancy_65_a1",
+                "kr_life_expectancy_65_a2",
+            )
+        elif re.search(
+            r"미국|연준|연방\s*기금|FRED|국채|기대\s*인플레이션",
+            message,
+            re.I,
+        ):
+            selected = (
+                "us_federal_funds_rate",
+                "us_cpi_yoy",
+                "us_treasury_10y",
+                "us_breakeven_inflation_10y",
+            )
+        elif re.search(
+            r"한국|기준\s*금리|소비자\s*물가|물가\s*상승률",
+            message,
+            re.I,
+        ):
+            selected = ("kr_base_rate", "kr_cpi_yoy")
+        else:
+            selected = tuple(by_id)
+        return [by_id[metric_id] for metric_id in selected if metric_id in by_id]
+
+    @staticmethod
+    def _macro_evidence_unavailable() -> ChatResponse:
+        return ChatResponse(
+            intent=ChatIntent.MACRO_EVIDENCE,
+            answer="공식 거시지표 보고서를 불러오지 못해 수치를 안내하지 않았어요.",
+            data_mode="unavailable",
+            limitations=["보고서 수집 상태와 경로를 확인한 뒤 다시 조회해 주세요."],
         )
 
     def _scenario_response(self, scenario_code: str) -> ChatResponse:
