@@ -344,6 +344,7 @@ def calculate_portfolio_risk(
     candidates: list[EducationalEtfCandidate],
     histories: dict[str, dict[date, Decimal]],
     source_as_of: date,
+    history_as_of: date | None = None,
 ) -> PortfolioRiskEvaluation:
     stress = _stress_results(candidates)
     returns_by_code = {
@@ -356,16 +357,11 @@ def calculate_portfolio_risk(
         else set()
     )
     ordered_dates = sorted(common_dates)
-    history_dates = [
-        observed_on
-        for history in histories.values()
-        for observed_on in history
-    ]
     sources = [
         SourceChip(
             label="한투 수정주가·KIND 분배금 반영 원화 총수익률",
             reference="data/cache/kis/adjusted_prices + data/cache/events",
-            as_of=max(history_dates, default=source_as_of),
+            as_of=history_as_of or source_as_of,
         ),
         SourceChip(
             label="연금 코파일럿 포트폴리오 스트레스 정책",
@@ -1218,6 +1214,7 @@ def build_educational_portfolio(
     histories: dict[str, dict[date, Decimal]],
     source_as_of: date,
     history_sources: dict[str, str] | None = None,
+    history_as_of: date | None = None,
 ) -> EducationalPortfolioEvaluation:
     sleeves, policy = calculate_target_allocation(request)
     candidates = select_educational_candidates(
@@ -1233,6 +1230,7 @@ def build_educational_portfolio(
         candidates=candidates,
         histories=histories,
         source_as_of=source_as_of,
+        history_as_of=history_as_of,
     )
     planning_return = calculate_portfolio_planning_return(
         candidates=candidates,

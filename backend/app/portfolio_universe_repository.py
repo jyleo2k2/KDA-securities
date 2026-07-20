@@ -32,6 +32,10 @@ class PortfolioUniverseRepository:
         self.histories = histories
         self.history_sources = history_sources
         self.as_of = as_of
+        self.latest_history_as_of = max(
+            (max(history) for history in histories.values() if history),
+            default=as_of,
+        )
         self.source_path = source_path
 
     @classmethod
