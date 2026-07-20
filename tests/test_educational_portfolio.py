@@ -193,7 +193,7 @@ def test_candidate_selection_calculates_each_daily_return_series_once(
         "request": _request(),
     }
     score_cache = {}
-    select_educational_candidates(
+    candidates = select_educational_candidates(
         **selection_args,
         score_cache=score_cache,
     )
@@ -202,6 +202,7 @@ def test_candidate_selection_calculates_each_daily_return_series_once(
     assert max(calls.values()) == 1
     assert correlation_calls
     assert max(correlation_calls.values()) == 1
+    assert len({candidate.isu_code for candidate in candidates}) == len(candidates)
 
     select_educational_candidates(
         **selection_args,

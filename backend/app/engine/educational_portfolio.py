@@ -992,6 +992,7 @@ def select_educational_candidates(
     history_sources = history_sources or {}
     counts = _candidate_counts(sleeves, request.max_etfs)
     selected: list[tuple[dict[str, Any], CandidateQuality]] = []
+    selected_codes: set[str] = set()
     output: list[EducationalEtfCandidate] = []
     returns_by_code: dict[str, dict[date, Decimal]] = {}
     correlations_by_pair: dict[tuple[str, str], Decimal | None] = {}
@@ -1039,7 +1040,9 @@ def select_educational_candidates(
                 ranked = _score_candidates(pool)
                 score_cache[cache_key] = ranked
         for _ in range(counts[sleeve]):
-            remaining = [item for item in ranked if item not in selected]
+            remaining = [
+                item for item in ranked if item[0]["isu_code"] not in selected_codes
+            ]
             if not remaining:
                 break
             evaluated = []
@@ -1080,6 +1083,7 @@ def select_educational_candidates(
                 evaluated, key=lambda item: (item[0], item[1]["isu_code"])
             )
             selected.append((product, quality))
+            selected_codes.add(product["isu_code"])
             reasons = [
                 "quality_score_uses_cost_liquidity_size_nav_tracking_only",
                 "historical_return_not_used_for_ranking",
