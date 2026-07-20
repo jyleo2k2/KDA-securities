@@ -12,7 +12,7 @@ def get_database_pool(database_url: str) -> ConnectionPool:
     return ConnectionPool(
         conninfo=database_url,
         min_size=2,
-        max_size=4,
+        max_size=15,
         timeout=5,
         # 현재 DATABASE_URL은 Supavisor session pooler(5432)라 prepared statement가
         # 정상 동작한다. transaction pooler(6543)로 전환하면 반드시
