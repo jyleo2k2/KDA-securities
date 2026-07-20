@@ -690,6 +690,10 @@ def test_authenticated_chat_loads_session_and_demo_context_in_parallel() -> None
             barrier.wait()
             return None
 
+        def get_nickname(self, owner_id):
+            assert owner_id == OWNER_ID
+            return None
+
     repository = ParallelRepository()
     _override_authenticated_dependencies(repository)
     app.dependency_overrides[get_optional_demo_user_context_repository] = (
@@ -722,6 +726,10 @@ def test_demo_context_database_failure_does_not_stop_authenticated_chat() -> Non
         def get(self, owner_id):
             assert owner_id == OWNER_ID
             raise psycopg.OperationalError("database unavailable")
+
+        def get_nickname(self, owner_id):
+            assert owner_id == OWNER_ID
+            return None
 
     repository = ContextRestoringRepository()
     _override_authenticated_dependencies(repository)
