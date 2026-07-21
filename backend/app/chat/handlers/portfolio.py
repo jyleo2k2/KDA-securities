@@ -50,11 +50,11 @@ from ._shared import (
     _decimal_text,
     _krw_text,
     _one_decimal,
-    _rebalancing_summary,
+    _rebalancing_items,
     _selected_risk_profile,
     _source_ids,
     _strategy_summary,
-    _target_portfolio_summary,
+    _target_portfolio_rows,
 )
 
 logger = logging.getLogger(__name__)
@@ -1064,17 +1064,25 @@ def educational_portfolio(
     profile_label = _RISK_PROFILE_LABELS[
         evaluation.evaluated_input.risk_profile.value
     ]
-    strategy_content = (
-        f"{_strategy_summary(evaluation)}\n\n"
-        f"목표 포트폴리오\n{_target_portfolio_summary(evaluation)}\n\n"
-        f"운용 원칙\n{_rebalancing_summary(evaluation)}"
-    )
     sections = [
         AnswerSection(
             kind=SectionKind.SERVICE_EXPLANATION,
             title=f"{profile_label} 투자전략",
-            content=strategy_content,
+            content=_strategy_summary(evaluation),
             evidence_ids=[engine_source.evidence_id],
+            blocks=[
+                AnswerBlock(
+                    kind=AnswerBlockKind.TABLE,
+                    title="목표 포트폴리오",
+                    headers=["자산군", "목표비중", "엔진 편입 후보"],
+                    rows=_target_portfolio_rows(evaluation),
+                ),
+                AnswerBlock(
+                    kind=AnswerBlockKind.BULLETS,
+                    title="운용 원칙",
+                    items=_rebalancing_items(evaluation),
+                ),
+            ],
         ),
         AnswerSection(
             kind=SectionKind.FACT,
@@ -1109,12 +1117,12 @@ def educational_portfolio(
         "보수 계획수익률": 1,
         "기준 계획수익률": 2,
         "수령 개시까지 운용기간": 3,
-        "리밸런싱 이탈 기준": 5,
+        "리밸런싱 이탈 기준": 4,
     }
     numeric.sort(
         key=lambda item: numeric_priority.get(
             item.label,
-            4
+            6
             if item.label.endswith(" 목표비중")
             else 6
             if item.label.endswith(" 스트레스 손실 추정치")

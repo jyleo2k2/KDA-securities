@@ -144,6 +144,40 @@ const THEME_RESPONSE: ChatResponse = {
   conversation_context: null,
 };
 
+const STRUCTURED_PORTFOLIO_RESPONSE: ChatResponse = {
+  ...THEME_RESPONSE,
+  intent: "educational_portfolio",
+  answer: "위험중립형 연금 운용 전략을 정리했어요.",
+  data_mode: "engine_educational_planning",
+  sections: [
+    {
+      kind: "service_explanation",
+      title: "위험중립형 투자전략",
+      content: "35년의 장기 운용기간을 고려한 전략이에요. 목표비중을 확인해 보세요.",
+      evidence_ids: [],
+      blocks: [
+        {
+          kind: "table",
+          title: "목표 포트폴리오",
+          text: "",
+          items: [],
+          headers: ["자산군", "목표비중", "엔진 편입 후보"],
+          rows: [["국내외 주식", "28.0%", "TIGER 예시 · KODEX 예시"]],
+        },
+        {
+          kind: "bullets",
+          title: "운용 원칙",
+          text: "",
+          items: ["분기마다 목표비중 이탈을 점검해요."],
+          headers: [],
+          rows: [],
+        },
+      ],
+    },
+  ],
+  limitations: ["상품 선택과 주문은 사용자가 직접 해요."],
+};
+
 const REPRESENTATIVE_COMPANY_RESPONSE: ChatResponse = {
   ...THEME_RESPONSE,
   answer: "반도체 테마를 이해하기 위한 대표기업 3곳입니다.",
@@ -635,7 +669,7 @@ describe("GuidePage chat history deletion", () => {
     renderGuide();
 
     fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
-    const themeSection = (await screen.findByText("조선 테마란?")).closest("details");
+    const themeSection = (await screen.findByText(/조선 테마란/)).closest("details");
     const followUps = screen.getByLabelText("이어서 물어보기");
     expect(themeSection?.nextElementSibling).toBe(followUps);
     expect(within(followUps).getByRole("button", {
@@ -735,6 +769,50 @@ describe("GuidePage chat history deletion", () => {
       "수출규제와 지정학적 공급망 재편의 영향을 크게 받을 수 있습니다.",
     ).tagName).toBe("LI");
     expect(limitations).toHaveLength(2);
+  });
+
+  it("keeps educational portfolio sections and limitations collapsed until opened", async () => {
+    vi.mocked(getStoredChatMessages).mockResolvedValue([
+      {
+        message_id: "portfolio-question",
+        question_message_id: null,
+        role: "user",
+        content: "포트폴리오를 보여줘",
+        response: null,
+        model_name: null,
+        created_at: "2026-07-20T00:00:00Z",
+        evidence: [],
+      },
+      {
+        message_id: "portfolio-answer",
+        question_message_id: "portfolio-question",
+        role: "assistant",
+        content: STRUCTURED_PORTFOLIO_RESPONSE.answer,
+        response: STRUCTURED_PORTFOLIO_RESPONSE,
+        model_name: null,
+        created_at: "2026-07-20T00:00:01Z",
+        evidence: [],
+      },
+    ]);
+    renderGuide();
+
+    fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
+    const preview = await screen.findByText(
+      "위험중립형 투자전략 — 35년의 장기 운용기간을 고려한 전략이에요.",
+    );
+    const section = preview.closest("details");
+    const limitations = screen.getByText("확인할 점 1가지 보기").closest("details");
+
+    expect(section).not.toHaveAttribute("open");
+    expect(section?.querySelector(".answer-table-wrap")).not.toBeNull();
+    expect(section?.querySelectorAll(".answer-bullets li")).toHaveLength(1);
+    expect(limitations).not.toHaveAttribute("open");
+
+    fireEvent.click(preview.closest("summary")!);
+    fireEvent.click(screen.getByText("확인할 점 1가지 보기").closest("summary")!);
+
+    expect(section).toHaveAttribute("open");
+    expect(limitations).toHaveAttribute("open");
   });
 });
 
