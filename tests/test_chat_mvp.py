@@ -200,7 +200,8 @@ def test_account_rule_question_returns_rag_source_and_numeric_evidence() -> None
     )
 
     assert response.intent == ChatIntent.ACCOUNT_RULE
-    assert response.answer.endswith("함께 봐 주세요.")
+    assert len(response.answer) <= 320
+    assert "공식 근거에서 확인한 내용이에요" not in response.answer
     assert "70%" in "\n".join(section.content for section in response.sections)
     assert "판정합니다" not in response.answer
     assert response.sources
@@ -293,12 +294,14 @@ def test_pension_topics_return_complete_plain_verified_sections(
     response = service().ask(ChatRequest(message=message))
 
     assert response.intent == ChatIntent.ACCOUNT_RULE
-    assert all(fact in response.answer for fact in required_facts)
+    evidence_text = "\n".join(section.content for section in response.sections)
+    assert all(fact in evidence_text for fact in required_facts)
+    assert len(response.answer) <= 320
     assert "|" not in response.answer
     assert "#" not in response.answer
     assert "](" not in response.answer
     assert response.sources
-    assert response.sections[0].content in response.answer
+    assert response.sections[0].content
 
 
 def test_tax_rate_guidance_does_not_card_compound_refund_examples() -> None:
@@ -601,12 +604,11 @@ def test_future_return_and_order_requests_are_blocked() -> None:
 
 def test_narrator_prompt_requires_conclusion_first_heyoche() -> None:
     assert "쉬운 한국어 해요체 한 문단" in SYSTEM_PROMPT
-    assert "결론을 첫 문장에" in SYSTEM_PROMPT
+    assert "핵심 결론을 첫 문장에" in SYSTEM_PROMPT
     assert "어려운 금융 용어" in SYSTEM_PROMPT
     assert "반말" not in SYSTEM_PROMPT
-    assert "같이 살펴보자" not in SYSTEM_PROMPT
-    assert "같이 살펴봐요" in SYSTEM_PROMPT
-    assert "본문은 두세 문장, 최대 네 문장" in SYSTEM_PROMPT
+    assert "같은 내용을 반복하지 않는다" in SYSTEM_PROMPT
+    assert "본문은 두세 문장, 350자 이내" in SYSTEM_PROMPT
 
 
 def test_disclosure_comparison_uses_only_repository_numbers() -> None:
