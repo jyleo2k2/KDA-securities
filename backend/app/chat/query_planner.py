@@ -196,7 +196,7 @@ _NEWS_EVENT_STRATEGY_TERMS = re.compile(
     r"(?:운용|투자|포트폴리오|전략|리밸런싱).{0,20}실시간",
     re.I,
 )
-_NEWS_TIMELINESS_TERMS = re.compile(r"실시간|방금|지금|오늘|최신|장중", re.I)
+_NEWS_TIMELINESS_TERMS = re.compile(r"실시간|방금|장중", re.I)
 _UNSUPPORTED_MARKET_NEWS = re.compile(
     r"(?:중국|일본|유럽|홍콩|대만)\s*(?:증시|시장|주식|뉴스|기사|소식)",
     re.I,

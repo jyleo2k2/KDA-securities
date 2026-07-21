@@ -97,6 +97,9 @@ class FakeLiveNewsSearch:
             items=(
                 LiveMarketNewsItem(
                     item_id="news-item-1",
+                    canonical_url=(
+                        "https://www.yna.co.kr/view/AKR20260720000100002"
+                    ),
                     title="반도체 실적 발표에 코스피 변동",
                     description="삼성전자 영업이익 발표 뒤 반도체 업종이 움직였다.",
                     original_url="https://www.yna.co.kr/view/AKR20260720000100002",
@@ -146,6 +149,26 @@ class StoredNewsRepository:
     def news_by_ids(self, item_ids):
         del item_ids
         return []
+
+    def summarized_news_by_canonical_urls(self, canonical_urls):
+        canonical_url = "https://www.yna.co.kr/view/AKR20260720000100002"
+        if canonical_url not in canonical_urls:
+            return {}
+        return {
+            canonical_url: NewsMatch(
+                item_id="00000000-0000-4000-8000-000000000002",
+                title="반도체 실적 발표에 코스피 변동",
+                description=None,
+                original_url=canonical_url,
+                portal_url=None,
+                published_at=datetime(2026, 7, 20, 1, tzinfo=UTC),
+                summary_lines=(
+                    "반도체 실적 발표 뒤 코스피가 움직였다.",
+                    "관련 업종의 거래대금이 늘었다.",
+                    "기사 원문에서 시장 반응을 확인해야 한다.",
+                ),
+            )
+        }
 
 
 class EmptyStoredNewsRepository(StoredNewsRepository):
@@ -298,6 +321,40 @@ def test_timely_news_uses_stored_summary_without_live_lookup() -> None:
     )
 
 
+def test_today_news_uses_stored_three_line_summaries() -> None:
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        news=StoredNewsRepository(),
+        live_news=FakeLiveNewsSearch(),
+        theme_repository=get_default_etf_theme_repository(),
+    )
+
+    response = service.ask(ChatRequest(message="오늘 증시 뉴스 알려줘"))
+
+    assert response.data_mode == "news_summary"
+    assert response.news_items
+    assert all(len(item.summary_lines) == 3 for item in response.news_items)
+    assert all(item.evidence_id.startswith("news:") for item in response.news_items)
+
+
+def test_explicit_live_news_reuses_matching_stored_summary() -> None:
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        news=StoredNewsRepository(),
+        live_news=FakeLiveNewsSearch(),
+        theme_repository=get_default_etf_theme_repository(),
+    )
+
+    response = service.ask(ChatRequest(message="실시간 국내 증시 뉴스 알려줘"))
+
+    assert response.data_mode == "news_summary"
+    assert [len(item.summary_lines) for item in response.news_items] == [3]
+    assert response.news_items[0].evidence_id.startswith("news:")
+    assert response.conversation_context is not None
+
+
 def test_timely_news_uses_stored_news_when_live_source_is_unavailable() -> None:
     service = ChatService(
         knowledge=LocalMarkdownKnowledgeRepository(),
@@ -307,7 +364,7 @@ def test_timely_news_uses_stored_news_when_live_source_is_unavailable() -> None:
         theme_repository=get_default_etf_theme_repository(),
     )
 
-    response = service.ask(ChatRequest(message="오늘 미국 증시 뉴스 알려줘"))
+    response = service.ask(ChatRequest(message="방금 미국 증시 뉴스 알려줘"))
 
     assert response.data_mode == "news_summary"
     assert response.news_items

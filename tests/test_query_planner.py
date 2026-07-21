@@ -234,6 +234,22 @@ def test_timely_market_news_routes_to_stored_news() -> None:
 
 
 @pytest.mark.parametrize(
+    "message",
+    (
+        "오늘 증시 뉴스 알려줘",
+        "지금 국내 증시 뉴스 보여줘",
+        "지금 미국 증시 뉴스 보여줘",
+        "최신 증시 뉴스 알려줘",
+    ),
+)
+def test_general_freshness_words_keep_stored_three_line_news(message: str) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent == ChatIntent.NEWS
+    assert plan.requests_live_news is False
+
+
+@pytest.mark.parametrize(
     ("message", "notice"),
     (
         ("삼성전자 뉴스 보여줘", NewsScopeNotice.COMPANY),

@@ -25,6 +25,7 @@ class LiveNewsUnavailable(RuntimeError):
 @dataclass(frozen=True, slots=True)
 class LiveMarketNewsItem:
     item_id: str
+    canonical_url: str
     title: str
     description: str | None
     original_url: str
@@ -116,6 +117,7 @@ class NaverLiveNewsSearch:
             items=tuple(
                 LiveMarketNewsItem(
                     item_id=candidate.normalized_title_hash,
+                    canonical_url=candidate.canonical_url,
                     title=candidate.item.title,
                     description=candidate.item.description,
                     original_url=candidate.item.original_url,

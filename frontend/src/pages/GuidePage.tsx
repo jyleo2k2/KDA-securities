@@ -159,7 +159,9 @@ function NewsCards({ response }: { response: ChatResponse }) {
             <span>
               {item.summary_lines?.length === 3
                 ? `${ordinals[index] ?? `${index + 1}번째`} 뉴스 · 3줄 요약`
-                : "뉴스 메타데이터"}
+                : item.evidence_id.startsWith("live-news:")
+                  ? "실시간 헤드라인 · 3줄 요약 전"
+                  : "뉴스 메타데이터"}
             </span>
             {newsDate(item.published_at) && <time>{newsDate(item.published_at)}</time>}
           </div>

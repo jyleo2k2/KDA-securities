@@ -400,6 +400,38 @@ describe("GuidePage chat history deletion", () => {
     expect(deleteChatSession).not.toHaveBeenCalled();
   });
 
+  it("labels an unsummarized live headline without implying a three-line summary", async () => {
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      persisted: false,
+      session_id: null,
+      response: {
+        ...THEME_RESPONSE,
+        intent: "news",
+        answer: "NAVER 검색 API에서 최신 증시 뉴스 메타데이터를 조회했어요.",
+        data_mode: "news_metadata",
+        news_items: [
+          {
+            evidence_id: "live-news:headline-1",
+            title: "장중 코스피 움직임",
+            description: "장중 시장 움직임을 전한 NAVER 검색 설명입니다.",
+            summary_lines: [],
+            original_url: "https://example.test/live/1",
+            published_at: "2026-07-21T01:00:00Z",
+          },
+        ],
+      },
+    });
+    renderGuide();
+
+    const composer = screen.getByLabelText("질문 입력");
+    fireEvent.change(composer, { target: { value: "실시간 증시 뉴스 보여줘" } });
+    fireEvent.submit(composer.closest("form")!);
+
+    expect(await screen.findByText("실시간 헤드라인 · 3줄 요약 전"))
+      .toBeInTheDocument();
+    expect(screen.queryByText("첫 번째 뉴스 · 3줄 요약")).not.toBeInTheDocument();
+  });
+
   it("keeps the session when confirmation is cancelled", async () => {
     vi.mocked(window.confirm).mockReturnValue(false);
     renderGuide();
