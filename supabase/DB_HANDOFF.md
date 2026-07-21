@@ -3,7 +3,7 @@
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
 > 최종 확인: 2026-07-21 KST
-> 확인 기준: `profile/assessment-api` / 투자성향 저장·조회 API와 확인 이력 migration 로컬 구현·원격 읽기 재검증
+> 확인 기준: 대표 고객 6명 투자성향·답변·공개지표 원격 저장과 짧은 로그인 ID Auth 검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -34,12 +34,12 @@
 
 | 항목 | 원격 상태 |
 |---|---|
-| public 기본 테이블 | 46개 |
-| 적용 마이그레이션 | 22개(`20260715005435` ~ `20260720091219`) |
-| RLS | 46/46 활성화 |
+| public 기본 테이블 | 49개 |
+| 적용 마이그레이션 | 26개(`20260715005435` ~ `20260721025143`) |
+| RLS | 49/49 활성화 |
 | `anon` 테이블 권한 | 없음 |
 | `authenticated` 권한 | 사용자 소유 엔진 결과·채팅 관련 5개 테이블 |
-| `service_role` 권한 | 46개 테이블 |
+| `service_role` 권한 | 49개 테이블 |
 | `knowledge_chunks.embedding` 타입 | `vector(1024)` |
 | HNSW 인덱스 | `knowledge_chunks_embedding_hnsw_idx` 존재 |
 | PostgreSQL / 프로젝트 상태 | 17.6 / `ACTIVE_HEALTHY` |
@@ -62,6 +62,8 @@
 | `mock_accounts` | 13 |
 | `mock_holdings` | 86 |
 | `demo_user_financial_context` | 6 |
+| `demo_investor_profiles` / `demo_investor_profile_answers` | 6 / 66 |
+| `demo_public_portfolio_metrics` | 6 |
 | `benchmark_mock_users` | 10,000 |
 | `benchmark_mock_accounts` | 16,900 |
 | `benchmark_mock_holdings` | 79,381 |
@@ -83,6 +85,7 @@
 | 금융기관·공시 | `financial_institutions`, `institution_aliases`, `pension_savings_provider_stats`, `retirement_provider_stats` |
 | 자산·목계좌 | `asset_classes`, `mock_scenarios`, `mock_accounts`, `mock_holdings` |
 | 목 벤치마크 | `mock_public_profiles`, `mock_public_portfolios`, `mock_public_portfolio_holdings` |
+| 대표 고객 공개 계약 | `demo_investor_profiles`, `demo_investor_profile_answers`, `demo_public_portfolio_metrics` |
 | 규칙·감사 | `rule_sets`, `pension_rules`, `engine_runs`, `engine_run_evidence` |
 | RAG·뉴스 | `knowledge_documents`, `knowledge_chunks`, `news_items`, `curated_contents`, `etf_theme_content_reviews`, `etf_theme_content_evidence` |
 | 채팅 | `chat_sessions`, `chat_messages`, `chat_message_evidence`, `chat_request_idempotency` |
@@ -276,6 +279,7 @@ uv run ruff check .
 | DB-03A | 생애주기 대표 고객·Auth 준비 | `REMOTE-APPLIED` | 시나리오 6·계좌 13·보유 26, synthetic demo Auth 사용자 6개 존재 | 데모 로그인 smoke는 다음 인증 가능 세션에서 재검증 |
 | DB-03B | 원격 직접 수정 목데이터 Git 동기화 | `REMOTE-APPLIED` | `20260718131917`, 시나리오 설명 5건·대표 고객 납입액 5건 일치·재적용 시 무변경 확인 | 적용 파일 수정 금지 |
 | DB-03C | 1만 명 공통 납입 계약·대표 6명 기준행/ETF 상세화 | `REMOTE-APPLIED` | `20260720044229`·`20260720044230`, 사용자 10,000·계좌 16,900·보유 79,381, 대표 legacy/common 6/13/86·6개 운용사, 납입한도·세율·잔액 불일치 0 | 적용 파일 수정 금지; 배포 보정 PR 머지 후 파일명·본문 고정 |
+| DB-03D | 대표 6명 성향·후기·공개지표·짧은 로그인 ID | `REMOTE-APPLIED` | `20260721025143`, 성향 6·답변 66·지표 6, Auth 짧은 ID 6·로그인 후보 5·실로그인 6 성공 | 적용 파일 수정 금지; 공식 커뮤니티 랭킹과 실제 리뷰 정책은 DB-06에서 별도 결정 |
 | DB-04 | 챗봇 Postgres scenario repository 연결 | `LOCAL-VERIFIED` | DB 우선·JSON fallback과 원격 채팅 저장·replay E2E 통과 | `/engine/mock-scenario` DB 전환 여부 별도 결정 |
 | DB-04A | 사용자 연금계좌 repository·API 연결 | `LOCAL-VERIFIED` | 신규 공통 계좌 구조 조회·Auth 소유권·엔진 입력 변환 E2E | 실제 Supabase Bearer-token으로 `/me/pension-accounts`가 mock 계좌·보유를 반환함을 E2E 확인. 다음은 commit·push·PR |
 | DB-05 | 기존 mock account tables 정리 | `BLOCKED` | 코드·SQL 참조 0, 별도 승인·복구 계획 | DB-04 안정화 전 삭제 금지 |
@@ -299,6 +303,33 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-21 KST 대표 6명 전체 공개 계약·짧은 로그인 ID 원격 적용
+
+- 로그인 계약: tracked manifest를 v4로 올려 사용자가 입력하는 `login_id`를 `junho46` 같은 짧은 값으로 바꾸고, Supabase Auth 내부 식별자는 `auth_email`로 분리했다. 프론트는 짧은 ID에 데모 도메인을 붙여 `signInWithPassword`를 호출한다.
+- Auth 원격 검증: 서버 관리 `app_metadata.demo_login_id`에 짧은 ID 6개를 저장했다. 승인된 임시 고정 비밀번호를 다시 동기화한 뒤 6계정 모두 실제 로그인에 성공했고, 로그인 후보는 5명이다. 비밀번호와 내부 Auth 이메일은 로그에 출력하지 않았다.
+- DB 원격 적용: `20260721025143_store_demo_customer_profiles_and_metrics.sql`을 적용했다. `demo_investor_profiles` 6행, `demo_investor_profile_answers` 66행, `demo_public_portfolio_metrics` 6행을 저장했다. 기존 고객 6·계좌 13·ETF 보유 86·금융 컨텍스트 6과 scenario FK로 연결된다.
+- 보안: 신규 3개 테이블 모두 RLS 활성화, `anon`·`authenticated` SELECT 없음, `service_role` SELECT 있음으로 재조회했다. 과거 수익률의 미래예측/공식랭킹 플래그와 좋아요의 비합성/성과기반 플래그 위반은 모두 0건이다.
+- Advisor: 신규 서버 전용 테이블 3개의 deny-by-default `rls_enabled_no_policy` INFO는 의도한 결과이며 성능 신규 경고는 없다. 기존 `auth_leaked_password_protection` WARN은 임시 약한 데모 비밀번호 정책 때문에 유지한다.
+- 적용 복구 기록: 첫 적용은 공격투자형 손실감내 답변의 7점을 5점 상한으로 잘못 제한해 실패했으며 트랜잭션 전체가 롤백돼 테이블·migration 이력이 남지 않았다. 문항 실제 최대값에 맞춰 0~7점으로 수정한 뒤 재적용했다.
+- 범위 경계: 이번 테이블은 대표 6명의 서버 관리 시연 목데이터 저장이다. 실제 사용자 리뷰·신고·보존 정책과 공식 TWR/MWR 랭킹은 포함하지 않으므로 `DB-06`은 계속 `BLOCKED`다.
+- 검증: 관련 15건, 전체 Python 929 passed·1 skipped, 최신 main 프론트 39건, 프로덕션 빌드, 변경 Python Ruff, migration 생성 동등성, `git diff --check`를 통과했다.
+
+### 2026-07-21 KST 대표 시나리오 공개 포트폴리오 과거 수익률·좋아요 지표
+
+- 요청 범위: 시연 로그인 고객이 다른 대표 고객의 공개 포트폴리오에서 동일 기간 과거 수익률과 추천(좋아요) 수를 비교할 수 있도록 로컬 표시 계약을 추가했다.
+- 과거 수익률: `data/mock/accounts.csv`의 2025-01-01~2025-12-31 계좌별 과거 12개월 목수익률을 계좌 잔액으로 가중했다. 계산은 결정론적 생성기에서만 수행하며 결과는 각각 7.72%, 11.20%, 11.16%, 0.74%, 12.79%, 4.69%다. 미래 예측이 아니며 공식 커뮤니티 순위 지표로 사용하지 않는다.
+- 좋아요: 2026-07-21 기준 126, 284, 173, 412, 358, 97건을 시연용 합성 참여지표로 배정했다. 과거 수익률과 무관하고 성과 기반 추천으로 해석하지 않는다.
+- 로컬 계약: `data/mock/demo_public_portfolio_metrics.json`을 SSOT로 두고 생성기·FastAPI 영웅 고객 응답·프론트 표시·Word 보고서가 같은 값을 사용한다. 수익률 기간·계산 기준·목데이터/합성 여부·출처 칩도 함께 전달한다.
+- 원격 적용: migration·테이블·RLS·GRANT·원격 데이터 변경 없음. 공식 TWR/MWR 랭킹 공식, 실제 사용자 공개 범위, 신고·보존 정책이 미확정이므로 `DB-06`은 계속 `BLOCKED`다. 2026년 7월 Supabase 변경사항을 확인했으며 신규 public 테이블을 만들지 않아 Data API 권한 보정 대상도 없다.
+- 검증: 지표 생성기·API·성향 관련 6건, 전체 Python 927 passed·1 skipped, 프론트 29건, 프로덕션 빌드, 변경 Python Ruff, `git diff --check`를 통과했다. Word는 압축 무결성·51개 표·6명 자격증명·여섯 수익률/좋아요·페이지 설정을 구조 검증했다.
+
+### 2026-07-21 KST 대표 시나리오 고객 임시 고정 비밀번호 적용
+
+- 요청 범위: 기존의 강한 무작위 비밀번호 생성·교체 로직은 유지하고, 발표·시연 기간에만 대표 고객 6명의 비밀번호를 고정했다. Supabase Auth 설정의 최소 길이 6자를 준수하기 위해 요청한 4자 값을 같은 문자 6자로 확장했다.
+- 원격 적용: migration·스키마 변경 없이 서버 전용 Admin API로 Auth 사용자 6명의 비밀번호를 교체했다. 같은 프로비저닝 실행에서 6개 계정 모두 실제 로그인에 성공했으며, 금융 컨텍스트도 기존 계약대로 동기화됐다.
+- 보안 경계: 실제 자격증명 JSON과 아이디·비밀번호 포함 Word 보고서는 Git 제외 `secrets/`에만 보관한다. 값 자체는 이 문서·로그·테스트 출력에 기록하지 않는다. 공개 배포 전에는 기존 `provision_demo_auth_users.py --rotate-existing` 경로로 강한 무작위 비밀번호를 다시 발급해야 한다.
+- 검증: 데모 Auth 단위 테스트 7건 통과. Security Advisor의 기존 `auth_leaked_password_protection` 비활성화 경고는 이번 임시 데모 정책상 유지했다.
 
 ### 2026-07-21 KST 투자성향 확인 이력 migration 원격 적용
 

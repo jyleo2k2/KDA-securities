@@ -1,0 +1,247 @@
+{
+  "schema_version": 1,
+  "rule_version": "shinhan-personal-general-2021-05-20-demo-v1",
+  "source_documents": [
+    "docs/20_리서치/신한증권_투자권유준칙_투자자정보확인서_배점표.md",
+    "docs/20_리서치/신한증권_투자성향진단_설문및점수로직.md"
+  ],
+  "data_boundary": "mock",
+  "notice": "신한증권 개인 일반투자자 배점표를 대표 고객 시연에 적용한 합성 응답이며 실제 투자자정보 확인 결과가 아니다.",
+  "profiles": [
+    {
+      "scenario_code": "dc_dormant",
+      "assessment_id": "demo-profile-dc-dormant-v1",
+      "investor_profile": "stable",
+      "investor_profile_label": "안정형",
+      "total_score": 15,
+      "score_band": "16점 이하",
+      "scenario_name": "안정형 DC 원금보존 중심",
+      "scenario_description": "투자 경험과 금융지식이 부족하고 원금 보존을 최우선으로 보아 DC 적립금을 방어자산 중심으로 유지하는 고객",
+      "investment_reason": "원금이 줄어드는 것이 부담스러워 DC 계좌는 원리금보장과 현금 위주로 두었습니다. ETF는 가격 변동이 낮은 채권형만 보유했습니다.",
+      "portfolio_opinion_review": "SOL 종합채권(AA-이상)액티브는 원리금보장·현금 중심 구성에서 금리 변동을 조금 경험하는 보조 자산으로 두었습니다. 장기 투자기간에도 원금 보존이 우선이라 채권 ETF 비중을 서둘러 늘리지는 않았습니다.",
+      "representative_etf_isu_codes": ["436140"],
+      "representative_etf_theme": "우량 종합채권·금리 변동 완충",
+      "representative_etf_theme_review": "시장금리가 오르내리는 동안 채권 가격도 움직인다는 점을 경험해, SOL 종합채권(AA-이상)액티브를 현금보다 한 단계 높은 변동성의 분산 수단으로 보고 있습니다.",
+      "portfolio_consistency_note": "일반 위험자산 0%, 채권·원리금보장·현금 100%로 안정형 판단을 반영한다.",
+      "financial_product_shares_percent": {"guaranteed": 70, "investment": 5, "loan": 0, "other": 25},
+      "answers": [
+        {"question_code": "q1_total_net_assets", "selected_option": "1억원 미만", "score": 1, "basis": "대표 고객 합성 가정"},
+        {"question_code": "q2_annual_income", "selected_option": "5천만원 이상~7천만원 미만", "score": 3, "basis": "총급여 64,640,000원"},
+        {"question_code": "q3_investment_product_share", "selected_option": "0~9%", "score": 1, "basis": "투자성 상품 비중 합성 가정"},
+        {"question_code": "q3_loan_product_share", "selected_option": "0~9%", "score": 1, "basis": "대출성 상품 비중 합성 가정"},
+        {"question_code": "q4_experienced_product", "selected_option": "투자경험 없음", "score": 0, "basis": "방치형·투자 무관심 시나리오"},
+        {"question_code": "q4_experience_period", "selected_option": "투자경험 없음", "score": 0, "basis": "방치형·투자 무관심 시나리오"},
+        {"question_code": "q6_financial_knowledge", "selected_option": "금융투자상품 투자 경험 없음", "score": 1, "basis": "investment_readiness=DISENGAGED"},
+        {"question_code": "q7_investment_purpose", "selected_option": "생활비", "score": 1, "basis": "원금 보존 우선 합성 가정"},
+        {"question_code": "q8_risk_attitude", "selected_option": "투자수익보다 원금 보존이 중요", "score": 1, "basis": "preferred_management_type=PRINCIPAL_GUARANTEED"},
+        {"question_code": "q9_investment_horizon", "selected_option": "5년 이상", "score": 5, "basis": "은퇴 예정까지 26년"},
+        {"question_code": "q10_loss_tolerance", "selected_option": "제한적 손실·시중금리 수준 수익 기대", "score": 1, "basis": "안정형 손실감내 합성 응답"}
+      ],
+      "non_scored_answers": {
+        "derivative_experience": "없음",
+        "vulnerable_financial_consumer": true,
+        "assessment_validity_consent": true
+      },
+      "portfolio_allocations": {
+        "dc": {"domestic_equity": 0, "global_equity": 0, "bond": 20, "deposit": 55, "cash": 25}
+      }
+    },
+    {
+      "scenario_code": "tax_contribution_uninvested",
+      "assessment_id": "demo-profile-tax-contribution-v1",
+      "investor_profile": "stable_seeking",
+      "investor_profile_label": "안정추구형",
+      "total_score": 23,
+      "score_band": "17~24점",
+      "scenario_name": "안정추구형 세액공제 후 단계적 운용",
+      "scenario_description": "세액공제를 먼저 챙겼지만 상품 이해가 부족해 현금으로 대기하다가 채권과 분산 ETF부터 단계적으로 운용하려는 고객",
+      "investment_reason": "세액공제 혜택부터 챙겼지만 상품 구조가 익숙하지 않아 납입금 일부를 현금성으로 남겨두었습니다. 채권 ETF와 분산지수 ETF부터 천천히 운용하려고 합니다.",
+      "portfolio_opinion_review": "RISE 종합채권(A-이상)액티브와 HANARO 미국S&P500을 함께 담으니 채권 안정성과 글로벌 분산을 한 번에 확인하기 쉬웠습니다. 물가·금리 불확실성이 이어지는 시기에는 현금을 한꺼번에 옮기기보다 분할해서 비중을 늘리는 방식이 맞았습니다.",
+      "representative_etf_isu_codes": ["385540", "432840"],
+      "representative_etf_theme": "우량채권·미국 대형주 분산",
+      "representative_etf_theme_review": "세액공제 후 현금으로 남아 있던 자금을 RISE 종합채권과 HANARO 미국S&P500에 나누면서, 금리 변화와 미국 증시 변동을 동시에 감수하지 않도록 단계적으로 투자했습니다.",
+      "portfolio_consistency_note": "각 계좌의 일반 위험자산을 20%로 제한하고 채권·현금·원리금보장 비중을 높여 안정추구형을 반영한다.",
+      "financial_product_shares_percent": {"guaranteed": 65, "investment": 5, "loan": 0, "other": 30},
+      "answers": [
+        {"question_code": "q1_total_net_assets", "selected_option": "1억원 미만", "score": 1, "basis": "대표 고객 합성 가정"},
+        {"question_code": "q2_annual_income", "selected_option": "5천만원 이상~7천만원 미만", "score": 3, "basis": "총급여 61,730,000원"},
+        {"question_code": "q3_investment_product_share", "selected_option": "0~9%", "score": 1, "basis": "현금대기형 투자성 상품 비중"},
+        {"question_code": "q3_loan_product_share", "selected_option": "0~9%", "score": 1, "basis": "대출성 상품 비중 합성 가정"},
+        {"question_code": "q4_experienced_product", "selected_option": "채권형펀드 등 저위험 상품", "score": 3, "basis": "안정투자 선호 합성 경험"},
+        {"question_code": "q4_experience_period", "selected_option": "1년 미만", "score": 1, "basis": "상품 이해 부족 시나리오"},
+        {"question_code": "q6_financial_knowledge", "selected_option": "주식·채권·펀드 구조와 위험을 일정 부분 이해", "score": 3, "basis": "investment_readiness=NEEDS_GUIDANCE"},
+        {"question_code": "q7_investment_purpose", "selected_option": "자산증식", "score": 3, "basis": "연금자산 장기 증식 목적"},
+        {"question_code": "q8_risk_attitude", "selected_option": "투자수익보다 원금 보존이 중요", "score": 1, "basis": "안정투자 선호"},
+        {"question_code": "q9_investment_horizon", "selected_option": "5년 이상", "score": 5, "basis": "은퇴 예정까지 17년"},
+        {"question_code": "q10_loss_tolerance", "selected_option": "제한적 손실·시중금리 수준 수익 기대", "score": 1, "basis": "안정추구형 하단 손실감내 합성 응답"}
+      ],
+      "non_scored_answers": {
+        "derivative_experience": "없음",
+        "vulnerable_financial_consumer": false,
+        "assessment_validity_consent": true
+      },
+      "portfolio_allocations": {
+        "irp": {"domestic_equity": 8, "global_equity": 12, "bond": 35, "deposit": 25, "cash": 20},
+        "pension_savings": {"domestic_equity": 8, "global_equity": 12, "bond": 50, "cash": 30}
+      }
+    },
+    {
+      "scenario_code": "overlap_risk_concentration",
+      "assessment_id": "demo-profile-overlap-risk-v1",
+      "investor_profile": "active",
+      "investor_profile_label": "적극투자형",
+      "total_score": 39,
+      "score_band": "33~40점",
+      "scenario_name": "적극투자형 계좌 중복 점검",
+      "scenario_description": "시장수익률 수준의 성장을 추구해 주식 ETF 비중을 높였지만 익숙한 글로벌·헬스케어 자산을 여러 계좌에 반복 보유한 고객",
+      "investment_reason": "은퇴까지 시간이 남아 있어 주식 ETF 비중을 높였습니다. 다만 익숙한 글로벌·헬스케어 ETF를 계좌마다 반복해서 담아 중복 위험을 정기적으로 점검하고 있습니다.",
+      "portfolio_opinion_review": "HANARO 미국S&P500과 TIGER S&P글로벌헬스케어(합성)를 세 계좌에 반복 보유해 미국 대형주·헬스케어 흐름이 전체 연금자산을 함께 움직였습니다. 고령화에 따른 헬스케어 수요는 장기 테마로 봤지만, 지정학·달러 변동까지 겹치면 중복 보유가 분산이 아니라는 점을 확인했습니다.",
+      "representative_etf_isu_codes": ["432840", "248270"],
+      "representative_etf_theme": "미국 대형주·글로벌 헬스케어 중복",
+      "representative_etf_theme_review": "미국 대형주 성장과 고령화·의료 수요 흐름을 함께 보고 두 ETF를 선택했지만, 동일 상품을 여러 계좌에 반복 보유해 테마 노출이 예상보다 커졌습니다.",
+      "portfolio_consistency_note": "DC·IRP는 일반 위험자산 65%, 연금저축은 70%로 적극투자형을 반영하되 계좌 한도를 지킨다.",
+      "financial_product_shares_percent": {"guaranteed": 20, "investment": 25, "loan": 5, "other": 50},
+      "answers": [
+        {"question_code": "q1_total_net_assets", "selected_option": "5억원 이상~10억원 미만", "score": 3, "basis": "대표 고객 합성 가정"},
+        {"question_code": "q2_annual_income", "selected_option": "7천만원 이상~1억원 미만", "score": 4, "basis": "총급여 97,500,000원"},
+        {"question_code": "q3_investment_product_share", "selected_option": "20~29%", "score": 3, "basis": "투자성 상품 비중 합성 가정"},
+        {"question_code": "q3_loan_product_share", "selected_option": "0~9%", "score": 1, "basis": "대출성 상품 비중 합성 가정"},
+        {"question_code": "q4_experienced_product", "selected_option": "주식·주식형펀드 등 고위험 상품", "score": 5, "basis": "복수 계좌 주식 ETF 보유 경험"},
+        {"question_code": "q4_experience_period", "selected_option": "3년 이상", "score": 5, "basis": "적극투자형 합성 경험"},
+        {"question_code": "q6_financial_knowledge", "selected_option": "일반 금융투자상품 구조와 위험을 깊이 이해", "score": 4, "basis": "복수 계좌 직접 운용"},
+        {"question_code": "q7_investment_purpose", "selected_option": "자산증식", "score": 3, "basis": "장기 성장 목적"},
+        {"question_code": "q8_risk_attitude", "selected_option": "원금 보존을 고려하나 투자수익이 더 중요", "score": 3, "basis": "적극투자 선호"},
+        {"question_code": "q9_investment_horizon", "selected_option": "5년 이상", "score": 5, "basis": "은퇴 예정까지 18년"},
+        {"question_code": "q10_loss_tolerance", "selected_option": "원금 일부 손실·시중금리보다 높은 수익 기대", "score": 3, "basis": "적극투자형 손실감내 합성 응답"}
+      ],
+      "non_scored_answers": {
+        "derivative_experience": "없음",
+        "vulnerable_financial_consumer": false,
+        "assessment_validity_consent": true
+      },
+      "portfolio_allocations": {
+        "dc": {"domestic_equity": 25, "global_equity": 40, "bond": 20, "deposit": 10, "cash": 5},
+        "irp": {"domestic_equity": 20, "global_equity": 45, "bond": 20, "deposit": 10, "cash": 5},
+        "pension_savings": {"domestic_equity": 20, "global_equity": 50, "bond": 20, "cash": 10}
+      }
+    },
+    {
+      "scenario_code": "young_retirement_distance",
+      "assessment_id": "demo-profile-young-growth-v1",
+      "investor_profile": "aggressive",
+      "investor_profile_label": "공격투자형",
+      "total_score": 44,
+      "score_band": "41점 이상",
+      "scenario_name": "공격투자형 장기 성장",
+      "scenario_description": "긴 투자기간과 높은 손실감내도를 바탕으로 성장자산 비중을 높이되 DC 위험자산 70% 한도를 지키는 청년 고객",
+      "investment_reason": "은퇴까지 시간이 많이 남아 단기 변동을 감수하고 글로벌 성장주 ETF 비중을 높였습니다. DC는 70% 한도를 지키고 연금저축은 장기 성장에 더 집중했습니다.",
+      "portfolio_opinion_review": "RISE 미국반도체NYSE와 ACE AI반도체TOP3+는 AI 데이터센터 투자 확대와 반도체 공급망 재편 흐름을 보고 선택했습니다. 26년 투자기간을 활용해 변동을 감수하되, 산업 사이클과 특정 종목 집중 위험은 별도로 점검하고 있습니다.",
+      "representative_etf_isu_codes": ["469060", "469150"],
+      "representative_etf_theme": "AI 반도체·글로벌 공급망",
+      "representative_etf_theme_review": "생성형 AI 확산으로 데이터센터와 첨단 반도체 투자가 늘어나는 산업 흐름에 주목했습니다. 다만 국가별 공급망 정책과 반도체 업황 사이클에 따라 변동이 커질 수 있어 장기 보유 중에도 비중을 확인합니다.",
+      "portfolio_consistency_note": "DC는 일반 위험자산 70%, 연금저축은 90%로 장기 공격투자형의 차이를 계좌 규칙 안에서 표현한다.",
+      "financial_product_shares_percent": {"guaranteed": 10, "investment": 40, "loan": 0, "other": 50},
+      "answers": [
+        {"question_code": "q1_total_net_assets", "selected_option": "1억원 미만", "score": 1, "basis": "대표 고객 합성 가정"},
+        {"question_code": "q2_annual_income", "selected_option": "2천만원 이상~5천만원 미만", "score": 2, "basis": "총급여 38,810,000원"},
+        {"question_code": "q3_investment_product_share", "selected_option": "30~49%", "score": 4, "basis": "성장자산 중심 합성 가정"},
+        {"question_code": "q3_loan_product_share", "selected_option": "0~9%", "score": 1, "basis": "대출성 상품 비중 합성 가정"},
+        {"question_code": "q4_experienced_product", "selected_option": "초고위험 금융투자상품", "score": 6, "basis": "공격투자형 시연을 위한 합성 경험"},
+        {"question_code": "q4_experience_period", "selected_option": "3년 이상", "score": 5, "basis": "20대부터의 투자 경험 합성 가정"},
+        {"question_code": "q6_financial_knowledge", "selected_option": "파생상품을 포함한 대부분의 상품 구조와 위험 이해", "score": 5, "basis": "공격투자형 시연을 위한 합성 응답"},
+        {"question_code": "q7_investment_purpose", "selected_option": "자산증식", "score": 3, "basis": "장기 성장 목적"},
+        {"question_code": "q8_risk_attitude", "selected_option": "손실 위험이 있더라도 투자수익이 더 중요", "score": 5, "basis": "높은 손실감내"},
+        {"question_code": "q9_investment_horizon", "selected_option": "5년 이상", "score": 5, "basis": "은퇴 예정까지 26년"},
+        {"question_code": "q10_loss_tolerance", "selected_option": "원금 초과 손실 감수·시장수익률 초과 추구", "score": 7, "basis": "공격투자형 손실감내 합성 응답"}
+      ],
+      "non_scored_answers": {
+        "derivative_experience": "3년 이상",
+        "vulnerable_financial_consumer": false,
+        "assessment_validity_consent": true
+      },
+      "portfolio_allocations": {
+        "dc": {"domestic_equity": 20, "global_equity": 50, "bond": 20, "deposit": 5, "cash": 5},
+        "pension_savings": {"domestic_equity": 25, "global_equity": 65, "bond": 7, "cash": 3}
+      }
+    },
+    {
+      "scenario_code": "family_budget_pressure",
+      "assessment_id": "demo-profile-family-balance-v1",
+      "investor_profile": "risk_neutral",
+      "investor_profile_label": "위험중립형",
+      "total_score": 32,
+      "score_band": "25~32점",
+      "scenario_name": "위험중립형 가계균형",
+      "scenario_description": "자녀·주거비 지출과 노후 준비를 함께 고려해 성장자산과 방어자산을 비슷한 수준으로 나누는 중년 고객",
+      "investment_reason": "자녀와 주거비 지출이 커서 추가 납입은 IRP 중심으로 하고 있습니다. 연금자산은 주식·채권·현금을 나눠 성장과 생활비 부담을 함께 고려했습니다.",
+      "portfolio_opinion_review": "TIGER 미국배당다우존스와 SOL 금융지주플러스고배당은 생활비 지출이 큰 상황에서도 배당 중심 기업의 현금흐름을 이해하기 쉬워 대표 테마로 삼았습니다. 금리·경기 변화에 따라 금융주와 배당주의 성과가 달라질 수 있어 채권·현금 비중을 함께 유지했습니다.",
+      "representative_etf_isu_codes": ["458730", "484880"],
+      "representative_etf_theme": "미국·국내 고배당 현금흐름",
+      "representative_etf_theme_review": "가계지출로 추가 납입 여력이 제한돼 성장주만 좇기보다 미국 배당주와 국내 금융지주 고배당 테마를 대표 자산으로 골랐습니다. 금리 환경에 민감한 금융주 특성을 고려해 채권과 현금을 같이 보유합니다.",
+      "portfolio_consistency_note": "DC·IRP 일반 위험자산 45%, 연금저축 50%로 성장과 방어자산의 균형을 맞춘다.",
+      "financial_product_shares_percent": {"guaranteed": 20, "investment": 15, "loan": 40, "other": 25},
+      "answers": [
+        {"question_code": "q1_total_net_assets", "selected_option": "1억원 미만", "score": 1, "basis": "연금자산 88,660,000원과 대표 고객 합성 가정"},
+        {"question_code": "q2_annual_income", "selected_option": "5천만원 이상~7천만원 미만", "score": 3, "basis": "총급여 54,050,000원"},
+        {"question_code": "q3_investment_product_share", "selected_option": "10~19%", "score": 2, "basis": "가계지출 압박을 반영한 합성 가정"},
+        {"question_code": "q3_loan_product_share", "selected_option": "30~49%", "score": 4, "basis": "주거비 부담을 반영한 합성 가정"},
+        {"question_code": "q4_experienced_product", "selected_option": "혼합형펀드 등 중위험 상품", "score": 4, "basis": "중립투자 선호 합성 경험"},
+        {"question_code": "q4_experience_period", "selected_option": "1년 이상~3년 미만", "score": 3, "basis": "중년기 연금 운용 경험 합성 가정"},
+        {"question_code": "q6_financial_knowledge", "selected_option": "주식·채권·펀드 구조와 위험을 일정 부분 이해", "score": 3, "basis": "중립투자 선호"},
+        {"question_code": "q7_investment_purpose", "selected_option": "교육비", "score": 1, "basis": "자녀 지출 시나리오"},
+        {"question_code": "q8_risk_attitude", "selected_option": "원금 보존을 고려하나 투자수익이 더 중요", "score": 3, "basis": "위험중립형 태도"},
+        {"question_code": "q9_investment_horizon", "selected_option": "5년 이상", "score": 5, "basis": "은퇴 예정까지 13년"},
+        {"question_code": "q10_loss_tolerance", "selected_option": "원금 일부 손실·시중금리보다 높은 수익 기대", "score": 3, "basis": "위험중립형 손실감내 합성 응답"}
+      ],
+      "non_scored_answers": {
+        "derivative_experience": "없음",
+        "vulnerable_financial_consumer": false,
+        "assessment_validity_consent": true
+      },
+      "portfolio_allocations": {
+        "dc": {"domestic_equity": 20, "global_equity": 25, "bond": 25, "deposit": 20, "cash": 10},
+        "irp": {"domestic_equity": 15, "global_equity": 30, "bond": 25, "deposit": 15, "cash": 15},
+        "pension_savings": {"domestic_equity": 20, "global_equity": 30, "bond": 35, "cash": 15}
+      }
+    },
+    {
+      "scenario_code": "pension_payout_transition",
+      "assessment_id": "demo-profile-payout-stable-v1",
+      "investor_profile": "stable",
+      "investor_profile_label": "안정형",
+      "total_score": 16,
+      "score_band": "16점 이하",
+      "scenario_name": "안정형 연금 수령 전환",
+      "scenario_description": "연금 수령 단계에 들어가 투자수익 확대보다 인출 재원과 자산 변동 축소를 우선하는 시연 로그인 제외 고객",
+      "investment_reason": "연금 수령 단계라 수익 확대보다 현금흐름과 자산 변동 축소가 중요합니다. 주식 ETF는 제외하고 채권·원리금보장·현금성 자산으로 인출 재원을 준비했습니다.",
+      "portfolio_opinion_review": "ACE 종합채권(AA-이상)액티브와 RISE 종합채권(A-이상)액티브를 중심으로 두되 인출 재원을 모두 ETF에 두지 않고 원리금보장·현금과 나눴습니다. 금리 전환기에 채권 평가금액도 움직일 수 있어 5년 수령 준비기간에는 유동성을 더 중요하게 봤습니다.",
+      "representative_etf_isu_codes": ["356540", "385540"],
+      "representative_etf_theme": "우량 종합채권·연금 인출 안정",
+      "representative_etf_theme_review": "연금 수령을 앞두고 우량채권 ETF의 이자수익 기반과 가격 변동을 함께 살폈습니다. 시장금리 방향을 맞히기보다 현금성 자산을 별도로 두어 필요한 시점의 인출 재원을 확보했습니다.",
+      "portfolio_consistency_note": "일반 위험자산 0%로 안정형을 반영하며, 시연 로그인 후보에서는 제외하고 공개 포트폴리오 비교 대상으로만 유지한다.",
+      "financial_product_shares_percent": {"guaranteed": 70, "investment": 5, "loan": 0, "other": 25},
+      "answers": [
+        {"question_code": "q1_total_net_assets", "selected_option": "1억원 이상~5억원 미만", "score": 2, "basis": "연금자산 157,430,000원과 대표 고객 합성 가정"},
+        {"question_code": "q2_annual_income", "selected_option": "5천만원 이상~7천만원 미만", "score": 3, "basis": "종합소득금액 53,440,000원"},
+        {"question_code": "q3_investment_product_share", "selected_option": "0~9%", "score": 1, "basis": "수령 전환기 투자성 상품 비중"},
+        {"question_code": "q3_loan_product_share", "selected_option": "0~9%", "score": 1, "basis": "대출성 상품 비중 합성 가정"},
+        {"question_code": "q4_experienced_product", "selected_option": "국채·MMF 등 초저위험 상품", "score": 1, "basis": "수령 전환기 방어자산 경험"},
+        {"question_code": "q4_experience_period", "selected_option": "1년 미만", "score": 1, "basis": "현재 인출용 운용 구간 합성 응답"},
+        {"question_code": "q6_financial_knowledge", "selected_option": "주식·채권·펀드 구조와 위험을 일정 부분 이해", "score": 3, "basis": "증권자산 보유 경험"},
+        {"question_code": "q7_investment_purpose", "selected_option": "생활비", "score": 1, "basis": "연금 수령 목적"},
+        {"question_code": "q8_risk_attitude", "selected_option": "투자수익보다 원금 보존이 중요", "score": 1, "basis": "수령기 안정성 우선"},
+        {"question_code": "q9_investment_horizon", "selected_option": "1년 미만", "score": 1, "basis": "현재 인출 재원의 운용기간"},
+        {"question_code": "q10_loss_tolerance", "selected_option": "제한적 손실·시중금리 수준 수익 기대", "score": 1, "basis": "안정형 손실감내 합성 응답"}
+      ],
+      "non_scored_answers": {
+        "derivative_experience": "없음",
+        "vulnerable_financial_consumer": false,
+        "assessment_validity_consent": true
+      },
+      "portfolio_allocations": {
+        "irp": {"domestic_equity": 0, "global_equity": 0, "bond": 40, "deposit": 35, "cash": 25},
+        "pension_savings": {"domestic_equity": 0, "global_equity": 0, "bond": 60, "cash": 40}
+      }
+    }
+  ]
+}

@@ -43,6 +43,14 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .portfolio-summary-top h2 { margin: 8px 0 4px; font-size: 22px; }
 .portfolio-summary-top p { margin: 0; color: #6d7c74; font-size: 11px; line-height: 1.55; white-space: pre-line; }
 .portfolio-summary-top > strong { color: #12372a; font-size: 26px; letter-spacing: -.04em; }
+.peer-metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.peer-metric-grid > div { display: grid; gap: 3px; padding: 11px; border-radius: 13px; background: #f3f7f3; }
+.peer-metric-grid span { color: #718078; font-size: 9px; }
+.peer-metric-grid strong { color: #12372a; font-size: 18px; }
+.peer-metric-grid small { color: #87948d; font-size: 8px; line-height: 1.35; }
+.peer-metric-note { margin: 8px 0 0; color: #718078; font-size: 9px; line-height: 1.5; }
+.peer-metric-sources { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.peer-metric-sources span { padding: 4px 7px; border: 1px solid #d8e5dc; border-radius: 999px; background: #fff; color: #5f7168; font-size: 8px; }
 .mock-chip { display: inline-flex; padding: 4px 8px; border-radius: 999px; background: #fff1df; color: #9b5c1f; font-size: 9px; font-weight: 800; }
 .allocation-layout { display: grid; grid-template-columns: 132px 1fr; align-items: center; gap: 16px; margin-top: 22px; }
 .home-allocation-donut { position: relative; width: 132px; height: 132px; display: grid; place-items: center; border-radius: 50%; }
