@@ -2,15 +2,15 @@
 
 import "@testing-library/jest-dom/vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { sendChatStream, type ChatStreamResult } from "../api/client";
+import { sendAuthenticatedChatStream, type ChatStreamResult } from "../api/client";
 import type { ChatResponse } from "../api/types";
 import { useChatStream } from "./useChatStream";
 
 vi.mock("../api/client", async (importOriginal) => ({
   ...await importOriginal<typeof import("../api/client")>(),
-  sendChatStream: vi.fn(),
+  sendAuthenticatedChatStream: vi.fn(),
 }));
 
 const RESPONSE = {
@@ -19,10 +19,15 @@ const RESPONSE = {
 } as ChatResponse;
 
 describe("useChatStream", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("keeps the existing SSE callback sequence in stream state before committing the response", async () => {
     let complete!: (result: ChatStreamResult) => void;
-    vi.mocked(sendChatStream).mockImplementation(async (
+    vi.mocked(sendAuthenticatedChatStream).mockImplementation(async (
       _message,
+      _accessToken,
       onPhase,
       onAnswerDelta,
       onNarrationUpdate,
@@ -36,13 +41,12 @@ describe("useChatStream", () => {
     });
     const conversationGenerationRef = { current: 0 };
     const { result } = renderHook(() => useChatStream({
-      accessToken: undefined,
-      authenticatedUserId: null,
+      accessToken: "access-token",
+      authenticatedUserId: "user-1",
       activeSessionId: null,
       conversationContext: null,
       conversationGenerationRef,
       deletingSessionId: null,
-      pensionTaxInput: undefined,
       selectedScenario: "",
       surveyProfile: null,
       isCurrentOperation: () => true,
@@ -75,5 +79,41 @@ describe("useChatStream", () => {
         "최종 답변입니다.",
       ]);
     });
+  });
+
+  it("does not send an SSE request without a login session", async () => {
+    const onAuthenticatedError = vi.fn();
+    const { result } = renderHook(() => useChatStream({
+      accessToken: undefined,
+      authenticatedUserId: null,
+      activeSessionId: null,
+      conversationContext: null,
+      conversationGenerationRef: { current: 0 },
+      deletingSessionId: null,
+      selectedScenario: "",
+      surveyProfile: null,
+      isCurrentOperation: () => true,
+      onAuthenticatedError,
+      onConversationContext: vi.fn(),
+      onComplete: vi.fn(),
+      onInputClear: vi.fn(),
+      onPersistedSession: vi.fn(),
+      onServerReady: vi.fn(),
+      onStart: vi.fn(),
+      getAuthGeneration: () => 0,
+    }));
+
+    await act(async () => {
+      await result.current.submitPrompt("IRP 한도를 알려줘");
+    });
+
+    expect(sendAuthenticatedChatStream).not.toHaveBeenCalled();
+    expect(onAuthenticatedError).toHaveBeenCalledWith(
+      "로그인이 필요해요. 로그인 후 다시 질문해 주세요.",
+    );
+    expect(result.current.messages.map((message) => message.text)).toEqual([
+      "IRP 한도를 알려줘",
+      "로그인이 필요해요. 로그인 후 다시 질문해 주세요.",
+    ]);
   });
 });

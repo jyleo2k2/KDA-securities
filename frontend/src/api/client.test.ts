@@ -5,7 +5,7 @@ import {
   apiErrorMessage,
   deleteChatSession,
   getBenchmarkSummary,
-  sendChatStream,
+  sendAuthenticatedChatStream,
 } from "./client";
 
 
@@ -27,8 +27,9 @@ describe("chat SSE parser", () => {
     });
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body)));
 
-    await expect(sendChatStream(
+    await expect(sendAuthenticatedChatStream(
       "IRP 한도를 알려줘",
+      "access-token",
       () => undefined,
       () => undefined,
       () => undefined,
@@ -54,8 +55,9 @@ describe("chat SSE parser", () => {
     const deltas: string[] = [];
     const replacements: string[] = [];
 
-    const result = await sendChatStream(
+    const result = await sendAuthenticatedChatStream(
       "IRP 한도를 알려줘",
+      "access-token",
       () => undefined,
       (delta) => deltas.push(delta),
       (answer) => replacements.push(answer),
@@ -79,26 +81,33 @@ describe("chat SSE parser", () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(body));
     vi.stubGlobal("fetch", fetchMock);
 
-    await sendChatStream(
+    await sendAuthenticatedChatStream(
       "현재 보유 ETF를 점검해줘",
+      "access-token",
       () => undefined,
       () => undefined,
       () => undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
       {
-        educationalPortfolio: {
-          account_type: "irp",
-          age: 35,
-          retirement_start_age: 60,
-          risk_profile: "risk_neutral",
-          loss_tolerance_percent: "20",
-          max_etfs: 7,
-          current_holdings: [{ isu_code: "069500", amount_krw: "10000000" }],
-          new_contribution_krw: "1000000",
-        },
+        account_type: "irp",
+        age: 35,
+        retirement_start_age: 60,
+        risk_profile: "risk_neutral",
+        loss_tolerance_percent: "20",
+        max_etfs: 7,
+        current_holdings: [{ isu_code: "069500", amount_krw: "10000000" }],
+        new_contribution_krw: "1000000",
       },
     );
 
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("http://127.0.0.1:8000/chat/stream");
+    expect(request.headers).toMatchObject({ Authorization: "Bearer access-token" });
     expect(JSON.parse(request.body as string)).toMatchObject({
       educational_portfolio: {
         account_type: "irp",

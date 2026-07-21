@@ -206,16 +206,16 @@ export function getBenchmarkSummary(): Promise<BenchmarkSummary> {
   return apiGet("/benchmark/summary");
 }
 
-export function getScenarios(): Promise<ScenarioSummary[]> {
-  return apiGet("/chat/demo/scenarios");
+export function getScenarios(accessToken: string): Promise<ScenarioSummary[]> {
+  return apiGet("/chat/scenarios", accessToken);
 }
 
 export function getChatCards(): Promise<ChatCardCatalog> {
   return apiGet("/chat/cards");
 }
 
-export function getDemoHeroes(): Promise<DemoHeroPortfolio[]> {
-  return apiGet("/chat/demo/heroes");
+export function getDemoHeroes(accessToken: string): Promise<DemoHeroPortfolio[]> {
+  return apiGet("/chat/heroes", accessToken);
 }
 
 export function getAccountLinkOptions(): Promise<AccountLinkOptionsResponse> {
@@ -253,22 +253,6 @@ function buildChatBody(message: string, options?: ChatBodyOptions) {
       ? { educational_portfolio: options.educationalPortfolio }
       : {}),
   };
-}
-
-export function sendChatStream(
-  message: string,
-  onPhase: (message: string) => void,
-  onAnswerDelta: (delta: string) => void,
-  onNarrationUpdate: (answer: string) => void,
-  options?: ChatBodyOptions,
-): Promise<ChatStreamResult> {
-  return apiPostStream(
-    "/chat/demo/stream",
-    buildChatBody(message, options),
-    onPhase,
-    onAnswerDelta,
-    onNarrationUpdate,
-  );
 }
 
 export function sendAuthenticatedChatStream(

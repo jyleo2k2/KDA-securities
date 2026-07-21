@@ -804,7 +804,6 @@ export function GuidePage({
     conversationContext,
     conversationGenerationRef,
     deletingSessionId,
-    pensionTaxInput,
     selectedScenario,
     surveyProfile,
     isCurrentOperation,
@@ -838,7 +837,10 @@ export function GuidePage({
     let retryTimer: number | undefined;
 
     const check = () => {
-      Promise.all([getScenarios(), getChatCards()])
+      Promise.all([
+        accessToken ? getScenarios(accessToken) : Promise.resolve([]),
+        getChatCards(),
+      ])
         .then(([scenarioData, catalog]) => {
           if (cancelled) return;
           setScenarios(scenarioData);
@@ -857,7 +859,7 @@ export function GuidePage({
       cancelled = true;
       window.clearTimeout(retryTimer);
     };
-  }, []);
+  }, [accessToken]);
 
   useEffect(() => {
     const previousAuth = previousAuthRef.current;

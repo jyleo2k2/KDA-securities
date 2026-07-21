@@ -77,7 +77,7 @@ export default function App(): JSX.Element {
     if (userChanged) { clearUserStorage(); setSurveyProfile(null); setSelectedScenarioCode(""); }
     if (!accessToken) { setCurrentUserData({ context: null, hero: null, loading: false, error: null }); return; }
     setCurrentUserData({ context: null, hero: null, loading: true, error: null });
-    void Promise.all([getMyPensionContext(accessToken), getDemoHeroes()])
+    void Promise.all([getMyPensionContext(accessToken), getDemoHeroes(accessToken)])
       .then(([context, heroes]) => {
         if (userLoadGenerationRef.current !== generation) return;
         const hero = heroes.find((item) => item.scenario_code === context.scenario_code) ?? null;
