@@ -1,5 +1,6 @@
 """Read-only API for official KRX ETF daily volume snapshots."""
 
+import logging
 from datetime import date
 from decimal import Decimal
 from typing import Annotated, Literal
@@ -17,6 +18,7 @@ from ..ingestion.krx_client import KRX_ETF_DAILY_ENDPOINT
 from .deps import get_etf_market_repository
 
 router = APIRouter(tags=["market"])
+logger = logging.getLogger(__name__)
 
 KRX_ETF_SOURCE_LABEL = "한국거래소 ETF 일별매매정보"
 
@@ -118,9 +120,10 @@ def etf_volume_history(
             limit=limit,
         )
     except KeyError as exc:
+        logger.warning("etf_volume_history_not_found isu_code=%s", isu_code)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
+            detail="Requested ETF volume history was not found",
         ) from exc
     except psycopg.Error as exc:
         raise HTTPException(

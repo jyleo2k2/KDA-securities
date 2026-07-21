@@ -5,6 +5,7 @@ Except for the audited risk-cap path, nothing here authenticates or writes to
 the database.
 """
 
+import logging
 from typing import Annotated
 from uuid import UUID
 
@@ -64,6 +65,7 @@ from .deps import (
 )
 
 router = APIRouter(tags=["engine"])
+logger = logging.getLogger(__name__)
 
 
 class AuditedRiskCapResponse(BaseModel):
@@ -78,7 +80,11 @@ def risk_cap(portfolio: PortfolioInput) -> RiskCapEvaluation:
     return evaluate_risk_cap(portfolio)
 
 
-@router.post("/engine/risk-cap/audited", response_model=AuditedRiskCapResponse)
+@router.post(
+    "/engine/risk-cap/audited",
+    response_model=AuditedRiskCapResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def risk_cap_audited(
     portfolio: PortfolioInput,
     owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
@@ -113,9 +119,12 @@ def etf_planning_assessment(
     try:
         product = repository.get(assumption.etf_code)
     except KeyError as exc:
+        logger.warning(
+            "krx_evidence_etf_not_found etf_code=%s", assumption.etf_code
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
+            detail="Requested ETF is not in the KRX evidence universe",
         ) from exc
     return assess_etf_with_krx_evidence(
         assumption,
