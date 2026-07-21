@@ -65,6 +65,8 @@ const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   out_of_scope: "지원 범위 안내",
 };
 
+const NUMBER_EVIDENCE_DEFAULT_LIMIT = 6;
+
 const BOUNDARY_LABELS: Record<DataBoundary, string> = {
   verified_knowledge: "검증 지식",
   official_disclosure: "공식 공시",
@@ -438,12 +440,19 @@ function AssistantMessage({
   usedFollowUpMessages: ReadonlySet<string>;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [allNumericEvidenceOpen, setAllNumericEvidenceOpen] = useState(false);
 
   if (!response) return <p className="message-copy">{text}</p>;
 
   const visibleFollowUps = (response.suggested_follow_ups ?? []).filter(
     (followUp) => !usedFollowUpMessages.has(followUp.message.trim()),
   );
+  const hasHiddenNumericEvidence = (
+    response.numeric_evidence.length > NUMBER_EVIDENCE_DEFAULT_LIMIT
+  );
+  const displayedNumericEvidence = allNumericEvidenceOpen
+    ? response.numeric_evidence
+    : response.numeric_evidence.slice(0, NUMBER_EVIDENCE_DEFAULT_LIMIT);
   const followUpCards = visibleFollowUps.length > 0 ? (
     <div className="follow-up-cards" aria-label="이어서 물어보기">
       {visibleFollowUps.map((followUp) => (
@@ -478,15 +487,32 @@ function AssistantMessage({
       <MacroRegimeOutcomeCards response={response} />
 
       {response.intent !== "mock_portfolio" && response.intent !== "macro_evidence" && response.numeric_evidence.length > 0 && (
-        <div className="number-grid" aria-label="수치 근거">
-          {response.numeric_evidence.map((item, index) => (
-            <div className="number-card" key={`${item.evidence_id}-${index}`}>
-              <span>{item.label}</span>
-              <strong>{numericText(item.value, item.unit)}</strong>
-              <small>{item.basis}</small>
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="number-grid" aria-label="수치 근거">
+            {displayedNumericEvidence.map((item, index) => (
+              <div className="number-card" key={`${item.evidence_id}-${index}`}>
+                <span>{item.label}</span>
+                <strong>{numericText(item.value, item.unit)}</strong>
+                <small>{item.basis}</small>
+              </div>
+            ))}
+          </div>
+          {hasHiddenNumericEvidence && (
+            <button
+              className="evidence-toggle number-evidence-toggle"
+              type="button"
+              onClick={() => setAllNumericEvidenceOpen((value) => !value)}
+              aria-expanded={allNumericEvidenceOpen}
+            >
+              <span>
+                {allNumericEvidenceOpen
+                  ? "숫자 근거 접기"
+                  : `숫자 근거 전체 ${response.numeric_evidence.length}개 보기`}
+              </span>
+              <Icon name="chevron" size={16} />
+            </button>
+          )}
+        </>
       )}
 
       <EducationalPortfolioReview evaluation={response.educational_portfolio_evaluation} />

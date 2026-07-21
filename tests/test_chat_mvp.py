@@ -30,6 +30,7 @@ from backend.app.chat.models import (
     extract_numeric_claims,
 )
 from backend.app.chat.narrator import (
+    NARRATION_CACHE_VERSION,
     SYSTEM_PROMPT,
     ClaudeNarrator,
     _adds_unverified_content,
@@ -564,6 +565,7 @@ def test_narrator_prompt_requires_conclusion_first_heyoche() -> None:
     assert "반말" not in SYSTEM_PROMPT
     assert "같이 살펴보자" not in SYSTEM_PROMPT
     assert "같이 살펴봐요" in SYSTEM_PROMPT
+    assert "본문은 두세 문장, 최대 네 문장" in SYSTEM_PROMPT
 
 
 def test_disclosure_comparison_uses_only_repository_numbers() -> None:
@@ -1307,6 +1309,34 @@ def test_narration_cache_ignores_corrupted_json(tmp_path, content) -> None:
     )
 
     assert narrator._cache_lookup("missing") is None
+
+
+def test_narration_cache_ignores_prior_prompt_version(tmp_path) -> None:
+    cache_path = tmp_path / "narration_cache.json"
+    cache_path.write_text(
+        json.dumps(
+            {
+                "version": NARRATION_CACHE_VERSION - 1,
+                "entries": [
+                    {
+                        "key": "prior-style",
+                        "narration": "이전 스타일 내레이션",
+                        "reasoning": None,
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=cache_path,
+    )
+
+    assert narrator._cache_lookup("prior-style") is None
 
 
 def test_narration_precompute_uses_a_throwaway_narrator(monkeypatch) -> None:
