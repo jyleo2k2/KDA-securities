@@ -41,7 +41,8 @@ function pensionContextErrorMessage(error: unknown): string {
 
 export default function App(): JSX.Element {
   const auth = useSupabaseAuth();
-  const [activeRoute, setActiveRoute] = useState<AppRoute>(routeFromHash);
+  // 새로 앱을 열면 저장된 세션·마지막 해시와 관계없이 로그인 화면부터 시작한다.
+  const [activeRoute, setActiveRoute] = useState<AppRoute>("login");
   const [loginSuccessPending, setLoginSuccessPending] = useState(false);
   const [surveyProfile, setSurveyProfile] = useState<CompletedSurveyProfile | null>(() => {
     const stored = window.localStorage.getItem("pension-copilot:survey-profile");
@@ -94,7 +95,7 @@ export default function App(): JSX.Element {
   async function handleSignOut(): Promise<void> { userLoadGenerationRef.current += 1; clearUserStorage(); setSurveyProfile(null); setSelectedScenarioCode(""); setCurrentUserData({ context: null, hero: null, loading: false, error: null }); setLoginSuccessPending(false); setActiveRoute("login"); window.history.replaceState(null, "", "#login"); await auth.signOut(); }
 
   if (auth.loading) return <main className="app-auth-loading" aria-label="로그인 상태 확인 중" />;
-  if (auth.configured && (!auth.session || loginSuccessPending)) return <LoginFlowPage auth={auth} onAuthenticated={() => setLoginSuccessPending(true)} onStart={goToMainHome} />;
+  if (activeRoute === "login" || (auth.configured && loginSuccessPending)) return <LoginFlowPage auth={auth} onAuthenticated={() => setLoginSuccessPending(true)} onStart={goToMainHome} />;
   const resolvedRoute = !auth.configured && activeRoute === "login" ? "home" : activeRoute;
   const activeTab: TabKey = resolvedRoute === "login" || resolvedRoute === "main-home" ? "home" : resolvedRoute;
   const CardPage = CARD_PAGES[activeTab];
