@@ -40,6 +40,7 @@ from .handlers.account_rules import blocked_response, handle_account_rule
 from .handlers.disclosures_news import (
     disclosure_response,
     event_strategy_response,
+    live_news_response,
     news_follow_up_response,
     news_response,
 )
@@ -363,9 +364,20 @@ class ChatService:
                             search_query=resolved_plan.news_query,
                             max_results=resolved_plan.max_results,
                             preferred_topics=preferred_news_topics,
+                            scope_notice=resolved_plan.news_scope_notice,
                             live_news=self._live_news,
                             news=self._news,
                             theme_repository=self._theme_repository,
+                        )
+                    elif resolved_plan.requests_live_news:
+                        response = live_news_response(
+                            request,
+                            search_query=resolved_plan.news_query,
+                            max_results=resolved_plan.max_results,
+                            preferred_topics=preferred_news_topics,
+                            scope_notice=resolved_plan.news_scope_notice,
+                            live_news=self._live_news,
+                            news=self._news,
                         )
                     else:
                         response = news_response(
@@ -374,6 +386,7 @@ class ChatService:
                             max_results=resolved_plan.max_results,
                             exclude_item_ids=exclude_item_ids,
                             preferred_topics=preferred_news_topics,
+                            scope_notice=resolved_plan.news_scope_notice,
                             news=self._news,
                         )
             elif resolved_plan.intent == ChatIntent.MACRO_EVIDENCE:

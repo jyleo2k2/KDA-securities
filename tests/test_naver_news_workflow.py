@@ -16,3 +16,5 @@ def test_daily_news_workflow_runs_atomic_market_news_pipeline() -> None:
     assert "ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}" in workflow
     assert "uv sync --locked --group embeddings" in workflow
     assert "NEWS_SUMMARY_PROMPT_VERSION: news-summary-v2" in workflow
+    assert "steps.market_news.outputs.result).held_for_full_batch" in workflow
+    assert "::warning::Market-news rotation is holding new articles" in workflow

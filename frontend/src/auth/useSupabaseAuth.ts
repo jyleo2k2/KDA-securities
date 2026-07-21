@@ -61,8 +61,8 @@ export function useSupabaseAuth(): SupabaseAuthState {
       password,
     });
     if (signInError) {
-      setError("이메일 또는 비밀번호를 확인해 주세요.");
-      throw new Error("이메일 또는 비밀번호를 확인해 주세요.");
+      setError("아이디 또는 비밀번호를 확인해 주세요.");
+      throw new Error("아이디 또는 비밀번호를 확인해 주세요.");
     }
   }, []);
 

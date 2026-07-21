@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "data_boundary": "mock",
+  "notice": "과거 수익률은 1만 명 기준 고객의 계좌별 2025년 합성 수익률을 계좌잔액으로 가중한 시연 참고값이며 미래 성과 예측이나 공식 랭킹 산식이 아니다. 좋아요 수는 수익률과 무관하게 배정한 합성 참여지표다.",
+  "return_metric": {
+    "metric_code": "balance_weighted_trailing_12m_mock_return",
+    "label": "과거 12개월 계좌잔액 가중 합성수익률",
+    "calculation_basis": "Σ(계좌잔액×계좌 과거 12개월 수익률)÷총 계좌잔액",
+    "source_label": "data/mock/accounts.csv 합성 계좌 수익률",
+    "data_kind": "MOCK",
+    "is_forecast": false,
+    "official_ranking_metric": false
+  },
+  "like_metric": {
+    "metric_code": "synthetic_demo_like_count",
+    "label": "추천(좋아요)",
+    "as_of_date": "2026-07-21",
+    "data_kind": "MOCK",
+    "is_synthetic": true,
+    "performance_based": false
+  },
+  "profiles": [
+    {
+      "scenario_code": "dc_dormant",
+      "benchmark_user_id": "USR09660",
+      "portfolio_trailing_12m_return_pct": "7.72",
+      "return_period_start": "2025-01-01",
+      "return_period_end": "2025-12-31",
+      "like_count": 126
+    },
+    {
+      "scenario_code": "tax_contribution_uninvested",
+      "benchmark_user_id": "USR00540",
+      "portfolio_trailing_12m_return_pct": "11.20",
+      "return_period_start": "2025-01-01",
+      "return_period_end": "2025-12-31",
+      "like_count": 284
+    },
+    {
+      "scenario_code": "overlap_risk_concentration",
+      "benchmark_user_id": "USR03419",
+      "portfolio_trailing_12m_return_pct": "11.16",
+      "return_period_start": "2025-01-01",
+      "return_period_end": "2025-12-31",
+      "like_count": 173
+    },
+    {
+      "scenario_code": "young_retirement_distance",
+      "benchmark_user_id": "USR08633",
+      "portfolio_trailing_12m_return_pct": "0.74",
+      "return_period_start": "2025-01-01",
+      "return_period_end": "2025-12-31",
+      "like_count": 412
+    },
+    {
+      "scenario_code": "family_budget_pressure",
+      "benchmark_user_id": "USR00109",
+      "portfolio_trailing_12m_return_pct": "12.79",
+      "return_period_start": "2025-01-01",
+      "return_period_end": "2025-12-31",
+      "like_count": 358
+    },
+    {
+      "scenario_code": "pension_payout_transition",
+      "benchmark_user_id": "USR08609",
+      "portfolio_trailing_12m_return_pct": "4.69",
+      "return_period_start": "2025-01-01",
+      "return_period_end": "2025-12-31",
+      "like_count": 97
+    }
+  ]
+}

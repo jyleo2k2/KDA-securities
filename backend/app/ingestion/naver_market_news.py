@@ -73,6 +73,8 @@ def run_market_news_ingestion(
     prompt_version: str,
     now: datetime | None = None,
     display: int = 50,
+    max_pages: int = 1,
+    window_start: datetime | None = None,
 ) -> dict[str, Any]:
     if not all(
         value.strip()
@@ -88,38 +90,75 @@ def run_market_news_ingestion(
         raise ValueError("all market-news configuration values are required")
     if not 1 <= display <= 100:
         raise ValueError("display must be between 1 and 100")
+    if not 1 <= max_pages <= 10:
+        raise ValueError("max_pages must be between 1 and 10")
     reference_time = now or datetime.now(UTC)
     if reference_time.tzinfo is None:
         raise ValueError("now must be timezone-aware")
+    if window_start is not None:
+        if window_start.tzinfo is None:
+            raise ValueError("window_start must be timezone-aware")
+        if not window_start < reference_time:
+            raise ValueError("window_start must be before now")
+        if reference_time - window_start > timedelta(hours=24):
+            raise ValueError("market-news windows cannot exceed 24 hours")
 
     repository = NaverNewsRepository(database_url)
     run_id: UUID | None = None
     try:
         run_id, source_id = repository.start_market_run(
-            queries=tuple(query.query for query in MARKET_QUERIES)
+            queries=tuple(query.query for query in MARKET_QUERIES),
+            max_age_hours=24,
+            max_pages=max_pages,
+            window_end=reference_time if window_start is not None else None,
         )
         raw_record_count = 0
         api_rejections = 0
         candidates: list[MarketNewsCandidate] = []
         with httpx.Client(timeout=30.0, trust_env=False) as client:
             for query in MARKET_QUERIES:
-                response = fetch_naver_news(
-                    client,
-                    client_id=client_id,
-                    client_secret=client_secret,
-                    query=query.query,
-                    display=display,
-                    start=1,
-                    sort="date",
-                )
-                raw_record_count += response.raw_item_count
-                api_rejections += response.rejected_count
-                for item in response.items:
-                    if item.published_at < reference_time - timedelta(hours=24):
-                        continue
-                    candidate = build_candidate(item, query, now=reference_time)
-                    if candidate is not None:
-                        candidates.append(candidate)
+                current_start = 1
+                for _ in range(max_pages):
+                    response = fetch_naver_news(
+                        client,
+                        client_id=client_id,
+                        client_secret=client_secret,
+                        query=query.query,
+                        display=display,
+                        start=current_start,
+                        sort="date",
+                    )
+                    raw_record_count += response.raw_item_count
+                    api_rejections += response.rejected_count
+                    for item in response.items:
+                        if window_start is None:
+                            in_window = item.published_at >= reference_time - timedelta(
+                                hours=24
+                            )
+                        else:
+                            in_window = (
+                                window_start
+                                <= item.published_at
+                                < reference_time
+                            )
+                        if not in_window:
+                            continue
+                        candidate = build_candidate(item, query, now=reference_time)
+                        if candidate is not None:
+                            candidates.append(candidate)
+
+                    next_start = current_start + display
+                    reached_window_start = window_start is not None and any(
+                        item.published_at < window_start for item in response.items
+                    )
+                    if (
+                        reached_window_start
+                        or response.raw_item_count < display
+                        or next_start > 1000
+                        or next_start > response.total
+                    ):
+                        break
+                    current_start = next_start
 
             candidates = _unique_candidates(candidates)
             identities = repository.load_market_identities()
