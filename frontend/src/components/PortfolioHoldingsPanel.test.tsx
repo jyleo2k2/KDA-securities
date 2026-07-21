@@ -230,5 +230,32 @@ describe("EducationalPortfolioReview", () => {
       },
     }} />);
     expect(screen.getByText(/공통 일간 수익률이 60개 미만/)).toBeInTheDocument();
+
+    rerender(<EducationalPortfolioReview evaluation={{
+      ...evaluation,
+      strategy_label: "balanced_core_satellite",
+      portfolio_risk: {
+        ...evaluation.portfolio_risk,
+        stress_scenarios: [{
+          ...evaluation.portfolio_risk.stress_scenarios[0],
+          scenario_code: "unmapped_market_shock",
+        }],
+      },
+      rebalancing: {
+        ...evaluation.rebalancing,
+        sleeves: [{
+          ...evaluation.rebalancing.sleeves[0],
+          sleeve: "unmapped_sleeve",
+          status: "unmapped_status",
+        }],
+      },
+    }} />);
+    expect(screen.getByText(/코어·위성 전략/)).toBeInTheDocument();
+    expect(screen.getByText("기타 시장 충격")).toBeInTheDocument();
+    expect(screen.getByText("기타 자산군")).toBeInTheDocument();
+    expect(screen.getByText("추가 점검 필요")).toBeInTheDocument();
+    expect(screen.queryByText("unmapped_market_shock")).not.toBeInTheDocument();
+    expect(screen.queryByText("unmapped_sleeve")).not.toBeInTheDocument();
+    expect(screen.queryByText("unmapped_status")).not.toBeInTheDocument();
   });
 });

@@ -19,6 +19,7 @@ from ._shared import (
     _ACCOUNT_TYPE_LABELS,
     _ASSET_CLASS_LABELS,
     _SLEEVE_LABELS,
+    _STRESS_SCENARIO_LABELS,
     _one_decimal,
 )
 
@@ -198,7 +199,10 @@ def attach_visualizations(response: ChatResponse) -> ChatResponse:
                     evidence_ids=[evidence_id],
                     items=[
                         VisualizationDatum(
-                            label=stress.scenario_code,
+                            label=_STRESS_SCENARIO_LABELS.get(
+                                stress.scenario_code,
+                                "기타 시장 충격",
+                            ),
                             value=_one_decimal(stress.estimated_loss_percent),
                             unit="%",
                             role=VisualizationDatumRole.VALUE,

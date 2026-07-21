@@ -29,6 +29,7 @@ from ..news_event_strategy import (
 )
 from ..routing import NewsFollowUp, NewsFollowUpAction
 from ._shared import (
+    _ACCOUNT_TYPE_LABELS,
     _RISK_PROFILE_RANKS,
     DisclosureSearch,
     LiveNewsSearch,
@@ -80,7 +81,7 @@ def disclosure_response(
         sources.append(
             SourceEvidence(
                 evidence_id=evidence_id,
-                label=f"FSS {row.account_type.value} 사업자 공시",
+                label=f"FSS {_ACCOUNT_TYPE_LABELS[row.account_type]} 사업자 공시",
                 locator=row.source_locator,
                 publisher="금융감독원 통합연금포털",
                 as_of=row.period_end,

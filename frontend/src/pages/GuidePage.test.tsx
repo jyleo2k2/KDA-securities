@@ -321,7 +321,7 @@ describe("GuidePage chat history deletion", () => {
     const composer = screen.getByLabelText("질문 입력");
     fireEvent.change(composer, { target: { value: "첫 질문" } });
     fireEvent.submit(composer.closest("form")!);
-    await screen.findAllByText("전송 실패");
+    await screen.findAllByText("요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     const retryButton = screen.getByRole("button", { name: /다시 시도/ });
 
     fireEvent.click(screen.getByRole("button", { name: "대화 삭제: IRP 규칙" }));
@@ -500,7 +500,7 @@ describe("GuidePage chat history deletion", () => {
       session_id: null,
       response,
     } as Awaited<ReturnType<typeof sendAuthenticatedChatStream>>);
-    render(<GuidePage surveyProfile={null} />);
+    renderGuide();
 
     fireEvent.click(await screen.findByRole("button", { name: /오늘 증시 뉴스/ }));
 

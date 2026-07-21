@@ -19,6 +19,7 @@ const riskLabels: Record<string, string> = {
   STABLE: "안정형",
   RISK_NEUTRAL: "위험중립형",
   ACTIVE: "적극투자형",
+  AGGRESSIVE: "공격투자형",
 };
 
 const accountLabels: Record<string, string> = {
@@ -46,7 +47,7 @@ function Distribution({
         return (
           <div key={item.code}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span>{labels[item.code] ?? item.code}</span>
+              <span title={item.code}>{labels[item.code] ?? "기타 분류"}</span>
               <span style={{ color: "#586174", fontWeight: 700 }}>
                 {item.count.toLocaleString("ko-KR")}명 · {percent.toFixed(1)}%
               </span>
@@ -64,7 +65,7 @@ function Distribution({
 function AccountStat({ stat }: { stat: BenchmarkAccountTypeStat }) {
   return (
     <article style={{ border: "1px solid #dce5f3", borderRadius: 16, padding: 18, background: "#fff" }}>
-      <h3 style={{ margin: 0, fontSize: 16 }}>{accountLabels[stat.account_type] ?? stat.account_type}</h3>
+      <h3 style={{ margin: 0, fontSize: 16 }} title={stat.account_type}>{accountLabels[stat.account_type] ?? "기타 연금계좌"}</h3>
       <p style={{ color: "#596579", margin: "8px 0 16px" }}>{stat.account_count.toLocaleString("ko-KR")}개 계좌 기준</p>
       <dl style={{ margin: 0, display: "grid", gap: 10 }}>
         <div><dt style={{ color: "#69758a", fontSize: 13 }}>평균 잔액</dt><dd style={{ margin: "3px 0 0", fontWeight: 800 }}>{formatWon(stat.mean_balance_krw)}</dd></div>

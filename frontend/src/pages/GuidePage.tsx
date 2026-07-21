@@ -357,6 +357,14 @@ const REGIME_GAP_LABELS: Record<string, string> = {
   outcome_window_incomplete: "관측 구간 부족",
 };
 
+const SCENARIO_RISK_PROFILE_LABELS: Record<string, string> = {
+  stable: "안정형",
+  stable_seeking: "안정추구형",
+  risk_neutral: "위험중립형",
+  active: "적극투자형",
+  aggressive: "공격투자형",
+};
+
 function regimeMonth(value: string): string {
   const [year, month] = value.split("-");
   return `${year}년 ${Number(month)}월`;
@@ -407,7 +415,7 @@ function MacroRegimeOutcomeCards({ response }: { response: ChatResponse }) {
                       <div className="unavailable" key={`gap-${gap.horizon_months}`}>
                         <span>{gap.horizon_months}개월</span>
                         <strong>관측 부족</strong>
-                        <small>{REGIME_GAP_LABELS[gap.reason] ?? gap.reason}</small>
+                        <small title={gap.reason}>{REGIME_GAP_LABELS[gap.reason] ?? "기타 관측 제한"}</small>
                       </div>
                     ))}
                   </div>
@@ -593,7 +601,7 @@ function authenticatedErrorMessage(error: unknown): string {
   if (error instanceof ApiError && error.status === 503) {
     return "대화 저장소에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.";
   }
-  return error instanceof Error ? error.message : "요청을 처리하지 못했습니다.";
+  return "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
 }
 
 export function GuidePage({
@@ -1193,7 +1201,7 @@ export function GuidePage({
             {scenarios.map((scenario) => (
               <button className={selectedScenario === scenario.code ? "active" : ""} type="button" key={scenario.code} onClick={() => { setSelectedScenario(scenario.code); setIsSidebarOpen(false); }}>
                 <span className="scenario-icon"><Icon name="database" size={17} /></span>
-                <span><strong>{scenario.name}</strong><small>{scenario.age_band} · {scenario.investment_horizon_years}년 · {scenario.risk_profile}</small></span>
+                <span><strong>{scenario.name}</strong><small title={scenario.risk_profile}>{scenario.age_band} · {scenario.investment_horizon_years}년 · {SCENARIO_RISK_PROFILE_LABELS[scenario.risk_profile] ?? "기타 투자성향"}</small></span>
               </button>
             ))}
             </div>
