@@ -4,6 +4,7 @@ import { TabBar, type TabKey } from "./components/TabBar";
 import { BenchmarkPage } from "./pages/BenchmarkPage";
 import { GuidePage } from "./pages/GuidePage";
 import { HomePage } from "./pages/HomePage";
+import { LoginFlowPage } from "./pages/LoginFlowPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import type { CompletedSurveyProfile } from "./api/types";
 
@@ -15,14 +16,16 @@ const CARD_PAGES: Partial<Record<TabKey, () => JSX.Element>> = {
 
 const TAB_KEYS: readonly TabKey[] = ["home", "guide", "benchmark", "profile"];
 const SURVEY_PROFILE_VERSION = "completed-survey-v1";
+type AppRoute = TabKey | "login";
 
-function tabFromHash(): TabKey {
-  const candidate = window.location.hash.slice(1) as TabKey;
-  return TAB_KEYS.includes(candidate) ? candidate : "home";
+function routeFromHash(): AppRoute {
+  const candidate = window.location.hash.slice(1) as AppRoute;
+  if (candidate === "login") return "login";
+  return TAB_KEYS.includes(candidate as TabKey) ? candidate : "login";
 }
 
 export default function App(): JSX.Element {
-  const [activeTab, setActiveTab] = useState<TabKey>(tabFromHash);
+  const [activeRoute, setActiveRoute] = useState<AppRoute>(routeFromHash);
   const [surveyProfile, setSurveyProfile] = useState<CompletedSurveyProfile | null>(
     () => {
       const stored = window.localStorage.getItem("pension-copilot:survey-profile");
@@ -44,16 +47,17 @@ export default function App(): JSX.Element {
   const [selectedScenarioCode, setSelectedScenarioCode] = useState(
     () => window.localStorage.getItem("pension-copilot:selected-scenario") ?? "",
   );
+  const activeTab = activeRoute === "login" ? "home" : activeRoute;
   const CardPage = CARD_PAGES[activeTab];
 
   useEffect(() => {
-    const syncTabFromHash = () => setActiveTab(tabFromHash());
-    window.addEventListener("hashchange", syncTabFromHash);
-    return () => window.removeEventListener("hashchange", syncTabFromHash);
+    const syncRouteFromHash = () => setActiveRoute(routeFromHash());
+    window.addEventListener("hashchange", syncRouteFromHash);
+    return () => window.removeEventListener("hashchange", syncRouteFromHash);
   }, []);
 
   function changeTab(tab: TabKey): void {
-    setActiveTab(tab);
+    setActiveRoute(tab);
     window.history.replaceState(null, "", `#${tab}`);
   }
 
@@ -78,7 +82,9 @@ export default function App(): JSX.Element {
 
   return (
     <>
-      {activeTab === "guide" ? (
+      {activeRoute === "login" ? (
+        <LoginFlowPage onStart={() => changeTab("home")} />
+      ) : activeTab === "guide" ? (
         // 챗 화면은 자체 레이아웃(app-shell)을 쓰므로 풀블리드로 렌더한다.
         <div className="guide-tab">
           <GuidePage
@@ -105,7 +111,7 @@ export default function App(): JSX.Element {
           </main>
         </div>
       )}
-      <TabBar activeTab={activeTab} onChange={changeTab} />
+      {activeRoute !== "login" && <TabBar activeTab={activeTab} onChange={changeTab} />}
     </>
   );
 }
