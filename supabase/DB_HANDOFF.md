@@ -305,6 +305,24 @@ uv run ruff check .
 
 ## 14. 작업 로그
 
+### 2026-07-21 KST KIS ETF 구성종목 빈 응답 신뢰성 보강
+
+- 원인 재확인: 기존 최신 스냅샷 861개 중 정상 상세 227개·빈 상세 634개였고, 빈 응답 634개 모두 KIS 성공 코드였다. 이 중 633개는 `output1.etf_cnfg_issu_cnt`가 양수인데 `output2`만 비어 있어 정상 무구성 상품이 아니라 상세 누락이었다.
+- 로컬 변경: 양수 구성종목 수+빈 상세를 임시 누락으로 판정해 최대 3회 재시도하고, 소진 시 run을 `partial`로 표시하며 CLI를 실패 코드로 종료한다. 당일 재개는 성공 및 명시적 0건만 건너뛰며 임시 빈 응답은 다시 수집한다. 조회기는 최신 레코드가 아니라 마지막 `succeeded`·양수 스냅샷만 사용한다. 장애 종목만 재검증하는 반복형 `--isu-code`도 추가했다.
+- 원격 데이터 검증: 오늘 임시 빈 종목 5개 소규모 실행은 5개 모두 반복 누락으로 정확히 차단됐다. 테마 답변 후보 중 빈 종목 31개를 지정 재수집해 20개가 정상 TOP3를 회복했고 11개는 네 번 호출 후에도 계속 비었다. 최신 전체 상태는 861개 중 정상 247개·빈 614개, 최신 정상 스냅샷의 조회용 구성종목 행은 690개다. 기존 행 삭제·수정과 migration 적용은 없고 append-only 스냅샷만 추가했다.
+- 남은 11개: `0023A0`, `0048K0`, `0051G0`, `160580`, `352540`, `371460`, `437080`, `439860`, `474800`, `487230`, `498270`. 신규 영문혼합 코드뿐 아니라 해외 주식·리츠·채권·원자재가 섞여 있어 KIS 상품군 지원 공백으로 분류한다.
+- 검증: 신규·관련 테스트 9 passed 후 전체 `uv run pytest` 944 passed·1 skipped, `uv run ruff check .`, `git diff --check`가 통과했다. `--isu-code` 추가 후 최종 전체 회귀는 아래 최신 검증 결과로 다시 기록한다.
+- 원격 migration: 없음. KRX PDF·운용사 공시를 보조 소스로 저장하려면 출처 구분·기준일·원문 SHA-256 계약과 additive migration을 먼저 설계하고 이재용의 명시 승인을 받아야 한다.
+
+### 2026-07-21 KST KIS ETF 구성종목 TOP3 원격 스냅샷
+
+- 승인: 사용자 전달에 따라 이호연 조장·이재용 총괄의 원격 적재 및 주간 갱신 승인 범위에서 수행했다.
+- 적용: `add_etf_component_snapshots` migration을 Supabase MCP로 적용했다. `etf_component_snapshots`(원문 JSON·SHA-256·수집시각)와 `etf_component_snapshot_items`(비중 TOP3)를 추가하고 KIS 출처를 등록했다.
+- 원격 검증: 두 테이블의 RLS 활성화와 `anon`·`authenticated` 권한 회수, `service_role` 전용 권한을 확인했다. 최신 ready ETF 유니버스는 고유 ETF 861개다.
+- 초기 적재: 실제 KIS 호출 3개는 성공(성공 2·빈 목록 1, TOP3 행 6개)했다. 로컬 10분 실행 제한으로 전체 실행이 중단된 뒤, 당일 KST 스냅샷을 건너뛰는 재개 모드로 남은 ETF 백필을 백그라운드 실행 중이다. 중단된 run은 `failed`로 정리했다.
+- 검증: 관련 SQL 계약·repository·챗봇 테스트 57 passed, 전체 `uv run pytest` 933 passed·1 skipped, `uv run ruff check .`·`git diff --check` 통과.
+- 다음: 백필 종료 후 861개 수집 결과·TOP3 행 수·실패 수 재조회, GitHub Actions 주간 workflow 배포 후 첫 scheduled run 확인.
+
 ### 2026-07-21 KST 대표 6명 전체 공개 계약·짧은 로그인 ID 원격 적용
 
 - 로그인 계약: tracked manifest를 v4로 올려 사용자가 입력하는 `login_id`를 `junho46` 같은 짧은 값으로 바꾸고, Supabase Auth 내부 식별자는 `auth_email`로 분리했다. 프론트는 짧은 ID에 데모 도메인을 붙여 `signInWithPassword`를 호출한다.
@@ -331,23 +349,6 @@ uv run ruff check .
 - 원격 적용: migration·스키마 변경 없이 서버 전용 Admin API로 Auth 사용자 6명의 비밀번호를 교체했다. 같은 프로비저닝 실행에서 6개 계정 모두 실제 로그인에 성공했으며, 금융 컨텍스트도 기존 계약대로 동기화됐다.
 - 보안 경계: 실제 자격증명 JSON과 아이디·비밀번호 포함 Word 보고서는 Git 제외 `secrets/`에만 보관한다. 값 자체는 이 문서·로그·테스트 출력에 기록하지 않는다. 공개 배포 전에는 기존 `provision_demo_auth_users.py --rotate-existing` 경로로 강한 무작위 비밀번호를 다시 발급해야 한다.
 - 검증: 데모 Auth 단위 테스트 7건 통과. Security Advisor의 기존 `auth_leaked_password_protection` 비활성화 경고는 이번 임시 데모 정책상 유지했다.
-### 2026-07-21 KST KIS ETF 구성종목 빈 응답 신뢰성 보강
-
-- 원인 재확인: 기존 최신 스냅샷 861개 중 정상 상세 227개·빈 상세 634개였고, 빈 응답 634개 모두 KIS 성공 코드였다. 이 중 633개는 `output1.etf_cnfg_issu_cnt`가 양수인데 `output2`만 비어 있어 정상 무구성 상품이 아니라 상세 누락이었다.
-- 로컬 변경: 양수 구성종목 수+빈 상세를 임시 누락으로 판정해 최대 3회 재시도하고, 소진 시 run을 `partial`로 표시하며 CLI를 실패 코드로 종료한다. 당일 재개는 성공 및 명시적 0건만 건너뛰며 임시 빈 응답은 다시 수집한다. 조회기는 최신 레코드가 아니라 마지막 `succeeded`·양수 스냅샷만 사용한다. 장애 종목만 재검증하는 반복형 `--isu-code`도 추가했다.
-- 원격 데이터 검증: 오늘 임시 빈 종목 5개 소규모 실행은 5개 모두 반복 누락으로 정확히 차단됐다. 테마 답변 후보 중 빈 종목 31개를 지정 재수집해 20개가 정상 TOP3를 회복했고 11개는 네 번 호출 후에도 계속 비었다. 최신 전체 상태는 861개 중 정상 247개·빈 614개, 최신 정상 스냅샷의 조회용 구성종목 행은 690개다. 기존 행 삭제·수정과 migration 적용은 없고 append-only 스냅샷만 추가했다.
-- 남은 11개: `0023A0`, `0048K0`, `0051G0`, `160580`, `352540`, `371460`, `437080`, `439860`, `474800`, `487230`, `498270`. 신규 영문혼합 코드뿐 아니라 해외 주식·리츠·채권·원자재가 섞여 있어 KIS 상품군 지원 공백으로 분류한다.
-- 검증: 신규·관련 테스트 9 passed 후 전체 `uv run pytest` 944 passed·1 skipped, `uv run ruff check .`, `git diff --check`가 통과했다. `--isu-code` 추가 후 최종 전체 회귀는 아래 최신 검증 결과로 다시 기록한다.
-- 원격 migration: 없음. KRX PDF·운용사 공시를 보조 소스로 저장하려면 출처 구분·기준일·원문 SHA-256 계약과 additive migration을 먼저 설계하고 이재용의 명시 승인을 받아야 한다.
-
-### 2026-07-21 KST KIS ETF 구성종목 TOP3 원격 스냅샷
-
-- 승인: 사용자 전달에 따라 이호연 조장·이재용 총괄의 원격 적재 및 주간 갱신 승인 범위에서 수행했다.
-- 적용: `add_etf_component_snapshots` migration을 Supabase MCP로 적용했다. `etf_component_snapshots`(원문 JSON·SHA-256·수집시각)와 `etf_component_snapshot_items`(비중 TOP3)를 추가하고 KIS 출처를 등록했다.
-- 원격 검증: 두 테이블의 RLS 활성화와 `anon`·`authenticated` 권한 회수, `service_role` 전용 권한을 확인했다. 최신 ready ETF 유니버스는 고유 ETF 861개다.
-- 초기 적재: 실제 KIS 호출 3개는 성공(성공 2·빈 목록 1, TOP3 행 6개)했다. 로컬 10분 실행 제한으로 전체 실행이 중단된 뒤, 당일 KST 스냅샷을 건너뛰는 재개 모드로 남은 ETF 백필을 백그라운드 실행 중이다. 중단된 run은 `failed`로 정리했다.
-- 검증: 관련 SQL 계약·repository·챗봇 테스트 57 passed, 전체 `uv run pytest` 933 passed·1 skipped, `uv run ruff check .`·`git diff --check` 통과.
-- 다음: 백필 종료 후 861개 수집 결과·TOP3 행 수·실패 수 재조회, GitHub Actions 주간 workflow 배포 후 첫 scheduled run 확인.
 
 ### 2026-07-21 KST 투자성향 확인 이력 migration 원격 적용
 
