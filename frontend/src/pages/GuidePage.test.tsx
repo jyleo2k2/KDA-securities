@@ -621,6 +621,70 @@ describe("GuidePage chat history deletion", () => {
     );
   });
 
+  it("numbers each news summary line and submits the selected market question", async () => {
+    const response: ChatResponse = {
+      ...THEME_RESPONSE,
+      intent: "news",
+      data_mode: "news_summary",
+      news_items: [
+        {
+          evidence_id: "news:semiconductor",
+          title: "반도체 시장 뉴스",
+          original_url: "https://example.test/semiconductor",
+          summary_lines: ["핵심 사건입니다.", "주요 수치와 원인입니다.", "영향과 불확실성입니다."],
+        },
+      ],
+      sections: [
+        {
+          kind: "external_opinion",
+          title: "중복 뉴스 요약",
+          content: "뉴스 카드에 이미 표시된 요약입니다.",
+          evidence_ids: ["news:semiconductor"],
+          blocks: [],
+        },
+      ],
+      suggested_follow_ups: [
+        {
+          follow_up_id: "news_region_kr",
+          label: "한국증시 뉴스",
+          message: "한국증시 뉴스 알려줘",
+        },
+        {
+          follow_up_id: "news_region_us",
+          label: "미국증시 뉴스",
+          message: "미국증시 뉴스 알려줘",
+        },
+      ],
+    };
+    vi.mocked(getChatCards).mockResolvedValue({ cards: [RECOMMENDED_CHAT_CARDS[0]] });
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      persisted: false,
+      session_id: null,
+      response,
+    } as Awaited<ReturnType<typeof sendAuthenticatedChatStream>>);
+    renderGuide();
+
+    fireEvent.click(await screen.findByRole("button", { name: /오늘 증시 뉴스/ }));
+
+    const newsList = await screen.findByLabelText("뉴스 목록");
+    expect(screen.getByText("증시 뉴스")).toBeInTheDocument();
+    expect(within(newsList).getByText("1.", { exact: true })).toBeInTheDocument();
+    expect(within(newsList).getByText("2.", { exact: true })).toBeInTheDocument();
+    expect(within(newsList).getByText("3.", { exact: true })).toBeInTheDocument();
+    const followUps = screen.getByLabelText("이어서 물어보기");
+    expect(within(followUps).queryByRole("button", { name: /첫 번째 뉴스 자세히/ })).not.toBeInTheDocument();
+    expect(within(followUps).queryByRole("button", { name: /다른 뉴스 더 보기/ })).not.toBeInTheDocument();
+    expect(screen.queryByText("중복 뉴스 요약")).not.toBeInTheDocument();
+
+    fireEvent.click(within(followUps).getByRole("button", { name: "한국증시 뉴스" }));
+
+    await waitFor(() => {
+      expect(vi.mocked(sendAuthenticatedChatStream).mock.calls.at(-1)?.[0]).toBe(
+        "한국증시 뉴스 알려줘",
+      );
+    });
+  });
+
   it("renders only the five requested recommendation cards without spark icons", async () => {
     vi.mocked(getChatCards).mockResolvedValue({ cards: RECOMMENDED_CHAT_CARDS });
     renderGuide();

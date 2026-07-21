@@ -500,12 +500,8 @@ def plan_question(
             intent=ChatIntent.NEWS,
             account_types=account_types,
             news_query=news_query,
-            requests_event_strategy=(
-                _NEWS_EVENT_STRATEGY_TERMS.search(normalized) is not None
-            ),
-            requests_live_news=(
-                _NEWS_TIMELINESS_TERMS.search(normalized) is not None
-            ),
+            requests_event_strategy=False,
+            requests_live_news=False,
             news_scope_notice=_news_scope_notice(normalized),
             max_results=max_results,
         )

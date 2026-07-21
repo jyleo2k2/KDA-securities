@@ -175,9 +175,7 @@ def test_follow_up_cards_are_bounded_and_route_safely() -> None:
     )
 
     expected = {
-        "news_detail_1": ChatIntent.NEWS,
         "news_region_us": ChatIntent.NEWS,
-        "news_refresh": ChatIntent.NEWS,
         "mock_risk_cap": ChatIntent.ACCOUNT_RULE,
         "mock_tax": ChatIntent.PENSION_TAX,
         "tax_withdrawal": ChatIntent.PENSION_TAX,
@@ -191,10 +189,54 @@ def test_follow_up_cards_are_bounded_and_route_safely() -> None:
 
     assert all(len(build_suggested_follow_ups(response)) <= 3 for response in responses)
     assert {follow_up.follow_up_id for follow_up in follow_ups} == set(expected)
+    news_follow_ups = build_suggested_follow_ups(news)
+    assert [(item.label, item.message) for item in news_follow_ups] == [
+        ("미국증시 뉴스", "미국증시 뉴스 알려줘"),
+    ]
     for follow_up in follow_ups:
         plan = plan_question(follow_up.message)
         assert plan.intent == expected[follow_up.follow_up_id]
         assert plan.blocked_reason is None
+
+
+def test_mixed_market_news_offers_korean_and_us_database_queries() -> None:
+    response = ChatResponse(
+        intent=ChatIntent.NEWS,
+        answer="최근 증시 뉴스예요.",
+        data_mode="news_summary",
+        news_items=[
+            ChatNewsItem(
+                evidence_id="news:1",
+                title="첫 번째 뉴스",
+                original_url="https://example.test/news",
+            )
+        ],
+        sources=[
+            SourceEvidence(
+                evidence_id="news:1",
+                label="뉴스",
+                locator="https://example.test/news",
+                data_boundary="news_summary",
+            )
+        ],
+        conversation_context=ConversationContext(
+            news=NewsConversationContext(
+                news_item_ids=["1"],
+                market_region=MarketRegion.ALL,
+            )
+        ),
+    )
+
+    follow_ups = build_suggested_follow_ups(response)
+
+    assert [(item.follow_up_id, item.label, item.message) for item in follow_ups] == [
+        ("news_region_kr", "한국증시 뉴스", "한국증시 뉴스 알려줘"),
+        ("news_region_us", "미국증시 뉴스", "미국증시 뉴스 알려줘"),
+    ]
+    assert [plan_question(item.message).news_query for item in follow_ups] == [
+        "market:kr",
+        "market:us",
+    ]
 
 
 def test_new_response_fields_serialize_as_empty_arrays() -> None:

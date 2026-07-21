@@ -283,8 +283,6 @@ def news_response(
             if is_market_news
             else "해당 검색어로 저장된 뉴스 정보를 찾지 못했어요."
         )
-        if is_market_news:
-            answer += " 대신 NAVER 검색으로 실시간 증시 뉴스를 볼 수 있어요."
         if scope_message is not None:
             answer = f"{scope_message}\n\n{answer}"
         limitations = ["기사 본문을 임의로 생성하지 않습니다."]
