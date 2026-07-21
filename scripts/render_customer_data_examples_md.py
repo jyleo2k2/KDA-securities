@@ -34,6 +34,31 @@ FIELD_DESCRIPTIONS = {
     "planned_low_rate_pension_tax_pct": "계획상 저율 연금소득세율",
     "planned_receipt_tax_treatment": "예상 수령 세제 처리 분류",
     "risk_profile": "투자성향 코드",
+    "investor_profile": "신한 배점 기준 5단계 투자성향 코드",
+    "investor_profile_label": "신한 배점 기준 5단계 투자성향 표시명",
+    "total_score": "11개 채점 항목 합계",
+    "score_band": "투자성향 점수 구간",
+    "investment_reason": "공개 포트폴리오용 1~2문장 수기 투자 이유",
+    "portfolio_opinion_review": "공개 포트폴리오용 1~2문장 투자의견·운용 후기",
+    "representative_etf_isu_codes": "후기에서 대표로 다루는 실제 보유 ETF 종목코드",
+    "representative_etf_theme": "대표 ETF의 시장·산업 테마",
+    "representative_etf_theme_review": "대표 ETF 테마와 투자기간·시장 흐름을 연결한 1~2문장 후기",
+    "portfolio_trailing_12m_return_pct": "계좌잔액 가중 방식으로 계산한 과거 12개월 합성수익률",
+    "return_period_start": "과거 수익률 산정 시작일",
+    "return_period_end": "과거 수익률 산정 종료일",
+    "return_metric": "과거 수익률 표시·계산·출처 계약",
+    "like_count": "수익률과 무관하게 배정한 시연용 추천(좋아요) 수",
+    "like_metric": "추천(좋아요) 표시·기준일·목데이터 계약",
+    "metric_code": "공개 비교 지표 코드",
+    "label": "화면에 표시하는 지표·계좌 등의 이름",
+    "calculation_basis": "규칙 기반 계산식",
+    "official_ranking_metric": "공식 커뮤니티 순위 산식 사용 여부",
+    "as_of_date": "참여지표 기준일",
+    "is_synthetic": "합성 참여지표 여부",
+    "performance_based": "수익률을 근거로 참여지표를 배정했는지 여부",
+    "portfolio_consistency_note": "성향과 계좌별 비중의 정합성 설명",
+    "financial_product_shares_percent": "설문 3번의 금융상품 유형별 비중 합계 100%",
+    "portfolio_allocations": "성향에 따른 계좌별 목표 자산 비중",
     "preferred_management_type": "선호 운용 유형",
     "retirement_fund_attitude": "퇴직자산 운용 태도",
     "investment_readiness": "투자 이해·준비 수준",
@@ -62,7 +87,6 @@ FIELD_DESCRIPTIONS = {
     "safe_asset_ratio": "안전자산 비율",
     "cash_ratio": "현금성 자산 비율",
     "trailing_12m_return_pct": "기준일까지의 과거 12개월 합성 수익률",
-    "return_period_end": "과거 수익률 기준일",
     "asset_class": "자산군 코드",
     "weight": "계좌 내 보유 비중",
     "amount_krw": "보유 평가금액",
@@ -73,11 +97,11 @@ FIELD_DESCRIPTIONS = {
     "representative_age": "대표 고객 표시 나이",
     "age_band": "대표 고객 표시 연령대",
     "login_id": "시연 로그인 ID",
+    "auth_email": "Supabase Auth 내부 이메일 식별자(화면 입력 대상 아님)",
     "customer_context": "대표 고객 상황 설명",
     "name": "시나리오 표시명",
     "description": "시나리오 설명",
     "investment_horizon_years": "은퇴까지 남은 투자기간",
-    "label": "계좌 표시명",
     "holding_id": "상세 보유자산 식별자",
     "instrument_name": "ETF 또는 자산 표시명",
     "asset_class_code": "엔진용 자산군 코드",
@@ -200,6 +224,7 @@ def render_document(
     identity = representative["demo_identity"]
     common = representative["benchmark_contract"]
     detailed = representative["detailed_etf_portfolio"]
+    assessment = representative["investor_profile_assessment"]
     counts = examples["contract_counts"]
 
     benchmark_balance = sum(int(account["balance_krw"]) for account in benchmark["accounts"])
@@ -274,11 +299,31 @@ def render_document(
         "",
         f"대표 고객 `{identity['nickname']}`는 1만 명 중 `{identity['benchmark_user_id']}`를 "
         "선택해 시연용으로 상세화한 고객입니다. 공통 원본 계약은 그대로 유지하고, "
-        "로그인·시나리오 정보와 ETF 단위 포트폴리오를 덧붙였습니다.",
+        "로그인·투자성향 배점·시나리오 정보와 ETF 단위 포트폴리오를 덧붙였습니다.",
         "",
         "### 시연 로그인·시나리오 연결 정보 전체",
         "",
         *_field_table(identity),
+        "",
+        "### 신한 배점 기반 투자성향 결과 전체",
+        "",
+        *_field_table(
+            {
+                key: value
+                for key, value in assessment.items()
+                if key != "answers"
+            }
+        ),
+        "",
+        "#### 채점 문항 11개 전체",
+        "",
+        "| 문항 코드 | 선택 응답 | 점수 | 판단 근거 |",
+        "|---|---|---:|---|",
+        *[
+            f"| `{answer['question_code']}` | {answer['selected_option']} | "
+            f"{answer['score']} | {answer['basis']} |"
+            for answer in assessment["answers"]
+        ],
         "",
         "### 1만 명 공통 고객 필드 29개 전체",
         "",
@@ -297,8 +342,8 @@ def render_document(
         "",
         "### 시연용 상세 계좌 및 ETF 보유내역 전체",
         "",
-        "상세 포트폴리오는 공통 원본 계좌의 잔액·자산군 금액을 바꾸지 않고 "
-        "ETF 종목 단위로 분해한 것입니다. `statutory_exception`과 `etf_isu_code`는 "
+        "상세 포트폴리오는 공통 원본 계좌 잔액을 유지하면서 배점 성향에 맞게 자산군 "
+        "비중을 재구성하고 ETF 종목 단위로 상세화한 것입니다. `statutory_exception`과 `etf_isu_code`는 "
         "선택 필드이지만, 아래 표에서는 없는 값도 `null`로 표시해 7개 필드를 모두 보여줍니다.",
         "",
         *_account_details(detailed["accounts"], detailed=True),

@@ -23,7 +23,10 @@ button { color: inherit; }
 svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
 .home-dashboard { display: grid; gap: 18px; padding: 8px 0 24px; }
-.home-hero-heading > span, .section-heading-row > div > span { color: #007848; font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+.home-heading-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.home-heading-topline > span, .section-heading-row > div > span { color: #007848; font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+.home-temp-sign-out { border: 1px solid #18a860; border-radius: 999px; padding: 5px 10px; background: #fff; color: #007848; font-size: 11px; font-weight: 800; cursor: pointer; }
+.home-temp-sign-out:hover { background: #eff8f2; }
 .home-hero-heading h1 { margin: 8px 0 10px; color: #12372a; font-size: 30px; line-height: 1.22; letter-spacing: -.04em; }
 .home-hero-heading p { margin: 0; color: #6d7c74; font-size: 13px; line-height: 1.65; }
 .home-loading, .home-error { padding: 18px; border-radius: 16px; background: white; font-size: 13px; }
@@ -40,6 +43,14 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .portfolio-summary-top h2 { margin: 8px 0 4px; font-size: 22px; }
 .portfolio-summary-top p { margin: 0; color: #6d7c74; font-size: 11px; line-height: 1.55; white-space: pre-line; }
 .portfolio-summary-top > strong { color: #12372a; font-size: 26px; letter-spacing: -.04em; }
+.peer-metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.peer-metric-grid > div { display: grid; gap: 3px; padding: 11px; border-radius: 13px; background: #f3f7f3; }
+.peer-metric-grid span { color: #718078; font-size: 9px; }
+.peer-metric-grid strong { color: #12372a; font-size: 18px; }
+.peer-metric-grid small { color: #87948d; font-size: 8px; line-height: 1.35; }
+.peer-metric-note { margin: 8px 0 0; color: #718078; font-size: 9px; line-height: 1.5; }
+.peer-metric-sources { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.peer-metric-sources span { padding: 4px 7px; border: 1px solid #d8e5dc; border-radius: 999px; background: #fff; color: #5f7168; font-size: 8px; }
 .mock-chip { display: inline-flex; padding: 4px 8px; border-radius: 999px; background: #fff1df; color: #9b5c1f; font-size: 9px; font-weight: 800; }
 .allocation-layout { display: grid; grid-template-columns: 132px 1fr; align-items: center; gap: 16px; margin-top: 22px; }
 .home-allocation-donut { position: relative; width: 132px; height: 132px; display: grid; place-items: center; border-radius: 50%; }
@@ -272,8 +283,13 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .allocation-row strong { color: #234435; font-weight: 700; }
 .allocation-track { height: 8px; margin-top: 4px; overflow: hidden; border-radius: 999px; background: #dfe8d8; }
 .allocation-track span { display: block; height: 100%; border-radius: inherit; background: #83aa67; }
-.limitation-box { display: flex; gap: 9px; margin-top: 14px; padding: 11px 12px; border-radius: 10px; background: #fff8eb; color: #765e2d; }
-.limitation-box > svg { flex: 0 0 auto; margin-top: 1px; }.limitation-box strong { display: block; margin-bottom: 3px; font-size: 10px; }.limitation-box p { margin: 2px 0; font-size: 9px; line-height: 1.55; }
+.limitation-box { margin-top: 14px; padding: 11px 12px; border-radius: 10px; background: #fff8eb; color: #765e2d; }
+.limitation-box summary { display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-size: 10px; font-weight: 700; list-style: none; }
+.limitation-box summary::-webkit-details-marker { display: none; }
+.limitation-box summary > span { display: flex; align-items: center; gap: 9px; }
+.limitation-box summary > svg { transition: transform .2s ease; }
+.limitation-box[open] summary > svg { transform: rotate(90deg); }
+.limitation-box > div { padding-top: 7px; }.limitation-box p { margin: 2px 0; font-size: 9px; line-height: 1.55; }
 .evidence-wrap { margin: 15px -18px -17px; border-top: 1px solid #edf0ec; }
 .evidence-toggle { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; border: 0; background: #fbfcfa; color: #66746d; font-size: 10px; cursor: pointer; }
 .evidence-toggle > span { display: flex; align-items: center; gap: 6px; }.evidence-toggle[aria-expanded="true"] > svg { transform: rotate(90deg); }

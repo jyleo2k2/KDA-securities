@@ -44,15 +44,17 @@ from ._shared import (
     _RISK_PROFILE_LABELS,
     _RISK_PROFILE_RANKS,
     _SLEEVE_LABELS,
+    _STRATEGY_LABELS,
+    _STRESS_SCENARIO_LABELS,
     PortfolioUniverseLoader,
     _decimal_text,
     _krw_text,
     _one_decimal,
-    _rebalancing_summary,
+    _rebalancing_items,
     _selected_risk_profile,
     _source_ids,
     _strategy_summary,
-    _target_portfolio_summary,
+    _target_portfolio_rows,
 )
 
 logger = logging.getLogger(__name__)
@@ -619,7 +621,7 @@ def custom_portfolio(request: ChatRequest) -> ChatResponse:
             else f"한도({limit}%)를 넘었어요"
         )
         answer = (
-            f"{evaluation.evaluated_input.account_type.value.upper()} 예시 "
+            f"{_ACCOUNT_TYPE_LABELS[evaluation.evaluated_input.account_type]} 예시 "
             f"포트폴리오는 위험자산이 {ratio}%로 {limit_status}. "
             "위험자산은 주식처럼 가격이 오르내릴 수 있는 자산이에요. "
             "상품별 편입 가능 여부도 확인해야 해요."
@@ -993,7 +995,7 @@ def educational_portfolio(
             value=_one_decimal(target.target_percent),
             unit="%",
             evidence_id=engine_source.evidence_id,
-            basis=f"{target.role} 엔진 슬리브 배분",
+            basis=f"{_SLEEVE_LABELS[target.sleeve]} 목표 비중을 정한 규칙 엔진 배분",
         )
         for target in evaluation.target_sleeves
     )
@@ -1011,7 +1013,13 @@ def educational_portfolio(
     )
     numeric.extend(
         NumericEvidence(
-            label=f"{stress.scenario_code} 스트레스 손실 추정치",
+            label=(
+                _STRESS_SCENARIO_LABELS.get(
+                    stress.scenario_code,
+                    "기타 시장 충격",
+                )
+                + " 스트레스 손실 추정치"
+            ),
             value=_one_decimal(stress.estimated_loss_percent),
             unit="%",
             evidence_id=engine_source.evidence_id,
@@ -1056,17 +1064,25 @@ def educational_portfolio(
     profile_label = _RISK_PROFILE_LABELS[
         evaluation.evaluated_input.risk_profile.value
     ]
-    strategy_content = (
-        f"{_strategy_summary(evaluation)}\n\n"
-        f"목표 포트폴리오\n{_target_portfolio_summary(evaluation)}\n\n"
-        f"운용 원칙\n{_rebalancing_summary(evaluation)}"
-    )
     sections = [
         AnswerSection(
             kind=SectionKind.SERVICE_EXPLANATION,
             title=f"{profile_label} 투자전략",
-            content=strategy_content,
+            content=_strategy_summary(evaluation),
             evidence_ids=[engine_source.evidence_id],
+            blocks=[
+                AnswerBlock(
+                    kind=AnswerBlockKind.TABLE,
+                    title="목표 포트폴리오",
+                    headers=["자산군", "목표비중", "엔진 편입 후보"],
+                    rows=_target_portfolio_rows(evaluation),
+                ),
+                AnswerBlock(
+                    kind=AnswerBlockKind.BULLETS,
+                    title="운용 원칙",
+                    items=_rebalancing_items(evaluation),
+                ),
+            ],
         ),
         AnswerSection(
             kind=SectionKind.FACT,
@@ -1096,6 +1112,31 @@ def educational_portfolio(
             macro_outcome_limitations.append(
                 "과거 유사국면 이후 ETF 총수익률 근거를 불러오지 못했습니다."
             )
+    numeric_priority = {
+        "일반 위험자산 목표비중": 0,
+        "보수 계획수익률": 1,
+        "기준 계획수익률": 2,
+        "수령 개시까지 운용기간": 3,
+        "리밸런싱 이탈 기준": 4,
+    }
+    numeric.sort(
+        key=lambda item: numeric_priority.get(
+            item.label,
+            6
+            if item.label.endswith(" 목표비중")
+            else 6
+            if item.label.endswith(" 스트레스 손실 추정치")
+            else 7,
+        )
+    )
+    display_evaluation = evaluation.model_copy(
+        update={
+            "strategy_label": _STRATEGY_LABELS.get(
+                evaluation.strategy_label,
+                "연금 자산배분 전략",
+            )
+        }
+    )
     return ChatResponse(
         intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
         answer=(
@@ -1106,8 +1147,8 @@ def educational_portfolio(
         sources=sources,
         numeric_evidence=numeric,
         sections=sections,
-        educational_portfolio_evaluation=evaluation,
-        educational_portfolio_evaluations=[evaluation],
+        educational_portfolio_evaluation=display_evaluation,
+        educational_portfolio_evaluations=[display_evaluation],
         macro_regime_etf_outcomes=macro_outcomes,
         limitations=[
             "설명은 규칙 엔진 결과 코드와 수치만 정해진 문장으로 변환합니다.",

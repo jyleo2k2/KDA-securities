@@ -74,15 +74,7 @@ export function ProfilePage({ profile, onComplete, userContext }: ProfilePagePro
   return (
     <section>
       <h1 style={{ fontSize: 20 }}>투자성향 설문</h1>
-      {userContext && (
-        <section style={{ marginBottom: 20, padding: 14, borderRadius: 12, background: "#f4f7ee" }}>
-          <span className="mock-chip">대표 시나리오 목데이터</span>
-          <h2 style={{ margin: "8px 0 4px", fontSize: 17 }}>{userContext.nickname}</h2>
-          <p style={{ margin: 0, color: "#52645a", fontSize: 13 }}>
-            {userContext.representative_age}세 · {userContext.customer_context}
-          </p>
-        </section>
-      )}
+      {userContext && <section style={{ marginBottom: 20, padding: 14, borderRadius: 12, background: "#f4f7ee" }}><span className="mock-chip">대표 시나리오 목데이터</span><h2 style={{ margin: "8px 0 4px", fontSize: 17 }}>{userContext.nickname}</h2><p style={{ margin: 0, color: "#52645a", fontSize: 13 }}>{userContext.representative_age}세 · {userContext.customer_context}</p></section>}
       {profile && (
         <p style={{ color: "#1a6148", fontWeight: 700 }}>
           현재 결과: {PROFILE_LABELS[profile.risk_profile]}

@@ -27,8 +27,10 @@ from ..news_event_strategy import (
     NEWS_EVENT_POLICY_VERSION,
     classify_news_event,
 )
+from ..query_planner import NewsScopeNotice
 from ..routing import NewsFollowUp, NewsFollowUpAction
 from ._shared import (
+    _ACCOUNT_TYPE_LABELS,
     _RISK_PROFILE_RANKS,
     DisclosureSearch,
     LiveNewsSearch,
@@ -41,6 +43,103 @@ from ._shared import (
 )
 
 logger = logging.getLogger(__name__)
+
+_NEWS_SCOPE_MESSAGES = {
+    NewsScopeNotice.COMPANY: (
+        "종목별 뉴스는 제공하지 않아요. 대신 한국·미국 증시 뉴스를 보여드려요."
+    ),
+    NewsScopeNotice.UNSUPPORTED_MARKET: (
+        "해당 국가 증시 뉴스는 제공하지 않아요. "
+        "대신 한국·미국 증시 뉴스를 보여드려요."
+    ),
+    NewsScopeNotice.PENSION: (
+        "연금 제도 뉴스는 제공하지 않아요. 대신 한국·미국 증시 뉴스를 보여드려요."
+    ),
+}
+
+
+def _scope_message(scope_notice: NewsScopeNotice | None) -> str | None:
+    return (
+        _NEWS_SCOPE_MESSAGES[scope_notice] if scope_notice is not None else None
+    )
+
+
+def _freshness_limitation(matches) -> str:
+    latest = max(item.published_at for item in matches if item.published_at is not None)
+    elapsed_seconds = max((datetime.now(UTC) - latest).total_seconds(), 0)
+    elapsed_hours = max(1, int((elapsed_seconds + 3599) // 3600))
+    if elapsed_hours < 24:
+        return f"가장 최신 기사는 약 {elapsed_hours}시간 전 발행됐어요."
+    return f"가장 최신 기사는 약 {elapsed_hours // 24}일 전 발행됐어요."
+
+
+def _live_metadata_response(
+    snapshot: LiveMarketNewsSnapshot,
+    *,
+    scope_notice: NewsScopeNotice | None,
+) -> tuple[ChatResponse, dict[str, tuple[str, ...]]]:
+    sources = [
+        SourceEvidence(
+            evidence_id=f"live-news:{item.item_id}",
+            label=item.title,
+            locator=item.original_url,
+            publisher=item.publisher,
+            as_of=item.published_at,
+            data_boundary=DataBoundary.NEWS_METADATA,
+        )
+        for item in snapshot.items
+    ]
+    news_items = [
+        ChatNewsItem(
+            evidence_id=f"live-news:{item.item_id}",
+            title=item.title,
+            description=item.description,
+            original_url=item.original_url,
+            published_at=item.published_at,
+        )
+        for item in snapshot.items
+    ]
+    metadata = "\n".join(
+        f"- {item.title}: {item.description or 'NAVER 설명 없음'}"
+        for item in snapshot.items
+    )
+    scope_message = _scope_message(scope_notice)
+    answer = "NAVER 검색 API에서 최신 증시 뉴스 메타데이터를 조회했어요."
+    if scope_message is not None:
+        answer = f"{scope_message}\n\n{answer}"
+    limitations = [
+        (
+            "같은 시장의 직전 조회 결과를 짧게 재사용했어요."
+            if snapshot.from_cache
+            else "이번 질문 시점에 NAVER 검색 API를 조회했어요."
+        ),
+        "기사 본문이 아닌 NAVER 제목·설명 메타데이터입니다.",
+        "뉴스 사실과 외부 의견은 연결된 원문에서 다시 확인해야 해요.",
+    ]
+    if scope_message is not None:
+        limitations.append(scope_message)
+    return (
+        ChatResponse(
+            intent=ChatIntent.NEWS,
+            answer=answer,
+            data_mode="news_metadata",
+            news_items=news_items,
+            sections=[
+                AnswerSection(
+                    kind=SectionKind.EXTERNAL_OPINION,
+                    title="실시간 NAVER 뉴스 메타데이터",
+                    content=metadata,
+                    evidence_ids=_source_ids(sources),
+                )
+            ],
+            sources=sources,
+            limitations=limitations,
+        ),
+        {
+            f"live-news:{item.item_id}": item.topics
+            for item in snapshot.items
+        },
+    )
 
 
 def disclosure_response(
@@ -80,7 +179,7 @@ def disclosure_response(
         sources.append(
             SourceEvidence(
                 evidence_id=evidence_id,
-                label=f"FSS {row.account_type.value} 사업자 공시",
+                label=f"FSS {_ACCOUNT_TYPE_LABELS[row.account_type]} 사업자 공시",
                 locator=row.source_locator,
                 publisher="금융감독원 통합연금포털",
                 as_of=row.period_end,
@@ -149,6 +248,7 @@ def news_response(
     max_results: int,
     exclude_item_ids: tuple[str, ...] = (),
     preferred_topics: tuple[str, ...] = (),
+    scope_notice: NewsScopeNotice | None = None,
     news: NewsSearch | None,
 ) -> ChatResponse:
     if news is None:
@@ -177,15 +277,24 @@ def news_response(
         else news.latest_news(search_query, limit=request.max_results)
     )
     if not matches:
+        scope_message = _scope_message(scope_notice)
+        answer = (
+            "최근 닷새간 요약이 끝난 증시 뉴스를 찾지 못했어요."
+            if is_market_news
+            else "해당 검색어로 저장된 뉴스 정보를 찾지 못했어요."
+        )
+        if is_market_news:
+            answer += " 대신 NAVER 검색으로 실시간 증시 뉴스를 볼 수 있어요."
+        if scope_message is not None:
+            answer = f"{scope_message}\n\n{answer}"
+        limitations = ["기사 본문을 임의로 생성하지 않습니다."]
+        if scope_message is not None:
+            limitations.append(scope_message)
         return ChatResponse(
             intent=ChatIntent.NEWS,
-            answer=(
-                "최근 닷새간 요약이 끝난 증시 뉴스를 찾지 못했어요."
-                if is_market_news
-                else "해당 검색어로 저장된 뉴스 정보를 찾지 못했어요."
-            ),
+            answer=answer,
             data_mode="news_summary" if is_market_news else "news_metadata",
-            limitations=["기사 본문을 임의로 생성하지 않습니다."],
+            limitations=limitations,
         )
     sources = [
         SourceEvidence(
@@ -212,6 +321,9 @@ def news_response(
         if is_market_news
         else "관련 뉴스를 찾았어요."
     )
+    scope_message = _scope_message(scope_notice)
+    if scope_message is not None:
+        answer_intro = f"{scope_message}\n\n{answer_intro}"
     limitations = (
         [
             "기사 원문에서 수집 시점에 생성한 LLM 3줄 요약입니다.",
@@ -223,6 +335,8 @@ def news_response(
             "뉴스 사실과 외부 의견은 원문에서 다시 확인해야 합니다.",
         ]
     )
+    if is_market_news:
+        limitations.append(_freshness_limitation(matches))
     if is_market_news and len(matches) < market_limit:
         limitations.append(
             "최근 닷새간 저장된 증시 기사가 세 건 미만이라 "
@@ -235,6 +349,8 @@ def news_response(
             "로그인 사용자의 가상 목계좌 자산군과 연관된 뉴스 주제를 "
             "우선 정렬했습니다."
         )
+    if scope_message is not None:
+        limitations.append(scope_message)
     return ChatResponse(
         intent=ChatIntent.NEWS,
         answer=answer_intro + "\n\n" + "\n\n".join(lines),
@@ -282,18 +398,69 @@ def news_response(
     )
 
 
+def live_news_response(
+    request: ChatRequest,
+    *,
+    search_query: str,
+    max_results: int,
+    preferred_topics: tuple[str, ...] = (),
+    scope_notice: NewsScopeNotice | None = None,
+    live_news: LiveNewsSearch | None,
+    news: NewsSearch | None,
+) -> ChatResponse:
+    region = search_query.partition(":")[2] or None
+    if live_news is not None:
+        try:
+            snapshot = live_news.fetch_market_news(
+                region=region,
+                limit=min(max_results, 3),
+            )
+        except LiveNewsUnavailable:
+            logger.warning("live_news_lookup_failed")
+        else:
+            if snapshot.items:
+                response, _ = _live_metadata_response(
+                    snapshot,
+                    scope_notice=scope_notice,
+                )
+                return response
+
+    stored = news_response(
+        request,
+        search_query=search_query,
+        max_results=max_results,
+        preferred_topics=preferred_topics,
+        scope_notice=scope_notice,
+        news=news,
+    )
+    return stored.model_copy(
+        update={
+            "answer": (
+                "실시간 NAVER 조회를 사용할 수 없어 최근 저장 뉴스를 보여드려요.\n\n"
+                + stored.answer
+            ),
+            "limitations": [
+                *stored.limitations,
+                "실시간 조회가 아니라 최근 저장 뉴스 기반입니다.",
+            ],
+        }
+    )
+
+
 def event_strategy_response(
     request: ChatRequest,
     *,
     search_query: str,
     max_results: int,
     preferred_topics: tuple[str, ...] = (),
+    scope_notice: NewsScopeNotice | None = None,
     live_news: LiveNewsSearch | None,
     news: NewsSearch | None,
     theme_repository: EtfThemeRepository | None,
 ) -> ChatResponse:
     region = search_query.partition(":")[2] or None
     live_snapshot: LiveMarketNewsSnapshot | None = None
+    topics_by_evidence: dict[str, tuple[str, ...]] = {}
     if live_news is not None:
         try:
             live_snapshot = live_news.fetch_market_news(
@@ -303,64 +470,25 @@ def event_strategy_response(
         except LiveNewsUnavailable:
             logger.warning("live_news_lookup_failed")
 
-    topics_by_evidence: dict[str, tuple[str, ...]] = {}
     if live_snapshot is not None and live_snapshot.items:
-        sources = [
-            SourceEvidence(
-                evidence_id=f"live-news:{item.item_id}",
-                label=item.title,
-                locator=item.original_url,
-                publisher=item.publisher,
-                as_of=item.published_at,
-                data_boundary=DataBoundary.NEWS_METADATA,
-            )
-            for item in live_snapshot.items
-        ]
-        news_items = [
-            ChatNewsItem(
-                evidence_id=f"live-news:{item.item_id}",
-                title=item.title,
-                description=item.description,
-                original_url=item.original_url,
-                published_at=item.published_at,
-            )
-            for item in live_snapshot.items
-        ]
-        topics_by_evidence = {
-            f"live-news:{item.item_id}": item.topics
-            for item in live_snapshot.items
-        }
-        metadata = "\n".join(
-            f"- {item.title}: {item.description or 'NAVER 설명 없음'}"
-            for item in live_snapshot.items
+        base, topics_by_evidence = _live_metadata_response(
+            live_snapshot,
+            scope_notice=scope_notice,
         )
-        base = ChatResponse(
-            intent=ChatIntent.NEWS,
-            answer=(
-                "NAVER 검색 API에서 최신 증시 뉴스 메타데이터를 조회했어요. "
-                "규칙 기반으로 이벤트와 ETF 산업·테마를 분류했어요."
-            ),
-            data_mode="live_news_event_strategy",
-            news_items=news_items,
-            sections=[
-                AnswerSection(
-                    kind=SectionKind.EXTERNAL_OPINION,
-                    title="실시간 NAVER 뉴스 메타데이터",
-                    content=metadata,
-                    evidence_ids=_source_ids(sources),
-                )
-            ],
-            sources=sources,
-            limitations=[
-                (
-                    "같은 시장의 직전 조회 결과를 짧게 재사용했어요."
-                    if live_snapshot.from_cache
-                    else "이번 질문 시점에 NAVER 검색 API를 조회했어요."
+        base = base.model_copy(
+            update={
+                "answer": (
+                    "NAVER 검색 API에서 최신 증시 뉴스 메타데이터를 조회했어요. "
+                    "규칙 기반으로 이벤트와 ETF 산업·테마를 분류했어요."
                 ),
-                "기사 본문이 아닌 NAVER 제목·설명 메타데이터입니다.",
-                "뉴스 사실과 외부 의견은 연결된 원문에서 다시 확인해야 해요.",
-            ],
+                "data_mode": "live_news_event_strategy",
+            }
         )
+        scope_message = _scope_message(scope_notice)
+        if scope_message is not None:
+            base = base.model_copy(
+                update={"answer": f"{scope_message}\n\n{base.answer}"}
+            )
         return attach_event_strategy(
             base,
             request=request,
@@ -373,6 +501,7 @@ def event_strategy_response(
         search_query=search_query,
         max_results=max_results,
         preferred_topics=preferred_topics,
+        scope_notice=scope_notice,
         news=news,
     )
     if not stored.news_items:

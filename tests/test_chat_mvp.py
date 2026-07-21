@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -30,6 +31,7 @@ from backend.app.chat.models import (
     extract_numeric_claims,
 )
 from backend.app.chat.narrator import (
+    NARRATION_CACHE_VERSION,
     SYSTEM_PROMPT,
     ClaudeNarrator,
     _adds_unverified_content,
@@ -38,7 +40,13 @@ from backend.app.chat.narrator import (
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService, _knowledge_sources
 from backend.app.chat.tools import PENSION_TAX_CLOSING_NOTICE
-from backend.app.engine import AccountType, HoldingInput, PortfolioInput, RiskTreatment
+from backend.app.engine import (
+    AccountType,
+    HoldingInput,
+    PensionTaxScenarioInput,
+    PortfolioInput,
+    RiskTreatment,
+)
 from backend.app.main import app, get_chat_narrator, get_chat_service
 from backend.app.retrieval.repository import KnowledgeMatch, NewsMatch
 from backend.app.settings import get_settings
@@ -150,6 +158,40 @@ def service(
         disclosures=disclosures,
         news=news,
     )
+
+
+_SNAKE_CASE_TOKEN = re.compile(r"\b[a-z]+(?:_[a-z]+)+\b")
+
+
+def _visible_response_text(response: ChatResponse) -> list[str]:
+    text = [response.answer, *(response.limitations)]
+    if response.salutation is not None:
+        text.append(response.salutation)
+    for section in response.sections:
+        text.extend((section.title, section.content))
+        text.extend(block.plain_text() for block in section.blocks)
+    for evidence in response.numeric_evidence:
+        text.extend((evidence.label, evidence.basis))
+    for visualization in response.visualizations:
+        text.extend((visualization.title, visualization.description))
+        text.extend(item.label for item in visualization.items)
+        for series in visualization.series:
+            text.append(series.label)
+            text.extend(point.label for point in series.points)
+    for source in response.sources:
+        text.append(source.label)
+        if source.publisher is not None:
+            text.append(source.publisher)
+    for follow_up in response.suggested_follow_ups:
+        text.append(follow_up.label)
+    for item in response.news_items:
+        text.extend((item.title, item.description or "", *item.summary_lines))
+    return text
+
+
+def _assert_no_visible_snake_case(response: ChatResponse) -> None:
+    exposed = "\n".join(_visible_response_text(response))
+    assert _SNAKE_CASE_TOKEN.search(exposed) is None
 
 
 def test_account_rule_question_returns_rag_source_and_numeric_evidence() -> None:
@@ -416,9 +458,9 @@ def test_mock_overlap_scenario_runs_engine_and_keeps_mock_boundary() -> None:
     assert response.answer.startswith("점검 결과 큰 문제는 없어요.")
     assert (
         "DC형은 위험자산(주식처럼 가격이 오르내릴 수 있는 자산)이 "
-        "63.11%로 한도(70%) 안이에요." in response.answer
+        "65%로 한도(70%) 안이에요." in response.answer
     )
-    assert "IRP는 위험자산이 70%로 한도(70%) 안이에요." in response.answer
+    assert "IRP는 위험자산이 65%로 한도(70%) 안이에요." in response.answer
     assert any(
         item.label == "DC형 일반 위험자산 한도" and item.value == Decimal("70.00")
         for item in response.numeric_evidence
@@ -485,13 +527,13 @@ def test_selected_scenario_explains_holdings_and_rebalancing_boundary() -> None:
 
     assert response.intent == ChatIntent.MOCK_PORTFOLIO
     sections = {section.title: section.content for section in response.sections}
-    assert "HANARO K고배당 (322410) 26.5%" in sections["보유 항목과 비중"]
-    assert "TIGER 헬스케어 (143860) 11.4%" in sections["보유 항목과 비중"]
+    assert "HANARO K고배당 (322410) 17.5%" in sections["보유 항목과 비중"]
+    assert "TIGER 헬스케어 (143860) 7.5%" in sections["보유 항목과 비중"]
     assert "리밸런싱 점검이 필요해요" in sections["리밸런싱 점검"]
     assert "매수·매도 수량은 계산하지 않았어요" in sections["리밸런싱 점검"]
     assert any(
         item.label == "회사 DC HANARO K고배당 보유 비중"
-        and item.value == Decimal("26.5")
+        and item.value == Decimal("17.5")
         for item in response.numeric_evidence
     )
 
@@ -564,6 +606,7 @@ def test_narrator_prompt_requires_conclusion_first_heyoche() -> None:
     assert "반말" not in SYSTEM_PROMPT
     assert "같이 살펴보자" not in SYSTEM_PROMPT
     assert "같이 살펴봐요" in SYSTEM_PROMPT
+    assert "본문은 두세 문장, 최대 네 문장" in SYSTEM_PROMPT
 
 
 def test_disclosure_comparison_uses_only_repository_numbers() -> None:
@@ -581,6 +624,43 @@ def test_disclosure_comparison_uses_only_repository_numbers() -> None:
     assert response.numeric_evidence[0].value == Decimal("4.25")
     assert response.sources[0].data_boundary == "official_disclosure"
     assert "개별 상품" in response.limitations[0]
+
+
+def test_representative_chat_responses_do_not_expose_internal_snake_case() -> None:
+    scenario = service().ask(
+        ChatRequest(
+            message="중복·위험 편중 목계좌를 진단해줘",
+            scenario_code="overlap_risk_concentration",
+        )
+    )
+    disclosure = service(disclosures=FakeDisclosureRepository()).ask(
+        ChatRequest(message="테스트증권 IRP 과거 수익률을 알려줘")
+    )
+    pension_tax = service().ask(
+        ChatRequest(
+            message="연금저축과 IRP 세액공제를 계산해줘",
+            pension_tax=PensionTaxScenarioInput.model_validate(
+                {
+                    "tax_year": 2026,
+                    "income_basis": "gross_salary",
+                    "income_amount_krw": "50000000",
+                    "pension_savings": {
+                        "balance_krw": "30000000",
+                        "current_year_contribution_krw": "6000000",
+                    },
+                    "irp": {
+                        "balance_krw": "50000000",
+                        "current_year_contribution_krw": "3000000",
+                    },
+                    "withdrawal_reason": "general",
+                    "irp_deferred_income_status": "none",
+                }
+            ),
+        )
+    )
+
+    for response in (scenario, disclosure, pension_tax):
+        _assert_no_visible_snake_case(response)
 
 
 def test_unconfigured_disclosure_does_not_fall_back_to_fixture() -> None:
@@ -786,7 +866,7 @@ def test_custom_dc_portfolio_answer_is_conclusion_first_heyoche() -> None:
     )
 
     assert response.answer.startswith(
-        "DC 예시 포트폴리오는 위험자산이 60%로 한도(70%) 안이에요."
+        "DC형 예시 포트폴리오는 위험자산이 60%로 한도(70%) 안이에요."
     )
     assert "위험자산은 주식처럼 가격이 오르내릴 수 있는 자산이에요." in response.answer
     assert "상품별 편입 가능 여부도 확인해야 해요." in response.answer
@@ -815,7 +895,7 @@ def test_custom_dc_portfolio_uses_correct_particle_when_over_limit() -> None:
     )
 
     assert response.answer.startswith(
-        "DC 예시 포트폴리오는 위험자산이 80%로 한도(70%)를 넘었어요."
+        "DC형 예시 포트폴리오는 위험자산이 80%로 한도(70%)를 넘었어요."
     )
 
 
@@ -1307,6 +1387,34 @@ def test_narration_cache_ignores_corrupted_json(tmp_path, content) -> None:
     )
 
     assert narrator._cache_lookup("missing") is None
+
+
+def test_narration_cache_ignores_prior_prompt_version(tmp_path) -> None:
+    cache_path = tmp_path / "narration_cache.json"
+    cache_path.write_text(
+        json.dumps(
+            {
+                "version": NARRATION_CACHE_VERSION - 1,
+                "entries": [
+                    {
+                        "key": "prior-style",
+                        "narration": "이전 스타일 내레이션",
+                        "reasoning": None,
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        cache_path=cache_path,
+    )
+
+    assert narrator._cache_lookup("prior-style") is None
 
 
 def test_narration_precompute_uses_a_throwaway_narrator(monkeypatch) -> None:

@@ -48,24 +48,14 @@ const CHAT_SESSION: ChatSessionSummary = {
 
 function renderGuide(onSignOut = vi.fn().mockResolvedValue(undefined)): ReturnType<typeof render> {
   const auth = {
-    session: {
-      access_token: "access-token",
-      user: { id: "user-1", email: "owner@example.com" },
-    },
+    session: { access_token: "access-token", user: { id: "user-1", email: "owner@example.com" } },
     loading: false,
     configured: true,
     error: null,
     signIn: vi.fn(),
     signOut: vi.fn(),
   } as unknown as SupabaseAuthState;
-  return render(
-    <GuidePage
-      auth={auth}
-      onSignOut={onSignOut}
-      surveyProfile={null}
-      userContext={null}
-    />,
-  );
+  return render(<GuidePage auth={auth} onSignOut={onSignOut} surveyProfile={null} userContext={null} />);
 }
 const RECOMMENDED_CHAT_CARDS: ChatCard[] = [
   {
@@ -152,6 +142,40 @@ const THEME_RESPONSE: ChatResponse = {
   engine_results: [],
   limitations: [],
   conversation_context: null,
+};
+
+const STRUCTURED_PORTFOLIO_RESPONSE: ChatResponse = {
+  ...THEME_RESPONSE,
+  intent: "educational_portfolio",
+  answer: "위험중립형 연금 운용 전략을 정리했어요.",
+  data_mode: "engine_educational_planning",
+  sections: [
+    {
+      kind: "service_explanation",
+      title: "위험중립형 투자전략",
+      content: "35년의 장기 운용기간을 고려한 전략이에요. 목표비중을 확인해 보세요.",
+      evidence_ids: [],
+      blocks: [
+        {
+          kind: "table",
+          title: "목표 포트폴리오",
+          text: "",
+          items: [],
+          headers: ["자산군", "목표비중", "엔진 편입 후보"],
+          rows: [["국내외 주식", "28.0%", "TIGER 예시 · KODEX 예시"]],
+        },
+        {
+          kind: "bullets",
+          title: "운용 원칙",
+          text: "",
+          items: ["분기마다 목표비중 이탈을 점검해요."],
+          headers: [],
+          rows: [],
+        },
+      ],
+    },
+  ],
+  limitations: ["상품 선택과 주문은 사용자가 직접 해요."],
 };
 
 const REPRESENTATIVE_COMPANY_RESPONSE: ChatResponse = {
@@ -301,10 +325,8 @@ describe("GuidePage chat history deletion", () => {
   it("keeps stored conversations when logging out", async () => {
     const onSignOut = vi.fn().mockResolvedValue(undefined);
     renderGuide(onSignOut);
-
     await screen.findByText("IRP 규칙");
     fireEvent.click(screen.getAllByRole("button", { name: "로그아웃" })[0]);
-
     await waitFor(() => expect(onSignOut).toHaveBeenCalledOnce());
     expect(deleteChatSession).not.toHaveBeenCalled();
   });
@@ -333,7 +355,7 @@ describe("GuidePage chat history deletion", () => {
     const composer = screen.getByLabelText("질문 입력");
     fireEvent.change(composer, { target: { value: "첫 질문" } });
     fireEvent.submit(composer.closest("form")!);
-    await screen.findAllByText("전송 실패");
+    await screen.findAllByText("요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     const retryButton = screen.getByRole("button", { name: /다시 시도/ });
 
     fireEvent.click(screen.getByRole("button", { name: "대화 삭제: IRP 규칙" }));
@@ -493,6 +515,43 @@ describe("GuidePage chat history deletion", () => {
     expect(within(outcomeCard).getByText(/KIND 현금분배/)).toBeInTheDocument();
   });
 
+  it("shows six numeric evidence cards first and expands the remaining cards", async () => {
+    const response: ChatResponse = {
+      ...THEME_RESPONSE,
+      numeric_evidence: Array.from({ length: 7 }, (_, index) => ({
+        label: `카드 수치 ${index + 1}`,
+        value: String(index + 1),
+        unit: "%",
+        evidence_id: `evidence:${index + 1}`,
+        basis: "표시 순서 테스트",
+      })),
+    };
+    vi.mocked(getChatCards).mockResolvedValue({
+      cards: [RECOMMENDED_CHAT_CARDS[0]],
+    });
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      persisted: false,
+      session_id: null,
+      response,
+    } as Awaited<ReturnType<typeof sendAuthenticatedChatStream>>);
+    renderGuide();
+
+    fireEvent.click(await screen.findByRole("button", { name: /오늘 증시 뉴스/ }));
+
+    await screen.findByText("카드 수치 6");
+    expect(screen.queryByText("카드 수치 7")).not.toBeInTheDocument();
+    const toggle = screen.getByRole("button", {
+      name: "숫자 근거 전체 7개 보기",
+    });
+    fireEvent.click(toggle);
+
+    expect(await screen.findByText("카드 수치 7")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "숫자 근거 접기" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+
   it("renders only the five requested recommendation cards without spark icons", async () => {
     vi.mocked(getChatCards).mockResolvedValue({ cards: RECOMMENDED_CHAT_CARDS });
     renderGuide();
@@ -610,7 +669,7 @@ describe("GuidePage chat history deletion", () => {
     renderGuide();
 
     fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
-    const themeSection = (await screen.findByText("조선 테마란?")).closest("details");
+    const themeSection = (await screen.findByText(/조선 테마란/)).closest("details");
     const followUps = screen.getByLabelText("이어서 물어보기");
     expect(themeSection?.nextElementSibling).toBe(followUps);
     expect(within(followUps).getByRole("button", {
@@ -710,6 +769,50 @@ describe("GuidePage chat history deletion", () => {
       "수출규제와 지정학적 공급망 재편의 영향을 크게 받을 수 있습니다.",
     ).tagName).toBe("LI");
     expect(limitations).toHaveLength(2);
+  });
+
+  it("keeps educational portfolio sections and limitations collapsed until opened", async () => {
+    vi.mocked(getStoredChatMessages).mockResolvedValue([
+      {
+        message_id: "portfolio-question",
+        question_message_id: null,
+        role: "user",
+        content: "포트폴리오를 보여줘",
+        response: null,
+        model_name: null,
+        created_at: "2026-07-20T00:00:00Z",
+        evidence: [],
+      },
+      {
+        message_id: "portfolio-answer",
+        question_message_id: "portfolio-question",
+        role: "assistant",
+        content: STRUCTURED_PORTFOLIO_RESPONSE.answer,
+        response: STRUCTURED_PORTFOLIO_RESPONSE,
+        model_name: null,
+        created_at: "2026-07-20T00:00:01Z",
+        evidence: [],
+      },
+    ]);
+    renderGuide();
+
+    fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
+    const preview = await screen.findByText(
+      "위험중립형 투자전략 — 35년의 장기 운용기간을 고려한 전략이에요.",
+    );
+    const section = preview.closest("details");
+    const limitations = screen.getByText("확인할 점 1가지 보기").closest("details");
+
+    expect(section).not.toHaveAttribute("open");
+    expect(section?.querySelector(".answer-table-wrap")).not.toBeNull();
+    expect(section?.querySelectorAll(".answer-bullets li")).toHaveLength(1);
+    expect(limitations).not.toHaveAttribute("open");
+
+    fireEvent.click(preview.closest("summary")!);
+    fireEvent.click(screen.getByText("확인할 점 1가지 보기").closest("summary")!);
+
+    expect(section).toHaveAttribute("open");
+    expect(limitations).toHaveAttribute("open");
   });
 });
 

@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 
 # 엔진 답변이 결정론이므로 같은 프롬프트는 같은 검증 내레이션을 재사용한다.
 NARRATION_CACHE_MAX_ENTRIES = 256
-NARRATION_CACHE_VERSION = 1
+NARRATION_CACHE_VERSION = 2
 NARRATION_CACHE_PERSIST_DEBOUNCE_SECONDS = 5.0
 _NARRATION_CACHE_FILE_LOCK = threading.Lock()
 
@@ -71,7 +71,7 @@ SYSTEM_PROMPT = (
     "질문에서 느껴지는 걱정이나 혼란을 짧게 공감한 뒤 "
     "차근차근 설명하고 필요하면 '같이 살펴봐요'처럼 다음 행동을 안내한다. "
     "과도하게 친근하거나 가벼운 말투, 근거 없는 안심·격려는 쓰지 않는다. "
-    "본문은 서너 문장, 최대 다섯 문장으로 짧게 쓰되 모든 문장은 중간에 "
+    "본문은 두세 문장, 최대 네 문장으로 짧게 쓰되 모든 문장은 중간에 "
     "끊지 말고 완결한다. "
     "사실·외부 의견·서비스 해석의 경계를 유지하고 숫자와 단위는 원문 "
     "그대로 둔다."
@@ -188,7 +188,10 @@ class ClaudeNarrator:
             payload = json.loads(self._cache_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             return OrderedDict()
-        if not isinstance(payload, dict) or payload.get("version") != 1:
+        if (
+            not isinstance(payload, dict)
+            or payload.get("version") != NARRATION_CACHE_VERSION
+        ):
             return OrderedDict()
         raw_entries = payload.get("entries")
         if not isinstance(raw_entries, list):

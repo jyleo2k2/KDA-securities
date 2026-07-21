@@ -1,7 +1,8 @@
 """Prepare and provision six synthetic demo users in Supabase Auth.
 
-The tracked manifest contains stable user ids and login ids, but never
-passwords. Passwords are generated into the gitignored ``secrets/`` folder.
+The tracked manifest separates short presentation login ids from the internal
+Auth email identifiers, but never stores passwords. Passwords are generated
+into the gitignored ``secrets/`` folder.
 Remote provisioning requires server-only Supabase keys in ``.env``.
 
 Five users are presentation login candidates. The payout-transition user stays
@@ -32,11 +33,13 @@ DEFAULT_CREDENTIALS_PATH = REPOSITORY_ROOT / "secrets" / "demo_scenario_auth.jso
 DEMO_CONTEXT_AS_OF_DATE = date(2026, 7, 16)
 DEMO_CONTEXT_TAX_YEAR = 2026
 NON_CANDIDATE_SCENARIO_CODE = "pension_payout_transition"
+DEMO_PASSWORD_MIN_LENGTH = 6
+DEMO_AUTH_DOMAIN = "@kda-demo.invalid"
 
 
 def load_manifest(path: Path = DEFAULT_MANIFEST_PATH) -> list[dict[str, Any]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if payload.get("schema_version") != 3:
+    if payload.get("schema_version") != 4:
         raise ValueError("unsupported demo user manifest schema_version")
     users = payload.get("users")
     if not isinstance(users, list) or not users:
@@ -50,6 +53,7 @@ def load_manifest(path: Path = DEFAULT_MANIFEST_PATH) -> list[dict[str, Any]]:
         "representative_age",
         "age_band",
         "login_id",
+        "auth_email",
         "is_demo_login_candidate",
         "customer_context",
         "pension_savings_contribution_krw",
@@ -61,12 +65,22 @@ def load_manifest(path: Path = DEFAULT_MANIFEST_PATH) -> list[dict[str, Any]]:
         parsed_user_id = UUID(str(user["auth_user_id"]))
         if parsed_user_id.version != 4:
             raise ValueError("demo auth_user_id must be UUID v4")
-        if not str(user["login_id"]).endswith("@kda-demo.invalid"):
-            raise ValueError("demo login_id must use @kda-demo.invalid")
+        login_id = str(user["login_id"])
+        auth_email = str(user["auth_email"])
+        if not login_id or "@" in login_id:
+            raise ValueError("demo login_id must be a non-empty short ID")
+        if auth_email != f"{login_id}{DEMO_AUTH_DOMAIN}":
+            raise ValueError("demo auth_email must match the short login_id")
         if not isinstance(user["is_demo_login_candidate"], bool):
             raise ValueError("is_demo_login_candidate must be boolean")
 
-    for key in ("auth_user_id", "benchmark_user_id", "scenario_code", "login_id"):
+    for key in (
+        "auth_user_id",
+        "benchmark_user_id",
+        "scenario_code",
+        "login_id",
+        "auth_email",
+    ):
         values = [str(user[key]) for user in users]
         if len(values) != len(set(values)):
             raise ValueError(f"demo user manifest has duplicate {key}")
@@ -92,9 +106,31 @@ def prepare_credentials(
     if path.exists():
         payload = json.loads(path.read_text(encoding="utf-8"))
         credentials = payload.get("users")
-        if payload.get("schema_version") != 1 or not isinstance(credentials, list):
+        if payload.get("schema_version") not in {1, 2} or not isinstance(
+            credentials, list
+        ):
             raise ValueError("invalid demo credentials file")
+        users_by_scenario = {str(user["scenario_code"]): user for user in users}
+        upgraded_credentials = []
+        for credential in credentials:
+            if not isinstance(credential, dict):
+                raise ValueError("invalid demo credentials row")
+            user = users_by_scenario.get(str(credential.get("scenario_code", "")))
+            if user is None:
+                raise ValueError("demo credentials contain an unknown scenario")
+            upgraded_credentials.append(
+                {
+                    "auth_user_id": str(credential.get("auth_user_id", "")),
+                    "scenario_code": str(credential.get("scenario_code", "")),
+                    "login_id": str(user["login_id"]),
+                    "auth_email": str(user["auth_email"]),
+                    "password": str(credential.get("password", "")),
+                }
+            )
+        credentials = upgraded_credentials
         _validate_credentials(users, credentials)
+        if payload.get("schema_version") != 2 or payload.get("users") != credentials:
+            _write_credentials(path, credentials)
         return credentials
 
     credentials = [
@@ -102,14 +138,20 @@ def prepare_credentials(
             "auth_user_id": str(user["auth_user_id"]),
             "scenario_code": str(user["scenario_code"]),
             "login_id": str(user["login_id"]),
+            "auth_email": str(user["auth_email"]),
             "password": f"KdaDemo!{secrets.token_urlsafe(24)}",
         }
         for user in users
     ]
+    _write_credentials(path, credentials)
+    return credentials
+
+
+def _write_credentials(path: Path, credentials: list[dict[str, str]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(
-            {"schema_version": 1, "users": credentials},
+            {"schema_version": 2, "users": credentials},
             ensure_ascii=False,
             indent=2,
         )
@@ -118,7 +160,6 @@ def prepare_credentials(
     )
     with suppress(OSError):
         path.chmod(0o600)
-    return credentials
 
 
 def _validate_credentials(
@@ -129,6 +170,7 @@ def _validate_credentials(
             str(user["auth_user_id"]),
             str(user["scenario_code"]),
             str(user["login_id"]),
+            str(user["auth_email"]),
         )
         for user in users
     }
@@ -137,6 +179,7 @@ def _validate_credentials(
             str(item.get("auth_user_id", "")),
             str(item.get("scenario_code", "")),
             str(item.get("login_id", "")),
+            str(item.get("auth_email", "")),
         )
         for item in credentials
         if isinstance(item, dict)
@@ -144,7 +187,7 @@ def _validate_credentials(
     if expected != actual or len(credentials) != len(users):
         raise ValueError("demo credentials do not match the tracked manifest")
     passwords = [str(item.get("password", "")) for item in credentials]
-    if any(len(password) < 8 for password in passwords):
+    if any(len(password) < DEMO_PASSWORD_MIN_LENGTH for password in passwords):
         raise ValueError("demo password is missing or too short")
     if len(passwords) != len(set(passwords)):
         raise ValueError("demo passwords must be unique")
@@ -179,7 +222,7 @@ def _list_users(
 def _auth_payload(user: dict[str, Any], credential: dict[str, str]) -> dict[str, Any]:
     return {
         "id": str(user["auth_user_id"]),
-        "email": str(user["login_id"]),
+        "email": str(user["auth_email"]),
         "password": credential["password"],
         "email_confirm": True,
         "user_metadata": {
@@ -190,8 +233,17 @@ def _auth_payload(user: dict[str, Any], credential: dict[str, str]) -> dict[str,
         "app_metadata": {
             "account_kind": "synthetic_demo",
             "demo_scenario_code": str(user["scenario_code"]),
+            "demo_login_id": str(user["login_id"]),
             "is_demo_login_candidate": bool(user["is_demo_login_candidate"]),
         },
+    }
+
+
+def _auth_metadata_payload(user: dict[str, Any]) -> dict[str, Any]:
+    payload = _auth_payload(user, {"password": "unused"})
+    return {
+        "user_metadata": payload["user_metadata"],
+        "app_metadata": payload["app_metadata"],
     }
 
 
@@ -241,7 +293,7 @@ def _verify_sign_in(
         params={"grant_type": "password"},
         headers={"apikey": publishable_key},
         json={
-            "email": credential["login_id"],
+            "email": credential["auth_email"],
             "password": credential["password"],
         },
     )
@@ -367,19 +419,19 @@ def provision_users(
         for user in users:
             credential = credentials_by_scenario[str(user["scenario_code"])]
             user_id = str(user["auth_user_id"])
-            login_id = str(user["login_id"])
+            auth_email = str(user["auth_email"])
             payload = _auth_payload(user, credential)
             existing_by_id = by_id.get(user_id)
-            existing_by_email = by_email.get(login_id)
+            existing_by_email = by_email.get(auth_email)
             if existing_by_email and str(existing_by_email.get("id")) != user_id:
-                raise RuntimeError("demo login_id is owned by a different Auth user")
+                raise RuntimeError("demo auth_email is owned by a different Auth user")
             if existing_by_id:
                 if (
-                    str(existing_by_id.get("email")) != login_id
+                    str(existing_by_id.get("email")) != auth_email
                     and not rotate_existing
                 ):
                     raise RuntimeError(
-                        "demo login_id changed; run with --rotate-existing"
+                        "demo auth_email changed; run with --rotate-existing"
                     )
                 if rotate_existing:
                     _update_user(
@@ -388,6 +440,14 @@ def provision_users(
                         service_key=service_key,
                         user_id=user_id,
                         payload=payload,
+                    )
+                else:
+                    _update_user(
+                        client,
+                        base_url=base_url,
+                        service_key=service_key,
+                        user_id=user_id,
+                        payload=_auth_metadata_payload(user),
                     )
             else:
                 _create_user(

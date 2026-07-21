@@ -183,10 +183,165 @@
       "nickname": "정민재(가상)",
       "representative_age": 42,
       "age_band": "40대",
-      "login_id": "minjae32@kda-demo.invalid",
+      "login_id": "minjae32",
+      "auth_email": "minjae32@kda-demo.invalid",
+      "is_demo_login_candidate": true,
       "customer_context": "DC·IRP·연금저축에 글로벌주식형 자산이 중복되어 위험자산 편중이 있는 고객",
       "pension_savings_contribution_krw": 3840000,
       "irp_contribution_krw": 4920000
+    },
+    "investor_profile_assessment": {
+      "rule_version": "shinhan-personal-general-2021-05-20-demo-v1",
+      "source_documents": [
+        "docs/20_리서치/신한증권_투자권유준칙_투자자정보확인서_배점표.md",
+        "docs/20_리서치/신한증권_투자성향진단_설문및점수로직.md"
+      ],
+      "data_boundary": "mock",
+      "notice": "신한증권 개인 일반투자자 배점표를 대표 고객 시연에 적용한 합성 응답이며 실제 투자자정보 확인 결과가 아니다.",
+      "scenario_code": "overlap_risk_concentration",
+      "assessment_id": "demo-profile-overlap-risk-v1",
+      "investor_profile": "active",
+      "investor_profile_label": "적극투자형",
+      "total_score": 39,
+      "score_band": "33~40점",
+      "scenario_name": "적극투자형 계좌 중복 점검",
+      "scenario_description": "시장수익률 수준의 성장을 추구해 주식 ETF 비중을 높였지만 익숙한 글로벌·헬스케어 자산을 여러 계좌에 반복 보유한 고객",
+      "investment_reason": "은퇴까지 시간이 남아 있어 주식 ETF 비중을 높였습니다. 다만 익숙한 글로벌·헬스케어 ETF를 계좌마다 반복해서 담아 중복 위험을 정기적으로 점검하고 있습니다.",
+      "portfolio_opinion_review": "HANARO 미국S&P500과 TIGER S&P글로벌헬스케어(합성)를 세 계좌에 반복 보유해 미국 대형주·헬스케어 흐름이 전체 연금자산을 함께 움직였습니다. 고령화에 따른 헬스케어 수요는 장기 테마로 봤지만, 지정학·달러 변동까지 겹치면 중복 보유가 분산이 아니라는 점을 확인했습니다.",
+      "representative_etf_isu_codes": [
+        "432840",
+        "248270"
+      ],
+      "representative_etf_theme": "미국 대형주·글로벌 헬스케어 중복",
+      "representative_etf_theme_review": "미국 대형주 성장과 고령화·의료 수요 흐름을 함께 보고 두 ETF를 선택했지만, 동일 상품을 여러 계좌에 반복 보유해 테마 노출이 예상보다 커졌습니다.",
+      "portfolio_consistency_note": "DC·IRP는 일반 위험자산 65%, 연금저축은 70%로 적극투자형을 반영하되 계좌 한도를 지킨다.",
+      "financial_product_shares_percent": {
+        "guaranteed": 20,
+        "investment": 25,
+        "loan": 5,
+        "other": 50
+      },
+      "answers": [
+        {
+          "question_code": "q1_total_net_assets",
+          "selected_option": "5억원 이상~10억원 미만",
+          "score": 3,
+          "basis": "대표 고객 합성 가정"
+        },
+        {
+          "question_code": "q2_annual_income",
+          "selected_option": "7천만원 이상~1억원 미만",
+          "score": 4,
+          "basis": "총급여 97,500,000원"
+        },
+        {
+          "question_code": "q3_investment_product_share",
+          "selected_option": "20~29%",
+          "score": 3,
+          "basis": "투자성 상품 비중 합성 가정"
+        },
+        {
+          "question_code": "q3_loan_product_share",
+          "selected_option": "0~9%",
+          "score": 1,
+          "basis": "대출성 상품 비중 합성 가정"
+        },
+        {
+          "question_code": "q4_experienced_product",
+          "selected_option": "주식·주식형펀드 등 고위험 상품",
+          "score": 5,
+          "basis": "복수 계좌 주식 ETF 보유 경험"
+        },
+        {
+          "question_code": "q4_experience_period",
+          "selected_option": "3년 이상",
+          "score": 5,
+          "basis": "적극투자형 합성 경험"
+        },
+        {
+          "question_code": "q6_financial_knowledge",
+          "selected_option": "일반 금융투자상품 구조와 위험을 깊이 이해",
+          "score": 4,
+          "basis": "복수 계좌 직접 운용"
+        },
+        {
+          "question_code": "q7_investment_purpose",
+          "selected_option": "자산증식",
+          "score": 3,
+          "basis": "장기 성장 목적"
+        },
+        {
+          "question_code": "q8_risk_attitude",
+          "selected_option": "원금 보존을 고려하나 투자수익이 더 중요",
+          "score": 3,
+          "basis": "적극투자 선호"
+        },
+        {
+          "question_code": "q9_investment_horizon",
+          "selected_option": "5년 이상",
+          "score": 5,
+          "basis": "은퇴 예정까지 18년"
+        },
+        {
+          "question_code": "q10_loss_tolerance",
+          "selected_option": "원금 일부 손실·시중금리보다 높은 수익 기대",
+          "score": 3,
+          "basis": "적극투자형 손실감내 합성 응답"
+        }
+      ],
+      "non_scored_answers": {
+        "derivative_experience": "없음",
+        "vulnerable_financial_consumer": false,
+        "assessment_validity_consent": true
+      },
+      "portfolio_allocations": {
+        "dc": {
+          "domestic_equity": 25,
+          "global_equity": 40,
+          "bond": 20,
+          "deposit": 10,
+          "cash": 5
+        },
+        "irp": {
+          "domestic_equity": 20,
+          "global_equity": 45,
+          "bond": 20,
+          "deposit": 10,
+          "cash": 5
+        },
+        "pension_savings": {
+          "domestic_equity": 20,
+          "global_equity": 50,
+          "bond": 20,
+          "cash": 10
+        }
+      }
+    },
+    "public_portfolio_metrics": {
+      "notice": "과거 수익률은 1만 명 기준 고객의 계좌별 2025년 합성 수익률을 계좌잔액으로 가중한 시연 참고값이며 미래 성과 예측이나 공식 랭킹 산식이 아니다. 좋아요 수는 수익률과 무관하게 배정한 합성 참여지표다.",
+      "return_metric": {
+        "metric_code": "balance_weighted_trailing_12m_mock_return",
+        "label": "과거 12개월 계좌잔액 가중 합성수익률",
+        "calculation_basis": "Σ(계좌잔액×계좌 과거 12개월 수익률)÷총 계좌잔액",
+        "source_label": "data/mock/accounts.csv 합성 계좌 수익률",
+        "data_kind": "MOCK",
+        "is_forecast": false,
+        "official_ranking_metric": false
+      },
+      "like_metric": {
+        "metric_code": "synthetic_demo_like_count",
+        "label": "추천(좋아요)",
+        "as_of_date": "2026-07-21",
+        "data_kind": "MOCK",
+        "is_synthetic": true,
+        "performance_based": false
+      },
+      "scenario_code": "overlap_risk_concentration",
+      "benchmark_user_id": "USR03419",
+      "portfolio_trailing_12m_return_pct": "11.16",
+      "return_period_start": "2025-01-01",
+      "return_period_end": "2025-12-31",
+      "like_count": 173
     },
     "benchmark_contract": {
       "customer": {
@@ -430,57 +585,57 @@
           "label": "회사 DC",
           "holdings": [
             {
-              "holding_id": "overlap_risk_concentration_dc_domestic_equity_0_1",
+              "holding_id": "overlap_risk_concentration_dc_domestic_equity_1",
               "instrument_name": "HANARO K고배당",
               "asset_class_code": "domestic_equity",
-              "amount_krw": "32851437",
+              "amount_krw": "21689500",
               "risk_treatment": "general_risky",
               "etf_isu_code": "322410"
             },
             {
-              "holding_id": "overlap_risk_concentration_dc_domestic_equity_0_2",
+              "holding_id": "overlap_risk_concentration_dc_domestic_equity_2",
               "instrument_name": "TIGER 헬스케어",
               "asset_class_code": "domestic_equity",
-              "amount_krw": "14079188",
+              "amount_krw": "9295500",
               "risk_treatment": "general_risky",
               "etf_isu_code": "143860"
             },
             {
-              "holding_id": "overlap_risk_concentration_dc_global_equity_1_1",
+              "holding_id": "overlap_risk_concentration_dc_global_equity_1",
               "instrument_name": "HANARO 미국S&P500",
               "asset_class_code": "global_equity",
-              "amount_krw": "21901016",
+              "amount_krw": "34703200",
               "risk_treatment": "general_risky",
               "etf_isu_code": "432840"
             },
             {
-              "holding_id": "overlap_risk_concentration_dc_global_equity_1_2",
+              "holding_id": "overlap_risk_concentration_dc_global_equity_2",
               "instrument_name": "TIGER S&P글로벌헬스케어(합성)",
               "asset_class_code": "global_equity",
-              "amount_krw": "9386150",
+              "amount_krw": "14872800",
               "risk_treatment": "general_risky",
               "etf_isu_code": "248270"
             },
             {
-              "holding_id": "overlap_risk_concentration_dc_bond_2_1",
+              "holding_id": "overlap_risk_concentration_dc_bond_1",
               "instrument_name": "ACE 종합채권(AA-이상)액티브",
               "asset_class_code": "bond",
-              "amount_krw": "12648325",
+              "amount_krw": "24788000",
               "risk_treatment": "capital_preservation",
               "etf_isu_code": "356540"
             },
             {
-              "holding_id": "overlap_risk_concentration_dc_deposit_3_1",
+              "holding_id": "overlap_risk_concentration_dc_deposit_1",
               "instrument_name": "원리금보장 상품",
               "asset_class_code": "deposit",
-              "amount_krw": "29512841",
+              "amount_krw": "12394000",
               "risk_treatment": "capital_preservation"
             },
             {
-              "holding_id": "overlap_risk_concentration_dc_cash_4_1",
+              "holding_id": "overlap_risk_concentration_dc_cash_1",
               "instrument_name": "현금성 자산",
               "asset_class_code": "cash",
-              "amount_krw": "3561043",
+              "amount_krw": "6197000",
               "risk_treatment": "capital_preservation"
             }
           ]
@@ -491,57 +646,57 @@
           "label": "개인 IRP",
           "holdings": [
             {
-              "holding_id": "overlap_risk_concentration_irp_domestic_equity_0_1",
-              "instrument_name": "ACE AI반도체TOP3+",
+              "holding_id": "overlap_risk_concentration_irp_domestic_equity_1",
+              "instrument_name": "HANARO K고배당",
               "asset_class_code": "domestic_equity",
-              "amount_krw": "6465060",
+              "amount_krw": "3078600",
               "risk_treatment": "general_risky",
-              "etf_isu_code": "469150"
+              "etf_isu_code": "322410"
             },
             {
-              "holding_id": "overlap_risk_concentration_irp_domestic_equity_0_2",
-              "instrument_name": "HANARO 농업융복합산업",
+              "holding_id": "overlap_risk_concentration_irp_domestic_equity_2",
+              "instrument_name": "TIGER 헬스케어",
               "asset_class_code": "domestic_equity",
-              "amount_krw": "2770740",
+              "amount_krw": "1319400",
               "risk_treatment": "general_risky",
-              "etf_isu_code": "314700"
+              "etf_isu_code": "143860"
             },
             {
-              "holding_id": "overlap_risk_concentration_irp_global_equity_1_1",
-              "instrument_name": "ACE 미국S&P500",
+              "holding_id": "overlap_risk_concentration_irp_global_equity_1",
+              "instrument_name": "HANARO 미국S&P500",
               "asset_class_code": "global_equity",
-              "amount_krw": "4310040",
+              "amount_krw": "6926850",
               "risk_treatment": "general_risky",
-              "etf_isu_code": "360200"
+              "etf_isu_code": "432840"
             },
             {
-              "holding_id": "overlap_risk_concentration_irp_global_equity_1_2",
-              "instrument_name": "RISE 미국반도체NYSE",
+              "holding_id": "overlap_risk_concentration_irp_global_equity_2",
+              "instrument_name": "TIGER S&P글로벌헬스케어(합성)",
               "asset_class_code": "global_equity",
-              "amount_krw": "1847160",
+              "amount_krw": "2968650",
               "risk_treatment": "general_risky",
-              "etf_isu_code": "469060"
+              "etf_isu_code": "248270"
             },
             {
-              "holding_id": "overlap_risk_concentration_irp_bond_2_1",
-              "instrument_name": "HANARO 종합채권(AA-이상)액티브",
+              "holding_id": "overlap_risk_concentration_irp_bond_1",
+              "instrument_name": "ACE 종합채권(AA-이상)액티브",
               "asset_class_code": "bond",
-              "amount_krw": "1904400",
+              "amount_krw": "4398000",
               "risk_treatment": "capital_preservation",
-              "etf_isu_code": "461500"
+              "etf_isu_code": "356540"
             },
             {
-              "holding_id": "overlap_risk_concentration_irp_deposit_3_1",
+              "holding_id": "overlap_risk_concentration_irp_deposit_1",
               "instrument_name": "원리금보장 상품",
               "asset_class_code": "deposit",
-              "amount_krw": "4443585",
+              "amount_krw": "2199000",
               "risk_treatment": "capital_preservation"
             },
             {
-              "holding_id": "overlap_risk_concentration_irp_cash_4_1",
+              "holding_id": "overlap_risk_concentration_irp_cash_1",
               "instrument_name": "현금성 자산",
               "asset_class_code": "cash",
-              "amount_krw": "249015",
+              "amount_krw": "1099500",
               "risk_treatment": "capital_preservation"
             }
           ]
@@ -552,50 +707,50 @@
           "label": "연금저축펀드",
           "holdings": [
             {
-              "holding_id": "overlap_risk_concentration_pension_savings_domestic_equity_0_1",
-              "instrument_name": "HANARO 200TR",
+              "holding_id": "overlap_risk_concentration_pension_savings_domestic_equity_1",
+              "instrument_name": "HANARO K고배당",
               "asset_class_code": "domestic_equity",
-              "amount_krw": "904938",
+              "amount_krw": "476000",
               "risk_treatment": "general_risky",
-              "etf_isu_code": "332930"
+              "etf_isu_code": "322410"
             },
             {
-              "holding_id": "overlap_risk_concentration_pension_savings_domestic_equity_0_2",
-              "instrument_name": "SOL 금융지주플러스고배당",
+              "holding_id": "overlap_risk_concentration_pension_savings_domestic_equity_2",
+              "instrument_name": "TIGER 헬스케어",
               "asset_class_code": "domestic_equity",
-              "amount_krw": "387830",
+              "amount_krw": "204000",
               "risk_treatment": "general_risky",
-              "etf_isu_code": "484880"
+              "etf_isu_code": "143860"
             },
             {
-              "holding_id": "overlap_risk_concentration_pension_savings_global_equity_1_1",
-              "instrument_name": "TIGER 미국배당다우존스",
+              "holding_id": "overlap_risk_concentration_pension_savings_global_equity_1",
+              "instrument_name": "HANARO 미국S&P500",
               "asset_class_code": "global_equity",
-              "amount_krw": "603292",
+              "amount_krw": "1190000",
               "risk_treatment": "general_risky",
-              "etf_isu_code": "458730"
+              "etf_isu_code": "432840"
             },
             {
-              "holding_id": "overlap_risk_concentration_pension_savings_global_equity_1_2",
-              "instrument_name": "ACE 글로벌반도체TOP4 Plus",
+              "holding_id": "overlap_risk_concentration_pension_savings_global_equity_2",
+              "instrument_name": "TIGER S&P글로벌헬스케어(합성)",
               "asset_class_code": "global_equity",
-              "amount_krw": "258554",
+              "amount_krw": "510000",
               "risk_treatment": "general_risky",
-              "etf_isu_code": "446770"
+              "etf_isu_code": "248270"
             },
             {
-              "holding_id": "overlap_risk_concentration_pension_savings_bond_2_1",
-              "instrument_name": "SOL 종합채권(AA-이상)액티브",
+              "holding_id": "overlap_risk_concentration_pension_savings_bond_1",
+              "instrument_name": "ACE 종합채권(AA-이상)액티브",
               "asset_class_code": "bond",
-              "amount_krw": "1097935",
+              "amount_krw": "680000",
               "risk_treatment": "capital_preservation",
-              "etf_isu_code": "436140"
+              "etf_isu_code": "356540"
             },
             {
-              "holding_id": "overlap_risk_concentration_pension_savings_cash_3_1",
+              "holding_id": "overlap_risk_concentration_pension_savings_cash_1",
               "instrument_name": "현금성 자산",
               "asset_class_code": "cash",
-              "amount_krw": "147451",
+              "amount_krw": "340000",
               "risk_treatment": "capital_preservation"
             }
           ]
