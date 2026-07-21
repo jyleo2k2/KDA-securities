@@ -96,8 +96,8 @@ export default function App(): JSX.Element {
 
   if (auth.loading) return <main className="app-auth-loading" aria-label="로그인 상태 확인 중" />;
   if (activeRoute === "login" || (auth.configured && loginSuccessPending)) return <LoginFlowPage auth={auth} onAuthenticated={() => setLoginSuccessPending(true)} onStart={goToMainHome} />;
-  const resolvedRoute = !auth.configured && activeRoute === "login" ? "home" : activeRoute;
-  const activeTab: TabKey = resolvedRoute === "login" || resolvedRoute === "main-home" ? "home" : resolvedRoute;
+  const resolvedRoute = activeRoute;
+  const activeTab: TabKey = resolvedRoute === "main-home" ? "home" : resolvedRoute;
   const CardPage = CARD_PAGES[activeTab];
   const displayName = currentUserData.context?.nickname ?? auth.session?.user.email?.replace("@kda-demo.invalid", "") ?? "인증 사용자";
 
