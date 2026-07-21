@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,41 +6,12 @@ import { ApiError, getDemoHeroes, getMyPensionContext } from "./api/client";
 import type { DemoHeroPortfolio, DemoUserFinancialContext } from "./api/types";
 import { useSupabaseAuth } from "./auth/useSupabaseAuth";
 import App from "./App";
-
 vi.mock("./api/client", () => ({ ApiError: class ApiError extends Error { status: number; constructor(status: number, message: string) { super(message); this.status = status; } }, getDemoHeroes: vi.fn(), getMyPensionContext: vi.fn() }));
 vi.mock("./auth/useSupabaseAuth", () => ({ useSupabaseAuth: vi.fn() }));
 vi.mock("./components/TabBar", () => ({ TabBar: () => <nav>탭</nav> }));
 vi.mock("./pages/HomePage", () => ({ HomePage: ({ error, hero, loading, userContext }: { error: string | null; hero: DemoHeroPortfolio | null; loading: boolean; userContext: DemoUserFinancialContext | null }) => <main>{loading ? "로딩" : error ?? `${userContext?.nickname ?? "없음"}:${hero?.scenario_code ?? "없음"}`}</main> }));
 vi.mock("./pages/LoginFlowPage", () => ({ LoginFlowPage: () => <main>로그인</main> }));
-vi.mock("./pages/GuidePage", () => ({ GuidePage: () => <main>챗</main> }));
-vi.mock("./pages/ProfilePage", () => ({ ProfilePage: () => <main>프로필</main> }));
-vi.mock("./pages/BenchmarkPage", () => ({ BenchmarkPage: () => <main>벤치마크</main> }));
-
-const contextA = { auth_user_id: "user-a", nickname: "사용자 A", scenario_code: "scenario-a" } as DemoUserFinancialContext;
-const contextB = { auth_user_id: "user-b", nickname: "사용자 B", scenario_code: "scenario-b" } as DemoUserFinancialContext;
-const heroes = [{ scenario_code: "scenario-a" }, { scenario_code: "scenario-b" }] as DemoHeroPortfolio[];
-let authState: ReturnType<typeof useSupabaseAuth>;
-function setAuthenticatedUser(id: string, token: string): void { authState = { session: { access_token: token, user: { id } }, loading: false, configured: true, error: null, signIn: vi.fn(), signOut: vi.fn() } as unknown as ReturnType<typeof useSupabaseAuth>; }
-
-describe("App logged-in user data", () => {
-  beforeEach(() => { window.history.replaceState(null, "", "#home"); window.localStorage.clear(); setAuthenticatedUser("user-a", "token-a"); vi.mocked(useSupabaseAuth).mockImplementation(() => authState); });
-  afterEach(() => { cleanup(); vi.clearAllMocks(); });
-  it("clears A's local state and never renders it while loading B's data", async () => {
-    let resolveContextB: ((value: DemoUserFinancialContext) => void) | undefined;
-    let resolveHeroesB: ((value: DemoHeroPortfolio[]) => void) | undefined;
-    vi.mocked(getMyPensionContext).mockResolvedValueOnce(contextA).mockImplementationOnce(() => new Promise((resolve) => { resolveContextB = resolve; }));
-    vi.mocked(getDemoHeroes).mockResolvedValueOnce(heroes).mockImplementationOnce(() => new Promise((resolve) => { resolveHeroesB = resolve; }));
-    window.localStorage.setItem("pension-copilot:survey-profile", "A의 설문");
-    const view = render(<App />);
-    expect(await screen.findByText("사용자 A:scenario-a")).toBeInTheDocument();
-    setAuthenticatedUser("user-b", "token-b"); view.rerender(<App />);
-    expect(await screen.findByText("로딩")).toBeInTheDocument();
-    expect(screen.queryByText("사용자 A:scenario-a")).not.toBeInTheDocument();
-    expect(window.localStorage.getItem("pension-copilot:survey-profile")).toBeNull();
-    resolveContextB?.(contextB); resolveHeroesB?.(heroes);
-    await waitFor(() => expect(screen.getByText("사용자 B:scenario-b")).toBeInTheDocument());
-  });
-  it("shows the linked-pension-data notice for a 404 response", async () => { vi.mocked(getMyPensionContext).mockRejectedValue(new ApiError(404, "missing")); vi.mocked(getDemoHeroes).mockResolvedValue(heroes); render(<App />); expect(await screen.findByText("이 계정에는 연동된 연금 데이터가 없습니다.")).toBeInTheDocument(); });
-  it("returns to login and clears browser-only user state without deleting saved sessions", async () => { vi.mocked(getMyPensionContext).mockResolvedValue(contextA); vi.mocked(getDemoHeroes).mockResolvedValue(heroes); const signOut = vi.fn().mockResolvedValue(undefined); authState = { ...authState, signOut }; window.localStorage.setItem("pension-copilot:survey-profile", "A의 설문"); render(<App />); await screen.findByText("사용자 A:scenario-a"); fireEvent.click(screen.getByRole("button", { name: "로그아웃" })); expect(await screen.findByText("로그인")).toBeInTheDocument(); expect(signOut).toHaveBeenCalledOnce(); expect(window.localStorage.getItem("pension-copilot:survey-profile")).toBeNull(); });
-  it("redirects an unauthenticated home route to login", async () => { authState = { ...authState, session: null }; render(<App />); expect(await screen.findByText("로그인")).toBeInTheDocument(); });
-});
+vi.mock("./pages/GuidePage", () => ({ GuidePage: () => <main>챗</main> })); vi.mock("./pages/ProfilePage", () => ({ ProfilePage: () => <main>프로필</main> })); vi.mock("./pages/BenchmarkPage", () => ({ BenchmarkPage: () => <main>벤치마크</main> }));
+const contextA = { auth_user_id: "user-a", nickname: "사용자 A", scenario_code: "scenario-a" } as DemoUserFinancialContext; const contextB = { auth_user_id: "user-b", nickname: "사용자 B", scenario_code: "scenario-b" } as DemoUserFinancialContext; const heroes = [{ scenario_code: "scenario-a" }, { scenario_code: "scenario-b" }] as DemoHeroPortfolio[];
+let authState: ReturnType<typeof useSupabaseAuth>; function setUser(id: string, token: string): void { authState = { session: { access_token: token, user: { id } }, loading: false, configured: true, error: null, signIn: vi.fn(), signOut: vi.fn() } as unknown as ReturnType<typeof useSupabaseAuth>; }
+describe("App logged-in user data", () => { beforeEach(() => { window.history.replaceState(null, "", "#home"); window.localStorage.clear(); setUser("user-a", "token-a"); vi.mocked(useSupabaseAuth).mockImplementation(() => authState); }); afterEach(() => { cleanup(); vi.clearAllMocks(); }); it("clears A while loading B", async () => { let resolveB: ((value: DemoUserFinancialContext) => void) | undefined; vi.mocked(getMyPensionContext).mockResolvedValueOnce(contextA).mockImplementationOnce(() => new Promise((resolve) => { resolveB = resolve; })); vi.mocked(getDemoHeroes).mockResolvedValue(heroes); window.localStorage.setItem("pension-copilot:survey-profile", "A"); const view = render(<App />); expect(await screen.findByText("사용자 A:scenario-a")).toBeInTheDocument(); setUser("user-b", "token-b"); view.rerender(<App />); expect(await screen.findByText("로딩")).toBeInTheDocument(); expect(screen.queryByText("사용자 A:scenario-a")).not.toBeInTheDocument(); expect(window.localStorage.getItem("pension-copilot:survey-profile")).toBeNull(); resolveB?.(contextB); await waitFor(() => expect(screen.getByText("사용자 B:scenario-b")).toBeInTheDocument()); }); it("shows the 404 notice", async () => { vi.mocked(getMyPensionContext).mockRejectedValue(new ApiError(404, "missing")); vi.mocked(getDemoHeroes).mockResolvedValue(heroes); render(<App />); expect(await screen.findByText("이 계정에는 연동된 연금 데이터가 없습니다.")).toBeInTheDocument(); }); it("clears browser state on logout", async () => { vi.mocked(getMyPensionContext).mockResolvedValue(contextA); vi.mocked(getDemoHeroes).mockResolvedValue(heroes); const signOut = vi.fn().mockResolvedValue(undefined); authState = { ...authState, signOut }; window.localStorage.setItem("pension-copilot:survey-profile", "A"); render(<App />); await screen.findByText("사용자 A:scenario-a"); fireEvent.click(screen.getByRole("button", { name: "로그아웃" })); expect(signOut).toHaveBeenCalledOnce(); expect(window.localStorage.getItem("pension-copilot:survey-profile")).toBeNull(); }); });

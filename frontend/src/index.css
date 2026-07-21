@@ -23,7 +23,10 @@ button { color: inherit; }
 svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
 .home-dashboard { display: grid; gap: 18px; padding: 8px 0 24px; }
-.home-hero-heading > span, .section-heading-row > div > span { color: #007848; font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+.home-heading-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.home-heading-topline > span, .section-heading-row > div > span { color: #007848; font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+.home-temp-sign-out { border: 1px solid #18a860; border-radius: 999px; padding: 5px 10px; background: #fff; color: #007848; font-size: 11px; font-weight: 800; cursor: pointer; }
+.home-temp-sign-out:hover { background: #eff8f2; }
 .home-hero-heading h1 { margin: 8px 0 10px; color: #12372a; font-size: 30px; line-height: 1.22; letter-spacing: -.04em; }
 .home-hero-heading p { margin: 0; color: #6d7c74; font-size: 13px; line-height: 1.65; }
 .home-loading, .home-error { padding: 18px; border-radius: 16px; background: white; font-size: 13px; }
