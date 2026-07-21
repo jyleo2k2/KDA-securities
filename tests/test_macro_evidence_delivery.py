@@ -139,7 +139,12 @@ def test_macro_evidence_api_fails_closed_when_report_is_missing(
         app.dependency_overrides.pop(get_macro_evidence_repository, None)
 
     assert response.status_code == 503
-    assert response.json() == {"detail": "Current macro evidence is not available"}
+    assert response.json() == {
+        "detail": {
+            "code": "DATA_SOURCE_UNAVAILABLE",
+            "message": "Current macro evidence is not available",
+        }
+    }
 
 
 def test_chat_macro_answer_has_official_source_chips_and_no_forecast(

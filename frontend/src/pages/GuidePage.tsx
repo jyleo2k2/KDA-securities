@@ -14,6 +14,7 @@ import {
 
 import {
   ApiError,
+  apiErrorMessage,
   deleteChatSession,
   getChatCards,
   getChatSessions,
@@ -607,6 +608,7 @@ function AssistantMessage({
 }
 
 function authenticatedErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && typeof error.code === "string") return apiErrorMessage(error);
   if (error instanceof ApiError && error.status === 401) {
     return "로그인이 만료되었습니다. 다시 로그인해 주세요.";
   }

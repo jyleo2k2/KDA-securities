@@ -2,6 +2,7 @@ import { useRef, useState, type Dispatch, type SetStateAction } from "react";
 
 import {
   ApiError,
+  apiErrorMessage,
   sendAuthenticatedChatStream,
   sendChatStream,
 } from "../api/client";
@@ -231,6 +232,7 @@ export function useChatStream({
 }
 
 function authenticatedErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && typeof error.code === "string") return apiErrorMessage(error);
   if (error instanceof ApiError && error.status === 401) {
     return "로그인이 만료되었습니다. 다시 로그인해 주세요.";
   }

@@ -442,7 +442,13 @@ def test_blocked_query_works_without_chat_database() -> None:
 
     assert supported.status_code == 200
     supported_events = parse_sse(supported.text)
-    assert ("error", {"detail": "Chat database is not configured"}) in supported_events
+    assert (
+        "error",
+        {
+            "code": "DATABASE_NOT_CONFIGURED",
+            "message": "Chat database is not configured",
+        },
+    ) in supported_events
 
 
 def test_existing_session_without_repository_errors_before_answer_delta() -> None:
@@ -463,7 +469,13 @@ def test_existing_session_without_repository_errors_before_answer_delta() -> Non
     events = parse_sse(response.text)
     assert events == [
         ("phase", {"message": "요청을 확인하고 있습니다."}),
-        ("error", {"detail": "Chat database is not configured"}),
+        (
+            "error",
+            {
+                "code": "DATABASE_NOT_CONFIGURED",
+                "message": "Chat database is not configured",
+            },
+        ),
     ]
 
 
@@ -605,9 +617,13 @@ def test_invalid_stored_response_emits_stream_error(failing_operation: str) -> N
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert ("error", {"detail": "Chat database is unavailable"}) in parse_sse(
-        response.text
-    )
+    assert (
+        "error",
+        {
+            "code": "DATA_SOURCE_UNAVAILABLE",
+            "message": "Chat database is unavailable",
+        },
+    ) in parse_sse(response.text)
 
 
 def test_delete_database_failure_returns_service_unavailable() -> None:
@@ -634,9 +650,13 @@ def test_database_failure_is_distinct_from_auth_failure() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert ("error", {"detail": "Chat database is unavailable"}) in parse_sse(
-        response.text
-    )
+    assert (
+        "error",
+        {
+            "code": "DATA_SOURCE_UNAVAILABLE",
+            "message": "Chat database is unavailable",
+        },
+    ) in parse_sse(response.text)
 
 
 class UnavailableChatService(ChatService):
@@ -667,9 +687,13 @@ def test_demo_stream_runtime_error_emits_error_event() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert ("error", {"detail": "Chat data source is unavailable"}) in parse_sse(
-        response.text
-    )
+    assert (
+        "error",
+        {
+            "code": "DATA_SOURCE_UNAVAILABLE",
+            "message": "Chat data source is unavailable",
+        },
+    ) in parse_sse(response.text)
 
 
 def test_retrieval_failure_does_not_leave_an_orphan_question() -> None:
@@ -690,9 +714,13 @@ def test_retrieval_failure_does_not_leave_an_orphan_question() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert ("error", {"detail": "Chat data source is unavailable"}) in parse_sse(
-        response.text
-    )
+    assert (
+        "error",
+        {
+            "code": "DATA_SOURCE_UNAVAILABLE",
+            "message": "Chat data source is unavailable",
+        },
+    ) in parse_sse(response.text)
     assert repository.saved == []
 
 

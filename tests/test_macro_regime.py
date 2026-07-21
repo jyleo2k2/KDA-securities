@@ -376,5 +376,8 @@ def test_macro_analog_regime_api_fails_closed_without_history(
 
     assert response.status_code == 503
     assert response.json() == {
-        "detail": "Historical macro regime evidence is not available"
+        "detail": {
+            "code": "DATA_SOURCE_UNAVAILABLE",
+            "message": "Historical macro regime evidence is not available",
+        }
     }

@@ -21,13 +21,32 @@ const API_BASE_URL: string = (
 ).replace(/\/$/, "");
 
 export class ApiError extends Error {
-  readonly status: number;
+  readonly status: number | undefined;
+  readonly code: string | null;
 
-  constructor(status: number, message: string) {
+  constructor(status: number | undefined, message: string, code: string | null = null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
+}
+
+const ERROR_MESSAGES: Record<string, string> = {
+  RESOURCE_NOT_FOUND: "요청한 정보를 찾을 수 없습니다.",
+  DATA_SOURCE_UNAVAILABLE: "데이터를 불러오는 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+  SESSION_NOT_FOUND: "요청한 대화 기록을 찾을 수 없습니다.",
+  DATABASE_NOT_CONFIGURED: "현재 서비스를 이용할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+  INVALID_DATE_RANGE: "조회 시작일은 종료일보다 늦을 수 없습니다.",
+};
+
+export function apiErrorMessage(
+  error: ApiError,
+  fallback = "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+): string {
+  if (error.code !== null) return ERROR_MESSAGES[error.code] ?? fallback;
+  if (error.status === 401) return "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+  return fallback;
 }
 
 export interface ChatStreamResult {
@@ -42,10 +61,22 @@ export interface ChatStreamResult {
 async function parseOrThrow<T>(path: string, response: Response): Promise<T> {
   if (!response.ok) {
     let detail = `${path} 요청 실패 (${response.status})`;
+    let code: string | null = null;
     try {
       const body = (await response.json()) as {
-        detail?: string | Array<{ msg?: string }>;
+        detail?:
+          | { code?: unknown; message?: unknown }
+          | string
+          | Array<{ msg?: string }>;
       };
+      if (
+        typeof body.detail === "object"
+        && body.detail !== null
+        && !Array.isArray(body.detail)
+      ) {
+        if (typeof body.detail.message === "string") detail = body.detail.message;
+        if (typeof body.detail.code === "string") code = body.detail.code;
+      }
       if (typeof body.detail === "string") detail = body.detail;
       if (Array.isArray(body.detail)) {
         detail = body.detail
@@ -56,7 +87,7 @@ async function parseOrThrow<T>(path: string, response: Response): Promise<T> {
     } catch {
       // Keep the safe default when the server does not return JSON.
     }
-    throw new ApiError(response.status, detail);
+    throw new ApiError(response.status, detail, code);
   }
   return (await response.json()) as T;
 }
@@ -153,8 +184,12 @@ async function apiPostStream<TBody>(
           event === "narration_update" && typeof payload.answer === "string"
         ) {
           onNarrationUpdate(payload.answer);
-        } else if (event === "error" && typeof payload.detail === "string") {
-          throw new Error(payload.detail);
+        } else if (
+          event === "error"
+          && typeof payload.code === "string"
+          && typeof payload.message === "string"
+        ) {
+          throw new ApiError(undefined, payload.message, payload.code);
         } else if (event === "response") {
           result = payload as unknown as ChatStreamResult;
         }

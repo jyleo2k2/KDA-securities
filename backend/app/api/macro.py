@@ -3,7 +3,7 @@
 from typing import Annotated
 
 import psycopg
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from ..engine.models import AccountType
@@ -17,6 +17,7 @@ from ..macro_evidence import (
 )
 from ..settings import Settings, get_settings
 from .deps import get_macro_evidence_repository, get_portfolio_universe_repository
+from .errors import ApiErrorCode, api_error
 
 router = APIRouter(tags=["macro"])
 
@@ -37,9 +38,10 @@ def macro_evidence(
     try:
         return repository.latest()
     except MacroEvidenceUnavailable as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Current macro evidence is not available",
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Current macro evidence is not available",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         ) from exc
 
 
@@ -52,9 +54,10 @@ def macro_analog_regimes(
     try:
         return repository.analog_regimes()
     except MacroEvidenceUnavailable as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Historical macro regime evidence is not available",
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Historical macro regime evidence is not available",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         ) from exc
 
 
@@ -86,9 +89,10 @@ def macro_analog_regime_etf_outcomes(
             isu_codes=request.isu_codes,
         )
     except MacroEvidenceUnavailable as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Historical macro regime evidence is not available",
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Historical macro regime evidence is not available",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         ) from exc
     except (
         FileNotFoundError,
@@ -96,7 +100,8 @@ def macro_analog_regime_etf_outcomes(
         PortfolioUniverseLoadError,
         psycopg.Error,
     ) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="ETF total-return history is not available",
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "ETF total-return history is not available",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         ) from exc

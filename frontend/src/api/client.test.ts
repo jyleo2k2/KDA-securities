@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { deleteChatSession, sendChatStream } from "./client";
+import {
+  ApiError,
+  apiErrorMessage,
+  deleteChatSession,
+  getBenchmarkSummary,
+  sendChatStream,
+} from "./client";
 
 
 afterEach(() => {
@@ -9,6 +15,29 @@ afterEach(() => {
 
 
 describe("chat SSE parser", () => {
+  it("preserves a structured error event as an ApiError", async () => {
+    const encoder = new TextEncoder();
+    const body = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(
+          'event: error\ndata: {"code":"DATA_SOURCE_UNAVAILABLE","message":"Chat data source is unavailable"}\n\n',
+        ));
+        controller.close();
+      },
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body)));
+
+    await expect(sendChatStream(
+      "IRP 한도를 알려줘",
+      () => undefined,
+      () => undefined,
+      () => undefined,
+    )).rejects.toMatchObject({
+      code: "DATA_SOURCE_UNAVAILABLE",
+      message: "Chat data source is unavailable",
+    } satisfies Partial<ApiError>);
+  });
+
   it("delivers a verified narration as a full answer replacement", async () => {
     const encoder = new TextEncoder();
     const body = new ReadableStream({
@@ -77,6 +106,32 @@ describe("chat SSE parser", () => {
         new_contribution_krw: "1000000",
       },
     });
+  });
+});
+
+describe("API error parser", () => {
+  it("preserves the REST error code and maps it to a Korean message", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({
+        detail: {
+          code: "RESOURCE_NOT_FOUND",
+          message: "Requested resource was not found",
+        },
+      }),
+      { status: 404, headers: { "Content-Type": "application/json" } },
+    )));
+
+    try {
+      await getBenchmarkSummary();
+      throw new Error("Expected getBenchmarkSummary to reject");
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: "RESOURCE_NOT_FOUND",
+        message: "Requested resource was not found",
+        status: 404,
+      } satisfies Partial<ApiError>);
+      expect(apiErrorMessage(error as ApiError)).toBe("요청한 정보를 찾을 수 없습니다.");
+    }
   });
 });
 
