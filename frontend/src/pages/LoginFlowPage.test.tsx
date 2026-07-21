@@ -132,7 +132,8 @@ describe("LoginFlowPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "필수 정보 이용 내용을 확인했습니다." }));
     expect(continueButton).toBeEnabled();
     fireEvent.click(continueButton);
-    expect(onStart).toHaveBeenCalledOnce();
+    expect(screen.getByRole("heading", { name: "연금 계좌에 연동하고 있어요" })).toBeInTheDocument();
+    expect(onStart).not.toHaveBeenCalled();
   });
 
   it("returns to the success screen from account consent", async () => {
