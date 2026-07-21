@@ -196,6 +196,28 @@ class NewsConversationContext(BaseModel):
         return self
 
 
+class EtfThemeConversationContext(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    theme_id: str = Field(min_length=1)
+    candidate_isu_codes: list[str] = Field(min_length=1, max_length=3)
+    candidate_names: list[str] = Field(min_length=1, max_length=3)
+
+    @model_validator(mode="after")
+    def validate_candidate_isu_codes(self) -> "EtfThemeConversationContext":
+        codes = [code.strip() for code in self.candidate_isu_codes]
+        if any(not code for code in codes):
+            raise ValueError("candidate_isu_codes must not contain blanks")
+        if len(set(codes)) != len(codes):
+            raise ValueError("candidate_isu_codes must not contain duplicates")
+        if len(self.candidate_names) != len(codes):
+            raise ValueError("candidate_names must match candidate_isu_codes")
+        if any(not name.strip() for name in self.candidate_names):
+            raise ValueError("candidate_names must not contain blanks")
+        self.candidate_isu_codes = codes
+        return self
+
+
 class ConversationContext(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -205,6 +227,7 @@ class ConversationContext(BaseModel):
     survey_profile: CompletedSurveyProfile | None = None
     selected_risk_profile: EducationalRiskProfile | None = None
     news: NewsConversationContext | None = None
+    etf_theme: EtfThemeConversationContext | None = None
 
 
 class ChatRequest(BaseModel):

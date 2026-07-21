@@ -35,6 +35,14 @@ const STRESS_SCENARIO_LABELS: Record<string, string> = {
   stagflation: "스태그플레이션",
 };
 
+const STRATEGY_LABELS: Record<string, string> = {
+  capital_preservation_core: "자본보전 중심 전략",
+  defensive_diversified_core: "방어적 분산 전략",
+  balanced_core_satellite: "코어·위성 전략",
+  growth_core_satellite: "성장 코어·위성 전략",
+  barbell_growth_tactical: "바벨형 성장·전술 전략",
+};
+
 interface HoldingDraft {
   id: string;
   isuCode: string;
@@ -73,7 +81,14 @@ function dateText(value: string | null): string {
 }
 
 function sleeveLabel(value: string): string {
-  return SLEEVE_LABELS[value] ?? value;
+  return SLEEVE_LABELS[value] ?? "기타 자산군";
+}
+
+function strategyLabel(value: string): string {
+  if (!value) return "연금 자산배분 전략";
+  return STRATEGY_LABELS[value] ?? (
+    /^[a-z]+(?:_[a-z]+)+$/.test(value) ? "연금 자산배분 전략" : value
+  );
 }
 
 function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
@@ -105,7 +120,7 @@ function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
       <div className="stress-scenario-grid" aria-label="정책 스트레스 시나리오">
         {risk.stress_scenarios.map((scenario) => (
           <div key={scenario.scenario_code}>
-            <span>{STRESS_SCENARIO_LABELS[scenario.scenario_code] ?? scenario.scenario_code}</span>
+            <span title={scenario.scenario_code}>{STRESS_SCENARIO_LABELS[scenario.scenario_code] ?? "기타 시장 충격"}</span>
             <strong>{percent(scenario.estimated_loss_percent)}</strong>
             <small>정책 충격 가정</small>
           </div>
@@ -129,7 +144,7 @@ function PortfolioPlanningReview({
         <span>승인된 교육용 계획가정</span>
         <h4 id="portfolio-planning-title">장기 계획수익률 가정 근거</h4>
         <p>
-          정책 {planning.cma_policy_id} · CMA {planning.cma_source_horizon_min_years}~{planning.cma_source_horizon_max_years}년 기준
+          승인 장기 가정 · CMA {planning.cma_source_horizon_min_years}~{planning.cma_source_horizon_max_years}년 기준
           {planning.annual_review_required ? " · 매년 재검토" : ""}
         </p>
       </header>
@@ -389,7 +404,7 @@ export function EducationalPortfolioReview({
       <header>
         <span>규칙 엔진 결과</span>
         <h3 id="portfolio-review-title">보유 ETF 리밸런싱 점검</h3>
-        <p>{ACCOUNT_LABELS[evaluation.evaluated_input.account_type]} · {evaluation.strategy_label}</p>
+        <p title={evaluation.strategy_label}>{ACCOUNT_LABELS[evaluation.evaluated_input.account_type]} · {strategyLabel(evaluation.strategy_label)}</p>
       </header>
 
       <div className="portfolio-review-summary">
@@ -426,12 +441,12 @@ export function EducationalPortfolioReview({
           <tbody>
             {rebalancing.sleeves.map((sleeve) => (
               <tr key={sleeve.sleeve}>
-                <th>{sleeveLabel(sleeve.sleeve)}</th>
+                <th title={sleeve.sleeve}>{sleeveLabel(sleeve.sleeve)}</th>
                 <td>{percent(sleeve.current_percent)}</td>
                 <td>{percent(sleeve.target_percent)}</td>
                 <td>{percent(sleeve.projected_percent_after_contribution)}</td>
                 <td>{won(sleeve.contribution_example_krw)}</td>
-                <td><span className={`rebalance-status status-${sleeve.status}`}>{REBALANCE_STATUS_LABELS[sleeve.status] ?? sleeve.status}</span></td>
+                <td><span className={`rebalance-status status-${sleeve.status}`} title={sleeve.status}>{REBALANCE_STATUS_LABELS[sleeve.status] ?? "추가 점검 필요"}</span></td>
               </tr>
             ))}
           </tbody>

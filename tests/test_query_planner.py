@@ -1,7 +1,11 @@
 import pytest
 
 from backend.app.chat.models import ChatIntent, ChatRequest
-from backend.app.chat.query_planner import BlockedReason, plan_question
+from backend.app.chat.query_planner import (
+    BlockedReason,
+    NewsScopeNotice,
+    plan_question,
+)
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService
 from backend.app.chat.suggested_prompts import SUGGESTED_CHAT_PROMPTS
@@ -219,6 +223,32 @@ def test_ordinary_pension_strategy_does_not_trigger_live_news() -> None:
 
     assert plan.intent == ChatIntent.EDUCATIONAL_PORTFOLIO
     assert plan.requests_event_strategy is False
+
+
+def test_timely_market_news_routes_to_live_lookup() -> None:
+    plan = plan_question("실시간 증시 뉴스 보여줘")
+
+    assert plan.intent == ChatIntent.NEWS
+    assert plan.requests_live_news is True
+    assert plan.requests_event_strategy is False
+
+
+@pytest.mark.parametrize(
+    ("message", "notice"),
+    (
+        ("삼성전자 뉴스 보여줘", NewsScopeNotice.COMPANY),
+        ("중국 증시 뉴스 보여줘", NewsScopeNotice.UNSUPPORTED_MARKET),
+        ("연금저축 뉴스 보여줘", NewsScopeNotice.PENSION),
+    ),
+)
+def test_out_of_scope_news_keeps_market_news_intent_with_notice(
+    message: str,
+    notice: NewsScopeNotice,
+) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent == ChatIntent.NEWS
+    assert plan.news_scope_notice == notice
 
 
 def test_bare_account_wording_does_not_shadow_tax_credit_intent() -> None:

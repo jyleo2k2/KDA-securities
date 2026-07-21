@@ -3,10 +3,15 @@ import { useState, type JSX } from "react";
 import moneyBag from "../assets/main-home/money-bag.png";
 import piggy from "../assets/main-home/piggy.png";
 import userPickPreview from "../assets/main-home/user-pick-preview.png";
+import type { DemoHeroPortfolio, DemoUserFinancialContext } from "../api/types";
 import "./MainHomeScreen.css";
 
 interface MainHomeScreenProps {
+  error: string | null;
+  hero: DemoHeroPortfolio | null;
+  loading: boolean;
   onOpenChat: () => void;
+  userContext: DemoUserFinancialContext | null;
 }
 
 interface AllocationSlice {
@@ -14,13 +19,6 @@ interface AllocationSlice {
   percent: string;
   color: string;
 }
-
-const ALLOCATION_SLICES: AllocationSlice[] = [
-  { label: "TIGER 미국S&P500", percent: "24.0%", color: "#18A860" },
-  { label: "KODEX 200TR", percent: "16.0%", color: "#35B877" },
-  { label: "TIGER 미국나스닥100", percent: "12.0%", color: "#6ECFA0" },
-  { label: "KODEX 국고채10년", percent: "12.0%", color: "#2E8B57" },
-];
 
 const DONUT_GRADIENT =
   "conic-gradient(#18A860 0deg 86deg, #35B877 86deg 144deg, #6ECFA0 144deg 187deg, #2E8B57 187deg 230deg, #9BDDBF 230deg 259deg, #48C078 259deg 302deg, #C5EAD5 302deg 331deg, #E3E7E4 331deg 360deg)";
@@ -58,8 +56,14 @@ const PORTFOLIO_INFO_CATEGORIES: Array<{ title: string; desc: string }> = [
   { title: "현금성", desc: "예수금 등 현금 자산" },
 ];
 
-export function MainHomeScreen({ onOpenChat }: MainHomeScreenProps): JSX.Element {
+const ASSET_LABELS: Record<string, string> = { cash: "현금성", deposit: "원리금보장", bond: "채권", domestic_equity: "국내주식", global_equity: "글로벌주식", alternative: "대체자산", eligible_tdf: "적격 TDF", default_option: "디폴트옵션" };
+const ALLOCATION_COLORS = ["#18A860", "#35B877", "#6ECFA0", "#2E8B57"];
+const formatKrw = (amount: string) => `${Math.round(Number(amount)).toLocaleString("ko-KR")}원`;
+
+export function MainHomeScreen({ error, hero, loading, onOpenChat, userContext }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
+  const allocationSlices: AllocationSlice[] = hero?.asset_allocations.slice(0, 4).map((item, index) => ({ label: ASSET_LABELS[item.asset_class_code] ?? "기타 자산", percent: `${item.allocation_percent}%`, color: ALLOCATION_COLORS[index] })) ?? [];
+  const totalBalance = userContext ? formatKrw(userContext.total_pension_balance_krw) : "-";
 
   return (
     <main className="mhs-stage">
@@ -88,8 +92,8 @@ export function MainHomeScreen({ onOpenChat }: MainHomeScreenProps): JSX.Element
 
         <div className="mhs-asset-card">
           <p className="mhs-asset-label">총 연금 자산</p>
-          <p className="mhs-asset-total">51,095,601원</p>
-          <p className="mhs-asset-gain">+27,400,881원 (수익률 +115.64%)</p>
+          <p className="mhs-asset-total">{loading ? "불러오는 중…" : totalBalance}</p>
+          <p className="mhs-asset-gain">{error ?? (userContext ? `${userContext.nickname}님 · ${userContext.as_of_date} 기준 목데이터` : "연금 데이터를 확인해 주세요.")}</p>
 
           <div className="mhs-donut-wrap">
             <div className="mhs-donut-outer" style={{ background: DONUT_GRADIENT }}>
@@ -98,7 +102,7 @@ export function MainHomeScreen({ onOpenChat }: MainHomeScreenProps): JSX.Element
           </div>
 
           <div className="mhs-allocation-grid">
-            {ALLOCATION_SLICES.map((slice) => (
+            {allocationSlices.map((slice) => (
               <span className="mhs-allocation-item" key={slice.label}>
                 <span className="mhs-allocation-dot" style={{ background: slice.color }} />
                 <span className="mhs-allocation-label">{slice.label}</span>
@@ -121,11 +125,11 @@ export function MainHomeScreen({ onOpenChat }: MainHomeScreenProps): JSX.Element
             <div className="mhs-portfolio-legend">
               <span className="mhs-portfolio-legend-item">
                 <span className="mhs-portfolio-legend-swatch mhs-swatch-equity" />
-                주식형 <span className="mhs-portfolio-legend-percent">60.0%</span>
+                {allocationSlices[0]?.label ?? "-"} <span className="mhs-portfolio-legend-percent">{allocationSlices[0]?.percent ?? "-"}</span>
               </span>
               <span className="mhs-portfolio-legend-item">
                 <span className="mhs-portfolio-legend-swatch mhs-swatch-bond" />
-                채권·현금형 <span className="mhs-portfolio-legend-percent">40.0%</span>
+                {allocationSlices[1]?.label ?? "-"} <span className="mhs-portfolio-legend-percent">{allocationSlices[1]?.percent ?? "-"}</span>
               </span>
             </div>
           </div>
@@ -133,7 +137,7 @@ export function MainHomeScreen({ onOpenChat }: MainHomeScreenProps): JSX.Element
           <div className="mhs-summary-subcard">
             <span className="mhs-summary-label">한 줄 요약</span>
             <p className="mhs-summary-sub-label">시황</p>
-            <p className="mhs-summary-text">위험자산 비중이 높아 변동성이 큰 편이에요. 안정형 상품 보강을 검토해보세요.</p>
+            <p className="mhs-summary-text">{hero?.risk_summary.requires_rebalancing_review ? "규칙 엔진 기준으로 리밸런싱 점검이 필요해요." : "현재 계좌 구성은 규칙 엔진 기준을 확인했어요."}</p>
             <div className="mhs-summary-cta-row">
               <span className="mhs-summary-cta">자세히 진단받기 <span className="mhs-summary-cta-chevron">›</span></span>
             </div>
@@ -155,7 +159,7 @@ export function MainHomeScreen({ onOpenChat }: MainHomeScreenProps): JSX.Element
         <div className="mhs-strategy-heading-row">
           <h2 className="mhs-section-title mhs-section-title-tight">
             전략 설명<br />
-            <span className="mhs-section-title-gold">예상 연금 수익률</span>
+            <span className="mhs-section-title-gold">교육용 전략 안내</span>
           </h2>
           <span className="mhs-strategy-more">시나리오·더보기 +</span>
         </div>
@@ -164,14 +168,14 @@ export function MainHomeScreen({ onOpenChat }: MainHomeScreenProps): JSX.Element
           {STRATEGY_CARDS.map((card) => (
             <div className="mhs-strategy-card" style={{ background: card.bg }} key={card.title}>
               <span className="mhs-strategy-card-title">{card.title}</span>
-              <p className="mhs-strategy-card-value" style={{ color: card.valueColor }}>{card.value}</p>
+              <p className="mhs-strategy-card-value" style={{ color: card.valueColor }}>교육용 안내</p>
               <p className="mhs-strategy-card-desc">{card.desc}</p>
               {card.warning && <p className="mhs-strategy-card-warning">{card.warning}</p>}
               <p className="mhs-strategy-card-footnote">{card.footnote}</p>
             </div>
           ))}
         </div>
-        <p className="mhs-strategy-disclaimer">잠정 계획수익률¹은 기본 CMA에서 불확실성 할인을 반영한 예시이며, 미래 수익을 보장하지 않아요.</p>
+        <p className="mhs-strategy-disclaimer">전략별 특징을 설명하는 교육용 화면이며, 미래 수익을 보장하거나 예측하지 않아요.</p>
 
         <h2 className="mhs-section-title">
           이용자 <span className="mhs-section-title-accent">Pick</span> <span className="mhs-section-title-note">(다른 사람 포트폴리오 벤치마킹 가능)</span>

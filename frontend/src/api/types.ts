@@ -512,6 +512,29 @@ export interface DemoHeroRiskSummary {
   policy_label: string;
 }
 
+export interface DemoHeroPastPerformance {
+  metric_code: string;
+  label: string;
+  trailing_12m_return_pct: string;
+  period_start: string;
+  period_end: string;
+  calculation_basis: string;
+  source_label: string;
+  data_kind: "MOCK";
+  is_forecast: false;
+  official_ranking_metric: false;
+}
+
+export interface DemoHeroLikeSummary {
+  metric_code: string;
+  label: string;
+  count: number;
+  as_of_date: string;
+  data_kind: "MOCK";
+  is_synthetic: true;
+  performance_based: false;
+}
+
 export interface DemoHeroPortfolio {
   nickname: string;
   representative_age: number;
@@ -527,6 +550,8 @@ export interface DemoHeroPortfolio {
   asset_allocations: AssetAllocation[];
   duplicated_asset_classes: string[];
   risk_summary: DemoHeroRiskSummary;
+  past_performance: DemoHeroPastPerformance;
+  like_summary: DemoHeroLikeSummary;
   data_boundary: "mock";
 }
 

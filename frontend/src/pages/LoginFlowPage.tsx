@@ -5,6 +5,9 @@ import piggyClean from "../assets/login/piggy-clean.png";
 import piggyForm from "../assets/login/piggy-form.png";
 import piggyIntro from "../assets/login/piggy-intro.png";
 import piggySuccess from "../assets/login/piggy-success.png";
+import { getAccountLinkOptions } from "../api/client";
+import type { AccountLinkOptionsResponse } from "../api/types";
+import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
 import { InvestorInfoForm } from "./InvestorInfoForm";
 import { InvestorResultScreen } from "./InvestorResultScreen";
 import "./LoginFlowPage.css";
@@ -12,6 +15,8 @@ import "./LoginFlowPage.css";
 type LoginStep = "intro" | "form" | "consent" | "success" | "linking" | "risk-assessment" | "investor-info" | "investor-result";
 
 interface LoginFlowPageProps {
+  auth: SupabaseAuthState;
+  onAuthenticated: () => void;
   onStart: () => void;
 }
 
@@ -27,15 +32,39 @@ function StatusBar(): JSX.Element {
   );
 }
 
-export function LoginFlowPage({ onStart }: LoginFlowPageProps): JSX.Element {
+export function LoginFlowPage({ auth, onAuthenticated, onStart }: LoginFlowPageProps): JSX.Element {
   const [step, setStep] = useState<LoginStep>("intro");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [consents, setConsents] = useState<Record<string, boolean>>({});
+  const [linkOptions, setLinkOptions] = useState<AccountLinkOptionsResponse | null>(null);
+  const [linkOptionsLoading, setLinkOptionsLoading] = useState(false);
+  const [linkOptionsError, setLinkOptionsError] = useState<string | null>(null);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    setStep("success");
+    if (!auth.configured) { setNotice("로그인 환경이 설정되지 않았습니다."); return; }
+    if (!loginId.trim() || !password || submitting) return;
+    setSubmitting(true); setNotice(null);
+    try { await auth.signIn(loginId, password); setPassword(""); onAuthenticated(); setStep("success"); }
+    catch { /* shared hook exposes a safe error message */ }
+    finally { setSubmitting(false); }
+  }
+
+  async function loadLinkOptions(): Promise<void> {
+    setLinkOptionsLoading(true); setLinkOptionsError(null);
+    try { setLinkOptions(await getAccountLinkOptions()); }
+    catch { setLinkOptionsError("연결 가능한 계좌 정보를 불러오지 못했습니다."); }
+    finally { setLinkOptionsLoading(false); }
+  }
+
+  function showSignupNotice(): void { setNotice("회원가입은 준비 중입니다."); }
+
+  function openConsent(): void {
+    setConsents({}); setStep("consent");
+    if (linkOptions === null && !linkOptionsLoading) void loadLinkOptions();
   }
 
   function toggleConsent(id: string): void {
@@ -71,7 +100,8 @@ export function LoginFlowPage({ onStart }: LoginFlowPageProps): JSX.Element {
             </div>
             <div className="login-intro-actions">
               <button type="button" className="login-primary" onClick={() => setStep("form")}>로그인</button>
-              <button type="button" className="login-secondary">회원가입</button>
+              <button type="button" className="login-secondary" onClick={showSignupNotice}>회원가입</button>
+              {notice && <p className="login-inline-notice" role="status">{notice}</p>}
               <p>서비스 시작은 이용약관 및 개인정보 처리방침 동의로 간주됩니다.</p>
             </div>
           </div>
@@ -84,32 +114,33 @@ export function LoginFlowPage({ onStart }: LoginFlowPageProps): JSX.Element {
             <div className="login-form-brand"><img src={piggyForm} alt="저금통" /></div>
             <h2>안녕하세요.<br /><em>연금</em> 도우미입니다.</h2>
             <p>맞춤 서비스를 이용하기 위해 로그인해 주세요.</p>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={(event) => void handleSubmit(event)}>
               <label>
                 <span>아이디</span>
-                <input value={loginId} onChange={(event) => setLoginId(event.target.value)} placeholder="아이디를 입력하세요" autoComplete="username" />
+                <input value={loginId} onChange={(event) => setLoginId(event.target.value)} placeholder="아이디를 입력하세요" autoComplete="username" disabled={submitting} />
               </label>
               <label>
                 <span>비밀번호</span>
-                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호를 입력하세요" autoComplete="current-password" />
+                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호를 입력하세요" autoComplete="current-password" disabled={submitting} />
               </label>
-              <div className="login-links"><button type="button">아이디 찾기</button><i /> <button type="button">비밀번호 찾기</button><i /> <button type="button">회원가입</button></div>
-              <div className="login-submit-wrap"><button type="submit" className="login-primary">로그인하기</button></div>
+              {auth.error && <p className="login-form-error" role="alert">{auth.error}</p>}{notice && <p className="login-inline-notice" role="status">{notice}</p>}
+              <div className="login-links"><button type="button">아이디 찾기</button><i /> <button type="button">비밀번호 찾기</button><i /> <button type="button" onClick={showSignupNotice}>회원가입</button></div>
+              <div className="login-submit-wrap"><button type="submit" className="login-primary" disabled={submitting}>{submitting ? "로그인 중..." : "로그인하기"}</button></div>
             </form>
           </div>
         )}
 
         {step === "consent" && (
           <div className="login-consent-page">
-            <button type="button" className="login-back" onClick={() => setStep("success")} aria-label="이전 화면">←</button>
+            <button type="button" className="login-back" onClick={() => setStep("success")} aria-label="로그인 성공 화면으로 돌아가기">←</button>
             <h1>연금계좌 연동</h1>
             <div className="login-consent-content">
               <div className="login-consent-chips" aria-label="계좌 연동 특징">
-                <span>데모</span><span>조회</span><b>3종 계좌</b>
+                <span>데모</span><span>조회</span><b>{linkOptions?.options.filter((option) => option.diagnosable).length ?? 0}종 계좌</b>
               </div>
               <section className="login-consent-hero">
                 <span>연결 가능한 계좌</span>
-                <h2>DC&nbsp; IRP<br /><em>연금저축</em></h2>
+                <h2>{linkOptions?.options.filter((option) => option.diagnosable).length ?? 0}개<br /><em>연금계좌</em></h2>
                 <p>한 번에 불러와 통합 자산으로 확인</p>
                 <small>현재 MVP는 목데이터 · 실제 계좌 연결 아님</small>
               </section>
@@ -122,13 +153,13 @@ export function LoginFlowPage({ onStart }: LoginFlowPageProps): JSX.Element {
               </section>
               <section className="login-consent-card login-consent-accounts">
                 <h2>연결할 수 있는 계좌</h2>
-                <p><strong>DC형 퇴직연금</strong><b>직접 운용 계좌</b></p>
-                <p><strong>IRP · 연금저축</strong><b>개인 연금계좌</b></p>
-                <small>DB형은 가입 여부만 확인하고 운용 진단에서는 제외해요.</small>
+                {linkOptionsLoading && <p>계좌 정보를 확인하고 있습니다.</p>}
+                {linkOptionsError && <div role="alert"><p>{linkOptionsError}</p><button type="button" onClick={() => void loadLinkOptions()}>다시 시도</button></div>}
+                {linkOptions?.options.map((option) => <p key={option.code}><strong>{option.display_name}</strong><b>{option.category_label}</b></p>)}
               </section>
               <section className="login-consent-safe">
                 <h2>안심하고 연결하세요</h2>
-                <p>계좌 불러오기는 조회와 분석을 위한 연결이에요.<br />계좌가 이전되거나 상품이 자동으로 매매되지 않아요.<br />연결은 언제든 해제할 수 있어요.</p>
+                <p>{linkOptions?.notice ?? "계좌 불러오기는 조회와 분석을 위한 연결이에요. 계좌가 이전되거나 상품이 자동으로 매매되지 않아요."}</p>
               </section>
               <section className="login-consent-card login-consent-check-card">
                 <h2>연결 전 확인</h2>
@@ -148,10 +179,10 @@ export function LoginFlowPage({ onStart }: LoginFlowPageProps): JSX.Element {
               <button
                 type="button"
                 className="login-primary"
-                disabled={!requiredConsentsMet}
+                disabled={!requiredConsentsMet || linkOptions === null}
                 onClick={() => setStep("linking")}
               >
-                <span>연동</span> 내 연금계좌 찾기
+                <span>연동</span> 내 연금계좌 보기
               </button>
             </div>
           </div>
@@ -187,7 +218,7 @@ export function LoginFlowPage({ onStart }: LoginFlowPageProps): JSX.Element {
             </div>
             <div className="login-risk-actions">
               <button type="button" className="login-primary" onClick={() => setStep("investor-info")}>투자 성향 진단받기</button>
-              <button type="button" className="login-risk-skip" onClick={() => setStep("consent")}>나중에 할게요</button>
+              <button type="button" className="login-risk-skip" onClick={onStart}>나중에 할게요</button>
               <p>진단 결과는 <a href="#">투자자 정보</a> 등록에만 사용돼요</p>
             </div>
           </div>
@@ -213,7 +244,7 @@ export function LoginFlowPage({ onStart }: LoginFlowPageProps): JSX.Element {
               <span className="login-sparkle">✦</span>
               <img src={piggySuccess} alt="저금통" />
             </div>
-            <button type="button" className="login-primary" onClick={() => setStep("consent")}>시작하기</button>
+            <button type="button" className="login-primary" onClick={openConsent}>시작하기</button>
           </div>
         )}
       </section>

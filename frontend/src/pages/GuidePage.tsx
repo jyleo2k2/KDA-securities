@@ -17,7 +17,6 @@ import {
   deleteChatSession,
   getChatCards,
   getChatSessions,
-  getMyPensionContext,
   getScenarios,
   getStoredChatMessages,
 } from "../api/client";
@@ -51,7 +50,7 @@ import type {
   StoredChatMessage,
   WithdrawalReason,
 } from "../api/types";
-import { useSupabaseAuth } from "../auth/useSupabaseAuth";
+import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
 import { useChatStream, type ConversationMessage } from "../hooks/useChatStream";
 
 const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
@@ -65,6 +64,8 @@ const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   macro_evidence: "거시지표 근거",
   out_of_scope: "지원 범위 안내",
 };
+
+const NUMBER_EVIDENCE_DEFAULT_LIMIT = 6;
 
 const BOUNDARY_LABELS: Record<DataBoundary, string> = {
   verified_knowledge: "검증 지식",
@@ -245,6 +246,12 @@ function AnswerBlocks({ blocks }: { blocks: AnswerBlock[] }) {
   );
 }
 
+function sectionPreview(content: string): string {
+  const normalized = displayText(content).replace(/\s+/g, " ").trim();
+  const sentence = normalized.match(/^.*?[.!?](?:\s|$)/);
+  return (sentence?.[0] ?? normalized).trim();
+}
+
 const REPRESENTATIVE_COMPANY_LABELS = [
   "테마에서의 역할:",
   "쉽게 말하면:",
@@ -252,20 +259,23 @@ const REPRESENTATIVE_COMPANY_LABELS = [
 const THEME_PARAGRAPH_GAP = "10pt";
 
 function CalloutCopy({ text }: { text: string }) {
-  const paragraphs = text.split(/\n{2,}/);
+  const paragraphs = text.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean);
   const isRepresentativeCompany =
     paragraphs.length === REPRESENTATIVE_COMPANY_LABELS.length &&
     paragraphs.every((paragraph, index) =>
       paragraph.startsWith(REPRESENTATIVE_COMPANY_LABELS[index]),
     );
 
-  if (!isRepresentativeCompany) {
+  if (paragraphs.length <= 1) {
     return <p>{displayText(text)}</p>;
   }
 
   return (
     <div className="answer-callout-copy">
       {paragraphs.map((paragraph, index) => {
+        if (!isRepresentativeCompany) {
+          return <p key={`${paragraph}-${index}`}>{displayText(paragraph)}</p>;
+        }
         const label = REPRESENTATIVE_COMPANY_LABELS[index];
         const body = paragraph.slice(label.length).trim();
         return (
@@ -356,6 +366,14 @@ const REGIME_GAP_LABELS: Record<string, string> = {
   outcome_window_incomplete: "관측 구간 부족",
 };
 
+const SCENARIO_RISK_PROFILE_LABELS: Record<string, string> = {
+  stable: "안정형",
+  stable_seeking: "안정추구형",
+  risk_neutral: "위험중립형",
+  active: "적극투자형",
+  aggressive: "공격투자형",
+};
+
 function regimeMonth(value: string): string {
   const [year, month] = value.split("-");
   return `${year}년 ${Number(month)}월`;
@@ -406,7 +424,7 @@ function MacroRegimeOutcomeCards({ response }: { response: ChatResponse }) {
                       <div className="unavailable" key={`gap-${gap.horizon_months}`}>
                         <span>{gap.horizon_months}개월</span>
                         <strong>관측 부족</strong>
-                        <small>{REGIME_GAP_LABELS[gap.reason] ?? gap.reason}</small>
+                        <small title={gap.reason}>{REGIME_GAP_LABELS[gap.reason] ?? "기타 관측 제한"}</small>
                       </div>
                     ))}
                   </div>
@@ -439,12 +457,19 @@ function AssistantMessage({
   usedFollowUpMessages: ReadonlySet<string>;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [allNumericEvidenceOpen, setAllNumericEvidenceOpen] = useState(false);
 
   if (!response) return <p className="message-copy">{text}</p>;
 
   const visibleFollowUps = (response.suggested_follow_ups ?? []).filter(
     (followUp) => !usedFollowUpMessages.has(followUp.message.trim()),
   );
+  const hasHiddenNumericEvidence = (
+    response.numeric_evidence.length > NUMBER_EVIDENCE_DEFAULT_LIMIT
+  );
+  const displayedNumericEvidence = allNumericEvidenceOpen
+    ? response.numeric_evidence
+    : response.numeric_evidence.slice(0, NUMBER_EVIDENCE_DEFAULT_LIMIT);
   const followUpCards = visibleFollowUps.length > 0 ? (
     <div className="follow-up-cards" aria-label="이어서 물어보기">
       {visibleFollowUps.map((followUp) => (
@@ -457,9 +482,7 @@ function AssistantMessage({
 
   return (
     <div
-      className={response.intent === "etf_theme"
-        ? "answer-content theme-answer-content"
-        : "answer-content"}
+      className={`answer-content${response.intent === "etf_theme" ? " theme-answer-content" : ""}${response.data_mode === "theme_component_holdings" ? " holdings-answer-content" : ""}`}
       style={response.intent === "etf_theme"
         ? { "--theme-paragraph-gap": THEME_PARAGRAPH_GAP } as CSSProperties
         : undefined}
@@ -478,16 +501,33 @@ function AssistantMessage({
       <MacroEvidenceCards response={response} />
       <MacroRegimeOutcomeCards response={response} />
 
-      {response.intent !== "mock_portfolio" && response.intent !== "macro_evidence" && response.numeric_evidence.length > 0 && (
-        <div className="number-grid" aria-label="수치 근거">
-          {response.numeric_evidence.map((item, index) => (
-            <div className="number-card" key={`${item.evidence_id}-${index}`}>
-              <span>{item.label}</span>
-              <strong>{numericText(item.value, item.unit)}</strong>
-              <small>{item.basis}</small>
-            </div>
-          ))}
-        </div>
+      {response.intent !== "mock_portfolio" && response.intent !== "macro_evidence" && response.data_mode !== "theme_candidates" && response.data_mode !== "theme_component_holdings" && response.numeric_evidence.length > 0 && (
+        <>
+          <div className="number-grid" aria-label="수치 근거">
+            {displayedNumericEvidence.map((item, index) => (
+              <div className="number-card" key={`${item.evidence_id}-${index}`}>
+                <span>{item.label}</span>
+                <strong>{numericText(item.value, item.unit)}</strong>
+                <small>{item.basis}</small>
+              </div>
+            ))}
+          </div>
+          {hasHiddenNumericEvidence && (
+            <button
+              className="evidence-toggle number-evidence-toggle"
+              type="button"
+              onClick={() => setAllNumericEvidenceOpen((value) => !value)}
+              aria-expanded={allNumericEvidenceOpen}
+            >
+              <span>
+                {allNumericEvidenceOpen
+                  ? "숫자 근거 접기"
+                  : `숫자 근거 전체 ${response.numeric_evidence.length}개 보기`}
+              </span>
+              <Icon name="chevron" size={16} />
+            </button>
+          )}
+        </>
       )}
 
       <EducationalPortfolioReview evaluation={response.educational_portfolio_evaluation} />
@@ -508,8 +548,11 @@ function AssistantMessage({
 
       {response.sections.map((section, index) => (
         <Fragment key={`${section.title}-${index}`}>
-          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={response.intent === "educational_portfolio" || response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || section.kind === "limitation"}>
-            <summary><span>{section.title}</span><small>내용 보기</small></summary>
+          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
+            <summary>
+              <span>{section.title}{sectionPreview(section.content) && ` — ${sectionPreview(section.content)}`}</span>
+              <small>내용 보기</small>
+            </summary>
             {section.blocks?.length ? (
               <>
                 {section.content && <p>{displayText(section.content)}</p>}
@@ -524,13 +567,15 @@ function AssistantMessage({
       ))}
 
       {response.limitations.length > 0 && (
-        <div className="limitation-box">
-          <Icon name="shield" size={18} />
+        <details className="limitation-box">
+          <summary>
+            <span><Icon name="shield" size={18} /> 확인할 점 {response.limitations.length}가지 보기</span>
+            <Icon name="chevron" size={16} />
+          </summary>
           <div>
-            <strong>확인할 점</strong>
             {response.limitations.map((item, index) => <p key={index}>{item}</p>)}
           </div>
-        </div>
+        </details>
       )}
 
       {response.sources.length > 0 && (
@@ -568,19 +613,24 @@ function authenticatedErrorMessage(error: unknown): string {
   if (error instanceof ApiError && error.status === 503) {
     return "대화 저장소에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.";
   }
-  return error instanceof Error ? error.message : "요청을 처리하지 못했습니다.";
+  return "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
 }
 
 export function GuidePage({
+  auth,
   initialScenarioCode,
+  onSignOut,
   surveyProfile,
+  userContext,
   typingIntervalMs = DEFAULT_TYPING_INTERVAL_MS,
 }: {
+  auth: SupabaseAuthState;
   initialScenarioCode?: string;
+  onSignOut: () => Promise<void>;
   surveyProfile: CompletedSurveyProfile | null;
+  userContext: DemoUserFinancialContext | null;
   typingIntervalMs?: number;
 }) {
-  const auth = useSupabaseAuth();
   const accessToken = auth.session?.access_token;
   const authenticatedUserId = auth.session?.user.id ?? null;
   const [input, setInput] = useState("");
@@ -588,8 +638,6 @@ export function GuidePage({
   const [chatCards, setChatCards] = useState<ChatCard[]>([]);
   const [allEtfThemesVisible, setAllEtfThemesVisible] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState(initialScenarioCode ?? "");
-  const [userContext, setUserContext] =
-    useState<DemoUserFinancialContext | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [serverReady, setServerReady] = useState<boolean | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
@@ -832,11 +880,9 @@ export function GuidePage({
       setActiveSessionId(null);
       setConversationContext(null);
       setSelectedScenario("");
-      setUserContext(null);
     }
     if (!accessToken) {
       setChatSessions([]);
-      setUserContext(null);
       setHistoryError(
         auth.loading
           ? null
@@ -861,21 +907,14 @@ export function GuidePage({
       .finally(() => {
         if (active) setHistoryLoading(false);
       });
-    void getMyPensionContext(accessToken)
-      .then((context) => {
-        if (!active) return;
-        setUserContext(context);
-        setSelectedScenario(context.scenario_code);
-      })
-      .catch((error: unknown) => {
-        if (!active) return;
-        setUserContext(null);
-        setHistoryError(authenticatedErrorMessage(error));
-      });
     return () => {
       active = false;
     };
   }, [accessToken, authenticatedUserId, auth.configured, auth.loading]);
+
+  useEffect(() => {
+    if (userContext) setSelectedScenario(userContext.scenario_code);
+  }, [userContext?.scenario_code]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -942,11 +981,11 @@ export function GuidePage({
       setChatSessions([]);
       setActiveSessionId(null);
       setConversationContext(null);
-      setUserContext(null);
     setHistoryError(null);
     setHistoryLoading(false);
     try {
-      await auth.signOut();
+      // 로그아웃은 화면 상태만 비운다. 저장된 대화는 명시적 삭제 버튼으로만 제거한다.
+      await onSignOut();
     } catch (error) {
       setHistoryError(authenticatedErrorMessage(error));
     } finally {
@@ -1174,7 +1213,7 @@ export function GuidePage({
             {scenarios.map((scenario) => (
               <button className={selectedScenario === scenario.code ? "active" : ""} type="button" key={scenario.code} onClick={() => { setSelectedScenario(scenario.code); setIsSidebarOpen(false); }}>
                 <span className="scenario-icon"><Icon name="database" size={17} /></span>
-                <span><strong>{scenario.name}</strong><small>{scenario.age_band} · {scenario.investment_horizon_years}년 · {scenario.risk_profile}</small></span>
+                <span><strong>{scenario.name}</strong><small title={scenario.risk_profile}>{scenario.age_band} · {scenario.investment_horizon_years}년 · {SCENARIO_RISK_PROFILE_LABELS[scenario.risk_profile] ?? "기타 투자성향"}</small></span>
               </button>
             ))}
             </div>
@@ -1298,6 +1337,7 @@ export function GuidePage({
             <span className={`design-auth-state ${auth.session ? "authenticated" : "anonymous"}`}>
               {authStatusLabel}
             </span>
+            {auth.session && <button type="button" className="design-logout" onClick={() => void handleLogout()} disabled={authSubmitting}>로그아웃</button>}
             <button
               className={`design-avatar ${auth.session ? "authenticated" : "anonymous"}`}
               type="button"

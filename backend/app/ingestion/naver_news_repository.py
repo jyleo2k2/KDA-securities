@@ -15,6 +15,8 @@ from .naver_news import (
     NaverNewsResponse,
 )
 
+MAX_ACTIVE_NEWS = 200
+
 
 class NaverNewsRepositoryError(RuntimeError):
     """A repository contract failure safe to expose in ingestion output."""
@@ -171,9 +173,20 @@ class NaverNewsRepository:
             },
         )
 
-    def start_market_run(self, *, queries: tuple[str, ...]) -> tuple[UUID, int]:
+    def start_market_run(
+        self,
+        *,
+        queries: tuple[str, ...],
+        max_age_hours: int = 24,
+        max_pages: int = 1,
+        window_end: datetime | None = None,
+    ) -> tuple[UUID, int]:
         if not queries or any(not normalize_search_text(query) for query in queries):
             raise ValueError("queries must contain non-empty values")
+        if max_age_hours < 1:
+            raise ValueError("max_age_hours must be positive")
+        if not 1 <= max_pages <= 10:
+            raise ValueError("max_pages must be between 1 and 10")
         return self._start_run(
             metadata={
                 "storage_policy": "selected_metadata_and_summary",
@@ -185,8 +198,14 @@ class NaverNewsRepository:
             requested_params={
                 "queries": list(queries),
                 "sort": "date",
-                "max_age_hours": 24,
+                "max_age_hours": max_age_hours,
+                "max_pages": max_pages,
                 "daily_limit": 20,
+                **(
+                    {"window_end": window_end.isoformat()}
+                    if window_end is not None
+                    else {}
+                ),
             },
         )
 
@@ -460,8 +479,9 @@ class NaverNewsRepository:
                 from public.news_items
                 where selection_policy_version is not null
                 order by published_at desc nulls last, fetched_at desc, id
-                limit 100
-                """
+                limit %s
+                """,
+                (MAX_ACTIVE_NEWS,),
             )
             return [
                 StoredMarketNewsIdentity(
@@ -540,12 +560,14 @@ class NaverNewsRepository:
             if count_row is None:
                 raise NaverNewsRepositoryError("failed to count stored news")
             current_count = int(count_row[0])
-            held_for_full_batch = current_count >= 100 and len(rows) < 20
+            held_for_full_batch = (
+                current_count >= MAX_ACTIVE_NEWS and len(rows) < 20
+            )
             expired_count = 0
-            if current_count >= 100 and len(rows) == 20:
+            if current_count >= MAX_ACTIVE_NEWS and len(rows) == 20:
                 rows_to_insert = rows
-            elif current_count < 100:
-                rows_to_insert = rows[: 100 - current_count]
+            elif current_count < MAX_ACTIVE_NEWS:
+                rows_to_insert = rows[: MAX_ACTIVE_NEWS - current_count]
             else:
                 rows_to_insert = []
 
@@ -586,7 +608,7 @@ class NaverNewsRepository:
             else:
                 inserted_count = 0
 
-            if current_count >= 100 and inserted_count:
+            if current_count >= MAX_ACTIVE_NEWS and inserted_count:
                 cursor.execute(
                     """
                     with oldest as (

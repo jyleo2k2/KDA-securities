@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -7,6 +7,7 @@ from backend.app.chat.models import (
     ChatIntent,
     ChatRequest,
     CompletedSurveyProfile,
+    DataBoundary,
 )
 from backend.app.chat.query_planner import ThemeContentTopic, plan_question
 from backend.app.chat.scenarios import LocalScenarioRepository
@@ -19,6 +20,14 @@ from backend.app.engine import (
     classify_etf_themes,
     normalize_kis_holdings,
     select_theme_etf_candidates,
+)
+from backend.app.etf_component_repository import (
+    EtfComponentHolding,
+    EtfComponentSnapshot,
+)
+from backend.app.etf_product_description_repository import (
+    EtfProductDescription,
+    EtfProductDescriptionRepository,
 )
 from backend.app.etf_theme_repository import EtfThemeRepository
 
@@ -114,6 +123,27 @@ class _Universe:
     history_sources = {}
     as_of = date(2026, 7, 18)
     source_path = Path("data/cache/returns/dc_etf_cost_return_test.json")
+
+
+class _UniverseWithProduct(_Universe):
+    def __init__(self, product: dict[str, object]) -> None:
+        self.products = [product]
+
+
+def _product_descriptions() -> EtfProductDescriptionRepository:
+    return EtfProductDescriptionRepository(
+        (
+            EtfProductDescription(
+                product_name="테스트 반도체 ETF",
+                full_description="테스트용 반도체 ETF 전체 설명입니다.",
+                one_line_description=(
+                    "국내 반도체 기업에 분산 투자하는 테스트 ETF입니다."
+                ),
+                source_document_ids=("approved:test",),
+                as_of_date=date(2026, 7, 18),
+            ),
+        )
+    )
 
 
 def test_catalog_has_exactly_twenty_three_themes() -> None:
@@ -437,17 +467,63 @@ def test_query_planner_routes_theme_product_button_to_three_candidates() -> None
     assert plan.max_results == 3
 
 
-def test_chat_response_links_kis_holding_weights_to_numeric_evidence() -> None:
+def test_all_themes_route_natural_language_product_list_questions() -> None:
+    repository = _theme_repository()
+
+    for theme in repository.list():
+        for question in (
+            f"{theme.name} 테마 ETF상품 3개를 보여줘",
+            f"{theme.name} 테마 ETF는 뭐가 있어?",
+        ):
+            plan = plan_question(
+                question,
+                default_max_results=5,
+                theme_repository=repository,
+            )
+            assert plan.intent == ChatIntent.ETF_THEME
+            assert plan.theme_id == theme.theme_id
+            assert plan.requests_theme_candidates is True
+            assert plan.requests_theme_holdings is False
+            assert plan.max_results == 3
+
+
+class _ComponentSnapshots:
+    def latest_for(self, isu_codes: list[str]) -> dict[str, EtfComponentSnapshot]:
+        assert isu_codes == ["123456"]
+        return {
+            "123456": EtfComponentSnapshot(
+                isu_code="123456",
+                captured_at=datetime(2026, 7, 21, 3, tzinfo=UTC),
+                holdings=(
+                    EtfComponentHolding(
+                        rank=1,
+                        component_isu_code="005930",
+                        component_name="삼성전자",
+                        weight_percent=Decimal("25.5"),
+                    ),
+                    EtfComponentHolding(
+                        rank=2,
+                        component_isu_code="000660",
+                        component_name="SK하이닉스",
+                        weight_percent=Decimal("18.25"),
+                    ),
+                ),
+            )
+        }
+
+
+def test_theme_holdings_follow_up_uses_previous_candidate_codes() -> None:
     repository = _theme_repository()
     service = ChatService(
         knowledge=LocalMarkdownKnowledgeRepository(),
         scenarios=LocalScenarioRepository(),
         theme_repository=repository,
+        component_snapshots=_ComponentSnapshots(),
         portfolio_universe_loader=lambda account_type: _Universe(),
     )
-    response = service.ask(
+    candidate_response = service.ask(
         ChatRequest(
-            message="DC 반도체 ETF 구성종목 비중을 보여줘",
+            message="DC 반도체 테마 ETF상품 3개를 보여줘",
             survey_profile=CompletedSurveyProfile(
                 account_type=AccountType.DC,
                 current_age=35,
@@ -457,18 +533,37 @@ def test_chat_response_links_kis_holding_weights_to_numeric_evidence() -> None:
             ),
         )
     )
+    response = service.ask(
+        ChatRequest(
+            message="반도체 ETF구성종목 비중을 보여줘",
+            conversation_context=candidate_response.conversation_context,
+        )
+    )
 
     assert response.intent == ChatIntent.ETF_THEME
-    assert response.data_mode == "theme_candidates"
+    assert response.data_mode == "theme_component_holdings"
     assert any(
-        source.evidence_id == "kis:components:123456"
+        source.evidence_id.startswith("kis:components:123456:")
         for source in response.sources
     )
     assert {item.value for item in response.numeric_evidence} >= {
         Decimal("25.5"),
         Decimal("18.25"),
     }
-    assert any(section.title.endswith("주요 구성종목") for section in response.sections)
+    assert any(section.title.endswith("구성종목 TOP3") for section in response.sections)
+    assert all("테마 ETF상품" not in section.title for section in response.sections)
+    assert all(section.content == "" for section in response.sections)
+    assert all(
+        block.headers == ["구성종목", "구성비중"]
+        for section in response.sections
+        for block in section.blocks
+    )
+    assert response.sections[0].blocks[0].rows == [
+        ["삼성전자", "25.5%"],
+        ["SK하이닉스", "18.25%"],
+    ]
+    assert "005930" not in str(response.sections)
+    assert "000660" not in str(response.sections)
 
 
 def test_theme_products_explain_trading_value_and_fee_per_etf() -> None:
@@ -476,6 +571,7 @@ def test_theme_products_explain_trading_value_and_fee_per_etf() -> None:
         knowledge=LocalMarkdownKnowledgeRepository(),
         scenarios=LocalScenarioRepository(),
         theme_repository=_theme_repository(),
+        product_descriptions=_product_descriptions(),
         portfolio_universe_loader=lambda account_type: _Universe(),
     )
     response = service.ask(
@@ -496,27 +592,143 @@ def test_theme_products_explain_trading_value_and_fee_per_etf() -> None:
         for section in response.sections
         if section.title == "반도체 테마 ETF상품"
     )
-    assert "일별 거래대금 중앙값이 높은 순서" in product_section.content
-    assert "총보수가 낮은 상품" in product_section.content
-    assert product_section.blocks[0].headers == [
-        "계좌",
-        "ETF",
-        "종목코드",
-        "일별 거래대금 중앙값",
-        "총보수",
-    ]
-    assert product_section.blocks[0].rows == [
-        ["DC형", "테스트 반도체 ETF", "123456", "1,000,000,000원", "0.25%"]
-    ]
-    assert product_section.blocks[1].title == "DC형 1. 테스트 반도체 ETF"
-    assert "거래대금 중앙값" in product_section.blocks[1].text
-    assert "총보수는 0.25%" in product_section.blocks[1].text
+    assert product_section.content == ""
+    assert len(response.sections) == 1
+    assert len(product_section.blocks) == 1
+    assert product_section.blocks[0].title == "1. 테스트 반도체 ETF"
+    assert product_section.blocks[0].text == (
+        "연간 수수료율(운용보수): 0.25%\n\n"
+        "하루 평균 거래대금: 10억원\n\n"
+        "상품 특징: 국내 반도체 기업에 분산 투자하는 테스트 ETF입니다."
+    )
+    assert all(section.title != "반도체 테마란?" for section in response.sections)
+    assert "verified:etf_product_descriptions" in product_section.evidence_ids
+    assert any(
+        source.evidence_id == "verified:etf_product_descriptions"
+        and source.data_boundary == DataBoundary.VERIFIED_KNOWLEDGE
+        for source in response.sources
+    )
     assert any(
         item.label == "테스트 반도체 ETF 일별 거래대금 중앙값"
         and item.value == Decimal("1000000000")
         and item.unit == "KRW"
         for item in response.numeric_evidence
     )
+
+
+def test_theme_product_without_approved_description_uses_grounded_fallback() -> None:
+    product = _product()
+    product["implementation_metrics"]["benchmark_name"] = "테스트 반도체 지수"
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        theme_repository=_theme_repository(),
+        portfolio_universe_loader=lambda account_type: _UniverseWithProduct(
+            product
+        ),
+    )
+
+    response = service.ask(
+        ChatRequest(
+            message="DC 반도체 테마 ETF상품 3개를 보여줘",
+            survey_profile=CompletedSurveyProfile(
+                account_type=AccountType.DC,
+                current_age=35,
+                retirement_start_age=60,
+                risk_profile=EducationalRiskProfile.ACTIVE,
+                loss_tolerance_percent=Decimal("30"),
+            ),
+        )
+    )
+
+    text = response.sections[0].blocks[0].text
+    assert "상품 설명 확인 필요" not in text
+    assert "상품 특징: 테스트 반도체 지수를 기준으로" in text
+    assert "삼성전자·SK하이닉스 등을 담아 반도체 분야에 투자합니다." in text
+
+
+class _ProductFeatureGenerator:
+    def __init__(self) -> None:
+        self.received_codes: tuple[str, ...] = ()
+
+    def generate(self, facts):
+        self.received_codes = tuple(item.isu_code for item in facts)
+        return {
+            item.isu_code: "국내 반도체 제조사와 장비 기업을 함께 담습니다."
+            for item in facts
+        }
+
+
+def test_theme_product_uses_validated_llm_feature_without_changing_card_shape() -> None:
+    generator = _ProductFeatureGenerator()
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        theme_repository=_theme_repository(),
+        product_feature_generator=generator,
+        portfolio_universe_loader=lambda account_type: _Universe(),
+    )
+
+    response = service.ask(
+        ChatRequest(
+            message="DC 반도체 테마 ETF상품 3개를 보여줘",
+            survey_profile=CompletedSurveyProfile(
+                account_type=AccountType.DC,
+                current_age=35,
+                retirement_start_age=60,
+                risk_profile=EducationalRiskProfile.ACTIVE,
+                loss_tolerance_percent=Decimal("30"),
+            ),
+        )
+    )
+
+    block = response.sections[0].blocks[0]
+    assert generator.received_codes == ("123456",)
+    assert block.title == "1. 테스트 반도체 ETF"
+    assert "연간 수수료율(운용보수): 0.25%" in block.text
+    assert "하루 평균 거래대금: 10억원" in block.text
+    assert (
+        "상품 특징: 국내 반도체 제조사와 장비 기업을 함께 담습니다."
+        in block.text
+    )
+    assert "verified:etf_product_feature_evidence" in response.sections[0].evidence_ids
+
+
+def test_theme_product_display_rounds_fee_and_trading_value_as_specified() -> None:
+    product = _product()
+    product["cost"] = {"kis_total_expense_ratio_percent": "0.305"}
+    product["implementation_metrics"] = {
+        "median_daily_trading_value_krw": "49079208237",
+        "median_net_assets_krw": "100000000000",
+        "median_abs_premium_discount_percent": "0.1",
+        "kis_current_tracking_error_percent": "0.2",
+    }
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        theme_repository=_theme_repository(),
+        product_descriptions=_product_descriptions(),
+        portfolio_universe_loader=lambda account_type: _UniverseWithProduct(
+            product
+        ),
+    )
+
+    response = service.ask(
+        ChatRequest(
+            message="DC 반도체 테마 ETF는 뭐가 있어?",
+            survey_profile=CompletedSurveyProfile(
+                account_type=AccountType.DC,
+                current_age=35,
+                retirement_start_age=60,
+                risk_profile=EducationalRiskProfile.ACTIVE,
+                loss_tolerance_percent=Decimal("30"),
+            ),
+        )
+    )
+
+    text = response.sections[0].blocks[0].text
+    assert "연간 수수료율(운용보수): 0.31%" in text
+    assert "하루 평균 거래대금: 491억원" in text
 
 
 def test_chat_overview_only_explains_theme_and_analogy() -> None:
@@ -598,10 +810,11 @@ def test_chat_introduces_exactly_three_representative_companies() -> None:
         strict=True,
     ):
         role_paragraph, plain_paragraph = block.text.split("\n\n")
-        assert role_paragraph == (
+        assert role_paragraph.startswith(
             f"테마에서의 역할: {company.theme_role} "
-            f"{company.representative_reason}"
         )
+        assert "때문입니다" not in role_paragraph
+        assert role_paragraph.endswith("입니다.")
         assert plain_paragraph == f"쉽게 말하면: {company.plain_description}"
     assert len(response.sections[0].evidence_ids) == 3
     company_source_count = sum(
@@ -692,11 +905,13 @@ def test_all_theme_overviews_offer_three_representative_companies() -> None:
             theme.representative_companies,
             strict=True,
         ):
-            assert block.text == (
+            role_paragraph, plain_paragraph = block.text.split("\n\n")
+            assert role_paragraph.startswith(
                 f"테마에서의 역할: {company.theme_role} "
-                f"{company.representative_reason}\n\n"
-                f"쉽게 말하면: {company.plain_description}"
             )
+            assert "때문입니다" not in role_paragraph
+            assert role_paragraph.endswith("입니다.")
+            assert plain_paragraph == f"쉽게 말하면: {company.plain_description}"
         assert sum(
             source.evidence_id.startswith(f"company:{theme.theme_id}:")
             for source in details.sources

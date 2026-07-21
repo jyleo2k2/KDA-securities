@@ -149,6 +149,12 @@ class StoredNewsRepository:
         return []
 
 
+class EmptyStoredNewsRepository(StoredNewsRepository):
+    def recent_market_news(self, **kwargs):
+        del kwargs
+        return []
+
+
 def _survey(risk_profile: EducationalRiskProfile) -> CompletedSurveyProfile:
     return CompletedSurveyProfile(
         account_type=AccountType.IRP,
@@ -240,6 +246,78 @@ def test_live_failure_falls_back_to_recent_stored_news() -> None:
 
     assert response.data_mode == "stored_news_event_strategy"
     assert response.news_items
+    assert any(
+        "실시간 조회가 아니라 최근 저장 뉴스 기반입니다" in limitation
+        for limitation in response.limitations
+    )
+
+
+def test_empty_stored_news_offers_live_news_exit() -> None:
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        news=EmptyStoredNewsRepository(),
+        theme_repository=get_default_etf_theme_repository(),
+    )
+
+    response = service.ask(ChatRequest(message="증시 뉴스 알려줘"))
+
+    assert "대신 NAVER 검색으로 실시간 증시 뉴스를 볼 수 있어요" in response.answer
+    assert [(item.label, item.message) for item in response.suggested_follow_ups] == [
+        ("실시간 증시 뉴스 보기", "실시간 증시 뉴스 보여줘")
+    ]
+
+
+def test_pension_news_keeps_market_news_with_notice_and_pension_exit() -> None:
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        news=StoredNewsRepository(),
+        theme_repository=get_default_etf_theme_repository(),
+    )
+
+    response = service.ask(ChatRequest(message="연금저축 뉴스 보여줘"))
+
+    assert response.news_items
+    assert response.answer.startswith("연금 제도 뉴스는 제공하지 않아요")
+    assert any(
+        "연금 제도 뉴스는 제공하지 않아요" in item
+        for item in response.limitations
+    )
+    assert any("가장 최신 기사는 약" in item for item in response.limitations)
+    assert any(
+        item.follow_up_id == "pension_account_basics"
+        for item in response.suggested_follow_ups
+    )
+
+
+def test_timely_news_uses_live_metadata_without_event_strategy() -> None:
+    response = _service().ask(ChatRequest(message="오늘 증시 뉴스 알려줘"))
+
+    assert response.data_mode == "news_metadata"
+    assert response.news_items
+    assert not any(
+        source.evidence_id.startswith("policy:") for source in response.sources
+    )
+    assert any(
+        source.evidence_id.startswith("live-news:") for source in response.sources
+    )
+
+
+def test_timely_news_falls_back_to_stored_news_when_live_lookup_fails() -> None:
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        news=StoredNewsRepository(),
+        live_news=UnavailableLiveNewsSearch(),
+        theme_repository=get_default_etf_theme_repository(),
+    )
+
+    response = service.ask(ChatRequest(message="오늘 미국 증시 뉴스 알려줘"))
+
+    assert response.data_mode == "news_summary"
+    assert response.news_items
+    assert response.answer.startswith("실시간 NAVER 조회를 사용할 수 없어")
     assert any(
         "실시간 조회가 아니라 최근 저장 뉴스 기반입니다" in limitation
         for limitation in response.limitations

@@ -1,4 +1,5 @@
 import type {
+  AccountLinkOptionsResponse,
   BenchmarkSummary,
   ChatCardCatalog,
   CompletedSurveyProfile,
@@ -180,6 +181,10 @@ export function getChatCards(): Promise<ChatCardCatalog> {
 
 export function getDemoHeroes(): Promise<DemoHeroPortfolio[]> {
   return apiGet("/chat/demo/heroes");
+}
+
+export function getAccountLinkOptions(): Promise<AccountLinkOptionsResponse> {
+  return apiGet("/accounts/link-options");
 }
 
 export function evaluateProfileSurvey(

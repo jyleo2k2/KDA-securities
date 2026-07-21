@@ -75,6 +75,10 @@ def chat_card_catalog() -> ChatCardCatalog:
 
 
 def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp]:
+    has_pension_news_notice = any(
+        "연금 제도 뉴스는 제공하지 않아요" in item
+        for item in response.limitations
+    )
     if response.data_mode in {
         "live_news_event_strategy",
         "stored_news_event_strategy",
@@ -91,7 +95,50 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
                 message="미국 실시간 뉴스 기반 운용전략을 보여줘",
             ),
         ]
+    if response.intent == ChatIntent.NEWS and not response.news_items:
+        follow_ups = [
+            SuggestedFollowUp(
+                follow_up_id="live_market_news",
+                label="실시간 증시 뉴스 보기",
+                message="실시간 증시 뉴스 보여줘",
+            )
+        ]
+        if has_pension_news_notice:
+            follow_ups.append(
+                SuggestedFollowUp(
+                    follow_up_id="pension_account_basics",
+                    label="연금계좌 기초 알아보기",
+                    message="연금저축·IRP 차이 알려줘",
+                )
+            )
+        return follow_ups
     if response.intent == ChatIntent.NEWS and response.news_items:
+        has_live_news_source = any(
+            source.evidence_id.startswith("live-news:")
+            for source in response.sources
+        )
+        if has_live_news_source:
+            follow_ups = [
+                SuggestedFollowUp(
+                    follow_up_id="live_news_kr",
+                    label="지금 국내 증시 뉴스",
+                    message="지금 국내 증시 뉴스 보여줘",
+                ),
+                SuggestedFollowUp(
+                    follow_up_id="live_news_us",
+                    label="지금 미국 증시 뉴스",
+                    message="지금 미국 증시 뉴스 보여줘",
+                ),
+            ]
+            if has_pension_news_notice:
+                follow_ups.append(
+                    SuggestedFollowUp(
+                        follow_up_id="pension_account_basics",
+                        label="연금계좌 기초 알아보기",
+                        message="연금저축·IRP 차이 알려줘",
+                    )
+                )
+            return follow_ups
         follow_ups = [
             SuggestedFollowUp(
                 follow_up_id="news_detail_1",
@@ -128,6 +175,14 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
                 message="다른 뉴스 더 보여줘",
             )
         )
+        if has_pension_news_notice:
+            follow_ups.append(
+                SuggestedFollowUp(
+                    follow_up_id="pension_account_basics",
+                    label="연금계좌 기초 알아보기",
+                    message="연금저축·IRP 차이 알려줘",
+                )
+            )
         return follow_ups
     if response.intent == ChatIntent.MOCK_PORTFOLIO:
         return [

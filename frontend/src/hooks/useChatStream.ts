@@ -194,9 +194,7 @@ export function useChatStream({
       )) return;
       const message = requestToken
         ? authenticatedErrorMessage(error)
-        : error instanceof Error
-          ? error.message
-          : "서버 연결을 확인해 주세요.";
+        : "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
       if (requestToken) onAuthenticatedError(message);
       setMessages((current) => [...current, {
         id: crypto.randomUUID(),
@@ -239,5 +237,5 @@ function authenticatedErrorMessage(error: unknown): string {
   if (error instanceof ApiError && error.status === 503) {
     return "대화 저장소에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.";
   }
-  return error instanceof Error ? error.message : "요청을 처리하지 못했습니다.";
+  return "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
 }

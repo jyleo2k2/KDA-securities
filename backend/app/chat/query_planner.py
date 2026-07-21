@@ -21,6 +21,12 @@ class BlockedReason(StrEnum):
     UNSUPPORTED = "unsupported"
 
 
+class NewsScopeNotice(StrEnum):
+    COMPANY = "company"
+    UNSUPPORTED_MARKET = "unsupported_market"
+    PENSION = "pension"
+
+
 class AccountRuleTopic(StrEnum):
     PENSION_ACCOUNT_OVERVIEW = "pension_account_overview"
     PENSION_RECEIPT_START = "pension_receipt_start"
@@ -45,6 +51,8 @@ class QueryPlan(BaseModel):
     account_types: tuple[AccountType, ...] = ()
     news_query: str | None = Field(default=None, min_length=1, max_length=200)
     requests_event_strategy: bool = False
+    requests_live_news: bool = False
+    news_scope_notice: NewsScopeNotice | None = None
     max_results: int = Field(default=3, ge=1, le=5)
     combines_account_rules: bool = False
     requests_tax_credit: bool = False
@@ -64,6 +72,10 @@ class QueryPlan(BaseModel):
             raise ValueError("news_query is only valid for news intent")
         if self.intent != ChatIntent.NEWS and self.requests_event_strategy:
             raise ValueError("event strategy requires news intent")
+        if self.intent != ChatIntent.NEWS and self.requests_live_news:
+            raise ValueError("live news requires news intent")
+        if self.intent != ChatIntent.NEWS and self.news_scope_notice is not None:
+            raise ValueError("news scope notice requires news intent")
         if self.intent == ChatIntent.OUT_OF_SCOPE and self.blocked_reason is None:
             raise ValueError("out_of_scope intent requires blocked_reason")
         if self.intent != ChatIntent.OUT_OF_SCOPE and self.blocked_reason is not None:
@@ -137,6 +149,12 @@ _PRODUCT_LEVEL = re.compile(r"개별\s*상품|상품\s*추천|상품\s*비교|�
 _THEME_CANDIDATE_TERMS = re.compile(
     r"상품|종목|후보|추천|비교|보수|거래\s*대금|순자산", re.I
 )
+_THEME_ETF_LIST_TERMS = re.compile(
+    r"(?:어떤|무슨)\s*ETF"
+    r"|ETF\s*(?:상품\s*)?(?:은|는|이|가)?\s*"
+    r"(?:뭐가|무엇이|어떤\s*게|어느\s*게).{0,8}(?:있|보여|알려)",
+    re.I,
+)
 _THEME_HOLDING_TERMS = re.compile(
     r"구성\s*종목|편입\s*종목|보유\s*종목|종목\s*비중"
     r"|ETF.{0,8}대표\s*종목",
@@ -176,6 +194,16 @@ _NEWS_EVENT_STRATEGY_TERMS = re.compile(
     r"이벤트\s*드리븐|뉴스\s*기반|"
     r"실시간.{0,20}(?:운용|투자|포트폴리오|전략|리밸런싱)|"
     r"(?:운용|투자|포트폴리오|전략|리밸런싱).{0,20}실시간",
+    re.I,
+)
+_NEWS_TIMELINESS_TERMS = re.compile(r"실시간|방금|지금|오늘|최신|장중", re.I)
+_UNSUPPORTED_MARKET_NEWS = re.compile(
+    r"(?:중국|일본|유럽|홍콩|대만)\s*(?:증시|시장|주식|뉴스|기사|소식)",
+    re.I,
+)
+_PENSION_NEWS = re.compile(r"연금저축|퇴직연금|(?<![A-Za-z])IRP(?![A-Za-z])|DC형", re.I)
+_COMPANY_NEWS = re.compile(
+    r"삼성전자|SK\s*하이닉스|현대차|기아|LG에너지솔루션|NAVER|카카오",
     re.I,
 )
 _MACRO_EVIDENCE_TERMS = re.compile(
@@ -305,6 +333,16 @@ def _news_query(message: str) -> str:
     if re.search(r"한국|국내|코스피|코스닥", message, re.I):
         return "market:kr"
     return "market"
+
+
+def _news_scope_notice(message: str) -> NewsScopeNotice | None:
+    if _PENSION_NEWS.search(message):
+        return NewsScopeNotice.PENSION
+    if _UNSUPPORTED_MARKET_NEWS.search(message):
+        return NewsScopeNotice.UNSUPPORTED_MARKET
+    if _COMPANY_NEWS.search(message):
+        return NewsScopeNotice.COMPANY
+    return None
 
 
 def _account_rule_topic(
@@ -465,6 +503,10 @@ def plan_question(
             requests_event_strategy=(
                 _NEWS_EVENT_STRATEGY_TERMS.search(normalized) is not None
             ),
+            requests_live_news=(
+                _NEWS_TIMELINESS_TERMS.search(normalized) is not None
+            ),
+            news_scope_notice=_news_scope_notice(normalized),
             max_results=max_results,
         )
     if intent == ChatIntent.MACRO_EVIDENCE:
@@ -492,7 +534,10 @@ def plan_question(
             and not asks_considerations
             and not asks_performance_drivers
             and not asks_risks
-            and _THEME_CANDIDATE_TERMS.search(normalized) is not None
+            and (
+                _THEME_CANDIDATE_TERMS.search(normalized) is not None
+                or _THEME_ETF_LIST_TERMS.search(normalized) is not None
+            )
         )
         content_topic = (
             ThemeContentTopic.OVERVIEW
@@ -511,7 +556,7 @@ def plan_question(
             normalized_message=normalized,
             intent=ChatIntent.ETF_THEME,
             account_types=account_types,
-            max_results=max_results,
+            max_results=3 if requests_candidates else max_results,
             theme_id=theme.theme_id,
             theme_content_topic=content_topic,
             requests_theme_candidates=requests_candidates,
