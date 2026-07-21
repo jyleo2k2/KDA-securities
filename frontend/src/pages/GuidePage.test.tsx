@@ -480,6 +480,43 @@ describe("GuidePage chat history deletion", () => {
     expect(within(outcomeCard).getByText(/KIND 현금분배/)).toBeInTheDocument();
   });
 
+  it("shows six numeric evidence cards first and expands the remaining cards", async () => {
+    const response: ChatResponse = {
+      ...THEME_RESPONSE,
+      numeric_evidence: Array.from({ length: 7 }, (_, index) => ({
+        label: `카드 수치 ${index + 1}`,
+        value: String(index + 1),
+        unit: "%",
+        evidence_id: `evidence:${index + 1}`,
+        basis: "표시 순서 테스트",
+      })),
+    };
+    vi.mocked(getChatCards).mockResolvedValue({
+      cards: [RECOMMENDED_CHAT_CARDS[0]],
+    });
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      persisted: false,
+      session_id: null,
+      response,
+    } as Awaited<ReturnType<typeof sendAuthenticatedChatStream>>);
+    render(<GuidePage surveyProfile={null} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /오늘 증시 뉴스/ }));
+
+    await screen.findByText("카드 수치 6");
+    expect(screen.queryByText("카드 수치 7")).not.toBeInTheDocument();
+    const toggle = screen.getByRole("button", {
+      name: "숫자 근거 전체 7개 보기",
+    });
+    fireEvent.click(toggle);
+
+    expect(await screen.findByText("카드 수치 7")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "숫자 근거 접기" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+
   it("renders only the five requested recommendation cards without spark icons", async () => {
     vi.mocked(getChatCards).mockResolvedValue({ cards: RECOMMENDED_CHAT_CARDS });
     render(<GuidePage surveyProfile={null} />);

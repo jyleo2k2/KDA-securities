@@ -282,6 +282,12 @@ def test_completed_survey_profile_calls_portfolio_engine() -> None:
     ]
     assert len(displayed_returns) == 2
     assert all(value.as_tuple().exponent == -1 for value in displayed_returns)
+    assert [item.label for item in response.numeric_evidence[:4]] == [
+        "일반 위험자산 목표비중",
+        "보수 계획수익률",
+        "기준 계획수익률",
+        "수령 개시까지 운용기간",
+    ]
 
 
 def test_chat_does_not_collect_age_when_survey_is_missing() -> None:

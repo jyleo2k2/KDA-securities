@@ -1096,6 +1096,23 @@ def educational_portfolio(
             macro_outcome_limitations.append(
                 "과거 유사국면 이후 ETF 총수익률 근거를 불러오지 못했습니다."
             )
+    numeric_priority = {
+        "일반 위험자산 목표비중": 0,
+        "보수 계획수익률": 1,
+        "기준 계획수익률": 2,
+        "수령 개시까지 운용기간": 3,
+        "리밸런싱 이탈 기준": 5,
+    }
+    numeric.sort(
+        key=lambda item: numeric_priority.get(
+            item.label,
+            4
+            if item.label.endswith(" 목표비중")
+            else 6
+            if item.label.endswith(" 스트레스 손실 추정치")
+            else 7,
+        )
+    )
     return ChatResponse(
         intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
         answer=(
