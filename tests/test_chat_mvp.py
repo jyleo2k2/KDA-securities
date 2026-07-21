@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -39,7 +40,13 @@ from backend.app.chat.narrator import (
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService, _knowledge_sources
 from backend.app.chat.tools import PENSION_TAX_CLOSING_NOTICE
-from backend.app.engine import AccountType, HoldingInput, PortfolioInput, RiskTreatment
+from backend.app.engine import (
+    AccountType,
+    HoldingInput,
+    PensionTaxScenarioInput,
+    PortfolioInput,
+    RiskTreatment,
+)
 from backend.app.main import app, get_chat_narrator, get_chat_service
 from backend.app.retrieval.repository import KnowledgeMatch, NewsMatch
 from backend.app.settings import get_settings
@@ -151,6 +158,40 @@ def service(
         disclosures=disclosures,
         news=news,
     )
+
+
+_SNAKE_CASE_TOKEN = re.compile(r"\b[a-z]+(?:_[a-z]+)+\b")
+
+
+def _visible_response_text(response: ChatResponse) -> list[str]:
+    text = [response.answer, *(response.limitations)]
+    if response.salutation is not None:
+        text.append(response.salutation)
+    for section in response.sections:
+        text.extend((section.title, section.content))
+        text.extend(block.plain_text() for block in section.blocks)
+    for evidence in response.numeric_evidence:
+        text.extend((evidence.label, evidence.basis))
+    for visualization in response.visualizations:
+        text.extend((visualization.title, visualization.description))
+        text.extend(item.label for item in visualization.items)
+        for series in visualization.series:
+            text.append(series.label)
+            text.extend(point.label for point in series.points)
+    for source in response.sources:
+        text.append(source.label)
+        if source.publisher is not None:
+            text.append(source.publisher)
+    for follow_up in response.suggested_follow_ups:
+        text.append(follow_up.label)
+    for item in response.news_items:
+        text.extend((item.title, item.description or "", *item.summary_lines))
+    return text
+
+
+def _assert_no_visible_snake_case(response: ChatResponse) -> None:
+    exposed = "\n".join(_visible_response_text(response))
+    assert _SNAKE_CASE_TOKEN.search(exposed) is None
 
 
 def test_account_rule_question_returns_rag_source_and_numeric_evidence() -> None:
@@ -585,6 +626,43 @@ def test_disclosure_comparison_uses_only_repository_numbers() -> None:
     assert "개별 상품" in response.limitations[0]
 
 
+def test_representative_chat_responses_do_not_expose_internal_snake_case() -> None:
+    scenario = service().ask(
+        ChatRequest(
+            message="중복·위험 편중 목계좌를 진단해줘",
+            scenario_code="overlap_risk_concentration",
+        )
+    )
+    disclosure = service(disclosures=FakeDisclosureRepository()).ask(
+        ChatRequest(message="테스트증권 IRP 과거 수익률을 알려줘")
+    )
+    pension_tax = service().ask(
+        ChatRequest(
+            message="연금저축과 IRP 세액공제를 계산해줘",
+            pension_tax=PensionTaxScenarioInput.model_validate(
+                {
+                    "tax_year": 2026,
+                    "income_basis": "gross_salary",
+                    "income_amount_krw": "50000000",
+                    "pension_savings": {
+                        "balance_krw": "30000000",
+                        "current_year_contribution_krw": "6000000",
+                    },
+                    "irp": {
+                        "balance_krw": "50000000",
+                        "current_year_contribution_krw": "3000000",
+                    },
+                    "withdrawal_reason": "general",
+                    "irp_deferred_income_status": "none",
+                }
+            ),
+        )
+    )
+
+    for response in (scenario, disclosure, pension_tax):
+        _assert_no_visible_snake_case(response)
+
+
 def test_unconfigured_disclosure_does_not_fall_back_to_fixture() -> None:
     response = service().ask(ChatRequest(message="IRP 사업자 수익률을 알려줘"))
 
@@ -788,7 +866,7 @@ def test_custom_dc_portfolio_answer_is_conclusion_first_heyoche() -> None:
     )
 
     assert response.answer.startswith(
-        "DC 예시 포트폴리오는 위험자산이 60%로 한도(70%) 안이에요."
+        "DC형 예시 포트폴리오는 위험자산이 60%로 한도(70%) 안이에요."
     )
     assert "위험자산은 주식처럼 가격이 오르내릴 수 있는 자산이에요." in response.answer
     assert "상품별 편입 가능 여부도 확인해야 해요." in response.answer
@@ -817,7 +895,7 @@ def test_custom_dc_portfolio_uses_correct_particle_when_over_limit() -> None:
     )
 
     assert response.answer.startswith(
-        "DC 예시 포트폴리오는 위험자산이 80%로 한도(70%)를 넘었어요."
+        "DC형 예시 포트폴리오는 위험자산이 80%로 한도(70%)를 넘었어요."
     )
 
 

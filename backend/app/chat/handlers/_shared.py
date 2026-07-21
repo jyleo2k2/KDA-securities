@@ -516,6 +516,11 @@ _SLEEVE_LABELS = {
     "fixed_income": "채권",
     "cash": "현금",
 }
+_STRESS_SCENARIO_LABELS = {
+    "equity_drawdown": "주식시장 급락",
+    "rate_inflation_shock": "금리·물가 충격",
+    "stagflation": "스태그플레이션",
+}
 _ROLE_SENTENCES = {
     "long_term_growth_core": "주식 ETF를 장기 성장 핵심자산으로 둬요.",
     "inflation_and_diversification": (

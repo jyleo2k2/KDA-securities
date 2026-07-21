@@ -1,3 +1,4 @@
+import re
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -290,6 +291,37 @@ def test_completed_survey_profile_calls_portfolio_engine() -> None:
     ]
 
 
+def test_educational_portfolio_visible_text_uses_korean_labels() -> None:
+    response = _service().ask(
+        ChatRequest(
+            message="내 투자 스타일의 연금 운용 전략과 수익률을 알려줘",
+            survey_profile=_completed_survey(EducationalRiskProfile.AGGRESSIVE),
+        )
+    )
+    assert response.educational_portfolio_evaluation is not None
+    exposed = "\n".join(
+        (
+            response.answer,
+            *(response.limitations),
+            *(section.title for section in response.sections),
+            *(section.content for section in response.sections),
+            *(item.label for item in response.numeric_evidence),
+            *(item.basis for item in response.numeric_evidence),
+            *(source.label for source in response.sources),
+            *(source.publisher or "" for source in response.sources),
+            *(visualization.title for visualization in response.visualizations),
+            *(visualization.description for visualization in response.visualizations),
+            *(
+                item.label
+                for visualization in response.visualizations
+                for item in visualization.items
+            ),
+            response.educational_portfolio_evaluation.strategy_label,
+        )
+    )
+    assert re.search(r"\b[a-z]+(?:_[a-z]+)+\b", exposed) is None
+
+
 def test_chat_does_not_collect_age_when_survey_is_missing() -> None:
     response = _service().ask(ChatRequest(message="내 연금 운용 전략을 알려줘"))
 
@@ -501,31 +533,31 @@ def test_each_allowed_chat_style_builds_its_own_etf_portfolio() -> None:
             "안정형으로 보여줘",
             EducationalRiskProfile.STABLE,
             "안정형 투자전략",
-            "capital_preservation_core",
+                "자본보전 중심 전략",
         ),
         (
             "안정 추구형으로 보여줘",
             EducationalRiskProfile.STABLE_SEEKING,
             "안정추구형 투자전략",
-            "defensive_diversified_core",
+                "방어적 분산 전략",
         ),
         (
             "위험중립형으로 보여줘",
             EducationalRiskProfile.RISK_NEUTRAL,
             "위험중립형 투자전략",
-            "balanced_core_satellite",
+                "코어·위성 전략",
         ),
         (
             "적극투자형으로 보여줘",
             EducationalRiskProfile.ACTIVE,
             "적극투자형 투자전략",
-            "growth_core_satellite",
+                "성장 코어·위성 전략",
         ),
         (
             "공격 투자형으로 보여줘",
             EducationalRiskProfile.AGGRESSIVE,
             "공격투자형 투자전략",
-            "barbell_growth_tactical",
+                "바벨형 성장·전술 전략",
         ),
     )
     allocations: set[tuple[tuple[str, Decimal], ...]] = set()

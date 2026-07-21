@@ -29,7 +29,7 @@ def scenario_response(
     scenario = scenarios.get(scenario_code)
     if scenario is None:
         return scenario_selection_response(
-            limitation=f"알 수 없는 목시나리오 코드: {scenario_code}",
+            limitation="선택한 예시 계좌를 찾지 못했어요.",
             scenarios=scenarios,
         )
     evaluation = evaluate_mock_scenario(scenario)
