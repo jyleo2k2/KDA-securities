@@ -5,11 +5,13 @@ import piggyIntro from "../assets/login/piggy-intro.png";
 import piggySuccess from "../assets/login/piggy-success.png";
 import "./LoginFlowPage.css";
 
-type LoginStep = "intro" | "form" | "success";
+type LoginStep = "intro" | "form" | "consent" | "success";
 
 interface LoginFlowPageProps {
   onStart: () => void;
 }
+
+const REQUIRED_CONSENT_ID = "account-link";
 
 function StatusBar(): JSX.Element {
   return (
@@ -24,11 +26,18 @@ export function LoginFlowPage({ onStart }: LoginFlowPageProps): JSX.Element {
   const [step, setStep] = useState<LoginStep>("intro");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
+  const [consents, setConsents] = useState<Record<string, boolean>>({});
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     setStep("success");
   }
+
+  function toggleConsent(id: string): void {
+    setConsents((prev) => ({ ...prev, [id]: !prev[id] }));
+  }
+
+  const requiredConsentsMet = Boolean(consents[REQUIRED_CONSENT_ID]);
 
   return (
     <main className="login-flow-stage">
@@ -78,6 +87,64 @@ export function LoginFlowPage({ onStart }: LoginFlowPageProps): JSX.Element {
           </div>
         )}
 
+        {step === "consent" && (
+          <div className="login-consent-page">
+            <button type="button" className="login-back" onClick={() => setStep("success")} aria-label="이전 화면">←</button>
+            <h1>연금계좌 연동</h1>
+            <div className="login-consent-content">
+              <div className="login-consent-chips" aria-label="계좌 연동 특징">
+                <span>데모</span><span>조회</span><b>3종 계좌</b>
+              </div>
+              <section className="login-consent-hero">
+                <span>연결 가능한 계좌</span>
+                <h2>DC&nbsp; IRP<br /><em>연금저축</em></h2>
+                <p>한 번에 불러와 통합 자산으로 확인</p>
+                <small>현재 MVP는 목데이터 · 실제 계좌 연결 아님</small>
+              </section>
+              <section className="login-consent-card">
+                <strong>불러오면 확인하는 내용</strong>
+                <h2>3개 연금계좌 통합</h2>
+                <div className="login-consent-progress"><i /></div>
+                <b className="login-consent-highlight">전체 자산과 비중을 한눈에</b>
+                <p>적립금 · 보유상품 · 현금성 · 위험자산 비중을 확인해요.</p>
+              </section>
+              <section className="login-consent-card login-consent-accounts">
+                <h2>연결할 수 있는 계좌</h2>
+                <p><strong>DC형 퇴직연금</strong><b>직접 운용 계좌</b></p>
+                <p><strong>IRP · 연금저축</strong><b>개인 연금계좌</b></p>
+                <small>DB형은 가입 여부만 확인하고 운용 진단에서는 제외해요.</small>
+              </section>
+              <section className="login-consent-safe">
+                <h2>안심하고 연결하세요</h2>
+                <p>계좌 불러오기는 조회와 분석을 위한 연결이에요.<br />계좌가 이전되거나 상품이 자동으로 매매되지 않아요.<br />연결은 언제든 해제할 수 있어요.</p>
+              </section>
+              <section className="login-consent-card login-consent-check-card">
+                <h2>연결 전 확인</h2>
+                <dl><dt>불러오는 정보</dt><dd>금융회사와 계좌 종류<br />잔액 · 평가금액 · 보유 상품 · 정보 기준일</dd><dt>이용 목적</dt><dd>연금자산 통합조회와 운용 현황 분석</dd></dl>
+                <button
+                  type="button"
+                  className="login-consent-item"
+                  aria-pressed={requiredConsentsMet}
+                  onClick={() => toggleConsent(REQUIRED_CONSENT_ID)}
+                >
+                  <span className="login-consent-box" aria-hidden="true">{requiredConsentsMet && "✓"}</span>
+                  <span>필수 정보 이용 내용을 확인했습니다.</span>
+                </button>
+              </section>
+            </div>
+            <div className="login-consent-cta">
+              <button
+                type="button"
+                className="login-primary"
+                disabled={!requiredConsentsMet}
+                onClick={onStart}
+              >
+                <span>연동</span> 내 연금계좌 찾기
+              </button>
+            </div>
+          </div>
+        )}
+
         {step === "success" && (
           <div className="login-success-page">
             <header>
@@ -90,7 +157,7 @@ export function LoginFlowPage({ onStart }: LoginFlowPageProps): JSX.Element {
               <span className="login-sparkle">✦</span>
               <img src={piggySuccess} alt="저금통" />
             </div>
-            <button type="button" className="login-primary" onClick={onStart}>시작하기</button>
+            <button type="button" className="login-primary" onClick={() => setStep("consent")}>시작하기</button>
           </div>
         )}
       </section>
