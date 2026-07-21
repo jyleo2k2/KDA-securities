@@ -2,7 +2,7 @@
 
 import logging
 import re
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from ...engine import (
     EducationalPortfolioEvaluation,
@@ -11,6 +11,10 @@ from ...engine import (
     build_educational_portfolio,
     evaluate_risk_cap,
     select_theme_etf_candidates,
+)
+from ...etf_component_repository import EtfComponentSnapshotRepository
+from ...etf_product_description_repository import (
+    EtfProductDescriptionRepository,
 )
 from ...etf_theme_repository import EtfThemeRepository
 from ...etf_theme_verification_repository import (
@@ -24,6 +28,12 @@ from ...macro_evidence import (
     MacroMetric,
     attach_etf_outcomes,
 )
+from ..etf_product_features import (
+    DEFAULT_ETF_PRODUCT_RESEARCH_PATH,
+    EtfProductFeatureFacts,
+    EtfProductFeatureGenerator,
+    deterministic_etf_product_feature,
+)
 from ..models import (
     AnswerBlock,
     AnswerBlockKind,
@@ -33,6 +43,7 @@ from ..models import (
     ChatResponse,
     ConversationContext,
     DataBoundary,
+    EtfThemeConversationContext,
     NumericEvidence,
     SectionKind,
     SourceEvidence,
@@ -48,7 +59,6 @@ from ._shared import (
     _STRESS_SCENARIO_LABELS,
     PortfolioUniverseLoader,
     _decimal_text,
-    _krw_text,
     _one_decimal,
     _rebalancing_items,
     _selected_risk_profile,
@@ -60,12 +70,146 @@ from ._shared import (
 logger = logging.getLogger(__name__)
 
 
+def _product_fee_text(value: Decimal | None) -> str:
+    if value is None:
+        return "확인 필요"
+    rounded = value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return f"{rounded:.2f}%"
+
+
+def _product_trading_value_text(value: Decimal | None) -> str:
+    if value is None:
+        return "확인 필요"
+    eok_krw = (value / Decimal("100000000")).quantize(
+        Decimal("1"),
+        rounding=ROUND_HALF_UP,
+    )
+    return f"{eok_krw:,.0f}억원"
+
+
+def _representative_reason_text(reason: str) -> str:
+    """Make the representative-company rationale a direct declarative sentence."""
+
+    if reason.endswith("이기 때문입니다."):
+        return reason.removesuffix("이기 때문입니다.") + "입니다."
+    if reason.endswith("기 때문입니다."):
+        stem = reason.removesuffix("기 때문입니다.")
+        ending = "은" if stem.endswith(("좋", "크")) else "는"
+        return f"{stem}{ending} 점이 대표 사례입니다."
+    return reason
+
+
+def _theme_holdings_response(
+    *,
+    theme_name: str,
+    context: EtfThemeConversationContext,
+    component_snapshots: EtfComponentSnapshotRepository | None,
+) -> ChatResponse:
+    if component_snapshots is None:
+        return ChatResponse(
+            intent=ChatIntent.ETF_THEME,
+            answer="ETF 구성종목 데이터베이스에 연결할 수 없습니다.",
+            data_mode="unavailable",
+            limitations=["저장된 KIS 구성종목 스냅샷이 필요합니다."],
+            conversation_context=ConversationContext(etf_theme=context),
+        )
+    try:
+        snapshots = component_snapshots.latest_for(context.candidate_isu_codes)
+    except Exception:  # noqa: BLE001 — DB 장애는 후보 재선정으로 감추지 않는다.
+        logger.warning("etf_component_snapshot_unavailable")
+        return ChatResponse(
+            intent=ChatIntent.ETF_THEME,
+            answer="ETF 구성종목 데이터를 불러오지 못했습니다.",
+            data_mode="unavailable",
+            limitations=["저장된 KIS 구성종목 스냅샷을 다시 확인해 주세요."],
+            conversation_context=ConversationContext(etf_theme=context),
+        )
+
+    sections: list[AnswerSection] = []
+    sources: list[SourceEvidence] = []
+    numeric: list[NumericEvidence] = []
+    limitations: list[str] = []
+    for code, name in zip(
+        context.candidate_isu_codes, context.candidate_names, strict=True
+    ):
+        snapshot = snapshots.get(code)
+        if snapshot is None:
+            limitations.append(f"{name}의 최신 구성종목 스냅샷이 없습니다.")
+            continue
+        if not snapshot.holdings:
+            limitations.append(f"{name}은 KIS 구성종목 목록이 비어 있습니다.")
+            continue
+        source_id = f"kis:components:{code}:{snapshot.captured_at.isoformat()}"
+        sources.append(
+            SourceEvidence(
+                evidence_id=source_id,
+                label=f"{name} 구성종목",
+                locator=(
+                    "https://openapi.koreainvestment.com:9443/uapi/etfetn/"
+                    "v1/quotations/inquire-component-stock-price"
+                ),
+                publisher="한국투자증권 Open Trading API",
+                as_of=snapshot.captured_at,
+                data_boundary=DataBoundary.OFFICIAL_DISCLOSURE,
+            )
+        )
+        rows: list[list[str]] = []
+        for holding in snapshot.holdings:
+            rows.append(
+                [
+                    holding.component_name,
+                    f"{_decimal_text(holding.weight_percent)}%",
+                ]
+            )
+            numeric.append(
+                NumericEvidence(
+                    label=f"{name} {holding.component_name} 구성 비중",
+                    value=holding.weight_percent,
+                    unit="%",
+                    evidence_id=source_id,
+                    basis="KIS etf_cnfg_issu_rlim 원문 필드",
+                )
+            )
+        sections.append(
+            AnswerSection(
+                kind=SectionKind.FACT,
+                title=f"{name} 구성종목 TOP3",
+                content="",
+                evidence_ids=[source_id],
+                blocks=[
+                    AnswerBlock(
+                        kind=AnswerBlockKind.TABLE,
+                        headers=["구성종목", "구성비중"],
+                        rows=rows,
+                    )
+                ],
+            )
+        )
+    return ChatResponse(
+        intent=ChatIntent.ETF_THEME,
+        answer=(
+            f"직전에 소개한 {theme_name} 테마 ETF 3개의 구성종목 비중 TOP3입니다."
+            if sections
+            else "직전에 소개한 ETF의 구성종목 스냅샷을 아직 준비하지 못했습니다."
+        ),
+        data_mode="theme_component_holdings" if sections else "unavailable",
+        sections=sections,
+        sources=sources,
+        numeric_evidence=numeric,
+        limitations=limitations,
+        conversation_context=ConversationContext(etf_theme=context),
+    )
+
+
 def etf_theme_response(
     request: ChatRequest,
     plan: QueryPlan,
     *,
     portfolio_universe_loader: PortfolioUniverseLoader | None,
     theme_repository: EtfThemeRepository | None,
+    product_descriptions: EtfProductDescriptionRepository | None,
+    product_feature_generator: EtfProductFeatureGenerator | None,
+    component_snapshots: EtfComponentSnapshotRepository | None,
     theme_verification: EtfThemeVerificationReader | None,
 ) -> ChatResponse:
     if theme_repository is None or plan.theme_id is None:
@@ -81,6 +225,21 @@ def etf_theme_response(
             intent=ChatIntent.ETF_THEME,
             answer="요청한 ETF 테마를 현재 카탈로그에서 찾지 못했습니다.",
             data_mode="unavailable",
+        )
+    prior_theme = (
+        request.conversation_context.etf_theme
+        if request.conversation_context is not None
+        else None
+    )
+    if (
+        plan.requests_theme_holdings
+        and prior_theme is not None
+        and prior_theme.theme_id == theme.theme_id
+    ):
+        return _theme_holdings_response(
+            theme_name=theme.name,
+            context=prior_theme,
+            component_snapshots=component_snapshots,
         )
 
     catalog_source_id = "policy:etf_theme_catalog"
@@ -152,7 +311,7 @@ def etf_theme_response(
                         title=company.name,
                         text=(
                             f"테마에서의 역할: {company.theme_role} "
-                            f"{company.representative_reason}\n\n"
+                            f"{_representative_reason_text(company.representative_reason)}\n\n"
                             f"쉽게 말하면: {company.plain_description}"
                         ),
                     )
@@ -340,7 +499,7 @@ def etf_theme_response(
         )
 
     allowed_accounts = survey.portfolio_account_types()
-    requested_accounts = plan.account_types or allowed_accounts
+    requested_accounts = plan.account_types or (survey.account_type,)
     account_types = tuple(
         account for account in requested_accounts if account in allowed_accounts
     )
@@ -368,10 +527,11 @@ def etf_theme_response(
         )
 
     numeric: list[NumericEvidence] = []
-    candidate_rows: list[list[str]] = []
     candidate_blocks: list[AnswerBlock] = []
-    holding_sections: list[AnswerSection] = []
-    holding_source_ids: set[str] = set()
+    candidate_context_codes: list[str] = []
+    candidate_context_names: list[str] = []
+    product_description_source_id: str | None = None
+    product_feature_source_id: str | None = None
     successful_accounts = 0
     for account_type in account_types:
         try:
@@ -419,10 +579,67 @@ def etf_theme_response(
                 data_boundary=DataBoundary.ENGINE,
             )
         )
-        for rank, candidate in enumerate(evaluation.candidates, start=1):
-            fee_text = "확인 필요"
+        remaining = plan.max_results - len(candidate_blocks)
+        selected_candidates = evaluation.candidates[:remaining]
+        products_by_code = {
+            str(product.get("isu_code") or ""): product
+            for product in universe.products
+            if isinstance(product, dict)
+        }
+        descriptions = {
+            candidate.isu_code: (
+                product_descriptions.get(candidate.isu_name)
+                if product_descriptions is not None
+                else None
+            )
+            for candidate in selected_candidates
+        }
+        feature_facts: dict[str, EtfProductFeatureFacts] = {}
+        for candidate in selected_candidates:
+            product = products_by_code.get(candidate.isu_code, {})
+            metrics = product.get("implementation_metrics")
+            classification = product.get("classification")
+            if not isinstance(metrics, dict):
+                metrics = {}
+            if not isinstance(classification, dict):
+                classification = {}
+            description = descriptions[candidate.isu_code]
+            feature_facts[candidate.isu_code] = EtfProductFeatureFacts(
+                isu_code=candidate.isu_code,
+                product_name=candidate.isu_name,
+                theme_name=theme.name,
+                approved_description=(
+                    description.one_line_description if description else None
+                ),
+                benchmark_name=(
+                    str(metrics["benchmark_name"]).strip()
+                    if metrics.get("benchmark_name")
+                    else None
+                ),
+                classification=classification,
+                top_holding_names=tuple(
+                    holding.component_name for holding in candidate.top_holdings[:5]
+                ),
+            )
+        generated_features: dict[str, str] = {}
+        if product_feature_generator is not None and feature_facts:
+            try:
+                generated_features = product_feature_generator.generate(
+                    tuple(feature_facts.values())
+                )
+            except Exception:  # noqa: BLE001 — 카드 전체는 결정론 폴백으로 유지
+                logger.warning("etf_product_feature_generator_unavailable")
+
+        for candidate in selected_candidates:
+            if len(candidate_blocks) >= plan.max_results:
+                break
+            rank = len(candidate_blocks) + 1
+            fee_text = _product_fee_text(candidate.fee_percent)
             if candidate.fee_percent is not None:
-                fee_text = f"{_decimal_text(candidate.fee_percent)}%"
+                displayed_fee = candidate.fee_percent.quantize(
+                    Decimal("0.01"),
+                    rounding=ROUND_HALF_UP,
+                )
                 numeric.append(
                     NumericEvidence(
                         label=f"{candidate.isu_name} 총보수",
@@ -432,10 +649,25 @@ def etf_theme_response(
                         basis="계좌별 ETF 실데이터 마스터",
                     )
                 )
-            trading_value_text = "확인 필요"
+                if displayed_fee != candidate.fee_percent:
+                    numeric.append(
+                        NumericEvidence(
+                            label=f"{candidate.isu_name} 표시 운용보수",
+                            value=displayed_fee,
+                            unit="%",
+                            evidence_id=master_source_id,
+                            basis="원본 총보수를 소수점 둘째 자리로 반올림",
+                        )
+                    )
+            trading_value_text = _product_trading_value_text(
+                candidate.median_daily_trading_value_krw
+            )
             if candidate.median_daily_trading_value_krw is not None:
-                trading_value_text = _krw_text(
+                displayed_trading_value = (
                     candidate.median_daily_trading_value_krw
+                    / Decimal("100000000")
+                ).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * Decimal(
+                    "100000000"
                 )
                 numeric.append(
                     NumericEvidence(
@@ -446,137 +678,98 @@ def etf_theme_response(
                         basis="계좌별 ETF 실데이터 마스터의 관측기간 중앙값",
                     )
                 )
-            candidate_rows.append(
-                [
-                    _ACCOUNT_TYPE_LABELS[account_type],
-                    candidate.isu_name,
-                    candidate.isu_code,
-                    trading_value_text,
-                    fee_text,
-                ]
+                if (
+                    displayed_trading_value
+                    != candidate.median_daily_trading_value_krw
+                ):
+                    numeric.append(
+                        NumericEvidence(
+                            label=f"{candidate.isu_name} 표시 하루 평균 거래대금",
+                            value=displayed_trading_value,
+                            unit="KRW",
+                            evidence_id=master_source_id,
+                            basis="관측기간 중앙값을 억원 단위로 반올림",
+                        )
+                    )
+            description = descriptions[candidate.isu_code]
+            if description is not None and product_description_source_id is None:
+                product_description_source_id = "verified:etf_product_descriptions"
+                sources.append(
+                    SourceEvidence(
+                        evidence_id=product_description_source_id,
+                        label="승인 ETF 상품 설명 카탈로그",
+                        locator=str(
+                            product_descriptions.source_path
+                            or "approved-etf-product-database"
+                        ),
+                        publisher="연금 코파일럿 팀",
+                        as_of=description.as_of_date,
+                        data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
+                    )
+                )
+            feature_text = generated_features.get(
+                candidate.isu_code,
+                deterministic_etf_product_feature(
+                    feature_facts[candidate.isu_code]
+                ),
             )
+            if generated_features and product_feature_source_id is None:
+                product_feature_source_id = "verified:etf_product_feature_evidence"
+                sources.append(
+                    SourceEvidence(
+                        evidence_id=product_feature_source_id,
+                        label="ETF 상품 설명 통합 원문·공식 설명",
+                        locator=DEFAULT_ETF_PRODUCT_RESEARCH_PATH.as_posix(),
+                        publisher="연금 코파일럿 팀",
+                        as_of=universe.as_of,
+                        data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
+                    )
+                )
             candidate_blocks.append(
                 AnswerBlock(
                     kind=AnswerBlockKind.CALLOUT,
-                    title=(
-                        f"{_ACCOUNT_TYPE_LABELS[account_type]} {rank}. "
-                        f"{candidate.isu_name}"
-                    ),
+                    title=f"{rank}. {candidate.isu_name}",
                     text=(
-                        f"이 계좌에서 편입 가능한 {theme.name} 테마 비교 "
-                        f"후보예요. 일별 거래대금 중앙값은 "
-                        f"{trading_value_text}, 총보수는 {fee_text}예요. "
-                        "거래대금은 거래 편의를, 총보수는 보유 비용을 "
-                        "비교하는 지표이며 미래 수익률을 뜻하지 않아요."
+                        f"연간 수수료율(운용보수): {fee_text}\n\n"
+                        f"하루 평균 거래대금: {trading_value_text}\n\n"
+                        f"상품 특징: {feature_text}"
                     ),
                 )
             )
-            if not plan.requests_theme_holdings or not candidate.top_holdings:
-                continue
-            kis_source_id = f"kis:components:{candidate.isu_code}"
-            if kis_source_id in holding_source_ids:
-                continue
-            holding_source_ids.add(kis_source_id)
-            sources.append(
-                SourceEvidence(
-                    evidence_id=kis_source_id,
-                    label=f"{candidate.isu_name} 구성종목",
-                    locator=(
-                        "https://openapi.koreainvestment.com:9443/uapi/etfetn/"
-                        "v1/quotations/inquire-component-stock-price"
-                    ),
-                    publisher="한국투자증권 Open Trading API",
-                    as_of=candidate.component_snapshot_date,
-                    data_boundary=DataBoundary.OFFICIAL_DISCLOSURE,
-                )
-            )
-            holding_rows: list[list[str]] = []
-            for holding in candidate.top_holdings[:5]:
-                holding_rows.append(
-                    [
-                        holding.component_name,
-                        holding.component_code or "-",
-                        f"{_decimal_text(holding.weight_percent)}%",
-                    ]
-                )
-                numeric.append(
-                    NumericEvidence(
-                        label=(
-                            f"{candidate.isu_name} "
-                            f"{holding.component_name} 구성 비중"
-                        ),
-                        value=holding.weight_percent,
-                        unit="%",
-                        evidence_id=kis_source_id,
-                        basis="KIS etf_cnfg_issu_rlim 원문 필드",
-                    )
-                )
-            holding_sections.append(
-                AnswerSection(
-                    kind=SectionKind.FACT,
-                    title=f"{candidate.isu_name} 주요 구성종목",
-                    content="한국투자증권이 제공한 기준일 스냅샷입니다.",
-                    evidence_ids=[kis_source_id],
-                    blocks=[
-                        AnswerBlock(
-                            kind=AnswerBlockKind.TABLE,
-                            headers=["구성종목", "종목코드", "비중"],
-                            rows=holding_rows,
-                        )
-                    ],
-                )
-            )
+            candidate_context_codes.append(candidate.isu_code)
+            candidate_context_names.append(candidate.isu_name)
 
-    if candidate_rows:
+    if candidate_blocks:
         master_ids = [
             source.evidence_id
             for source in sources
             if source.evidence_id.startswith("engine:theme_candidates:")
         ]
-        sections.append(
+        if product_description_source_id is not None:
+            master_ids.append(product_description_source_id)
+        if product_feature_source_id is not None:
+            master_ids.append(product_feature_source_id)
+        sections = [
             AnswerSection(
                 kind=SectionKind.SERVICE_EXPLANATION,
                 title=f"{theme.name} 테마 ETF상품",
-                content=(
-                    "계좌 적격성과 투자성향 범위를 먼저 적용한 뒤, "
-                    "일별 거래대금 중앙값이 높은 순서로 정렬했어요. "
-                    "거래대금이 같으면 총보수가 낮은 상품이 앞서요."
-                ),
+                content="",
                 evidence_ids=master_ids,
-                blocks=[
-                    AnswerBlock(
-                        kind=AnswerBlockKind.TABLE,
-                        headers=[
-                            "계좌",
-                            "ETF",
-                            "종목코드",
-                            "일별 거래대금 중앙값",
-                            "총보수",
-                        ],
-                        rows=candidate_rows,
-                    ),
-                    *candidate_blocks,
-                ],
+                blocks=candidate_blocks,
             )
-        )
-        sections.extend(holding_sections)
+        ]
     else:
         limitations.append(
             "현재 성향·계좌 범위와 적재 데이터에서 제시 가능한 "
             "테마 ETF 후보가 없습니다."
         )
-    if plan.requests_theme_holdings and not holding_sections:
-        limitations.append(
-            "최신 한국투자증권 구성종목 스냅샷이 없어 요청한 비중을 "
-            "표시하지 않았습니다."
-        )
 
     return ChatResponse(
         intent=ChatIntent.ETF_THEME,
         answer=(
-            f"{theme.name} 테마를 설명하고 성향·계좌 기준을 통과한 "
-            "교육용 ETF 비교 결과를 정리했습니다."
-            if candidate_rows
+            f"{theme.name} 테마에서 거래가 가장 활발하고 "
+            "수수료가 저렴한 ETF 3개를 보여드리겠습니다."
+            if candidate_blocks
             else f"{theme.name} 테마 설명만 제공했습니다."
         ),
         data_mode=(
@@ -591,6 +784,15 @@ def etf_theme_response(
             last_intent=ChatIntent.ETF_THEME,
             survey_profile=survey,
             selected_risk_profile=selected_profile,
+            etf_theme=(
+                EtfThemeConversationContext(
+                    theme_id=theme.theme_id,
+                    candidate_isu_codes=candidate_context_codes,
+                    candidate_names=candidate_context_names,
+                )
+                if candidate_context_codes
+                else None
+            ),
         ),
     )
 

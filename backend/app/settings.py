@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     anthropic_api_key: SecretStr | None = None
     anthropic_model: str = "claude-haiku-4-5"
     enable_claude_narration: bool = False
+    enable_etf_product_feature_generation: bool = True
     narration_cache_path: Path = Path("data/cache/narration_cache.json")
     news_summary_model: str = "claude-sonnet-5"
     news_summary_prompt_version: str = "news-summary-v2"

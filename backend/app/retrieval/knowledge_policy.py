@@ -27,6 +27,7 @@ ALLOWED_OFFICIAL_SOURCE_HOSTS = frozenset(
         "open.krx.co.kr",
         "reits.molit.go.kr",
         "regulation.krx.co.kr",
+        "www.aceetf.co.kr",
         "www.dapa.go.kr",
         "www.fsc.go.kr",
         "www.korea.kr",
@@ -34,9 +35,15 @@ ALLOWED_OFFICIAL_SOURCE_HOSTS = frozenset(
         "www.moel.go.kr",
         "www.motir.go.kr",
         "www.nist.gov",
+        "www.nh-amundi.com",
         "www.nts.go.kr",
+        "www.plusetf.co.kr",
         "www.kpx.or.kr",
+        "www.riseetf.co.kr",
+        "www.samsungfund.com",
+        "www.soletf.com",
         "www.spglobal.com",
+        "www.tigeretf.com",
     }
 )
 
@@ -66,7 +73,7 @@ def contains_sensitive_personal_data(text: str) -> bool:
 
 
 def is_allowed_official_source_url(source_url: str) -> bool:
-    """Allow only HTTPS pages from the project's reviewed public institutions."""
+    """Allow HTTPS pages from reviewed public bodies and official issuers."""
     parsed = urlparse(source_url)
     return (
         parsed.scheme == "https"

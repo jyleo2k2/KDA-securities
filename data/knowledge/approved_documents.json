@@ -405,6 +405,36 @@
       "data_boundary": "verified_knowledge",
       "contains_personal_data": false,
       "is_mock": false
+    },
+    {
+      "document_id": "approved-etf-product-database",
+      "path": "docs/20_리서치/ETF_상품/README.md",
+      "source_code": "project_verified_knowledge",
+      "document_type": "research",
+      "title": "ETF 상품 설명 — 승인 근거와 운영 경계",
+      "publisher": "연금 코파일럿 팀",
+      "source_url": "project://docs/20_리서치/ETF_상품/README.md",
+      "official_source_urls": [
+        "https://www.samsungfund.com/etf/main.do",
+        "https://www.tigeretf.com/",
+        "https://www.soletf.com/",
+        "https://www.nh-amundi.com/",
+        "https://www.aceetf.co.kr/",
+        "https://www.plusetf.co.kr/",
+        "https://www.riseetf.co.kr/"
+      ],
+      "topics": ["ETF 상품", "상품 특징", "운용보수", "거래대금"],
+      "question_families": ["테마 ETF상품", "ETF 상품 목록", "ETF 상품 특징"],
+      "content_sha256": "12b538e88a41e073ba521dc91f20d5a938c4b1134a74fab7364df4bc336466a0",
+      "as_of_date": "2026-07-21",
+      "verified_at": "2026-07-21",
+      "review_due_date": "2027-01-17",
+      "review_owner": "project_owner",
+      "chunking_version": "markdown-heading-800-v1",
+      "license_status": "permitted",
+      "data_boundary": "verified_knowledge",
+      "contains_personal_data": false,
+      "is_mock": false
     }
   ]
 }
