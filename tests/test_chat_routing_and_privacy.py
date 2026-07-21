@@ -142,3 +142,37 @@ def test_direct_identifiers_are_blocked_before_chat_processing() -> None:
 
     assert response.intent is ChatIntent.OUT_OF_SCOPE
     assert response.data_mode == "blocked"
+    assert response.suggested_follow_ups == []
+
+
+def test_foreign_market_and_individual_stock_requests_offer_alternatives() -> None:
+    response = _service().ask(ChatRequest(message="삼성전자 주식을 직접 편입해도 돼?"))
+
+    assert response.intent is ChatIntent.OUT_OF_SCOPE
+    assert "개별주식을 직접 담을 수 없고" in response.answer
+    assert [item.follow_up_id for item in response.suggested_follow_ups] == [
+        "decline_market_etf_theme",
+        "decline_account_rules",
+        "decline_profile_portfolio",
+    ]
+
+
+@pytest.mark.parametrize(
+    "message",
+    ("내년 수익률을 예측해줘", "이 상품을 대신 매수해줘"),
+)
+def test_prediction_and_order_requests_offer_fact_based_alternatives(
+    message: str,
+) -> None:
+    response = _service().ask(ChatRequest(message=message))
+
+    assert response.intent is ChatIntent.OUT_OF_SCOPE
+    assert (
+        "미래 수익 예측이나 매수·매도 추천은 규정상 해드릴 수 없어요"
+        in response.answer
+    )
+    assert [item.follow_up_id for item in response.suggested_follow_ups] == [
+        "decline_historical_disclosure",
+        "decline_educational_portfolio",
+        "decline_etf_total_return",
+    ]

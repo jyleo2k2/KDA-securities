@@ -41,13 +41,11 @@ from ._shared import (
     _news_summary_block,
     _source_ids,
 )
+from .graceful_decline import GracefulDeclineKind, graceful_decline
 
 logger = logging.getLogger(__name__)
 
 _NEWS_SCOPE_MESSAGES = {
-    NewsScopeNotice.COMPANY: (
-        "종목별 뉴스는 제공하지 않아요. 대신 한국·미국 증시 뉴스를 보여드려요."
-    ),
     NewsScopeNotice.UNSUPPORTED_MARKET: (
         "해당 국가 증시 뉴스는 제공하지 않아요. "
         "대신 한국·미국 증시 뉴스를 보여드려요."
@@ -59,6 +57,8 @@ _NEWS_SCOPE_MESSAGES = {
 
 
 def _scope_message(scope_notice: NewsScopeNotice | None) -> str | None:
+    if scope_notice is NewsScopeNotice.COMPANY:
+        return graceful_decline(GracefulDeclineKind.STOCK_NEWS, "").answer
     return (
         _NEWS_SCOPE_MESSAGES[scope_notice] if scope_notice is not None else None
     )

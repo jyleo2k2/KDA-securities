@@ -596,10 +596,10 @@ def test_future_return_and_order_requests_are_blocked() -> None:
 
     assert future.intent == ChatIntent.OUT_OF_SCOPE
     assert future.data_mode == "blocked"
-    assert future.answer.startswith("미래 수익률 예측은 제공하지 않아요.")
+    assert "미래 수익 예측이나 매수·매도 추천" in future.answer
     assert order.intent == ChatIntent.OUT_OF_SCOPE
     assert order.data_mode == "blocked"
-    assert "상품 선택과 주문은 이용자가 직접 해야 해요." in order.answer
+    assert "미래 수익 예측이나 매수·매도 추천" in order.answer
 
 
 def test_narrator_prompt_requires_conclusion_first_heyoche() -> None:

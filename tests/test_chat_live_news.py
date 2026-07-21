@@ -291,6 +291,24 @@ def test_pension_news_keeps_market_news_with_notice_and_pension_exit() -> None:
     )
 
 
+def test_company_news_keeps_market_news_with_graceful_alternatives() -> None:
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        news=StoredNewsRepository(),
+        theme_repository=get_default_etf_theme_repository(),
+    )
+
+    response = service.ask(ChatRequest(message="삼성전자 뉴스 보여줘"))
+
+    assert response.intent.value == "news"
+    assert "개별 종목 뉴스는 안내하지 않아요" in response.answer
+    assert [item.follow_up_id for item in response.suggested_follow_ups] == [
+        "decline_market_news",
+        "decline_stock_related_etf_theme",
+    ]
+
+
 def test_timely_news_uses_live_metadata_without_event_strategy() -> None:
     response = _service().ask(ChatRequest(message="오늘 증시 뉴스 알려줘"))
 

@@ -248,7 +248,7 @@ def test_direct_future_return_prediction_remains_blocked() -> None:
 
     assert response.intent == ChatIntent.OUT_OF_SCOPE
     assert response.data_mode == "blocked"
-    assert "미래 수익률" in response.answer
+    assert "미래 수익 예측이나 매수·매도 추천" in response.answer
 
 
 def _completed_survey(

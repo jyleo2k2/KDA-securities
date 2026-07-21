@@ -4,6 +4,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .handlers.graceful_decline import GracefulDeclineKind, graceful_decline
 from .models import ChatIntent, ChatResponse, MarketRegion, SuggestedFollowUp
 
 
@@ -75,6 +76,9 @@ def chat_card_catalog() -> ChatCardCatalog:
 
 
 def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp]:
+    stock_news_decline = graceful_decline(GracefulDeclineKind.STOCK_NEWS, "")
+    if stock_news_decline.answer in response.limitations:
+        return stock_news_decline.suggested_follow_ups
     has_pension_news_notice = any(
         "연금 제도 뉴스는 제공하지 않아요" in item
         for item in response.limitations

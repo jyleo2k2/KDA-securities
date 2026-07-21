@@ -194,7 +194,10 @@ class ChatService:
                 or request.scenario_code is not None
             )
         ):
-            response = blocked_response(resolved_plan.blocked_reason)
+            response = blocked_response(
+                resolved_plan.blocked_reason,
+                user_message=request.message,
+            )
         else:
             request = request.model_copy(
                 update={
@@ -409,5 +412,8 @@ class ChatService:
                     knowledge=self._knowledge,
                 )
             else:
-                response = blocked_response(BlockedReason.UNSUPPORTED)
+                response = blocked_response(
+                    BlockedReason.UNSUPPORTED,
+                    user_message=request.message,
+                )
         return finalize_response(response, original_request, resolved_plan)
