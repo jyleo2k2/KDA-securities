@@ -44,6 +44,16 @@ def test_customer_examples_include_every_common_column_and_nested_row() -> None:
         representative["demo_identity"]["benchmark_user_id"]
         == representative["benchmark_contract"]["customer"]["user_id"]
     )
+    assessment = representative["investor_profile_assessment"]
+    assert assessment["investor_profile"] == "active"
+    assert assessment["total_score"] == 39
+    assert assessment["data_boundary"] == "mock"
+    public_metrics = representative["public_portfolio_metrics"]
+    assert public_metrics["portfolio_trailing_12m_return_pct"] == "11.16"
+    assert public_metrics["return_period_end"] == "2025-12-31"
+    assert public_metrics["like_count"] == 173
+    assert public_metrics["return_metric"]["is_forecast"] is False
+    assert public_metrics["like_metric"]["performance_based"] is False
 
 
 def test_demo_heroes_endpoint_exposes_six_named_profiles_and_etf_links() -> None:
@@ -61,12 +71,50 @@ def test_demo_heroes_endpoint_exposes_six_named_profiles_and_etf_links() -> None
         "윤정희(가상)",
     }
     assert sum(hero["is_demo_login_candidate"] for hero in heroes) == 5
+    candidates = [hero for hero in heroes if hero["is_demo_login_candidate"]]
+    assert {hero["investor_profile"] for hero in candidates} == {
+        "stable",
+        "stable_seeking",
+        "risk_neutral",
+        "active",
+        "aggressive",
+    }
+    assert len({hero["investment_reason"] for hero in heroes}) == 6
+    assert len({hero["portfolio_opinion_review"] for hero in heroes}) == 6
+    assert len({hero["representative_etf_theme"] for hero in heroes}) == 6
+    assert len({hero["representative_etf_theme_review"] for hero in heroes}) == 6
+    expected_public_metrics = {
+        "dc_dormant": ("7.72", 126),
+        "tax_contribution_uninvested": ("11.20", 284),
+        "overlap_risk_concentration": ("11.16", 173),
+        "young_retirement_distance": ("0.74", 412),
+        "family_budget_pressure": ("12.79", 358),
+        "pension_payout_transition": ("4.69", 97),
+    }
+    for hero in heroes:
+        expected_return, expected_likes = expected_public_metrics[
+            hero["scenario_code"]
+        ]
+        assert hero["past_performance"]["trailing_12m_return_pct"] == expected_return
+        assert hero["past_performance"]["period_start"] == "2025-01-01"
+        assert hero["past_performance"]["period_end"] == "2025-12-31"
+        assert hero["past_performance"]["is_forecast"] is False
+        assert hero["past_performance"]["official_ranking_metric"] is False
+        assert hero["like_summary"]["count"] == expected_likes
+        assert hero["like_summary"]["is_synthetic"] is True
+        assert hero["like_summary"]["performance_based"] is False
+    assert all(hero["investor_profile_score"] > 0 for hero in heroes)
+    assert all(
+        hero["investor_profile_assessment"]["data_boundary"] == "mock"
+        for hero in heroes
+    )
     payout = next(
         hero
         for hero in heroes
         if hero["scenario_code"] == "pension_payout_transition"
     )
     assert payout["is_demo_login_candidate"] is False
+    assert payout["investor_profile"] == "stable"
 
     issuer_names = {
         holding["instrument_name"].split()[0]
@@ -83,6 +131,15 @@ def test_demo_heroes_endpoint_exposes_six_named_profiles_and_etf_links() -> None
         for holding in account["holdings"]
         if holding["etf_isu_code"] is not None
     )
+    for hero in heroes:
+        holding_codes = {
+            holding["etf_isu_code"]
+            for account in hero["accounts"]
+            for holding in account["holdings"]
+            if holding["etf_isu_code"] is not None
+        }
+        assert 1 <= len(hero["representative_etf_isu_codes"]) <= 2
+        assert set(hero["representative_etf_isu_codes"]).issubset(holding_codes)
     for hero in heroes:
         benchmark = hero["benchmark_customer"]
         assert benchmark["user_id"].startswith("USR")
@@ -111,11 +168,11 @@ def test_demo_hero_stress_is_rule_based_and_not_a_forecast() -> None:
     )
     summary = overlap["risk_summary"]
 
-    assert summary["dominant_asset_class"] == "domestic_equity"
-    assert summary["dominant_asset_percent"] == "38.48"
-    assert summary["general_risky_asset_percent"] == "64.13"
+    assert summary["dominant_asset_class"] == "global_equity"
+    assert summary["dominant_asset_percent"] == "40.97"
+    assert summary["general_risky_asset_percent"] == "65.11"
     assert summary["stress_scenario_code"] == "equity_drawdown"
-    assert summary["estimated_stress_loss_percent"] == "23.28"
+    assert summary["estimated_stress_loss_percent"] == "24.39"
     assert summary["is_forecast"] is False
     assert summary["requires_rebalancing_review"] is True
 

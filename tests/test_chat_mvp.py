@@ -458,9 +458,9 @@ def test_mock_overlap_scenario_runs_engine_and_keeps_mock_boundary() -> None:
     assert response.answer.startswith("점검 결과 큰 문제는 없어요.")
     assert (
         "DC형은 위험자산(주식처럼 가격이 오르내릴 수 있는 자산)이 "
-        "63.11%로 한도(70%) 안이에요." in response.answer
+        "65%로 한도(70%) 안이에요." in response.answer
     )
-    assert "IRP는 위험자산이 70%로 한도(70%) 안이에요." in response.answer
+    assert "IRP는 위험자산이 65%로 한도(70%) 안이에요." in response.answer
     assert any(
         item.label == "DC형 일반 위험자산 한도" and item.value == Decimal("70.00")
         for item in response.numeric_evidence
@@ -527,13 +527,13 @@ def test_selected_scenario_explains_holdings_and_rebalancing_boundary() -> None:
 
     assert response.intent == ChatIntent.MOCK_PORTFOLIO
     sections = {section.title: section.content for section in response.sections}
-    assert "HANARO K고배당 (322410) 26.5%" in sections["보유 항목과 비중"]
-    assert "TIGER 헬스케어 (143860) 11.4%" in sections["보유 항목과 비중"]
+    assert "HANARO K고배당 (322410) 17.5%" in sections["보유 항목과 비중"]
+    assert "TIGER 헬스케어 (143860) 7.5%" in sections["보유 항목과 비중"]
     assert "리밸런싱 점검이 필요해요" in sections["리밸런싱 점검"]
     assert "매수·매도 수량은 계산하지 않았어요" in sections["리밸런싱 점검"]
     assert any(
         item.label == "회사 DC HANARO K고배당 보유 비중"
-        and item.value == Decimal("26.5")
+        and item.value == Decimal("17.5")
         for item in response.numeric_evidence
     )
 

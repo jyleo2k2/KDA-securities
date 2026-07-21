@@ -26,6 +26,7 @@ def test_demo_manifest_maps_six_unique_users_to_six_scenarios() -> None:
     assert len(users) == 6
     assert {item["scenario_code"] for item in users} == scenario_codes
     assert len({item["login_id"] for item in users}) == 6
+    assert len({item["auth_email"] for item in users}) == 6
     assert len({item["benchmark_user_id"] for item in users}) == 6
     assert sum(item["is_demo_login_candidate"] for item in users) == 5
     assert next(
@@ -33,7 +34,11 @@ def test_demo_manifest_maps_six_unique_users_to_six_scenarios() -> None:
         for item in users
         if item["scenario_code"] == "pension_payout_transition"
     )["is_demo_login_candidate"] is False
-    assert all(item["login_id"].endswith("@kda-demo.invalid") for item in users)
+    assert all("@" not in item["login_id"] for item in users)
+    assert all(
+        item["auth_email"] == f"{item['login_id']}@kda-demo.invalid"
+        for item in users
+    )
     assert "password" not in MANIFEST.read_text(encoding="utf-8").lower()
 
 
@@ -47,6 +52,8 @@ def test_auth_payload_keeps_candidate_flag_in_server_managed_metadata() -> None:
     payload = _auth_payload(payout_user, {"password": "not-a-real-password"})
 
     assert payload["app_metadata"]["is_demo_login_candidate"] is False
+    assert payload["app_metadata"]["demo_login_id"] == payout_user["login_id"]
+    assert payload["email"] == payout_user["auth_email"]
     assert "is_demo_login_candidate" not in payload["user_metadata"]
 
 
@@ -61,6 +68,10 @@ def test_prepare_credentials_generates_unique_passwords_once(tmp_path: Path) -> 
     assert len(first) == 6
     assert len({item["password"] for item in first}) == 6
     assert all(len(item["password"]) >= 20 for item in first)
+    assert all("@" not in item["login_id"] for item in first)
+    assert all(item["auth_email"].endswith("@kda-demo.invalid") for item in first)
+    stored_payload = json.loads(credentials_path.read_text(encoding="utf-8"))
+    assert stored_payload["schema_version"] == 2
 
 
 def test_demo_credentials_allow_short_unique_demo_passwords() -> None:
@@ -70,9 +81,26 @@ def test_demo_credentials_allow_short_unique_demo_passwords() -> None:
             "auth_user_id": user["auth_user_id"],
             "scenario_code": user["scenario_code"],
             "login_id": user["login_id"],
+            "auth_email": user["auth_email"],
             "password": f"KDA!{index}Demo",
         }
         for index, user in enumerate(users, start=1)
+    ]
+
+    _validate_credentials(users, credentials)
+
+
+def test_demo_credentials_allow_local_auth_minimum_length() -> None:
+    users = load_manifest(MANIFEST)
+    credentials = [
+        {
+            "auth_user_id": user["auth_user_id"],
+            "scenario_code": user["scenario_code"],
+            "login_id": user["login_id"],
+            "auth_email": user["auth_email"],
+            "password": chr(97 + index) * 6,
+        }
+        for index, user in enumerate(users)
     ]
 
     _validate_credentials(users, credentials)

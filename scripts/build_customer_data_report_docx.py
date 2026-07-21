@@ -648,8 +648,9 @@ def build_document() -> Document:
     _add_heading(document, "시연용 상세 ETF 포트폴리오", 1)
     _add_body(
         document,
-        "공통 계좌의 잔액과 자산군 금액은 유지하고, 대표 고객에 한해 실제 적격 ETF "
-        "종목코드 단위로 상세화했습니다. 선택 필드가 없으면 null로 표시합니다.",
+        "공통 계좌 잔액은 유지하면서 배점 성향에 맞게 자산군 비중을 재구성하고, "
+        "대표 고객에 한해 실제 적격 ETF 종목코드 단위로 상세화했습니다. "
+        "선택 필드가 없으면 null로 표시합니다.",
     )
     _add_heading(document, "포트폴리오 메타데이터 전체", 2)
     _add_field_table(
