@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type JSX } from "react";
 
-import { ApiError, getDemoHeroes, getMyPensionContext } from "./api/client";
+import { ApiError, apiErrorMessage, getDemoHeroes, getMyPensionContext } from "./api/client";
 import type { CompletedSurveyProfile, DemoHeroPortfolio, DemoUserFinancialContext } from "./api/types";
 import { useSupabaseAuth } from "./auth/useSupabaseAuth";
 import { TabBar, type TabKey } from "./components/TabBar";
@@ -34,6 +34,7 @@ function clearUserStorage(): void {
 }
 
 function pensionContextErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && typeof error.code === "string") return apiErrorMessage(error);
   if (error instanceof ApiError && error.status === 404) return "이 계정에는 연동된 연금 데이터가 없습니다.";
   if (error instanceof ApiError && error.status === 503) return "연금 데이터를 불러오는 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.";
   return "연금 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";
@@ -41,7 +42,8 @@ function pensionContextErrorMessage(error: unknown): string {
 
 export default function App(): JSX.Element {
   const auth = useSupabaseAuth();
-  const [activeRoute, setActiveRoute] = useState<AppRoute>(routeFromHash);
+  // 새로 앱을 열면 저장된 세션·마지막 해시와 관계없이 로그인 화면부터 시작한다.
+  const [activeRoute, setActiveRoute] = useState<AppRoute>("login");
   const [loginSuccessPending, setLoginSuccessPending] = useState(false);
   const [surveyProfile, setSurveyProfile] = useState<CompletedSurveyProfile | null>(() => {
     const stored = window.localStorage.getItem("pension-copilot:survey-profile");
@@ -75,7 +77,7 @@ export default function App(): JSX.Element {
     if (userChanged) { clearUserStorage(); setSurveyProfile(null); setSelectedScenarioCode(""); }
     if (!accessToken) { setCurrentUserData({ context: null, hero: null, loading: false, error: null }); return; }
     setCurrentUserData({ context: null, hero: null, loading: true, error: null });
-    void Promise.all([getMyPensionContext(accessToken), getDemoHeroes()])
+    void Promise.all([getMyPensionContext(accessToken), getDemoHeroes(accessToken)])
       .then(([context, heroes]) => {
         if (userLoadGenerationRef.current !== generation) return;
         const hero = heroes.find((item) => item.scenario_code === context.scenario_code) ?? null;

@@ -325,5 +325,10 @@ def finalize_response(
 ) -> ChatResponse:
     response = with_context(attach_visualizations(response), request, plan)
     return response.model_copy(
-        update={"suggested_follow_ups": build_suggested_follow_ups(response)}
+        update={
+            "suggested_follow_ups": (
+                response.suggested_follow_ups
+                or build_suggested_follow_ups(response)
+            )
+        }
     )

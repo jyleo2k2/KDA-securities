@@ -5,7 +5,7 @@ from functools import lru_cache, partial
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, status
 from psycopg_pool import ConnectionPool
 
 from ..benchmark_repository import BenchmarkRepository
@@ -48,21 +48,24 @@ from ..portfolio_universe_repository import (
 from ..retrieval.disclosures_repository import DisclosureReadRepository
 from ..retrieval.repository import RetrievalRepository
 from ..settings import Settings, get_settings
+from .errors import ApiErrorCode, api_error
 
 logger = logging.getLogger(__name__)
 
 
 def _database_url_or_503(settings: Settings, *, detail: str) -> str:
     if settings.database_url is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=detail,
+        raise api_error(
+            ApiErrorCode.DATABASE_NOT_CONFIGURED,
+            detail,
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         )
     database_url = settings.database_url.get_secret_value().strip()
     if not database_url:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=detail,
+        raise api_error(
+            ApiErrorCode.DATABASE_NOT_CONFIGURED,
+            detail,
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         )
     return database_url
 
@@ -82,9 +85,10 @@ def get_krx_market_evidence_repository() -> KrxMarketEvidenceRepository:
     try:
         return KrxMarketEvidenceRepository.from_latest_cache()
     except (FileNotFoundError, ValueError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Current KRX market evidence is not available",
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Current KRX market evidence is not available",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         ) from exc
 
 

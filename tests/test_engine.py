@@ -2,8 +2,11 @@ from decimal import Decimal
 from uuid import UUID
 
 import pytest
+from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
+from backend.app.api.deps import get_engine_audit_repository
+from backend.app.auth import require_supabase_user_id
 from backend.app.engine import (
     AccountType,
     HoldingInput,
@@ -242,3 +245,39 @@ def test_audited_endpoint_records_authenticated_owner_and_returns_run_id() -> No
 
     assert response.run_id == run_id
     assert recorded == [(response.evaluation, owner_id)]
+
+
+def test_audited_endpoint_returns_created() -> None:
+    expected_owner_id = UUID("11111111-1111-1111-1111-111111111111")
+
+    class Recorder:
+        def record(self, _evaluation, *, owner_id: UUID) -> UUID:
+            assert owner_id == expected_owner_id
+            return UUID("22222222-2222-2222-2222-222222222222")
+
+    app.dependency_overrides[require_supabase_user_id] = lambda: expected_owner_id
+    app.dependency_overrides[get_engine_audit_repository] = Recorder
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/engine/risk-cap/audited",
+                json={
+                    "account_type": "irp",
+                    "holdings": [
+                        {
+                            "holding_id": "equity",
+                            "amount_krw": "500000",
+                            "risk_treatment": "general_risky",
+                        },
+                        {
+                            "holding_id": "deposit",
+                            "amount_krw": "500000",
+                            "risk_treatment": "capital_preservation",
+                        },
+                    ],
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 201

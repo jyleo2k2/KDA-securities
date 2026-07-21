@@ -629,7 +629,7 @@ export interface RetirementDisclosureResponse {
   results: RetirementStat[];
 }
 
-// ── /chat/demo* (backend/app/api/chat.py) ──
+// ── /chat (backend/app/api/chat.py) ──
 export type ChatIntent =
   | "account_rule"
   | "mock_portfolio"
@@ -1035,13 +1035,6 @@ export interface ScenarioSummary {
   age_band: string;
   risk_profile: string;
   investment_horizon_years: number;
-}
-
-export interface ChatCapabilities {
-  supported: string[];
-  conditional: string[];
-  unsupported: string[];
-  scenario_codes: string[];
 }
 
 // ── authenticated /chat* history ──

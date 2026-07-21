@@ -35,7 +35,6 @@ vi.mock("../api/client", () => ({
   getScenarios: vi.fn(),
   getStoredChatMessages: vi.fn(),
   sendAuthenticatedChatStream: vi.fn(),
-  sendChatStream: vi.fn(),
 }));
 
 const SESSION_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";

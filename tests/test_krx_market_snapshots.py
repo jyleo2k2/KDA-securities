@@ -204,6 +204,30 @@ def test_etf_market_api_exposes_official_volume_with_source_boundary() -> None:
     assert history.json()["from_date"] == "2026-07-15"
 
 
+def test_etf_volume_history_hides_repository_key_error(caplog) -> None:
+    class MissingRepository:
+        def volume_history(
+            self, _isu_code: str, **_: object
+        ) -> list[EtfMarketObservation]:
+            raise KeyError("internal repository detail")
+
+    app.dependency_overrides[get_etf_market_repository] = MissingRepository
+    try:
+        with TestClient(app) as client:
+            response = client.get("/market/etfs/069500/volume-history")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": {
+            "code": "RESOURCE_NOT_FOUND",
+            "message": "Requested ETF volume history was not found",
+        }
+    }
+    assert "etf_volume_history_not_found isu_code=069500" in caplog.messages
+
+
 class _Connection:
     def __init__(self, cursor: object) -> None:
         self._cursor = cursor

@@ -173,38 +173,6 @@ def test_authenticated_chat_persists_supported_response() -> None:
     )
 
 
-def test_demo_chat_streams_progress_before_final_response() -> None:
-    app.dependency_overrides[get_chat_service] = _service
-    app.dependency_overrides[get_chat_narrator] = lambda: None
-    try:
-        with TestClient(app) as client:
-            response = client.post(
-                "/chat/demo/stream",
-                json={"message": "IRP 위험자산 한도를 알려줘"},
-            )
-    finally:
-        app.dependency_overrides.clear()
-
-    assert response.status_code == 200
-    assert response.headers["content-type"].startswith("text/event-stream")
-    assert "근거를 검색하고 있습니다." in response.text
-    assert "event: answer_delta" in response.text
-    assert "event: response" in response.text
-    assert '"intent": "account_rule"' in response.text
-    blocks = response.text.strip().split("\n\n")
-    deltas = [
-        json.loads(block.split("data: ", 1)[1])["delta"]
-        for block in blocks
-        if block.startswith("event: answer_delta")
-    ]
-    final_block = next(
-        block for block in blocks if block.startswith("event: response")
-    )
-    final = json.loads(final_block.split("data: ", 1)[1])
-    assert len(deltas) == 1
-    assert "".join(deltas) == final["response"]["answer"]
-
-
 class VerifiedNarrator:
     def narrate(self, response, **kwargs):
         return response.model_copy(
@@ -214,73 +182,6 @@ class VerifiedNarrator:
                 "model_name": "test-model",
             }
         )
-
-
-class FallbackNarrator:
-    def narrate(self, response, **kwargs):
-        return response.model_copy(
-            update={
-                "limitations": [
-                    *response.limitations,
-                    "테스트 폴백으로 검증 원문을 표시합니다.",
-                ]
-            }
-        )
-
-
-def test_demo_stream_sends_engine_answer_before_verified_narration() -> None:
-    app.dependency_overrides[get_chat_service] = _service
-    app.dependency_overrides[get_chat_narrator] = VerifiedNarrator
-    try:
-        with TestClient(app) as client:
-            response = client.post(
-                "/chat/demo/stream",
-                json={"message": "IRP 위험자산 한도를 알려줘"},
-            )
-    finally:
-        app.dependency_overrides.clear()
-
-    events = parse_sse(response.text)
-    event_names = [event for event, _ in events]
-    engine_answer = _service().ask(
-        ChatRequest(message="IRP 위험자산 한도를 알려줘")
-    ).answer
-    streamed_answer = "".join(
-        data["delta"] for event, data in events if event == "answer_delta"
-    )
-    narration = next(
-        data for event, data in events if event == "narration_update"
-    )
-
-    assert event_names.index("answer_delta") < event_names.index(
-        "narration_update"
-    )
-    assert event_names.count("answer_delta") == 1
-    assert streamed_answer == engine_answer
-    assert narration["answer"].startswith("검증된 설명")
-    assert final_sse_response(response.text)["response"]["answer"] == narration[
-        "answer"
-    ]
-
-
-def test_demo_stream_omits_narration_update_for_fallback() -> None:
-    app.dependency_overrides[get_chat_service] = _service
-    app.dependency_overrides[get_chat_narrator] = FallbackNarrator
-    try:
-        with TestClient(app) as client:
-            response = client.post(
-                "/chat/demo/stream",
-                json={"message": "IRP 위험자산 한도를 알려줘"},
-            )
-    finally:
-        app.dependency_overrides.clear()
-
-    events = parse_sse(response.text)
-    final = final_sse_response(response.text)["response"]
-
-    assert "narration_update" not in {event for event, _ in events}
-    assert final["narration_mode"] == "deterministic"
-    assert final["limitations"][-1] == "테스트 폴백으로 검증 원문을 표시합니다."
 
 
 def test_authenticated_stream_saves_after_narration_update(monkeypatch) -> None:
@@ -442,7 +343,13 @@ def test_blocked_query_works_without_chat_database() -> None:
 
     assert supported.status_code == 200
     supported_events = parse_sse(supported.text)
-    assert ("error", {"detail": "Chat database is not configured"}) in supported_events
+    assert (
+        "error",
+        {
+            "code": "DATABASE_NOT_CONFIGURED",
+            "message": "Chat database is not configured",
+        },
+    ) in supported_events
 
 
 def test_existing_session_without_repository_errors_before_answer_delta() -> None:
@@ -463,7 +370,13 @@ def test_existing_session_without_repository_errors_before_answer_delta() -> Non
     events = parse_sse(response.text)
     assert events == [
         ("phase", {"message": "요청을 확인하고 있습니다."}),
-        ("error", {"detail": "Chat database is not configured"}),
+        (
+            "error",
+            {
+                "code": "DATABASE_NOT_CONFIGURED",
+                "message": "Chat database is not configured",
+            },
+        ),
     ]
 
 
@@ -483,6 +396,43 @@ def test_chat_requires_bearer_authentication() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 401
+
+
+def test_chat_metadata_requires_bearer_authentication() -> None:
+    app.dependency_overrides[get_chat_service] = _service
+    try:
+        with TestClient(app) as client:
+            responses = [
+                client.get(path)
+                for path in (
+                    "/chat/capabilities",
+                    "/chat/scenarios",
+                    "/chat/heroes",
+                )
+            ]
+    finally:
+        app.dependency_overrides.clear()
+
+    assert [response.status_code for response in responses] == [401, 401, 401]
+
+
+def test_authenticated_chat_metadata_returns_demo_data() -> None:
+    app.dependency_overrides[require_supabase_user_id] = lambda: OWNER_ID
+    app.dependency_overrides[get_chat_service] = _service
+    try:
+        with TestClient(app) as client:
+            capabilities = client.get("/chat/capabilities")
+            scenarios = client.get("/chat/scenarios")
+            heroes = client.get("/chat/heroes")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert capabilities.status_code == 200
+    assert "dc_dormant" in capabilities.json()["scenario_codes"]
+    assert scenarios.status_code == 200
+    assert len(scenarios.json()) == 6
+    assert heroes.status_code == 200
+    assert len(heroes.json()) == 6
 
 
 def test_delete_chat_session_requires_bearer_authentication() -> None:
@@ -605,9 +555,13 @@ def test_invalid_stored_response_emits_stream_error(failing_operation: str) -> N
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert ("error", {"detail": "Chat database is unavailable"}) in parse_sse(
-        response.text
-    )
+    assert (
+        "error",
+        {
+            "code": "DATA_SOURCE_UNAVAILABLE",
+            "message": "Chat database is unavailable",
+        },
+    ) in parse_sse(response.text)
 
 
 def test_delete_database_failure_returns_service_unavailable() -> None:
@@ -634,42 +588,18 @@ def test_database_failure_is_distinct_from_auth_failure() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert ("error", {"detail": "Chat database is unavailable"}) in parse_sse(
-        response.text
-    )
+    assert (
+        "error",
+        {
+            "code": "DATA_SOURCE_UNAVAILABLE",
+            "message": "Chat database is unavailable",
+        },
+    ) in parse_sse(response.text)
 
 
 class UnavailableChatService(ChatService):
     def ask(self, request, *, plan=None):
         raise psycopg.OperationalError("retrieval unavailable")
-
-
-class InvalidStoredResponseChatService(ChatService):
-    def ask(self, request, *, plan=None):
-        raise RuntimeError("stored response is invalid")
-
-
-def test_demo_stream_runtime_error_emits_error_event() -> None:
-    app.dependency_overrides[get_chat_service] = (
-        lambda: InvalidStoredResponseChatService(
-            knowledge=LocalMarkdownKnowledgeRepository(),
-            scenarios=LocalScenarioRepository(),
-        )
-    )
-    app.dependency_overrides[get_chat_narrator] = lambda: None
-    try:
-        with TestClient(app) as client:
-            response = client.post(
-                "/chat/demo/stream",
-                json={"message": "IRP 위험자산 한도를 알려줘"},
-            )
-    finally:
-        app.dependency_overrides.clear()
-
-    assert response.status_code == 200
-    assert ("error", {"detail": "Chat data source is unavailable"}) in parse_sse(
-        response.text
-    )
 
 
 def test_retrieval_failure_does_not_leave_an_orphan_question() -> None:
@@ -690,9 +620,13 @@ def test_retrieval_failure_does_not_leave_an_orphan_question() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert ("error", {"detail": "Chat data source is unavailable"}) in parse_sse(
-        response.text
-    )
+    assert (
+        "error",
+        {
+            "code": "DATA_SOURCE_UNAVAILABLE",
+            "message": "Chat data source is unavailable",
+        },
+    ) in parse_sse(response.text)
     assert repository.saved == []
 
 

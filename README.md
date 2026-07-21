@@ -1,6 +1,6 @@
 # 연금 코파일럿
 
-> 키움 디지털 아카데미 1차 프로젝트 · 기획 확정 / 원격 연동·챗봇 화면·로그인·ETF·RAG·대표 고객 데이터 통합·연금계산기 엔진·챗봇 추천카드 완료 / 포트폴리오 위험 산출·화면 연결 단계 (2026-07-21)
+> 키움 디지털 아카데미 1차 프로젝트 · 기획 확정 / 원격 연동·챗봇·ETF·RAG·연금계산기 엔진·추천카드·로그인→연동 동의→투자정보→메인 화면 완료 / 포트폴리오 위험 산출·계산기·카드 화면 연결 단계 (2026-07-21)
 
 **세 연금계좌의 통합 포트폴리오를 보여주고, 출처 기반 시장·상품 정보와 익명 벤치마킹으로 이용자의 연금 투자 판단을 돕는 AI 연금가이드.**
 
@@ -46,36 +46,84 @@ AI는 설명과 제안만 하며, 계산은 규칙 엔진이 담당한다. 실�
 - 모든 수치에 출처·기준일 또는 가정 표시
 - 실제 계좌 연결·주문·자동운용은 MVP 제외
 
-## 챗봇 로컬 실행
+## 서비스 로컬 실행
 
-Windows에서는 프로젝트 루트의 단일 실행기를 사용한다. 이 실행기는
-`DATABASE_URL`, 8000·5173 포트와 백엔드 준비 상태를 확인한 뒤
-`http://127.0.0.1:5173/#guide`를 연다.
+### 1. 최초 준비
+
+Python 3.11 이상, [uv](https://docs.astral.sh/uv/), Node.js와 npm이 필요하다.
+프로젝트 루트에서 의존성과 환경 파일을 준비한다.
+
+```powershell
+uv sync
+Copy-Item .env.example .env
+```
+
+루트 `.env`의 `DATABASE_URL`에는 실제 PostgreSQL 연결 문자열을 입력해야 한다.
+Supabase 로그인을 시험하려면 `VITE_SUPABASE_URL`과
+`VITE_SUPABASE_PUBLISHABLE_KEY`도 입력한다. 로컬 BGE-M3 임베딩이 필요한 작업만
+선택 의존성을 추가한다.
+
+```powershell
+uv sync --group embeddings
+```
+
+시크릿은 출력하거나 커밋하지 않는다. 프론트엔드용 별도 `.env`는 만들지 않는다.
+
+### 2. 가장 쉬운 실행 — Windows
+
+프로젝트 루트에서 실행기를 호출한다. 더블클릭해도 된다.
 
 ```powershell
 .\dev.bat
 ```
 
-백엔드만 별도로 확인해야 할 때는 다음 명령을 사용한다.
+실행기는 다음 순서로 동작한다.
+
+1. npm, 루트 `.env`, 비어 있지 않은 `DATABASE_URL`, 8000·5173 포트를 확인한다.
+2. `frontend/node_modules`가 없으면 `npm install`을 한 번 실행한다.
+3. FastAPI와 Vite를 함께 실행하고 로그에 각각 `[api]`, `[web]`을 붙인다.
+4. API와 화면이 준비되면 `http://127.0.0.1:5173/#guide`를 연다.
+5. 실행 창에서 `Ctrl+C`를 누르거나 창을 닫으면 두 서버를 함께 종료한다.
+
+준비 대기는 최대 120초다. `localhost`와 `127.0.0.1`은 Supabase 로그인 저장
+공간이 다르므로 문서와 실행기가 사용하는 `127.0.0.1`로 통일한다.
+
+### 3. 서버를 따로 실행
+
+백엔드만 실행하려면 프로젝트 루트에서 다음 명령을 사용한다.
 
 ```powershell
 uv run uvicorn backend.app.main:app --reload
 ```
 
+프론트엔드는 새 터미널에서 실행한다. 최초 실행이거나 의존성이 바뀌었을 때만
+`npm install`을 먼저 실행한다.
+
+```powershell
+Set-Location frontend
+npm install
+npm run dev
+```
+
+프론트엔드는 기본적으로 `http://127.0.0.1:8000`의 API에 연결한다. 다른 주소를
+쓰려면 루트 `.env`의 `VITE_API_BASE_URL`과 서버 `CORS_ORIGINS`를 함께 바꾼다.
+
+### 4. API 확인
+
 서버 실행 후 `http://127.0.0.1:8000/docs`에서 다음 API를 바로 시험할 수 있다.
 
 | API | 역할 |
 |---|---|
-| `POST /chat/demo/stream` | 비인증 자연어 질문 → SSE(`phase`·`answer_delta`·선택적 `narration_update`·`response`) |
-| `POST /chat/stream` | 인증 자연어 질문 → 같은 SSE 계약 + 대화 저장·Idempotency-Key 재생 |
-| `GET /chat/demo/capabilities` | 현재 지원·조건부·미지원 기능 확인 |
-| `GET /chat/demo/scenarios` | 발표용 목계좌 시나리오 6종 확인 |
+| `POST /chat/stream` | 인증 자연어 질문 → SSE(`phase`·`answer_delta`·선택적 `narration_update`·`response`) + 대화 저장·Idempotency-Key 재생 |
+| `GET /chat/capabilities` | 인증 사용자용 현재 지원·조건부·미지원 기능 확인 |
+| `GET /chat/scenarios` | 인증 사용자용 발표 목계좌 시나리오 6종 확인 |
+| `GET /chat/heroes` | 인증 사용자용 목시나리오 대표 6명 확인 |
 | `POST /engine/pension-tax-credit` | 연금저축·IRP 당해연도 납입액의 세액공제 교육용 추정 |
 | `POST /engine/non-pension-withdrawal-estimate` | 연금외수령 시 기타소득 원천징수 최대 추정 |
 | `GET /market/etfs` | KRX 기준일 전체 상장 ETF 거래량·거래대금 조회 |
 | `GET /market/etfs/{isu_code}/volume-history` | 종목별 적재된 일별 거래량 이력 조회 |
 
-`POST /chat/demo/stream` 요청 본문 예시:
+`POST /chat/stream` 요청 본문 예시(Authorization Bearer token과 UUID `Idempotency-Key` 필요):
 
 ```json
 {
@@ -90,20 +138,9 @@ uv run uvicorn backend.app.main:app --reload
 - fixture는 공시 답변에 사용하지 않으며 개별 상품 비교, 미래 수익 예측, 주문은 차단한다.
 - 스트림은 먼저 결정론 답변을 `answer_delta`로 보내고, Claude 내레이션이 검증을 통과했을 때만 `narration_update`로 답변 전문을 교체한다. DB·저장 응답 손상 등 스트림 도중 오류는 `error` 이벤트로 전달한다.
 
-## 챗봇 화면 실행
+브라우저에서 `http://127.0.0.1:5173/#guide`를 열고 추천 질문과 직접 입력으로 챗봇을 시험할 수 있다. 사이드바(햄버거 메뉴)에서 목계좌 시나리오를 선택하면 질문과 함께 해당 `scenario_code`가 전달된다.
 
-백엔드를 먼저 실행한 뒤, 새 터미널에서 프론트엔드를 실행한다.
-
-```powershell
-Set-Location frontend
-npm install
-npm run dev
-```
-
-브라우저에서 `http://127.0.0.1:5173/#guide`를 열고 추천 질문과 직접 입력으로 챗봇을 시험할 수 있다. `localhost`와 `127.0.0.1`은 Supabase 로그인 저장 공간이 서로 다르므로 혼용하지 않는다. 사이드바(햄버거 메뉴)에서 목계좌 시나리오를 선택하면 질문과 함께 해당 `scenario_code`가 전달된다.
-
-- 환경변수는 **루트 단일 `.env`**로 통일했다(frontend 별도 `.env` 없음 — Vite가 `envDir`로 루트를 참조하고 `VITE_` 접두사 변수만 브라우저에 노출). 새 환경변수는 루트 `.env.example`에만 추가한다.
-- 프론트엔드는 기본값으로 `http://127.0.0.1:8000`에 직접 연결한다. 다른 주소를 쓰려면 루트 `.env`의 `VITE_API_BASE_URL`과 서버 `CORS_ORIGINS`를 함께 설정한다.
+- 환경변수는 **루트 단일 `.env`**로 통일했다. Vite는 `envDir`로 루트를 참조하고 `VITE_` 접두사 변수만 브라우저에 노출한다. 새 환경변수는 루트 `.env.example`에만 추가한다.
 - 사이드바에서 Supabase Auth 데모 계정으로 로그인하면 대화가 세션·메시지로 저장되고, 저장된 대화 목록과 데모 사용자 금융 컨텍스트(`/me/pension-context`)를 불러온다.
 - 답변 화면은 사실·서비스 해석·한계, 수치 근거, 출처, 실/목 데이터 경계를 구분해 표시한다.
 - 자동 테스트·curl·화면 점검 절차는 [챗봇 테스트 가이드](./docs/30_스펙/챗봇_테스트_가이드.md)를 따른다.
@@ -113,7 +150,7 @@ npm run dev
 - 확정 스택: React + TypeScript + Vite PWA → FastAPI → Supabase PostgreSQL/pgvector.
 - main 통합 완료:
   - 규칙 엔진 6모듈(성향 분석·계좌 규칙 검사·계좌별 진단·통합 집계·적립 시뮬레이션·포트폴리오 예시) + 전략 수익률 3함수
-  - FastAPI 앱 팩토리·라우터: `/engine/*` 도구 5종, `/disclosures/*`, `/retrieval/*`, `/chat/demo*`
+  - FastAPI 앱 팩토리·라우터: `/engine/*` 도구 5종, `/disclosures/*`, `/retrieval/*`, 인증 `/chat/*`
   - 챗봇 백엔드: 검증 문서 RAG, 목시나리오 진단, 조건부 실공시·뉴스 조회, 선택적 Claude 설명과 새 숫자 차단
   - React PWA 4탭 골격(홈·연금가이드·벤치마크·프로필)과 연금가이드 챗 화면
   - CI(GitHub Actions: ruff·pytest + frontend build)
@@ -130,14 +167,14 @@ npm run dev
 - 통합연금포털 직접 호출 검증: 연금저축 회사별 88건, 퇴직연금 42개사 × DB·DC·IRP 126건 정규화.
 - ETF 유니버스는 Supabase에 상품 2,507행·총수익 이력 217,833행을 적재했고, DB·로컬 입력과 120개 포트폴리오 결과 동등성 및 FastAPI DB 조회 E2E를 완료했다(2026-07-18).
 - 연금 계산기 엔진(`POST /engine/pension-calculator`: 납입 종료 55~70세, 연차별 원금/수익 시계열, 전략 비교, 월 수령액 세전/세후)과 챗봇 추천 카드·후속 카드·시각화 확장(`GET /chat/cards`, `계약 변경`)이 main에 반영됐다(2026-07-20, PR #72·#73·#78 — [계산기 계약](./docs/30_스펙/연금계산기_엔진_계약.md)·[추천카드 계약](./docs/30_스펙/챗봇_추천카드_계약.md)). 교육용 포트폴리오 성능 보강(PR #83)은 `Decimal` 결정론과 120개 결과 동등성을 유지했고, RAG 코퍼스 보강·중복 정리(PR #74·#82)·데모 목데이터 계약 통일(PR #76·#77·#80)·프론트 타이핑 애니메이션(PR #81)·실시간 뉴스 이벤트 전략 안내가 함께 머지됐다.
-- 로그인·세션 게이트와 사용자별 홈·프로필·챗봇 전환(PR #112~#114), 간결한 답변·내부 코드 비노출·구조화 포트폴리오 표시(PR #116~#118), 대표 고객 6명의 로그인·성향·공개 지표 원격 동기화(PR #121)가 반영됐다. 실제 금융사 계좌 연결과 전용 화면 연결은 아직 구현 대상이다.
+- 로그인·세션 게이트와 사용자별 홈·프로필·챗봇 전환(PR #112~#114), 간결한 답변·내부 코드 비노출·구조화 포트폴리오 표시(PR #116~#118), 대표 고객 6명의 로그인·성향·공개 지표 원격 동기화(PR #121), 계좌 연동 동의 화면(PR #125), 투자정보·성향 결과·메인 홈 연결(PR #127)이 반영됐다. 연동 동의 화면은 표시 전용이며 실제 금융사 계좌 연결·이전·자동매매는 구현하지 않는다.
 - 엔진 잠정 파라미터(팀 승인 대기): 성향 설문 배점, 진단 임계값, 물가 가정, 포트폴리오 위험·스트레스 정책과 장기 계획가정.
 - RAG 다음 검토 기한은 2026-10-14다. 승인 코퍼스 검증은 현재 PR·`main` push CI에 연결돼 있으며 정기 검토 cron은 아직 없다.
 - 다음 작업:
   1. 포트폴리오 단위 변동성·하락위험·스트레스 시나리오 산출
   2. 승인된 장기 계획가정과 화면 표현 정책 확정
   3. 공통 연금계좌 구조 backfill·repository/API 연결과 Supabase Auth 유출 비밀번호 보호 활성화
-  4. 홈 → 챗봇 → 벤치마크 UI 골든패스 구현
-  5. 연금계산기·추천 카드 화면 연결(Figma 시안 확정 후 — 시안의 "예상 연 수익률" 슬라이더는 승인 가정과 충돌해 전략 선택 UI로 교체 예정)
+  4. 연금계산기·추천 카드와 저장된 투자성향 API 화면 연결(Figma 시안 확정 후 — 시안의 "예상 연 수익률" 슬라이더는 승인 가정과 충돌해 전략 선택 UI로 교체 예정)
+  5. 홈 → 챗봇 → 벤치마크 나머지 UI 골든패스 완성
 
 미확정: 서비스명, 벤치마크 탭 위치, 리서치 이용권, 공개 포트폴리오 운영정책.

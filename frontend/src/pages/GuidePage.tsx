@@ -14,6 +14,7 @@ import {
 
 import {
   ApiError,
+  apiErrorMessage,
   deleteChatSession,
   getChatCards,
   getChatSessions,
@@ -610,6 +611,7 @@ function AssistantMessage({
 }
 
 function authenticatedErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && typeof error.code === "string") return apiErrorMessage(error);
   if (error instanceof ApiError && error.status === 401) {
     return "로그인이 만료되었습니다. 다시 로그인해 주세요.";
   }
@@ -805,7 +807,6 @@ export function GuidePage({
     conversationContext,
     conversationGenerationRef,
     deletingSessionId,
-    pensionTaxInput,
     selectedScenario,
     surveyProfile,
     isCurrentOperation,
@@ -839,7 +840,10 @@ export function GuidePage({
     let retryTimer: number | undefined;
 
     const check = () => {
-      Promise.all([getScenarios(), getChatCards()])
+      Promise.all([
+        accessToken ? getScenarios(accessToken) : Promise.resolve([]),
+        getChatCards(),
+      ])
         .then(([scenarioData, catalog]) => {
           if (cancelled) return;
           setScenarios(scenarioData);
@@ -858,7 +862,7 @@ export function GuidePage({
       cancelled = true;
       window.clearTimeout(retryTimer);
     };
-  }, []);
+  }, [accessToken]);
 
   useEffect(() => {
     const previousAuth = previousAuthRef.current;

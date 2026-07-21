@@ -2,18 +2,15 @@ import { useRef, useState, type Dispatch, type SetStateAction } from "react";
 
 import {
   ApiError,
+  apiErrorMessage,
   sendAuthenticatedChatStream,
-  sendChatStream,
 } from "../api/client";
 import type {
   ChatResponse,
   CompletedSurveyProfile,
   ConversationContext,
   EducationalPortfolioInput,
-  PensionTaxScenarioInput,
 } from "../api/types";
-
-const PENSION_TAX_PROMPT = /세액\s*공제|중도\s*해지|연금\s*외\s*수령|16\.5\s*%/;
 
 export interface ConversationMessage {
   id: string;
@@ -32,7 +29,6 @@ interface UseChatStreamOptions {
   conversationContext: ConversationContext | null;
   conversationGenerationRef: { current: number };
   deletingSessionId: string | null;
-  pensionTaxInput: PensionTaxScenarioInput | undefined;
   selectedScenario: string;
   surveyProfile: CompletedSurveyProfile | null;
   isCurrentOperation: (
@@ -58,7 +54,6 @@ export function useChatStream({
   conversationContext,
   conversationGenerationRef,
   deletingSessionId,
-  pensionTaxInput,
   selectedScenario,
   surveyProfile,
   isCurrentOperation,
@@ -92,7 +87,28 @@ export function useChatStream({
     const normalized = prompt.trim();
     if (normalized.length < 2 || sendingRef.current || deletingSessionId) return;
 
-    const requestToken = accessToken ?? null;
+    if (!accessToken) {
+      setMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: "user",
+          text: normalized,
+          createdAt: new Date(),
+        },
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          text: "로그인이 필요해요. 로그인 후 다시 질문해 주세요.",
+          createdAt: new Date(),
+        },
+      ]);
+      onInputClear();
+      onAuthenticatedError("로그인이 필요해요. 로그인 후 다시 질문해 주세요.");
+      return;
+    }
+
+    const requestToken = accessToken;
     const requestUserId = authenticatedUserId;
     const authGeneration = getAuthGeneration();
     const conversationGeneration = ++conversationGenerationRef.current;
@@ -133,39 +149,21 @@ export function useChatStream({
       }
     };
 
-    const taxInput = !requestToken && PENSION_TAX_PROMPT.test(normalized)
-      ? pensionTaxInput
-      : undefined;
-
     try {
-      const streamed = requestToken
-        ? await sendAuthenticatedChatStream(
-            normalized,
-            requestToken,
-            setSendingStage,
-            appendAnswerDelta,
-            replaceWithNarration,
-            undefined,
-            activeSessionId || undefined,
-            idempotencyKey,
-            conversationContext,
-            taxInput,
-            surveyProfile,
-            educationalPortfolio,
-          )
-        : await sendChatStream(
-            normalized,
-            setSendingStage,
-            appendAnswerDelta,
-            replaceWithNarration,
-            {
-              scenarioCode: selectedScenario || undefined,
-              conversationContext,
-              pensionTax: taxInput,
-              surveyProfile,
-              educationalPortfolio,
-            },
-          );
+      const streamed = await sendAuthenticatedChatStream(
+        normalized,
+        requestToken,
+        setSendingStage,
+        appendAnswerDelta,
+        replaceWithNarration,
+        selectedScenario || undefined,
+        activeSessionId || undefined,
+        idempotencyKey,
+        conversationContext,
+        undefined,
+        surveyProfile,
+        educationalPortfolio,
+      );
       if (!isCurrentOperation(
         authGeneration,
         requestUserId,
@@ -231,6 +229,7 @@ export function useChatStream({
 }
 
 function authenticatedErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && typeof error.code === "string") return apiErrorMessage(error);
   if (error instanceof ApiError && error.status === 401) {
     return "로그인이 만료되었습니다. 다시 로그인해 주세요.";
   }

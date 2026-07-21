@@ -5,11 +5,12 @@ Except for the audited risk-cap path, nothing here authenticates or writes to
 the database.
 """
 
+import logging
 from typing import Annotated
 from uuid import UUID
 
 import psycopg
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
 from ..auth import require_supabase_user_id
@@ -62,8 +63,10 @@ from .deps import (
     get_krx_market_evidence_repository,
     get_portfolio_universe_repository,
 )
+from .errors import ApiErrorCode, api_error
 
 router = APIRouter(tags=["engine"])
+logger = logging.getLogger(__name__)
 
 
 class AuditedRiskCapResponse(BaseModel):
@@ -78,7 +81,11 @@ def risk_cap(portfolio: PortfolioInput) -> RiskCapEvaluation:
     return evaluate_risk_cap(portfolio)
 
 
-@router.post("/engine/risk-cap/audited", response_model=AuditedRiskCapResponse)
+@router.post(
+    "/engine/risk-cap/audited",
+    response_model=AuditedRiskCapResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def risk_cap_audited(
     portfolio: PortfolioInput,
     owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
@@ -113,9 +120,13 @@ def etf_planning_assessment(
     try:
         product = repository.get(assumption.etf_code)
     except KeyError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
+        logger.warning(
+            "krx_evidence_etf_not_found etf_code=%s", assumption.etf_code
+        )
+        raise api_error(
+            ApiErrorCode.RESOURCE_NOT_FOUND,
+            "Requested ETF is not in the KRX evidence universe",
+            status.HTTP_404_NOT_FOUND,
         ) from exc
     return assess_etf_with_krx_evidence(
         assumption,
@@ -148,9 +159,10 @@ def educational_portfolio(
         PortfolioUniverseLoadError,
         psycopg.Error,
     ) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Account-specific ETF universe is unavailable",
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Account-specific ETF universe is unavailable",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         ) from exc
     return build_educational_portfolio(
         request,
@@ -249,8 +261,9 @@ def mock_scenario(scenario_code: str) -> ScenarioEvaluation:
 
     scenario = LocalScenarioRepository().get(scenario_code)
     if scenario is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Unknown scenario_code: {scenario_code}",
+        raise api_error(
+            ApiErrorCode.RESOURCE_NOT_FOUND,
+            f"Unknown scenario_code: {scenario_code}",
+            status.HTTP_404_NOT_FOUND,
         )
     return evaluate_mock_scenario(scenario)
