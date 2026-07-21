@@ -95,7 +95,7 @@ export default function App(): JSX.Element {
   async function handleSignOut(): Promise<void> { userLoadGenerationRef.current += 1; clearUserStorage(); setSurveyProfile(null); setSelectedScenarioCode(""); setCurrentUserData({ context: null, hero: null, loading: false, error: null }); setLoginSuccessPending(false); setActiveRoute("login"); window.history.replaceState(null, "", "#login"); await auth.signOut(); }
 
   if (auth.loading) return <main className="app-auth-loading" aria-label="로그인 상태 확인 중" />;
-  if (activeRoute === "login" || (auth.configured && loginSuccessPending)) return <LoginFlowPage auth={auth} onAuthenticated={() => setLoginSuccessPending(true)} onStart={goToMainHome} />;
+  if (auth.configured && (!auth.session || loginSuccessPending)) return <LoginFlowPage auth={auth} onAuthenticated={() => setLoginSuccessPending(true)} onStart={goToMainHome} />;
   const resolvedRoute = !auth.configured && activeRoute === "login" ? "home" : activeRoute;
   const activeTab: TabKey = resolvedRoute === "login" || resolvedRoute === "main-home" ? "home" : resolvedRoute;
   const CardPage = CARD_PAGES[activeTab];
