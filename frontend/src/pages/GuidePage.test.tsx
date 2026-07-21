@@ -818,7 +818,7 @@ describe("GuidePage chat history deletion", () => {
         evidence: [],
       },
     ]);
-    render(<GuidePage surveyProfile={null} />);
+    renderGuide();
 
     fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
     const sectionTitle = await screen.findByText("자동차 테마 ETF상품");
@@ -856,7 +856,7 @@ describe("GuidePage chat history deletion", () => {
         evidence: [],
       },
     ]);
-    render(<GuidePage surveyProfile={null} />);
+    renderGuide();
 
     fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
     const titles = await screen.findAllByText(/구성종목 TOP3$/);
