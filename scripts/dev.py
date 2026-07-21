@@ -24,8 +24,7 @@ API_PORT = 8000
 WEB_PORT = 5173
 WEB_ORIGIN = f"http://127.0.0.1:{WEB_PORT}"
 CHAT_URL = f"{WEB_ORIGIN}/#guide"
-# 프론트는 마운트 때 capabilities를 딱 한 번 부르고 실패하면 "API 연결 필요"로
-# 굳는다(재시도 없음). 그래서 vite가 아니라 이 엔드포인트가 살아난 뒤에 연다.
+# 브라우저를 열기 전에 API까지 기다려 첫 화면의 연결 오류와 재시도 깜빡임을 줄인다.
 API_READY_URL = f"http://127.0.0.1:{API_PORT}/chat/demo/capabilities"
 READY_TIMEOUT_SECONDS = 120
 
