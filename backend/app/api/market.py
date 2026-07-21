@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Annotated, Literal
 
 import psycopg
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, Path, Query, status
 from pydantic import BaseModel, ConfigDict
 
 from ..etf_market_repository import (
@@ -16,6 +16,7 @@ from ..etf_market_repository import (
 )
 from ..ingestion.krx_client import KRX_ETF_DAILY_ENDPOINT
 from .deps import get_etf_market_repository
+from .errors import ApiErrorCode, api_error
 
 router = APIRouter(tags=["market"])
 logger = logging.getLogger(__name__)
@@ -81,9 +82,10 @@ def list_etf_market_snapshot(
             limit=limit,
         )
     except (EtfMarketDataUnavailable, psycopg.Error) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Current KRX ETF market snapshot is unavailable",
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Current KRX ETF market snapshot is unavailable",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         ) from exc
     return EtfMarketSnapshotResponse(
         as_of=snapshot.as_of,
@@ -108,9 +110,10 @@ def etf_volume_history(
     limit: Annotated[int, Query(ge=1, le=2000)] = 253,
 ) -> EtfVolumeHistoryResponse:
     if from_date is not None and to_date is not None and from_date > to_date:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="from_date must be on or before to_date",
+        raise api_error(
+            ApiErrorCode.INVALID_DATE_RANGE,
+            "from_date must be on or before to_date",
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
     try:
         observations = repository.volume_history(
@@ -121,14 +124,16 @@ def etf_volume_history(
         )
     except KeyError as exc:
         logger.warning("etf_volume_history_not_found isu_code=%s", isu_code)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Requested ETF volume history was not found",
+        raise api_error(
+            ApiErrorCode.RESOURCE_NOT_FOUND,
+            "Requested ETF volume history was not found",
+            status.HTTP_404_NOT_FOUND,
         ) from exc
     except psycopg.Error as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="KRX ETF volume history is unavailable",
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "KRX ETF volume history is unavailable",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         ) from exc
     return _history_response(isu_code, observations)
 

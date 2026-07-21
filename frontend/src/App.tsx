@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type JSX } from "react";
 
-import { ApiError, getDemoHeroes, getMyPensionContext } from "./api/client";
+import { ApiError, apiErrorMessage, getDemoHeroes, getMyPensionContext } from "./api/client";
 import type { CompletedSurveyProfile, DemoHeroPortfolio, DemoUserFinancialContext } from "./api/types";
 import { useSupabaseAuth } from "./auth/useSupabaseAuth";
 import { TabBar, type TabKey } from "./components/TabBar";
@@ -34,6 +34,7 @@ function clearUserStorage(): void {
 }
 
 function pensionContextErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && typeof error.code === "string") return apiErrorMessage(error);
   if (error instanceof ApiError && error.status === 404) return "이 계정에는 연동된 연금 데이터가 없습니다.";
   if (error instanceof ApiError && error.status === 503) return "연금 데이터를 불러오는 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.";
   return "연금 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";

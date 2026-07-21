@@ -11,7 +11,7 @@ from typing import Annotated
 from uuid import UUID
 
 import psycopg
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, Response, status
 from pydantic import BaseModel, ConfigDict
 from starlette.responses import StreamingResponse
 
@@ -43,6 +43,7 @@ from .deps import (
     get_optional_chat_repository,
     get_optional_demo_user_context_repository,
 )
+from .errors import ApiErrorCode, api_error
 
 router = APIRouter(tags=["chat"])
 logger = logging.getLogger("uvicorn.error")
@@ -184,6 +185,10 @@ def _sse(event: str, payload: dict[str, object]) -> str:
     return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
+def _sse_error(code: ApiErrorCode, message: str) -> str:
+    return _sse("error", {"code": code, "message": message})
+
+
 def _answer_delta_events(answer: str) -> list[str]:
     """Send the safety-checked answer in one SSE event.
 
@@ -236,11 +241,17 @@ async def _stream_answer(
     try:
         response = await asyncio.to_thread(service.ask, request, plan=plan)
     except _DATABASE_ERRORS:
-        yield _sse("error", {"detail": "Chat data source is unavailable"})
+        yield _sse_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Chat data source is unavailable",
+        )
         return
     except RuntimeError:
         logger.exception("Chat stream received an invalid stored response")
-        yield _sse("error", {"detail": "Chat data source is unavailable"})
+        yield _sse_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Chat data source is unavailable",
+        )
         return
     stream_before_narration = (
         narrator is not None
@@ -350,14 +361,16 @@ def get_my_pension_context(
     try:
         context = repository.get(owner_id)
     except _DATABASE_ERRORS as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="User pension context database is unavailable",
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "User pension context database is unavailable",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         ) from exc
     if context is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User pension context was not found",
+        raise api_error(
+            ApiErrorCode.RESOURCE_NOT_FOUND,
+            "User pension context was not found",
+            status.HTTP_404_NOT_FOUND,
         )
     return context
 
@@ -401,7 +414,10 @@ async def chat_authenticated_stream(
     async def events() -> AsyncIterator[str]:
         yield _sse("phase", {"message": "요청을 확인하고 있습니다."})
         if request.session_id is not None and repository is None:
-            yield _sse("error", {"detail": "Chat database is not configured"})
+            yield _sse_error(
+                ApiErrorCode.DATABASE_NOT_CONFIGURED,
+                "Chat database is not configured",
+            )
             return
         if repository is not None:
             try:
@@ -411,11 +427,17 @@ async def chat_authenticated_stream(
                     idempotency_key=idempotency_key,
                 )
             except _DATABASE_ERRORS:
-                yield _sse("error", {"detail": "Chat database is unavailable"})
+                yield _sse_error(
+                    ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+                    "Chat database is unavailable",
+                )
                 return
             except RuntimeError:
                 logger.exception("Chat replay contained an invalid stored response")
-                yield _sse("error", {"detail": "Chat database is unavailable"})
+                yield _sse_error(
+                    ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+                    "Chat database is unavailable",
+                )
                 return
             if replayed is not None and replayed.response is not None:
                 yield _sse(
@@ -448,10 +470,16 @@ async def chat_authenticated_stream(
                 return_exceptions=True,
             )
             if isinstance(session_result, ChatSessionAccessError):
-                yield _sse("error", {"detail": "Chat session not found"})
+                yield _sse_error(
+                    ApiErrorCode.SESSION_NOT_FOUND,
+                    "Chat session not found",
+                )
                 return
             if isinstance(session_result, _DATABASE_ERRORS):
-                yield _sse("error", {"detail": "Chat database is unavailable"})
+                yield _sse_error(
+                    ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+                    "Chat database is unavailable",
+                )
                 return
             if isinstance(session_result, BaseException):
                 raise session_result
@@ -497,11 +525,17 @@ async def chat_authenticated_stream(
                 nickname=nickname,
             )
         except _DATABASE_ERRORS:
-            yield _sse("error", {"detail": "Chat data source is unavailable"})
+            yield _sse_error(
+                ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+                "Chat data source is unavailable",
+            )
             return
         except RuntimeError:
             logger.exception("Chat stream received an invalid stored response")
-            yield _sse("error", {"detail": "Chat data source is unavailable"})
+            yield _sse_error(
+                ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+                "Chat data source is unavailable",
+            )
             return
         stream_before_narration = (
             narrator is not None
@@ -552,7 +586,10 @@ async def chat_authenticated_stream(
             )
             return
         if repository is None:
-            yield _sse("error", {"detail": "Chat database is not configured"})
+            yield _sse_error(
+                ApiErrorCode.DATABASE_NOT_CONFIGURED,
+                "Chat database is not configured",
+            )
             return
 
         yield _sse("phase", {"message": "대화 기록을 저장하고 있습니다."})
@@ -566,14 +603,20 @@ async def chat_authenticated_stream(
                 idempotency_key=idempotency_key,
             )
         except ChatSessionAccessError:
-            yield _sse("error", {"detail": "Chat session not found"})
+            yield _sse_error(ApiErrorCode.SESSION_NOT_FOUND, "Chat session not found")
             return
         except _DATABASE_ERRORS:
-            yield _sse("error", {"detail": "Chat database is unavailable"})
+            yield _sse_error(
+                ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+                "Chat database is unavailable",
+            )
             return
         except RuntimeError:
             logger.exception("Chat save produced an invalid stored response")
-            yield _sse("error", {"detail": "Chat database is unavailable"})
+            yield _sse_error(
+                ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+                "Chat database is unavailable",
+            )
             return
         final_response = saved.response or response
         yield _sse("phase", {"message": "답변 검증을 완료했습니다."})
@@ -615,9 +658,10 @@ def list_chat_sessions(
     try:
         sessions: list[ChatSessionSummary] = repository.list_sessions(owner_id)
     except _DATABASE_ERRORS as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Chat database is unavailable",
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Chat database is unavailable",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         ) from exc
     return [ChatSessionOut.model_validate(session) for session in sessions]
 
@@ -634,14 +678,16 @@ def delete_chat_session(
     try:
         repository.delete_session(owner_id=owner_id, session_id=session_id)
     except ChatSessionAccessError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat session not found",
+        raise api_error(
+            ApiErrorCode.SESSION_NOT_FOUND,
+            "Chat session not found",
+            status.HTTP_404_NOT_FOUND,
         ) from exc
     except _DATABASE_ERRORS as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Chat database is unavailable",
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Chat database is unavailable",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         ) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -660,14 +706,16 @@ def get_chat_messages(
             owner_id=owner_id, session_id=session_id
         )
     except ChatSessionAccessError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat session not found",
+        raise api_error(
+            ApiErrorCode.SESSION_NOT_FOUND,
+            "Chat session not found",
+            status.HTTP_404_NOT_FOUND,
         ) from exc
     except _DATABASE_ERRORS as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Chat database is unavailable",
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Chat database is unavailable",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         ) from exc
     return [_message_out(message) for message in messages]
 

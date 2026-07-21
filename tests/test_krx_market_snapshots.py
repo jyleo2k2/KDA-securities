@@ -220,7 +220,10 @@ def test_etf_volume_history_hides_repository_key_error(caplog) -> None:
 
     assert response.status_code == 404
     assert response.json() == {
-        "detail": "Requested ETF volume history was not found"
+        "detail": {
+            "code": "RESOURCE_NOT_FOUND",
+            "message": "Requested ETF volume history was not found",
+        }
     }
     assert "etf_volume_history_not_found isu_code=069500" in caplog.messages
 

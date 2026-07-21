@@ -189,5 +189,8 @@ def test_api_rejects_etf_excluded_from_current_krx_report(caplog) -> None:
         etf_planning_assessment(_assumption("MISSING"), EmptyRepository())
 
     assert exc_info.value.status_code == 404
-    assert exc_info.value.detail == "Requested ETF is not in the KRX evidence universe"
+    assert exc_info.value.detail == {
+        "code": "RESOURCE_NOT_FOUND",
+        "message": "Requested ETF is not in the KRX evidence universe",
+    }
     assert "krx_evidence_etf_not_found etf_code=MISSING" in caplog.messages
