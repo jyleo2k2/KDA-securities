@@ -110,7 +110,7 @@ def test_post_uses_authenticated_owner_and_existing_engine_evaluation() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert recorded[0][0] == OWNER_ID
     assert recorded[0][2] == evaluate_profile(recorded[0][1])
     assert response.json()["assessment"]["risk_profile"] == "risk_neutral"
