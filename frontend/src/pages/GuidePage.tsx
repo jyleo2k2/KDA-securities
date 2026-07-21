@@ -246,6 +246,12 @@ function AnswerBlocks({ blocks }: { blocks: AnswerBlock[] }) {
   );
 }
 
+function sectionPreview(content: string): string {
+  const normalized = displayText(content).replace(/\s+/g, " ").trim();
+  const sentence = normalized.match(/^.*?[.!?](?:\s|$)/);
+  return (sentence?.[0] ?? normalized).trim();
+}
+
 const REPRESENTATIVE_COMPANY_LABELS = [
   "테마에서의 역할:",
   "쉽게 말하면:",
@@ -541,8 +547,11 @@ function AssistantMessage({
 
       {response.sections.map((section, index) => (
         <Fragment key={`${section.title}-${index}`}>
-          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={response.intent === "educational_portfolio" || response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || section.kind === "limitation"}>
-            <summary><span>{section.title}</span><small>내용 보기</small></summary>
+          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || section.kind === "limitation"}>
+            <summary>
+              <span>{section.title}{sectionPreview(section.content) && ` — ${sectionPreview(section.content)}`}</span>
+              <small>내용 보기</small>
+            </summary>
             {section.blocks?.length ? (
               <>
                 {section.content && <p>{displayText(section.content)}</p>}
@@ -557,13 +566,15 @@ function AssistantMessage({
       ))}
 
       {response.limitations.length > 0 && (
-        <div className="limitation-box">
-          <Icon name="shield" size={18} />
+        <details className="limitation-box">
+          <summary>
+            <span><Icon name="shield" size={18} /> 확인할 점 {response.limitations.length}가지 보기</span>
+            <Icon name="chevron" size={16} />
+          </summary>
           <div>
-            <strong>확인할 점</strong>
             {response.limitations.map((item, index) => <p key={index}>{item}</p>)}
           </div>
-        </div>
+        </details>
       )}
 
       {response.sources.length > 0 && (

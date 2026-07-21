@@ -595,31 +595,24 @@ def _strategy_summary(evaluation: EducationalPortfolioEvaluation) -> str:
     )
 
 
-def _target_portfolio_summary(
+def _target_portfolio_rows(
     evaluation: EducationalPortfolioEvaluation,
-) -> str:
+) -> list[list[str]]:
     candidates_by_sleeve: dict[str, list[str]] = {}
     for candidate in evaluation.candidates:
         candidates_by_sleeve.setdefault(candidate.sleeve, []).append(
             candidate.isu_name
         )
-    lines = []
+    rows = []
     for target in evaluation.target_sleeves:
         label = _SLEEVE_LABELS[target.sleeve]
         percent = _decimal_text(_one_decimal(target.target_percent))
         names = " · ".join(candidates_by_sleeve.get(target.sleeve, []))
-        candidate_text = f" (엔진 편입 후보: {names})" if names else ""
-        lines.append(f"{label} 약 {percent}%{candidate_text}")
-    risk_target = _decimal_text(
-        _one_decimal(evaluation.final_general_risk_target_percent)
-    )
-    return (
-        ",\n".join(lines)
-        + f"\n일반 위험자산 목표비중은 전체의 약 {risk_target}%예요."
-    )
+        rows.append([label, f"{percent}%", names])
+    return rows
 
 
-def _rebalancing_summary(evaluation: EducationalPortfolioEvaluation) -> str:
+def _rebalancing_items(evaluation: EducationalPortfolioEvaluation) -> list[str]:
     rebalancing = evaluation.rebalancing
     threshold = _decimal_text(
         _one_decimal(rebalancing.drift_threshold_percent_points)
@@ -652,7 +645,7 @@ def _rebalancing_summary(evaluation: EducationalPortfolioEvaluation) -> str:
             "매년 나이·투자성향·연금 수령 시점과 계획가정을 다시 확인해요.",
         ]
     )
-    return " ".join(parts)
+    return parts
 
 
 def _knowledge_evidence_id(match: KnowledgeMatch) -> str:

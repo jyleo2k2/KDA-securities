@@ -275,8 +275,13 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .allocation-row strong { color: #234435; font-weight: 700; }
 .allocation-track { height: 8px; margin-top: 4px; overflow: hidden; border-radius: 999px; background: #dfe8d8; }
 .allocation-track span { display: block; height: 100%; border-radius: inherit; background: #83aa67; }
-.limitation-box { display: flex; gap: 9px; margin-top: 14px; padding: 11px 12px; border-radius: 10px; background: #fff8eb; color: #765e2d; }
-.limitation-box > svg { flex: 0 0 auto; margin-top: 1px; }.limitation-box strong { display: block; margin-bottom: 3px; font-size: 10px; }.limitation-box p { margin: 2px 0; font-size: 9px; line-height: 1.55; }
+.limitation-box { margin-top: 14px; padding: 11px 12px; border-radius: 10px; background: #fff8eb; color: #765e2d; }
+.limitation-box summary { display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-size: 10px; font-weight: 700; list-style: none; }
+.limitation-box summary::-webkit-details-marker { display: none; }
+.limitation-box summary > span { display: flex; align-items: center; gap: 9px; }
+.limitation-box summary > svg { transition: transform .2s ease; }
+.limitation-box[open] summary > svg { transform: rotate(90deg); }
+.limitation-box > div { padding-top: 7px; }.limitation-box p { margin: 2px 0; font-size: 9px; line-height: 1.55; }
 .evidence-wrap { margin: 15px -18px -17px; border-top: 1px solid #edf0ec; }
 .evidence-toggle { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; border: 0; background: #fbfcfa; color: #66746d; font-size: 10px; cursor: pointer; }
 .evidence-toggle > span { display: flex; align-items: center; gap: 6px; }.evidence-toggle[aria-expanded="true"] > svg { transform: rotate(90deg); }

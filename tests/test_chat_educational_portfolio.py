@@ -195,13 +195,22 @@ def test_chatbot_only_explains_structured_portfolio_engine_result() -> None:
     assert evaluation.planning_return.historical_performance_used is False
     assert evaluation.portfolio_risk.historical_return_used_for_risk_only is True
     assert response.narration_mode == "deterministic"
-    sections = {section.title: section.content for section in response.sections}
+    sections = {section.title: section for section in response.sections}
+    strategy_section = sections["위험중립형 투자전략"]
     assert list(sections) == ["위험중립형 투자전략", "장기 계획수익률"]
-    assert "35년" in sections["위험중립형 투자전략"]
-    assert "위험중립형 코어·위성 전략" in sections["위험중립형 투자전략"]
-    assert "엔진 편입 후보" in sections["위험중립형 투자전략"]
-    assert "새 납입금" in sections["위험중립형 투자전략"]
-    assert "미래 예측값이 아니라" in sections["장기 계획수익률"]
+    assert "35년" in strategy_section.content
+    assert "위험중립형 코어·위성 전략" in strategy_section.content
+    assert [block.kind.value for block in strategy_section.blocks] == [
+        "table",
+        "bullets",
+    ]
+    target_table, rebalancing = strategy_section.blocks
+    assert target_table.title == "목표 포트폴리오"
+    assert target_table.headers == ["자산군", "목표비중", "엔진 편입 후보"]
+    assert all(row[1].endswith("%") for row in target_table.rows)
+    assert rebalancing.title == "운용 원칙"
+    assert any("새 납입금" in item for item in rebalancing.items)
+    assert "미래 예측값이 아니라" in sections["장기 계획수익률"].content
 
 
 def test_current_holdings_include_realized_macro_regime_evidence_card() -> None:
@@ -283,11 +292,12 @@ def test_completed_survey_profile_calls_portfolio_engine() -> None:
     ]
     assert len(displayed_returns) == 2
     assert all(value.as_tuple().exponent == -1 for value in displayed_returns)
-    assert [item.label for item in response.numeric_evidence[:4]] == [
+    assert [item.label for item in response.numeric_evidence[:5]] == [
         "일반 위험자산 목표비중",
         "보수 계획수익률",
         "기준 계획수익률",
         "수령 개시까지 운용기간",
+        "리밸런싱 이탈 기준",
     ]
 
 
@@ -487,8 +497,8 @@ def test_chat_applies_user_selected_retirement_start_age_to_engine() -> None:
     assert response.conversation_context is not None
     assert response.conversation_context.survey_profile is not None
     assert response.conversation_context.survey_profile.retirement_start_age == 58
-    assert "분기마다" in response.sections[0].content
-    assert "매년" in response.sections[0].content
+    assert any("분기마다" in item for item in response.sections[0].blocks[1].items)
+    assert any("매년" in item for item in response.sections[0].blocks[1].items)
 
 
 def test_chat_rejects_retirement_start_age_outside_supported_range() -> None:
@@ -584,8 +594,8 @@ def test_each_allowed_chat_style_builds_its_own_etf_portfolio() -> None:
             )
         )
         assert response.sections[0].title == expected_title
-        assert "목표 포트폴리오" in response.sections[0].content
-        assert "엔진 편입 후보" in response.sections[0].content
+        assert response.sections[0].blocks[0].title == "목표 포트폴리오"
+        assert response.sections[0].blocks[0].headers[-1] == "엔진 편입 후보"
         assert response.conversation_context is not None
         assert response.conversation_context.selected_risk_profile == expected_profile
 
@@ -687,6 +697,11 @@ def test_mvp_demo_profile_builds_separate_irp_and_pension_savings_plans() -> Non
         "미래 예측값이 아니라" in section.content
         for section in response.sections
         if section.title.endswith("장기 계획수익률")
+    )
+    assert all(
+        [block.kind.value for block in section.blocks] == ["table", "bullets"]
+        for section in response.sections
+        if section.title.endswith("투자전략")
     )
     assert response.conversation_context is not None
     assert response.conversation_context.survey_profile == survey
