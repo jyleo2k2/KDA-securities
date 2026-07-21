@@ -252,6 +252,25 @@ uv run pytest
 uv run ruff check .
 ```
 
+## 스키마 정비 B — 파괴적 변경 사전 조사 (LOCAL-VERIFIED)
+
+### 2026-07-21 KST
+
+- 작업 브랜치: `db/schema-destructive-review` (기준 `origin/main` `c66d0ee`). 원격 DB 쓰기·마이그레이션 작성 없음.
+- 원격 조사: `mock_public_profiles` 3행, `mock_public_portfolios` 3행, `mock_public_portfolio_holdings` 9행, `curated_contents` 0행.
+- 고아 테이블 참조 조사:
+  - `frontend/`, `scripts/`, `tests/`에는 네 테이블의 런타임 참조가 없다.
+  - `supabase/seed.sql`은 `mock_public_*` 세 테이블에 3/3/9행을 넣으며, `curated_contents`에는 seed가 없다.
+  - `docs/`에는 목 벤치마크와 향후 벤치마크 탭의 후보 계약으로 `mock_public_*`가 남아 있다. `curated_contents`는 RAG·콘텐츠 그룹 설명에만 남아 있다.
+  - FK 유입: `mock_public_portfolios.profile_id -> mock_public_profiles.id`, `mock_public_portfolio_holdings.portfolio_id -> mock_public_portfolios.id`, `mock_public_portfolio_holdings.asset_class_id -> asset_classes.id`. `curated_contents`의 FK 유입은 0건이다. `asset_classes`는 `account_holding_snapshots`, `financial_products`, `mock_holdings`, `mock_public_portfolio_holdings`가 참조한다.
+  - 결론: `mock_public_*`는 seed와 문서상 후속 벤치마크 계약이 있어 **보류**. `curated_contents`는 0행·런타임 참조 0건·FK 유입 0건으로 **삭제 가능 후보**이나, 문서의 RAG·콘텐츠 역할 정리와 소유자 확인 후에만 destructive PR에서 처리한다.
+- 레거시 목데이터 이중 저장 조사:
+  - `backend/app/chat/scenarios.py:103,105`, `backend/app/chat/user_context.py:277,278,289`가 `mock_accounts`/`mock_holdings`를 아직 직접 읽는다. `backend/app/benchmark_repository.py`는 이름이 비슷하지만 `benchmark_mock_*`만 읽으므로 삭제 대상과 별개다.
+  - 동등성 쿼리(시나리오별 계좌 수·보유 건수·계좌 잔액 합계·보유 평가액 합계): `dc_dormant` 1/7/60,980,000원, `tax_contribution_uninvested` 2/13/40,680,000원, `overlap_risk_concentration` 3/20/149,330,000원, `young_retirement_distance` 2/13/23,210,000원, `family_budget_pressure` 3/20/88,660,000원, `pension_payout_transition` 2/13/157,430,000원. 여섯 시나리오 모두 legacy/common 지표가 일치했다(총 13계좌·86보유).
+  - 정리 제안: (1) `scenarios.py`와 `user_context.py`를 공용 모델 조회로 전환하고 계약 테스트를 추가한다. (2) 시나리오별 동등성 쿼리와 Auth/RLS E2E를 재실행한다. (3) 백업 가능한 export와 롤백용 복원 SQL을 별도 승인 PR에 포함한 뒤 `mock_holdings` → `mock_accounts` 순서로 삭제한다. 삭제 직후 공용 모델 재조회·동등성 검증을 수행하며, 실패 시 삭제 migration을 되돌리고 백업으로 복원한다.
+  - `mock_scenarios`는 `pension_accounts.scenario_id`가 참조하므로 삭제 대상이 아니다.
+- 다음 단계: TODO: 이재용이 `mock_public_*`의 벤치마크 탭 사용 여부와 `curated_contents` 폐기 여부를 확정한 뒤, 레거시 코드 전환 PR과 별도 destructive 삭제 PR을 승인한다.
+
 - 모든 migration과 seed를 UTF-8로 읽고 SQL 구문 검사를 통과한다.
 - 신규 public 테이블마다 RLS와 의도한 GRANT가 계약 테스트에 존재한다.
 - 승인된 목시나리오 backfill의 계좌 합계, 위험자산 비율, 한도 판정, 자산군 비중이 이전 결과와 동일하다.
