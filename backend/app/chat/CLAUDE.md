@@ -2,11 +2,11 @@
 
 > 적용 범위: `backend/app/chat/` 하위 + `backend/app/api/chat.py`(챗봇 엔드포인트).
 > 이 파일과 같은 폴더의 `AGENTS.md`·`CLAUDE.md`는 내용 동기화 대상이다. 한쪽을 바꾸면 같은 커밋에서 다른 쪽도 바꾼다.
-> 최종 갱신: 2026-07-19
+> 최종 갱신: 2026-07-21
 
 ## 임무
 
-질의 계획(query_planner) → 규칙 엔진 응답(service) → Claude 내레이션(narrator) → SSE 스트림(api/chat.py) 파이프라인의 정확성·안전 가드·응답 성능을 책임진다. LLM은 서술만 하고 수치 계산은 절대 하지 않는다(Explainable by Design).
+질의 계획(query_planner) → 서비스 오케스트레이션(service) → 인텐트 핸들러·표시 조립(handlers/) → Claude 내레이션(narrator) → SSE 스트림(api/chat.py) 파이프라인의 정확성·안전 가드·응답 성능을 책임진다. LLM은 서술만 하고 수치 계산은 절대 하지 않는다(Explainable by Design).
 
 ## 세션 시작 규칙
 
@@ -33,7 +33,7 @@
 
 ## 세션 간 계약 (변경 시 PR에 `계약 변경` 표시 + 상대 세션·이재용 합의)
 
-- **프론트와**: SSE 이벤트(`phase`/`answer_delta`/`response`/`error`), `ChatResponse` 스키마(`models.py`) ↔ `frontend/src/api/types.ts`.
+- **프론트와**: SSE 이벤트(`phase`/`answer_delta`/`narration_update`/`response`/`error`), `ChatResponse` 스키마(`models.py`) ↔ `frontend/src/api/types.ts`. `answer_delta`는 결정론 답변 선전송, `narration_update`는 가드 통과 내레이션의 전문 교체다.
 - **DB와**: 대화 저장 포맷(`schema_version=1` JSON), `ChatRepository`·`DemoUserContextRepository` 인터페이스.
 - **RAG와**: `KnowledgeRepository` 검색 인터페이스와 청크·출처 스키마.
 

@@ -66,15 +66,16 @@ uv run uvicorn backend.app.main:app --reload
 
 | API | 역할 |
 |---|---|
-| `POST /chat/demo` | 자연어 질문 → RAG·규칙 엔진·조건부 실공시/뉴스 조회 |
+| `POST /chat/demo/stream` | 비인증 자연어 질문 → SSE(`phase`·`answer_delta`·선택적 `narration_update`·`response`) |
+| `POST /chat/stream` | 인증 자연어 질문 → 같은 SSE 계약 + 대화 저장·Idempotency-Key 재생 |
 | `GET /chat/demo/capabilities` | 현재 지원·조건부·미지원 기능 확인 |
-| `GET /chat/demo/scenarios` | 발표용 목계좌 시나리오 3종 확인 |
+| `GET /chat/demo/scenarios` | 발표용 목계좌 시나리오 6종 확인 |
 | `POST /engine/pension-tax-credit` | 연금저축·IRP 당해연도 납입액의 세액공제 교육용 추정 |
 | `POST /engine/non-pension-withdrawal-estimate` | 연금외수령 시 기타소득 원천징수 최대 추정 |
 | `GET /market/etfs` | KRX 기준일 전체 상장 ETF 거래량·거래대금 조회 |
 | `GET /market/etfs/{isu_code}/volume-history` | 종목별 적재된 일별 거래량 이력 조회 |
 
-`POST /chat/demo` 예시:
+`POST /chat/demo/stream` 요청 본문 예시:
 
 ```json
 {
@@ -87,6 +88,7 @@ uv run uvicorn backend.app.main:app --reload
 - `ANTHROPIC_API_KEY`는 일일 수집기의 뉴스 원문 3줄 요약과 일반 검증 답변의 선택적 Claude 재서술에 사용한다. 뉴스 답변은 저장된 요약을 다시 LLM에 보내지 않고 결정론적으로 조립한다.
 - 연금세액 질문은 화면의 구조화 입력 패널 값을 규칙 엔진에 전달하며, 사용자 입력은 RAG나 공시 데이터로 취급하지 않는다. Claude는 같은 읽기·계산 Tool을 호출한 뒤 결과를 설명만 한다.
 - fixture는 공시 답변에 사용하지 않으며 개별 상품 비교, 미래 수익 예측, 주문은 차단한다.
+- 스트림은 먼저 결정론 답변을 `answer_delta`로 보내고, Claude 내레이션이 검증을 통과했을 때만 `narration_update`로 답변 전문을 교체한다. DB·저장 응답 손상 등 스트림 도중 오류는 `error` 이벤트로 전달한다.
 
 ## 챗봇 화면 실행
 

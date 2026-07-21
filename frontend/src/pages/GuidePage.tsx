@@ -17,7 +17,6 @@ import {
   deleteChatSession,
   getChatCards,
   getChatSessions,
-  getMyPensionContext,
   getScenarios,
   getStoredChatMessages,
 } from "../api/client";
@@ -51,7 +50,7 @@ import type {
   StoredChatMessage,
   WithdrawalReason,
 } from "../api/types";
-import { useSupabaseAuth } from "../auth/useSupabaseAuth";
+import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
 import { useChatStream, type ConversationMessage } from "../hooks/useChatStream";
 
 const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
@@ -572,15 +571,20 @@ function authenticatedErrorMessage(error: unknown): string {
 }
 
 export function GuidePage({
+  auth,
   initialScenarioCode,
+  onSignOut,
   surveyProfile,
+  userContext,
   typingIntervalMs = DEFAULT_TYPING_INTERVAL_MS,
 }: {
+  auth: SupabaseAuthState;
   initialScenarioCode?: string;
+  onSignOut: () => Promise<void>;
   surveyProfile: CompletedSurveyProfile | null;
+  userContext: DemoUserFinancialContext | null;
   typingIntervalMs?: number;
 }) {
-  const auth = useSupabaseAuth();
   const accessToken = auth.session?.access_token;
   const authenticatedUserId = auth.session?.user.id ?? null;
   const [input, setInput] = useState("");
@@ -588,8 +592,6 @@ export function GuidePage({
   const [chatCards, setChatCards] = useState<ChatCard[]>([]);
   const [allEtfThemesVisible, setAllEtfThemesVisible] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState(initialScenarioCode ?? "");
-  const [userContext, setUserContext] =
-    useState<DemoUserFinancialContext | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [serverReady, setServerReady] = useState<boolean | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
@@ -832,11 +834,9 @@ export function GuidePage({
       setActiveSessionId(null);
       setConversationContext(null);
       setSelectedScenario("");
-      setUserContext(null);
     }
     if (!accessToken) {
       setChatSessions([]);
-      setUserContext(null);
       setHistoryError(
         auth.loading
           ? null
@@ -861,21 +861,14 @@ export function GuidePage({
       .finally(() => {
         if (active) setHistoryLoading(false);
       });
-    void getMyPensionContext(accessToken)
-      .then((context) => {
-        if (!active) return;
-        setUserContext(context);
-        setSelectedScenario(context.scenario_code);
-      })
-      .catch((error: unknown) => {
-        if (!active) return;
-        setUserContext(null);
-        setHistoryError(authenticatedErrorMessage(error));
-      });
     return () => {
       active = false;
     };
   }, [accessToken, authenticatedUserId, auth.configured, auth.loading]);
+
+  useEffect(() => {
+    if (userContext) setSelectedScenario(userContext.scenario_code);
+  }, [userContext?.scenario_code]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -942,11 +935,11 @@ export function GuidePage({
       setChatSessions([]);
       setActiveSessionId(null);
       setConversationContext(null);
-      setUserContext(null);
     setHistoryError(null);
     setHistoryLoading(false);
     try {
-      await auth.signOut();
+      // 로그아웃은 화면 상태만 비운다. 저장된 대화는 명시적 삭제 버튼으로만 제거한다.
+      await onSignOut();
     } catch (error) {
       setHistoryError(authenticatedErrorMessage(error));
     } finally {
@@ -1298,6 +1291,11 @@ export function GuidePage({
             <span className={`design-auth-state ${auth.session ? "authenticated" : "anonymous"}`}>
               {authStatusLabel}
             </span>
+            {auth.session && (
+              <button type="button" className="design-logout" onClick={() => void handleLogout()} disabled={authSubmitting}>
+                로그아웃
+              </button>
+            )}
             <button
               className={`design-avatar ${auth.session ? "authenticated" : "anonymous"}`}
               type="button"

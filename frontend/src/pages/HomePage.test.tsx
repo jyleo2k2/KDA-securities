@@ -2,16 +2,10 @@
 
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getDemoHeroes } from "../api/client";
-import type { DemoHeroPortfolio } from "../api/types";
+import type { DemoHeroPortfolio, DemoUserFinancialContext } from "../api/types";
 import { HomePage } from "./HomePage";
-
-
-vi.mock("../api/client", () => ({
-  getDemoHeroes: vi.fn(),
-}));
 
 const baseHero = {
   representative_age: 46,
@@ -45,80 +39,71 @@ const baseHero = {
   data_boundary: "mock",
 };
 
-const heroes = [
-  ["박준호(가상)", "dc_dormant"],
-  ["이서연(가상)", "tax_contribution_uninvested"],
-  ["정민재(가상)", "overlap_risk_concentration"],
-  ["김하린(가상)", "young_retirement_distance"],
-  ["최지훈(가상)", "family_budget_pressure"],
-  ["윤정희(가상)", "pension_payout_transition"],
-].map(([nickname, scenario_code]) => ({
+const hero = {
   ...baseHero,
-  nickname,
-  scenario_code,
-  is_demo_login_candidate: scenario_code !== "pension_payout_transition",
-  ...(scenario_code === "overlap_risk_concentration"
-    ? {
-        total_amount_krw: "190000000.00",
-        scenario_name: "계좌별 중복·위험 편중",
-        accounts: [
-          {
-            account_id: "overlap_dc",
-            account_type: "dc",
-            label: "회사 DC",
-            holdings: [
-              {
-                holding_id: "dc_global_equity",
-                instrument_name: "KODEX 미국S&P500",
-                etf_isu_code: "379800",
-                asset_class_code: "global_equity",
-                amount_krw: "60000000.00",
-                risk_treatment: "general_risky",
-              },
-            ],
-          },
-        ],
-        risk_summary: {
-          ...baseHero.risk_summary,
-          dominant_asset_class: "global_equity",
-          dominant_asset_percent: "68.41",
-          general_risky_asset_percent: "68.42",
-          estimated_stress_loss_percent: "28.30",
-          requires_rebalancing_review: true,
+  nickname: "박준호(가상)",
+  scenario_code: "dc_dormant",
+  accounts: [
+    {
+      account_id: "dc_account",
+      account_type: "dc",
+      label: "회사 DC",
+      holdings: [
+        {
+          holding_id: "dc_deposit",
+          instrument_name: "원리금보장 상품",
+          asset_class_code: "deposit",
+          amount_krw: "60000000.00",
+          risk_treatment: "capital_preservation",
         },
-      }
-    : {}),
-})) as DemoHeroPortfolio[];
+      ],
+    },
+  ],
+} as DemoHeroPortfolio;
+
+const userContext = {
+  auth_user_id: "user-1",
+  nickname: "박준호(가상)",
+  representative_age: 34,
+  customer_context: "회사 DC 적립금이 원리금보장 상품에만 머문 방치형 고객",
+  scenario_code: "dc_dormant",
+  scenario_name: "DC형 방치",
+  age_band: "30대",
+  risk_profile: "stable",
+  investment_horizon_years: 21,
+  tax_year: 2026,
+  income_basis: "unknown",
+  income_amount_krw: "0",
+  dc_balance_krw: "60000000",
+  irp_balance_krw: "0",
+  pension_savings_balance_krw: "0",
+  total_pension_balance_krw: "60000000",
+  irp_contribution_krw: "0",
+  pension_savings_contribution_krw: "0",
+  as_of_date: "2026-07-21",
+  data_kind: "mock",
+  asset_classes: ["deposit"],
+  defaulted_fields: [],
+} as DemoUserFinancialContext;
 
 describe("HomePage", () => {
   afterEach(cleanup);
 
-  beforeEach(() => {
-    vi.mocked(getDemoHeroes).mockResolvedValue(heroes);
-  });
+  it("shows only the logged-in user's pension data", () => {
+    render(<HomePage error={null} hero={hero} loading={false} onAnalyzeHero={vi.fn()} userContext={userContext} />);
 
-  it("shows all six hero customers and the selected customer's ETF risk view", async () => {
-    render(<HomePage onAnalyzeHero={vi.fn()} />);
-
-    expect((await screen.findAllByText("박준호(가상)")).length).toBeGreaterThan(0);
-    expect(screen.getByText("윤정희(가상)")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /정민재/ }));
-
-    expect(screen.getByText("KODEX 미국S&P500")).toBeInTheDocument();
-    expect(screen.getByText("379800")).toBeInTheDocument();
-    expect(screen.getByText("28.30%")).toBeInTheDocument();
+    expect(screen.getByText("박준호(가상)님의", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("원리금보장 상품")).toBeInTheDocument();
     expect(screen.getByText("리밸런싱 점검 필요")).toBeInTheDocument();
+    expect(screen.queryByText("이서연(가상)")).not.toBeInTheDocument();
   });
 
-  it("sends the selected hero scenario to the guide", async () => {
+  it("sends the logged-in user's scenario to the guide", () => {
     const onAnalyzeHero = vi.fn();
-    render(<HomePage onAnalyzeHero={onAnalyzeHero} />);
+    render(<HomePage error={null} hero={hero} loading={false} onAnalyzeHero={onAnalyzeHero} userContext={userContext} />);
 
-    await screen.findAllByText("박준호(가상)");
-    fireEvent.click(screen.getByRole("button", { name: /정민재/ }));
-    fireEvent.click(screen.getByRole("button", { name: "이 고객 분석하기" }));
+    fireEvent.click(screen.getByRole("button", { name: "내 연금 분석하기" }));
 
-    expect(onAnalyzeHero).toHaveBeenCalledWith("overlap_risk_concentration");
+    expect(onAnalyzeHero).toHaveBeenCalledWith("dc_dormant");
   });
 });

@@ -171,9 +171,20 @@ class NaverNewsRepository:
             },
         )
 
-    def start_market_run(self, *, queries: tuple[str, ...]) -> tuple[UUID, int]:
+    def start_market_run(
+        self,
+        *,
+        queries: tuple[str, ...],
+        max_age_hours: int = 24,
+        max_pages: int = 1,
+        window_end: datetime | None = None,
+    ) -> tuple[UUID, int]:
         if not queries or any(not normalize_search_text(query) for query in queries):
             raise ValueError("queries must contain non-empty values")
+        if max_age_hours < 1:
+            raise ValueError("max_age_hours must be positive")
+        if not 1 <= max_pages <= 10:
+            raise ValueError("max_pages must be between 1 and 10")
         return self._start_run(
             metadata={
                 "storage_policy": "selected_metadata_and_summary",
@@ -185,8 +196,14 @@ class NaverNewsRepository:
             requested_params={
                 "queries": list(queries),
                 "sort": "date",
-                "max_age_hours": 24,
+                "max_age_hours": max_age_hours,
+                "max_pages": max_pages,
                 "daily_limit": 20,
+                **(
+                    {"window_end": window_end.isoformat()}
+                    if window_end is not None
+                    else {}
+                ),
             },
         )
 

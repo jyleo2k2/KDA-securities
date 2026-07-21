@@ -8,13 +8,12 @@ import {
   deleteChatSession,
   getChatCards,
   getChatSessions,
-  getMyPensionContext,
   getScenarios,
   getStoredChatMessages,
   sendAuthenticatedChatStream,
 } from "../api/client";
 import type { ChatCard, ChatResponse, ChatSessionSummary } from "../api/types";
-import { useSupabaseAuth } from "../auth/useSupabaseAuth";
+import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
 import {
   ETF_THEME_CARDS,
   filterChatCards,
@@ -33,15 +32,10 @@ vi.mock("../api/client", () => ({
   deleteChatSession: vi.fn(),
   getChatCards: vi.fn(),
   getChatSessions: vi.fn(),
-  getMyPensionContext: vi.fn(),
   getScenarios: vi.fn(),
   getStoredChatMessages: vi.fn(),
   sendAuthenticatedChatStream: vi.fn(),
   sendChatStream: vi.fn(),
-}));
-
-vi.mock("../auth/useSupabaseAuth", () => ({
-  useSupabaseAuth: vi.fn(),
 }));
 
 const SESSION_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -51,6 +45,28 @@ const CHAT_SESSION: ChatSessionSummary = {
   created_at: "2026-07-19T00:00:00Z",
   updated_at: "2026-07-19T00:00:00Z",
 };
+
+function renderGuide(onSignOut = vi.fn().mockResolvedValue(undefined)): ReturnType<typeof render> {
+  const auth = {
+    session: {
+      access_token: "access-token",
+      user: { id: "user-1", email: "owner@example.com" },
+    },
+    loading: false,
+    configured: true,
+    error: null,
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+  } as unknown as SupabaseAuthState;
+  return render(
+    <GuidePage
+      auth={auth}
+      onSignOut={onSignOut}
+      surveyProfile={null}
+      userContext={null}
+    />,
+  );
+}
 const RECOMMENDED_CHAT_CARDS: ChatCard[] = [
   {
     card_id: "news_market",
@@ -227,23 +243,9 @@ const THEME_CONSIDERATIONS_RESPONSE: ChatResponse = {
 describe("GuidePage chat history deletion", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useSupabaseAuth).mockReturnValue({
-      session: {
-        access_token: "access-token",
-        user: { id: "user-1", email: "owner@example.com" },
-      },
-      loading: false,
-      configured: true,
-      error: null,
-      signIn: vi.fn(),
-      signOut: vi.fn(),
-    } as unknown as ReturnType<typeof useSupabaseAuth>);
     vi.mocked(getScenarios).mockResolvedValue([]);
     vi.mocked(getChatCards).mockResolvedValue({ cards: [] });
     vi.mocked(getChatSessions).mockResolvedValue([CHAT_SESSION]);
-    vi.mocked(getMyPensionContext).mockResolvedValue({
-      scenario_code: "",
-    } as Awaited<ReturnType<typeof getMyPensionContext>>);
     vi.mocked(getStoredChatMessages).mockResolvedValue([
       {
         message_id: "message-1",
@@ -272,7 +274,7 @@ describe("GuidePage chat history deletion", () => {
     vi.mocked(deleteChatSession).mockImplementation(
       () => new Promise<void>((resolve) => { finishDelete = resolve; }),
     );
-    render(<GuidePage surveyProfile={null} />);
+    renderGuide();
 
     const openButton = await screen.findByRole("button", { name: /^IRP 규칙/ });
     fireEvent.click(openButton);
@@ -296,9 +298,20 @@ describe("GuidePage chat history deletion", () => {
     await waitFor(() => expect(composer).toHaveFocus());
   });
 
+  it("keeps stored conversations when logging out", async () => {
+    const onSignOut = vi.fn().mockResolvedValue(undefined);
+    renderGuide(onSignOut);
+
+    await screen.findByText("IRP 규칙");
+    fireEvent.click(screen.getAllByRole("button", { name: "로그아웃" })[0]);
+
+    await waitFor(() => expect(onSignOut).toHaveBeenCalledOnce());
+    expect(deleteChatSession).not.toHaveBeenCalled();
+  });
+
   it("keeps the session when confirmation is cancelled", async () => {
     vi.mocked(window.confirm).mockReturnValue(false);
-    render(<GuidePage surveyProfile={null} />);
+    renderGuide();
 
     fireEvent.click(await screen.findByRole("button", { name: "대화 삭제: IRP 규칙" }));
 
@@ -313,7 +326,7 @@ describe("GuidePage chat history deletion", () => {
     vi.mocked(deleteChatSession).mockImplementation(
       () => new Promise<void>(() => undefined),
     );
-    render(<GuidePage surveyProfile={null} />);
+    renderGuide();
 
     fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
     await screen.findByText("저장된 질문");
@@ -360,7 +373,7 @@ describe("GuidePage chat history deletion", () => {
         conversation_context: null,
       },
     } as unknown as Awaited<ReturnType<typeof sendAuthenticatedChatStream>>);
-    render(<GuidePage surveyProfile={null} />);
+    renderGuide();
 
     fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
     await screen.findByText("저장된 질문");
@@ -457,7 +470,7 @@ describe("GuidePage chat history deletion", () => {
         conversation_context: null,
       },
     } as unknown as Awaited<ReturnType<typeof sendAuthenticatedChatStream>>);
-    render(<GuidePage surveyProfile={null} />);
+    renderGuide();
 
     fireEvent.click(await screen.findByRole("button", {
       name: /BOK·KOSIS·FRED 거시환경 근거를 보여줘/,
@@ -482,7 +495,7 @@ describe("GuidePage chat history deletion", () => {
 
   it("renders only the five requested recommendation cards without spark icons", async () => {
     vi.mocked(getChatCards).mockResolvedValue({ cards: RECOMMENDED_CHAT_CARDS });
-    render(<GuidePage surveyProfile={null} />);
+    renderGuide();
 
     const carousel = await screen.findByLabelText("챗봇 추천 질문");
     const buttons = within(carousel).getAllByRole("button");
@@ -505,7 +518,7 @@ describe("GuidePage chat history deletion", () => {
         persisted: false,
         session_id: null,
       });
-      render(<GuidePage surveyProfile={null} />);
+      renderGuide();
 
       const carousel = await screen.findByLabelText("챗봇 추천 질문");
       fireEvent.click(within(carousel).getByRole("button", { name: new RegExp(card.title) }));
@@ -519,7 +532,7 @@ describe("GuidePage chat history deletion", () => {
   );
 
   it("separates question and ETF theme cards on the empty chat screen", async () => {
-    render(<GuidePage surveyProfile={null} />);
+    renderGuide();
 
     expect(await screen.findByRole("heading", {
       name: "챗봇에게 무엇이든 물어보세요",
@@ -594,7 +607,7 @@ describe("GuidePage chat history deletion", () => {
       persisted: false,
       session_id: null,
     });
-    render(<GuidePage surveyProfile={null} />);
+    renderGuide();
 
     fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
     const themeSection = (await screen.findByText("조선 테마란?")).closest("details");
@@ -637,7 +650,7 @@ describe("GuidePage chat history deletion", () => {
         evidence: [],
       },
     ]);
-    render(<GuidePage surveyProfile={null} />);
+    renderGuide();
 
     fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
     const companyName = await screen.findByText("Samsung Electronics");
@@ -677,7 +690,7 @@ describe("GuidePage chat history deletion", () => {
         evidence: [],
       },
     ]);
-    render(<GuidePage surveyProfile={null} />);
+    renderGuide();
 
     fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
     const answerLead = await screen.findByText(THEME_CONSIDERATIONS_RESPONSE.answer);

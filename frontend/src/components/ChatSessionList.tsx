@@ -1,5 +1,4 @@
 import type { ChatSessionSummary } from "../api/types";
-import { ChatIcon } from "./ChatIcon";
 
 export function ChatSessionList({
   activeSessionId,
@@ -55,7 +54,7 @@ export function ChatSessionList({
                 onClick={() => onDelete(session)}
                 disabled={disabled}
               >
-                {deleting ? "…" : <ChatIcon name="trash" size={14} />}
+                {deleting ? "…" : "삭제"}
               </button>
             </div>
           );

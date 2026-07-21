@@ -1,12 +1,18 @@
-import { useEffect, useState, type JSX } from "react";
+import { useEffect, useRef, useState, type JSX } from "react";
 
+import { ApiError, getDemoHeroes, getMyPensionContext } from "./api/client";
+import type {
+  CompletedSurveyProfile,
+  DemoHeroPortfolio,
+  DemoUserFinancialContext,
+} from "./api/types";
+import { useSupabaseAuth } from "./auth/useSupabaseAuth";
 import { TabBar, type TabKey } from "./components/TabBar";
 import { BenchmarkPage } from "./pages/BenchmarkPage";
 import { GuidePage } from "./pages/GuidePage";
 import { HomePage } from "./pages/HomePage";
 import { LoginFlowPage } from "./pages/LoginFlowPage";
 import { ProfilePage } from "./pages/ProfilePage";
-import type { CompletedSurveyProfile } from "./api/types";
 
 // 상태관리·라우팅 라이브러리는 의도적으로 미도입(아키텍처.md §10 미확정 항목).
 // 화면 담당자가 결정 후 교체한다.
@@ -16,7 +22,19 @@ const CARD_PAGES: Partial<Record<TabKey, () => JSX.Element>> = {
 
 const TAB_KEYS: readonly TabKey[] = ["home", "guide", "benchmark", "profile"];
 const SURVEY_PROFILE_VERSION = "completed-survey-v1";
+const USER_STORAGE_KEYS = [
+  "pension-copilot:survey-profile",
+  "pension-copilot:mvp-profile-version",
+  "pension-copilot:selected-scenario",
+] as const;
 type AppRoute = TabKey | "login";
+
+interface CurrentUserData {
+  context: DemoUserFinancialContext | null;
+  hero: DemoHeroPortfolio | null;
+  loading: boolean;
+  error: string | null;
+}
 
 function routeFromHash(): AppRoute {
   const candidate = window.location.hash.slice(1) as AppRoute;
@@ -24,7 +42,22 @@ function routeFromHash(): AppRoute {
   return TAB_KEYS.includes(candidate as TabKey) ? candidate : "login";
 }
 
+function clearUserStorage(): void {
+  USER_STORAGE_KEYS.forEach((key) => window.localStorage.removeItem(key));
+}
+
+function pensionContextErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && error.status === 404) {
+    return "이 계정에는 연동된 연금 데이터가 없습니다.";
+  }
+  if (error instanceof ApiError && error.status === 503) {
+    return "연금 데이터를 불러오는 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.";
+  }
+  return "연금 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";
+}
+
 export default function App(): JSX.Element {
+  const auth = useSupabaseAuth();
   const [activeRoute, setActiveRoute] = useState<AppRoute>(routeFromHash);
   const [surveyProfile, setSurveyProfile] = useState<CompletedSurveyProfile | null>(
     () => {
@@ -39,14 +72,25 @@ export default function App(): JSX.Element {
           // Invalid local survey state is cleared below.
         }
       }
-      window.localStorage.removeItem("pension-copilot:survey-profile");
-      window.localStorage.removeItem("pension-copilot:mvp-profile-version");
+      clearUserStorage();
       return null;
     },
   );
   const [selectedScenarioCode, setSelectedScenarioCode] = useState(
     () => window.localStorage.getItem("pension-copilot:selected-scenario") ?? "",
   );
+  const [currentUserData, setCurrentUserData] = useState<CurrentUserData>({
+    context: null,
+    hero: null,
+    loading: false,
+    error: null,
+  });
+  const previousAuthRef = useRef<{ userId: string | null; token: string | null } | null>(null);
+  const userLoadGenerationRef = useRef(0);
+
+  const accessToken = auth.session?.access_token ?? null;
+  const authenticatedUserId = auth.session?.user.id ?? null;
+  const showLogin = activeRoute === "login" || auth.session === null;
   const activeTab = activeRoute === "login" ? "home" : activeRoute;
   const CardPage = CARD_PAGES[activeTab];
 
@@ -55,6 +99,55 @@ export default function App(): JSX.Element {
     window.addEventListener("hashchange", syncRouteFromHash);
     return () => window.removeEventListener("hashchange", syncRouteFromHash);
   }, []);
+
+  useEffect(() => {
+    if (auth.loading) return;
+
+    const previousAuth = previousAuthRef.current;
+    const userChanged = previousAuth?.userId !== authenticatedUserId;
+    const authChanged = userChanged || previousAuth?.token !== accessToken;
+    if (!authChanged) return;
+
+    previousAuthRef.current = { userId: authenticatedUserId, token: accessToken };
+    const loadGeneration = ++userLoadGenerationRef.current;
+    if (userChanged) {
+      clearUserStorage();
+      setSurveyProfile(null);
+      setSelectedScenarioCode("");
+    }
+
+    if (!accessToken) {
+      setCurrentUserData({ context: null, hero: null, loading: false, error: null });
+      if (activeRoute !== "login") {
+        setActiveRoute("login");
+        window.history.replaceState(null, "", "#login");
+      }
+      return;
+    }
+
+    setCurrentUserData({ context: null, hero: null, loading: true, error: null });
+    void Promise.all([getMyPensionContext(accessToken), getDemoHeroes()])
+      .then(([context, heroes]) => {
+        if (userLoadGenerationRef.current !== loadGeneration) return;
+        const hero = heroes.find((item) => item.scenario_code === context.scenario_code) ?? null;
+        setCurrentUserData({
+          context,
+          hero,
+          loading: false,
+          error: hero ? null : "내 연금 상세 시나리오를 찾지 못했습니다. 기본 정보만 표시합니다.",
+        });
+        setSelectedScenarioCode(context.scenario_code);
+      })
+      .catch((error: unknown) => {
+        if (userLoadGenerationRef.current !== loadGeneration) return;
+        setCurrentUserData({
+          context: null,
+          hero: null,
+          loading: false,
+          error: pensionContextErrorMessage(error),
+        });
+      });
+  }, [accessToken, activeRoute, auth.loading, authenticatedUserId]);
 
   function changeTab(tab: TabKey): void {
     setActiveRoute(tab);
@@ -80,16 +173,37 @@ export default function App(): JSX.Element {
     changeTab("guide");
   }
 
+  async function handleSignOut(): Promise<void> {
+    userLoadGenerationRef.current += 1;
+    clearUserStorage();
+    setSurveyProfile(null);
+    setSelectedScenarioCode("");
+    setCurrentUserData({ context: null, hero: null, loading: false, error: null });
+    setActiveRoute("login");
+    window.history.replaceState(null, "", "#login");
+    await auth.signOut();
+  }
+
+  if (auth.loading) {
+    return <main style={{ display: "grid", minHeight: "100vh", placeItems: "center" }}>로그인 상태를 확인하고 있습니다…</main>;
+  }
+
+  const displayName = currentUserData.context?.nickname
+    ?? auth.session?.user.email?.replace("@kda-demo.invalid", "")
+    ?? "인증 사용자";
+
   return (
     <>
-      {activeRoute === "login" ? (
-        <LoginFlowPage onStart={() => changeTab("home")} />
+      {showLogin ? (
+        <LoginFlowPage auth={auth} onStart={() => changeTab("home")} />
       ) : activeTab === "guide" ? (
-        // 챗 화면은 자체 레이아웃(app-shell)을 쓰므로 풀블리드로 렌더한다.
         <div className="guide-tab">
           <GuidePage
+            auth={auth}
             initialScenarioCode={selectedScenarioCode}
+            onSignOut={handleSignOut}
             surveyProfile={surveyProfile}
+            userContext={currentUserData.context}
           />
         </div>
       ) : (
@@ -102,16 +216,30 @@ export default function App(): JSX.Element {
             fontFamily: "system-ui, sans-serif",
           }}
         >
+          <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "16px 16px 0" }}>
+            <span style={{ fontSize: 13, fontWeight: 700 }}>{displayName}</span>
+            <button type="button" onClick={() => void handleSignOut()}>로그아웃</button>
+          </header>
           <main style={{ padding: 16 }}>
             {activeTab === "home" ? (
-              <HomePage onAnalyzeHero={analyzeHero} />
+              <HomePage
+                error={currentUserData.error}
+                hero={currentUserData.hero}
+                loading={currentUserData.loading}
+                onAnalyzeHero={analyzeHero}
+                userContext={currentUserData.context}
+              />
             ) : activeTab === "profile" ? (
-              <ProfilePage profile={surveyProfile} onComplete={completeSurvey} />
+              <ProfilePage
+                profile={surveyProfile}
+                onComplete={completeSurvey}
+                userContext={currentUserData.context}
+              />
             ) : CardPage ? <CardPage /> : null}
           </main>
         </div>
       )}
-      {activeRoute !== "login" && <TabBar activeTab={activeTab} onChange={changeTab} />}
+      {!showLogin && <TabBar activeTab={activeTab} onChange={changeTab} />}
     </>
   );
 }

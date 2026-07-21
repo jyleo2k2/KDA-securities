@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-
-import { getDemoHeroes } from "../api/client";
 import type {
   AssetClass,
   DemoHeroPortfolio,
+  DemoUserFinancialContext,
 } from "../api/types";
 import { conicGradient } from "../charts";
 
@@ -38,82 +36,57 @@ function formatKrw(value: string): string {
 }
 
 interface HomePageProps {
+  error: string | null;
+  hero: DemoHeroPortfolio | null;
+  loading: boolean;
   onAnalyzeHero: (scenarioCode: string) => void;
+  userContext: DemoUserFinancialContext | null;
 }
 
-export function HomePage({ onAnalyzeHero }: HomePageProps) {
-  const [heroes, setHeroes] = useState<DemoHeroPortfolio[]>([]);
-  const [selectedCode, setSelectedCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
+export function HomePage({ error, hero, loading, onAnalyzeHero, userContext }: HomePageProps) {
+  if (loading) {
+    return <section className="home-dashboard"><p className="home-loading">내 연금 데이터를 불러오는 중입니다…</p></section>;
+  }
 
-  useEffect(() => {
-    let cancelled = false;
-    void getDemoHeroes()
-      .then((items) => {
-        if (cancelled) return;
-        setHeroes(items);
-        setSelectedCode((current) => current || items[0]?.scenario_code || "");
-      })
-      .catch(() => {
-        if (!cancelled) setError("가상 고객 포트폴리오를 불러오지 못했습니다.");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const selected = useMemo(
-    () => heroes.find((hero) => hero.scenario_code === selectedCode) ?? null,
-    [heroes, selectedCode],
-  );
+  if (!userContext) {
+    return <section className="home-dashboard"><p className="home-error">{error ?? "로그인한 사용자의 연금 데이터를 찾지 못했습니다."}</p></section>;
+  }
 
   return (
     <section className="home-dashboard">
       <header className="home-hero-heading">
         <span>연금계좌 운용 가이드</span>
-        <h1>누구의 포트폴리오를<br />살펴볼까요?</h1>
-        <p>발표용 가상 고객 6명의 실제 ETF 연결 보유내역을 확인할 수 있습니다.</p>
+        <h1>{userContext.nickname}님의<br />연금 현황이에요</h1>
+        <p>{userContext.customer_context}</p>
       </header>
 
+      <p className="mock-chip">대표 시나리오 목데이터</p>
       {error && <p className="home-error">{error}</p>}
-      {!error && heroes.length === 0 && <p className="home-loading">고객 포트폴리오를 불러오는 중입니다…</p>}
-
-      <div className="hero-picker" aria-label="가상 고객 선택">
-        {heroes.map((hero) => (
-          <button
-            aria-pressed={hero.scenario_code === selectedCode}
-            className={hero.scenario_code === selectedCode ? "active" : ""}
-            key={hero.scenario_code}
-            onClick={() => setSelectedCode(hero.scenario_code)}
-            type="button"
-          >
-            <span>{hero.nickname.slice(0, 1)}</span>
-            <strong>{hero.nickname}</strong>
-            <small>{hero.representative_age}세 · {RISK_LABELS[hero.risk_profile] ?? hero.risk_profile}</small>
-          </button>
-        ))}
-      </div>
-
-      {selected && (
+      {hero ? (
         <>
           <article className="portfolio-summary-card">
             <div className="portfolio-summary-top">
               <div>
                 <span className="mock-chip">가상 목데이터</span>
-                <h2>{selected.nickname}</h2>
-                <p>{selected.customer_context}</p>
+                <h2>{hero.scenario_name}</h2>
+                <p>{userContext.age_band} · {userContext.representative_age}세 · {RISK_LABELS[hero.risk_profile] ?? hero.risk_profile} · 투자기간 {hero.investment_horizon_years}년</p>
               </div>
-              <strong>{formatKrw(selected.total_amount_krw)}</strong>
+              <strong>{formatKrw(userContext.total_pension_balance_krw)}</strong>
+            </div>
+            <div className="risk-metric-grid">
+              <div><span>DC</span><strong>{formatKrw(userContext.dc_balance_krw)}</strong></div>
+              <div><span>IRP</span><strong>{formatKrw(userContext.irp_balance_krw)}</strong></div>
+              <div><span>연금저축</span><strong>{formatKrw(userContext.pension_savings_balance_krw)}</strong></div>
             </div>
 
             <div className="allocation-layout">
               <div
-                aria-label={selected.asset_allocations.map((item) => `${ASSET_LABELS[item.asset_class_code as AssetClass] ?? item.asset_class_code} ${item.allocation_percent}%`).join(", ")}
+                aria-label={hero.asset_allocations.map((item) => `${ASSET_LABELS[item.asset_class_code as AssetClass] ?? item.asset_class_code} ${item.allocation_percent}%`).join(", ")}
                 className="home-allocation-donut"
                 role="img"
                 style={{
                   background: `conic-gradient(${conicGradient(
-                    selected.asset_allocations.map((item) => Number(item.allocation_percent)),
+                    hero.asset_allocations.map((item) => Number(item.allocation_percent)),
                     ALLOCATION_COLORS,
                   )})`,
                 }}
@@ -121,7 +94,7 @@ export function HomePage({ onAnalyzeHero }: HomePageProps) {
                 <span>총자산<br /><strong>100%</strong></span>
               </div>
               <ul className="home-allocation-list">
-                {selected.asset_allocations.map((item, index) => (
+                {hero.asset_allocations.map((item, index) => (
                   <li key={item.asset_class_code}>
                     <i style={{ backgroundColor: ALLOCATION_COLORS[index % ALLOCATION_COLORS.length] }} />
                     <span>{ASSET_LABELS[item.asset_class_code as AssetClass] ?? item.asset_class_code}</span>
@@ -138,15 +111,18 @@ export function HomePage({ onAnalyzeHero }: HomePageProps) {
                 <span>규칙 엔진 점검</span>
                 <h2>위험·스트레스 확인</h2>
               </div>
-              <b className={selected.risk_summary.requires_rebalancing_review ? "review-needed" : "review-ok"}>
-                {selected.risk_summary.requires_rebalancing_review ? "리밸런싱 점검 필요" : "현재 기준 내"}
+              <b className={hero.risk_summary.requires_rebalancing_review ? "review-needed" : "review-ok"}>
+                {hero.risk_summary.requires_rebalancing_review ? "리밸런싱 점검 필요" : "현재 기준 내"}
               </b>
             </div>
             <div className="risk-metric-grid">
-              <div><span>일반 위험자산</span><strong>{selected.risk_summary.general_risky_asset_percent}%</strong></div>
-              <div><span>최대 자산군</span><strong>{selected.risk_summary.dominant_asset_percent}%</strong></div>
-              <div className="stress-metric"><span>주식 급락 충격 시 교육용 손실 점검값</span><strong>{selected.risk_summary.estimated_stress_loss_percent}%</strong></div>
+              <div><span>일반 위험자산</span><strong>{hero.risk_summary.general_risky_asset_percent}%</strong></div>
+              <div><span>최대 자산군</span><strong>{hero.risk_summary.dominant_asset_percent}%</strong></div>
+              <div className="stress-metric"><span>주식 급락 충격 시 교육용 손실 점검값</span><strong>{hero.risk_summary.estimated_stress_loss_percent}%</strong></div>
             </div>
+            {hero.duplicated_asset_classes.length > 0 && (
+              <p>중복 자산군: {hero.duplicated_asset_classes.map((assetClass) => ASSET_LABELS[assetClass as AssetClass] ?? assetClass).join(", ")}</p>
+            )}
             <p>고정 충격을 적용한 점검값이며 미래 손실 예측이나 수익률 전망이 아닙니다.</p>
           </article>
 
@@ -156,7 +132,7 @@ export function HomePage({ onAnalyzeHero }: HomePageProps) {
               <small>ETF 종목코드 표시</small>
             </div>
             <div className="account-card-list">
-              {selected.accounts.map((account) => (
+              {hero.accounts.map((account) => (
                 <article key={account.account_id}>
                   <header><strong>{account.label}</strong><span>{ACCOUNT_LABELS[account.account_type]}</span></header>
                   <ul>
@@ -178,10 +154,17 @@ export function HomePage({ onAnalyzeHero }: HomePageProps) {
             </div>
           </section>
 
-          <button className="analyze-hero-button" type="button" onClick={() => onAnalyzeHero(selected.scenario_code)}>
-            이 고객 분석하기
+          <button className="analyze-hero-button" type="button" onClick={() => onAnalyzeHero(hero.scenario_code)}>
+            내 연금 분석하기
           </button>
         </>
+      ) : (
+        <article className="portfolio-summary-card">
+          <span className="mock-chip">가상 목데이터</span>
+          <h2>{userContext.scenario_name}</h2>
+          <p>총 연금 잔액 {formatKrw(userContext.total_pension_balance_krw)}</p>
+          <p>DC {formatKrw(userContext.dc_balance_krw)} · IRP {formatKrw(userContext.irp_balance_krw)} · 연금저축 {formatKrw(userContext.pension_savings_balance_krw)}</p>
+        </article>
       )}
     </section>
   );
