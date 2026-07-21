@@ -30,7 +30,16 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --group embeddings
       - name: Select, summarize and rotate daily market news
-        run: uv run --group embeddings python -m backend.app.ingestion.naver_market_news
+        id: market_news
+        run: |
+          result="$(uv run --group embeddings python -m backend.app.ingestion.naver_market_news)"
+          echo "$result"
+          echo "result=$result" >> "$GITHUB_OUTPUT"
+      - name: Warn when market-news rotation is waiting for a full batch
+        if: ${{ fromJSON(steps.market_news.outputs.result).held_for_full_batch }}
+        run: >
+          echo "::warning::Market-news rotation is holding new articles because
+          the active store is full and fewer than 20 summarized articles were ready."
       - name: Report hybrid RAG search quality (informational)
         # Surfaces retrieval-quality drift on the real hybrid path in the daily
         # log. Soft: a regression here must not block news rotation.
