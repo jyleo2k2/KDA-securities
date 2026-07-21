@@ -1,6 +1,8 @@
 """Account-rule retrieval and blocked-response handlers."""
 
 
+import re
+
 from ...engine import AccountType
 from ...retrieval.repository import KnowledgeSearch
 from ..models import (
@@ -25,6 +27,31 @@ from ._shared import (
     _plain_knowledge_excerpt,
     _select_knowledge_match,
 )
+
+_NUMBERED_SECTION_HEADING = re.compile(r"^\d+(?:-\d+)?\.\s+")
+_SENTENCE_END = re.compile(r"[.!?](?=\s|$)")
+_MAX_VISIBLE_ANSWER_CHARS = 320
+
+
+def _concise_knowledge_answer(excerpt: str) -> str:
+    """Keep the visible lead short while preserving full evidence in sections."""
+
+    lines = [line.strip() for line in excerpt.splitlines() if line.strip()]
+    if lines and _NUMBERED_SECTION_HEADING.match(lines[0]):
+        lines = lines[1:]
+    if lines:
+        first_end = _SENTENCE_END.search(lines[0])
+        if first_end is not None:
+            lines[0] = lines[0][: first_end.end()]
+        lines[0] = lines[0].removeprefix("- ")
+
+    selected: list[str] = []
+    for line in lines:
+        candidate = "\n".join((*selected, line))
+        if len(candidate) > _MAX_VISIBLE_ANSWER_CHARS:
+            break
+        selected.append(line)
+    return "\n".join(selected) or excerpt
 
 
 def blocked_response(reason: BlockedReason) -> ChatResponse:
@@ -171,11 +198,7 @@ def account_rule_response(
             sources=sources,
             limitations=["질문을 계좌 유형과 함께 더 구체적으로 입력해 주세요."],
         )
-    answer = (
-        "공식 근거에서 확인한 내용이에요.\n\n"
-        f"{excerpt}\n\n"
-        "개인 상황에 적용하기 전에는 아래 출처와 기준일을 함께 봐 주세요."
-    )
+    answer = _concise_knowledge_answer(excerpt)
     risk_question = topic == "risk_cap"
     risk_label = (
         "DC형·IRP 위험자산 한도(연금저축 동일 한도 없음)"
@@ -196,7 +219,7 @@ def account_rule_response(
             basis="검증된 지식 문서에서 직접 발췌",
         )
         for index, (value, unit) in enumerate(
-            sorted(extract_numeric_claims(answer)), start=1
+            sorted(extract_numeric_claims(excerpt)), start=1
         )
     ]
 
