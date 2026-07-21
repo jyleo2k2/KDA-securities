@@ -1,8 +1,10 @@
 import json
 from pathlib import Path
+from uuid import UUID
 
 from fastapi.testclient import TestClient
 
+from backend.app.auth import require_supabase_user_id
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
 from backend.app.chat.models import ChatRequest
 from backend.app.chat.scenarios import LocalScenarioRepository
@@ -57,7 +59,13 @@ def test_customer_examples_include_every_common_column_and_nested_row() -> None:
 
 
 def test_demo_heroes_endpoint_exposes_six_named_profiles_and_etf_links() -> None:
-    response = client.get("/chat/demo/heroes")
+    app.dependency_overrides[require_supabase_user_id] = lambda: UUID(
+        "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    )
+    try:
+        response = client.get("/chat/heroes")
+    finally:
+        app.dependency_overrides.clear()
 
     assert response.status_code == 200
     heroes = response.json()
@@ -159,7 +167,13 @@ def test_demo_heroes_endpoint_exposes_six_named_profiles_and_etf_links() -> None
 
 
 def test_demo_hero_stress_is_rule_based_and_not_a_forecast() -> None:
-    response = client.get("/chat/demo/heroes")
+    app.dependency_overrides[require_supabase_user_id] = lambda: UUID(
+        "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    )
+    try:
+        response = client.get("/chat/heroes")
+    finally:
+        app.dependency_overrides.clear()
 
     overlap = next(
         hero

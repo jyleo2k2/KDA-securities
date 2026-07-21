@@ -228,69 +228,6 @@ def _log_stream_latency(
     )
 
 
-async def _stream_answer(
-    *,
-    request: ChatRequest,
-    service: ChatService,
-    narrator: ClaudeNarrator | None,
-) -> AsyncIterator[str]:
-    started_at = perf_counter()
-    plan = service.plan(request)
-    yield _sse("phase", {"message": "근거를 검색하고 있습니다."})
-    answer_started_at = perf_counter()
-    try:
-        response = await asyncio.to_thread(service.ask, request, plan=plan)
-    except _DATABASE_ERRORS:
-        yield _sse_error(
-            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
-            "Chat data source is unavailable",
-        )
-        return
-    except RuntimeError:
-        logger.exception("Chat stream received an invalid stored response")
-        yield _sse_error(
-            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
-            "Chat data source is unavailable",
-        )
-        return
-    stream_before_narration = (
-        narrator is not None
-        and response.intent in NARRATABLE_INTENTS
-        and bool(response.sources)
-    )
-    first_delta_at = None
-    if stream_before_narration:
-        first_delta_at = perf_counter()
-        for event in _answer_delta_events(response.answer):
-            yield event
-    if narrator is not None:
-        yield _sse("phase", {"message": "검증된 설명을 생성하고 있습니다."})
-        narration_started_at = perf_counter()
-        response = await asyncio.to_thread(
-            narrator.narrate,
-            response,
-            pension_tax_input=request.pension_tax,
-            pension_tax_message=request.message,
-        )
-        if response.narration_mode == "claude_verified":
-            yield _sse("narration_update", {"answer": response.answer})
-    else:
-        narration_started_at = None
-    yield _sse("phase", {"message": "답변 검증을 완료했습니다."})
-    if not stream_before_narration:
-        first_delta_at = perf_counter()
-        for event in _answer_delta_events(response.answer):
-            yield event
-    _log_stream_latency(
-        intent=response.intent,
-        answer_started_at=answer_started_at,
-        narration_started_at=narration_started_at,
-        first_delta_at=first_delta_at,
-        started_at=started_at,
-    )
-    yield _sse("response", {"response": response.model_dump(mode="json")})
-
-
 class AuthenticatedChatRequest(ChatRequest):
     session_id: UUID | None = None
 
@@ -326,8 +263,9 @@ class StoredChatMessageOut(BaseModel):
     evidence: list[MessageEvidenceOut]
 
 
-@router.get("/chat/demo/capabilities", response_model=ChatCapabilities)
+@router.get("/chat/capabilities", response_model=ChatCapabilities)
 def chat_capabilities(
+    owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
     service: Annotated[ChatService, Depends(get_chat_service)],
 ) -> ChatCapabilities:
     return service.capabilities
@@ -338,13 +276,17 @@ def chat_cards() -> ChatCardCatalog:
     return chat_card_catalog()
 
 
-@router.get("/chat/demo/scenarios", response_model=list[ScenarioSummary])
-def chat_scenarios() -> list[ScenarioSummary]:
+@router.get("/chat/scenarios", response_model=list[ScenarioSummary])
+def chat_scenarios(
+    owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
+) -> list[ScenarioSummary]:
     return LocalScenarioRepository().list()
 
 
-@router.get("/chat/demo/heroes", response_model=list[DemoHeroPortfolio])
-def chat_demo_heroes() -> tuple[DemoHeroPortfolio, ...]:
+@router.get("/chat/heroes", response_model=list[DemoHeroPortfolio])
+def chat_heroes(
+    owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
+) -> tuple[DemoHeroPortfolio, ...]:
     return build_demo_heroes()
 
 
@@ -373,21 +315,6 @@ def get_my_pension_context(
             status.HTTP_404_NOT_FOUND,
         )
     return context
-
-
-@router.post("/chat/demo/stream")
-async def chat_demo_stream(
-    request: ChatRequest,
-    service: Annotated[ChatService, Depends(get_chat_service)],
-    narrator: Annotated[ClaudeNarrator | None, Depends(get_chat_narrator)],
-) -> StreamingResponse:
-    """Stream safe progress events and one final validated demo response."""
-
-    return StreamingResponse(
-        _stream_answer(request=request, service=service, narrator=narrator),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
 
 
 @router.post("/chat/stream")

@@ -24,8 +24,8 @@ API_PORT = 8000
 WEB_PORT = 5173
 WEB_ORIGIN = f"http://127.0.0.1:{WEB_PORT}"
 CHAT_URL = f"{WEB_ORIGIN}/#guide"
-# 브라우저를 열기 전에 API까지 기다려 첫 화면의 연결 오류와 재시도 깜빡임을 줄인다.
-API_READY_URL = f"http://127.0.0.1:{API_PORT}/chat/demo/capabilities"
+# 브라우저를 열기 전에 인증 없이 확인 가능한 API 상태까지 기다린다.
+API_READY_URL = f"http://127.0.0.1:{API_PORT}/health"
 READY_TIMEOUT_SECONDS = 120
 
 
