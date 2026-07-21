@@ -36,6 +36,20 @@ class PendingNewsSummary:
 
 
 @dataclass(frozen=True, slots=True)
+class ActiveMarketNewsSummary:
+    item_id: UUID
+    title: str
+    original_url: str
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedMarketNewsSummary:
+    item_id: UUID
+    summary_lines: tuple[str, str, str]
+    source_content_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
 class StoredMarketNewsIdentity:
     canonical_url: str | None
     normalized_title_hash: str | None
@@ -493,6 +507,191 @@ class NaverNewsRepository:
                 )
                 for row in cursor
             ]
+
+    def load_active_market_news_summaries(self) -> list[ActiveMarketNewsSummary]:
+        with (
+            psycopg.connect(self._database_url) as connection,
+            connection.cursor() as cursor,
+        ):
+            cursor.execute(
+                """
+                select id, title, original_url
+                from public.news_items
+                where selection_policy_version is not null
+                  and is_active
+                order by published_at desc nulls last, fetched_at desc, id
+                """
+            )
+            return [ActiveMarketNewsSummary(*row) for row in cursor]
+
+    def replace_active_market_news_summaries(
+        self,
+        *,
+        summaries: list[PreparedMarketNewsSummary],
+        expected_count: int,
+        model: str,
+        prompt_version: str,
+    ) -> int:
+        if len(summaries) != expected_count:
+            raise ValueError("all active market-news summaries must be prepared")
+        if not model or not prompt_version:
+            raise ValueError("model and prompt_version are required")
+        if len({summary.item_id for summary in summaries}) != expected_count:
+            raise ValueError("market-news summaries must have unique item ids")
+        if any(
+            len(summary.summary_lines) != 3
+            or any(not line.strip() for line in summary.summary_lines)
+            for summary in summaries
+        ):
+            raise ValueError("market-news summaries must contain three non-empty lines")
+
+        with (
+            psycopg.connect(self._database_url) as connection,
+            connection.cursor() as cursor,
+        ):
+            cursor.execute(
+                "select pg_advisory_xact_lock(hashtext(%s))",
+                ("naver_market_news_resummary",),
+            )
+            cursor.execute(
+                """
+                select id
+                from public.news_items
+                where selection_policy_version is not null
+                  and is_active
+                order by published_at desc nulls last, fetched_at desc, id
+                for update
+                """
+            )
+            active_ids = {row[0] for row in cursor}
+            prepared_ids = {summary.item_id for summary in summaries}
+            if len(active_ids) != expected_count or active_ids != prepared_ids:
+                raise NaverNewsRepositoryError(
+                    "active market-news set changed during re-summary"
+                )
+            cursor.executemany(
+                """
+                update public.news_items
+                set summary_lines = %(summary_lines)s,
+                    summary_status = 'succeeded',
+                    summary_source_kind = 'article_body',
+                    summary_model = %(model)s,
+                    summary_prompt_version = %(prompt_version)s,
+                    source_content_sha256 = %(source_content_sha256)s,
+                    summarized_at = now(),
+                    summary_attempt_count = summary_attempt_count + 1,
+                    summary_error_code = null,
+                    summary_claimed_at = null,
+                    license_status = 'review_required'
+                where id = %(item_id)s
+                """,
+                [
+                    {
+                        "item_id": summary.item_id,
+                        "summary_lines": list(summary.summary_lines),
+                        "model": model,
+                        "prompt_version": prompt_version,
+                        "source_content_sha256": summary.source_content_sha256,
+                    }
+                    for summary in summaries
+                ],
+            )
+            if cursor.rowcount != expected_count:
+                raise NaverNewsRepositoryError(
+                    "failed to replace every active market-news summary"
+                )
+        return expected_count
+
+    def replace_prepared_market_news_summaries_and_delete_failed(
+        self,
+        *,
+        summaries: list[PreparedMarketNewsSummary],
+        expected_count: int,
+        model: str,
+        prompt_version: str,
+    ) -> tuple[int, int]:
+        if not summaries:
+            raise ValueError("at least one market-news summary must be prepared")
+        if not model or not prompt_version:
+            raise ValueError("model and prompt_version are required")
+        prepared_ids = {summary.item_id for summary in summaries}
+        if len(prepared_ids) != len(summaries):
+            raise ValueError("market-news summaries must have unique item ids")
+        if any(
+            len(summary.summary_lines) != 3
+            or any(not line.strip() for line in summary.summary_lines)
+            for summary in summaries
+        ):
+            raise ValueError("market-news summaries must contain three non-empty lines")
+
+        with (
+            psycopg.connect(self._database_url) as connection,
+            connection.cursor() as cursor,
+        ):
+            cursor.execute(
+                "select pg_advisory_xact_lock(hashtext(%s))",
+                ("naver_market_news_resummary",),
+            )
+            cursor.execute(
+                """
+                select id
+                from public.news_items
+                where selection_policy_version is not null
+                  and is_active
+                for update
+                """
+            )
+            active_ids = {row[0] for row in cursor}
+            if len(active_ids) != expected_count or not prepared_ids <= active_ids:
+                raise NaverNewsRepositoryError(
+                    "active market-news set changed during re-summary"
+                )
+            cursor.executemany(
+                """
+                update public.news_items
+                set summary_lines = %(summary_lines)s,
+                    summary_status = 'succeeded',
+                    summary_source_kind = 'article_body',
+                    summary_model = %(model)s,
+                    summary_prompt_version = %(prompt_version)s,
+                    source_content_sha256 = %(source_content_sha256)s,
+                    summarized_at = now(),
+                    summary_attempt_count = summary_attempt_count + 1,
+                    summary_error_code = null,
+                    summary_claimed_at = null,
+                    license_status = 'review_required'
+                where id = %(item_id)s
+                """,
+                [
+                    {
+                        "item_id": summary.item_id,
+                        "summary_lines": list(summary.summary_lines),
+                        "model": model,
+                        "prompt_version": prompt_version,
+                        "source_content_sha256": summary.source_content_sha256,
+                    }
+                    for summary in summaries
+                ],
+            )
+            if cursor.rowcount != len(summaries):
+                raise NaverNewsRepositoryError(
+                    "failed to replace every prepared market-news summary"
+                )
+            cursor.execute(
+                """
+                delete from public.news_items
+                where selection_policy_version is not null
+                  and is_active
+                  and id <> all(%s)
+                """,
+                (list(prepared_ids),),
+            )
+            deleted_count = max(cursor.rowcount, 0)
+            if deleted_count != expected_count - len(summaries):
+                raise NaverNewsRepositoryError(
+                    "failed to delete every failed market-news item"
+                )
+        return len(summaries), deleted_count
 
     def complete_market_run(
         self,

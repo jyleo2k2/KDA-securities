@@ -58,7 +58,7 @@ const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   account_rule: "계좌 규칙",
   mock_portfolio: "목계좌 진단",
   provider_disclosure: "공식 공시",
-  news: "연금 뉴스",
+  news: "증시 뉴스",
   pension_tax: "세액공제·중도해지",
   etf_theme: "ETF 테마",
   educational_portfolio: "연금 운용전략",
@@ -160,7 +160,9 @@ function NewsCards({ response }: { response: ChatResponse }) {
             <span>
               {item.summary_lines?.length === 3
                 ? `${ordinals[index] ?? `${index + 1}번째`} 뉴스 · 3줄 요약`
-                : "뉴스 메타데이터"}
+                : item.evidence_id.startsWith("live-news:")
+                  ? "실시간 헤드라인 · 3줄 요약 전"
+                  : "뉴스 메타데이터"}
             </span>
             {newsDate(item.published_at) && <time>{newsDate(item.published_at)}</time>}
           </div>
@@ -169,7 +171,8 @@ function NewsCards({ response }: { response: ChatResponse }) {
             <ol className="news-card-summary">
               {item.summary_lines.map((line, lineIndex) => (
                 <li key={`${item.evidence_id}-summary-${lineIndex}`}>
-                  {displayText(line)}
+                  <span className="news-card-summary-number">{lineIndex + 1}.</span>
+                  <span className="news-card-summary-text">{displayText(line)}</span>
                 </li>
               ))}
             </ol>
@@ -547,7 +550,7 @@ function AssistantMessage({
       {/* narration_reasoning은 thinking 요약이라 대부분 영어로 나와 화면에 노출하지 않는다.
           응답 필드는 그대로 유지해 디버깅·로그에서 확인한다. */}
 
-      {response.sections.map((section, index) => (
+      {response.data_mode !== "news_summary" && response.sections.map((section, index) => (
         <Fragment key={`${section.title}-${index}`}>
           <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
             <summary>

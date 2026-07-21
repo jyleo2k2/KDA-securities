@@ -210,11 +210,11 @@ def test_named_mock_scenario_wins_over_tax_credit_word() -> None:
         "국내 실시간 뉴스 기반 운용전략을 보여줘",
     ),
 )
-def test_explicit_live_news_strategy_routes_to_event_strategy(message: str) -> None:
+def test_news_strategy_question_routes_to_stored_news(message: str) -> None:
     plan = plan_question(message)
 
     assert plan.intent == ChatIntent.NEWS
-    assert plan.requests_event_strategy is True
+    assert plan.requests_event_strategy is False
     assert plan.news_query is not None
 
 
@@ -225,12 +225,28 @@ def test_ordinary_pension_strategy_does_not_trigger_live_news() -> None:
     assert plan.requests_event_strategy is False
 
 
-def test_timely_market_news_routes_to_live_lookup() -> None:
+def test_timely_market_news_routes_to_stored_news() -> None:
     plan = plan_question("실시간 증시 뉴스 보여줘")
 
     assert plan.intent == ChatIntent.NEWS
-    assert plan.requests_live_news is True
+    assert plan.requests_live_news is False
     assert plan.requests_event_strategy is False
+
+
+@pytest.mark.parametrize(
+    "message",
+    (
+        "오늘 증시 뉴스 알려줘",
+        "지금 국내 증시 뉴스 보여줘",
+        "지금 미국 증시 뉴스 보여줘",
+        "최신 증시 뉴스 알려줘",
+    ),
+)
+def test_general_freshness_words_keep_stored_three_line_news(message: str) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent == ChatIntent.NEWS
+    assert plan.requests_live_news is False
 
 
 @pytest.mark.parametrize(

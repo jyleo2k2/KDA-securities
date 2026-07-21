@@ -197,7 +197,7 @@ _NEWS_EVENT_STRATEGY_TERMS = re.compile(
     r"(?:운용|투자|포트폴리오|전략|리밸런싱).{0,20}실시간",
     re.I,
 )
-_NEWS_TIMELINESS_TERMS = re.compile(r"실시간|방금|지금|오늘|최신|장중", re.I)
+_NEWS_TIMELINESS_TERMS = re.compile(r"실시간|방금|장중", re.I)
 _UNSUPPORTED_MARKET_NEWS = re.compile(
     r"(?:중국|일본|유럽|홍콩|대만)\s*(?:증시|시장|주식|뉴스|기사|소식)",
     re.I,
@@ -514,12 +514,8 @@ def plan_question(
             intent=ChatIntent.NEWS,
             account_types=account_types,
             news_query=news_query,
-            requests_event_strategy=(
-                _NEWS_EVENT_STRATEGY_TERMS.search(normalized) is not None
-            ),
-            requests_live_news=(
-                _NEWS_TIMELINESS_TERMS.search(normalized) is not None
-            ),
+            requests_event_strategy=False,
+            requests_live_news=False,
             news_scope_notice=_news_scope_notice(normalized),
             max_results=max_results,
         )

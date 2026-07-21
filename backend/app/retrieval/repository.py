@@ -425,6 +425,36 @@ class RetrievalRepository:
             }
         return [matches[item_id] for item_id in normalized_ids if item_id in matches]
 
+    def summarized_news_by_canonical_urls(
+        self, canonical_urls: tuple[str, ...]
+    ) -> dict[str, NewsMatch]:
+        normalized_urls = tuple(
+            dict.fromkeys(url.strip() for url in canonical_urls if url.strip())
+        )[:100]
+        if not normalized_urls:
+            return {}
+        with (
+            self._connection() as connection,
+            connection.cursor() as cursor,
+        ):
+            cursor.execute(
+                """
+                select
+                    canonical_url,
+                    id::text, title, description, original_url,
+                    portal_url, published_at, summary_lines
+                from public.news_items
+                where canonical_url = any(%s::text[])
+                  and summary_status = 'succeeded'
+                  and cardinality(summary_lines) = 3
+                """,
+                (list(normalized_urls),),
+            )
+            return {
+                row[0]: NewsMatch(*row[1:])
+                for row in cursor
+            }
+
 
 def _news_search_terms(search_query: str) -> tuple[str, ...]:
     normalized_query = normalize_search_text(search_query)

@@ -64,6 +64,10 @@ class NewsSearch(Protocol):
 
     def news_by_ids(self, item_ids: tuple[str, ...]) -> list[NewsMatch]: ...
 
+    def summarized_news_by_canonical_urls(
+        self, canonical_urls: tuple[str, ...]
+    ) -> dict[str, NewsMatch]: ...
+
 
 class LiveNewsSearch(Protocol):
     def fetch_market_news(

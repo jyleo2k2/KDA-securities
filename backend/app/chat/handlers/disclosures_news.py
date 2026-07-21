@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 from ...engine import AccountType, EducationalRiskProfile
 from ...etf_theme_repository import EtfThemeRepository
+from ...retrieval.repository import NewsMatch
 from ..live_news import LiveMarketNewsSnapshot, LiveNewsUnavailable
 from ..models import (
     AnswerBlock,
@@ -77,34 +78,82 @@ def _live_metadata_response(
     snapshot: LiveMarketNewsSnapshot,
     *,
     scope_notice: NewsScopeNotice | None,
+    summaries_by_canonical_url: dict[str, NewsMatch] | None = None,
 ) -> tuple[ChatResponse, dict[str, tuple[str, ...]]]:
-    sources = [
-        SourceEvidence(
-            evidence_id=f"live-news:{item.item_id}",
-            label=item.title,
-            locator=item.original_url,
-            publisher=item.publisher,
-            as_of=item.published_at,
-            data_boundary=DataBoundary.NEWS_METADATA,
+    stored = summaries_by_canonical_url or {}
+    sources: list[SourceEvidence] = []
+    news_items: list[ChatNewsItem] = []
+    content_blocks: list[str] = []
+    topics_by_evidence: dict[str, tuple[str, ...]] = {}
+    stored_item_ids: list[str] = []
+    for index, item in enumerate(snapshot.items):
+        summary = stored.get(item.canonical_url)
+        evidence_id = (
+            f"news:{summary.item_id}"
+            if summary is not None
+            else f"live-news:{item.item_id}"
         )
-        for item in snapshot.items
-    ]
-    news_items = [
-        ChatNewsItem(
-            evidence_id=f"live-news:{item.item_id}",
-            title=item.title,
-            description=item.description,
-            original_url=item.original_url,
-            published_at=item.published_at,
+        sources.append(
+            SourceEvidence(
+                evidence_id=evidence_id,
+                label=item.title,
+                locator=item.original_url,
+                publisher=item.publisher,
+                as_of=item.published_at,
+                data_boundary=(
+                    DataBoundary.NEWS_SUMMARY
+                    if summary is not None
+                    else DataBoundary.NEWS_METADATA
+                ),
+            )
         )
-        for item in snapshot.items
-    ]
-    metadata = "\n".join(
-        f"- {item.title}: {item.description or 'NAVER 설명 없음'}"
-        for item in snapshot.items
+        if summary is not None:
+            stored_item_ids.append(summary.item_id)
+            news_items.append(
+                ChatNewsItem(
+                    evidence_id=evidence_id,
+                    title=summary.title,
+                    summary_lines=list(summary.summary_lines),
+                    original_url=summary.original_url,
+                    published_at=summary.published_at,
+                )
+            )
+            content_blocks.append(_news_summary_block(summary, index))
+        else:
+            news_items.append(
+                ChatNewsItem(
+                    evidence_id=evidence_id,
+                    title=item.title,
+                    description=item.description,
+                    original_url=item.original_url,
+                    published_at=item.published_at,
+                )
+            )
+            content_blocks.append(
+                f"- {item.title}: {item.description or 'NAVER 설명 없음'}"
+            )
+        topics_by_evidence[evidence_id] = item.topics
+
+    matched_count = len(stored_item_ids)
+    all_summarized = bool(snapshot.items) and matched_count == len(snapshot.items)
+    regions = {item.region for item in snapshot.items}
+    market_region = (
+        MarketRegion.KR
+        if regions == {"kr"}
+        else MarketRegion.US
+        if regions == {"us"}
+        else MarketRegion.ALL
     )
     scope_message = _scope_message(scope_notice)
-    answer = "NAVER 검색 API에서 최신 증시 뉴스 메타데이터를 조회했어요."
+    if all_summarized:
+        answer = "실시간 조회 기사와 일치하는 저장 3줄 요약을 찾았어요."
+    elif matched_count:
+        answer = (
+            "실시간 조회 기사 중 저장된 기사는 3줄 요약으로, "
+            "새 기사는 메타데이터로 보여드려요."
+        )
+    else:
+        answer = "NAVER 검색 API에서 최신 증시 뉴스 메타데이터를 조회했어요."
     if scope_message is not None:
         answer = f"{scope_message}\n\n{answer}"
     limitations = [
@@ -113,33 +162,66 @@ def _live_metadata_response(
             if snapshot.from_cache
             else "이번 질문 시점에 NAVER 검색 API를 조회했어요."
         ),
-        "기사 본문이 아닌 NAVER 제목·설명 메타데이터입니다.",
+        (
+            "저장된 기사는 수집 시점에 생성한 원문 기반 3줄 요약입니다."
+            if matched_count
+            else "기사 본문이 아닌 NAVER 제목·설명 메타데이터입니다."
+        ),
         "뉴스 사실과 외부 의견은 연결된 원문에서 다시 확인해야 해요.",
     ]
+    if not all_summarized:
+        limitations.append("새 실시간 기사는 아직 원문 기반 3줄 요약 전입니다.")
     if scope_message is not None:
         limitations.append(scope_message)
     return (
         ChatResponse(
             intent=ChatIntent.NEWS,
             answer=answer,
-            data_mode="news_metadata",
+            data_mode="news_summary" if all_summarized else "news_metadata",
             news_items=news_items,
             sections=[
                 AnswerSection(
                     kind=SectionKind.EXTERNAL_OPINION,
-                    title="실시간 NAVER 뉴스 메타데이터",
-                    content=metadata,
+                    title=(
+                        "실시간 조회와 일치한 저장 뉴스 3줄 요약"
+                        if all_summarized
+                        else "실시간 NAVER 뉴스와 저장 요약"
+                    ),
+                    content="\n\n".join(content_blocks),
                     evidence_ids=_source_ids(sources),
                 )
             ],
             sources=sources,
             limitations=limitations,
+            conversation_context=(
+                ConversationContext(
+                    news=NewsConversationContext(
+                        news_item_ids=stored_item_ids,
+                        market_region=market_region,
+                        shown_at=datetime.now(UTC),
+                    )
+                )
+                if all_summarized
+                else None
+            ),
         ),
-        {
-            f"live-news:{item.item_id}": item.topics
-            for item in snapshot.items
-        },
+        topics_by_evidence,
     )
+
+
+def _stored_summaries_for_live(
+    snapshot: LiveMarketNewsSnapshot,
+    news: NewsSearch | None,
+) -> dict[str, NewsMatch]:
+    if news is None:
+        return {}
+    try:
+        return news.summarized_news_by_canonical_urls(
+            tuple(item.canonical_url for item in snapshot.items)
+        )
+    except Exception:
+        logger.warning("live_news_summary_lookup_failed", exc_info=True)
+        return {}
 
 
 def disclosure_response(
@@ -283,8 +365,6 @@ def news_response(
             if is_market_news
             else "해당 검색어로 저장된 뉴스 정보를 찾지 못했어요."
         )
-        if is_market_news:
-            answer += " 대신 NAVER 검색으로 실시간 증시 뉴스를 볼 수 있어요."
         if scope_message is not None:
             answer = f"{scope_message}\n\n{answer}"
         limitations = ["기사 본문을 임의로 생성하지 않습니다."]
@@ -422,6 +502,9 @@ def live_news_response(
                 response, _ = _live_metadata_response(
                     snapshot,
                     scope_notice=scope_notice,
+                    summaries_by_canonical_url=_stored_summaries_for_live(
+                        snapshot, news
+                    ),
                 )
                 return response
 
@@ -474,6 +557,9 @@ def event_strategy_response(
         base, topics_by_evidence = _live_metadata_response(
             live_snapshot,
             scope_notice=scope_notice,
+            summaries_by_canonical_url=_stored_summaries_for_live(
+                live_snapshot, news
+            ),
         )
         base = base.model_copy(
             update={

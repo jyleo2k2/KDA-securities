@@ -12,7 +12,6 @@ from backend.app.chat.models import (
     ChatRequest,
     ChatResponse,
     CompletedSurveyProfile,
-    DataBoundary,
 )
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService
@@ -98,6 +97,9 @@ class FakeLiveNewsSearch:
             items=(
                 LiveMarketNewsItem(
                     item_id="news-item-1",
+                    canonical_url=(
+                        "https://www.yna.co.kr/view/AKR20260720000100002"
+                    ),
                     title="반도체 실적 발표에 코스피 변동",
                     description="삼성전자 영업이익 발표 뒤 반도체 업종이 움직였다.",
                     original_url="https://www.yna.co.kr/view/AKR20260720000100002",
@@ -148,6 +150,26 @@ class StoredNewsRepository:
         del item_ids
         return []
 
+    def summarized_news_by_canonical_urls(self, canonical_urls):
+        canonical_url = "https://www.yna.co.kr/view/AKR20260720000100002"
+        if canonical_url not in canonical_urls:
+            return {}
+        return {
+            canonical_url: NewsMatch(
+                item_id="00000000-0000-4000-8000-000000000002",
+                title="반도체 실적 발표에 코스피 변동",
+                description=None,
+                original_url=canonical_url,
+                portal_url=None,
+                published_at=datetime(2026, 7, 20, 1, tzinfo=UTC),
+                summary_lines=(
+                    "반도체 실적 발표 뒤 코스피가 움직였다.",
+                    "관련 업종의 거래대금이 늘었다.",
+                    "기사 원문에서 시장 반응을 확인해야 한다.",
+                ),
+            )
+        }
+
 
 class EmptyStoredNewsRepository(StoredNewsRepository):
     def recent_market_news(self, **kwargs):
@@ -190,7 +212,7 @@ def _event_strategy_text(response: ChatResponse) -> str:
     )
 
 
-def test_aggressive_profile_gets_live_event_strategy_with_source_contract() -> None:
+def test_event_strategy_question_does_not_fetch_live_news() -> None:
     response = _service().ask(
         ChatRequest(
             message="실시간 뉴스 기반 이벤트 드리븐 운용전략을 알려줘",
@@ -199,23 +221,14 @@ def test_aggressive_profile_gets_live_event_strategy_with_source_contract() -> N
     )
 
     validated = ChatResponse.model_validate(response.model_dump())
-    text = _event_strategy_text(validated)
-    assert validated.data_mode == "live_news_event_strategy"
-    assert "반도체" in text
-    assert "전술 관찰 가이드" in text
-    assert "뉴스만으로 비중이나 주문을 결정하지 않아요" in text
-    assert any(
-        source.data_boundary == DataBoundary.NEWS_METADATA
-        for source in validated.sources
+    assert validated.data_mode == "unavailable"
+    assert not validated.news_items
+    assert not any(
+        source.evidence_id.startswith("live-news:") for source in validated.sources
     )
-    assert any(source.evidence_id.startswith("policy:") for source in validated.sources)
-    assert [item.follow_up_id for item in validated.suggested_follow_ups] == [
-        "live_news_kr_strategy",
-        "live_news_us_strategy",
-    ]
 
 
-def test_stable_profile_does_not_receive_aggressive_event_strategy() -> None:
+def test_event_strategy_question_without_stored_news_is_unavailable() -> None:
     response = _service().ask(
         ChatRequest(
             message="실시간 뉴스 기반 이벤트 드리븐 운용전략을 알려줘",
@@ -223,12 +236,11 @@ def test_stable_profile_does_not_receive_aggressive_event_strategy() -> None:
         )
     )
 
-    text = _event_strategy_text(response)
-    assert "현재 설문 성향보다 공격적인 이벤트 전술은 제안하지 않아요" in text
-    assert "현재 설문 성향 범위에서 전술 관찰 가이드를 제공해요" not in text
+    assert response.data_mode == "unavailable"
+    assert not response.news_items
 
 
-def test_live_failure_falls_back_to_recent_stored_news() -> None:
+def test_event_strategy_question_uses_recent_stored_news() -> None:
     service = ChatService(
         knowledge=LocalMarkdownKnowledgeRepository(),
         scenarios=LocalScenarioRepository(),
@@ -244,15 +256,14 @@ def test_live_failure_falls_back_to_recent_stored_news() -> None:
         )
     )
 
-    assert response.data_mode == "stored_news_event_strategy"
+    assert response.data_mode == "news_summary"
     assert response.news_items
-    assert any(
-        "실시간 조회가 아니라 최근 저장 뉴스 기반입니다" in limitation
-        for limitation in response.limitations
+    assert not any(
+        source.evidence_id.startswith("live-news:") for source in response.sources
     )
 
 
-def test_empty_stored_news_offers_live_news_exit() -> None:
+def test_empty_stored_news_does_not_offer_live_news_exit() -> None:
     service = ChatService(
         knowledge=LocalMarkdownKnowledgeRepository(),
         scenarios=LocalScenarioRepository(),
@@ -262,10 +273,8 @@ def test_empty_stored_news_offers_live_news_exit() -> None:
 
     response = service.ask(ChatRequest(message="증시 뉴스 알려줘"))
 
-    assert "대신 NAVER 검색으로 실시간 증시 뉴스를 볼 수 있어요" in response.answer
-    assert [(item.label, item.message) for item in response.suggested_follow_ups] == [
-        ("실시간 증시 뉴스 보기", "실시간 증시 뉴스 보여줘")
-    ]
+    assert "NAVER 검색" not in response.answer
+    assert response.suggested_follow_ups == []
 
 
 def test_pension_news_keeps_market_news_with_notice_and_pension_exit() -> None:
@@ -309,20 +318,62 @@ def test_company_news_keeps_market_news_with_graceful_alternatives() -> None:
     ]
 
 
-def test_timely_news_uses_live_metadata_without_event_strategy() -> None:
-    response = _service().ask(ChatRequest(message="오늘 증시 뉴스 알려줘"))
+def test_timely_news_uses_stored_summary_without_live_lookup() -> None:
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        news=StoredNewsRepository(),
+        live_news=FakeLiveNewsSearch(),
+        theme_repository=get_default_etf_theme_repository(),
+    )
 
-    assert response.data_mode == "news_metadata"
+    response = service.ask(ChatRequest(message="오늘 증시 뉴스 알려줘"))
+
+    assert response.data_mode == "news_summary"
     assert response.news_items
     assert not any(
         source.evidence_id.startswith("policy:") for source in response.sources
     )
-    assert any(
+    assert not any(
         source.evidence_id.startswith("live-news:") for source in response.sources
     )
 
 
-def test_timely_news_falls_back_to_stored_news_when_live_lookup_fails() -> None:
+def test_today_news_uses_stored_three_line_summaries() -> None:
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        news=StoredNewsRepository(),
+        live_news=FakeLiveNewsSearch(),
+        theme_repository=get_default_etf_theme_repository(),
+    )
+
+    response = service.ask(ChatRequest(message="오늘 증시 뉴스 알려줘"))
+
+    assert response.data_mode == "news_summary"
+    assert response.news_items
+    assert all(len(item.summary_lines) == 3 for item in response.news_items)
+    assert all(item.evidence_id.startswith("news:") for item in response.news_items)
+
+
+def test_explicit_live_news_reuses_matching_stored_summary() -> None:
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        news=StoredNewsRepository(),
+        live_news=FakeLiveNewsSearch(),
+        theme_repository=get_default_etf_theme_repository(),
+    )
+
+    response = service.ask(ChatRequest(message="실시간 국내 증시 뉴스 알려줘"))
+
+    assert response.data_mode == "news_summary"
+    assert [len(item.summary_lines) for item in response.news_items] == [3]
+    assert response.news_items[0].evidence_id.startswith("news:")
+    assert response.conversation_context is not None
+
+
+def test_timely_news_uses_stored_news_when_live_source_is_unavailable() -> None:
     service = ChatService(
         knowledge=LocalMarkdownKnowledgeRepository(),
         scenarios=LocalScenarioRepository(),
@@ -331,12 +382,11 @@ def test_timely_news_falls_back_to_stored_news_when_live_lookup_fails() -> None:
         theme_repository=get_default_etf_theme_repository(),
     )
 
-    response = service.ask(ChatRequest(message="오늘 미국 증시 뉴스 알려줘"))
+    response = service.ask(ChatRequest(message="방금 미국 증시 뉴스 알려줘"))
 
     assert response.data_mode == "news_summary"
     assert response.news_items
-    assert response.answer.startswith("실시간 NAVER 조회를 사용할 수 없어")
-    assert any(
-        "실시간 조회가 아니라 최근 저장 뉴스 기반입니다" in limitation
-        for limitation in response.limitations
+    assert response.answer.startswith("최근 증시 뉴스를 찾았어요")
+    assert not any(
+        source.evidence_id.startswith("live-news:") for source in response.sources
     )

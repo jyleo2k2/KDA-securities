@@ -100,13 +100,7 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
             ),
         ]
     if response.intent == ChatIntent.NEWS and not response.news_items:
-        follow_ups = [
-            SuggestedFollowUp(
-                follow_up_id="live_market_news",
-                label="실시간 증시 뉴스 보기",
-                message="실시간 증시 뉴스 보여줘",
-            )
-        ]
+        follow_ups = []
         if has_pension_news_notice:
             follow_ups.append(
                 SuggestedFollowUp(
@@ -143,42 +137,29 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
                     )
                 )
             return follow_ups
-        follow_ups = [
-            SuggestedFollowUp(
-                follow_up_id="news_detail_1",
-                label="첫 번째 뉴스 자세히",
-                message="첫 번째 뉴스 자세히 알려줘",
-            )
-        ]
+        follow_ups = []
         region = (
             response.conversation_context.news.market_region
             if response.conversation_context is not None
             and response.conversation_context.news is not None
             else MarketRegion.ALL
         )
-        if region == MarketRegion.KR:
-            follow_ups.append(
-                SuggestedFollowUp(
-                    follow_up_id="news_region_us",
-                    label="미국 증시 뉴스도 보기",
-                    message="미국 증시 뉴스도 보여줘",
-                )
-            )
-        elif region == MarketRegion.US:
+        if region in {MarketRegion.ALL, MarketRegion.US}:
             follow_ups.append(
                 SuggestedFollowUp(
                     follow_up_id="news_region_kr",
-                    label="국내 증시 뉴스도 보기",
-                    message="국내 증시 뉴스도 보여줘",
+                    label="한국증시 뉴스",
+                    message="한국증시 뉴스 알려줘",
                 )
             )
-        follow_ups.append(
-            SuggestedFollowUp(
-                follow_up_id="news_refresh",
-                label="다른 뉴스 더 보기",
-                message="다른 뉴스 더 보여줘",
+        if region in {MarketRegion.ALL, MarketRegion.KR}:
+            follow_ups.append(
+                SuggestedFollowUp(
+                    follow_up_id="news_region_us",
+                    label="미국증시 뉴스",
+                    message="미국증시 뉴스 알려줘",
+                )
             )
-        )
         if has_pension_news_notice:
             follow_ups.append(
                 SuggestedFollowUp(
