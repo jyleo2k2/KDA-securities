@@ -72,6 +72,11 @@ BENCHMARK_LOADER = ROOT / "scripts" / "load_benchmark_mock_data.py"
 DEMO_AUTH_PROVISIONER = ROOT / "scripts" / "provision_demo_auth_users.py"
 DEMO_SQL_RENDERER = ROOT / "scripts" / "render_demo_customer_sql.py"
 SEED = ROOT / "supabase" / "seed.sql"
+SCHEMA_ADDITIVE_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob(
+        "*_add_updated_at_triggers_and_holding_constraints.sql"
+    )
+)
 
 
 def test_schema_has_required_data_foundation_groups() -> None:
@@ -612,3 +617,38 @@ def test_demo_customer_migration_caps_legacy_personal_pension_contributions() ->
     assert "order by fractional_units desc, account_id" in sql
     assert "monthly_contribution_krw = capped.target_monthly_krw::text" in sql
     assert "annual_contribution_krw = (capped.target_monthly_krw * 12)::text" in sql
+
+
+def test_updated_at_tables_have_moddatetime_triggers_and_holding_constraints() -> None:
+    sql = SCHEMA_ADDITIVE_MIGRATION.read_text(encoding="utf-8").lower()
+
+    updated_at_tables = (
+        "chat_sessions",
+        "data_sources",
+        "demo_investor_profiles",
+        "demo_public_portfolio_metrics",
+        "demo_user_financial_context",
+        "etf_product_descriptions",
+        "etf_theme_content_reviews",
+        "financial_institutions",
+        "financial_products",
+        "knowledge_documents",
+        "mock_scenarios",
+        "pension_accounts",
+        "user_profiles",
+    )
+    assert "create extension if not exists moddatetime with schema extensions" in sql
+    for table in updated_at_tables:
+        assert f"create trigger {table}_updated_at_trigger" in sql
+        assert f"before update on public.{table}" in sql
+    assert sql.count("execute function extensions.moddatetime(updated_at)") == len(
+        updated_at_tables
+    )
+    assert "account_holding_snapshots_snapshot_product_unique_idx" in sql
+    assert "where product_id is not null" in sql
+    assert "account_holding_snapshots_snapshot_raw_name_unique_idx" in sql
+    assert "where product_id is null" in sql
+    assert "account_holding_snapshots_etf_isu_code_format_check" in sql
+    assert "mock_holdings_etf_isu_code_format_check" in sql
+    assert "^[0-9a-z]{6}$" in sql
+    assert "drop table" not in sql

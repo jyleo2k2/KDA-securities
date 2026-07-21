@@ -686,6 +686,17 @@ uv run ruff check .
 - 남은 위험: 원격에 canonical URL과 legacy fragment URL이 동시에 존재하면 자동 병합하지 않고 적재를 실패시킨다. 중복이 확인될 경우 참조 건수를 먼저 확인한 뒤 별도 정리한다.
 - 다음 작업: PR 리뷰 후 승인된 적재 명령 실행, 변경 청크 BGE-M3 재임베딩, 원격 검색 품질 재측정.
 
+## 스키마 정비 A — additive 제약·자동 시각 갱신 (LOCAL-VERIFIED)
+
+### 2026-07-21 KST
+
+- 작업 브랜치: `db/schema-additive` (기준 `origin/main` `c66d0ee`). 새 migration `20260721120000_add_updated_at_triggers_and_holding_constraints.sql`를 추가했으며 원격 적용은 하지 않았다.
+- 원격 사전 카탈로그 조회: `updated_at` 보유 public 테이블은 13개(`chat_sessions`, `data_sources`, `demo_investor_profiles`, `demo_public_portfolio_metrics`, `demo_user_financial_context`, `etf_product_descriptions`, `etf_theme_content_reviews`, `financial_institutions`, `financial_products`, `knowledge_documents`, `mock_scenarios`, `pension_accounts`, `user_profiles`)이고 기존 BEFORE UPDATE 트리거는 0개였다.
+- 변경: `extensions` 스키마의 `moddatetime` extension과 위 13개 테이블의 BEFORE UPDATE 트리거를 명시적으로 추가했다. 앱 코드의 `updated_at = now()`는 유지했다.
+- A-2 사전 위반 조회: `account_holding_snapshots`의 product 중복 그룹 0건·raw 이름 중복 그룹 0건, `account_holding_snapshots.etf_isu_code` 형식 위반 0건, `mock_holdings.etf_isu_code` 형식 위반 0건. 따라서 partial unique index 2개와 두 ETF 코드 형식 CHECK를 추가했다.
+- 검증: `uv run pytest tests/test_schema_contract.py tests/test_embedded_sql.py` 31 passed. 로컬 Supabase reset은 Windows Docker daemon 부재로 실행하지 못했으며, `supabase/seed.sql`의 공용 모델 replay 계약은 schema contract test로 정적 확인했다. TODO: 원격 적용 승인 후 실제 migration 적용·trigger 카탈로그 재조회·seed reset을 재검증한다.
+- 원격 적용 여부: 없음. 상태는 `LOCAL-VERIFIED`이며 이재용 승인 전 원격 migration을 적용하지 않는다.
+
 ## 15. 작업 로그 템플릿
 
 ```markdown
