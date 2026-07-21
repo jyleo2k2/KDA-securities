@@ -39,9 +39,10 @@ function formatKrw(value: string): string {
 
 interface HomePageProps {
   onAnalyzeHero: (scenarioCode: string) => void;
+  onSignOut: () => void;
 }
 
-export function HomePage({ onAnalyzeHero }: HomePageProps) {
+export function HomePage({ onAnalyzeHero, onSignOut }: HomePageProps) {
   const [heroes, setHeroes] = useState<DemoHeroPortfolio[]>([]);
   const [selectedCode, setSelectedCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +71,11 @@ export function HomePage({ onAnalyzeHero }: HomePageProps) {
   return (
     <section className="home-dashboard">
       <header className="home-hero-heading">
-        <span>연금계좌 운용 가이드</span>
+        <div className="home-heading-topline">
+          <span>연금계좌 운용 가이드</span>
+          {/* 임시 위치 — 추후 프로필/헤더로 이동 */}
+          <button className="home-temp-sign-out" onClick={onSignOut} type="button">로그아웃</button>
+        </div>
         <h1>누구의 포트폴리오를<br />살펴볼까요?</h1>
         <p>발표용 가상 고객 6명의 실제 ETF 연결 보유내역을 확인할 수 있습니다.</p>
       </header>

@@ -1,6 +1,7 @@
 import { useEffect, useState, type JSX } from "react";
 
 import { TabBar, type TabKey } from "./components/TabBar";
+import { useSupabaseAuth } from "./auth/useSupabaseAuth";
 import { BenchmarkPage } from "./pages/BenchmarkPage";
 import { GuidePage } from "./pages/GuidePage";
 import { HomePage } from "./pages/HomePage";
@@ -25,7 +26,9 @@ function routeFromHash(): AppRoute {
 }
 
 export default function App(): JSX.Element {
+  const auth = useSupabaseAuth();
   const [activeRoute, setActiveRoute] = useState<AppRoute>(routeFromHash);
+  const [loginSuccessPending, setLoginSuccessPending] = useState(false);
   const [surveyProfile, setSurveyProfile] = useState<CompletedSurveyProfile | null>(
     () => {
       const stored = window.localStorage.getItem("pension-copilot:survey-profile");
@@ -47,14 +50,16 @@ export default function App(): JSX.Element {
   const [selectedScenarioCode, setSelectedScenarioCode] = useState(
     () => window.localStorage.getItem("pension-copilot:selected-scenario") ?? "",
   );
-  const activeTab = activeRoute === "login" ? "home" : activeRoute;
-  const CardPage = CARD_PAGES[activeTab];
 
   useEffect(() => {
     const syncRouteFromHash = () => setActiveRoute(routeFromHash());
     window.addEventListener("hashchange", syncRouteFromHash);
     return () => window.removeEventListener("hashchange", syncRouteFromHash);
   }, []);
+
+  useEffect(() => {
+    if (auth.session === null) setLoginSuccessPending(false);
+  }, [auth.session]);
 
   function changeTab(tab: TabKey): void {
     setActiveRoute(tab);
@@ -80,11 +85,34 @@ export default function App(): JSX.Element {
     changeTab("guide");
   }
 
+  function completeLogin(): void {
+    setLoginSuccessPending(false);
+    changeTab("home");
+  }
+
+  if (auth.loading) {
+    return <main className="app-auth-loading" aria-label="로그인 상태 확인 중" />;
+  }
+
+  if (auth.configured && (!auth.session || loginSuccessPending)) {
+    return (
+      <LoginFlowPage
+        onAuthenticated={() => setLoginSuccessPending(true)}
+        onStart={completeLogin}
+      />
+    );
+  }
+
+  // 로컬 데모는 Supabase 환경변수가 없는 경우에만 인증 없이 열람한다.
+  const resolvedRoute = !auth.configured && activeRoute === "login"
+    ? "home"
+    : activeRoute;
+  const activeTab = resolvedRoute === "login" ? "home" : resolvedRoute;
+  const CardPage = CARD_PAGES[activeTab];
+
   return (
     <>
-      {activeRoute === "login" ? (
-        <LoginFlowPage onStart={() => changeTab("home")} />
-      ) : activeTab === "guide" ? (
+      {activeTab === "guide" ? (
         // 챗 화면은 자체 레이아웃(app-shell)을 쓰므로 풀블리드로 렌더한다.
         <div className="guide-tab">
           <GuidePage
@@ -104,14 +132,17 @@ export default function App(): JSX.Element {
         >
           <main style={{ padding: 16 }}>
             {activeTab === "home" ? (
-              <HomePage onAnalyzeHero={analyzeHero} />
+              <HomePage
+                onAnalyzeHero={analyzeHero}
+                onSignOut={() => void auth.signOut()}
+              />
             ) : activeTab === "profile" ? (
               <ProfilePage profile={surveyProfile} onComplete={completeSurvey} />
             ) : CardPage ? <CardPage /> : null}
           </main>
         </div>
       )}
-      {activeRoute !== "login" && <TabBar activeTab={activeTab} onChange={changeTab} />}
+      <TabBar activeTab={activeTab} onChange={changeTab} />
     </>
   );
 }
