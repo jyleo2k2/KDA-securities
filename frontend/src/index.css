@@ -106,11 +106,11 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .auth-user button { padding: 4px 0; border: 0; background: transparent; color: #b9cbc2; font-size: 8px; cursor: pointer; }
 .history-label { margin: 14px 0 7px; }
 .history-list { max-height: 145px; display: grid; gap: 4px; overflow-y: auto; }
-.history-item { display: grid; grid-template-columns: minmax(0, 1fr) 30px; align-items: center; border-radius: 8px; }
+.history-item { display: grid; grid-template-columns: minmax(0, 1fr) 38px; align-items: center; border-radius: 8px; }
 .history-item:hover, .history-item.active { background: rgba(255,255,255,.08); color: white; }
 .history-list button { border: 0; background: transparent; color: #b9cbc2; cursor: pointer; }
 .history-open { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 7px 8px; text-align: left; }
-.history-delete { width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border-radius: 7px; }
+.history-delete { width: 38px; height: 30px; display: grid; place-items: center; padding: 0; border-radius: 7px; font-size: 9px; }
 .history-delete:hover { color: #ffc0a6; background: rgba(255,255,255,.08); }
 .history-list button:disabled { cursor: wait; opacity: .6; }.history-list strong { overflow: hidden; font-size: 9px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }.history-list small { color: #78968a; font-size: 8px; }
 .sidebar-section { margin-top: 28px; min-height: 0; overflow-y: auto; }
@@ -328,6 +328,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .guide-tab .design-new-chat { display: inline-flex; align-items: center; gap: 6px; height: 42px; padding: 0 16px; border: 1.5px solid #dce0d8; border-radius: 22px; background: #fff; color: #111; font-size: 14px; font-weight: 700; cursor: pointer; }
 .guide-tab .design-new-chat span { color: #18a860; font-size: 22px; line-height: 1; }
 .guide-tab .design-topbar-actions { display: flex; align-items: center; gap: 9px; margin-left: auto; color: #18a860; }
+.guide-tab .design-logout { border: 0; background: transparent; color: #68756e; font-size: 11px; font-weight: 700; cursor: pointer; }
 .guide-tab .design-auth-state { color: #68756e; font-size: 10px; font-weight: 800; white-space: nowrap; }
 .guide-tab .design-auth-state.authenticated { color: #087b49; }
 .guide-tab .design-avatar, .guide-tab .design-brand-mark { display: grid; place-items: center; background: #18a860; color: #ffd860; font-weight: 900; }

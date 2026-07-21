@@ -4,18 +4,15 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useSupabaseAuth } from "../auth/useSupabaseAuth";
+import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
 import { LoginFlowPage } from "./LoginFlowPage";
-
-vi.mock("../auth/useSupabaseAuth", () => ({
-  useSupabaseAuth: vi.fn(),
-}));
 
 const onStart = vi.fn();
 const onAuthenticated = vi.fn();
+let auth: SupabaseAuthState;
 
 function renderLogin(): void {
-  render(<LoginFlowPage onAuthenticated={onAuthenticated} onStart={onStart} />);
+  render(<LoginFlowPage auth={auth} onAuthenticated={onAuthenticated} onStart={onStart} />);
 }
 
 function openForm(): void {
@@ -32,14 +29,14 @@ describe("LoginFlowPage", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useSupabaseAuth).mockReturnValue({
+    auth = {
       session: null,
       loading: false,
       configured: true,
       error: null,
       signIn: vi.fn().mockResolvedValue(undefined),
       signOut: vi.fn(),
-    });
+    };
   });
 
   it("shows success only after Supabase sign-in resolves", async () => {
@@ -49,21 +46,21 @@ describe("LoginFlowPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "로그인하기" }));
 
     await waitFor(() => {
-      expect(vi.mocked(useSupabaseAuth).mock.results[0]?.value.signIn).toHaveBeenCalledWith("junho46", "password");
+      expect(auth.signIn).toHaveBeenCalledWith("junho46", "password");
     });
     expect(onAuthenticated).toHaveBeenCalledOnce();
     expect(screen.getByText("로그인 성공!")).toBeInTheDocument();
   });
 
   it("keeps the form visible and shows the auth error when sign-in fails", async () => {
-    vi.mocked(useSupabaseAuth).mockReturnValue({
+    auth = {
       session: null,
       loading: false,
       configured: true,
       error: "이메일 또는 비밀번호를 확인해 주세요.",
       signIn: vi.fn().mockRejectedValue(new Error("invalid credentials")),
       signOut: vi.fn(),
-    });
+    };
     renderLogin();
     openForm();
     fillLoginForm();
@@ -76,7 +73,7 @@ describe("LoginFlowPage", () => {
 
   it("disables the submit button while sign-in is pending", async () => {
     let resolveSignIn: (() => void) | undefined;
-    vi.mocked(useSupabaseAuth).mockReturnValue({
+    auth = {
       session: null,
       loading: false,
       configured: true,
@@ -85,7 +82,7 @@ describe("LoginFlowPage", () => {
         resolveSignIn = resolve;
       })),
       signOut: vi.fn(),
-    });
+    };
     renderLogin();
     openForm();
     fillLoginForm();
