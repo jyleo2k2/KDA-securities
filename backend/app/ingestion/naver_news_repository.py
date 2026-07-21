@@ -15,6 +15,8 @@ from .naver_news import (
     NaverNewsResponse,
 )
 
+MAX_ACTIVE_NEWS = 200
+
 
 class NaverNewsRepositoryError(RuntimeError):
     """A repository contract failure safe to expose in ingestion output."""
@@ -460,8 +462,9 @@ class NaverNewsRepository:
                 from public.news_items
                 where selection_policy_version is not null
                 order by published_at desc nulls last, fetched_at desc, id
-                limit 100
-                """
+                limit %s
+                """,
+                (MAX_ACTIVE_NEWS,),
             )
             return [
                 StoredMarketNewsIdentity(
@@ -540,12 +543,14 @@ class NaverNewsRepository:
             if count_row is None:
                 raise NaverNewsRepositoryError("failed to count stored news")
             current_count = int(count_row[0])
-            held_for_full_batch = current_count >= 100 and len(rows) < 20
+            held_for_full_batch = (
+                current_count >= MAX_ACTIVE_NEWS and len(rows) < 20
+            )
             expired_count = 0
-            if current_count >= 100 and len(rows) == 20:
+            if current_count >= MAX_ACTIVE_NEWS and len(rows) == 20:
                 rows_to_insert = rows
-            elif current_count < 100:
-                rows_to_insert = rows[: 100 - current_count]
+            elif current_count < MAX_ACTIVE_NEWS:
+                rows_to_insert = rows[: MAX_ACTIVE_NEWS - current_count]
             else:
                 rows_to_insert = []
 
@@ -586,7 +591,7 @@ class NaverNewsRepository:
             else:
                 inserted_count = 0
 
-            if current_count >= 100 and inserted_count:
+            if current_count >= MAX_ACTIVE_NEWS and inserted_count:
                 cursor.execute(
                     """
                     with oldest as (

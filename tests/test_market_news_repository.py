@@ -5,6 +5,7 @@ from backend.app.ingestion import naver_news_repository as repository_module
 from backend.app.ingestion.embeddings import EMBEDDING_MODEL
 from backend.app.ingestion.market_news_policy import SELECTION_POLICY_VERSION
 from backend.app.ingestion.naver_news_repository import (
+    MAX_ACTIVE_NEWS,
     NaverNewsRepository,
     ReadyMarketNews,
 )
@@ -132,11 +133,11 @@ def _run_rotation(
 
 
 def test_full_store_waits_without_deleting_for_partial_batch(monkeypatch) -> None:
-    result, cursor, connection = _run_rotation(monkeypatch, 100, 19)
+    result, cursor, connection = _run_rotation(monkeypatch, MAX_ACTIVE_NEWS, 19)
 
     assert result.inserted_count == 0
     assert result.expired_count == 0
-    assert result.final_count == 100
+    assert result.final_count == MAX_ACTIVE_NEWS
     assert result.held_for_full_batch is True
     assert cursor.inserted_rows == []
     assert not any(
@@ -146,11 +147,11 @@ def test_full_store_waits_without_deleting_for_partial_batch(monkeypatch) -> Non
 
 
 def test_full_store_atomically_expires_oldest_twenty(monkeypatch) -> None:
-    result, cursor, _ = _run_rotation(monkeypatch, 100, 20)
+    result, cursor, _ = _run_rotation(monkeypatch, MAX_ACTIVE_NEWS, 20)
 
     assert result.inserted_count == 20
     assert result.expired_count == 20
-    assert result.final_count == 100
+    assert result.final_count == MAX_ACTIVE_NEWS
     assert result.held_for_full_batch is False
     assert len(cursor.inserted_rows) == 20
     assert any("set is_active = false" in statement for statement in cursor.statements)
@@ -165,14 +166,14 @@ def test_full_store_expires_only_rows_actually_inserted_after_conflicts(
 ) -> None:
     result, cursor, _ = _run_rotation(
         monkeypatch,
-        100,
+        MAX_ACTIVE_NEWS,
         20,
         actual_inserted_count=7,
     )
 
     assert result.inserted_count == 7
     assert result.expired_count == 7
-    assert result.final_count == 100
+    assert result.final_count == MAX_ACTIVE_NEWS
     insert_index = next(
         index
         for index, statement in enumerate(cursor.statements)
@@ -190,39 +191,39 @@ def test_full_store_expires_only_rows_actually_inserted_after_conflicts(
 def test_full_store_does_not_expire_when_every_insert_conflicts(monkeypatch) -> None:
     result, cursor, _ = _run_rotation(
         monkeypatch,
-        100,
+        MAX_ACTIVE_NEWS,
         20,
         actual_inserted_count=0,
     )
 
     assert result.inserted_count == 0
     assert result.expired_count == 0
-    assert result.final_count == 100
+    assert result.final_count == MAX_ACTIVE_NEWS
     assert not any(
         statement.startswith("with oldest as") for statement in cursor.statements
     )
 
 
 def test_store_below_cap_inserts_only_available_capacity(monkeypatch) -> None:
-    result, cursor, _ = _run_rotation(monkeypatch, 90, 20)
+    result, cursor, _ = _run_rotation(monkeypatch, MAX_ACTIVE_NEWS - 10, 20)
 
     assert result.inserted_count == 10
     assert result.expired_count == 0
-    assert result.final_count == 100
+    assert result.final_count == MAX_ACTIVE_NEWS
     assert len(cursor.inserted_rows) == 10
 
 
 def test_store_below_cap_keeps_existing_rows_when_inserts_conflict(monkeypatch) -> None:
     result, cursor, _ = _run_rotation(
         monkeypatch,
-        90,
+        MAX_ACTIVE_NEWS - 10,
         20,
         actual_inserted_count=4,
     )
 
     assert result.inserted_count == 4
     assert result.expired_count == 0
-    assert result.final_count == 94
+    assert result.final_count == MAX_ACTIVE_NEWS - 6
     assert not any(
         statement.startswith("with oldest as") for statement in cursor.statements
     )
