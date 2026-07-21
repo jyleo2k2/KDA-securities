@@ -415,6 +415,19 @@ def test_future_phrases_remain_blocked(message: str) -> None:
 
 @pytest.mark.parametrize(
     "message",
+    ("중국 주식에 투자해도 돼?", "삼성전자 주식을 직접 편입해도 돼?"),
+)
+def test_foreign_market_and_individual_stock_requests_are_distinguished(
+    message: str,
+) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent == ChatIntent.OUT_OF_SCOPE
+    assert plan.blocked_reason == BlockedReason.FOREIGN_MARKET_OR_INDIVIDUAL_STOCK
+
+
+@pytest.mark.parametrize(
+    "message",
     (
         "IRP 연금 운용 전략을 알려줘",
         "연금 포트폴리오를 구성해줘",

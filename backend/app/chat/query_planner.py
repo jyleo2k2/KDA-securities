@@ -16,6 +16,7 @@ class BlockedReason(StrEnum):
     SENSITIVE_INFORMATION = "sensitive_information"
     FUTURE_PREDICTION = "future_prediction"
     ORDER_REQUEST = "order_request"
+    FOREIGN_MARKET_OR_INDIVIDUAL_STOCK = "foreign_market_or_individual_stock"
     PRODUCT_LEVEL_UNAVAILABLE = "product_level_unavailable"
     ACCOUNT_SELECTION_REQUIRED = "account_selection_required"
     UNSUPPORTED = "unsupported"
@@ -204,6 +205,14 @@ _UNSUPPORTED_MARKET_NEWS = re.compile(
 _PENSION_NEWS = re.compile(r"연금저축|퇴직연금|(?<![A-Za-z])IRP(?![A-Za-z])|DC형", re.I)
 _COMPANY_NEWS = re.compile(
     r"삼성전자|SK\s*하이닉스|현대차|기아|LG에너지솔루션|NAVER|카카오",
+    re.I,
+)
+_FOREIGN_MARKET_OR_INDIVIDUAL_STOCK = re.compile(
+    r"(?:중국|일본|유럽|홍콩|대만)\s*(?:증시|시장|주식|투자|편입)"
+    r"|(?:개별\s*주식|직접\s*주식).{0,20}(?:담|편입|투자|보유)"
+    r"|(?:담|편입|투자|보유).{0,20}(?:개별\s*주식|직접\s*주식)"
+    r"|(?:삼성전자|SK\s*하이닉스|현대차|기아|LG에너지솔루션|NAVER|카카오)"
+    r".{0,20}(?:담|편입|투자|보유)",
     re.I,
 )
 _MACRO_EVIDENCE_TERMS = re.compile(
@@ -409,6 +418,11 @@ def plan_question(
         (
             _FUTURE_PREDICTION.search(normalized) is not None,
             BlockedReason.FUTURE_PREDICTION,
+        ),
+        (
+            _FOREIGN_MARKET_OR_INDIVIDUAL_STOCK.search(normalized) is not None
+            and _NEWS_TERMS.search(normalized) is None,
+            BlockedReason.FOREIGN_MARKET_OR_INDIVIDUAL_STOCK,
         ),
         (
             _PRODUCT_LEVEL.search(normalized) is not None and theme is None,
