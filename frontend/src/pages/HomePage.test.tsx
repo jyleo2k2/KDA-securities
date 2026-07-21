@@ -98,7 +98,7 @@ describe("HomePage", () => {
   });
 
   it("shows all six hero customers and the selected customer's ETF risk view", async () => {
-    render(<HomePage onAnalyzeHero={vi.fn()} />);
+    render(<HomePage onAnalyzeHero={vi.fn()} onSignOut={vi.fn()} />);
 
     expect((await screen.findAllByText("박준호(가상)")).length).toBeGreaterThan(0);
     expect(screen.getByText("윤정희(가상)")).toBeInTheDocument();
@@ -113,12 +113,21 @@ describe("HomePage", () => {
 
   it("sends the selected hero scenario to the guide", async () => {
     const onAnalyzeHero = vi.fn();
-    render(<HomePage onAnalyzeHero={onAnalyzeHero} />);
+    render(<HomePage onAnalyzeHero={onAnalyzeHero} onSignOut={vi.fn()} />);
 
     await screen.findAllByText("박준호(가상)");
     fireEvent.click(screen.getByRole("button", { name: /정민재/ }));
     fireEvent.click(screen.getByRole("button", { name: "이 고객 분석하기" }));
 
     expect(onAnalyzeHero).toHaveBeenCalledWith("overlap_risk_concentration");
+  });
+
+  it("calls the temporary sign-out control", () => {
+    const onSignOut = vi.fn();
+    render(<HomePage onAnalyzeHero={vi.fn()} onSignOut={onSignOut} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "로그아웃" }));
+
+    expect(onSignOut).toHaveBeenCalledOnce();
   });
 });

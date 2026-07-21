@@ -3,12 +3,14 @@ import { useState, type FormEvent, type JSX } from "react";
 import piggyForm from "../assets/login/piggy-form.png";
 import piggyIntro from "../assets/login/piggy-intro.png";
 import piggySuccess from "../assets/login/piggy-success.png";
+import { useSupabaseAuth } from "../auth/useSupabaseAuth";
 import "./LoginFlowPage.css";
 
 type LoginStep = "intro" | "form" | "success";
 
 interface LoginFlowPageProps {
   onStart: () => void;
+  onAuthenticated: () => void;
 }
 
 function StatusBar(): JSX.Element {
@@ -20,14 +22,36 @@ function StatusBar(): JSX.Element {
   );
 }
 
-export function LoginFlowPage({ onStart }: LoginFlowPageProps): JSX.Element {
+export function LoginFlowPage({
+  onStart,
+  onAuthenticated,
+}: LoginFlowPageProps): JSX.Element {
+  const auth = useSupabaseAuth();
   const [step, setStep] = useState<LoginStep>("intro");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    setStep("success");
+    if (!loginId.trim() || !password || submitting) return;
+    setSubmitting(true);
+    setNotice(null);
+    try {
+      await auth.signIn(loginId, password);
+      setPassword("");
+      onAuthenticated();
+      setStep("success");
+    } catch {
+      // The shared auth hook exposes a user-safe error message for this form.
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function showSignupNotice(): void {
+    setNotice("회원가입은 준비 중입니다.");
   }
 
   return (
@@ -50,7 +74,8 @@ export function LoginFlowPage({ onStart }: LoginFlowPageProps): JSX.Element {
             </div>
             <div className="login-intro-actions">
               <button type="button" className="login-primary" onClick={() => setStep("form")}>로그인</button>
-              <button type="button" className="login-secondary">회원가입</button>
+              <button type="button" className="login-secondary" onClick={showSignupNotice}>회원가입</button>
+              {notice && <p className="login-inline-notice" role="status">{notice}</p>}
               <p>서비스 시작은 이용약관 및 개인정보 처리방침 동의로 간주됩니다.</p>
             </div>
           </div>
@@ -63,7 +88,7 @@ export function LoginFlowPage({ onStart }: LoginFlowPageProps): JSX.Element {
             <div className="login-form-brand"><img src={piggyForm} alt="저금통" /></div>
             <h2>안녕하세요.<br /><em>연금</em> 도우미입니다.</h2>
             <p>맞춤 서비스를 이용하기 위해 로그인해 주세요.</p>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={(event) => void handleSubmit(event)}>
               <label>
                 <span>아이디</span>
                 <input value={loginId} onChange={(event) => setLoginId(event.target.value)} placeholder="아이디를 입력하세요" autoComplete="username" />
@@ -72,8 +97,10 @@ export function LoginFlowPage({ onStart }: LoginFlowPageProps): JSX.Element {
                 <span>비밀번호</span>
                 <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호를 입력하세요" autoComplete="current-password" />
               </label>
-              <div className="login-links"><button type="button">아이디 찾기</button><i /> <button type="button">비밀번호 찾기</button><i /> <button type="button">회원가입</button></div>
-              <div className="login-submit-wrap"><button type="submit" className="login-primary">로그인하기</button></div>
+              {auth.error && <p className="login-form-error" role="alert">{auth.error}</p>}
+              {notice && <p className="login-inline-notice" role="status">{notice}</p>}
+              <div className="login-links"><button type="button">아이디 찾기</button><i /> <button type="button">비밀번호 찾기</button><i /> <button type="button" onClick={showSignupNotice}>회원가입</button></div>
+              <div className="login-submit-wrap"><button type="submit" className="login-primary" disabled={submitting}>{submitting ? "로그인 중..." : "로그인하기"}</button></div>
             </form>
           </div>
         )}
