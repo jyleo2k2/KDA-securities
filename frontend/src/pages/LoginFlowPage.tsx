@@ -1,17 +1,22 @@
-import { useState, type FormEvent, type JSX } from "react";
+import { useEffect, useState, type FormEvent, type JSX } from "react";
 
+import bangIcon from "../assets/login/bang.png";
+import piggyClean from "../assets/login/piggy-clean.png";
 import piggyForm from "../assets/login/piggy-form.png";
 import piggyIntro from "../assets/login/piggy-intro.png";
 import piggySuccess from "../assets/login/piggy-success.png";
+import { InvestorInfoForm } from "./InvestorInfoForm";
+import { InvestorResultScreen } from "./InvestorResultScreen";
 import "./LoginFlowPage.css";
 
-type LoginStep = "intro" | "form" | "consent" | "success";
+type LoginStep = "intro" | "form" | "consent" | "success" | "linking" | "risk-assessment" | "investor-info" | "investor-result";
 
 interface LoginFlowPageProps {
   onStart: () => void;
 }
 
 const REQUIRED_CONSENT_ID = "account-link";
+const LINKING_DURATION_MS = 1500;
 
 function StatusBar(): JSX.Element {
   return (
@@ -38,6 +43,13 @@ export function LoginFlowPage({ onStart }: LoginFlowPageProps): JSX.Element {
   }
 
   const requiredConsentsMet = Boolean(consents[REQUIRED_CONSENT_ID]);
+
+  // 연금계좌 연동 중 화면을 잠시 보여준 뒤 성향진단 화면으로 자동 전환한다.
+  useEffect(() => {
+    if (step !== "linking") return;
+    const timer = window.setTimeout(() => setStep("risk-assessment"), LINKING_DURATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [step]);
 
   return (
     <main className="login-flow-stage">
@@ -137,12 +149,56 @@ export function LoginFlowPage({ onStart }: LoginFlowPageProps): JSX.Element {
                 type="button"
                 className="login-primary"
                 disabled={!requiredConsentsMet}
-                onClick={onStart}
+                onClick={() => setStep("linking")}
               >
                 <span>연동</span> 내 연금계좌 찾기
               </button>
             </div>
           </div>
+        )}
+
+        {step === "linking" && (
+          <div className="login-linking-page">
+            <div className="login-linking-copy">
+              <h1>연금 계좌에 <em>연동</em>하고 있어요</h1>
+              <p>조금만 기다려주세요</p>
+            </div>
+            <div className="login-linking-visual">
+              <img src={piggyClean} alt="저금통" />
+            </div>
+            <div className="login-linking-status">
+              <span className="login-linking-spinner" aria-hidden="true" />
+              <span>안전하게 연결하는 중…</span>
+            </div>
+          </div>
+        )}
+
+        {step === "risk-assessment" && (
+          <div className="login-risk-page">
+            <div className="login-risk-copy">
+              <h1><em>투자자 정보</em>가<br />필요해요!</h1>
+              <p>설문지에 응답하여 성향을 진단해보세요!</p>
+            </div>
+            <div className="login-risk-visual">
+              <div className="login-risk-piggy-wrap">
+                <img className="login-risk-bang" src={bangIcon} alt="!" />
+                <img className="login-risk-piggy" src={piggyClean} alt="저금통" />
+              </div>
+            </div>
+            <div className="login-risk-actions">
+              <button type="button" className="login-primary" onClick={() => setStep("investor-info")}>투자 성향 진단받기</button>
+              <button type="button" className="login-risk-skip" onClick={() => setStep("consent")}>나중에 할게요</button>
+              <p>진단 결과는 <a href="#">투자자 정보</a> 등록에만 사용돼요</p>
+            </div>
+          </div>
+        )}
+
+        {step === "investor-info" && (
+          <InvestorInfoForm onBack={() => setStep("risk-assessment")} onSubmit={() => setStep("investor-result")} />
+        )}
+
+        {step === "investor-result" && (
+          <InvestorResultScreen onBack={() => setStep("investor-info")} onStart={onStart} />
         )}
 
         {step === "success" && (

@@ -5,6 +5,7 @@ import { BenchmarkPage } from "./pages/BenchmarkPage";
 import { GuidePage } from "./pages/GuidePage";
 import { HomePage } from "./pages/HomePage";
 import { LoginFlowPage } from "./pages/LoginFlowPage";
+import { MainHomeScreen } from "./pages/MainHomeScreen";
 import { ProfilePage } from "./pages/ProfilePage";
 import type { CompletedSurveyProfile } from "./api/types";
 
@@ -16,11 +17,11 @@ const CARD_PAGES: Partial<Record<TabKey, () => JSX.Element>> = {
 
 const TAB_KEYS: readonly TabKey[] = ["home", "guide", "benchmark", "profile"];
 const SURVEY_PROFILE_VERSION = "completed-survey-v1";
-type AppRoute = TabKey | "login";
+type AppRoute = TabKey | "login" | "main-home";
 
 function routeFromHash(): AppRoute {
   const candidate = window.location.hash.slice(1) as AppRoute;
-  if (candidate === "login") return "login";
+  if (candidate === "login" || candidate === "main-home") return candidate;
   return TAB_KEYS.includes(candidate as TabKey) ? candidate : "login";
 }
 
@@ -47,7 +48,10 @@ export default function App(): JSX.Element {
   const [selectedScenarioCode, setSelectedScenarioCode] = useState(
     () => window.localStorage.getItem("pension-copilot:selected-scenario") ?? "",
   );
-  const activeTab = activeRoute === "login" ? "home" : activeRoute;
+  const activeTab: TabKey =
+    activeRoute === "login" || activeRoute === "main-home" || !TAB_KEYS.includes(activeRoute as TabKey)
+      ? "home"
+      : (activeRoute as TabKey);
   const CardPage = CARD_PAGES[activeTab];
 
   useEffect(() => {
@@ -59,6 +63,11 @@ export default function App(): JSX.Element {
   function changeTab(tab: TabKey): void {
     setActiveRoute(tab);
     window.history.replaceState(null, "", `#${tab}`);
+  }
+
+  function goToMainHome(): void {
+    setActiveRoute("main-home");
+    window.history.replaceState(null, "", "#main-home");
   }
 
   function completeSurvey(profile: CompletedSurveyProfile): void {
@@ -83,7 +92,9 @@ export default function App(): JSX.Element {
   return (
     <>
       {activeRoute === "login" ? (
-        <LoginFlowPage onStart={() => changeTab("home")} />
+        <LoginFlowPage onStart={goToMainHome} />
+      ) : activeRoute === "main-home" ? (
+        <MainHomeScreen onOpenChat={() => changeTab("guide")} />
       ) : activeTab === "guide" ? (
         // 챗 화면은 자체 레이아웃(app-shell)을 쓰므로 풀블리드로 렌더한다.
         <div className="guide-tab">
@@ -111,7 +122,9 @@ export default function App(): JSX.Element {
           </main>
         </div>
       )}
-      {activeRoute !== "login" && <TabBar activeTab={activeTab} onChange={changeTab} />}
+      {activeRoute !== "login" && activeRoute !== "main-home" && (
+        <TabBar activeTab={activeTab} onChange={changeTab} />
+      )}
     </>
   );
 }
