@@ -212,6 +212,13 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .answer-table-wrap th, .answer-table-wrap td { padding: 8px 9px; border-bottom: 1px solid #e7ece5; text-align: left; vertical-align: top; }
 .answer-table-wrap th { background: #eef4e7; color: #355342; font-weight: 700; }
 .answer-table-wrap tr:last-child td { border-bottom: 0; }
+.holdings-answer-content { min-width: 0; }
+.holdings-answer-content .answer-table-wrap { overflow-x: hidden; }
+.holdings-answer-content .answer-table-wrap table { min-width: 0; table-layout: fixed; }
+.holdings-answer-content .answer-table-wrap th:first-child,
+.holdings-answer-content .answer-table-wrap td:first-child { width: 68%; overflow-wrap: anywhere; }
+.holdings-answer-content .answer-table-wrap th:last-child,
+.holdings-answer-content .answer-table-wrap td:last-child { width: 32%; text-align: right; white-space: nowrap; }
 .answer-formula { padding: 11px; border-radius: 9px; background: #edf1ed; }
 .answer-formula pre { margin: 0; overflow-x: auto; color: #385044; font: 9px/1.65 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre; }
 .section-limitation { border-color: #d98f70; background: #fcf5f1; }

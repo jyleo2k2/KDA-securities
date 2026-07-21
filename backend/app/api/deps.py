@@ -10,6 +10,7 @@ from psycopg_pool import ConnectionPool
 
 from ..benchmark_repository import BenchmarkRepository
 from ..chat.disclosures import DisclosureReadRepository as ChatDisclosureRepository
+from ..chat.etf_product_features import ClaudeEtfProductFeatureGenerator
 from ..chat.knowledge import (
     FallbackKnowledgeRepository,
     LocalMarkdownKnowledgeRepository,
@@ -25,7 +26,11 @@ from ..chat.user_context import DemoUserContextRepository
 from ..database import get_database_pool
 from ..engine.audit import EngineAuditRepository
 from ..engine.models import AccountType
+from ..etf_component_repository import EtfComponentSnapshotRepository
 from ..etf_market_repository import EtfMarketRepository
+from ..etf_product_description_repository import (
+    get_default_etf_product_description_repository,
+)
 from ..etf_theme_repository import get_default_etf_theme_repository
 from ..etf_theme_verification_repository import (
     PostgresEtfThemeVerificationRepository,
@@ -238,6 +243,8 @@ def _chat_service(
     macro_evidence_report_path: str,
     naver_client_id: str = "",
     naver_client_secret: str = "",
+    anthropic_api_key: str = "",
+    anthropic_model: str = "",
 ) -> ChatService:
     pool: ConnectionPool | None = (
         get_database_pool(database_url) if database_url else None
@@ -282,6 +289,20 @@ def _chat_service(
             database_url=database_url,
         ),
         theme_repository=get_default_etf_theme_repository(),
+        product_descriptions=get_default_etf_product_description_repository(),
+        product_feature_generator=(
+            ClaudeEtfProductFeatureGenerator(
+                api_key=anthropic_api_key,
+                model=anthropic_model,
+            )
+            if anthropic_api_key and anthropic_model
+            else None
+        ),
+        component_snapshots=(
+            EtfComponentSnapshotRepository(database_url, pool=pool)
+            if database_url
+            else None
+        ),
         theme_verification=(
             PostgresEtfThemeVerificationRepository(database_url, pool=pool)
             if database_url
@@ -310,11 +331,19 @@ def get_chat_service(
         if settings.naver_api_hub_client_secret is not None
         else ""
     )
+    anthropic_api_key = (
+        settings.anthropic_api_key.get_secret_value().strip()
+        if settings.enable_etf_product_feature_generation
+        and settings.anthropic_api_key is not None
+        else ""
+    )
     return _chat_service(
         database_url,
         str(settings.macro_evidence_report_path),
         naver_client_id,
         naver_client_secret,
+        anthropic_api_key,
+        settings.anthropic_model,
     )
 
 

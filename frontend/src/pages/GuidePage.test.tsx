@@ -179,6 +179,75 @@ const REPRESENTATIVE_COMPANY_RESPONSE: ChatResponse = {
   suggested_follow_ups: [],
 };
 
+const THEME_CANDIDATES_RESPONSE: ChatResponse = {
+  ...THEME_RESPONSE,
+  answer: "자동차테마에서 거래가 가장 활발하고 수수료가 저렴한 ETF 3개를 보여드리겠습니다.",
+  data_mode: "theme_candidates",
+  sections: [
+    {
+      kind: "service_explanation",
+      title: "자동차 테마 ETF상품",
+      content: "",
+      evidence_ids: [],
+      blocks: [
+        {
+          kind: "callout",
+          title: "1. KODEX 자동차",
+          text: "연간 수수료율(운용보수): 0.45%\n\n하루 평균 거래대금: 229억원\n\n상품 특징: KRX 자동차지수를 추종하는 국내 대표 자동차 ETF입니다.",
+          items: [],
+          headers: [],
+          rows: [],
+        },
+      ],
+    },
+  ],
+  numeric_evidence: [
+    {
+      label: "KODEX 자동차 하루 평균 거래대금",
+      value: "22900000000",
+      unit: "원",
+      evidence_id: "candidate-volume",
+      basis: "관측기간 중앙값",
+    },
+  ],
+  suggested_follow_ups: [],
+};
+
+const THEME_HOLDINGS_RESPONSE: ChatResponse = {
+  ...THEME_RESPONSE,
+  answer: "직전에 소개한 반도체 테마 ETF 3개의 구성종목 비중 TOP3입니다.",
+  data_mode: "theme_component_holdings",
+  sections: ["TIGER 반도체TOP10", "KODEX 반도체", "HANARO Fn K-반도체"].map(
+    (name) => ({
+      kind: "fact",
+      title: `${name} 구성종목 TOP3`,
+      content: "",
+      evidence_ids: [`kis:components:${name}`],
+      blocks: [{
+        kind: "table",
+        title: null,
+        text: "",
+        items: [],
+        headers: ["구성종목", "구성비중"],
+        rows: [
+          ["삼성전자", "28.75%"],
+          ["SK하이닉스", "26.66%"],
+          ["SK스퀘어", "22.65%"],
+        ],
+      }],
+    }),
+  ),
+  numeric_evidence: [{
+    label: "TIGER 반도체TOP10 삼성전자 구성 비중",
+    value: "28.75",
+    unit: "%",
+    evidence_id: "kis:components:TIGER 반도체TOP10",
+    basis: "KIS etf_cnfg_issu_rlim 원문 필드",
+  }],
+  sources: [],
+  suggested_follow_ups: [],
+};
+
 const THEME_CONSIDERATIONS_RESPONSE: ChatResponse = {
   ...THEME_RESPONSE,
   answer: "반도체 테마 ETF에 투자할 때의 이점 3개와 위험 3개를 쉽게 정리했습니다.",
@@ -652,6 +721,85 @@ describe("GuidePage chat history deletion", () => {
     expect(companyCard?.querySelectorAll("p")).toHaveLength(2);
     expect(within(companyCard as HTMLElement).queryByText("대표 사례로 보는 이유:"))
       .not.toBeInTheDocument();
+  });
+
+  it("opens ETF product details without rendering the large numeric evidence grid", async () => {
+    vi.mocked(getStoredChatMessages).mockResolvedValue([
+      {
+        message_id: "candidate-question",
+        question_message_id: null,
+        role: "user",
+        content: "자동차테마 ETF상품 3개를 보여줘",
+        response: null,
+        model_name: null,
+        created_at: "2026-07-20T00:00:00Z",
+        evidence: [],
+      },
+      {
+        message_id: "candidate-answer",
+        question_message_id: "candidate-question",
+        role: "assistant",
+        content: THEME_CANDIDATES_RESPONSE.answer,
+        response: THEME_CANDIDATES_RESPONSE,
+        model_name: null,
+        created_at: "2026-07-20T00:00:01Z",
+        evidence: [],
+      },
+    ]);
+    render(<GuidePage surveyProfile={null} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
+    const sectionTitle = await screen.findByText("자동차 테마 ETF상품");
+    const productSection = sectionTitle.closest("details");
+    const productCard = screen.getByText("1. KODEX 자동차").closest(".answer-callout");
+
+    expect(productSection).toHaveAttribute("open");
+    expect(productSection?.closest(".answer-content")?.querySelector(".number-grid"))
+      .not.toBeInTheDocument();
+    expect(productCard?.querySelectorAll("p")).toHaveLength(3);
+    expect(productCard?.querySelector(".answer-callout-copy")).toBeInTheDocument();
+    expect(productSection?.closest(".answer-content")).toHaveStyle("--theme-paragraph-gap: 10pt");
+  });
+
+  it("shows three ETF TOP3 tables without numeric cards or issue codes", async () => {
+    vi.mocked(getStoredChatMessages).mockResolvedValue([
+      {
+        message_id: "holdings-question",
+        question_message_id: null,
+        role: "user",
+        content: "반도체 ETF 구성종목 비중을 보여줘",
+        response: null,
+        model_name: null,
+        created_at: "2026-07-20T00:00:00Z",
+        evidence: [],
+      },
+      {
+        message_id: "holdings-answer",
+        question_message_id: "holdings-question",
+        role: "assistant",
+        content: THEME_HOLDINGS_RESPONSE.answer,
+        response: THEME_HOLDINGS_RESPONSE,
+        model_name: null,
+        created_at: "2026-07-20T00:00:01Z",
+        evidence: [],
+      },
+    ]);
+    render(<GuidePage surveyProfile={null} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
+    const titles = await screen.findAllByText(/구성종목 TOP3$/);
+    const answer = titles[0].closest(".answer-content");
+
+    expect(titles).toHaveLength(3);
+    expect(answer).toHaveClass("holdings-answer-content");
+    expect(answer?.querySelector(".number-grid")).not.toBeInTheDocument();
+    expect(screen.queryByText("종목코드")).not.toBeInTheDocument();
+    titles.forEach((title) => expect(title.closest("details")).toHaveAttribute("open"));
+    within(answer as HTMLElement).getAllByRole("table").forEach((table) => {
+      expect(within(table).getAllByRole("columnheader").map((header) => header.textContent))
+        .toEqual(["구성종목", "구성비중"]);
+      expect(within(table).getAllByRole("row")).toHaveLength(4);
+    });
   });
 
   it("keeps every ETF theme paragraph as a separate uniformly spaced item", async () => {

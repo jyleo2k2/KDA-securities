@@ -3,6 +3,10 @@ import logging
 from ..engine import (
     EducationalPortfolioInput,
 )
+from ..etf_component_repository import EtfComponentSnapshotRepository
+from ..etf_product_description_repository import (
+    EtfProductDescriptionRepository,
+)
 from ..etf_theme_repository import EtfThemeRepository
 from ..etf_theme_verification_repository import (
     EtfThemeVerificationReader,
@@ -11,6 +15,7 @@ from ..macro_evidence import (
     MacroEvidenceRepository,
 )
 from ..retrieval.repository import KnowledgeSearch
+from .etf_product_features import EtfProductFeatureGenerator
 from .handlers._shared import (
     _RISK_PROFILE_RANKS,
     DisclosureSearch,
@@ -87,6 +92,9 @@ class ChatService:
         live_news: LiveNewsSearch | None = None,
         portfolio_universe_loader: PortfolioUniverseLoader | None = None,
         theme_repository: EtfThemeRepository | None = None,
+        product_descriptions: EtfProductDescriptionRepository | None = None,
+        product_feature_generator: EtfProductFeatureGenerator | None = None,
+        component_snapshots: EtfComponentSnapshotRepository | None = None,
         theme_verification: EtfThemeVerificationReader | None = None,
         macro_evidence: MacroEvidenceRepository | None = None,
         router: IntentRouter | None = None,
@@ -98,6 +106,9 @@ class ChatService:
         self._live_news = live_news
         self._portfolio_universe_loader = portfolio_universe_loader
         self._theme_repository = theme_repository
+        self._product_descriptions = product_descriptions
+        self._product_feature_generator = product_feature_generator
+        self._component_snapshots = component_snapshots
         self._theme_verification = theme_verification
         self._macro_evidence = macro_evidence
         self._router = router or IntentRouter()
@@ -298,6 +309,9 @@ class ChatService:
                     resolved_plan,
                     portfolio_universe_loader=self._portfolio_universe_loader,
                     theme_repository=self._theme_repository,
+                    product_descriptions=self._product_descriptions,
+                    product_feature_generator=self._product_feature_generator,
+                    component_snapshots=self._component_snapshots,
                     theme_verification=self._theme_verification,
                 )
             elif resolved_plan.intent == ChatIntent.PENSION_TAX:

@@ -292,6 +292,13 @@ def with_context(
         if previous is not None
         else None
     )
+    etf_theme_context = (
+        response_context.etf_theme
+        if response_context is not None and response_context.etf_theme is not None
+        else previous.etf_theme
+        if previous is not None
+        else None
+    )
     return response.model_copy(
         update={
             "conversation_context": ConversationContext(
@@ -301,6 +308,7 @@ def with_context(
                 survey_profile=survey_profile,
                 selected_risk_profile=selected_risk_profile,
                 news=news_context,
+                etf_theme=etf_theme_context,
             )
         }
     )

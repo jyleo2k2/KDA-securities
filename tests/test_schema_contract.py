@@ -46,6 +46,15 @@ ETF_THEME_VERIFICATION_MIGRATION = next(
     ),
     None,
 )
+ETF_PRODUCT_DESCRIPTION_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob(
+        "*_add_etf_product_descriptions.sql"
+    ),
+    None,
+)
+ETF_COMPONENT_SNAPSHOT_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob("*_add_etf_component_snapshots.sql")
+)
 HERO_ETF_MIGRATION = (
     ROOT
     / "supabase"
@@ -435,6 +444,44 @@ def test_etf_theme_verification_is_hash_bound_and_server_only() -> None:
     assert "knowledge_documents" in sql
     assert "knowledge_chunks" in sql
     assert "knowledge_chunk_id bigint not null" in sql
+    assert "from public, anon, authenticated" in sql
+    assert "to service_role" in sql
+    assert "to authenticated" not in sql
+    assert "drop table" not in sql
+
+
+def test_etf_product_descriptions_are_name_keyed_and_server_only() -> None:
+    assert ETF_PRODUCT_DESCRIPTION_MIGRATION is not None
+    sql = ETF_PRODUCT_DESCRIPTION_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "create table public.etf_product_descriptions" in sql
+    assert "product_name text not null" in sql
+    assert "normalized_product_name text not null" in sql
+    assert "unique (catalog_version, normalized_product_name)" in sql
+    assert "isu_code" not in sql
+    assert "content_sha256" in sql
+    assert "^[0-9a-f]{64}$" in sql
+    assert "source_document_ids text[] not null" in sql
+    assert (
+        "alter table public.etf_product_descriptions enable row level security"
+        in sql
+    )
+    assert "from public, anon, authenticated" in sql
+    assert "to service_role" in sql
+    assert "to authenticated" not in sql
+    assert "drop table" not in sql
+
+
+def test_etf_component_snapshots_are_server_only_and_ranked_top3() -> None:
+    sql = ETF_COMPONENT_SNAPSHOT_MIGRATION.read_text(encoding="utf-8").lower()
+
+    for table in ("etf_component_snapshots", "etf_component_snapshot_items"):
+        assert f"create table public.{table}" in sql
+        assert f"alter table public.{table} enable row level security" in sql
+    assert "rank between 1 and 3" in sql
+    assert "raw_payload jsonb not null" in sql
+    assert "raw_sha256 text not null" in sql
+    assert "etf_component_snapshots_latest_idx" in sql
     assert "from public, anon, authenticated" in sql
     assert "to service_role" in sql
     assert "to authenticated" not in sql

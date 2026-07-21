@@ -252,20 +252,23 @@ const REPRESENTATIVE_COMPANY_LABELS = [
 const THEME_PARAGRAPH_GAP = "10pt";
 
 function CalloutCopy({ text }: { text: string }) {
-  const paragraphs = text.split(/\n{2,}/);
+  const paragraphs = text.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean);
   const isRepresentativeCompany =
     paragraphs.length === REPRESENTATIVE_COMPANY_LABELS.length &&
     paragraphs.every((paragraph, index) =>
       paragraph.startsWith(REPRESENTATIVE_COMPANY_LABELS[index]),
     );
 
-  if (!isRepresentativeCompany) {
+  if (paragraphs.length <= 1) {
     return <p>{displayText(text)}</p>;
   }
 
   return (
     <div className="answer-callout-copy">
       {paragraphs.map((paragraph, index) => {
+        if (!isRepresentativeCompany) {
+          return <p key={`${paragraph}-${index}`}>{displayText(paragraph)}</p>;
+        }
         const label = REPRESENTATIVE_COMPANY_LABELS[index];
         const body = paragraph.slice(label.length).trim();
         return (
@@ -457,9 +460,7 @@ function AssistantMessage({
 
   return (
     <div
-      className={response.intent === "etf_theme"
-        ? "answer-content theme-answer-content"
-        : "answer-content"}
+      className={`answer-content${response.intent === "etf_theme" ? " theme-answer-content" : ""}${response.data_mode === "theme_component_holdings" ? " holdings-answer-content" : ""}`}
       style={response.intent === "etf_theme"
         ? { "--theme-paragraph-gap": THEME_PARAGRAPH_GAP } as CSSProperties
         : undefined}
@@ -478,7 +479,7 @@ function AssistantMessage({
       <MacroEvidenceCards response={response} />
       <MacroRegimeOutcomeCards response={response} />
 
-      {response.intent !== "mock_portfolio" && response.intent !== "macro_evidence" && response.numeric_evidence.length > 0 && (
+      {response.intent !== "mock_portfolio" && response.intent !== "macro_evidence" && response.data_mode !== "theme_candidates" && response.data_mode !== "theme_component_holdings" && response.numeric_evidence.length > 0 && (
         <div className="number-grid" aria-label="수치 근거">
           {response.numeric_evidence.map((item, index) => (
             <div className="number-card" key={`${item.evidence_id}-${index}`}>
@@ -508,7 +509,7 @@ function AssistantMessage({
 
       {response.sections.map((section, index) => (
         <Fragment key={`${section.title}-${index}`}>
-          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={response.intent === "educational_portfolio" || response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || section.kind === "limitation"}>
+          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={response.intent === "educational_portfolio" || response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
             <summary><span>{section.title}</span><small>내용 보기</small></summary>
             {section.blocks?.length ? (
               <>

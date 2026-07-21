@@ -137,6 +137,12 @@ _PRODUCT_LEVEL = re.compile(r"개별\s*상품|상품\s*추천|상품\s*비교|�
 _THEME_CANDIDATE_TERMS = re.compile(
     r"상품|종목|후보|추천|비교|보수|거래\s*대금|순자산", re.I
 )
+_THEME_ETF_LIST_TERMS = re.compile(
+    r"(?:어떤|무슨)\s*ETF"
+    r"|ETF\s*(?:상품\s*)?(?:은|는|이|가)?\s*"
+    r"(?:뭐가|무엇이|어떤\s*게|어느\s*게).{0,8}(?:있|보여|알려)",
+    re.I,
+)
 _THEME_HOLDING_TERMS = re.compile(
     r"구성\s*종목|편입\s*종목|보유\s*종목|종목\s*비중"
     r"|ETF.{0,8}대표\s*종목",
@@ -492,7 +498,10 @@ def plan_question(
             and not asks_considerations
             and not asks_performance_drivers
             and not asks_risks
-            and _THEME_CANDIDATE_TERMS.search(normalized) is not None
+            and (
+                _THEME_CANDIDATE_TERMS.search(normalized) is not None
+                or _THEME_ETF_LIST_TERMS.search(normalized) is not None
+            )
         )
         content_topic = (
             ThemeContentTopic.OVERVIEW
@@ -511,7 +520,7 @@ def plan_question(
             normalized_message=normalized,
             intent=ChatIntent.ETF_THEME,
             account_types=account_types,
-            max_results=max_results,
+            max_results=3 if requests_candidates else max_results,
             theme_id=theme.theme_id,
             theme_content_topic=content_topic,
             requests_theme_candidates=requests_candidates,

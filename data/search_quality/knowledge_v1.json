@@ -157,6 +157,13 @@
       "critical_top1": true
     },
     {
+      "id": "etf-product-description-name-key",
+      "query": "ETF 상품 설명에 종목코드가 없으면 무엇으로 연결해?",
+      "expected_source_url": "project://docs/20_리서치/ETF_상품/README.md",
+      "required_content_terms": ["상품명", "종목코드", "one_line_description"],
+      "critical_top1": true
+    },
+    {
       "id": "irp-withdrawal-evidence",
       "query": "IRP 의료비 중도인출 요양 증빙",
       "expected_source_url": "project://docs/40_규제/퇴직연금_수령_중도인출.md",

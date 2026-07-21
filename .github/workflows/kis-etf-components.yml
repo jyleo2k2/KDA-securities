@@ -1,0 +1,30 @@
+name: Weekly KIS ETF component ingestion
+
+on:
+  schedule:
+    # GitHub Actions cron is UTC: Sunday 18:00 UTC is Monday 03:00 KST.
+    - cron: "0 18 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kis-etf-component-ingestion
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
+      KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: Refresh ETF component TOP3 snapshots
+        run: uv run python -m backend.app.ingestion.kis_component_snapshots
