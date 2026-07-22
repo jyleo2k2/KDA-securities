@@ -517,7 +517,7 @@ def _claim_for_worktree(root: Path) -> dict[str, Any] | None:
     )
 
 
-def _hook_input_from_stdin() -> tuple[str | None, str | None]:
+def _hook_file_from_stdin() -> str:
     try:
         payload = json.load(sys.stdin)
     except (json.JSONDecodeError, OSError):
@@ -530,70 +530,11 @@ def _hook_input_from_stdin() -> tuple[str | None, str | None]:
         or tool_input.get("notebook_path")
         or tool_input.get("path")
     )
-    command = tool_input.get("command")
     if raw_file is not None and not isinstance(raw_file, str):
         raise SessionError("hook 파일 경로 형식이 올바르지 않습니다.")
-    if command is not None and not isinstance(command, str):
-        raise SessionError("hook 명령 형식이 올바르지 않습니다.")
-    if not raw_file and not command:
-        raise SessionError("hook 입력에서 파일 경로나 Bash 명령을 찾지 못했습니다.")
-    return raw_file, command
-
-
-def _manager_bootstrap_command(command: str) -> bool:
-    if any(token in command for token in (";", "&&", "||", "|", ">", "<")):
-        return False
-    return bool(
-        re.search(
-            r"\bscripts[/\\]git_session_manager\.py\s+"
-            r"(?:start|claim|status|check-start|heartbeat|release)\b",
-            command,
-            flags=re.IGNORECASE,
-        )
-    )
-
-
-def _read_only_control_command(command: str) -> bool:
-    if any(token in command for token in (";", "&&", "||", "|", ">", "<")):
-        return False
-    patterns = (
-        r"\s*git(?:\.exe)?(?:\s+-C\s+\S+)?\s+(?:status|diff|log|show|rev-parse)\b",
-        r"\s*git(?:\.exe)?(?:\s+-C\s+\S+)?\s+branch\s+--show-current\b",
-        r"\s*git(?:\.exe)?(?:\s+-C\s+\S+)?\s+worktree\s+list\b",
-        r"\s*gh(?:\.exe)?\s+(?:pr|repo)\s+(?:list|view|status)\b",
-        r"\s*(?:rg|Get-Content|Test-Path)\b",
-    )
-    return any(re.match(pattern, command, flags=re.IGNORECASE) for pattern in patterns)
-
-
-def _guard_shell_command(command: str) -> None:
-    git_mutation = re.search(
-        r"\bgit(?:\.exe)?(?:\s+-C\s+(?:\"[^\"]+\"|'[^']+'|\S+))?\s+"
-        r"(?:worktree|switch|checkout|reset|clean|stash|merge|rebase)\b",
-        command,
-        flags=re.IGNORECASE,
-    )
-    branch_mutation = re.search(
-        r"\bgit(?:\.exe)?(?:\s+-C\s+(?:\"[^\"]+\"|'[^']+'|\S+))?\s+"
-        r"branch\s+-(?:d|D|m|M)\b",
-        command,
-    )
-    if git_mutation or branch_mutation:
-        raise SessionError(
-            "Git ref·워크트리 변경은 git-coordinator와 전용 스크립트로만 수행합니다."
-        )
-    write_command = re.search(
-        r"(?:^|[;&|]\s*)(?:Set-Content|Add-Content|Out-File|Remove-Item|Move-Item|"
-        r"Copy-Item|Rename-Item|New-Item|apply_patch|rm|mv|cp|touch|mkdir|rmdir)\b",
-        command,
-        flags=re.IGNORECASE,
-    )
-    redirect = re.search(r"(?<![0-9])>>?\s*[^&]", command)
-    if write_command or redirect:
-        raise SessionError(
-            "Bash/PowerShell 직접 파일 쓰기는 claim 경로를 검증할 수 없어 차단됩니다. "
-            "Edit·Write 도구를 사용하십시오."
-        )
+    if not raw_file:
+        raise SessionError("hook 입력에서 파일 경로를 찾지 못했습니다.")
+    return raw_file
 
 
 def _changed_paths(root: Path) -> set[str]:
@@ -614,17 +555,8 @@ def command_guard(args: argparse.Namespace) -> int:
     root = repo_root()
     policy = load_policy(root)
     branch = current_branch(root)
-    raw_file: str | None = args.file
-    shell_command: str | None = None
-    if args.hook_input:
-        raw_file, shell_command = _hook_input_from_stdin()
-    if shell_command and _manager_bootstrap_command(shell_command):
-        return 0
-    if shell_command:
-        _guard_shell_command(shell_command)
+    raw_file = _hook_file_from_stdin() if args.hook_input else args.file
     if branch == policy["default_branch"]:
-        if shell_command and _read_only_control_command(shell_command):
-            return 0
         raise SessionError("main 관제 워크트리에서는 파일을 수정할 수 없습니다.")
     validate_branch_name(branch, policy)
     claim = _claim_for_worktree(root)
