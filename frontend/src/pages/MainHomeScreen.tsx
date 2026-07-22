@@ -11,6 +11,7 @@ interface MainHomeScreenProps {
   hero: DemoHeroPortfolio | null;
   loading: boolean;
   onOpenChat: () => void;
+  onOpenPensionCalculator: () => void;
   onOpenStrategyExplore: () => void;
   onOpenUserPick: () => void;
   onResurvey: () => void;
@@ -140,7 +141,7 @@ const ASSET_LABELS: Record<string, string> = { cash: "현금성", deposit: "원�
 const ALLOCATION_COLORS = ["#18A860", "#35B877", "#6ECFA0", "#2E8B57"];
 const formatKrw = (amount: string) => `${Math.round(Number(amount)).toLocaleString("ko-KR")}원`;
 
-export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrategyExplore, onOpenUserPick, onResurvey, userContext }: MainHomeScreenProps): JSX.Element {
+export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenPensionCalculator, onOpenStrategyExplore, onOpenUserPick, onResurvey, userContext }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
   const allocationSlices: AllocationSlice[] = hero?.asset_allocations.slice(0, 4).map((item, index) => ({ label: ASSET_LABELS[item.asset_class_code] ?? "기타 자산", percent: `${item.allocation_percent}%`, color: ALLOCATION_COLORS[index] })) ?? [];
   const holdingSlices = buildHoldingDonutSlices(hero);
@@ -239,7 +240,7 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrateg
           <div className="mhs-tax-copy">
             <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
             <p className="mhs-tax-sub">연금저축·IRP 납입 현황과 남은 여력을 확인해 보세요.</p>
-            <button type="button" className="mhs-tax-button">완료율 확인하기 <span>→</span></button>
+            <button type="button" className="mhs-tax-button" onClick={onOpenPensionCalculator}>완료율 확인하기 <span>→</span></button>
           </div>
         </div>
 
