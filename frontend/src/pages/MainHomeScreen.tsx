@@ -36,16 +36,16 @@ interface StrategyCard {
 }
 
 const STRATEGY_CARDS: StrategyCard[] = [
-  { title: "시장 베타", value: "+6.75%", valueColor: "#18A860", desc: "국내·미국·글로벌 광범위지수 ETF로 시장 전체 수익을 추구해요.", footnote: "글로벌주식 CMA 7.0% · 할인 0.25%p", bg: "#F5FAF6" },
-  { title: "팩터", value: "+6.60%", valueColor: "#18A860", desc: "가치·퀄리티·모멘텀·저변동 ETF로 초과수익 요인에 투자해요.", footnote: "글로벌주식 CMA 7.0% · 할인 0.40%p", bg: "#F5FAF6" },
-  { title: "테마", value: "+6.00%", valueColor: "#E8A600", desc: "AI·반도체·바이오·인프라 ETF로 유망 테마 성장을 추구해요.", footnote: "글로벌주식 CMA 7.0% · 할인 1.00%p", bg: "#FFF9E8" },
-  { title: "탑다운", value: "구성별 산정", valueColor: "#18A860", desc: "지역·국가·산업·채권만기 ETF를 조합해 하향식으로 배분해요.", warning: "※ 지역·자산 비중이 매번 달라 실제 구성 확정 후 가중 계산이 필요해요.", footnote: "실제 구성 가중 CMA · 할인 0.75%p", bg: "#F5FAF6" },
-  { title: "바텀업", value: "+6.25%", valueColor: "#18A860", desc: "연금 적격 액티브주식 ETF로 종목·산업을 선별해 투자해요.", footnote: "지역별 주식 CMA · 할인 0.75%p", bg: "#F5FAF6" },
-  { title: "바벨", value: "비중별 산정", valueColor: "#E8A600", desc: "주식 ETF와 단기채·현금성 ETF를 양극단으로 배분해요.", warning: "※ 두 자산군 비중이 고정돼있지 않아 구성 ETF별 할인율을 각각 적용해야 해요.", footnote: "실제 구성 가중 CMA · 구성별 할인", bg: "#FFF9E8" },
-  { title: "변동성 관리", value: "비중별 산정", valueColor: "#18A860", desc: "저변동 ETF와 채권·현금성 ETF로 변동폭을 관리해요.", warning: "※ 변동성 목표에 따라 자산 비중이 조정돼 구성 ETF별로 할인율이 달라져요.", footnote: "실제 구성 가중 CMA · 구성별 할인", bg: "#F5FAF6" },
-  { title: "롱숏·시장중립", value: "산정 예정", valueColor: "#8A9691", desc: "적격 시장중립·절대수익 ETF로 시장 방향과 무관한 수익을 추구해요.", warning: "※ 별도 CMA가 아직 없어 편입 상품 확정 전까지 수익률을 산출하지 않아요.", footnote: "별도 CMA 필요 · 잠정 할인 0.75%p", bg: "#F5FAF6" },
-  { title: "이벤트드리븐", value: "산정 예정", valueColor: "#8A9691", desc: "기업행동·합병·스핀오프 ETF 이벤트에서 기회를 포착해요.", warning: "※ 별도 CMA가 아직 없어 편입 상품 확정 전까지 수익률을 산출하지 않아요.", footnote: "별도 CMA 필요 · 잠정 할인 0.75%p", bg: "#FFF9E8" },
-  { title: "추세추종·글로벌 매크로", value: "+5.65%", valueColor: "#18A860", desc: "적격 멀티에셋·추세 ETF로 글로벌 매크로 흐름을 추종해요.", footnote: "글로벌 60/40 CMA 6.4% · 할인 0.75%p", bg: "#F5FAF6" },
+  { title: "시장 베타", value: "+6.75%", valueColor: "#4FB6E6", desc: "국내·미국·글로벌 광범위지수 ETF로 시장 전체 수익을 그대로 따라가요. 개별 종목을 고르지 않아 관리가 단순하고 코어 자산으로 쓰기 좋아요. 장기 시장수익 확보를 목표로 하는 안정적인 전략이에요.", footnote: "글로벌주식 CMA 7.0% · 할인 0.25%p", bg: "#EAF7FC" },
+  { title: "팩터", value: "+6.60%", valueColor: "#24386E", desc: "가치·퀄리티·모멘텀·저변동 등 초과수익 요인을 골라 담아요. 투명한 규칙 기반 ETF로 구성해 종목 추격매수 없이 운용해요. 시장 평균 대비 꾸준한 초과성과를 노리는 전략이에요.", footnote: "글로벌주식 CMA 7.0% · 할인 0.40%p", bg: "#EAEDF3" },
+  { title: "테마", value: "+6.00%", valueColor: "#F5871F", desc: "AI·반도체·바이오·인프라 등 유망 테마 ETF에 분산 투자해요. 구조적 성장 근거와 최근 상대성과를 함께 확인한 종목만 편입해요. 단일 테마 비중은 제한해 과열 위험을 관리하는 전략이에요.", footnote: "글로벌주식 CMA 7.0% · 할인 1.00%p", bg: "#FFF3E6" },
+  { title: "탑다운", value: "구성별 산정", valueColor: "#3B4148", desc: "거시 흐름부터 짚어 국가·지역·산업·채권만기 비중을 조절해요. 하향식으로 유망 자산을 좁혀가며 포트폴리오를 구성해요. 실제 구성이 매번 달라져 확정 후 가중 계산이 필요한 전략이에요.", warning: "※ 지역·자산 비중이 매번 달라 실제 구성 확정 후 가중 계산이 필요해요.", footnote: "실제 구성 가중 CMA · 할인 0.75%p", bg: "#EEF0F1" },
+  { title: "바텀업", value: "+6.25%", valueColor: "#1E9E5D", desc: "연금 적격 액티브주식 ETF로 개별 기업을 실사하듯 선별해요. 종목·산업 단위로 꼼꼼히 뜯어보고 투자 후보를 좁혀가요. 시장 평균이 아닌 선별한 기업의 성장에 기대는 전략이에요.", footnote: "지역별 주식 CMA · 할인 0.75%p", bg: "#E9F8EF" },
+  { title: "바벨", value: "비중별 산정", valueColor: "#1E2124", desc: "성장자산과 단기채·현금성 자산을 양극단으로 나눠 보유해요. 중간 위험 자산 없이 공격과 방어 자산만으로 균형을 맞춰요. 두 자산군 비중이 고정돼 있지 않아 구성별 할인율을 각각 적용하는 전략이에요.", warning: "※ 두 자산군 비중이 고정돼있지 않아 구성 ETF별 할인율을 각각 적용해야 해요.", footnote: "실제 구성 가중 CMA · 구성별 할인", bg: "#F5F5F5" },
+  { title: "변동성 관리", value: "비중별 산정", valueColor: "#9CA7AE", desc: "저변동 ETF와 채권·현금성 ETF로 자산의 변동폭을 관리해요. 실현변동성이 목표를 넘으면 비중을 비례해 축소해요. 위험을 조절해 흔들림을 다스리는 데 초점을 둔 전략이에요.", warning: "※ 변동성 목표에 따라 자산 비중이 조정돼 구성 ETF별로 할인율이 달라져요.", footnote: "실제 구성 가중 CMA · 구성별 할인", bg: "#F1F2F3" },
+  { title: "롱숏·시장중립", value: "산정 예정", valueColor: "#7B4FC0", desc: "적격 시장중립·절대수익형 상품으로 매수와 매도를 함께 써요. 시장 방향과 무관한 수익을 추구해 변동성 완충 역할을 해요. 계좌에 담을 적격 상품 확정 전까지는 수익률을 산출하지 않는 전략이에요.", warning: "※ 별도 CMA가 아직 없어 편입 상품 확정 전까지 수익률을 산출하지 않아요.", footnote: "별도 CMA 필요 · 잠정 할인 0.75%p", bg: "#F3EEFB" },
+  { title: "이벤트드리븐", value: "산정 예정", valueColor: "#B8860B", desc: "합병·분할·자사주 등 이미 공시된 기업행동에서 기회를 찾아요. 가격 변화가 예상되는 이벤트 중심으로 후보를 선별해요. 적격 공모펀드가 없다면 매매 신호가 아닌 교육 정보로만 제공하는 전략이에요.", warning: "※ 별도 CMA가 아직 없어 편입 상품 확정 전까지 수익률을 산출하지 않아요.", footnote: "별도 CMA 필요 · 잠정 할인 0.75%p", bg: "#FFF8DE" },
+  { title: "추세추종·글로벌 매크로", value: "+5.65%", valueColor: "#2F6FE0", desc: "적격 멀티에셋·추세 ETF로 글로벌 매크로 흐름을 추종해요. 최근 위험조정 성과가 강한 자산을 규칙 기반으로 편입해요. 월별 관찰과 정기 교체를 원칙으로 방향성에 올라타는 전략이에요.", footnote: "글로벌 60/40 CMA 6.4% · 할인 0.75%p", bg: "#EAF1FE" },
 ];
 
 const PORTFOLIO_INFO_CATEGORIES: Array<{ title: string; desc: string }> = [
@@ -141,7 +141,7 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrateg
             <p className="mhs-summary-sub-label">시황</p>
             <p className="mhs-summary-text">{hero?.risk_summary.requires_rebalancing_review ? "규칙 엔진 기준으로 리밸런싱 점검이 필요해요." : "현재 계좌 구성은 규칙 엔진 기준을 확인했어요."}</p>
             <div className="mhs-summary-cta-row">
-              <span className="mhs-summary-cta">자세히 진단받기 <span className="mhs-summary-cta-chevron">›</span></span>
+              <button type="button" className="mhs-summary-cta mhs-summary-cta-button" onClick={onOpenChat}>자세히 진단받기 <span className="mhs-summary-cta-chevron">›</span></button>
             </div>
           </div>
         </div>
