@@ -11,6 +11,15 @@ _NEWS_ORDINAL = re.compile(
     r"(?P<second>두\s*번째|둘째|2\s*번(?:째)?)|"
     r"(?P<third>세\s*번째|셋째|3\s*번(?:째)?)"
 )
+_REFERENT_ORDINAL = re.compile(
+    r"(?P<first>첫(?:\s*번째)?|1\s*번(?:째)?)|"
+    r"(?P<second>두\s*번째|둘째|2\s*번(?:째)?)|"
+    r"(?P<third>세\s*번째|셋째|3\s*번(?:째)?)|"
+    r"(?P<fourth>네\s*번째|넷째|4\s*번(?:째)?)"
+)
+_REFERENT_PRONOUN = re.compile(
+    r"그거|그\s*계좌|방금\s*그거|아까\s*그거|해당\s*계좌"
+)
 _NEWS_PRONOUN = re.compile(r"(?:그|이|해당|방금)\s*(?:뉴스|기사|소식)")
 _NEWS_COMPARE = re.compile(r"비교|차이")
 _NEWS_SOURCE = re.compile(r"출처|원문|링크|언론사|발행|게시|언제|날짜")
@@ -39,6 +48,14 @@ class NewsFollowUp:
     region: MarketRegion | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class ResolvedReferent:
+    intent: ChatIntent
+    topic: str | None
+    ref: str
+    label: str
+
+
 class IntentRouter:
     """Add only server-backed context; the safety planner stays authoritative."""
 
@@ -47,6 +64,15 @@ class IntentRouter:
         if cls.account_type(request.message) is not None:
             return request.message
         context = request.conversation_context
+        referent = cls.resolve_referent(request)
+        if referent is not None:
+            return f"{referent.label} {request.message}"
+        if (
+            context is not None
+            and context.referents is not None
+            and cls._is_referent_request(request.message)
+        ):
+            return request.message
         if (
             context is not None
             and context.last_intent == ChatIntent.EDUCATIONAL_PORTFOLIO
@@ -59,6 +85,39 @@ class IntentRouter:
         ):
             return request.message
         return f"{context.account_type.value.upper()} {request.message}"
+
+    @classmethod
+    def resolve_referent(cls, request: ChatRequest) -> ResolvedReferent | None:
+        context = request.conversation_context
+        referents = context.referents if context is not None else None
+        if referents is None or referents.intent in {
+            ChatIntent.NEWS,
+            ChatIntent.ETF_THEME,
+        }:
+            return None
+
+        ordinal = cls._ordinal_index(request.message)
+        if ordinal is not None:
+            if ordinal >= len(referents.items):
+                return None
+            item = referents.items[ordinal]
+            return ResolvedReferent(
+                intent=referents.intent,
+                topic=referents.topic,
+                ref=item.ref,
+                label=item.label,
+            )
+        if _REFERENT_PRONOUN.search(request.message) is None:
+            return None
+        if len(referents.items) != 1:
+            return None
+        item = referents.items[0]
+        return ResolvedReferent(
+            intent=referents.intent,
+            topic=referents.topic,
+            ref=item.ref,
+            label=item.label,
+        )
 
     @classmethod
     def news_follow_up(cls, request: ChatRequest) -> NewsFollowUp | None:
@@ -135,3 +194,22 @@ class IntentRouter:
     @staticmethod
     def _is_contextual_follow_up(message: str) -> bool:
         return any(term in message for term in CONTEXTUAL_FOLLOW_UP_TERMS)
+
+    @staticmethod
+    def _ordinal_index(message: str) -> int | None:
+        match = _REFERENT_ORDINAL.search(message)
+        if match is None:
+            return None
+        return {
+            "first": 0,
+            "second": 1,
+            "third": 2,
+            "fourth": 3,
+        }[match.lastgroup]
+
+    @staticmethod
+    def _is_referent_request(message: str) -> bool:
+        return (
+            _REFERENT_ORDINAL.search(message) is not None
+            or _REFERENT_PRONOUN.search(message) is not None
+        )
