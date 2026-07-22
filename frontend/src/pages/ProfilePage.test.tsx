@@ -24,5 +24,8 @@ describe("ProfilePage", () => {
 
     expect(screen.getByText("안정추구형")).toBeInTheDocument();
     expect(screen.getByText("2028-07-21", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("교육용 데모 목데이터", { exact: false })).toBeInTheDocument();
+    expect(screen.queryByText("yeongeum@example.com")).not.toBeInTheDocument();
+    expect(screen.queryByText("제조업 · 반도체")).not.toBeInTheDocument();
   });
 });
