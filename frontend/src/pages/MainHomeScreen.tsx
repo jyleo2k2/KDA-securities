@@ -2,15 +2,18 @@ import { useState, type JSX } from "react";
 
 import moneyBag from "../assets/main-home/money-bag.png";
 import piggy from "../assets/main-home/piggy.png";
+import profileIcon from "../assets/main-home/profile-icon.png";
 import userPickPreview from "../assets/main-home/user-pick-preview.png";
-import type { DemoHeroPortfolio, DemoUserFinancialContext } from "../api/types";
+import type { DemoHeroPortfolio, DemoUserFinancialContext, InvestmentProfileResponse, RiskProfile } from "../api/types";
 import "./MainHomeScreen.css";
 
 interface MainHomeScreenProps {
   error: string | null;
   hero: DemoHeroPortfolio | null;
+  investmentProfile: InvestmentProfileResponse | null;
   loading: boolean;
   onOpenChat: () => void;
+  onOpenPlanner: () => void;
   onOpenStrategyExplore: () => void;
   onOpenUserPick: () => void;
   onResurvey: () => void;
@@ -23,8 +26,88 @@ interface AllocationSlice {
   color: string;
 }
 
-const DONUT_GRADIENT =
-  "conic-gradient(#18A860 0deg 86deg, #35B877 86deg 144deg, #6ECFA0 144deg 187deg, #2E8B57 187deg 230deg, #9BDDBF 230deg 259deg, #48C078 259deg 302deg, #C5EAD5 302deg 331deg, #E3E7E4 331deg 360deg)";
+interface HoldingSlice {
+  label: string;
+  amountKrw: number;
+  percent: number;
+  color: string;
+}
+
+const HOLDING_DONUT_COLORS = ["#18A860", "#3877E8", "#F0C000", "#F5871F", "#8B5FEB", "#2FBFA0", "#B8C0BA"];
+const PROFILE_LABELS: Record<RiskProfile, string> = {
+  stable: "안정형", stable_seeking: "안정추구형", risk_neutral: "위험중립형", active: "적극투자형", aggressive: "공격투자형",
+};
+const HOLDING_DONUT_MAX_SLICES = 6;
+const HOLDING_DONUT_LABEL_MIN_PERCENT = 5;
+const DONUT_SIZE = 174;
+const DONUT_CENTER = DONUT_SIZE / 2;
+const DONUT_RADIUS = 64;
+const DONUT_STROKE_WIDTH = 46;
+const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;
+
+function buildHoldingDonutSlices(hero: DemoHeroPortfolio | null): HoldingSlice[] {
+  if (!hero) return [];
+  const amountsByInstrument = new Map<string, number>();
+  for (const account of hero.accounts) {
+    for (const holding of account.holdings) {
+      const amount = Number(holding.amount_krw);
+      amountsByInstrument.set(holding.instrument_name, (amountsByInstrument.get(holding.instrument_name) ?? 0) + amount);
+    }
+  }
+  const sorted = [...amountsByInstrument.entries()].sort((a, b) => b[1] - a[1]);
+  const total = Number(hero.total_amount_krw) || sorted.reduce((sum, [, amount]) => sum + amount, 0);
+  if (total <= 0) return [];
+  const main = sorted.slice(0, HOLDING_DONUT_MAX_SLICES);
+  const restAmount = sorted.slice(HOLDING_DONUT_MAX_SLICES).reduce((sum, [, amount]) => sum + amount, 0);
+  const entries: Array<[string, number]> = restAmount > 0 ? [...main, ["기타", restAmount]] : main;
+  return entries.map(([label, amountKrw], index) => ({
+    label,
+    amountKrw,
+    percent: (amountKrw / total) * 100,
+    color: label === "기타" ? HOLDING_DONUT_COLORS[HOLDING_DONUT_COLORS.length - 1] : HOLDING_DONUT_COLORS[index % (HOLDING_DONUT_COLORS.length - 1)],
+  }));
+}
+
+function polarPoint(centerDeg: number, radius: number): { x: number; y: number } {
+  const angleRad = ((centerDeg - 90) * Math.PI) / 180;
+  return { x: DONUT_CENTER + radius * Math.cos(angleRad), y: DONUT_CENTER + radius * Math.sin(angleRad) };
+}
+
+function HoldingDonut({ slices }: { slices: HoldingSlice[] }): JSX.Element {
+  let cumulativePercent = 0;
+  return (
+    <svg width={DONUT_SIZE} height={DONUT_SIZE} viewBox={`0 0 ${DONUT_SIZE} ${DONUT_SIZE}`} role="img" aria-label="총 연금 자산 보유 종목 비중">
+      {slices.map((slice) => {
+        const segmentLength = (slice.percent / 100) * DONUT_CIRCUMFERENCE;
+        const dashArray = `${segmentLength} ${DONUT_CIRCUMFERENCE - segmentLength}`;
+        const dashOffset = -((cumulativePercent / 100) * DONUT_CIRCUMFERENCE);
+        const labelCenterDeg = (cumulativePercent + slice.percent / 2) * 3.6;
+        cumulativePercent += slice.percent;
+        const labelPoint = polarPoint(labelCenterDeg, DONUT_RADIUS);
+        return (
+          <g key={slice.label}>
+            <circle
+              cx={DONUT_CENTER}
+              cy={DONUT_CENTER}
+              r={DONUT_RADIUS}
+              fill="none"
+              stroke={slice.color}
+              strokeWidth={DONUT_STROKE_WIDTH}
+              strokeDasharray={dashArray}
+              strokeDashoffset={dashOffset}
+              transform={`rotate(-90 ${DONUT_CENTER} ${DONUT_CENTER})`}
+            />
+            {slice.percent >= HOLDING_DONUT_LABEL_MIN_PERCENT && (
+              <text x={labelPoint.x} y={labelPoint.y} textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={800} fill="#fff">
+                {Math.round(slice.percent)}%
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
 
 interface StrategyCard {
   title: string;
@@ -63,9 +146,24 @@ const ASSET_LABELS: Record<string, string> = { cash: "현금성", deposit: "원�
 const ALLOCATION_COLORS = ["#18A860", "#35B877", "#6ECFA0", "#2E8B57"];
 const formatKrw = (amount: string) => `${Math.round(Number(amount)).toLocaleString("ko-KR")}원`;
 
-export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrategyExplore, onOpenUserPick, onResurvey, userContext }: MainHomeScreenProps): JSX.Element {
+function buildPortfolioOneLineSummary(hero: DemoHeroPortfolio | null): string {
+  if (!hero || hero.asset_allocations.length === 0) {
+    return "포트폴리오 구성을 불러오면 가장 큰 자산 비중을 알려드려요.";
+  }
+  const dominant = hero.asset_allocations.reduce((largest, current) => (
+    Number(current.allocation_percent) > Number(largest.allocation_percent) ? current : largest
+  ));
+  const equityPercent = hero.asset_allocations
+    .filter((item) => item.asset_class_code === "domestic_equity" || item.asset_class_code === "global_equity")
+    .reduce((sum, item) => sum + Number(item.allocation_percent), 0);
+  const dominantLabel = ASSET_LABELS[dominant.asset_class_code] ?? "기타 자산";
+  return `${dominantLabel} 비중이 가장 높고, 전체 주식 비중은 ${equityPercent.toFixed(1)}%예요.`;
+}
+
+export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpenChat, onOpenPlanner, onOpenStrategyExplore, onOpenUserPick, onResurvey, userContext }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
   const allocationSlices: AllocationSlice[] = hero?.asset_allocations.slice(0, 4).map((item, index) => ({ label: ASSET_LABELS[item.asset_class_code] ?? "기타 자산", percent: `${item.allocation_percent}%`, color: ALLOCATION_COLORS[index] })) ?? [];
+  const holdingSlices = buildHoldingDonutSlices(hero);
   const totalBalance = userContext ? formatKrw(userContext.total_pension_balance_krw) : "-";
 
   return (
@@ -80,6 +178,7 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrateg
       <div className="mhs-header">
         <span className="mhs-header-dot" />
         <span className="mhs-header-title">연금 <span className="mhs-header-title-accent">도우미</span></span>
+        <img src={profileIcon} alt="프로필" className="mhs-profile-icon" />
       </div>
 
       <div className="mhs-body">
@@ -90,6 +189,7 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrateg
           </div>
           <img src={piggy} alt="송향이" className="mhs-greeting-img" />
         </div>
+        {investmentProfile?.assessment && <p className="mhs-greeting-sub">저장 투자성향 · {PROFILE_LABELS[investmentProfile.assessment.risk_profile]} · {investmentProfile.assessment.assessed_on} 진단{investmentProfile.assessment.is_expired ? " · 만료" : ""}</p>}
         <button type="button" className="mhs-resurvey-button" onClick={onResurvey}>재설문하기</button>
 
         <h2 className="mhs-section-title">내 연금 <span className="mhs-section-title-gold">자산</span></h2>
@@ -97,16 +197,21 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrateg
         <div className="mhs-asset-card">
           <p className="mhs-asset-label">총 연금 자산</p>
           <p className="mhs-asset-total">{loading ? "불러오는 중…" : totalBalance}</p>
-          <p className="mhs-asset-gain">{error ?? (userContext ? `${userContext.nickname}님 · ${userContext.as_of_date} 기준 목데이터` : "연금 데이터를 확인해 주세요.")}</p>
+          <p className="mhs-asset-gain">{error ?? (userContext ? `${userContext.nickname.replace(/\(가상\)/g, "")}님 · ${userContext.as_of_date} 기준` : "연금 데이터를 확인해 주세요.")}</p>
 
           <div className="mhs-donut-wrap">
-            <div className="mhs-donut-outer" style={{ background: DONUT_GRADIENT }}>
-              <div className="mhs-donut-inner" />
-            </div>
+            {holdingSlices.length > 0 ? <HoldingDonut slices={holdingSlices} /> : (
+              <div className="mhs-donut-outer" style={{ background: "#EEF0F1" }}>
+                <div className="mhs-donut-inner" />
+              </div>
+            )}
           </div>
 
           <div className="mhs-allocation-grid">
-            {allocationSlices.map((slice) => (
+            {(holdingSlices.length > 0
+              ? holdingSlices.map((slice) => ({ label: slice.label, percent: `${slice.percent.toFixed(1)}%`, color: slice.color }))
+              : allocationSlices
+            ).map((slice) => (
               <span className="mhs-allocation-item" key={slice.label}>
                 <span className="mhs-allocation-dot" style={{ background: slice.color }} />
                 <span className="mhs-allocation-label">{slice.label}</span>
@@ -140,8 +245,8 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrateg
 
           <div className="mhs-summary-subcard">
             <span className="mhs-summary-label">한 줄 요약</span>
-            <p className="mhs-summary-sub-label">시황</p>
-            <p className="mhs-summary-text">{hero?.risk_summary.requires_rebalancing_review ? "규칙 엔진 기준으로 리밸런싱 점검이 필요해요." : "현재 계좌 구성은 규칙 엔진 기준을 확인했어요."}</p>
+            <p className="mhs-summary-sub-label">포트폴리오 구성</p>
+            <p className="mhs-summary-text">{buildPortfolioOneLineSummary(hero)}</p>
             <div className="mhs-summary-cta-row">
               <button type="button" className="mhs-summary-cta mhs-summary-cta-button" onClick={onOpenChat}>자세히 진단받기 <span className="mhs-summary-cta-chevron">›</span></button>
             </div>
@@ -156,7 +261,7 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrateg
           <div className="mhs-tax-copy">
             <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
             <p className="mhs-tax-sub">연금저축·IRP 납입 현황과 남은 여력을 확인해 보세요.</p>
-            <button type="button" className="mhs-tax-button">완료율 확인하기 <span>→</span></button>
+            <button type="button" className="mhs-tax-button" onClick={onOpenPlanner}>완료율 확인하기 <span>→</span></button>
           </div>
         </div>
 
@@ -170,13 +275,20 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrateg
 
         <div className="mhs-strategy-scroll">
           {STRATEGY_CARDS.map((card) => (
-            <div className="mhs-strategy-card" style={{ background: card.bg }} key={card.title}>
+            <button
+              type="button"
+              className="mhs-strategy-card mhs-strategy-card-button"
+              style={{ background: card.bg }}
+              key={card.title}
+              onClick={onOpenStrategyExplore}
+              aria-label={`${card.title} 전략 상세 보기`}
+            >
               <span className="mhs-strategy-card-title">{card.title}</span>
               <p className="mhs-strategy-card-value" style={{ color: card.valueColor }}>교육용 안내</p>
               <p className="mhs-strategy-card-desc">{card.desc}</p>
               {card.warning && <p className="mhs-strategy-card-warning">{card.warning}</p>}
               <p className="mhs-strategy-card-footnote">{card.footnote}</p>
-            </div>
+            </button>
           ))}
         </div>
         <p className="mhs-strategy-disclaimer">전략별 특징을 설명하는 교육용 화면이며, 미래 수익을 보장하거나 예측하지 않아요.</p>

@@ -1,11 +1,10 @@
 import type { JSX } from "react";
 
-export type TabKey = "home" | "guide" | "benchmark" | "profile";
+export type TabKey = "home" | "guide" | "profile";
 
 const TAB_LABELS: Record<TabKey, string> = {
   home: "홈",
   guide: "연금가이드",
-  benchmark: "벤치마크",
   profile: "프로필",
 };
 

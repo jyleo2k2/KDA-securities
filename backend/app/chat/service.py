@@ -161,6 +161,7 @@ class ChatService:
             )
         if direct_plan.blocked_reason != BlockedReason.UNSUPPORTED:
             return direct_plan
+        referent = self._router.resolve_referent(request)
         contextual_message = self._router.contextual_message(request)
         if contextual_message == request.message:
             return direct_plan
@@ -173,6 +174,7 @@ class ChatService:
         if (
             contextual_plan.intent == ChatIntent.ACCOUNT_RULE
             and _knowledge_topic(request.message, contextual_plan)[0] == "general"
+            and referent is None
         ):
             return direct_plan
         return contextual_plan

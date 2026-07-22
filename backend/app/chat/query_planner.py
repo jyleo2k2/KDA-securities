@@ -58,6 +58,7 @@ class QueryPlan(BaseModel):
     combines_account_rules: bool = False
     requests_tax_credit: bool = False
     requests_withdrawal_tax: bool = False
+    requests_pension_planner: bool = False
     account_rule_topic: AccountRuleTopic | None = None
     theme_id: str | None = None
     theme_content_topic: ThemeContentTopic | None = None
@@ -231,6 +232,12 @@ _PENSION_CONTEXT = re.compile(
     r"계좌.{0,20}(?:위험\s*자산|한도)",
     re.I,
 )
+_PENSION_BASICS_QUESTION = re.compile(
+    r"(?:연금|퇴직\s*연금)\s*(?:이|은|는|을|를|의)?\s*"
+    r"(?:뭐|무엇|종류|기본|제도|알려|설명|"
+    r"어떻게\s*(?:시작|가입)|(?:시작|가입).{0,8}어떻게)",
+    re.I,
+)
 _ACCOUNT_OVERVIEW_WORDS = re.compile(
     r"규칙|뭐|무엇|전체|전반|한눈에|정리|설명|알려|기본|차이|비교"
 )
@@ -281,6 +288,11 @@ _PENSION_TAX_CALCULATION_TERMS = re.compile(
     r"계산|얼마|공제액|과세액|예상\s*(?:세액|금액)|환급액|돌려\s*받|"
     r"받을\s*수\s*있는|"
     r"\d[\d,]*(?:\.\d+)?\s*(?:억|천만|만|천)?\s*원"
+)
+_PENSION_PLANNER_TERMS = re.compile(
+    r"(?:적립|모으).{0,16}(?:얼마|계산|시뮬)|"
+    r"(?:55|60|65)\s*세.{0,16}(?:얼마|수령|계산)|"
+    r"(?:수령액|연금\s*계산|시뮬레이션).{0,16}(?:얼마|계산|알려)"
 )
 _COUNT = re.compile(r"(?<!\d)([1-5])\s*(?:개|건)(?:만)?(?!\d)")
 _KOREAN_COUNT = (
@@ -357,6 +369,8 @@ def _news_scope_notice(message: str) -> NewsScopeNotice | None:
 def _account_rule_topic(
     message: str, account_types: tuple[AccountType, ...]
 ) -> AccountRuleTopic | None:
+    if _PENSION_BASICS_QUESTION.search(message):
+        return AccountRuleTopic.PENSION_ACCOUNT_OVERVIEW
     if _PENSION_RECEIPT_TAX_TOPIC.search(message):
         return AccountRuleTopic.PENSION_RECEIPT_TAX
     if _PENSION_RECEIPT_START_TOPIC.search(message) and not re.search(
@@ -443,6 +457,7 @@ def plan_question(
     has_calculation_input = structured_pension_tax or requests_calculation
     requests_tax_credit = tax_credit_topic and has_calculation_input
     requests_withdrawal_tax = withdrawal_tax_topic and has_calculation_input
+    requests_pension_planner = _PENSION_PLANNER_TERMS.search(normalized) is not None
     if structured_pension_tax and not (tax_credit_topic or withdrawal_tax_topic):
         requests_tax_credit = True
         requests_withdrawal_tax = True
@@ -463,6 +478,8 @@ def plan_question(
         ChatIntent.PROVIDER_DISCLOSURE: bool(account_types)
         and _DISCLOSURE_TERMS.search(normalized) is not None,
         ChatIntent.ACCOUNT_RULE: bool(
+            requests_pension_planner
+            or
             account_types
             or account_rule_topic
             or (
@@ -603,5 +620,6 @@ def plan_question(
                 and _COMBINED_ACCOUNT_RULE.search(normalized) is not None
             ),
             account_rule_topic=account_rule_topic,
+            requests_pension_planner=requests_pension_planner,
         )
     return _blocked(normalized, BlockedReason.UNSUPPORTED, max_results)

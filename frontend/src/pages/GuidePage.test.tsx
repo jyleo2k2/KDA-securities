@@ -48,7 +48,10 @@ const CHAT_SESSION: ChatSessionSummary = {
   updated_at: "2026-07-19T00:00:00Z",
 };
 
-function renderGuide(onSignOut = vi.fn().mockResolvedValue(undefined)): ReturnType<typeof render> {
+function renderGuide(
+  onSignOut = vi.fn().mockResolvedValue(undefined),
+  onOpenPlanner?: () => void,
+): ReturnType<typeof render> {
   const auth = {
     session: { access_token: "access-token", user: { id: "user-1", email: "owner@example.com" } },
     loading: false,
@@ -57,7 +60,7 @@ function renderGuide(onSignOut = vi.fn().mockResolvedValue(undefined)): ReturnTy
     signIn: vi.fn(),
     signOut: vi.fn(),
   } as unknown as SupabaseAuthState;
-  return render(<GuidePage auth={auth} onSignOut={onSignOut} surveyProfile={null} userContext={null} />);
+  return render(<GuidePage auth={auth} onOpenPlanner={onOpenPlanner} onSignOut={onSignOut} surveyProfile={null} userContext={null} />);
 }
 const RECOMMENDED_CHAT_CARDS: ChatCard[] = [
   {
@@ -394,6 +397,34 @@ describe("GuidePage chat history deletion", () => {
     await waitFor(() => expect(composer).toHaveFocus());
   });
 
+  it("does not retry server readiness after an authentication failure", async () => {
+    const setTimeoutSpy = vi.spyOn(window, "setTimeout");
+    vi.mocked(getScenarios).mockRejectedValue(new ApiError(401, "Unauthorized"));
+    renderGuide();
+
+    expect(await screen.findByText("API 연결 필요")).toBeInTheDocument();
+    expect(getScenarios).toHaveBeenCalledOnce();
+    expect(setTimeoutSpy).not.toHaveBeenCalledWith(expect.any(Function), 3000);
+    expect(setTimeoutSpy).not.toHaveBeenCalledWith(expect.any(Function), 6000);
+    expect(setTimeoutSpy).not.toHaveBeenCalledWith(expect.any(Function), 12000);
+  });
+
+  it("does not load protected endpoints without a session", async () => {
+    const anonymousAuth = {
+      session: null,
+      loading: false,
+      configured: true,
+      error: null,
+      signIn: vi.fn(),
+      signOut: vi.fn(),
+    } as unknown as SupabaseAuthState;
+    render(<GuidePage auth={anonymousAuth} onSignOut={vi.fn()} surveyProfile={null} userContext={null} />);
+
+    await waitFor(() => expect(getChatCards).toHaveBeenCalledOnce());
+    expect(getScenarios).not.toHaveBeenCalled();
+    expect(getChatSessions).not.toHaveBeenCalled();
+  });
+
   it("keeps stored conversations when logging out", async () => {
     const onSignOut = vi.fn().mockResolvedValue(undefined);
     renderGuide(onSignOut);
@@ -487,6 +518,45 @@ describe("GuidePage chat history deletion", () => {
     fireEvent.submit(composer.closest("form")!);
     fireEvent.click(retryButton);
     expect(sendAuthenticatedChatStream).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps educational portfolio answers focused by hiding duplicate numeric evidence cards", async () => {
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      persisted: false,
+      response: {
+        intent: "educational_portfolio",
+        answer: "설문 결과에 맞는 투자전략을 정리했어요.",
+        narration_mode: "deterministic",
+        data_mode: "engine_educational_planning",
+        numeric_evidence: [
+          { label: "수령 개시까지 운용기간", value: "27", unit: "년", evidence_id: "engine:portfolio", basis: "엔진 계산" },
+          { label: "equity_drawdown 스트레스 손실 추정치", value: "20", unit: "%", evidence_id: "engine:portfolio", basis: "엔진 시나리오" },
+        ],
+        news_items: [],
+        sections: [{
+          kind: "service_explanation",
+          title: "위험중립형 투자전략",
+          content: "목표 자산배분과 운용 원칙을 확인하세요.",
+          evidence_ids: ["engine:portfolio"],
+        }],
+        sources: [],
+        warnings: [],
+        visualizations: [],
+        limitations: [],
+        conversation_context: null,
+      },
+    } as unknown as Awaited<ReturnType<typeof sendAuthenticatedChatStream>>);
+    renderGuide();
+
+    const composer = screen.getByLabelText("질문 입력");
+    fireEvent.change(composer, { target: { value: "내 성향에 맞는 포트폴리오를 보여줘" } });
+    fireEvent.submit(composer.closest("form")!);
+
+    expect(await screen.findByText(/위험중립형 투자전략/)).toBeInTheDocument();
+    expect(screen.getByText("연금 운용전략")).toBeInTheDocument();
+    expect(screen.queryByLabelText("수치 근거")).not.toBeInTheDocument();
+    expect(screen.queryByText("검증 답변")).not.toBeInTheDocument();
+    expect(screen.queryByText("equity_drawdown 스트레스 손실 추정치")).not.toBeInTheDocument();
   });
 
   it("does not restore a deleted row from an older session refresh", async () => {
@@ -1078,6 +1148,56 @@ describe("GuidePage chat history deletion", () => {
 
     expect(section).toHaveAttribute("open");
     expect(limitations).toHaveAttribute("open");
+  });
+});
+
+describe("GuidePage pension planner entry", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getScenarios).mockResolvedValue([]);
+    vi.mocked(getChatCards).mockResolvedValue({ cards: [] });
+    vi.mocked(getChatSessions).mockResolvedValue([]);
+    vi.mocked(getStoredChatMessages).mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("opens the existing profile planner from the chat home card", () => {
+    const onOpenPlanner = vi.fn();
+    renderGuide(undefined, onOpenPlanner);
+
+    expect(screen.getByText("규칙 엔진 가정")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "연금 수령 계획 시나리오 열기" }));
+
+    expect(onOpenPlanner).toHaveBeenCalledOnce();
+  });
+
+  it("opens the planner instead of resending its dedicated follow-up", async () => {
+    const onOpenPlanner = vi.fn();
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      persisted: false,
+      session_id: null,
+      response: {
+        ...THEME_RESPONSE,
+        intent: "account_rule",
+        data_mode: "pension_planner_redirect",
+        suggested_follow_ups: [{
+          follow_up_id: "open_pension_planner",
+          label: "연금계산기 열기",
+          message: "연금계산기 열기",
+        }],
+      },
+    } as Awaited<ReturnType<typeof sendAuthenticatedChatStream>>);
+    vi.mocked(getChatCards).mockResolvedValue({ cards: [RECOMMENDED_CHAT_CARDS[0]] });
+    renderGuide(undefined, onOpenPlanner);
+
+    fireEvent.click(await screen.findByRole("button", { name: /오늘 증시 뉴스/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "연금계산기 열기" }));
+
+    expect(onOpenPlanner).toHaveBeenCalledOnce();
+    expect(sendAuthenticatedChatStream).toHaveBeenCalledTimes(1);
   });
 });
 

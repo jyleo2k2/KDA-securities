@@ -1,6 +1,8 @@
 import hashlib
 import json
+from datetime import date
 from decimal import Decimal
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
@@ -8,9 +10,7 @@ from backend.app.engine import (
     AccountType,
     PensionCalculatorInput,
     RiskProfile,
-    SimulationInput,
     calculate_pension,
-    simulate_accumulation,
 )
 from backend.app.engine.assumptions import (
     ALLOCATION_MATRIX,
@@ -24,6 +24,7 @@ from backend.app.engine.educational_portfolio import (
 from backend.app.engine.educational_portfolio import (
     RiskProfile as EducationalRiskProfile,
 )
+from backend.app.engine.models import SourceChip
 from backend.app.engine.pension_calculator import _allocation, _tax_rates
 from backend.app.main import app
 
@@ -200,20 +201,29 @@ def test_same_input_produces_same_output() -> None:
     ).model_dump(mode="json")
 
 
-def test_existing_simulation_still_returns_current_balance_at_55() -> None:
-    result = simulate_accumulation(
-        SimulationInput(
-            current_age=55,
-            risk_profile=RiskProfile.RISK_NEUTRAL,
-            current_balance_krw=Decimal("10000000"),
-            monthly_contribution_krw=Decimal("300000"),
-        )
+def test_portfolio_cma_override_changes_only_selected_strategy_rate() -> None:
+    inputs = _input()
+    result = calculate_pension(
+        inputs,
+        annual_return_override_percent=Decimal("4.9100"),
+        assumption_source=SourceChip(
+            label="CMA",
+            reference="test://cma",
+            as_of="2026-07-16",
+        ),
+        assumption_version="portfolio-cma-test",
+        additional_warnings=("current_holding_weights_held_constant",),
+    )
+    selected = next(
+        item
+        for item in result.strategies
+        if item.risk_profile == inputs.risk_profile
     )
 
-    assert result.years_to_55 == 0
-    assert result.total_principal_krw == Decimal("10000000.00")
-    assert result.projections == []
-    assert result.band_segments == []
+    assert selected.net_annual_return_percent == Decimal("4.9100")
+    assert result.assumption.version == "portfolio-cma-test"
+    assert "current_holding_weights_held_constant" in result.warnings
+
 
 
 def test_educational_portfolio_120_case_allocation_regression() -> None:
@@ -278,3 +288,69 @@ def test_api_contract_and_validation() -> None:
         assert client.post(
             "/engine/pension-calculator", json=invalid
         ).status_code == 422
+
+
+def test_portfolio_cma_api_uses_current_etf_costs(monkeypatch) -> None:
+    from backend.app.api import engine as engine_api
+
+    products = [
+        {
+            "isu_code": "EQ",
+            "isu_name": "Equity ETF",
+            "classification": {
+                "asset_class": "equity",
+                "strategy": "broad_market",
+                "region": "united_states",
+                "currency_hedge": "hedged",
+            },
+            "cost": {"effective_total_cost_percent": "0.20"},
+            "account_eligibility": {},
+        },
+        {
+            "isu_code": "CASH",
+            "isu_name": "Cash ETF",
+            "classification": {
+                "asset_class": "cash_equivalent",
+                "strategy": "money_market",
+                "region": "south_korea",
+                "currency_hedge": "not_applicable",
+            },
+            "cost": {"effective_total_cost_percent": "0.10"},
+            "account_eligibility": {},
+        },
+    ]
+
+    repository = SimpleNamespace(as_of=date(2026, 7, 16), products=products)
+
+    monkeypatch.setattr(
+        engine_api,
+        "get_portfolio_universe_repository",
+        lambda *_: repository,
+    )
+    response = client.post(
+        "/engine/pension-calculator/portfolio-cma",
+        json={
+            "calculator": _input().model_dump(mode="json"),
+            "current_holdings": [
+                {"isu_code": "EQ", "amount_krw": "6000000"},
+                {"isu_code": "CASH", "amount_krw": "4000000"},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["planning_return"]["net_planning_return_percent"] == "5.1000"
+    assert payload["calculator"]["assumption"]["version"] == "2026-07-22.1"
+    assert payload["calculator"]["assumption"]["notice"].endswith(
+        "미래 수익률 예측이 아닙니다."
+    )
+
+    non_base = _input(scenario="low").model_dump(mode="json")
+    assert client.post(
+        "/engine/pension-calculator/portfolio-cma",
+        json={
+            "calculator": non_base,
+            "current_holdings": [{"isu_code": "EQ", "amount_krw": "1000000"}],
+        },
+    ).status_code == 422

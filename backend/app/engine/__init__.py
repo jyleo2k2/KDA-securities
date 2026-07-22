@@ -28,6 +28,7 @@ from .educational_portfolio import (
     RebalancingGuidance,
     SleeveTarget,
     build_educational_portfolio,
+    calculate_current_holdings_planning_return,
     calculate_portfolio_planning_return,
     calculate_portfolio_risk,
     calculate_rebalancing_guidance,
@@ -138,13 +139,6 @@ from .profile import (
     evaluate_profile,
 )
 from .scenario import evaluate_mock_scenario
-from .simulation import (
-    BandSegment,
-    ScenarioProjection,
-    SimulationEvaluation,
-    SimulationInput,
-    simulate_accumulation,
-)
 from .strategy import (
     evaluate_historical_returns,
     evaluate_profit_lock,
@@ -168,7 +162,6 @@ __all__ = [
     "AssetBucket",
     "AssetClass",
     "AssumptionScenario",
-    "BandSegment",
     "DiagnosticFinding",
     "CurrentHolding",
     "EducationalEtfCandidate",
@@ -230,9 +223,6 @@ __all__ = [
     "ScenarioEvaluation",
     "ScenarioHoldingInput",
     "ScenarioPortfolioInput",
-    "ScenarioProjection",
-    "SimulationEvaluation",
-    "SimulationInput",
     "StatutoryException",
     "StrategyPresentation",
     "SleeveTarget",
@@ -252,6 +242,7 @@ __all__ = [
     "calculate_macro_analog_regimes",
     "calculate_post_regime_etf_outcomes",
     "calculate_pension",
+    "calculate_current_holdings_planning_return",
     "calculate_pension_tax_credit",
     "calculate_portfolio_planning_return",
     "calculate_portfolio_risk",
@@ -273,5 +264,4 @@ __all__ = [
     "normalize_kis_holdings",
     "resolve_theme",
     "select_theme_etf_candidates",
-    "simulate_accumulation",
 ]

@@ -6,7 +6,7 @@ import piggyForm from "../assets/login/piggy-form.png";
 import piggyIntro from "../assets/login/piggy-intro.png";
 import piggySuccess from "../assets/login/piggy-success.png";
 import { getAccountLinkOptions, saveInvestmentProfile } from "../api/client";
-import type { AccountLinkOptionsResponse, InvestmentProfileAssessment, InvestmentProfileSubmission } from "../api/types";
+import type { AccountLinkOptionsResponse, InvestmentProfileAssessment, InvestmentProfileResponse, InvestmentProfileSubmission } from "../api/types";
 import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
 import { InvestorInfoForm } from "./InvestorInfoForm";
 import { InvestorResultScreen } from "./InvestorResultScreen";
@@ -16,7 +16,9 @@ type LoginStep = "intro" | "form" | "consent" | "success" | "linking" | "risk-as
 
 interface LoginFlowPageProps {
   auth: SupabaseAuthState;
+  displayName?: string;
   onAuthenticated: () => void;
+  onProfileSaved: (profile: InvestmentProfileResponse) => void;
   onStart: () => void;
   resurvey?: boolean;
 }
@@ -33,7 +35,7 @@ function StatusBar(): JSX.Element {
   );
 }
 
-export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
+export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSaved, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
   const [step, setStep] = useState<LoginStep>(resurvey ? "investor-info" : "intro");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
@@ -62,13 +64,12 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
     finally { setLinkOptionsLoading(false); }
   }
 
-  function showSignupNotice(): void { setNotice("회원가입은 준비 중입니다."); }
-
   async function saveInvestorInformation(submission: InvestmentProfileSubmission): Promise<void> {
     const accessToken = auth.session?.access_token;
     if (!accessToken) throw new Error("authenticated session is missing");
     const response = await saveInvestmentProfile(submission, accessToken);
     if (response.assessment === null) throw new Error("saved assessment is missing");
+    onProfileSaved(response);
     setAssessment(response.assessment);
     setStep("investor-result");
   }
@@ -111,7 +112,7 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
             </div>
             <div className="login-intro-actions">
               <button type="button" className="login-primary" onClick={() => setStep("form")}>로그인</button>
-              <button type="button" className="login-secondary" onClick={showSignupNotice}>회원가입</button>
+              <button type="button" className="login-secondary">회원가입</button>
               {notice && <p className="login-inline-notice" role="status">{notice}</p>}
               <p>서비스 시작은 이용약관 및 개인정보 처리방침 동의로 간주됩니다.</p>
             </div>
@@ -135,7 +136,7 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
                 <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호를 입력하세요" autoComplete="current-password" disabled={submitting} />
               </label>
               {auth.error && <p className="login-form-error" role="alert">{auth.error}</p>}{notice && <p className="login-inline-notice" role="status">{notice}</p>}
-              <div className="login-links"><button type="button">아이디 찾기</button><i /> <button type="button">비밀번호 찾기</button><i /> <button type="button" onClick={showSignupNotice}>회원가입</button></div>
+              <div className="login-links"><button type="button">아이디 찾기</button><i /> <button type="button">비밀번호 찾기</button><i /> <button type="button">회원가입</button></div>
               <div className="login-submit-wrap"><button type="submit" className="login-primary" disabled={submitting}>{submitting ? "로그인 중..." : "로그인하기"}</button></div>
             </form>
           </div>
@@ -143,16 +144,23 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
 
         {step === "consent" && (
           <div className="login-consent-page">
-            <button type="button" className="login-back" onClick={() => setStep("success")} aria-label="로그인 성공 화면으로 돌아가기">←</button>
-            <h1>연금계좌 연동</h1>
+            <div className="login-consent-header">
+              <button type="button" className="login-back" onClick={() => setStep("success")} aria-label="로그인 성공 화면으로 돌아가기">←</button>
+              <h1>연금계좌 연동</h1>
+            </div>
             <div className="login-consent-content">
-              <div className="login-consent-chips" aria-label="계좌 연동 특징">
-                <span>데모</span><span>조회</span><b>{linkOptions?.options.filter((option) => option.diagnosable).length ?? 0}종 계좌</b>
-              </div>
               <section className="login-consent-hero">
                 <span>연결 가능한 계좌</span>
-                <h2>{linkOptions?.options.filter((option) => option.diagnosable).length ?? 0}개<br /><em>연금계좌</em></h2>
-                <p>한 번에 불러와 통합 자산으로 확인</p>
+                <h2>연금계좌 <em>{linkOptions?.options.filter((option) => option.diagnosable).length ?? 0}종</em>을<br />나눠서 불러와요</h2>
+                <p>계좌 종류별로 각각 확인할 수 있어요</p>
+                <div className="login-consent-hero-accounts">
+                  {linkOptions?.options.filter((option) => option.diagnosable).map((option) => (
+                    <div key={option.code} className="login-consent-hero-account">
+                      <b>{option.code === "pension_savings" ? "연금" : option.code.toUpperCase()}</b>
+                      <span><strong>{option.code === "dc" ? "직접 운용하는 퇴직연금" : option.code === "irp" ? "스스로 적립하는 개인 연금계좌" : "세액공제 받는 개인 연금저축"}</strong><small>{option.category_label}</small></span>
+                    </div>
+                  ))}
+                </div>
                 <small>현재 MVP는 목데이터 · 실제 계좌 연결 아님</small>
               </section>
               <section className="login-consent-card">
@@ -166,12 +174,9 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
                 <h2>연결할 수 있는 계좌</h2>
                 {linkOptionsLoading && <p>계좌 정보를 확인하고 있습니다.</p>}
                 {linkOptionsError && <div role="alert"><p>{linkOptionsError}</p><button type="button" onClick={() => void loadLinkOptions()}>다시 시도</button></div>}
-                {linkOptions?.options.map((option) => <p key={option.code}><strong>{option.display_name}</strong><b>{option.category_label}</b></p>)}
+                {linkOptions?.options.filter((option) => option.diagnosable).map((option) => <p key={option.code}><strong>{option.display_name}</strong><b>{option.category_label}</b></p>)}
               </section>
-              <section className="login-consent-safe">
-                <h2>안심하고 연결하세요</h2>
-                <p>{linkOptions?.notice ?? "계좌 불러오기는 조회와 분석을 위한 연결이에요. 계좌가 이전되거나 상품이 자동으로 매매되지 않아요."}</p>
-              </section>
+              <section className="login-consent-safe"><h2>안심하고 연결하세요</h2><p>마이데이터를 통해 내 연금계좌를 안전하게 연동해서 가져와요.</p></section>
               <section className="login-consent-card login-consent-check-card">
                 <h2>연결 전 확인</h2>
                 <dl><dt>불러오는 정보</dt><dd>금융회사와 계좌 종류<br />잔액 · 평가금액 · 보유 상품 · 정보 기준일</dd><dt>이용 목적</dt><dd>연금자산 통합조회와 운용 현황 분석</dd></dl>
@@ -240,7 +245,7 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
         )}
 
         {step === "investor-result" && (
-          <InvestorResultScreen assessment={assessment} onBack={() => setStep("investor-info")} onStart={onStart} />
+          <InvestorResultScreen assessment={assessment} displayName={displayName} onBack={() => setStep("investor-info")} onStart={onStart} />
         )}
 
         {step === "success" && (

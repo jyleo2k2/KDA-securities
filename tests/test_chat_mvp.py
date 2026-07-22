@@ -250,6 +250,15 @@ def test_general_account_overview_uses_deterministic_verified_response() -> None
     assert all(section.evidence_ids for section in response.sections)
 
 
+def test_explicit_pension_basics_question_returns_verified_overview() -> None:
+    response = service().ask(ChatRequest(message="연금이 뭐야?"))
+
+    assert response.intent is ChatIntent.ACCOUNT_RULE
+    assert response.data_mode == "verified_pension_account_overview"
+    assert response.answer
+    assert response.sources
+
+
 @pytest.mark.parametrize(
     ("message", "expected_excerpt"),
     (
@@ -1591,6 +1600,25 @@ def test_guard_rejects_connective_negation_before_unsafe_claim(
 def test_guard_allows_negation_attached_after_unsafe_claim(candidate: str) -> None:
     # 주장 키워드 바로 뒤에서 해당 주장을 부정하는 컴플라이언스 설명은 허용한다.
     assert _unsafe_claims(candidate) == set()
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    (
+        "수익 보장이 될 수 없습니다.",
+        "매수 추천을 드리지 않습니다.",
+        "수익을 보장한다고 볼 수 없습니다.",
+    ),
+)
+def test_guard_allows_common_postfix_negation_variants(candidate: str) -> None:
+    assert _unsafe_claims(candidate) == set()
+
+
+def test_guard_rejects_positive_guarantee_after_negated_first_claim() -> None:
+    candidate = "원금 보장을 하지 않는다고 말하지만 실제로 보장됩니다."
+
+    assert _unsafe_claims(candidate) == {"guarantee"}
+    assert _adds_unverified_content(candidate, "일반적인 설명입니다.")
 
 
 def test_guard_rejects_new_guarantee_instance_in_same_category() -> None:
