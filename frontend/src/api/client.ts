@@ -65,6 +65,15 @@ export interface ChatStreamResult {
   idempotency_replayed?: boolean;
 }
 
+function withoutDemoNameMarker(value: string): string {
+  return value.replace(/\(가상\)/g, "").trim();
+}
+
+function normalizeChatResponse(response: ChatResponse): ChatResponse {
+  if (!response.salutation) return response;
+  return { ...response, salutation: withoutDemoNameMarker(response.salutation) };
+}
+
 async function parseOrThrow<T>(path: string, response: Response): Promise<T> {
   if (!response.ok) {
     let detail = `${path} 요청 실패 (${response.status})`;
@@ -225,7 +234,8 @@ async function apiPostStream<TBody>(
         ) {
           throw new ApiError(undefined, payload.message, payload.code);
         } else if (event === "response") {
-          result = payload as unknown as ChatStreamResult;
+          const streamed = payload as unknown as ChatStreamResult;
+          result = { ...streamed, response: normalizeChatResponse(streamed.response) };
         }
       }
       boundary = buffer.indexOf("\n\n");
@@ -248,8 +258,12 @@ export function getChatCards(): Promise<ChatCardCatalog> {
   return apiGet("/chat/cards");
 }
 
-export function getDemoHeroes(accessToken: string): Promise<DemoHeroPortfolio[]> {
-  return apiGet("/chat/heroes", accessToken);
+export async function getDemoHeroes(accessToken: string): Promise<DemoHeroPortfolio[]> {
+  const heroes = await apiGet<DemoHeroPortfolio[]>("/chat/heroes", accessToken);
+  return heroes.map((hero) => ({
+    ...hero,
+    nickname: withoutDemoNameMarker(hero.nickname),
+  }));
 }
 
 export function getAccountLinkOptions(): Promise<AccountLinkOptionsResponse> {
@@ -352,20 +366,24 @@ export function getChatSessions(
   return apiGet("/chat/sessions", accessToken);
 }
 
-export function getMyPensionContext(
+export async function getMyPensionContext(
   accessToken: string,
 ): Promise<DemoUserFinancialContext> {
-  return apiGet("/me/pension-context", accessToken);
+  const context = await apiGet<DemoUserFinancialContext>("/me/pension-context", accessToken);
+  return { ...context, nickname: withoutDemoNameMarker(context.nickname) };
 }
 
-export function getStoredChatMessages(
+export async function getStoredChatMessages(
   sessionId: string,
   accessToken: string,
 ): Promise<StoredChatMessage[]> {
-  return apiGet(
+  const messages = await apiGet<StoredChatMessage[]>(
     `/chat/sessions/${encodeURIComponent(sessionId)}/messages`,
     accessToken,
   );
+  return messages.map((message) => message.response
+    ? { ...message, response: normalizeChatResponse(message.response) }
+    : message);
 }
 
 export function deleteChatSession(
