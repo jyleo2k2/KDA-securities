@@ -11,7 +11,6 @@ from backend.app.chat.tools import (
 def test_chat_agent_registers_every_read_only_engine_tool() -> None:
     assert tuple(tool.__name__ for tool in ENGINE_AGENT_TOOLS) == (
         "account_diagnostics_tool",
-        "accumulation_simulation_tool",
         "profile_assessment_tool",
         "allocation_example_tool",
         "account_aggregation_tool",
@@ -23,7 +22,6 @@ def test_chat_agent_registers_every_read_only_engine_tool() -> None:
     ("tool_name", "engine_name"),
     (
         ("account_diagnostics_tool", "evaluate_account_diagnostics"),
-        ("accumulation_simulation_tool", "simulate_accumulation"),
         ("profile_assessment_tool", "evaluate_profile"),
         ("allocation_example_tool", "build_allocation_example"),
         ("account_aggregation_tool", "aggregate_accounts"),

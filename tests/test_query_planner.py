@@ -479,3 +479,13 @@ def test_explicit_macro_request_takes_priority_over_etf_theme() -> None:
 
     assert plan.intent is ChatIntent.MACRO_EVIDENCE
     assert plan.blocked_reason is None
+
+
+def test_accumulation_question_redirects_to_pension_planner() -> None:
+    response = _service(RecordingKnowledgeRepository()).ask(
+        ChatRequest(message="적립하면 얼마 모여요?")
+    )
+
+    assert response.data_mode == "pension_planner_redirect"
+    assert response.suggested_follow_ups[0].follow_up_id == "open_pension_planner"
+    assert "연금계산기" in response.answer

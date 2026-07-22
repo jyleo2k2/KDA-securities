@@ -12,6 +12,7 @@ from ..models import (
     ChatResponse,
     NumericEvidence,
     SectionKind,
+    SuggestedFollowUp,
     extract_numeric_claims,
 )
 from ..pension_account_overview import (
@@ -238,6 +239,23 @@ def handle_account_rule(
     *,
     knowledge: KnowledgeSearch,
 ) -> ChatResponse:
+    if plan.requests_pension_planner:
+        return ChatResponse(
+            intent=ChatIntent.ACCOUNT_RULE,
+            answer=(
+                "정확한 수치는 나이와 납입액, 가정에 따라 달라져요. "
+                "연금계산기 화면에서 값을 직접 조정해 보시는 게 가장 정확해요."
+            ),
+            data_mode="pension_planner_redirect",
+            suggested_follow_ups=[
+                SuggestedFollowUp(
+                    follow_up_id="open_pension_planner",
+                    label="연금계산기 열기",
+                    message="연금계산기 열기",
+                )
+            ],
+            limitations=["미래 수익이나 수령액을 확정하거나 보장하지 않습니다."],
+        )
     if plan.account_rule_topic == AccountRuleTopic.PENSION_ACCOUNT_OVERVIEW:
         return build_pension_account_overview_response()
     if plan.account_rule_topic is not None:
