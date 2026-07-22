@@ -84,7 +84,10 @@ def test_latest_component_snapshot_returns_ranked_top3() -> None:
     assert "completeness = 'complete'" in connection.cursor_obj.query.lower()
     assert "source.code <> 'kis_etf_components'" in connection.cursor_obj.query.lower()
     assert "binding.id is not null" in connection.cursor_obj.query.lower()
-    assert "when source.code = 'kis_etf_components' then 0" in connection.cursor_obj.query.lower()
+    assert (
+        "when source.code = 'kis_etf_components' then 0"
+        in connection.cursor_obj.query.lower()
+    )
     assert "source_kind <> 'collateral'" in connection.cursor_obj.query.lower()
     assert [item.component_name for item in snapshots["123456"].holdings] == [
         "삼성전자",
