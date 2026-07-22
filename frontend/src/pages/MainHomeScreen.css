@@ -78,6 +78,8 @@
 
 .mhs-strategy-scroll { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; margin: 0 -22px; padding-left: 22px; padding-right: 22px; }
 .mhs-strategy-card { flex: 0 0 168px; border: 1.5px solid #EAEDE7; border-radius: 20px; padding: 18px 16px; }
+.mhs-strategy-card-button { color: inherit; cursor: pointer; font: inherit; text-align: left; }
+.mhs-strategy-card-button:focus-visible { outline: 3px solid #18A860; outline-offset: 2px; }
 .mhs-strategy-card-title { font-size: 15px; font-weight: 900; color: #111; }
 .mhs-strategy-card-value { font-size: 28px; font-weight: 900; margin: 12px 0 4px; }
 .mhs-strategy-card-desc { font-size: 12px; font-weight: 500; color: #8A9691; margin: 0; line-height: 1.5; }

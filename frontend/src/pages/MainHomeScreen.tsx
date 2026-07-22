@@ -253,13 +253,20 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrateg
 
         <div className="mhs-strategy-scroll">
           {STRATEGY_CARDS.map((card) => (
-            <div className="mhs-strategy-card" style={{ background: card.bg }} key={card.title}>
+            <button
+              type="button"
+              className="mhs-strategy-card mhs-strategy-card-button"
+              style={{ background: card.bg }}
+              key={card.title}
+              onClick={onOpenStrategyExplore}
+              aria-label={`${card.title} 전략 상세 보기`}
+            >
               <span className="mhs-strategy-card-title">{card.title}</span>
               <p className="mhs-strategy-card-value" style={{ color: card.valueColor }}>교육용 안내</p>
               <p className="mhs-strategy-card-desc">{card.desc}</p>
               {card.warning && <p className="mhs-strategy-card-warning">{card.warning}</p>}
               <p className="mhs-strategy-card-footnote">{card.footnote}</p>
-            </div>
+            </button>
           ))}
         </div>
         <p className="mhs-strategy-disclaimer">전략별 특징을 설명하는 교육용 화면이며, 미래 수익을 보장하거나 예측하지 않아요.</p>

@@ -1340,7 +1340,14 @@ export function GuidePage({
       <main className="chat-main">
         <header className="topbar design-topbar">
           <button className="menu-button" type="button" aria-label="뒤로 가기" onClick={onBack ?? (() => setIsSidebarOpen(true))}>‹</button>
-          <button className="design-new-chat" type="button" onClick={startNewChat}><span>+</span> 새 대화</button>
+          <button
+            className="design-history-button"
+            type="button"
+            onClick={() => setIsSidebarOpen(true)}
+            aria-label="대화 기록 열기"
+          >
+            대화 기록
+          </button>
           <div className="design-topbar-actions">
             <Icon name="database" size={25} />
             <span className={`design-auth-state ${auth.session ? "authenticated" : "anonymous"}`}>

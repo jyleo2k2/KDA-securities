@@ -346,8 +346,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .guide-tab .chat-main { margin-left: 0; background: #fff; }
 .guide-tab .design-topbar { height: 82px; gap: 10px; padding: 14px 20px 7px; border: 0; background: #fff; }
 .guide-tab .menu-button { display: block; width: 38px; height: 38px; font-size: 30px; color: #111; }
-.guide-tab .design-new-chat { display: inline-flex; align-items: center; gap: 6px; height: 42px; padding: 0 16px; border: 1.5px solid #dce0d8; border-radius: 22px; background: #fff; color: #111; font-size: 14px; font-weight: 700; cursor: pointer; }
-.guide-tab .design-new-chat span { color: #18a860; font-size: 22px; line-height: 1; }
+.guide-tab .design-history-button { display: inline-flex; align-items: center; height: 42px; padding: 0 16px; border: 1.5px solid #dce0d8; border-radius: 22px; background: #fff; color: #111; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.guide-tab .design-history-button:focus-visible { outline: 3px solid #18a860; outline-offset: 2px; }
 .guide-tab .design-topbar-actions { display: flex; align-items: center; gap: 9px; margin-left: auto; color: #18a860; }
 .guide-tab .design-logout { border: 0; background: transparent; color: #68756e; font-size: 11px; font-weight: 700; cursor: pointer; }
 .guide-tab .design-auth-state { color: #68756e; font-size: 10px; font-weight: 800; white-space: nowrap; }
