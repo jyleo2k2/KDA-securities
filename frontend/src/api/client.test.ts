@@ -1,7 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const auth = vi.hoisted(() => ({
+  getSession: vi.fn(),
+  refreshSession: vi.fn(),
+}));
+
+vi.mock("../auth/supabase", () => ({
+  supabase: { auth },
+}));
+
 import {
   ApiError,
+  apiGet,
+  apiPost,
   apiErrorMessage,
   deleteChatSession,
   getBenchmarkSummary,
@@ -11,6 +22,85 @@ import {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  auth.getSession.mockReset();
+  auth.refreshSession.mockReset();
+});
+
+describe("authenticated REST retry", () => {
+  it("refreshes once and retries a GET with the refreshed token", async () => {
+    auth.getSession.mockResolvedValue({
+      data: { session: { access_token: "expired-token" } },
+    });
+    auth.refreshSession.mockResolvedValue({
+      data: { session: { access_token: "fresh-token" } },
+      error: null,
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiGet<{ ok: boolean }>("/protected", "expired-token"))
+      .resolves.toEqual({ ok: true });
+
+    expect(auth.refreshSession).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "http://127.0.0.1:8000/protected", {
+      headers: { Authorization: "Bearer expired-token" },
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "http://127.0.0.1:8000/protected", {
+      headers: { Authorization: "Bearer fresh-token" },
+    });
+  });
+
+  it("refreshes once and retries a POST with the refreshed token", async () => {
+    auth.getSession.mockResolvedValue({
+      data: { session: { access_token: "expired-token" } },
+    });
+    auth.refreshSession.mockResolvedValue({
+      data: { session: { access_token: "fresh-token" } },
+      error: null,
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiPost<{ name: string }, { ok: boolean }>(
+      "/protected",
+      { name: "pension" },
+      "expired-token",
+    )).resolves.toEqual({ ok: true });
+
+    expect(auth.refreshSession).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer fresh-token",
+      },
+    });
+  });
+
+  it("does not retry again after refresh fails", async () => {
+    auth.getSession.mockResolvedValue({
+      data: { session: { access_token: "expired-token" } },
+    });
+    auth.refreshSession.mockResolvedValue({
+      data: { session: null },
+      error: new Error("invalid refresh token"),
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ detail: { message: "Unauthorized" } }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    ));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiGet("/protected", "expired-token"))
+      .rejects.toMatchObject({ status: 401 });
+
+    expect(auth.refreshSession).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
 });
 
 
