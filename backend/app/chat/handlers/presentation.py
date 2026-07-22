@@ -9,6 +9,8 @@ from ..models import (
     ChatVisualization,
     ConversationContext,
     DataBoundary,
+    ReferentItem,
+    ReferentList,
     VisualizationDatum,
     VisualizationDatumRole,
     VisualizationKind,
@@ -303,6 +305,11 @@ def with_context(
         if previous is not None
         else None
     )
+    referents = _response_referents(response, plan)
+    if response.intent == ChatIntent.ETF_THEME:
+        account_type = None
+        survey_profile = None
+        selected_risk_profile = None
     return response.model_copy(
         update={
             "conversation_context": ConversationContext(
@@ -313,8 +320,38 @@ def with_context(
                 selected_risk_profile=selected_risk_profile,
                 news=news_context,
                 etf_theme=etf_theme_context,
+                referents=referents,
             )
         }
+    )
+
+
+def _response_referents(
+    response: ChatResponse, plan: QueryPlan
+) -> ReferentList | None:
+    if response.intent != ChatIntent.ACCOUNT_RULE:
+        return None
+    account_types = plan.account_types
+    if plan.account_rule_topic is not None and (
+        plan.account_rule_topic.value == "pension_account_overview"
+    ):
+        account_types = tuple(_ACCOUNT_TYPE_LABELS)
+    if len(account_types) < 2:
+        return None
+    return ReferentList(
+        intent=ChatIntent.ACCOUNT_RULE,
+        topic=(
+            plan.account_rule_topic.value
+            if plan.account_rule_topic is not None
+            else None
+        ),
+        items=[
+            ReferentItem(
+                label=_ACCOUNT_TYPE_LABELS[account_type],
+                ref=account_type.value,
+            )
+            for account_type in account_types
+        ],
     )
 
 

@@ -73,13 +73,14 @@ const BOUNDARY_LABELS: Record<DataBoundary, string> = {
   official_disclosure: "공식 공시",
   official_statistics: "공식 통계",
   news_metadata: "뉴스 메타데이터",
-  mock: "목데이터",
+  mock: "계좌 데이터",
   engine: "규칙 엔진",
   user_input: "사용자 입력",
   unavailable: "미지원",
 };
 
 const DEFAULT_TYPING_INTERVAL_MS = 50;
+const SERVER_READY_RETRY_DELAYS_MS = [3000, 6000, 12000] as const;
 
 export const ETF_THEME_CARDS = [
   { number: 1, title: "AI·소프트웨어", message: "AI·소프트웨어 테마가 뭐야?" },
@@ -453,11 +454,13 @@ function AssistantMessage({
   response,
   text,
   onFollowUp,
+  onOpenPlanner,
   usedFollowUpMessages,
 }: {
   response?: ChatResponse;
   text: string;
   onFollowUp?: (message: string) => void;
+  onOpenPlanner?: () => void;
   usedFollowUpMessages: ReadonlySet<string>;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -468,6 +471,15 @@ function AssistantMessage({
   const visibleFollowUps = (response.suggested_follow_ups ?? []).filter(
     (followUp) => !usedFollowUpMessages.has(followUp.message.trim()),
   );
+  const isEducationalPortfolio = response.intent === "educational_portfolio";
+  const shouldShowNumericEvidence = (
+    response.intent !== "mock_portfolio"
+    && response.intent !== "macro_evidence"
+    && !isEducationalPortfolio
+    && response.data_mode !== "theme_candidates"
+    && response.data_mode !== "theme_component_holdings"
+    && response.numeric_evidence.length > 0
+  );
   const hasHiddenNumericEvidence = (
     response.numeric_evidence.length > NUMBER_EVIDENCE_DEFAULT_LIMIT
   );
@@ -477,7 +489,7 @@ function AssistantMessage({
   const followUpCards = visibleFollowUps.length > 0 ? (
     <div className="follow-up-cards" aria-label="이어서 물어보기">
       {visibleFollowUps.map((followUp) => (
-        <button key={followUp.follow_up_id} onClick={() => onFollowUp?.(followUp.message)} type="button">
+        <button key={followUp.follow_up_id} onClick={() => followUp.follow_up_id === "open_pension_planner" ? onOpenPlanner?.() : onFollowUp?.(followUp.message)} type="button">
           {followUp.label}<Icon name="chevron" size={14} />
         </button>
       ))}
@@ -493,7 +505,9 @@ function AssistantMessage({
     >
       <div className="answer-meta">
         <span className={`intent-pill intent-${response.intent}`}>{INTENT_LABELS[response.intent]}</span>
-        <span>{response.narration_mode === "deterministic" ? "검증 답변" : "AI 서술"}</span>
+        {!isEducationalPortfolio && (
+          <span>{response.narration_mode === "deterministic" ? "검증 답변" : "AI 서술"}</span>
+        )}
       </div>
       {response.intent !== "macro_evidence" && (response.data_mode !== "news_summary" || response.news_items.length === 0) && (
         <p className="message-copy">
@@ -505,7 +519,7 @@ function AssistantMessage({
       <MacroEvidenceCards response={response} />
       <MacroRegimeOutcomeCards response={response} />
 
-      {response.intent !== "mock_portfolio" && response.intent !== "macro_evidence" && response.data_mode !== "theme_candidates" && response.data_mode !== "theme_component_holdings" && response.numeric_evidence.length > 0 && (
+      {shouldShowNumericEvidence && (
         <>
           <div className="number-grid" aria-label="수치 근거">
             {displayedNumericEvidence.map((item, index) => (
@@ -623,18 +637,18 @@ function authenticatedErrorMessage(error: unknown): string {
 
 export function GuidePage({
   auth,
-  initialHistoryOpen = false,
   initialScenarioCode,
   onBack,
+  onOpenPlanner,
   onSignOut,
   surveyProfile,
   userContext,
   typingIntervalMs = DEFAULT_TYPING_INTERVAL_MS,
 }: {
   auth: SupabaseAuthState;
-  initialHistoryOpen?: boolean;
   initialScenarioCode?: string;
   onBack?: () => void;
+  onOpenPlanner?: () => void;
   onSignOut: () => Promise<void>;
   surveyProfile: CompletedSurveyProfile | null;
   userContext: DemoUserFinancialContext | null;
@@ -647,7 +661,7 @@ export function GuidePage({
   const [chatCards, setChatCards] = useState<ChatCard[]>([]);
   const [allEtfThemesVisible, setAllEtfThemesVisible] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState(initialScenarioCode ?? "");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(initialHistoryOpen);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [serverReady, setServerReady] = useState<boolean | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -842,6 +856,7 @@ export function GuidePage({
     // 연결될 때까지 다시 시도한다.
     let cancelled = false;
     let retryTimer: number | undefined;
+    let retryCount = 0;
 
     const check = () => {
       Promise.all([
@@ -854,10 +869,17 @@ export function GuidePage({
           setChatCards(catalog.cards);
           setServerReady(true);
         })
-        .catch(() => {
+        .catch((error: unknown) => {
           if (cancelled) return;
           setServerReady(false);
-          retryTimer = window.setTimeout(check, 3000);
+          const retryable = !(error instanceof ApiError)
+            || error.status === undefined
+            || error.status >= 500;
+          const delay = SERVER_READY_RETRY_DELAYS_MS[retryCount];
+          if (retryable && delay !== undefined) {
+            retryCount += 1;
+            retryTimer = window.setTimeout(check, delay);
+          }
         });
     };
 
@@ -1205,11 +1227,11 @@ export function GuidePage({
         </div>
 
         <div className="sidebar-section">
-          <p className="sidebar-label">목계좌 시나리오</p>
+          <p className="sidebar-label">내 연금계좌</p>
           {userContext ? (
             <div className="user-context-card">
-              <strong>{userContext.nickname}</strong>
-              <span>{userContext.scenario_name} · 가상 목데이터</span>
+              <strong>{userContext.nickname.replace(/\(가상\)/g, "")}</strong>
+              <span>{userContext.scenario_name}</span>
               <small>
                 총 연금자산 {Number(userContext.total_pension_balance_krw).toLocaleString("ko-KR")}원
                 <br />기준일 {userContext.as_of_date}
@@ -1331,9 +1353,9 @@ export function GuidePage({
         <div className="sidebar-footer">
           <div className="connection-status">
             <span className={`status-dot ${serverReady === false ? "offline" : ""}`} />
-            <span>{serverReady === null ? "서버 확인 중" : serverReady ? (auth.session ? "저장 API 연결됨" : "데모 API 연결됨") : "API 연결 필요"}</span>
+            <span>{serverReady === null ? "서버 확인 중" : serverReady ? "저장 API 연결됨" : "API 연결 필요"}</span>
           </div>
-          <p>실제 주문을 실행하지 않는<br />자문·정보 제공형 데모입니다.</p>
+          <p>실제 주문을 실행하지 않는<br />자문·정보 제공형 서비스입니다.</p>
         </div>
       </aside>
 
@@ -1392,6 +1414,33 @@ export function GuidePage({
                 onSubmit={(message) => void submitPrompt(message)}
               />
 
+              {onOpenPlanner && (
+                <section className="chat-home-card-section" aria-labelledby="planner-heading">
+                  <header className="chat-home-section-heading">
+                    <p>연금 수령 계획</p>
+                    <h2 id="planner-heading">가정 시나리오로 수령 계획 점검</h2>
+                    <span>
+                      {surveyProfile
+                        ? "현재 잔액과 월 납입액을 바탕으로 규칙 엔진의 가정별 적립금과 월 수령액을 비교합니다."
+                        : "투자 성향을 먼저 확인한 뒤, 규칙 엔진의 가정 시나리오로 수령 계획을 점검합니다."}
+                    </span>
+                  </header>
+                  <div className="prompt-carousel">
+                    <button
+                      aria-label="연금 수령 계획 시나리오 열기"
+                      onClick={onOpenPlanner}
+                      type="button"
+                    >
+                      <span className="design-prompt-copy">
+                        <small>규칙 엔진 가정</small>
+                        <strong>연금 수령 계획</strong>
+                        <em>계획 시나리오 열기</em>
+                      </span>
+                    </button>
+                  </div>
+                </section>
+              )}
+
               <section className="chat-home-card-section holdings-section" aria-labelledby="holdings-heading">
                 <header className="chat-home-section-heading">
                   <p>내 ETF 점검</p>
@@ -1428,6 +1477,7 @@ export function GuidePage({
               renderMessage={(message) => (
                 <AssistantMessage
                   onFollowUp={(prompt) => void submitPrompt(prompt)}
+                  onOpenPlanner={onOpenPlanner}
                   response={message.response}
                   text={message.text}
                   usedFollowUpMessages={usedFollowUpMessages}

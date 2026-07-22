@@ -400,12 +400,12 @@ def test_engine_tax_endpoints_share_the_same_contract() -> None:
     assert credit.status_code == 200
     assert (
         credit.json()["rate_scenarios"][0]["estimated_tax_credit_krw"]
-        == "1485000.00"
+        == "1485000"
     )
     assert withdrawal.status_code == 200
     assert (
         withdrawal.json()["estimated_max_other_income_withholding_krw"]
-        == "11715000.00"
+        == "11715000"
     )
 
 

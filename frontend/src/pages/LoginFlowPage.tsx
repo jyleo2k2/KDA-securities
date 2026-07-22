@@ -6,7 +6,7 @@ import piggyForm from "../assets/login/piggy-form.png";
 import piggyIntro from "../assets/login/piggy-intro.png";
 import piggySuccess from "../assets/login/piggy-success.png";
 import { getAccountLinkOptions, saveInvestmentProfile } from "../api/client";
-import type { AccountLinkOptionsResponse, InvestmentProfileAssessment, InvestmentProfileSubmission } from "../api/types";
+import type { AccountLinkOptionsResponse, InvestmentProfileAssessment, InvestmentProfileResponse, InvestmentProfileSubmission } from "../api/types";
 import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
 import { InvestorInfoForm } from "./InvestorInfoForm";
 import { InvestorResultScreen } from "./InvestorResultScreen";
@@ -16,7 +16,9 @@ type LoginStep = "intro" | "form" | "consent" | "success" | "linking" | "risk-as
 
 interface LoginFlowPageProps {
   auth: SupabaseAuthState;
+  displayName?: string;
   onAuthenticated: () => void;
+  onProfileSaved: (profile: InvestmentProfileResponse) => void;
   onStart: () => void;
   resurvey?: boolean;
 }
@@ -33,7 +35,7 @@ function StatusBar(): JSX.Element {
   );
 }
 
-export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
+export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSaved, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
   const [step, setStep] = useState<LoginStep>(resurvey ? "investor-info" : "intro");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
@@ -62,13 +64,12 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
     finally { setLinkOptionsLoading(false); }
   }
 
-  function showSignupNotice(): void { setNotice("회원가입은 준비 중입니다."); }
-
   async function saveInvestorInformation(submission: InvestmentProfileSubmission): Promise<void> {
     const accessToken = auth.session?.access_token;
     if (!accessToken) throw new Error("authenticated session is missing");
     const response = await saveInvestmentProfile(submission, accessToken);
     if (response.assessment === null) throw new Error("saved assessment is missing");
+    onProfileSaved(response);
     setAssessment(response.assessment);
     setStep("investor-result");
   }
@@ -111,7 +112,7 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
             </div>
             <div className="login-intro-actions">
               <button type="button" className="login-primary" onClick={() => setStep("form")}>로그인</button>
-              <button type="button" className="login-secondary" onClick={showSignupNotice}>회원가입</button>
+              <button type="button" className="login-secondary">회원가입</button>
               {notice && <p className="login-inline-notice" role="status">{notice}</p>}
               <p>서비스 시작은 이용약관 및 개인정보 처리방침 동의로 간주됩니다.</p>
             </div>
@@ -135,7 +136,7 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
                 <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호를 입력하세요" autoComplete="current-password" disabled={submitting} />
               </label>
               {auth.error && <p className="login-form-error" role="alert">{auth.error}</p>}{notice && <p className="login-inline-notice" role="status">{notice}</p>}
-              <div className="login-links"><button type="button">아이디 찾기</button><i /> <button type="button">비밀번호 찾기</button><i /> <button type="button" onClick={showSignupNotice}>회원가입</button></div>
+              <div className="login-links"><button type="button">아이디 찾기</button><i /> <button type="button">비밀번호 찾기</button><i /> <button type="button">회원가입</button></div>
               <div className="login-submit-wrap"><button type="submit" className="login-primary" disabled={submitting}>{submitting ? "로그인 중..." : "로그인하기"}</button></div>
             </form>
           </div>
@@ -244,7 +245,7 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
         )}
 
         {step === "investor-result" && (
-          <InvestorResultScreen assessment={assessment} onBack={() => setStep("investor-info")} onStart={onStart} />
+          <InvestorResultScreen assessment={assessment} displayName={displayName} onBack={() => setStep("investor-info")} onStart={onStart} />
         )}
 
         {step === "success" && (

@@ -255,45 +255,6 @@ export interface AggregationEvaluation {
   evidence: SourceChip[];
 }
 
-// ── /engine/simulation ──
-export interface SimulationInput {
-  current_age: number;
-  risk_profile: RiskProfile;
-  current_balance_krw: string;
-  monthly_contribution_krw: string;
-  inflation_percent?: string;
-}
-
-export interface BandSegment {
-  age_band: AgeBand;
-  months: number;
-  weights: AllocationWeights;
-  net_annual_return_percent_by_scenario: Record<AssumptionScenario, string>;
-}
-
-export interface ScenarioProjection {
-  scenario: AssumptionScenario;
-  nominal_value_at_55_krw: string;
-  real_value_at_55_krw: string;
-  investment_gain_krw: string;
-}
-
-export interface SimulationEvaluation {
-  engine_name: string;
-  engine_version: string;
-  assumption_version: string;
-  current_age: number;
-  target_age: number;
-  years_to_55: number;
-  months_to_55: number;
-  inflation_percent: string;
-  total_principal_krw: string;
-  projections: ScenarioProjection[];
-  band_segments: BandSegment[];
-  assumption_notice: string;
-  evidence: SourceChip[];
-}
-
 // ── /engine/pension-calculator ──
 export interface PensionCalculatorInput {
   current_age: number;
@@ -324,8 +285,17 @@ export interface PensionCalculatorYear {
   balance_krw: string;
 }
 
+export interface StrategyPresentation {
+  strategy_id: string;
+  display_name: string;
+  summary: string;
+  risk_badge: string;
+  character_key: string;
+}
+
 export interface PensionCalculatorStrategy {
   strategy_id: string;
+  presentation: StrategyPresentation;
   risk_profile: RiskProfile;
   net_annual_return_percent: string;
   growth_percent: string;
@@ -357,6 +327,19 @@ export interface PensionCalculatorEvaluation {
   tax: PensionCalculatorTax;
   assumption: PensionCalculatorAssumption;
   warnings: string[];
+}
+
+export interface PensionCalculatorPortfolioCmaRequest {
+  calculator: PensionCalculatorInput;
+  current_holdings: Array<{
+    isu_code: string;
+    amount_krw: string;
+  }>;
+}
+
+export interface PensionCalculatorPortfolioCmaEvaluation {
+  calculator: PensionCalculatorEvaluation;
+  planning_return: PortfolioPlanningEvaluation;
 }
 
 // ── /engine/allocation-example ──
@@ -784,31 +767,6 @@ export interface ChatNewsItem {
   published_at?: string | null;
 }
 
-export interface BenchmarkDistribution {
-  code: string;
-  count: number;
-}
-
-export interface BenchmarkAccountTypeStat {
-  account_type: string;
-  account_count: number;
-  mean_balance_krw: string;
-  mean_monthly_contribution_krw: string;
-  mean_risky_asset_ratio_percent: string;
-}
-
-export interface BenchmarkSummary {
-  data_boundary: "mock";
-  source_label: string;
-  notice: string;
-  user_count: number;
-  account_count: number;
-  holding_count: number;
-  age_groups: BenchmarkDistribution[];
-  risk_profiles: BenchmarkDistribution[];
-  account_type_stats: BenchmarkAccountTypeStat[];
-}
-
 export type VisualizationKind = "asset_allocation" | "risk_cap" | "tax_summary" | "sleeve_allocation" | "stress_scenarios" | "disclosure_comparison" | "accumulation_projection";
 export type VisualizationDatumRole = "segment" | "current" | "limit" | "value";
 
@@ -1024,6 +982,7 @@ export interface EducationalPortfolioEvaluation {
   candidates: EducationalEtfCandidate[];
   portfolio_risk: PortfolioRiskEvaluation;
   planning_return: PortfolioPlanningEvaluation;
+  current_holdings_planning_return?: PortfolioPlanningEvaluation | null;
   rebalancing: RebalancingGuidance;
   sources: SourceEvidence[];
   warnings: string[];
@@ -1038,6 +997,17 @@ export interface NewsConversationContext {
   shown_at: string;
 }
 
+export interface ReferentItem {
+  label: string;
+  ref: string;
+}
+
+export interface ReferentList {
+  intent: ChatIntent;
+  topic?: string | null;
+  items: ReferentItem[];
+}
+
 export interface ConversationContext {
   account_type?: AccountType | null;
   scenario_code?: string | null;
@@ -1045,6 +1015,7 @@ export interface ConversationContext {
   survey_profile?: CompletedSurveyProfile | null;
   selected_risk_profile?: RiskProfile | null;
   news?: NewsConversationContext | null;
+  referents?: ReferentList | null;
 }
 
 export interface ChatResponse {

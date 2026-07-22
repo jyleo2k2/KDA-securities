@@ -46,6 +46,8 @@ DEFAULT_REPORT_PATH = Path(
     "data/cache/planning_returns/structural_market_evidence_latest.json"
 )
 PERCENT_QUANTUM = Decimal("0.0001")
+CALIBRATION_END_FORMATION_YEAR = 1990
+HOLDOUT_START_FORMATION_YEAR = 2001
 
 
 class _TableParser(HTMLParser):
@@ -212,6 +214,48 @@ def build_long_horizon_diagnostics(
     def errors(key: str) -> list[Decimal]:
         return [Decimal(row[key]) for row in rows]
 
+    def split_metrics(split_rows: list[dict[str, Any]]) -> dict[str, Any]:
+        def split_errors(key: str) -> list[Decimal]:
+            return [Decimal(row[key]) for row in split_rows]
+
+        return {
+            "formation_year_start": split_rows[0]["formation_year"],
+            "formation_year_end": split_rows[-1]["formation_year"],
+            "metrics": {
+                "dividend_yield_plus_smoothed_growth": _metrics(
+                    split_errors("structural_error_percent_point")
+                ),
+                "treasury_rate_plus_implied_erp": _metrics(
+                    split_errors("equilibrium_error_percent_point")
+                ),
+                "trailing_10y_return": _metrics(
+                    split_errors("trailing_error_percent_point")
+                ),
+            },
+        }
+
+    calibration_rows = [
+        row
+        for row in rows
+        if row["formation_year"] <= CALIBRATION_END_FORMATION_YEAR
+    ]
+    embargo_rows = [
+        row
+        for row in rows
+        if CALIBRATION_END_FORMATION_YEAR
+        < row["formation_year"]
+        < HOLDOUT_START_FORMATION_YEAR
+    ]
+    holdout_rows = [
+        row
+        for row in rows
+        if row["formation_year"] >= HOLDOUT_START_FORMATION_YEAR
+    ]
+    if not calibration_rows or not embargo_rows or not holdout_rows:
+        raise ValueError(
+            "calibration, embargo and holdout windows must all be non-empty"
+        )
+
     return {
         "horizon_years": horizon_years,
         "vintage_definition": "reconstructed_annual_observation_not_archived_release",
@@ -223,6 +267,16 @@ def build_long_horizon_diagnostics(
                 errors("equilibrium_error_percent_point")
             ),
             "trailing_10y_return": _metrics(errors("trailing_error_percent_point")),
+        },
+        "time_split": {
+            "calibration": split_metrics(calibration_rows),
+            "embargo": {
+                "formation_year_start": embargo_rows[0]["formation_year"],
+                "formation_year_end": embargo_rows[-1]["formation_year"],
+                "observation_count": len(embargo_rows),
+                "reason": "ten_year_outcome_gap_between_calibration_and_holdout",
+            },
+            "holdout": split_metrics(holdout_rows),
         },
         "vintages": rows,
     }
@@ -312,13 +366,19 @@ def build_structural_market_report(
         + Decimal(latest_damodaran["implied_erp_percent"])
     )
     diagnostics = build_long_horizon_diagnostics(damodaran_rows, annual_returns)
-    structural_metric = diagnostics["metrics"][
+    calibration_metrics = diagnostics["time_split"]["calibration"]["metrics"]
+    structural_metric = calibration_metrics[
         "dividend_yield_plus_smoothed_growth"
     ]
-    equilibrium_metric = diagnostics["metrics"]["treasury_rate_plus_implied_erp"]
+    equilibrium_metric = calibration_metrics["treasury_rate_plus_implied_erp"]
     structural_rmse = Decimal(structural_metric["rmse_percent_point"])
     equilibrium_rmse = Decimal(equilibrium_metric["rmse_percent_point"])
-    confidence = equilibrium_rmse / (structural_rmse + equilibrium_rmse)
+    combined_rmse = structural_rmse + equilibrium_rmse
+    confidence = (
+        equilibrium_rmse / combined_rmse
+        if combined_rmse != 0
+        else Decimal("0.50")
+    )
     confidence = min(Decimal("0.80"), max(Decimal("0.20"), confidence))
 
     damodaran_source = _source_chip(
@@ -332,6 +392,11 @@ def build_structural_market_report(
             "structural_method": "dividend_yield_plus_smoothed_growth",
             "equilibrium_prior_percent": str(equilibrium_equity),
             "view_confidence": str(_percent(confidence)),
+            "view_confidence_calibration": {
+                "formation_year_end": CALIBRATION_END_FORMATION_YEAR,
+                "holdout_start_formation_year": HOLDOUT_START_FORMATION_YEAR,
+                "method": "inverse_relative_rmse_with_ten_year_embargo",
+            },
             "source": damodaran_source,
             "components": {
                 "dividend_yield_percent": str(
@@ -369,7 +434,7 @@ def build_structural_market_report(
 
     return {
         "report_type": "structural_market_evidence",
-        "schema_version": "2026-07-20.1",
+        "schema_version": "2026-07-22.1",
         "generated_at": datetime.now(UTC).isoformat(),
         "as_of": as_of.isoformat(),
         "usage_label": "research_candidate_not_return_forecast",
@@ -384,7 +449,10 @@ def build_structural_market_report(
         "anti_leakage_controls": [
             "FRED requests lock realtime_start and realtime_end to the as-of date.",
             "Each realized ten-year window begins after its formation year.",
-            "No diagnostic parameter is fitted to a future realized window.",
+            (
+                "View confidence uses formation years through 1990 only; "
+                "1991-2000 is embargoed and holdout starts in 2001."
+            ),
         ],
         "limitations": [
             (
