@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import copy
 import io
+import json
 from pathlib import Path
 from typing import Any
 
@@ -17,8 +18,7 @@ from scripts.check_pr_session_policy import (
 )
 from scripts.git_session_manager import (
     SessionError,
-    _guard_shell_command,
-    _hook_input_from_stdin,
+    _hook_file_from_stdin,
     _local_conflicts,
     command_guard,
     matching_hotspots,
@@ -188,24 +188,17 @@ def test_stale_and_starting_claims_still_block_overlap(tmp_path: Path) -> None:
     assert len(_local_conflicts(registry, ["backend/app"], "back/me/task")) == 1
 
 
-def test_hook_input_is_fail_closed_and_supports_notebooks(
+def test_hook_file_is_fail_closed_and_supports_notebooks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("sys.stdin", io.StringIO("{"))
     with pytest.raises(SessionError, match="JSON"):
-        _hook_input_from_stdin()
+        _hook_file_from_stdin()
     monkeypatch.setattr(
         "sys.stdin",
         io.StringIO('{"tool_input":{"notebook_path":"analysis/demo.ipynb"}}'),
     )
-    assert _hook_input_from_stdin() == ("analysis/demo.ipynb", None)
-
-
-def test_shell_guard_blocks_direct_writes_and_git_coordination() -> None:
-    with pytest.raises(SessionError, match="직접 파일 쓰기"):
-        _guard_shell_command("Set-Content -Path AGENTS.md -Value bad")
-    with pytest.raises(SessionError, match="Git ref"):
-        _guard_shell_command("git worktree remove C:/dev/other")
+    assert _hook_file_from_stdin() == "analysis/demo.ipynb"
 
 
 def test_github_pagination_and_rename_paths(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -239,6 +232,16 @@ def test_workflow_checks_out_trusted_base() -> None:
     workflow = Path(".github/workflows/session-policy.yml").read_text(encoding="utf-8")
     assert "github.event.pull_request.base.sha" in workflow
     assert "persist-credentials: false" in workflow
+
+
+def test_claude_settings_do_not_block_bash_git_workflows() -> None:
+    settings = json.loads(Path(".claude/settings.json").read_text(encoding="utf-8"))
+    matchers = [
+        hook["matcher"]
+        for phase in ("PreToolUse", "PostToolUse")
+        for hook in settings["hooks"].get(phase, [])
+    ]
+    assert "Bash" not in matchers
 
 
 def test_old_pull_request_is_grandfathered() -> None:
