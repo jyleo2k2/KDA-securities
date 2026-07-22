@@ -232,6 +232,12 @@ _PENSION_CONTEXT = re.compile(
     r"계좌.{0,20}(?:위험\s*자산|한도)",
     re.I,
 )
+_PENSION_BASICS_QUESTION = re.compile(
+    r"(?:연금|퇴직\s*연금)\s*(?:이|은|는|을|를|의)?\s*"
+    r"(?:뭐|무엇|종류|기본|제도|알려|설명|"
+    r"어떻게\s*(?:시작|가입)|(?:시작|가입).{0,8}어떻게)",
+    re.I,
+)
 _ACCOUNT_OVERVIEW_WORDS = re.compile(
     r"규칙|뭐|무엇|전체|전반|한눈에|정리|설명|알려|기본|차이|비교"
 )
@@ -363,6 +369,8 @@ def _news_scope_notice(message: str) -> NewsScopeNotice | None:
 def _account_rule_topic(
     message: str, account_types: tuple[AccountType, ...]
 ) -> AccountRuleTopic | None:
+    if _PENSION_BASICS_QUESTION.search(message):
+        return AccountRuleTopic.PENSION_ACCOUNT_OVERVIEW
     if _PENSION_RECEIPT_TAX_TOPIC.search(message):
         return AccountRuleTopic.PENSION_RECEIPT_TAX
     if _PENSION_RECEIPT_START_TOPIC.search(message) and not re.search(

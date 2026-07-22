@@ -119,6 +119,51 @@ def test_unrelated_tax_wording_does_not_enter_pension_rag() -> None:
 
 
 @pytest.mark.parametrize(
+    "message",
+    (
+        "연금이 뭐야?",
+        "연금 뭐야",
+        "연금 종류 알려줘",
+        "퇴직연금이 뭐야?",
+        "연금 어떻게 시작해?",
+        "연금 가입 어떻게 해?",
+    ),
+)
+def test_explicit_pension_basics_questions_use_account_overview(message: str) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent is ChatIntent.ACCOUNT_RULE
+    assert plan.account_rule_topic is not None
+    assert plan.account_rule_topic.value == "pension_account_overview"
+    assert plan.blocked_reason is None
+
+
+@pytest.mark.parametrize(
+    "message",
+    (
+        "오늘 밥 뭐 먹었어?",
+        "비트코인 지금 사도 돼?",
+        "청약 통장 어떻게 만들어?",
+        "파이썬 for문 어떻게 써?",
+        "노후 준비 어떻게 해야 해?",
+        "돈 어떻게 모아?",
+    ),
+)
+def test_non_pension_basics_questions_remain_unsupported(message: str) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent is ChatIntent.OUT_OF_SCOPE
+    assert plan.blocked_reason is BlockedReason.UNSUPPORTED
+
+
+def test_pension_order_request_stays_blocked_before_basics_routing() -> None:
+    plan = plan_question("연금 사줘")
+
+    assert plan.intent is ChatIntent.OUT_OF_SCOPE
+    assert plan.blocked_reason is BlockedReason.ORDER_REQUEST
+
+
+@pytest.mark.parametrize(
     ("message", "tax_credit", "withdrawal"),
     (
         ("연금저축 600만원 납입 시 세액공제액을 계산해줘", True, False),
