@@ -12,6 +12,7 @@ interface MainHomeScreenProps {
   loading: boolean;
   onOpenChat: () => void;
   onOpenStrategyExplore: () => void;
+  onOpenUserPick: () => void;
   userContext: DemoUserFinancialContext | null;
 }
 
@@ -61,7 +62,7 @@ const ASSET_LABELS: Record<string, string> = { cash: "현금성", deposit: "원�
 const ALLOCATION_COLORS = ["#18A860", "#35B877", "#6ECFA0", "#2E8B57"];
 const formatKrw = (amount: string) => `${Math.round(Number(amount)).toLocaleString("ko-KR")}원`;
 
-export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrategyExplore, userContext }: MainHomeScreenProps): JSX.Element {
+export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrategyExplore, onOpenUserPick, userContext }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
   const allocationSlices: AllocationSlice[] = hero?.asset_allocations.slice(0, 4).map((item, index) => ({ label: ASSET_LABELS[item.asset_class_code] ?? "기타 자산", percent: `${item.allocation_percent}%`, color: ALLOCATION_COLORS[index] })) ?? [];
   const totalBalance = userContext ? formatKrw(userContext.total_pension_balance_krw) : "-";
@@ -181,7 +182,7 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrateg
         <h2 className="mhs-section-title">
           이용자 <span className="mhs-section-title-accent">Pick</span> <span className="mhs-section-title-note">(다른 사람 포트폴리오 벤치마킹 가능)</span>
         </h2>
-        <button type="button" className="mhs-userpick-card mhs-userpick-card-button">
+        <button type="button" className="mhs-userpick-card mhs-userpick-card-button" onClick={onOpenUserPick}>
           <img src={userPickPreview} alt="이용자 포트폴리오 미리보기" className="mhs-userpick-img" />
           <div className="mhs-userpick-overlay">
             <p className="mhs-userpick-text">동일 업종 및 다른 이용자의<br />포트폴리오를 <span className="mhs-userpick-text-accent">만나보세요!</span></p>
