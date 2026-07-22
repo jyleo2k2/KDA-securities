@@ -623,6 +623,7 @@ function authenticatedErrorMessage(error: unknown): string {
 
 export function GuidePage({
   auth,
+  initialHistoryOpen = false,
   initialScenarioCode,
   onBack,
   onSignOut,
@@ -631,6 +632,7 @@ export function GuidePage({
   typingIntervalMs = DEFAULT_TYPING_INTERVAL_MS,
 }: {
   auth: SupabaseAuthState;
+  initialHistoryOpen?: boolean;
   initialScenarioCode?: string;
   onBack?: () => void;
   onSignOut: () => Promise<void>;
@@ -645,7 +647,7 @@ export function GuidePage({
   const [chatCards, setChatCards] = useState<ChatCard[]>([]);
   const [allEtfThemesVisible, setAllEtfThemesVisible] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState(initialScenarioCode ?? "");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(initialHistoryOpen);
   const [serverReady, setServerReady] = useState<boolean | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
