@@ -39,10 +39,10 @@ const PROFILE_LABELS: Record<RiskProfile, string> = {
 };
 const HOLDING_DONUT_MAX_SLICES = 6;
 const HOLDING_DONUT_LABEL_MIN_PERCENT = 5;
-const DONUT_SIZE = 150;
+const DONUT_SIZE = 174;
 const DONUT_CENTER = DONUT_SIZE / 2;
-const DONUT_RADIUS = 60;
-const DONUT_STROKE_WIDTH = 30;
+const DONUT_RADIUS = 64;
+const DONUT_STROKE_WIDTH = 46;
 const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;
 
 function buildHoldingDonutSlices(hero: DemoHeroPortfolio | null): HoldingSlice[] {
