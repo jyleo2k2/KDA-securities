@@ -16,6 +16,9 @@ export default defineConfig({
         // Only revisioned build assets enter Cache Storage. API and SSE routes
         // have no runtime rule and are explicitly fetched with cache: no-store.
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2,webmanifest}"],
+        // The supplied standalone benchmark bundle includes large source HTML
+        // files that must remain available but are not suitable for precaching.
+        globIgnores: ["benchmark-html/**"],
         runtimeCaching: [],
       },
       manifest: {

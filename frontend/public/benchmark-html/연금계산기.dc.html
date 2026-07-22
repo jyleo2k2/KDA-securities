@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<template id="__bundler_thumbnail" data-bg-color="#22A94D"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="#22A94D"></rect><text x="50" y="58" font-size="30" font-weight="800" text-anchor="middle" fill="#fff" font-family="sans-serif">연금</text></svg></template>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  @font-face { font-family: 'Cafe24SsurroundAir'; src: url('https://gcore.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/Cafe24SsurroundAir.woff') format('woff'); font-weight: normal; font-style: normal; font-display: swap; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; }
+  a { color: #22A94D; text-decoration: none; }
+  a:hover { color: #148A3C; }
+  .scrolly::-webkit-scrollbar { width: 0; }
+  .brand-range { -webkit-appearance:none; appearance:none; width:100%; height:6px; border-radius:99px; background-color:#E6E8EB; background-image:linear-gradient(#22A94D,#22A94D); background-repeat:no-repeat; background-size:var(--fill,50%) 100%; outline:none; cursor:pointer; margin:0; }
+  .brand-range::-webkit-slider-thumb { -webkit-appearance:none; height:24px; width:24px; border-radius:50%; background:#22A94D; border:4px solid #fff; box-shadow:0 2px 7px rgba(0,0,0,0.25); cursor:pointer; }
+  .brand-range::-moz-range-thumb { height:24px; width:24px; border-radius:50%; background:#22A94D; border:4px solid #fff; box-shadow:0 2px 7px rgba(0,0,0,0.25); cursor:pointer; }
+  .brand-range::-moz-range-track { background:transparent; }
+</style>
+</helmet>
+<div style="width:390px; height:844px; background:#F5F6F8; margin:0 auto; font-family:'Cafe24SsurroundAir', Pretendard, -apple-system, sans-serif; color:#1E2124; display:flex; flex-direction:column; position:relative; overflow:hidden;">
+
+  <div style="flex:none; background:#fff; height:44px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; font-weight:600; font-size:15px;">
+    <span>9:41</span>
+    <div style="width:17px; height:11px; border:1.5px solid #1E2124; border-radius:3px; position:relative;"><div style="position:absolute; inset:1.5px; width:9px; background:#1E2124; border-radius:1px;"></div></div>
+  </div>
+
+  <div style="flex:none; background:#fff; display:flex; align-items:center; justify-content:space-between; height:52px; padding:0 20px;">
+    <svg width="11" height="20" viewBox="0 0 11 20" fill="none" style="cursor:pointer;"><path d="M9.5 1L1.5 10L9.5 19" stroke="#1E2124" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" style="cursor:pointer;"><path d="M5 5L19 19M19 5L5 19" stroke="#1E2124" stroke-width="2.2" stroke-linecap="round"></path></svg>
+  </div>
+
+  <div class="scrolly" style="flex:1; overflow-y:auto;">
+
+    <div style="background:#EAF7F0; padding:24px 22px 22px;">
+      <div style="font-size:24px; font-weight:800; color:#166F39; line-height:1.3;">예상 연금 계산 및<br>세액공제 확인</div>
+      <div style="font-size:14.5px; font-weight:500; color:#3E8B5D; margin-top:9px; line-height:1.5;">슬라이더로 나의 예상 연금을 계산하고, 받을 수 있는 세액공제 혜택까지 한 번에 확인하세요</div>
+    </div>
+
+    <div style="background:#fff; display:flex; padding:0 22px; border-bottom:1px solid #ECEEF0; position:sticky; top:0; z-index:2;">
+      <div onClick="{{ setPension }}" style="{{ tabPensionStyle }}">예상 연금</div>
+      <div onClick="{{ setTax }}" style="{{ tabTaxStyle }}">세액공제</div>
+    </div>
+
+    <div style="padding:18px 16px 130px;">
+
+      <sc-if value="{{ tabPension }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <div style="background:#fff; border-radius:18px; padding:22px 20px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:20px;">
+            <div style="width:4px; height:18px; border-radius:2px; background:#22A94D;"></div>
+            <span style="font-size:17px; font-weight:800;">입력 조건</span>
+          </div>
+
+          <div style="margin-bottom:24px;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
+              <span style="font-size:15.5px; font-weight:600; color:#4A5058;">현재 나이</span>
+              <span style="font-size:19px; font-weight:800;">{{ ageText }}</span>
+            </div>
+            <input type="range" class="brand-range" min="20" max="64" step="1" value="{{ age }}" onInput="{{ onAge }}" style="--fill:{{ ageFill }};">
+          </div>
+
+          <div style="margin-bottom:24px;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
+              <span style="font-size:15.5px; font-weight:600; color:#4A5058;">연금 납입 종료 시점</span>
+              <span style="font-size:19px; font-weight:800;">{{ endAgeText }}</span>
+            </div>
+            <input type="range" class="brand-range" min="40" max="70" step="1" value="{{ endAge }}" onInput="{{ onEndAge }}" style="--fill:{{ endAgeFill }};">
+          </div>
+
+          <div style="margin-bottom:24px;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
+              <span style="font-size:15.5px; font-weight:600; color:#4A5058;">월 납입액</span>
+              <span style="font-size:19px; font-weight:800;">{{ monthlyText }}</span>
+            </div>
+            <input type="range" class="brand-range" min="10" max="150" step="5" value="{{ monthly }}" onInput="{{ onMonthly }}" style="--fill:{{ monthlyFill }};">
+          </div>
+
+        </div>
+
+        <div style="background:#fff; border-radius:18px; padding:22px 20px; margin-top:16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+            <div style="width:4px; height:18px; border-radius:2px; background:#22A94D;"></div>
+            <span style="font-size:17px; font-weight:800;">투자 전략 선택</span>
+          </div>
+          <div style="display:flex; gap:8px; overflow-x:auto; margin:0 -20px; padding:0 20px 4px;">
+            <sc-for list="{{ strategies }}" as="s" hint-placeholder-count="4">
+              <div onClick="{{ s.select }}" style="{{ s.chipStyle }}">{{ s.name }}</div>
+            </sc-for>
+          </div>
+
+          <div style="background:#F6F7F8; border-radius:14px; padding:16px; margin-top:14px;">
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0;"><span style="font-size:12.5px; color:#8B9096; font-weight:700; flex:none;">ETF 구현 방식</span><span style="font-size:12.5px; font-weight:700; text-align:right;">{{ selEtf }}</span></div>
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0;"><span style="font-size:12.5px; color:#8B9096; font-weight:700; flex:none;">기본 CMA</span><span style="font-size:12.5px; font-weight:700; text-align:right;">{{ selCma }}</span></div>
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0;"><span style="font-size:12.5px; color:#8B9096; font-weight:700; flex:none;">불확실성 할인</span><span style="font-size:12.5px; font-weight:700; text-align:right;">{{ selDiscount }}</span></div>
+            <div style="height:1px; background:#E6E8EB; margin:6px 0;"></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0;"><span style="font-size:13px; color:#4A5058; font-weight:700; flex:none;">잠정 계획수익률¹</span><span style="font-size:16px; font-weight:800; color:#166F39; text-align:right;">{{ selRateText }}</span></div>
+          </div>
+
+          <sc-if value="{{ selWarn }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#FFF4D6; border-radius:12px; padding:12px 14px; margin-top:12px; font-size:12.5px; font-weight:600; color:#9A6B00; line-height:1.5;"><b>주의</b> · 상품 확인 전에는 정확한 수익률을 산출할 수 없어요. 아래 계산에는 임시로 연 5.0%를 적용했어요.</div>
+          </sc-if>
+          <sc-if value="{{ selEstimate }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:11.5px; color:#9AA0A6; font-weight:600; margin-top:10px; line-height:1.5;">¹ 실제 편입 자산 구성에 따라 계획수익률은 달라질 수 있어 추정치로 계산돼요.</div>
+          </sc-if>
+        </div>
+
+        <div style="background:#fff; border-radius:18px; padding:24px 20px; margin-top:16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+          <div style="font-size:14.5px; font-weight:600; color:#6B7178;">{{ yearsText }} 뒤 예상 적립 자산</div>
+          <div style="display:inline-block; background:#FFF4D6; border-radius:12px; padding:8px 14px; margin-top:12px;">
+            <span style="font-size:27px; font-weight:800; color:#1E2124;">{{ assetText }}</span>
+          </div>
+          <div style="display:flex; height:14px; border-radius:99px; overflow:hidden; margin-top:22px; background:#EEF0F2;">
+            <div style="background:#22A94D; width:{{ principalPct }};"></div>
+            <div style="background:#FDC526; flex:1;"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-top:16px;">
+            <div>
+              <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;"><div style="width:9px;height:9px;border-radius:50%;background:#22A94D;"></div><span style="font-size:13.5px;color:#6B7178;font-weight:600;">적립 원금</span></div>
+              <div style="font-size:16px; font-weight:800;">{{ principalText }}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; justify-content:flex-end;"><div style="width:9px;height:9px;border-radius:50%;background:#FDC526;"></div><span style="font-size:13.5px;color:#6B7178;font-weight:600;">투자 수익</span></div>
+              <div style="font-size:16px; font-weight:800; color:#C79300;">{{ profitText }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#fff; border-radius:18px; padding:24px 20px; margin-top:16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+          <div style="font-size:14.5px; font-weight:600; color:#6B7178;">65세부터 25년간 예상 월 수령액</div>
+          <div style="font-size:24px; font-weight:800; margin-top:8px; color:#166F39;">{{ payoutText }}</div>
+          <div style="font-size:12.5px; color:#9AA0A6; font-weight:500; margin-top:10px; line-height:1.5;">예상 수익률이 유지된다고 가정한 참고 수치이며, 실제 수령액은 운용 성과에 따라 달라질 수 있어요.</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ tabTax }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="background:#fff; border-radius:18px; padding:24px 20px 20px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+            <span style="font-size:14.5px; font-weight:600; color:#6B7178;">내 공제율 <span style="color:#166F39; font-weight:800;">{{ rateLabel }}</span></span>
+            <div onClick="{{ toggleSalary }}" style="display:flex; align-items:center; gap:6px; background:#F1F3F5; border-radius:99px; padding:8px 14px; cursor:pointer;">
+              <span style="font-size:13px; font-weight:700; color:#4A5058;">{{ salaryChipText }}</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8L9.5 4.5" stroke="#8B9096" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+          </div>
+          <div style="font-size:22px; font-weight:800; line-height:1.35;">올해 안에 연금으로<br><span style="background:#FDC526; border-radius:8px; padding:2px 8px;">{{ totalMoreText }}</span> 더 공제받을 수 있어요</div>
+          <div style="background:#EAF7F0; border-radius:12px; padding:12px 14px; margin-top:16px; font-size:13px; font-weight:600; color:#2E6B45; line-height:1.55;">총급여 <b>5,500만원 이하는 16.5%</b>, <b>초과는 13.2%</b>의 공제율이 적용돼요.</div>
+        </div>
+
+        <div style="background:#fff; border-radius:18px; padding:22px 20px; margin-top:16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:30px; height:30px; border-radius:50%; background:#EAF7F0; display:flex; align-items:center; justify-content:center;"><div style="width:13px; height:13px; border-radius:50%; background:#22A94D;"></div></div>
+              <span style="font-size:16px; font-weight:800;">연금저축</span>
+            </div>
+            <span style="font-size:12.5px; font-weight:700; color:#8B9096;">한도 600만원</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin:18px 0 10px;">
+            <span style="font-size:14px; font-weight:600; color:#4A5058;">납입한 금액</span>
+            <span style="font-size:17px; font-weight:800;">{{ paidPText }}</span>
+          </div>
+          <div style="position:relative; height:12px; border-radius:99px; background:#EEF0F2; overflow:hidden;">
+            <div style="position:absolute; left:0; top:0; bottom:0; border-radius:99px; background:#22A94D; width:{{ pFill }};"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-top:7px;">
+            <span style="font-size:12px; color:#166F39; font-weight:700;">총한도의 {{ pPctText }}</span>
+            <span style="font-size:12px; color:#9AA0A6; font-weight:600;">600만원</span>
+          </div>
+          <input type="range" class="brand-range" min="0" max="600" step="10" value="{{ paidP }}" onInput="{{ onPaidP }}" style="--fill:{{ pFill }}; margin-top:16px;">
+          <div style="background:#F6FBF7; border-radius:12px; padding:13px 15px; margin-top:16px; line-height:1.5;">
+            <sc-if value="{{ pNotFull }}" hint-placeholder-val="{{ true }}"><span style="font-size:14px; font-weight:600; color:#4A5058;">{{ remPText }} 더 납입하면 </span><span style="font-size:14px; font-weight:800; color:#166F39;">{{ moreDeductPText }}</span><span style="font-size:14px; font-weight:600; color:#4A5058;"> 더 공제받아요</span></sc-if>
+            <sc-if value="{{ pFull }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px; font-weight:700; color:#166F39;">공제 한도를 모두 채웠어요</span></sc-if>
+          </div>
+        </div>
+
+        <div style="background:#fff; border-radius:18px; padding:22px 20px; margin-top:16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:32px; height:32px; flex:none; border-radius:50%; background:#FFF4D6; display:flex; align-items:center; justify-content:center;"><div style="width:14px; height:14px; border-radius:50%; background:#FDC526;"></div></div>
+            <div>
+              <div style="font-size:16.5px; font-weight:800; line-height:1.3;">개인형 IRP / DC형 근로자 납입액</div>
+              <div style="font-size:13px; font-weight:700; color:#8B9096; margin-top:3px;">한도 300만원</div>
+            </div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin:18px 0 10px;">
+            <span style="font-size:14px; font-weight:600; color:#4A5058;">납입한 금액</span>
+            <span style="font-size:17px; font-weight:800;">{{ paidIText }}</span>
+          </div>
+          <div style="position:relative; height:12px; border-radius:99px; background:#EEF0F2; overflow:hidden;">
+            <div style="position:absolute; left:0; top:0; bottom:0; border-radius:99px; background:#EDB400; width:{{ iFill }};"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-top:7px;">
+            <span style="font-size:12px; color:#B7791F; font-weight:700;">총한도의 {{ iPctText }}</span>
+            <span style="font-size:12px; color:#9AA0A6; font-weight:600;">300만원</span>
+          </div>
+          <input type="range" class="brand-range" min="0" max="300" step="10" value="{{ paidI }}" onInput="{{ onPaidI }}" style="--fill:{{ iFill }}; margin-top:16px;">
+          <div style="background:#F6FBF7; border-radius:12px; padding:13px 15px; margin-top:16px; line-height:1.5;">
+            <sc-if value="{{ iNotFull }}" hint-placeholder-val="{{ true }}"><span style="font-size:14px; font-weight:600; color:#4A5058;">{{ remIText }} 더 납입하면 </span><span style="font-size:14px; font-weight:800; color:#166F39;">{{ moreDeductIText }}</span><span style="font-size:14px; font-weight:600; color:#4A5058;"> 더 공제받아요</span></sc-if>
+            <sc-if value="{{ iFull }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px; font-weight:700; color:#166F39;">공제 한도를 모두 채웠어요</span></sc-if>
+          </div>
+          <div style="font-size:12px; color:#9AA0A6; font-weight:500; margin-top:10px; line-height:1.5;">개인형 IRP는 연금저축과 합산해 연 900만원까지 공제받을 수 있어요.</div>
+        </div>
+
+        <div style="background:#166F39; border-radius:18px 18px 0 0; padding:14px 18px; margin-top:20px; display:flex; align-items:center; gap:10px;">
+          <div style="width:22px; height:22px; flex:none; border-radius:50%; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:13px; color:#fff; font-weight:800;">+</div>
+          <div style="font-size:16px; font-weight:800; color:#fff; white-space:nowrap;">ISA 만기 시 추가 세액 공제 받을 수 있어요!</div>
+        </div>
+
+        <div style="background:#fff; border-radius:0 0 18px 18px; padding:22px 20px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:32px; height:32px; flex:none; border-radius:50%; background:#E7F1FB; display:flex; align-items:center; justify-content:center;"><div style="width:14px; height:14px; border-radius:50%; background:#3D8BE0;"></div></div>
+            <div>
+              <div style="font-size:16.5px; font-weight:800; line-height:1.3;">ISA 만기 자금 연금 전환</div>
+              <div style="font-size:13px; font-weight:700; color:#8B9096; margin-top:3px;">추가 한도 최대 300만원</div>
+            </div>
+          </div>
+
+          <div style="background:#EAF7F0; border-radius:12px; padding:13px 15px; margin-top:16px; font-size:13px; font-weight:600; color:#2E6B45; line-height:1.55;">ISA 만기 자금을 연금계좌(연금저축·IRP)로 전환하면, 전환금액의 <b>10%(최대 300만원)</b>까지 세액공제 한도가 추가로 늘어나 더 공제받을 수 있어요.</div>
+
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin:18px 0 10px;">
+            <span style="font-size:14px; font-weight:600; color:#4A5058;">ISA 계좌 전환(납입) 금액</span>
+            <span style="font-size:17px; font-weight:800;">{{ isaText }}</span>
+          </div>
+          <input type="range" class="brand-range" min="0" max="3000" step="100" value="{{ isa }}" onInput="{{ onIsa }}" style="--fill:{{ isaFill }};">
+
+          <div style="background:#F1F6FB; border-radius:12px; padding:14px 16px; margin-top:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline;">
+              <span style="font-size:13.5px; font-weight:600; color:#4A5058;">추가 세액공제 인정 한도</span>
+              <span style="font-size:15px; font-weight:800; color:#1E2124;">{{ isaCapText }} <span style="font-size:12px; color:#8B9096; font-weight:700;">/ 300만원</span></span>
+            </div>
+            <div style="position:relative; height:10px; border-radius:99px; background:#DCE7F2; overflow:hidden; margin-top:9px;">
+              <div style="position:absolute; left:0; top:0; bottom:0; border-radius:99px; background:#3D8BE0; width:{{ isaFill }};"></div>
+            </div>
+            <div style="font-size:12px; color:#3D7BC0; font-weight:700; margin-top:7px;">한도의 {{ isaPctText }} 사용</div>
+          </div>
+
+          <div style="background:#F6FBF7; border-radius:12px; padding:13px 15px; margin-top:14px; line-height:1.5;">
+            <sc-if value="{{ isaHasSome }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px; font-weight:600; color:#4A5058;">전환금액의 10%인 </span><span style="font-size:14px; font-weight:800; color:#166F39;">{{ isaCapText }}</span><span style="font-size:14px; font-weight:600; color:#4A5058;">이 추가 공제 대상이 되어 </span><span style="font-size:14px; font-weight:800; color:#166F39;">{{ isaDeductText }}</span><span style="font-size:14px; font-weight:600; color:#4A5058;"> 더 공제받아요</span></sc-if>
+            <sc-if value="{{ isaNone }}" hint-placeholder-val="{{ true }}"><span style="font-size:14px; font-weight:600; color:#8B9096;">ISA 만기 전환 금액을 입력하면 추가 공제액을 확인할 수 있어요</span></sc-if>
+          </div>
+        </div>
+
+        <div style="background:#EEF1F4; border-radius:18px; padding:22px 20px; margin-top:16px;">
+          <div style="font-size:16px; font-weight:800; margin-bottom:16px;">꼭 확인해주세요!</div>
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <div style="display:flex; gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#9AA0A6;margin-top:8px;flex:none;"></div><span style="font-size:13.5px; line-height:1.6; color:#5A6068;">세액공제 예상 금액은 사용자가 연결한 마이데이터를 통해 확인된 연금, 보험 정보를 기준으로 계산한 예상치예요.</span></div>
+            <div style="display:flex; gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#9AA0A6;margin-top:8px;flex:none;"></div><span style="font-size:13.5px; line-height:1.6; color:#5A6068;">실제 납부 금액, 공제 대상 여부, 공제 한도 적용 방식에 따라 실제 연말정산 결과는 안내된 금액과 다를 수 있어요.</span></div>
+            <div style="display:flex; gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#9AA0A6;margin-top:8px;flex:none;"></div><span style="font-size:13.5px; line-height:1.6; color:#5A6068;">연금 세액공제는 총급여 5,500만원 기준으로 공제율(16.5% / 13.2%)이 달라지며, 연금저축 연 600만원·IRP 포함 통합 연 900만원까지 대상이에요.</span></div>
+            <div style="display:flex; gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#9AA0A6;margin-top:8px;flex:none;"></div><span style="font-size:13.5px; line-height:1.6; color:#5A6068;">ISA 만기 자금은 만기 후 60일 이내 연금계좌로 전환한 경우에만 추가 세액공제 대상이 되며, 전환금액의 10%(최대 300만원)까지 인정돼요.</span></div>
+            <div style="display:flex; gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#9AA0A6;margin-top:8px;flex:none;"></div><span style="font-size:13.5px; line-height:1.6; color:#5A6068;">정확한 공제 대상 여부와 최종 공제 금액은 해당 금융기관 또는 국세청(홈택스)을 통해 확인해 주세요.</span></div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+    </div>
+  </div>
+
+  <div style="position:absolute; left:16px; right:16px; bottom:22px;">
+    
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844},&quot;taxRateLow&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:16.5,&quot;min&quot;:0,&quot;max&quot;:20,&quot;step&quot;:0.1,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;세액공제율&quot;},&quot;taxRateHigh&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:13.2,&quot;min&quot;:0,&quot;max&quot;:20,&quot;step&quot;:0.1,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;세액공제율&quot;}}">
+class Component extends DCLogic {
+  state = { age:35, endAge:55, monthly:50, tab:'pension', salaryLow:true, paidP:0, paidI:0, isa:0, strategyId:'beta' };
+
+  STRATS = [
+    { id:'beta', name:'시장 베타', etf:'국내·미국·글로벌 광범위지수 ETF', cma:'글로벌주식 7.0%', discount:'0.25%p', rateText:'6.75%', rateNum:6.75 },
+    { id:'factor', name:'팩터', etf:'가치·퀄리티·모멘텀·저변동 ETF', cma:'글로벌주식 7.0%', discount:'0.40%p', rateText:'6.60%', rateNum:6.60 },
+    { id:'theme', name:'테마', etf:'AI·반도체·바이오·인프라 ETF', cma:'글로벌주식 7.0%', discount:'1.00%p', rateText:'6.00%', rateNum:6.00 },
+    { id:'topdown', name:'탑다운', etf:'지역·국가·산업·채권만기 ETF 조합', cma:'실제 구성 가중 CMA', discount:'0.75%p', rateText:'구성별 계산', rateNum:6.25, estimate:true },
+    { id:'bottomup', name:'바텀업', etf:'연금 적격 액티브주식 ETF', cma:'지역별 주식 CMA', discount:'0.75%p', rateText:'글로벌 기준 6.25%', rateNum:6.25 },
+    { id:'barbell', name:'바벨', etf:'주식 ETF + 단기채·현금성 ETF', cma:'실제 구성 가중 CMA', discount:'구성 ETF별 적용', rateText:'비중별 계산', rateNum:5.5, estimate:true },
+    { id:'volmgmt', name:'변동성 관리', etf:'저변동 ETF + 채권·현금성 ETF', cma:'실제 구성 가중 CMA', discount:'구성 ETF별 적용', rateText:'비중별 계산', rateNum:5.0, estimate:true },
+    { id:'longshort', name:'롱숏·시장중립', etf:'적격 시장중립·절대수익 ETF', cma:'별도 CMA 필요', discount:'잠정 0.75%p', rateText:'상품 확인 전 산출 금지', rateNum:null },
+    { id:'eventdriven', name:'이벤트드리븐', etf:'기업행동·합병·스핀오프 ETF', cma:'별도 CMA 필요', discount:'잠정 0.75%p', rateText:'상품 확인 전 산출 금지', rateNum:null },
+    { id:'trend', name:'추세추종·글로벌 매크로', etf:'적격 멀티에셋·추세 ETF', cma:'글로벌 60/40 6.4% 프록시', discount:'0.75%p', rateText:'5.65%', rateNum:5.65 },
+  ];
+
+  stratChip(active) {
+    return active
+      ? 'flex:none;padding:10px 16px;border-radius:99px;background:#22A94D;color:#fff;font-size:13px;font-weight:800;white-space:nowrap;cursor:pointer;border:1px solid #22A94D;'
+      : 'flex:none;padding:10px 16px;border-radius:99px;background:#fff;color:#4A5058;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer;border:1px solid #E1E4E7;';
+  }
+
+  set(key, e) { this.setState({ [key]: +e.target.value }); }
+
+  fmt(won) {
+    won = Math.round(won);
+    if (won <= 0) return '0원';
+    const eok = Math.floor(won / 100000000);
+    const man = Math.floor((won % 100000000) / 10000);
+    const rest = won % 10000;
+    const parts = [];
+    if (eok) parts.push(eok + '억');
+    if (man) parts.push(man.toLocaleString() + '만');
+    if (rest) parts.push(rest.toLocaleString());
+    return parts.join(' ') + '원';
+  }
+
+  pct(v, min, max) { return ((v - min) / (max - min) * 100).toFixed(1) + '%'; }
+
+  renderVals() {
+    const { age, endAge, monthly, tab, salaryLow, paidP, paidI, isa, strategyId } = this.state;
+    const strat = this.STRATS.find(s => s.id === strategyId) || this.STRATS[0];
+    const rate = strat.rateNum != null ? strat.rateNum : 5.0;
+    const rLow = this.props.taxRateLow ?? 16.5;
+    const rHigh = this.props.taxRateHigh ?? 13.2;
+
+    const years = Math.max(0, endAge - age);
+    const months = years * 12;
+    const C = monthly * 10000;
+    const i = rate / 100 / 12;
+    const FV = i > 0 ? C * ((Math.pow(1 + i, months) - 1) / i) : C * months;
+    const principal = C * months;
+    const profit = Math.max(0, FV - principal);
+
+    const payMonths = 25 * 12;
+    const payout = i > 0 ? FV * i / (1 - Math.pow(1 + i, -payMonths)) : FV / payMonths;
+
+    const r = salaryLow ? rLow : rHigh;
+    const capP = 600, capI = 300;
+    const remP = Math.max(0, capP - paidP);
+    const remI = Math.max(0, capI - paidI);
+    const moreP = remP * 10000 * r / 100;
+    const moreI = remI * 10000 * r / 100;
+    const isaCap = Math.min(Math.round(isa * 0.1), 300);
+    const isaDeduct = isaCap * 10000 * r / 100;
+
+    return {
+      age, endAge, monthly, rate,
+      ageText: age + '세', endAgeText: endAge + '세',
+      monthlyText: monthly.toLocaleString() + '만원',
+      ageFill: this.pct(age, 20, 64), endAgeFill: this.pct(endAge, 40, 70),
+      monthlyFill: this.pct(monthly, 10, 150),
+      onAge: (e) => this.set('age', e), onEndAge: (e) => this.set('endAge', e),
+      onMonthly: (e) => this.set('monthly', e),
+      strategies: this.STRATS.map(s => ({
+        name: s.name,
+        select: () => this.setState({ strategyId: s.id }),
+        chipStyle: this.stratChip(s.id === strategyId),
+      })),
+      selEtf: strat.etf, selCma: strat.cma, selDiscount: strat.discount, selRateText: strat.rateText,
+      selWarn: strat.rateNum == null, selEstimate: !!strat.estimate,
+
+      tabPension: tab === 'pension', tabTax: tab === 'tax',
+      setPension: () => this.setState({ tab: 'pension' }),
+      setTax: () => this.setState({ tab: 'tax' }),
+      tabPensionStyle: this.tabStyle(tab === 'pension'),
+      tabTaxStyle: this.tabStyle(tab === 'tax'),
+
+      yearsText: years + '년',
+      assetText: this.fmt(FV), principalText: this.fmt(principal), profitText: this.fmt(profit),
+      principalPct: FV > 0 ? (principal / FV * 100).toFixed(1) + '%' : '0%',
+      payoutText: this.fmt(payout),
+
+      rateLabel: r + '%',
+      totalMoreText: this.fmt(moreP + moreI + isaDeduct),
+      isa, isaText: isa.toLocaleString() + '만원',
+      isaFill: (isaCap / 300 * 100).toFixed(1) + '%', isaPctText: Math.round(isaCap / 300 * 100) + '%',
+      isaCapText: isaCap.toLocaleString() + '만원', isaDeductText: this.fmt(isaDeduct),
+      onIsa: (e) => this.set('isa', e), isaHasSome: isaCap > 0, isaNone: isaCap <= 0,
+      paidP, paidI,
+      paidPText: paidP.toLocaleString() + '만원', paidIText: paidI.toLocaleString() + '만원',
+      pFill: (paidP / capP * 100).toFixed(1) + '%', iFill: (paidI / capI * 100).toFixed(1) + '%',
+      pPctText: Math.round(paidP / capP * 100) + '%', iPctText: Math.round(paidI / capI * 100) + '%',
+      remPText: remP.toLocaleString() + '만원', remIText: remI.toLocaleString() + '만원',
+      moreDeductPText: this.fmt(moreP), moreDeductIText: this.fmt(moreI),
+      pFull: remP <= 0, pNotFull: remP > 0, iFull: remI <= 0, iNotFull: remI > 0,
+      onPaidP: (e) => this.set('paidP', e), onPaidI: (e) => this.set('paidI', e),
+      toggleSalary: () => this.setState(s => ({ salaryLow: !s.salaryLow })),
+      salaryChipText: salaryLow ? '급여소득 5,500만원 이하' : '급여소득 5,500만원 초과',
+    };
+  }
+
+  tabStyle(active) {
+    return active
+      ? 'flex:1;text-align:center;padding:16px 0;font-size:16px;font-weight:800;color:#1E2124;border-bottom:3px solid #22A94D;cursor:pointer;'
+      : 'flex:1;text-align:center;padding:16px 0;font-size:16px;font-weight:700;color:#A9AEB4;border-bottom:3px solid transparent;cursor:pointer;';
+  }
+}
+</script>
+</body>
+</html>
