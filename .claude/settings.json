@@ -2,13 +2,24 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write",
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "f=$(uv run python -c \"import json,sys; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('file_path') or '')\"); case \"$f\" in *CLAUDE.md|*AGENTS.md) [ -f \"$CLAUDE_PROJECT_DIR/.claude/.owner-verified\" ] && exit 0; echo '진입점 파일(CLAUDE.md/AGENTS.md)은 이재용만 수정합니다. 변경이 필요하면 이재용에게 요청하세요. (로컬 소유자 확인 파일 없음: .claude/.owner-verified)' >&2; exit 2;; esac",
+            "command": "uv run python scripts/git_session_manager.py guard --hook-input",
             "timeout": 30,
-            "statusMessage": "진입점 잠금 확인 중..."
+            "statusMessage": "Git 세션 claim 확인 중..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python scripts/git_session_manager.py guard --hook-input",
+            "timeout": 30,
+            "statusMessage": "Git·파일 쓰기 경계 확인 중..."
           }
         ]
       }
@@ -24,6 +35,17 @@
             "statusMessage": "ruff 검사 중..."
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python scripts/git_session_manager.py guard --hook-input",
+            "timeout": 30,
+            "statusMessage": "Bash 실행 후 claim 범위 확인 중..."
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -31,9 +53,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$CLAUDE_PROJECT_DIR\" || exit 0; git fetch origin main --quiet 2>/dev/null; behind=$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0); if [ \"$behind\" -gt 0 ]; then if [ -z \"$(git status --porcelain)\" ]; then echo \"[하네스] 이 워크트리는 origin/main보다 ${behind}커밋 뒤처져 있다. 작업 시작 전 'git rebase origin/main'으로 동기화할 것.\"; else echo \"[하네스] 이 워크트리는 origin/main보다 ${behind}커밋 뒤처져 있고 트리가 더티다. 다른 세션 WIP인지 소유자를 먼저 확인하고, 본인 작업이면 커밋/스태시 후 'git rebase origin/main'으로 동기화할 것.\"; fi; fi; exit 0",
+            "command": "uv run python scripts/git_session_manager.py check-start",
             "timeout": 30,
-            "statusMessage": "main 동기화 확인 중..."
+            "statusMessage": "Git 세션 상태 확인 중..."
           }
         ]
       }

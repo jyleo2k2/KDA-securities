@@ -5,6 +5,7 @@ import re
 from decimal import ROUND_HALF_UP, Decimal
 
 from ...engine import (
+    AccountType,
     EducationalPortfolioEvaluation,
     EducationalPortfolioInput,
     EducationalRiskProfile,
@@ -53,7 +54,6 @@ from ._shared import (
     _ACCOUNT_TYPE_LABELS,
     _MACRO_ANALOG_OUTCOME_TERMS,
     _RISK_PROFILE_LABELS,
-    _RISK_PROFILE_RANKS,
     _SLEEVE_LABELS,
     _STRATEGY_LABELS,
     _STRESS_SCENARIO_LABELS,
@@ -61,7 +61,6 @@ from ._shared import (
     _decimal_text,
     _one_decimal,
     _rebalancing_items,
-    _selected_risk_profile,
     _source_ids,
     _strategy_summary,
     _target_portfolio_rows,
@@ -450,73 +449,8 @@ def etf_theme_response(
             limitations=limitations,
         )
 
-    survey = request.survey_profile or (
-        request.conversation_context.survey_profile
-        if request.conversation_context is not None
-        else None
-    )
-    if survey is None:
-        limitations.append(
-            "투자성향과 보유 계좌가 확인되기 전에는 ETF 후보를 제시하지 않습니다."
-        )
-        return ChatResponse(
-            intent=ChatIntent.ETF_THEME,
-            answer=(
-                f"{theme.name} 테마 설명은 제공할 수 있지만 ETF 후보 비교에는 "
-                "완료된 투자성향 설문과 계좌 유형이 필요합니다."
-            ),
-            data_mode="survey_required",
-            sections=sections,
-            sources=sources,
-            limitations=limitations,
-        )
-
-    previous_selection = (
-        request.conversation_context.selected_risk_profile
-        if request.conversation_context is not None
-        else None
-    )
-    selected_profile = (
-        _selected_risk_profile(request.message)
-        or previous_selection
-        or survey.risk_profile
-    )
-    if (
-        _RISK_PROFILE_RANKS[selected_profile]
-        > _RISK_PROFILE_RANKS[survey.risk_profile]
-    ):
-        limitations.append(
-            "완료된 설문 결과보다 위험한 투자성향의 테마 ETF 후보는 "
-            "제시하지 않습니다."
-        )
-        return ChatResponse(
-            intent=ChatIntent.ETF_THEME,
-            answer=f"{theme.name} 테마 설명만 제공했습니다.",
-            data_mode="profile_guardrail",
-            sections=sections,
-            sources=sources,
-            limitations=limitations,
-        )
-
-    allowed_accounts = survey.portfolio_account_types()
-    requested_accounts = plan.account_types or (survey.account_type,)
-    account_types = tuple(
-        account for account in requested_accounts if account in allowed_accounts
-    )
-    if not account_types:
-        limitations.append(
-            "질문에 지정한 계좌가 완료된 설문 프로필의 보유 계좌에 없습니다."
-        )
-        return ChatResponse(
-            intent=ChatIntent.ETF_THEME,
-            answer=f"{theme.name} 테마 설명만 제공했습니다.",
-            data_mode="account_profile_mismatch",
-            sections=sections,
-            sources=sources,
-            limitations=limitations,
-        )
     if portfolio_universe_loader is None:
-        limitations.append("계좌별 ETF 적격 유니버스를 불러올 수 없습니다.")
+        limitations.append("통합 ETF 상품 데이터를 불러올 수 없습니다.")
         return ChatResponse(
             intent=ChatIntent.ETF_THEME,
             answer=f"{theme.name} 테마 설명만 제공했습니다.",
@@ -532,8 +466,9 @@ def etf_theme_response(
     candidate_context_names: list[str] = []
     product_description_source_id: str | None = None
     product_feature_source_id: str | None = None
-    successful_accounts = 0
-    for account_type in account_types:
+    loaded_universes = []
+    common_products_by_code: dict[str, dict[str, object]] = {}
+    for account_type in AccountType:
         try:
             universe = portfolio_universe_loader(account_type)
         except (FileNotFoundError, ValueError):
@@ -542,40 +477,65 @@ def etf_theme_response(
                 "불러오지 못했습니다."
             )
             continue
+        loaded_universes.append(universe)
+        for product in universe.products:
+            if not isinstance(product, dict):
+                continue
+            code = str(product.get("isu_code") or "")
+            if code:
+                common_products_by_code.setdefault(code, product)
+
+    common_products = list(common_products_by_code.values())
+    if not loaded_universes or not common_products:
+        limitations.append("통합 ETF 상품 데이터가 비어 있습니다.")
+        return ChatResponse(
+            intent=ChatIntent.ETF_THEME,
+            answer=f"{theme.name} 테마 설명만 제공했습니다.",
+            data_mode="unavailable",
+            sections=sections,
+            sources=sources,
+            limitations=list(dict.fromkeys(limitations)),
+        )
+
+    common_as_of = max(item.as_of for item in loaded_universes)
+    if common_products:
         evaluation = select_theme_etf_candidates(
             catalog=theme_repository.catalog,
             theme=theme,
-            products=universe.products,
+            products=common_products,
             kis_products_by_code=(
                 theme_repository.kis_products_by_code
             ),
             component_snapshot_date=(
                 theme_repository.component_snapshot_date
             ),
-            request=EducationalPortfolioInput(
-                account_type=account_type,
-                age=survey.current_age,
-                retirement_start_age=survey.retirement_start_age,
-                risk_profile=selected_profile,
-                loss_tolerance_percent=survey.loss_tolerance_percent,
-            ),
             limit=plan.max_results,
         )
         if evaluation.status != "ok":
             limitations.extend(evaluation.limitations)
-            continue
-        successful_accounts += 1
-        master_source_id = f"engine:theme_candidates:{account_type.value}"
+            limitations.append(
+                "투자성향·보유 계좌를 반영한 매수 추천이 아니라 거래대금·총보수 "
+                "기준의 정보성 비교 후보입니다."
+            )
+            return ChatResponse(
+                intent=ChatIntent.ETF_THEME,
+                answer=f"{theme.name} 테마 설명만 제공했습니다.",
+                data_mode="theme_overview_only",
+                sections=sections,
+                sources=sources,
+                limitations=list(dict.fromkeys(limitations)),
+                conversation_context=ConversationContext(
+                    last_intent=ChatIntent.ETF_THEME
+                ),
+            )
+        master_source_id = "engine:theme_candidates:common"
         sources.append(
             SourceEvidence(
                 evidence_id=master_source_id,
-                label=(
-                    f"{_ACCOUNT_TYPE_LABELS[account_type]} "
-                    "계좌별 ETF 적격 유니버스"
-                ),
-                locator=str(getattr(universe, "source_path", "local-cache")),
+                label="ETF 통합 상품 데이터",
+                locator="engine://etf-theme/common-universe",
                 publisher="연금 코파일럿 규칙 엔진",
-                as_of=universe.as_of,
+                as_of=common_as_of,
                 data_boundary=DataBoundary.ENGINE,
             )
         )
@@ -583,7 +543,7 @@ def etf_theme_response(
         selected_candidates = evaluation.candidates[:remaining]
         products_by_code = {
             str(product.get("isu_code") or ""): product
-            for product in universe.products
+            for product in common_products
             if isinstance(product, dict)
         }
         descriptions = {
@@ -646,7 +606,7 @@ def etf_theme_response(
                         value=candidate.fee_percent,
                         unit="%",
                         evidence_id=master_source_id,
-                        basis="계좌별 ETF 실데이터 마스터",
+                        basis="ETF 통합 실데이터 마스터",
                     )
                 )
                 if displayed_fee != candidate.fee_percent:
@@ -675,7 +635,7 @@ def etf_theme_response(
                         value=candidate.median_daily_trading_value_krw,
                         unit="KRW",
                         evidence_id=master_source_id,
-                        basis="계좌별 ETF 실데이터 마스터의 관측기간 중앙값",
+                        basis="ETF 통합 실데이터 마스터의 관측기간 중앙값",
                     )
                 )
                 if (
@@ -721,7 +681,7 @@ def etf_theme_response(
                         label="ETF 상품 설명 통합 원문·공식 설명",
                         locator=DEFAULT_ETF_PRODUCT_RESEARCH_PATH.as_posix(),
                         publisher="연금 코파일럿 팀",
-                        as_of=universe.as_of,
+                        as_of=common_as_of,
                         data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
                     )
                 )
@@ -760,9 +720,14 @@ def etf_theme_response(
         ]
     else:
         limitations.append(
-            "현재 성향·계좌 범위와 적재 데이터에서 제시 가능한 "
-            "테마 ETF 후보가 없습니다."
+            "통합 상품 데이터에서 제시 가능한 테마 ETF 비교 후보가 "
+            "없습니다."
         )
+
+    limitations.append(
+        "투자성향·보유 계좌를 반영한 매수 추천이 아니라 거래대금·총보수 기준의 "
+        "정보성 비교 후보입니다."
+    )
 
     return ChatResponse(
         intent=ChatIntent.ETF_THEME,
@@ -773,17 +738,14 @@ def etf_theme_response(
             else f"{theme.name} 테마 설명만 제공했습니다."
         ),
         data_mode=(
-            "theme_candidates" if successful_accounts else "theme_overview_only"
+            "theme_candidates" if candidate_blocks else "theme_overview_only"
         ),
         sections=sections,
         sources=sources,
         numeric_evidence=numeric,
         limitations=list(dict.fromkeys(limitations)),
         conversation_context=ConversationContext(
-            account_type=survey.account_type,
             last_intent=ChatIntent.ETF_THEME,
-            survey_profile=survey,
-            selected_risk_profile=selected_profile,
             etf_theme=(
                 EtfThemeConversationContext(
                     theme_id=theme.theme_id,

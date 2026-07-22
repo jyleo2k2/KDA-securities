@@ -60,6 +60,7 @@
 .mhs-summary-text { font-size: 15px; font-weight: 500; color: #333; line-height: 1.55; margin: 0 0 14px; }
 .mhs-summary-cta-row { display: flex; justify-content: flex-end; }
 .mhs-summary-cta { display: flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 700; color: #18A860; cursor: pointer; }
+.mhs-summary-cta-button { border: none; background: none; padding: 0; font-family: inherit; }
 .mhs-summary-cta-chevron { font-size: 16px; }
 
 .mhs-tax-card { border-radius: 22px; padding: 22px 22px; display: flex; align-items: center; gap: 18px; background-color: #18A860; }
@@ -73,7 +74,7 @@
 .mhs-resurvey-button { width: 100%; margin: 12px 0 4px; padding: 10px 14px; border: 1px solid #b9d9c6; border-radius: 12px; background: #f5faf6; color: #167447; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
 
 .mhs-strategy-heading-row { display: flex; align-items: baseline; justify-content: space-between; margin: 44px 0 14px; }
-.mhs-strategy-more { font-size: 12px; font-weight: 700; color: #18A860; white-space: nowrap; cursor: pointer; }
+.mhs-strategy-more { font-size: 12px; font-weight: 700; color: #18A860; white-space: nowrap; cursor: pointer; background: none; border: none; padding: 0; font-family: inherit; }
 
 .mhs-strategy-scroll { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; margin: 0 -22px; padding-left: 22px; padding-right: 22px; }
 .mhs-strategy-card { flex: 0 0 168px; border: 1.5px solid #EAEDE7; border-radius: 20px; padding: 18px 16px; }
@@ -85,6 +86,7 @@
 .mhs-strategy-disclaimer { font-size: 11px; font-weight: 500; color: #B8C0BA; margin: 10px 0 0; line-height: 1.5; }
 
 .mhs-userpick-card { border: 1.5px solid #EAEDE7; border-radius: 22px; position: relative; overflow: hidden; }
+.mhs-userpick-card-button { display: block; width: 100%; padding: 0; margin: 0; background: none; font: inherit; text-align: inherit; cursor: pointer; }
 .mhs-userpick-img { width: 100%; display: block; filter: blur(2.5px); transform: scale(1.04); }
 .mhs-userpick-overlay { position: absolute; inset: 0; background: rgba(245, 250, 246, .3); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 28px; gap: 14px; }
 .mhs-userpick-text { font-size: 16px; font-weight: 900; color: #111; margin: 0; line-height: 1.5; text-shadow: 0 1px 8px rgba(255, 255, 255, .9); }

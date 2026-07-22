@@ -5,6 +5,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  ApiError,
   deleteChatSession,
   getChatCards,
   getChatSessions,
@@ -388,6 +389,34 @@ describe("GuidePage chat history deletion", () => {
     });
     expect(await screen.findByRole("status")).toHaveTextContent("대화가 삭제되었습니다.");
     await waitFor(() => expect(composer).toHaveFocus());
+  });
+
+  it("does not retry server readiness after an authentication failure", async () => {
+    const setTimeoutSpy = vi.spyOn(window, "setTimeout");
+    vi.mocked(getScenarios).mockRejectedValue(new ApiError(401, "Unauthorized"));
+    renderGuide();
+
+    expect(await screen.findByText("API 연결 필요")).toBeInTheDocument();
+    expect(getScenarios).toHaveBeenCalledOnce();
+    expect(setTimeoutSpy).not.toHaveBeenCalledWith(expect.any(Function), 3000);
+    expect(setTimeoutSpy).not.toHaveBeenCalledWith(expect.any(Function), 6000);
+    expect(setTimeoutSpy).not.toHaveBeenCalledWith(expect.any(Function), 12000);
+  });
+
+  it("does not load protected endpoints without a session", async () => {
+    const anonymousAuth = {
+      session: null,
+      loading: false,
+      configured: true,
+      error: null,
+      signIn: vi.fn(),
+      signOut: vi.fn(),
+    } as unknown as SupabaseAuthState;
+    render(<GuidePage auth={anonymousAuth} onSignOut={vi.fn()} surveyProfile={null} userContext={null} />);
+
+    await waitFor(() => expect(getChatCards).toHaveBeenCalledOnce());
+    expect(getScenarios).not.toHaveBeenCalled();
+    expect(getChatSessions).not.toHaveBeenCalled();
   });
 
   it("keeps stored conversations when logging out", async () => {

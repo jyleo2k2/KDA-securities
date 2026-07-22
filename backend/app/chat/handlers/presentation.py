@@ -303,6 +303,10 @@ def with_context(
         if previous is not None
         else None
     )
+    if response.intent == ChatIntent.ETF_THEME:
+        account_type = None
+        survey_profile = None
+        selected_risk_profile = None
     return response.model_copy(
         update={
             "conversation_context": ConversationContext(

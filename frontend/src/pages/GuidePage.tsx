@@ -80,6 +80,7 @@ const BOUNDARY_LABELS: Record<DataBoundary, string> = {
 };
 
 const DEFAULT_TYPING_INTERVAL_MS = 50;
+const SERVER_READY_RETRY_DELAYS_MS = [3000, 6000, 12000] as const;
 
 export const ETF_THEME_CARDS = [
   { number: 1, title: "AI·소프트웨어", message: "AI·소프트웨어 테마가 뭐야?" },
@@ -624,6 +625,7 @@ function authenticatedErrorMessage(error: unknown): string {
 export function GuidePage({
   auth,
   initialScenarioCode,
+  onBack,
   onSignOut,
   surveyProfile,
   userContext,
@@ -631,6 +633,7 @@ export function GuidePage({
 }: {
   auth: SupabaseAuthState;
   initialScenarioCode?: string;
+  onBack?: () => void;
   onSignOut: () => Promise<void>;
   surveyProfile: CompletedSurveyProfile | null;
   userContext: DemoUserFinancialContext | null;
@@ -838,6 +841,7 @@ export function GuidePage({
     // 연결될 때까지 다시 시도한다.
     let cancelled = false;
     let retryTimer: number | undefined;
+    let retryCount = 0;
 
     const check = () => {
       Promise.all([
@@ -850,10 +854,17 @@ export function GuidePage({
           setChatCards(catalog.cards);
           setServerReady(true);
         })
-        .catch(() => {
+        .catch((error: unknown) => {
           if (cancelled) return;
           setServerReady(false);
-          retryTimer = window.setTimeout(check, 3000);
+          const retryable = !(error instanceof ApiError)
+            || error.status === undefined
+            || error.status >= 500;
+          const delay = SERVER_READY_RETRY_DELAYS_MS[retryCount];
+          if (retryable && delay !== undefined) {
+            retryCount += 1;
+            retryTimer = window.setTimeout(check, delay);
+          }
         });
     };
 
@@ -1337,7 +1348,7 @@ export function GuidePage({
 
       <main className="chat-main">
         <header className="topbar design-topbar">
-          <button className="menu-button" type="button" aria-label="메뉴 열기" onClick={() => setIsSidebarOpen(true)}><span /><span /><span /></button>
+          <button className="menu-button" type="button" aria-label="뒤로 가기" onClick={onBack ?? (() => setIsSidebarOpen(true))}>‹</button>
           <button className="design-new-chat" type="button" onClick={startNewChat}><span>+</span> 새 대화</button>
           <div className="design-topbar-actions">
             <Icon name="database" size={25} />
