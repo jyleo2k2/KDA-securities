@@ -647,11 +647,21 @@ function AssistantMessage({
 
   if (!response) return <p className="message-copy">{text}</p>;
 
+  const isEducationalPortfolio = response.intent === "educational_portfolio";
+  const shouldShowNumericEvidence = (
+    response.intent !== "mock_portfolio"
+    && response.intent !== "macro_evidence"
+    && !isEducationalPortfolio
+    && response.numeric_evidence.length > 0
+  );
+
   return (
     <div className="answer-content">
       <div className="answer-meta">
         <span className={`intent-pill intent-${response.intent}`}>{INTENT_LABELS[response.intent]}</span>
-        <span>{response.narration_mode === "deterministic" ? "검증 답변" : "AI 서술"}</span>
+        {!isEducationalPortfolio && (
+          <span>{response.narration_mode === "deterministic" ? "검증 답변" : "AI 서술"}</span>
+        )}
       </div>
       {response.intent !== "macro_evidence" && (response.data_mode !== "news_summary" || response.news_items.length === 0) && (
         <p className="message-copy">
@@ -663,7 +673,7 @@ function AssistantMessage({
       <MacroEvidenceCards response={response} />
       <MacroRegimeOutcomeCards response={response} />
 
-      {response.intent !== "mock_portfolio" && response.intent !== "macro_evidence" && response.numeric_evidence.length > 0 && (
+      {shouldShowNumericEvidence && (
         <div className="number-grid" aria-label="수치 근거">
           {response.numeric_evidence.map((item, index) => (
             <div className="number-card" key={`${item.evidence_id}-${index}`}>
