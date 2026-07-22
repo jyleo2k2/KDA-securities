@@ -88,6 +88,29 @@ def test_tax_credit_uses_high_income_rate_and_allows_irp_only() -> None:
     assert result.rate_scenarios[0].estimated_tax_credit_krw == Decimal("1188000")
 
 
+def test_tax_credit_rounds_krw_amounts_to_whole_won() -> None:
+    result = calculate_pension_tax_credit(
+        scenario(
+            pension_savings={
+                "balance_krw": "0",
+                "current_year_contribution_krw": "2816550",
+            },
+            irp={
+                "balance_krw": "0",
+                "current_year_contribution_krw": "0",
+            },
+        ).to_tax_credit_input()
+    )
+
+    tax_credit = result.rate_scenarios[0]
+    assert result.engine_version == "2026-07-22.1"
+    assert tax_credit.income_tax_credit_krw == Decimal("422483")
+    assert tax_credit.estimated_total_tax_reduction_effect_krw == Decimal(
+        "464731"
+    )
+    assert tax_credit.estimated_total_tax_reduction_effect_krw % Decimal("1") == 0
+
+
 def test_unknown_income_returns_both_display_rate_scenarios() -> None:
     result = calculate_pension_tax_credit(
         scenario(income_basis="unknown", income_amount_krw=None).to_tax_credit_input()
