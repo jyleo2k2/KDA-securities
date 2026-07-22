@@ -36,6 +36,7 @@ describe("PensionPlannerPage", () => {
     });
     render(<PensionPlannerPage profile={profile} userContext={null} onBack={vi.fn()} onOpenProfile={vi.fn()} />);
 
+    expect(screen.getByText("투자성향 기준: 35세 · 위험중립형")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("현재 연금자산 잔액"), { target: { value: "10000000" } });
     fireEvent.change(screen.getByLabelText("월 납입액"), { target: { value: "300000" } });
     fireEvent.click(screen.getByRole("button", { name: "수령 계획 계산" }));

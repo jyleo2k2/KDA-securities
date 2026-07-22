@@ -4,13 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import App from "./App";
-import { getDemoHeroes, getMyPensionContext } from "./api/client";
+import { getDemoHeroes, getInvestmentProfile, getMyPensionContext } from "./api/client";
 import { useSupabaseAuth } from "./auth/useSupabaseAuth";
 
 vi.mock("./api/client", () => ({
   ApiError: class ApiError extends Error {},
   apiErrorMessage: () => "요청에 실패했습니다.",
   getDemoHeroes: vi.fn(),
+  getInvestmentProfile: vi.fn(),
   getMyPensionContext: vi.fn(),
 }));
 
@@ -38,6 +39,7 @@ describe("initial hash routing", () => {
       signOut: vi.fn(),
     } as never);
     vi.mocked(getDemoHeroes).mockResolvedValue([]);
+    vi.mocked(getInvestmentProfile).mockResolvedValue({ assessment: null, preferences: null });
     vi.mocked(getMyPensionContext).mockRejectedValue(new Error("연동 데이터 없음"));
   });
 
