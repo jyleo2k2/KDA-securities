@@ -11,17 +11,6 @@
             "statusMessage": "Git 세션 claim 확인 중..."
           }
         ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run python scripts/git_session_manager.py guard --hook-input",
-            "timeout": 30,
-            "statusMessage": "Git·파일 쓰기 경계 확인 중..."
-          }
-        ]
       }
     ],
     "PostToolUse": [
@@ -33,17 +22,6 @@
             "command": "f=$(uv run python -c \"import json,sys; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('file_path') or '')\"); case \"$f\" in *.py) cd \"$CLAUDE_PROJECT_DIR\" && uv run ruff check \"$f\" >&2 || exit 2;; esac",
             "timeout": 60,
             "statusMessage": "ruff 검사 중..."
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run python scripts/git_session_manager.py guard --hook-input",
-            "timeout": 30,
-            "statusMessage": "Bash 실행 후 claim 범위 확인 중..."
           }
         ]
       }
