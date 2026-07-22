@@ -175,7 +175,7 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrateg
         <div className="mhs-asset-card">
           <p className="mhs-asset-label">총 연금 자산</p>
           <p className="mhs-asset-total">{loading ? "불러오는 중…" : totalBalance}</p>
-          <p className="mhs-asset-gain">{error ?? (userContext ? `${userContext.nickname}님 · ${userContext.as_of_date} 기준 목데이터` : "연금 데이터를 확인해 주세요.")}</p>
+          <p className="mhs-asset-gain">{error ?? (userContext ? `${userContext.nickname.replace(/\(가상\)/g, "")}님 · ${userContext.as_of_date} 기준` : "연금 데이터를 확인해 주세요.")}</p>
 
           <div className="mhs-donut-wrap">
             {holdingSlices.length > 0 ? <HoldingDonut slices={holdingSlices} /> : (

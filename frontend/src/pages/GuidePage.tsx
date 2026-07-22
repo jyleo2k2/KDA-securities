@@ -73,7 +73,7 @@ const BOUNDARY_LABELS: Record<DataBoundary, string> = {
   official_disclosure: "공식 공시",
   official_statistics: "공식 통계",
   news_metadata: "뉴스 메타데이터",
-  mock: "목데이터",
+  mock: "계좌 데이터",
   engine: "규칙 엔진",
   user_input: "사용자 입력",
   unavailable: "미지원",
@@ -1214,11 +1214,11 @@ export function GuidePage({
         </div>
 
         <div className="sidebar-section">
-          <p className="sidebar-label">목계좌 시나리오</p>
+          <p className="sidebar-label">내 연금계좌</p>
           {userContext ? (
             <div className="user-context-card">
-              <strong>{userContext.nickname}</strong>
-              <span>{userContext.scenario_name} · 가상 목데이터</span>
+              <strong>{userContext.nickname.replace(/\(가상\)/g, "")}</strong>
+              <span>{userContext.scenario_name}</span>
               <small>
                 총 연금자산 {Number(userContext.total_pension_balance_krw).toLocaleString("ko-KR")}원
                 <br />기준일 {userContext.as_of_date}
@@ -1340,9 +1340,9 @@ export function GuidePage({
         <div className="sidebar-footer">
           <div className="connection-status">
             <span className={`status-dot ${serverReady === false ? "offline" : ""}`} />
-            <span>{serverReady === null ? "서버 확인 중" : serverReady ? (auth.session ? "저장 API 연결됨" : "데모 API 연결됨") : "API 연결 필요"}</span>
+            <span>{serverReady === null ? "서버 확인 중" : serverReady ? "저장 API 연결됨" : "API 연결 필요"}</span>
           </div>
-          <p>실제 주문을 실행하지 않는<br />자문·정보 제공형 데모입니다.</p>
+          <p>실제 주문을 실행하지 않는<br />자문·정보 제공형 서비스입니다.</p>
         </div>
       </aside>
 
