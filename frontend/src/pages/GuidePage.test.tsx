@@ -502,6 +502,45 @@ describe("GuidePage chat history deletion", () => {
     expect(sendAuthenticatedChatStream).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps educational portfolio answers focused by hiding duplicate numeric evidence cards", async () => {
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      persisted: false,
+      response: {
+        intent: "educational_portfolio",
+        answer: "설문 결과에 맞는 투자전략을 정리했어요.",
+        narration_mode: "deterministic",
+        data_mode: "engine_educational_planning",
+        numeric_evidence: [
+          { label: "수령 개시까지 운용기간", value: "27", unit: "년", evidence_id: "engine:portfolio", basis: "엔진 계산" },
+          { label: "equity_drawdown 스트레스 손실 추정치", value: "20", unit: "%", evidence_id: "engine:portfolio", basis: "엔진 시나리오" },
+        ],
+        news_items: [],
+        sections: [{
+          kind: "service_explanation",
+          title: "위험중립형 투자전략",
+          content: "목표 자산배분과 운용 원칙을 확인하세요.",
+          evidence_ids: ["engine:portfolio"],
+        }],
+        sources: [],
+        warnings: [],
+        visualizations: [],
+        limitations: [],
+        conversation_context: null,
+      },
+    } as unknown as Awaited<ReturnType<typeof sendAuthenticatedChatStream>>);
+    renderGuide();
+
+    const composer = screen.getByLabelText("질문 입력");
+    fireEvent.change(composer, { target: { value: "내 성향에 맞는 포트폴리오를 보여줘" } });
+    fireEvent.submit(composer.closest("form")!);
+
+    expect(await screen.findByText(/위험중립형 투자전략/)).toBeInTheDocument();
+    expect(screen.getByText("연금 운용전략")).toBeInTheDocument();
+    expect(screen.queryByLabelText("수치 근거")).not.toBeInTheDocument();
+    expect(screen.queryByText("검증 답변")).not.toBeInTheDocument();
+    expect(screen.queryByText("equity_drawdown 스트레스 손실 추정치")).not.toBeInTheDocument();
+  });
+
   it("does not restore a deleted row from an older session refresh", async () => {
     let finishRefresh: ((sessions: ChatSessionSummary[]) => void) | undefined;
     vi.mocked(getChatSessions)

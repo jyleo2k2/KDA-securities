@@ -7,9 +7,11 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
+from backend.app.ingestion.fsc_fund_client import FSC_FUND_PRODUCT_ENDPOINT
 from backend.app.ingestion.kis_pension_eligibility import (
     load_kis_retirement_etfs,
 )
+from backend.app.ingestion.kofia_fund_costs import match_kofia_costs_to_etfs
 from backend.app.ingestion.krx_client import parse_krx_etf_payload
 
 ACCOUNT_TYPES = ("dc", "irp", "pension_savings")
@@ -339,6 +341,8 @@ def build_etf_cost_return_report(
     source_files: dict[str, str],
     as_of: date,
     corporate_event_report: dict[str, Any] | None = None,
+    kofia_cost_report: dict[str, Any] | None = None,
+    fsc_fund_join_report: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     products = eligibility_report.get("products")
     if not isinstance(products, list):
@@ -354,6 +358,11 @@ def build_etf_cost_return_report(
     kis_by_code = {
         str(product["isu_code"]): product for product in kis_retirement_products
     }
+    kis_stated_fee_by_code = {
+        code: str(product["total_expense_ratio_percent"])
+        for code, product in kis_by_code.items()
+        if product.get("total_expense_ratio_percent") is not None
+    }
     snapshot_products = kis_snapshot.get("products")
     if not isinstance(snapshot_products, list):
         raise ValueError("KIS snapshot must contain products")
@@ -362,6 +371,16 @@ def build_etf_cost_return_report(
         for product in snapshot_products
         if isinstance(product, dict) and isinstance(product.get("isu_code"), str)
     }
+    kofia_cost_by_code = (
+        match_kofia_costs_to_etfs(
+            kofia_cost_report,
+            etf_products=products,
+            fsc_fund_join_report=fsc_fund_join_report,
+            kis_stated_fee_by_code=kis_stated_fee_by_code,
+        )
+        if kofia_cost_report is not None
+        else {}
+    )
 
     output_products = []
     missing_history_codes = []
@@ -382,6 +401,7 @@ def build_etf_cost_return_report(
             if kis_product is not None
             else None
         )
+        kofia_cost = kofia_cost_by_code.get(code)
         output_products.append(
             {
                 "isu_code": code,
@@ -394,14 +414,69 @@ def build_etf_cost_return_report(
                 "cost": {
                     "kis_total_expense_ratio_percent": fee,
                     "kis_cost_as_of": eligibility_report.get("eligibility_as_of"),
-                    "effective_total_cost_percent": None,
+                    "kofia_reported_ter_percent": (
+                        kofia_cost.get("ter_percent") if kofia_cost else None
+                    ),
+                    "kofia_reported_stated_fee_total_percent": (
+                        kofia_cost.get("stated_fee_total_percent")
+                        if kofia_cost
+                        else None
+                    ),
+                    "kofia_reported_other_cost_percent": (
+                        kofia_cost.get("other_cost_percent") if kofia_cost else None
+                    ),
+                    "kofia_reported_brokerage_commission_percent": (
+                        kofia_cost.get("brokerage_commission_percent")
+                        if kofia_cost
+                        else None
+                    ),
+                    "kofia_standard_code": (
+                        kofia_cost.get("standard_code") if kofia_cost else None
+                    ),
+                    "kofia_match_method": (
+                        kofia_cost.get("match_method") if kofia_cost else None
+                    ),
+                    "issuer_identity_source_url": (
+                        kofia_cost.get("issuer_identity_source_url")
+                        if kofia_cost
+                        else None
+                    ),
+                    "fsc_fund_standard_code": (
+                        kofia_cost.get("fsc_fund_standard_code")
+                        if kofia_cost
+                        else None
+                    ),
+                    "fsc_match_status": (
+                        kofia_cost.get("fsc_match_status") if kofia_cost else None
+                    ),
+                    "fsc_fund_join_as_of": (
+                        fsc_fund_join_report.get("snapshot_date")
+                        if fsc_fund_join_report is not None and kofia_cost
+                        else None
+                    ),
+                    "kis_fee_cross_check_percent": (
+                        kofia_cost.get("kis_stated_fee_percent")
+                        if kofia_cost
+                        else None
+                    ),
+                    "kofia_cost_as_of": (
+                        kofia_cost_report.get("as_of")
+                        if kofia_cost_report is not None and kofia_cost
+                        else None
+                    ),
+                    "effective_total_cost_percent": (
+                        kofia_cost.get("ter_percent") if kofia_cost else None
+                    ),
                     "effective_total_cost_status": (
-                        "issuer_or_fund_disclosure_required"
+                        "kofia_reported_ter"
+                        if kofia_cost
+                        else "issuer_or_fund_disclosure_required"
                     ),
                     "important_interpretation": (
                         "KRX market price and NAV returns already reflect ongoing "
                         "fund operating expenses; do not subtract the stated fee "
-                        "again from historical returns."
+                        "again from historical returns. KOFIA brokerage commission "
+                        "is preserved separately and is not added to TER."
                     ),
                 },
                 "distribution": {
@@ -465,6 +540,43 @@ def build_etf_cost_return_report(
                         "url": KIS_RETIREMENT_NOTICE_URL,
                         "as_of": eligibility_report.get("eligibility_as_of"),
                     },
+                    *(
+                        [
+                            {
+                                "label": "금융투자협회 펀드별 보수비용 비교",
+                                "url": kofia_cost_report["source_url"],
+                                "as_of": kofia_cost_report["as_of"],
+                                "standard_code": kofia_cost["standard_code"],
+                            }
+                        ]
+                        if kofia_cost is not None and kofia_cost_report is not None
+                        else []
+                    ),
+                    *(
+                        [
+                            {
+                                "label": "금융위원회 펀드기본정보 표준코드",
+                                "url": FSC_FUND_PRODUCT_ENDPOINT,
+                                "as_of": fsc_fund_join_report["snapshot_date"],
+                                "standard_code": kofia_cost["fsc_fund_standard_code"],
+                            }
+                        ]
+                        if kofia_cost is not None
+                        and fsc_fund_join_report is not None
+                        and kofia_cost.get("fsc_fund_standard_code")
+                        else []
+                    ),
+                    *(
+                        [
+                            {
+                                "label": "운용사 ETF 코드·정식명칭 확인",
+                                "url": kofia_cost["issuer_identity_source_url"],
+                            }
+                        ]
+                        if kofia_cost is not None
+                        and kofia_cost.get("issuer_identity_source_url")
+                        else []
+                    ),
                 ],
             }
         )
@@ -476,7 +588,7 @@ def build_etf_cost_return_report(
         "market_data_as_of": market_as_of.isoformat(),
         "generated_at": datetime.now(UTC).isoformat(),
         "engine_name": "pension_etf_cost_return_evidence",
-        "engine_version": "2026-07-16.2",
+        "engine_version": "2026-07-22.1",
         "product_scope": "eligible_in_at_least_one_pension_account",
         "source_files": source_files,
         "eligible_source_product_count": len(products),
@@ -489,8 +601,10 @@ def build_etf_cost_return_report(
             "Historical returns are evidence, not future return forecasts.",
             "Total return timing uses exact KIND ex-distribution dates where "
             "available; remaining events explicitly use record-date fallback.",
-            "KIS total fee is preserved as provider-reported reference data; "
-            "effective investor burden cost is unavailable in current APIs.",
+            "KOFIA TER is used as the verified recurring fund-cost input only "
+            "when a unique normalized ETF-name match is available.",
+            "KOFIA brokerage commission is reported separately from TER and is "
+            "not added without a benchmark-convention and cost-overlap check.",
             "Brokerage costs, bid-ask spread, taxes, and account-specific order "
             "availability are not included in return calculations.",
             "DC and IRP eligibility is provider-specific; account exports must be "
@@ -546,6 +660,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--corporate-events", type=Path)
     parser.add_argument("--kis-retirement-list", type=Path)
     parser.add_argument("--kis-snapshot", type=Path)
+    parser.add_argument("--kofia-fund-costs", type=Path)
+    parser.add_argument("--fsc-fund-join", type=Path)
     parser.add_argument("--krx-raw-root", type=Path, default=Path("data/raw/krx"))
     parser.add_argument("--output", type=Path, default=Path("data/cache/returns"))
     return parser
@@ -572,6 +688,16 @@ def main() -> int:
     kis_snapshot_path = args.kis_snapshot or _latest(
         Path("data/cache/kis"), "etf_snapshot_*.json"
     )
+    kofia_cost_path = args.kofia_fund_costs
+    if kofia_cost_path is None:
+        candidates = sorted(
+            Path("data/cache/kofia").glob("fund_fee_cost_comparison_*.json")
+        )
+        kofia_cost_path = candidates[-1] if candidates else None
+    fsc_fund_join_path = args.fsc_fund_join
+    if fsc_fund_join_path is None:
+        candidates = sorted(Path("data/cache/fsc").glob("krx_etf_fund_join_*.json"))
+        fsc_fund_join_path = candidates[-1] if candidates else None
     source_files = {
         "eligibility": eligibility_path.as_posix(),
         "kind_distributions": distribution_path.as_posix(),
@@ -581,6 +707,10 @@ def main() -> int:
     }
     if corporate_event_path is not None:
         source_files["corporate_events"] = corporate_event_path.as_posix()
+    if kofia_cost_path is not None:
+        source_files["kofia_fund_cost_comparison"] = kofia_cost_path.as_posix()
+    if fsc_fund_join_path is not None:
+        source_files["fsc_fund_join"] = fsc_fund_join_path.as_posix()
     report = build_etf_cost_return_report(
         eligibility_report=_load(eligibility_path),
         distribution_report=_load(distribution_path),
@@ -591,6 +721,12 @@ def main() -> int:
         as_of=args.as_of,
         corporate_event_report=(
             _load(corporate_event_path) if corporate_event_path is not None else None
+        ),
+        kofia_cost_report=(
+            _load(kofia_cost_path) if kofia_cost_path is not None else None
+        ),
+        fsc_fund_join_report=(
+            _load(fsc_fund_join_path) if fsc_fund_join_path is not None else None
         ),
     )
     union_path = args.output / (f"pension_etf_cost_return_master_{args.as_of}.json")

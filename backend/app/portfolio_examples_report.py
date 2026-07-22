@@ -7,6 +7,9 @@ from pathlib import Path
 from typing import Any
 
 from backend.app.engine.educational_portfolio import (
+    ENGINE_VERSION as EDUCATIONAL_PORTFOLIO_ENGINE_VERSION,
+)
+from backend.app.engine.educational_portfolio import (
     EducationalPortfolioInput,
     RiskProfile,
     build_educational_portfolio,
@@ -128,7 +131,7 @@ def build_portfolio_examples(
         "as_of": as_of.isoformat(),
         "generated_at": datetime.now(UTC).isoformat(),
         "engine_name": "educational_pension_portfolio",
-        "engine_version": "2026-07-16.4",
+        "engine_version": EDUCATIONAL_PORTFOLIO_ENGINE_VERSION,
         "representative_ages": REPRESENTATIVE_AGES,
         "retirement_start_ages": RETIREMENT_START_AGES,
         "risk_profiles": [profile.value for profile in RiskProfile],

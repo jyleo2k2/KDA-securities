@@ -357,7 +357,7 @@ def test_portfolio_cma_api_uses_current_etf_costs(monkeypatch) -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["planning_return"]["net_planning_return_percent"] == "4.9100"
+    assert payload["planning_return"]["net_planning_return_percent"] == "5.1000"
     assert payload["calculator"]["assumption"]["version"] == "2026-07-22.1"
     assert payload["calculator"]["assumption"]["notice"].endswith(
         "미래 수익률 예측이 아닙니다."

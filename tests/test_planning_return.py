@@ -61,28 +61,28 @@ def _assumption(**overrides) -> EtfPlanningReturnInput:
     return EtfPlanningReturnInput(**values)
 
 
-def test_planning_return_applies_shrinkage_caps_and_full_cost() -> None:
+def test_planning_return_uses_cma_minus_verified_cost_as_central_value() -> None:
     result = calculate_etf_planning_return(_assumption())
     components = {item.code: item for item in result.components}
 
     assert components["industry_excess_growth"].raw_percent == Decimal("0.7500")
-    assert components["industry_excess_growth"].applied_percent == Decimal(
-        "0.7500"
-    )
+    assert components["industry_excess_growth"].applied_percent == Decimal("0.0000")
     assert components["valuation_normalization"].raw_percent == Decimal(
         "-2.2314"
     )
-    assert components["valuation_normalization"].applied_percent == Decimal(
-        "-1.5000"
-    )
-    assert result.gross_planning_return_percent == Decimal("4.9500")
-    assert result.net_planning_return_percent == Decimal("4.6500")
+    assert components["valuation_normalization"].applied_percent == Decimal("0.0000")
+    assert components["factor"].applied_percent == Decimal("0.0000")
+    assert components["model_uncertainty"].applied_percent == Decimal("0.0000")
+    assert result.gross_planning_return_percent == Decimal("6.0000")
+    assert result.net_planning_return_percent == Decimal("5.7000")
+    assert "central_value_is_cma_minus_verified_annual_cost_only" in result.warnings
+    assert "unvalidated_overlay_inputs_retained_for_diagnostic_only" in result.warnings
     assert result.is_forecast is False
     assert result.historical_performance_used is False
     assert result.risk_adjustment_included is False
 
 
-def test_all_policy_adjustments_are_bounded_but_cost_is_not_hidden() -> None:
+def test_diagnostic_overlays_are_bounded_but_never_change_cma_minus_cost() -> None:
     result = calculate_etf_planning_return(
         _assumption(
             industry_excess_earnings_growth_percent=Decimal("10"),
@@ -99,16 +99,14 @@ def test_all_policy_adjustments_are_bounded_but_cost_is_not_hidden() -> None:
     )
     components = {item.code: item for item in result.components}
 
-    assert components["industry_excess_growth"].applied_percent == Decimal(
-        "1.0000"
-    )
-    assert components["valuation_normalization"].applied_percent == Decimal(
-        "1.5000"
-    )
-    assert components["factor"].applied_percent == Decimal("0.5000")
-    assert components["currency"].applied_percent == Decimal("1.0000")
-    assert components["model_uncertainty"].applied_percent == Decimal("1.5000")
+    assert components["industry_excess_growth"].applied_percent == Decimal("0.0000")
+    assert components["valuation_normalization"].applied_percent == Decimal("0.0000")
+    assert components["factor"].applied_percent == Decimal("0.0000")
+    assert components["currency"].applied_percent == Decimal("0.0000")
+    assert components["model_uncertainty"].applied_percent == Decimal("0.0000")
     assert components["annual_cost_drag"].applied_percent == Decimal("2.0000")
+    assert result.gross_planning_return_percent == Decimal("6.0000")
+    assert result.net_planning_return_percent == Decimal("4.0000")
 
 
 def test_missing_valuation_is_explicit_and_does_not_infer_from_price_history() -> None:
