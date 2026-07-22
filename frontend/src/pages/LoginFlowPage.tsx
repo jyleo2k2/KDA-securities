@@ -144,13 +144,24 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
 
         {step === "consent" && (
           <div className="login-consent-page">
-            <button type="button" className="login-back" onClick={() => setStep("success")} aria-label="로그인 성공 화면으로 돌아가기">←</button>
-            <h1>연금계좌 연동</h1>
+            <div className="login-consent-header">
+              <button type="button" className="login-back" onClick={() => setStep("success")} aria-label="로그인 성공 화면으로 돌아가기">←</button>
+              <h1>연금계좌 연동</h1>
+            </div>
             <div className="login-consent-content">
               <section className="login-consent-hero">
                 <span>연결 가능한 계좌</span>
-                <h2>{linkOptions?.options.filter((option) => option.diagnosable).length ?? 0}개<br /><em>연금계좌</em></h2>
-                <p>한 번에 불러와 통합 자산으로 확인</p>
+                <h2>연금계좌 <em>{linkOptions?.options.filter((option) => option.diagnosable).length ?? 0}종</em>을<br />나눠서 불러와요</h2>
+                <p>계좌 종류별로 각각 확인할 수 있어요</p>
+                <div className="login-consent-hero-accounts">
+                  {linkOptions?.options.filter((option) => option.diagnosable).map((option) => (
+                    <div key={option.code} className="login-consent-hero-account">
+                      <b>{option.code === "pension_savings" ? "연금" : option.code.toUpperCase()}</b>
+                      <span><strong>{option.code === "dc" ? "직접 운용하는 퇴직연금" : option.code === "irp" ? "스스로 적립하는 개인 연금계좌" : "세액공제 받는 개인 연금저축"}</strong><small>{option.category_label}</small></span>
+                    </div>
+                  ))}
+                </div>
+                <small>현재 MVP는 목데이터 · 실제 계좌 연결 아님</small>
               </section>
               <section className="login-consent-card">
                 <strong>불러오면 확인하는 내용</strong>
@@ -163,9 +174,9 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
                 <h2>연결할 수 있는 계좌</h2>
                 {linkOptionsLoading && <p>계좌 정보를 확인하고 있습니다.</p>}
                 {linkOptionsError && <div role="alert"><p>{linkOptionsError}</p><button type="button" onClick={() => void loadLinkOptions()}>다시 시도</button></div>}
-                {linkOptions?.options.map((option) => <p key={option.code}><strong>{option.display_name}</strong><b>{option.category_label}</b></p>)}
+                {linkOptions?.options.filter((option) => option.diagnosable).map((option) => <p key={option.code}><strong>{option.display_name}</strong><b>{option.category_label}</b></p>)}
               </section>
-              <section className="login-consent-safe"><p>마이데이터를 통해 내 연금계좌를 안전하게 연동해서 가져와요.</p></section>
+              <section className="login-consent-safe"><h2>안심하고 연결하세요</h2><p>마이데이터를 통해 내 연금계좌를 안전하게 연동해서 가져와요.</p></section>
               <section className="login-consent-card login-consent-check-card">
                 <h2>연결 전 확인</h2>
                 <dl><dt>불러오는 정보</dt><dd>금융회사와 계좌 종류<br />잔액 · 평가금액 · 보유 상품 · 정보 기준일</dd><dt>이용 목적</dt><dd>연금자산 통합조회와 운용 현황 분석</dd></dl>
