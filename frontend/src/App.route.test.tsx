@@ -33,7 +33,7 @@ describe("initial hash routing", () => {
       configured: true,
       error: null,
       loading: false,
-      session: { user: { id: "user-1", email: "user@example.com" } },
+      session: { access_token: "access-token", user: { id: "user-1", email: "user@example.com" } },
       signIn: vi.fn(),
       signOut: vi.fn(),
     } as never);

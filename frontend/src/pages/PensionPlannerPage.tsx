@@ -2,10 +2,16 @@ import { useState } from "react";
 
 import { calculatePension } from "../api/client";
 import type {
-  CompletedSurveyProfile,
+  AccountType,
   DemoUserFinancialContext,
   PensionCalculatorEvaluation,
+  RiskProfile,
 } from "../api/types";
+
+export interface PensionPlannerProfile {
+  current_age: number;
+  risk_profile: RiskProfile;
+}
 
 function won(value: string): string {
   return `${Number(value).toLocaleString("ko-KR")}원`;
@@ -23,7 +29,7 @@ export function PensionPlannerPage({
   onBack,
   onOpenProfile,
 }: {
-  profile: CompletedSurveyProfile | null;
+  profile: PensionPlannerProfile | null;
   userContext: DemoUserFinancialContext | null;
   onBack: () => void;
   onOpenProfile: () => void;
@@ -32,9 +38,10 @@ export function PensionPlannerPage({
     userContext?.total_pension_balance_krw ?? "0",
   );
   const [monthlyContribution, setMonthlyContribution] = useState("0");
-  const [contributionEndAge, setContributionEndAge] = useState(
-    String(profile?.retirement_start_age ?? 60),
-  );
+  const [accountType, setAccountType] = useState<AccountType>("irp");
+  const [contributionEndAge, setContributionEndAge] = useState(String(
+    profile && profile.current_age >= 60 ? Math.min(70, profile.current_age + 1) : 60,
+  ));
   const [payoutYears, setPayoutYears] = useState("20");
   const [scenario, setScenario] = useState<"low" | "base" | "high">("base");
   const [strategyId, setStrategyId] = useState<string | null>(null);
@@ -64,7 +71,7 @@ export function PensionPlannerPage({
         contribution_end_age: Number(contributionEndAge),
         current_balance_krw: currentBalance,
         monthly_contribution_krw: monthlyContribution,
-        account_type: plannerProfile.account_type,
+        account_type: accountType,
         risk_profile: plannerProfile.risk_profile,
         strategy_id: selectedStrategyId,
         payout_years: Number(payoutYears),
@@ -87,7 +94,8 @@ export function PensionPlannerPage({
       </header>
 
       <section aria-label="연금 수령 계획 입력" style={{ display: "grid", gap: 12 }}>
-        <p>설문 기준: {profile.current_age}세 · {profile.account_type} · {profile.risk_profile}</p>
+        <p>투자성향 기준: {profile.current_age}세 · {profile.risk_profile}</p>
+        <label>계좌 유형<select value={accountType} onChange={(event) => setAccountType(event.target.value as AccountType)}><option value="dc">DC형</option><option value="irp">IRP</option><option value="pension_savings">연금저축펀드</option></select></label>
         <label>현재 연금자산 잔액<input type="number" min="0" inputMode="numeric" value={currentBalance} onChange={(event) => setCurrentBalance(event.target.value)} /></label>
         <label>월 납입액<input type="number" min="0" inputMode="numeric" value={monthlyContribution} onChange={(event) => setMonthlyContribution(event.target.value)} /></label>
         <label>납입 종료 나이<select value={contributionEndAge} onChange={(event) => setContributionEndAge(event.target.value)}>{Array.from({ length: 16 }, (_, index) => 55 + index).map((age) => <option key={age} value={age}>{age}세</option>)}</select></label>

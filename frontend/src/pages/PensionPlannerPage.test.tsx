@@ -5,19 +5,16 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { calculatePension } from "../api/client";
-import type { CompletedSurveyProfile } from "../api/types";
+import type { PensionPlannerProfile } from "./PensionPlannerPage";
 import { PensionPlannerPage } from "./PensionPlannerPage";
 
 vi.mock("../api/client", () => ({
   calculatePension: vi.fn(),
 }));
 
-const profile: CompletedSurveyProfile = {
-  account_type: "irp",
+const profile: PensionPlannerProfile = {
   current_age: 35,
-  retirement_start_age: 60,
   risk_profile: "risk_neutral",
-  loss_tolerance_percent: "20",
 };
 
 describe("PensionPlannerPage", () => {

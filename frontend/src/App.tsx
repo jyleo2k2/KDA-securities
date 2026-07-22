@@ -9,7 +9,10 @@ import { GuidePage } from "./pages/GuidePage";
 import { HomePage } from "./pages/HomePage";
 import { LoginFlowPage } from "./pages/LoginFlowPage";
 import { MainHomeScreen } from "./pages/MainHomeScreen";
-import { PensionPlannerPage } from "./pages/PensionPlannerPage";
+import {
+  PensionPlannerPage,
+  type PensionPlannerProfile,
+} from "./pages/PensionPlannerPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { StrategyExploreScreen } from "./pages/StrategyExploreScreen";
 import { UserPickBenchmarkScreen } from "./pages/UserPickBenchmarkScreen";
@@ -18,6 +21,7 @@ const CARD_PAGES: Partial<Record<TabKey, () => JSX.Element>> = { benchmark: Benc
 const TAB_KEYS: readonly TabKey[] = ["home", "guide", "benchmark", "profile"];
 const USER_STORAGE_KEYS = ["pension-copilot:survey-profile", "pension-copilot:mvp-profile-version", "pension-copilot:selected-scenario"] as const;
 type AppRoute = TabKey | "login" | "main-home" | "planner" | "strategy-explore" | "user-pick-benchmark";
+const RISK_PROFILES = new Set(["stable", "stable_seeking", "risk_neutral", "active", "aggressive"]);
 
 interface CurrentUserData {
   context: DemoUserFinancialContext | null;
@@ -40,6 +44,16 @@ function pensionContextErrorMessage(error: unknown): string {
   if (error instanceof ApiError && error.status === 404) return "이 계정에는 연동된 연금 데이터가 없습니다.";
   if (error instanceof ApiError && error.status === 503) return "연금 데이터를 불러오는 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.";
   return "연금 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";
+}
+
+function plannerProfileFromContext(
+  context: DemoUserFinancialContext | null,
+): PensionPlannerProfile | null {
+  if (!context || !RISK_PROFILES.has(context.risk_profile)) return null;
+  return {
+    current_age: context.representative_age,
+    risk_profile: context.risk_profile as PensionPlannerProfile["risk_profile"],
+  };
 }
 
 export default function App(): JSX.Element {
@@ -99,10 +113,26 @@ export default function App(): JSX.Element {
   const activeTab: TabKey = resolvedRoute === "login" || resolvedRoute === "main-home" || resolvedRoute === "planner" || resolvedRoute === "strategy-explore" || resolvedRoute === "user-pick-benchmark" ? "home" : resolvedRoute;
   const CardPage = CARD_PAGES[activeTab];
   const displayName = currentUserData.context?.nickname ?? auth.session?.user.email?.replace("@kda-demo.invalid", "") ?? "인증 사용자";
+  const plannerProfile = plannerProfileFromContext(currentUserData.context);
 
   if (resolvedRoute === "strategy-explore") return <StrategyExploreScreen onBack={goToMainHome} />;
   if (resolvedRoute === "user-pick-benchmark") return <UserPickBenchmarkScreen onBack={goToMainHome} />;
   if (resolvedRoute === "main-home") return <MainHomeScreen error={currentUserData.error} hero={currentUserData.hero} loading={currentUserData.loading} onOpenChat={() => changeTab("guide")} onOpenStrategyExplore={goToStrategyExplore} onOpenUserPick={goToUserPickBenchmark} onResurvey={beginResurvey} userContext={currentUserData.context} />;
-  if (resolvedRoute === "planner") return <PensionPlannerPage profile={null} userContext={currentUserData.context} onBack={() => changeTab("guide")} onOpenProfile={beginResurvey} />;
-  return <><>{activeTab === "guide" ? <div className="guide-tab"><GuidePage auth={auth} initialScenarioCode={selectedScenarioCode} onBack={goToMainHome} onOpenPlanner={goToPlanner} onSignOut={handleSignOut} surveyProfile={null} userContext={currentUserData.context} /></div> : <div style={{ maxWidth: 480, margin: "0 auto", minHeight: "100vh", paddingBottom: 72, fontFamily: "system-ui, sans-serif" }}><header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "16px 16px 0" }}><span style={{ fontSize: 13, fontWeight: 700 }}>{displayName}</span><button type="button" onClick={() => void handleSignOut()}>로그아웃</button></header><main style={{ padding: 16 }}>{activeTab === "home" ? <HomePage error={currentUserData.error} hero={currentUserData.hero} loading={currentUserData.loading} onAnalyzeHero={analyzeHero} userContext={currentUserData.context} /> : activeTab === "profile" ? <ProfilePage onResurvey={beginResurvey} userContext={currentUserData.context} /> : CardPage ? <CardPage /> : null}</main></div>}</>{activeTab !== "guide" && <TabBar activeTab={activeTab} onChange={changeTab} /></>;
+  if (resolvedRoute === "planner") return <PensionPlannerPage profile={plannerProfile} userContext={currentUserData.context} onBack={() => changeTab("guide")} onOpenProfile={beginResurvey} />;
+  const content = activeTab === "guide" ? (
+    <div className="guide-tab">
+      <GuidePage auth={auth} initialScenarioCode={selectedScenarioCode} onBack={goToMainHome} onOpenPlanner={goToPlanner} onSignOut={handleSignOut} surveyProfile={null} userContext={currentUserData.context} />
+    </div>
+  ) : (
+    <div style={{ maxWidth: 480, margin: "0 auto", minHeight: "100vh", paddingBottom: 72, fontFamily: "system-ui, sans-serif" }}>
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "16px 16px 0" }}>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>{displayName}</span>
+        <button type="button" onClick={() => void handleSignOut()}>로그아웃</button>
+      </header>
+      <main style={{ padding: 16 }}>
+        {activeTab === "home" ? <HomePage error={currentUserData.error} hero={currentUserData.hero} loading={currentUserData.loading} onAnalyzeHero={analyzeHero} userContext={currentUserData.context} /> : activeTab === "profile" ? <ProfilePage onResurvey={beginResurvey} userContext={currentUserData.context} /> : CardPage ? <CardPage /> : null}
+      </main>
+    </div>
+  );
+  return <>{content}{activeTab !== "guide" && <TabBar activeTab={activeTab} onChange={changeTab} />}</>;
 }
