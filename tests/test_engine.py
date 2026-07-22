@@ -194,7 +194,11 @@ def test_fastapi_exposes_health_and_engine_golden_path() -> None:
         "/engine/risk-cap",
         "/engine/risk-cap/audited",
     }
-    assert health() == {"status": "ok"}
+    assert health() == {
+        "status": "ok",
+        "etf_theme_catalog_version": "2026-07-22.1",
+        "etf_theme_count": 21,
+    }
     assert risk_cap(portfolio).status == RuleStatus.PASS
 
 

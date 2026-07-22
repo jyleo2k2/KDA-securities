@@ -42,6 +42,17 @@ def test_route_paths_cover_engine_tools_and_data_reads() -> None:
     }
 
 
+def test_health_reports_loaded_etf_theme_catalog() -> None:
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ok",
+        "etf_theme_catalog_version": "2026-07-22.1",
+        "etf_theme_count": 21,
+    }
+
+
 def test_account_link_options_are_static_mock_metadata() -> None:
     response = client.get("/accounts/link-options")
 

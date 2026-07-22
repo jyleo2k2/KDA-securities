@@ -98,7 +98,7 @@ def test_verified_theme_topic_omits_only_the_draft_limitation() -> None:
 
     assert len(reader.requests) == 1
     assert reader.requests[0][:3] == (
-        "2026-07-20.4",
+        _theme_repository().catalog.catalog_version,
         "semiconductor",
         "overview",
     )

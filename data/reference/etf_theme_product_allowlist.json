@@ -195,6 +195,13 @@
       {"isu_code": "445150", "isu_name": "KODEX 친환경조선해운액티브"},
       {"isu_code": "466920", "isu_name": "SOL 조선TOP3플러스"},
       {"isu_code": "494670", "isu_name": "TIGER 조선TOP10"}
+    ],
+    "bonds": [
+      {"isu_code": "0046A0", "isu_name": "TIGER 미국초단기(3개월이하)국채"},
+      {"isu_code": "453850", "isu_name": "ACE 미국30년국채액티브(H)"},
+      {"isu_code": "484790", "isu_name": "KODEX 미국30년국채액티브(H)"},
+      {"isu_code": "329750", "isu_name": "TIGER 미국달러단기채권액티브"},
+      {"isu_code": "476760", "isu_name": "ACE 미국30년국채액티브"}
     ]
   }
 }

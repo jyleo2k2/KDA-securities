@@ -104,6 +104,7 @@ export const ETF_THEME_CARDS = [
   { number: 18, title: "양자컴퓨팅", message: "양자컴퓨팅 테마가 뭐야?" },
   { number: 19, title: "메타버스", message: "메타버스 테마가 뭐야?" },
   { number: 20, title: "조선", message: "조선 테마가 뭐야?" },
+  { number: 21, title: "채권", message: "채권 테마가 뭐야?" },
 ] as const;
 function numericText(value: string | number, unit: string): string {
   if (unit.toUpperCase() === "KRW") {

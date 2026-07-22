@@ -24,7 +24,7 @@ def _repository() -> EtfThemeRepository:
     )
 
 
-def test_theme_evidence_covers_all_100_approved_question_types() -> None:
+def test_theme_evidence_covers_all_105_approved_question_types() -> None:
     repository = _repository()
     manifest = load_theme_evidence_manifest(repository)
     approved_document = next(
@@ -33,8 +33,8 @@ def test_theme_evidence_covers_all_100_approved_question_types() -> None:
         if document.metadata["document_id"] == manifest.knowledge_document_id
     )
 
-    assert len(manifest.themes) == 20
-    assert len(manifest.themes) * len(ETF_THEME_CONTENT_TOPICS) == 100
+    assert len(manifest.themes) == 21
+    assert len(manifest.themes) * len(ETF_THEME_CONTENT_TOPICS) == 105
     assert {binding.theme_id for binding in manifest.themes} == {
         theme.theme_id for theme in repository.list()
     }
@@ -58,4 +58,4 @@ def test_theme_evidence_rejects_catalog_drift(tmp_path: Path) -> None:
 
 def test_theme_evidence_validate_only_cli(capsys: pytest.CaptureFixture[str]) -> None:
     assert load_main(["--validate-only"]) == 0
-    assert "100개 질문 유형" in capsys.readouterr().out
+    assert "105개 질문 유형" in capsys.readouterr().out

@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "catalog_version": "2026-07-20.4",
+  "catalog_version": "2026-07-22.1",
   "knowledge_document_id": "etf-theme-23-approved-basis",
   "reviewer": "이호연(조장), 이재용(총괄)",
-  "verified_at": "2026-07-20T00:00:00+09:00",
+  "verified_at": "2026-07-22T00:00:00+09:00",
   "review_due_date": "2027-01-16",
   "themes": [
     {"theme_id":"semiconductor","source_label":"대한민국 정책브리핑 반도체 정책자료","publisher":"대한민국 정책브리핑","official_source_url":"https://www.korea.kr/special/policyCurationView.do?newsId=148868225"},
@@ -25,6 +25,7 @@
     {"theme_id":"steel_materials","source_label":"대한민국 정책브리핑 철강산업 고도화 방안","publisher":"대한민국 정책브리핑","official_source_url":"https://www.korea.kr/news/policyNewsView.do?newsId=148953928"},
     {"theme_id":"quantum_computing","source_label":"NIST Quantum Computing Explained","publisher":"NIST","official_source_url":"https://www.nist.gov/quantum-information-science/quantum-computing-explained"},
     {"theme_id":"metaverse","source_label":"국가법령정보센터 가상융합산업 진흥법","publisher":"국가법령정보센터","official_source_url":"https://www.law.go.kr/lsInfoP.do?lsiSeq=260801"},
-    {"theme_id":"shipbuilding","source_label":"산업통상자원부 K-조선 미래비전","publisher":"산업통상자원부","official_source_url":"https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/171828/view"}
+    {"theme_id":"shipbuilding","source_label":"산업통상자원부 K-조선 미래비전","publisher":"산업통상자원부","official_source_url":"https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/171828/view"},
+    {"theme_id":"bonds","source_label":"한국거래소 ETF 투자자 안내","publisher":"한국거래소","official_source_url":"https://open.krx.co.kr/contents/OPN/01/01030100/OPN01030100.jsp"}
   ]
 }
