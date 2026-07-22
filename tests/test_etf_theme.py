@@ -14,7 +14,6 @@ from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService
 from backend.app.engine import (
     AccountType,
-    EducationalPortfolioInput,
     EducationalRiskProfile,
     classify_etf_theme_matches,
     classify_etf_themes,
@@ -300,7 +299,7 @@ def test_kis_component_weights_are_preserved_and_sorted() -> None:
     assert holdings[0].weight_percent == Decimal("11.75")
 
 
-def test_candidate_engine_applies_risk_profile_sleeve() -> None:
+def test_candidate_engine_does_not_require_risk_profile_or_account() -> None:
     repository = _theme_repository()
     theme = repository.get("semiconductor")
     assert theme is not None
@@ -313,30 +312,12 @@ def test_candidate_engine_applies_risk_profile_sleeve() -> None:
         "limit": 3,
     }
 
-    stable = select_theme_etf_candidates(
-        **common,
-        request=EducationalPortfolioInput(
-            account_type=AccountType.DC,
-            age=35,
-            retirement_start_age=60,
-            risk_profile=EducationalRiskProfile.STABLE,
-            loss_tolerance_percent=Decimal("10"),
-        ),
-    )
-    active = select_theme_etf_candidates(
-        **common,
-        request=EducationalPortfolioInput(
-            account_type=AccountType.DC,
-            age=35,
-            retirement_start_age=60,
-            risk_profile=EducationalRiskProfile.ACTIVE,
-            loss_tolerance_percent=Decimal("30"),
-        ),
-    )
+    evaluation = select_theme_etf_candidates(**common)
 
-    assert stable.candidates == ()
-    assert len(active.candidates) == 1
-    assert active.candidates[0].top_holdings[0].component_name == "삼성전자"
+    assert evaluation.account_type is None
+    assert len(evaluation.candidates) == 1
+    assert evaluation.candidates[0].account_type is None
+    assert evaluation.candidates[0].top_holdings[0].component_name == "삼성전자"
 
 
 def test_candidate_engine_ranks_liquidity_first_then_lower_fee() -> None:
@@ -355,13 +336,6 @@ def test_candidate_engine_ranks_liquidity_first_then_lower_fee() -> None:
         ],
         kis_products_by_code={},
         component_snapshot_date=date(2026, 7, 18),
-        request=EducationalPortfolioInput(
-            account_type=AccountType.DC,
-            age=35,
-            retirement_start_age=60,
-            risk_profile=EducationalRiskProfile.ACTIVE,
-            loss_tolerance_percent=Decimal("30"),
-        ),
         limit=3,
     )
 
@@ -485,6 +459,31 @@ def test_all_themes_route_natural_language_product_list_questions() -> None:
             assert plan.requests_theme_candidates is True
             assert plan.requests_theme_holdings is False
             assert plan.max_results == 3
+
+
+def test_all_themes_return_candidates_without_completed_survey() -> None:
+    repository = _theme_repository()
+
+    for theme in repository.list():
+        product = _product()
+        product["isu_name"] = f"{theme.name} ETF"
+        service = ChatService(
+            knowledge=LocalMarkdownKnowledgeRepository(),
+            scenarios=LocalScenarioRepository(),
+            theme_repository=repository,
+            portfolio_universe_loader=lambda account_type, item=product: (
+                _UniverseWithProduct(item)
+            ),
+        )
+
+        response = service.ask(
+            ChatRequest(message=f"{theme.name} 테마 ETF상품 3개를 보여줘")
+        )
+
+        assert response.data_mode == "theme_candidates", theme.theme_id
+        assert response.sections[0].blocks, theme.theme_id
+        assert response.conversation_context is not None
+        assert response.conversation_context.survey_profile is None
 
 
 class _ComponentSnapshots:
@@ -974,26 +973,45 @@ def test_chat_answers_theme_risks_without_repeating_benefits() -> None:
     assert len(response.sections[0].blocks[0].items) == 3
 
 
-def test_chat_uses_requested_safer_profile_for_theme_guardrail() -> None:
+def test_theme_top3_ignores_survey_profile_and_requested_account() -> None:
+    loaded_accounts: list[AccountType] = []
+
+    def load_universe(account_type: AccountType) -> _Universe:
+        loaded_accounts.append(account_type)
+        return _Universe()
+
     service = ChatService(
         knowledge=LocalMarkdownKnowledgeRepository(),
         scenarios=LocalScenarioRepository(),
         theme_repository=_theme_repository(),
-        portfolio_universe_loader=lambda account_type: _Universe(),
+        portfolio_universe_loader=load_universe,
     )
-    response = service.ask(
+    without_survey = service.ask(
+        ChatRequest(message="IRP 반도체 ETF 상품 3개를 보여줘")
+    )
+    with_survey = service.ask(
         ChatRequest(
-            message="안정형으로 반도체 ETF 후보를 보여줘",
+            message="공격투자형으로 반도체 ETF 상품 3개를 보여줘",
             survey_profile=CompletedSurveyProfile(
                 account_type=AccountType.DC,
                 current_age=35,
                 retirement_start_age=60,
-                risk_profile=EducationalRiskProfile.ACTIVE,
-                loss_tolerance_percent=Decimal("30"),
+                risk_profile=EducationalRiskProfile.STABLE,
+                loss_tolerance_percent=Decimal("10"),
             ),
         )
     )
 
-    assert response.intent == ChatIntent.ETF_THEME
-    assert response.data_mode == "theme_overview_only"
-    assert not any("비교 후보" in section.title for section in response.sections)
+    assert without_survey.data_mode == "theme_candidates"
+    assert with_survey.data_mode == "theme_candidates"
+    assert [block.title for block in without_survey.sections[0].blocks] == [
+        block.title for block in with_survey.sections[0].blocks
+    ]
+    assert loaded_accounts == list(AccountType) * 2
+    assert len(without_survey.sections[0].blocks) == 1
+    assert without_survey.conversation_context is not None
+    assert without_survey.conversation_context.account_type is None
+    assert without_survey.conversation_context.survey_profile is None
+    assert any(
+        "정보성 비교 후보" in item for item in without_survey.limitations
+    )

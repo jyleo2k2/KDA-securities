@@ -30,10 +30,24 @@ uv run uvicorn backend.app.main:app --reload
 - `src/api/client.ts` — 최소 fetch 래퍼(`VITE_API_BASE_URL`, 기본
   `http://127.0.0.1:8000`).
 - `src/pages/` — 하단탭 4개(홈·연금가이드·벤치마크·프로필) 플레이스홀더.
-- **상태관리·라우팅 라이브러리는 의도적으로 미도입** —
-  [아키텍처.md §10](../docs/30_스펙/아키텍처.md) 미확정 항목이라 담당자가
-  결정한 뒤 도입한다.
+- **상태관리 라이브러리는 의도적으로 미도입** — 화면 상태는 각 React 컴포넌트의
+  `useState`/`useEffect`가 소유한다. 로그인 전환·사용자 전환 시 사용자별 화면 상태와
+  `pension-copilot:*` localStorage 키를 비우며, 장기 보관이 필요한 투자성향·계좌·대화는
+  서버가 SSOT다. Supabase는 로그인 세션만 유지하고, URL hash는 현재 화면 위치만 보존한다.
 - PWA 매니페스트는 `vite.config.ts`의 `VitePWA` 설정에 있다.
+
+## PWA 상태·캐시 정책
+
+- Cache Storage에는 Vite가 revision을 붙인 정적 앱 자산만 precache한다. 새 배포는
+  `autoUpdate`로 갱신한다.
+- FastAPI `GET`/`POST`/`DELETE`, 인증 요청, 계좌·투자성향·대화 데이터 및 챗봇 SSE는
+  모두 `cache: "no-store"`다. 서비스 워커에도 API runtime cache 규칙을 두지 않는다.
+  따라서 로그아웃·사용자 전환 뒤 이전 사용자의 응답이 브라우저 캐시에서 재사용되지 않는다.
+- 챗봇의 스트리밍 답변과 임시 입력은 메모리 상태이며 새로고침 시 복원하지 않는다. 저장된
+  대화는 인증된 서버 API로 다시 조회한다.
+- API 응답의 TTL, 재검증, 무효화는 클라이언트 캐시가 아니라 서버 데이터·인증 갱신에 따른다.
+  성능상 별도 캐시가 필요해지면 인증 경계, 소유자 전환, 명시적인 무효화 조건을 포함한
+  별도 계약을 먼저 추가한다.
 
 ## 지켜야 할 경계 (헌장)
 

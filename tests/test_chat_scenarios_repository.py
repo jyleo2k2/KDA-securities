@@ -73,5 +73,10 @@ def test_postgres_scenario_reads_linked_etf_code_and_verified_name() -> None:
     holding = scenario.accounts[0].holdings[0]
     assert holding.instrument_name == "KODEX 미국S&P500"
     assert holding.etf_isu_code == "379800"
+    assert "pension_accounts" in cursor.query
+    assert "account_snapshots" in cursor.query
+    assert "account_holding_snapshots" in cursor.query
+    assert "mock_accounts" not in cursor.query
+    assert "mock_holdings" not in cursor.query
     assert "etf_universe_products" in cursor.query
     assert "holding.etf_isu_code" in cursor.query

@@ -558,14 +558,26 @@ def test_mock_accounts_are_backfilled_into_common_account_tables() -> None:
         assert forbidden not in sql
 
 
-def test_local_seed_replays_the_common_account_backfill() -> None:
+def test_local_seed_writes_common_mock_accounts_directly() -> None:
     sql = SEED.read_text(encoding="utf-8").lower()
 
     assert "insert into public.pension_accounts" in sql
     assert "insert into public.account_snapshots" in sql
     assert "insert into public.account_holding_snapshots" in sql
     assert "on conflict (id) do update" in sql
-    assert "expected 86 backfilled mock holdings" in sql
+    assert "expected 13 seeded mock accounts" in sql
+    assert "expected 86 seeded mock holdings" in sql
+    assert "public.mock_accounts" not in sql
+    assert "public.mock_holdings" not in sql
+
+
+def test_demo_seed_renderer_and_benchmark_loader_do_not_write_legacy_accounts() -> None:
+    renderer = DEMO_SQL_RENDERER.read_text(encoding="utf-8").lower()
+    loader = BENCHMARK_LOADER.read_text(encoding="utf-8").lower()
+
+    for source in (renderer, loader):
+        assert "public.mock_accounts" not in source
+        assert "public.mock_holdings" not in source
 
 
 def test_demo_etf_holdings_are_resynced_to_common_accounts() -> None:

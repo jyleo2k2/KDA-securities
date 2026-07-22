@@ -12,7 +12,7 @@ from typing import Any
 from backend.app.ingestion._files import atomic_write_json
 
 ENGINE_NAME = "us_equity_multi_vintage_validation"
-ENGINE_VERSION = "2026-07-20.1"
+ENGINE_VERSION = "2026-07-22.1"
 PERCENT_QUANTUM = Decimal("0.0001")
 DEFAULT_VINTAGE_PATH = Path(
     "data/reference/us_equity_cma_vintages_2012-2016.json"
@@ -22,6 +22,9 @@ DEFAULT_EVIDENCE_PATH = Path(
 )
 DEFAULT_OUTPUT_PATH = Path(
     "data/cache/planning_returns/us_equity_multi_vintage_validation.json"
+)
+DEFAULT_OUTCOME_REVISION_PATH = Path(
+    "data/cache/planning_returns/fama_french_vintage_revision.json"
 )
 
 
@@ -74,6 +77,7 @@ def build_validation_report(
     *,
     vintage_payload: dict[str, Any],
     structural_evidence: dict[str, Any],
+    outcome_revision: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     vintages = _validate_vintages(vintage_payload)
     diagnostic_rows = {
@@ -85,6 +89,12 @@ def build_validation_report(
             "view_confidence"
         ]
     )
+    archived_outcomes = {
+        int(item["formation_year"]): Decimal(
+            item["archived_realized_cagr_percent"]
+        )
+        for item in ((outcome_revision or {}).get("vintages") or [])
+    }
     rows = []
     for vintage in vintages:
         formation_year = vintage["formation_year"]
@@ -96,7 +106,8 @@ def build_validation_report(
         cma = Decimal(vintage["expected_return_percent"])
         structural = Decimal(diagnostic["structural_percent"])
         equilibrium = Decimal(diagnostic["equilibrium_percent"])
-        realized = Decimal(diagnostic["realized_return_percent"])
+        current_cut_realized = Decimal(diagnostic["realized_return_percent"])
+        realized = archived_outcomes.get(formation_year, current_cut_realized)
         robust_view = (cma + structural) / Decimal("2")
         ensemble = equilibrium + current_confidence * (robust_view - equilibrium)
         estimates = {
@@ -116,6 +127,11 @@ def build_validation_report(
                     name: str(_percent(value)) for name, value in estimates.items()
                 },
                 "realized_return_percent": str(_percent(realized)),
+                "realized_source_cut": (
+                    "archived_first_complete_annual_cut"
+                    if formation_year in archived_outcomes
+                    else "current_cut_no_archive_available"
+                ),
                 "errors_percent_point": {
                     name: str(_percent(value - realized))
                     for name, value in estimates.items()
@@ -158,6 +174,7 @@ def build_validation_report(
             "overlapping_forward_windows": True,
             "independent_vintage_count": 1,
             "current_ensemble_view_confidence": str(current_confidence),
+            "archived_outcome_override_count": len(archived_outcomes),
         },
         "metrics": metrics,
         "vintages": rows,
@@ -184,10 +201,17 @@ def run(
     vintage_path: Path = DEFAULT_VINTAGE_PATH,
     evidence_path: Path = DEFAULT_EVIDENCE_PATH,
     output_path: Path = DEFAULT_OUTPUT_PATH,
+    outcome_revision_path: Path | None = DEFAULT_OUTCOME_REVISION_PATH,
 ) -> dict[str, Any]:
+    outcome_revision = (
+        _load(outcome_revision_path)
+        if outcome_revision_path is not None and outcome_revision_path.exists()
+        else None
+    )
     report = build_validation_report(
         vintage_payload=_load(vintage_path),
         structural_evidence=_load(evidence_path),
+        outcome_revision=outcome_revision,
     )
     atomic_write_json(output_path, report)
     return report
@@ -198,11 +222,17 @@ def main() -> int:
     parser.add_argument("--vintages", type=Path, default=DEFAULT_VINTAGE_PATH)
     parser.add_argument("--evidence", type=Path, default=DEFAULT_EVIDENCE_PATH)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_PATH)
+    parser.add_argument(
+        "--outcome-revision",
+        type=Path,
+        default=DEFAULT_OUTCOME_REVISION_PATH,
+    )
     args = parser.parse_args()
     report = run(
         vintage_path=args.vintages,
         evidence_path=args.evidence,
         output_path=args.output,
+        outcome_revision_path=args.outcome_revision,
     )
     print(
         json.dumps(
