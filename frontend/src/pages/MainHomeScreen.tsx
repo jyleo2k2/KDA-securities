@@ -2,6 +2,7 @@ import { useState, type JSX } from "react";
 
 import moneyBag from "../assets/main-home/money-bag.png";
 import piggy from "../assets/main-home/piggy.png";
+import profileIcon from "../assets/main-home/profile-icon.png";
 import userPickPreview from "../assets/main-home/user-pick-preview.png";
 import type { DemoHeroPortfolio, DemoUserFinancialContext, InvestmentProfileResponse, RiskProfile } from "../api/types";
 import "./MainHomeScreen.css";
@@ -163,6 +164,7 @@ export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpen
       <div className="mhs-header">
         <span className="mhs-header-dot" />
         <span className="mhs-header-title">연금 <span className="mhs-header-title-accent">도우미</span></span>
+        <img src={profileIcon} alt="프로필" className="mhs-profile-icon" />
       </div>
 
       <div className="mhs-body">
