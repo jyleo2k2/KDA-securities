@@ -334,6 +334,7 @@ uv run ruff check .
 - 실제 읽기 검증: 2026-07-22 KST에 공통 계좌 동등성 검사를 통과한 뒤 시나리오 6개·계좌 13개·보유 86개·총 평가액 520,290,000원 백업을 생성하고, DB 재접속 없이 SHA-256 검증을 다시 통과했다. 원격 DB 쓰기·migration 적용은 수행하지 않았다.
 - 삭제 전 남은 의존성: `supabase/seed.sql`, `scripts/load_benchmark_mock_data.py`, `scripts/render_demo_customer_sql.py`, 일부 데모 문서가 레거시 테이블을 아직 생성·갱신·설명한다. 이를 공통 계좌 구조로 전환하고 로컬 reset/원격 E2E·복구 절차를 검증하기 전에는 `mock_holdings`·`mock_accounts`를 삭제하지 않는다.
 - 검증: 백업 도구 단위 테스트 3건·Ruff 통과. 챗봇 공통 구조 전환 기준 전체 회귀는 `981 passed, 1 skipped`.
+
 ### 2026-07-22 KST 로그인 투자자정보 확인서 통합 설문 원격 적용
 
 - 작업자/브랜치: Codex / `codex/login-survey-db`.
