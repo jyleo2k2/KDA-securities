@@ -146,3 +146,26 @@ def test_news_by_ids_rejects_tampered_ids_without_query(monkeypatch) -> None:
     )
 
     assert RetrievalRepository("postgresql://test").news_by_ids(("tampered",)) == []
+
+
+def test_summarized_news_by_canonical_urls_returns_completed_matches(
+    monkeypatch,
+) -> None:
+    cursor = _Cursor()
+    canonical_url = "https://example.test/canonical/1"
+    cursor.rows = [(canonical_url, *cursor.rows[0])]
+    monkeypatch.setattr(
+        repository_module.psycopg,
+        "connect",
+        lambda _: _Connection(cursor),
+    )
+
+    results = RetrievalRepository(
+        "postgresql://test"
+    ).summarized_news_by_canonical_urls((canonical_url, canonical_url))
+
+    assert results == {canonical_url: NewsMatch(*cursor.rows[0][1:])}
+    assert "canonical_url = any(%s::text[])" in cursor.statement
+    assert "summary_status = 'succeeded'" in cursor.statement
+    assert "cardinality(summary_lines) = 3" in cursor.statement
+    assert cursor.params == ([canonical_url],)

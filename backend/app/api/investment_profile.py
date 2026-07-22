@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from ..auth import require_supabase_user_id
@@ -94,7 +94,11 @@ def _response(stored: StoredInvestmentProfile | None) -> InvestmentProfileRespon
     )
 
 
-@router.post("/me/investment-profile", response_model=InvestmentProfileResponse)
+@router.post(
+    "/me/investment-profile",
+    response_model=InvestmentProfileResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def save_investment_profile(
     submission: InvestmentProfileSubmission,
     owner_id: Annotated[UUID, Depends(require_supabase_user_id)],

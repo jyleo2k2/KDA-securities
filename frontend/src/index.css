@@ -274,7 +274,10 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .news-card-meta { display: flex; justify-content: space-between; gap: 8px; color: #87938b; font-size: 9px; }
 .news-card strong { display: block; margin-top: 6px; color: #294838; font-size: 12px; line-height: 1.45; }
 .news-card p { display: -webkit-box; margin: 7px 0; overflow: hidden; color: #617168; font-size: 10px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.news-card-summary { display: grid; gap: 5px; margin: 9px 0; padding-left: 18px; color: #617168; font-size: 10px; line-height: 1.55; }
+.news-card-summary { display: grid; gap: 5px; margin: 9px 0; padding: 0; color: #617168; font-size: 10px; line-height: 1.55; list-style: none; }
+.news-card-summary li { display: grid; grid-template-columns: 15px minmax(0, 1fr); gap: 3px; }
+.news-card-summary-number { color: #617168; }
+.news-card-summary-text { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .news-card small { display: inline-flex; align-items: center; gap: 2px; color: #6f8c49; font-size: 9px; font-weight: 700; }
 .allocation-chart { margin-top: 14px; padding: 13px; border-radius: 10px; background: #f5f8f1; }
 .allocation-chart h3 { margin: 0 0 10px; color: #2d493b; font-size: 11px; }

@@ -35,7 +35,6 @@ vi.mock("../api/client", () => ({
   getScenarios: vi.fn(),
   getStoredChatMessages: vi.fn(),
   sendAuthenticatedChatStream: vi.fn(),
-  sendChatStream: vi.fn(),
 }));
 
 const SESSION_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -400,6 +399,38 @@ describe("GuidePage chat history deletion", () => {
     expect(deleteChatSession).not.toHaveBeenCalled();
   });
 
+  it("labels an unsummarized live headline without implying a three-line summary", async () => {
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      persisted: false,
+      session_id: null,
+      response: {
+        ...THEME_RESPONSE,
+        intent: "news",
+        answer: "NAVER 검색 API에서 최신 증시 뉴스 메타데이터를 조회했어요.",
+        data_mode: "news_metadata",
+        news_items: [
+          {
+            evidence_id: "live-news:headline-1",
+            title: "장중 코스피 움직임",
+            description: "장중 시장 움직임을 전한 NAVER 검색 설명입니다.",
+            summary_lines: [],
+            original_url: "https://example.test/live/1",
+            published_at: "2026-07-21T01:00:00Z",
+          },
+        ],
+      },
+    });
+    renderGuide();
+
+    const composer = screen.getByLabelText("질문 입력");
+    fireEvent.change(composer, { target: { value: "실시간 증시 뉴스 보여줘" } });
+    fireEvent.submit(composer.closest("form")!);
+
+    expect(await screen.findByText("실시간 헤드라인 · 3줄 요약 전"))
+      .toBeInTheDocument();
+    expect(screen.queryByText("첫 번째 뉴스 · 3줄 요약")).not.toBeInTheDocument();
+  });
+
   it("keeps the session when confirmation is cancelled", async () => {
     vi.mocked(window.confirm).mockReturnValue(false);
     renderGuide();
@@ -619,6 +650,70 @@ describe("GuidePage chat history deletion", () => {
       "aria-expanded",
       "true",
     );
+  });
+
+  it("numbers each news summary line and submits the selected market question", async () => {
+    const response: ChatResponse = {
+      ...THEME_RESPONSE,
+      intent: "news",
+      data_mode: "news_summary",
+      news_items: [
+        {
+          evidence_id: "news:semiconductor",
+          title: "반도체 시장 뉴스",
+          original_url: "https://example.test/semiconductor",
+          summary_lines: ["핵심 사건입니다.", "주요 수치와 원인입니다.", "영향과 불확실성입니다."],
+        },
+      ],
+      sections: [
+        {
+          kind: "external_opinion",
+          title: "중복 뉴스 요약",
+          content: "뉴스 카드에 이미 표시된 요약입니다.",
+          evidence_ids: ["news:semiconductor"],
+          blocks: [],
+        },
+      ],
+      suggested_follow_ups: [
+        {
+          follow_up_id: "news_region_kr",
+          label: "한국증시 뉴스",
+          message: "한국증시 뉴스 알려줘",
+        },
+        {
+          follow_up_id: "news_region_us",
+          label: "미국증시 뉴스",
+          message: "미국증시 뉴스 알려줘",
+        },
+      ],
+    };
+    vi.mocked(getChatCards).mockResolvedValue({ cards: [RECOMMENDED_CHAT_CARDS[0]] });
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      persisted: false,
+      session_id: null,
+      response,
+    } as Awaited<ReturnType<typeof sendAuthenticatedChatStream>>);
+    renderGuide();
+
+    fireEvent.click(await screen.findByRole("button", { name: /오늘 증시 뉴스/ }));
+
+    const newsList = await screen.findByLabelText("뉴스 목록");
+    expect(screen.getByText("증시 뉴스")).toBeInTheDocument();
+    expect(within(newsList).getByText("1.", { exact: true })).toBeInTheDocument();
+    expect(within(newsList).getByText("2.", { exact: true })).toBeInTheDocument();
+    expect(within(newsList).getByText("3.", { exact: true })).toBeInTheDocument();
+    const followUps = screen.getByLabelText("이어서 물어보기");
+    expect(within(followUps).queryByRole("button", { name: /첫 번째 뉴스 자세히/ })).not.toBeInTheDocument();
+    expect(within(followUps).queryByRole("button", { name: /다른 뉴스 더 보기/ })).not.toBeInTheDocument();
+    expect(screen.queryByText("중복 뉴스 요약")).not.toBeInTheDocument();
+
+    fireEvent.click(within(followUps).getByRole("button", { name: "한국증시 뉴스" }));
+
+    await waitFor(() => {
+      expect(vi.mocked(sendAuthenticatedChatStream).mock.calls.at(-1)?.[0]).toBe(
+        "한국증시 뉴스 알려줘",
+      );
+    });
   });
 
   it("renders only the five requested recommendation cards without spark icons", async () => {

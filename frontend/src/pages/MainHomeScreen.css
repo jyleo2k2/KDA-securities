@@ -71,6 +71,7 @@
 .mhs-tax-title-accent { color: #FFD860; }
 .mhs-tax-sub { font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, .85); margin: 5px 0 0; line-height: 1.45; }
 .mhs-tax-button { margin-top: 14px; width: 100%; border: none; background: #fff; color: #18A860; font-family: inherit; font-size: 14px; font-weight: 800; padding: 12px 16px; border-radius: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, .12); }
+.mhs-resurvey-button { width: 100%; margin: 12px 0 4px; padding: 10px 14px; border: 1px solid #b9d9c6; border-radius: 12px; background: #f5faf6; color: #167447; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
 
 .mhs-strategy-heading-row { display: flex; align-items: baseline; justify-content: space-between; margin: 44px 0 14px; }
 .mhs-strategy-more { font-size: 12px; font-weight: 700; color: #18A860; white-space: nowrap; cursor: pointer; background: none; border: none; padding: 0; font-family: inherit; }

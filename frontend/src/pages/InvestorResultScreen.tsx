@@ -1,11 +1,17 @@
 import type { JSX } from "react";
 
+import type { InvestmentProfileAssessment, RiskProfile } from "../api/types";
 import "./InvestorResultScreen.css";
 
 interface InvestorResultScreenProps {
+  assessment: InvestmentProfileAssessment | null;
   onBack: () => void;
   onStart: () => void;
 }
+
+const PROFILE_LABELS: Record<RiskProfile, string> = {
+  stable: "안정형", stable_seeking: "안정추구형", risk_neutral: "위험중립형", active: "적극투자형", aggressive: "공격투자형",
+};
 
 const GRADE_ROWS: Array<{ label: string; flexFilled: number; flexEmpty: number; width: string; barColor: string; labelColor: string; highlight?: boolean }> = [
   { label: "안정형", flexFilled: 1, flexEmpty: 5, width: "16%", barColor: "#22A94D", labelColor: "#166F39" },
@@ -31,7 +37,10 @@ const CHART_LABELS = [
   { text: "공격투자형", color: "#C0392B", size: "11px", weight: 800 },
 ];
 
-export function InvestorResultScreen({ onBack, onStart }: InvestorResultScreenProps): JSX.Element {
+export function InvestorResultScreen({ assessment, onBack, onStart }: InvestorResultScreenProps): JSX.Element {
+  const profileLabel = assessment ? PROFILE_LABELS[assessment.risk_profile] : "결과 확인 중";
+  const assessedOn = assessment ? new Date(assessment.assessed_at).toLocaleDateString("ko-KR") : "-";
+  const validUntil = assessment?.valid_until ?? "-";
   return (
     <div className="irs-page">
       <div className="irs-header">
@@ -60,15 +69,15 @@ export function InvestorResultScreen({ onBack, onStart }: InvestorResultScreenPr
             <span className="irs-tag">투자자정보제공</span>
           </div>
 
-          <div className="irs-lead">최호택 고객님의 투자성향은</div>
+          <div className="irs-lead">고객님의 투자성향은</div>
           <div className="irs-type">
-            공격투자형 <span className="irs-type-suffix">입니다.</span>
+            {profileLabel} <span className="irs-type-suffix">입니다.</span>
           </div>
 
           <div className="irs-divider" />
           <div className="irs-meta">
-            <span>최근 진단일 : 2026.01.13</span>
-            <span>성향 만료일 : 2028.01.12</span>
+            <span>최근 진단일 : {assessedOn}</span>
+            <span>성향 만료일 : {validUntil}</span>
           </div>
         </div>
 
@@ -100,8 +109,7 @@ export function InvestorResultScreen({ onBack, onStart }: InvestorResultScreenPr
           </div>
 
           <div className="irs-desc">
-            고객님은 시장평균 수익률을 훨씬 넘어서는 높은 수준의 투자수익을 추구하며 자산가치의 변동에 따른 손실위험을 적극 수용하고 투자자금의 대부분을 주식, 주식형 펀드 또는 파생상품 등의 위험자산에 투자할 의향이 있는{" "}
-            <b className="irs-desc-strong">‘공격투자형’</b>의 성향을 가지고 있으며 <b className="irs-desc-strong">‘매우높은위험 이하’</b> 등급의 상품 투자가 적합합니다.
+            신한 개인 일반투자자정보 확인서의 배점 기준으로 산출한 결과입니다. 고객님의 투자성향은 <b className="irs-desc-strong">‘{profileLabel}’</b>이며, ETF 교육용 안내는 이 성향과 보유 연금계좌 규칙 안에서만 제공합니다.
           </div>
         </div>
 
@@ -137,17 +145,18 @@ export function InvestorResultScreen({ onBack, onStart }: InvestorResultScreenPr
           </div>
 
           <div className="irs-grade-rows">
-            {GRADE_ROWS.map((row) => (
-              <div className={row.highlight ? "irs-grade-row irs-grade-row-highlight" : "irs-grade-row"} key={row.label}>
-                <div className="irs-grade-row-label" style={{ color: row.labelColor, fontWeight: row.highlight ? 800 : 700 }}>
+            {GRADE_ROWS.map((row) => {
+              const highlighted = row.label === profileLabel;
+              return <div className={highlighted ? "irs-grade-row irs-grade-row-highlight" : "irs-grade-row"} key={row.label}>
+                <div className="irs-grade-row-label" style={{ color: row.labelColor, fontWeight: highlighted ? 800 : 700 }}>
                   {row.label}
                 </div>
                 <div className="irs-grade-row-bar-wrap" style={{ flex: row.flexFilled }}>
                   <div className="irs-grade-row-bar" style={{ background: row.barColor, width: row.width }} />
                 </div>
                 {row.flexEmpty > 0 && <div style={{ flex: row.flexEmpty }} />}
-              </div>
-            ))}
+              </div>;
+            })}
           </div>
         </div>
 

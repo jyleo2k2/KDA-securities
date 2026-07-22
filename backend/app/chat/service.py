@@ -39,8 +39,6 @@ from .handlers._shared import (  # noqa: F401
 from .handlers.account_rules import blocked_response, handle_account_rule
 from .handlers.disclosures_news import (
     disclosure_response,
-    event_strategy_response,
-    live_news_response,
     news_follow_up_response,
     news_response,
 )
@@ -194,7 +192,10 @@ class ChatService:
                 or request.scenario_code is not None
             )
         ):
-            response = blocked_response(resolved_plan.blocked_reason)
+            response = blocked_response(
+                resolved_plan.blocked_reason,
+                user_message=request.message,
+            )
         else:
             request = request.model_copy(
                 update={
@@ -358,37 +359,15 @@ class ChatService:
                         and original_request.conversation_context.news is not None
                         else ()
                     )
-                    if resolved_plan.requests_event_strategy:
-                        response = event_strategy_response(
-                            original_request,
-                            search_query=resolved_plan.news_query,
-                            max_results=resolved_plan.max_results,
-                            preferred_topics=preferred_news_topics,
-                            scope_notice=resolved_plan.news_scope_notice,
-                            live_news=self._live_news,
-                            news=self._news,
-                            theme_repository=self._theme_repository,
-                        )
-                    elif resolved_plan.requests_live_news:
-                        response = live_news_response(
-                            request,
-                            search_query=resolved_plan.news_query,
-                            max_results=resolved_plan.max_results,
-                            preferred_topics=preferred_news_topics,
-                            scope_notice=resolved_plan.news_scope_notice,
-                            live_news=self._live_news,
-                            news=self._news,
-                        )
-                    else:
-                        response = news_response(
-                            request,
-                            search_query=resolved_plan.news_query,
-                            max_results=resolved_plan.max_results,
-                            exclude_item_ids=exclude_item_ids,
-                            preferred_topics=preferred_news_topics,
-                            scope_notice=resolved_plan.news_scope_notice,
-                            news=self._news,
-                        )
+                    response = news_response(
+                        request,
+                        search_query=resolved_plan.news_query,
+                        max_results=resolved_plan.max_results,
+                        exclude_item_ids=exclude_item_ids,
+                        preferred_topics=preferred_news_topics,
+                        scope_notice=resolved_plan.news_scope_notice,
+                        news=self._news,
+                    )
             elif resolved_plan.intent == ChatIntent.MACRO_EVIDENCE:
                 response = macro_evidence_response(
                     request,
@@ -409,5 +388,8 @@ class ChatService:
                     knowledge=self._knowledge,
                 )
             else:
-                response = blocked_response(BlockedReason.UNSUPPORTED)
+                response = blocked_response(
+                    BlockedReason.UNSUPPORTED,
+                    user_message=request.message,
+                )
         return finalize_response(response, original_request, resolved_plan)

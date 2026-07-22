@@ -126,7 +126,7 @@ export interface RiskCapEvaluation {
 // ── /engine/profile ──
 export interface SurveyAnswer {
   question_code: string;
-  selected_score: number;
+  selected_values: string[];
 }
 
 export interface ProfileSurveyInput {
@@ -144,8 +144,52 @@ export interface ProfileEvaluation {
   score_percent: string;
   risk_profile: RiskProfile;
   loss_tolerance_percent: string;
-  band_upper_bounds_percent: Record<RiskProfile, string | null>;
+  answers: Array<{
+    question_code: string;
+    selected_value: string;
+    selected_label: string;
+    selected_score: number;
+  }>;
   evidence: SourceChip[];
+}
+
+export interface InvestmentProfileSubmission {
+  survey: ProfileSurveyInput;
+  investment_advice_desired: boolean;
+  investor_information_provided: boolean;
+}
+
+export interface InvestmentProfileAssessment {
+  assessed_at: string;
+  total_score: number;
+  min_score: number;
+  max_score: number;
+  score_percent: string;
+  risk_profile: RiskProfile;
+  engine_name: string;
+  engine_version: string;
+  rule_version: string;
+  provisional: boolean;
+  answers: Array<{
+    question_code: string;
+    selected_value: string;
+    selected_label: string;
+    selected_score: number;
+  }>;
+  assessed_on: string;
+  valid_until: string;
+  is_expired: boolean;
+  validity_policy_version: string;
+}
+
+export interface InvestmentProfileResponse {
+  assessment: InvestmentProfileAssessment | null;
+  preferences: {
+    investment_advice_desired: boolean;
+    investor_information_provided: boolean;
+    confirmed_at: string;
+    policy_version: string;
+  } | null;
 }
 
 // ── /engine/diagnostics ──
@@ -629,7 +673,7 @@ export interface RetirementDisclosureResponse {
   results: RetirementStat[];
 }
 
-// ── /chat/demo* (backend/app/api/chat.py) ──
+// ── /chat (backend/app/api/chat.py) ──
 export type ChatIntent =
   | "account_rule"
   | "mock_portfolio"
@@ -1035,13 +1079,6 @@ export interface ScenarioSummary {
   age_band: string;
   risk_profile: string;
   investment_horizon_years: number;
-}
-
-export interface ChatCapabilities {
-  supported: string[];
-  conditional: string[];
-  unsupported: string[];
-  scenario_codes: string[];
 }
 
 // ── authenticated /chat* history ──

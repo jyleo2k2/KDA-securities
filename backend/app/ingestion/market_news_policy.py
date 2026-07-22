@@ -319,9 +319,9 @@ def select_market_candidates(
     existing_title_hashes: set[str] | None = None,
     existing_event_fingerprints: set[str] | None = None,
     existing_embeddings: list[tuple[float, ...]] | None = None,
-    limit: int = MAX_DAILY_ARTICLES,
+    limit: int | None = MAX_DAILY_ARTICLES,
 ) -> list[MarketNewsCandidate]:
-    if not 1 <= limit <= MAX_DAILY_ARTICLES:
+    if limit is not None and not 1 <= limit <= MAX_DAILY_ARTICLES:
         raise ValueError(f"limit must be between 1 and {MAX_DAILY_ARTICLES}")
     urls = existing_urls or set()
     title_hashes = existing_title_hashes or set()
@@ -381,8 +381,8 @@ def select_market_candidates(
                 break
             try_add(candidate)
     for candidate in ranked:
-        if len(selected) >= limit:
+        if limit is not None and len(selected) >= limit:
             break
         if candidate not in selected:
             try_add(candidate)
-    return selected[:limit]
+    return selected if limit is None else selected[:limit]
