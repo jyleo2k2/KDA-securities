@@ -146,6 +146,20 @@ const ASSET_LABELS: Record<string, string> = { cash: "현금성", deposit: "원�
 const ALLOCATION_COLORS = ["#18A860", "#35B877", "#6ECFA0", "#2E8B57"];
 const formatKrw = (amount: string) => `${Math.round(Number(amount)).toLocaleString("ko-KR")}원`;
 
+function buildPortfolioOneLineSummary(hero: DemoHeroPortfolio | null): string {
+  if (!hero || hero.asset_allocations.length === 0) {
+    return "포트폴리오 구성을 불러오면 가장 큰 자산 비중을 알려드려요.";
+  }
+  const dominant = hero.asset_allocations.reduce((largest, current) => (
+    Number(current.allocation_percent) > Number(largest.allocation_percent) ? current : largest
+  ));
+  const equityPercent = hero.asset_allocations
+    .filter((item) => item.asset_class_code === "domestic_equity" || item.asset_class_code === "global_equity")
+    .reduce((sum, item) => sum + Number(item.allocation_percent), 0);
+  const dominantLabel = ASSET_LABELS[dominant.asset_class_code] ?? "기타 자산";
+  return `${dominantLabel} 비중이 가장 높고, 전체 주식 비중은 ${equityPercent.toFixed(1)}%예요.`;
+}
+
 export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpenChat, onOpenPlanner, onOpenStrategyExplore, onOpenUserPick, onResurvey, userContext }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
   const allocationSlices: AllocationSlice[] = hero?.asset_allocations.slice(0, 4).map((item, index) => ({ label: ASSET_LABELS[item.asset_class_code] ?? "기타 자산", percent: `${item.allocation_percent}%`, color: ALLOCATION_COLORS[index] })) ?? [];
@@ -231,8 +245,8 @@ export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpen
 
           <div className="mhs-summary-subcard">
             <span className="mhs-summary-label">한 줄 요약</span>
-            <p className="mhs-summary-sub-label">시황</p>
-            <p className="mhs-summary-text">{hero?.risk_summary.requires_rebalancing_review ? "규칙 엔진 기준으로 리밸런싱 점검이 필요해요." : "현재 계좌 구성은 규칙 엔진 기준을 확인했어요."}</p>
+            <p className="mhs-summary-sub-label">포트폴리오 구성</p>
+            <p className="mhs-summary-text">{buildPortfolioOneLineSummary(hero)}</p>
             <div className="mhs-summary-cta-row">
               <button type="button" className="mhs-summary-cta mhs-summary-cta-button" onClick={onOpenChat}>자세히 진단받기 <span className="mhs-summary-cta-chevron">›</span></button>
             </div>
