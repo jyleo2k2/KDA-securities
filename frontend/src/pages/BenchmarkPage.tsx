@@ -91,7 +91,7 @@ export function BenchmarkPage() {
       <p style={{ color: "#2d6bd3", fontWeight: 800, margin: 0 }}>익명 연금 벤치마크</p>
       <h1 style={{ fontSize: 28, margin: "8px 0" }}>내 상황을 이해하기 위한 전체 흐름</h1>
       <p style={{ color: "#586174", lineHeight: 1.6, marginTop: 0 }}>
-        다른 사람의 계좌를 따라 하는 공간이 아닙니다. 1만 명의 통계 모델 목데이터를 바탕으로,
+        다른 사람의 계좌를 따라 하는 공간이 아닙니다. 1만 명의 통계 기반 분포를 바탕으로,
         내 연금계좌를 바라볼 때 참고할 수 있는 전체 분포를 보여드립니다.
       </p>
 

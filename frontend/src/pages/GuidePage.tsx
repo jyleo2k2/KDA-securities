@@ -73,7 +73,7 @@ const BOUNDARY_LABELS: Record<DataBoundary, string> = {
   official_disclosure: "공식 공시",
   official_statistics: "공식 통계",
   news_metadata: "뉴스 메타데이터",
-  mock: "목데이터",
+  mock: "계좌 데이터",
   engine: "규칙 엔진",
   user_input: "사용자 입력",
   unavailable: "미지원",
@@ -637,6 +637,7 @@ export function GuidePage({
   auth,
   initialScenarioCode,
   onBack,
+  onOpenPlanner,
   onSignOut,
   surveyProfile,
   userContext,
@@ -645,6 +646,7 @@ export function GuidePage({
   auth: SupabaseAuthState;
   initialScenarioCode?: string;
   onBack?: () => void;
+  onOpenPlanner?: () => void;
   onSignOut: () => Promise<void>;
   surveyProfile: CompletedSurveyProfile | null;
   userContext: DemoUserFinancialContext | null;
@@ -1223,11 +1225,11 @@ export function GuidePage({
         </div>
 
         <div className="sidebar-section">
-          <p className="sidebar-label">목계좌 시나리오</p>
+          <p className="sidebar-label">내 연금계좌</p>
           {userContext ? (
             <div className="user-context-card">
-              <strong>{userContext.nickname}</strong>
-              <span>{userContext.scenario_name} · 가상 목데이터</span>
+              <strong>{userContext.nickname.replace(/\(가상\)/g, "")}</strong>
+              <span>{userContext.scenario_name}</span>
               <small>
                 총 연금자산 {Number(userContext.total_pension_balance_krw).toLocaleString("ko-KR")}원
                 <br />기준일 {userContext.as_of_date}
@@ -1349,9 +1351,9 @@ export function GuidePage({
         <div className="sidebar-footer">
           <div className="connection-status">
             <span className={`status-dot ${serverReady === false ? "offline" : ""}`} />
-            <span>{serverReady === null ? "서버 확인 중" : serverReady ? (auth.session ? "저장 API 연결됨" : "데모 API 연결됨") : "API 연결 필요"}</span>
+            <span>{serverReady === null ? "서버 확인 중" : serverReady ? "저장 API 연결됨" : "API 연결 필요"}</span>
           </div>
-          <p>실제 주문을 실행하지 않는<br />자문·정보 제공형 데모입니다.</p>
+          <p>실제 주문을 실행하지 않는<br />자문·정보 제공형 서비스입니다.</p>
         </div>
       </aside>
 
@@ -1402,6 +1404,33 @@ export function GuidePage({
                 cards={visibleChatCards.filter((card) => card.intent !== "etf_theme")}
                 onSubmit={(message) => void submitPrompt(message)}
               />
+
+              {onOpenPlanner && (
+                <section className="chat-home-card-section" aria-labelledby="planner-heading">
+                  <header className="chat-home-section-heading">
+                    <p>연금 수령 계획</p>
+                    <h2 id="planner-heading">가정 시나리오로 수령 계획 점검</h2>
+                    <span>
+                      {surveyProfile
+                        ? "현재 잔액과 월 납입액을 바탕으로 규칙 엔진의 가정별 적립금과 월 수령액을 비교합니다."
+                        : "투자 성향을 먼저 확인한 뒤, 규칙 엔진의 가정 시나리오로 수령 계획을 점검합니다."}
+                    </span>
+                  </header>
+                  <div className="prompt-carousel">
+                    <button
+                      aria-label="연금 수령 계획 시나리오 열기"
+                      onClick={onOpenPlanner}
+                      type="button"
+                    >
+                      <span className="design-prompt-copy">
+                        <small>규칙 엔진 가정</small>
+                        <strong>연금 수령 계획</strong>
+                        <em>계획 시나리오 열기</em>
+                      </span>
+                    </button>
+                  </div>
+                </section>
+              )}
 
               <section className="chat-home-card-section holdings-section" aria-labelledby="holdings-heading">
                 <header className="chat-home-section-heading">

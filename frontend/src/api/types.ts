@@ -324,8 +324,17 @@ export interface PensionCalculatorYear {
   balance_krw: string;
 }
 
+export interface StrategyPresentation {
+  strategy_id: string;
+  display_name: string;
+  summary: string;
+  risk_badge: string;
+  character_key: string;
+}
+
 export interface PensionCalculatorStrategy {
   strategy_id: string;
+  presentation: StrategyPresentation;
   risk_profile: RiskProfile;
   net_annual_return_percent: string;
   growth_percent: string;
@@ -357,6 +366,19 @@ export interface PensionCalculatorEvaluation {
   tax: PensionCalculatorTax;
   assumption: PensionCalculatorAssumption;
   warnings: string[];
+}
+
+export interface PensionCalculatorPortfolioCmaRequest {
+  calculator: PensionCalculatorInput;
+  current_holdings: Array<{
+    isu_code: string;
+    amount_krw: string;
+  }>;
+}
+
+export interface PensionCalculatorPortfolioCmaEvaluation {
+  calculator: PensionCalculatorEvaluation;
+  planning_return: PortfolioPlanningEvaluation;
 }
 
 // ── /engine/allocation-example ──
@@ -1024,6 +1046,7 @@ export interface EducationalPortfolioEvaluation {
   candidates: EducationalEtfCandidate[];
   portfolio_risk: PortfolioRiskEvaluation;
   planning_return: PortfolioPlanningEvaluation;
+  current_holdings_planning_return?: PortfolioPlanningEvaluation | null;
   rebalancing: RebalancingGuidance;
   sources: SourceEvidence[];
   warnings: string[];

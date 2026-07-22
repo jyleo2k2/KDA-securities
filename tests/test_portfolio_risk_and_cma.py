@@ -8,7 +8,9 @@ from backend.app.engine.educational_portfolio import (
     CMA_ASSUMPTIONS_PERCENT,
     CMA_HORIZON_MAX_YEARS,
     CMA_HORIZON_MIN_YEARS,
+    CurrentHolding,
     _cma_mapping,
+    calculate_current_holdings_planning_return,
     calculate_portfolio_planning_return,
     calculate_portfolio_risk,
 )
