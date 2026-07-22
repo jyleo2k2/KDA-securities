@@ -5,12 +5,21 @@ import "./InvestorResultScreen.css";
 
 interface InvestorResultScreenProps {
   assessment: InvestmentProfileAssessment | null;
+  displayName?: string;
   onBack: () => void;
   onStart: () => void;
 }
 
 const PROFILE_LABELS: Record<RiskProfile, string> = {
   stable: "안정형", stable_seeking: "안정추구형", risk_neutral: "위험중립형", active: "적극투자형", aggressive: "공격투자형",
+};
+
+const PROFILE_DESCRIPTIONS: Record<RiskProfile, string> = {
+  stable: "원금 보존을 우선하고 제한적인 가격 변동을 감수하는 안정형입니다.",
+  stable_seeking: "안정성을 우선하되 일부 가격 변동을 감수할 수 있는 안정추구형입니다.",
+  risk_neutral: "안정성과 수익의 균형을 고려하며 보통 수준의 위험을 감수하는 위험중립형입니다.",
+  active: "더 높은 수익 기회를 위해 비교적 큰 가격 변동을 감수하는 적극투자형입니다.",
+  aggressive: "높은 수익을 추구하며 큰 가격 변동과 손실 가능성을 감수하는 공격투자형입니다.",
 };
 
 const GRADE_ROWS: Array<{ label: string; flexFilled: number; flexEmpty: number; width: string; barColor: string; labelColor: string; highlight?: boolean }> = [
@@ -37,10 +46,13 @@ const CHART_LABELS = [
   { text: "공격투자형", color: "#C0392B", size: "11px", weight: 800 },
 ];
 
-export function InvestorResultScreen({ assessment, onBack, onStart }: InvestorResultScreenProps): JSX.Element {
+export function InvestorResultScreen({ assessment, displayName, onBack, onStart }: InvestorResultScreenProps): JSX.Element {
   const profileLabel = assessment ? PROFILE_LABELS[assessment.risk_profile] : "결과 확인 중";
-  const assessedOn = assessment ? new Date(assessment.assessed_at).toLocaleDateString("ko-KR") : "-";
+  const assessedOn = assessment?.assessed_on ?? "-";
   const validUntil = assessment?.valid_until ?? "-";
+  const profileIndex = assessment ? Object.keys(PROFILE_LABELS).indexOf(assessment.risk_profile) : -1;
+  const profileDescription = assessment ? PROFILE_DESCRIPTIONS[assessment.risk_profile] : "설문 결과를 확인하고 있습니다.";
+  const customerName = displayName?.trim() || "고객";
   return (
     <div className="irs-page">
       <div className="irs-header">
@@ -69,7 +81,7 @@ export function InvestorResultScreen({ assessment, onBack, onStart }: InvestorRe
             <span className="irs-tag">투자자정보제공</span>
           </div>
 
-          <div className="irs-lead">고객님의 투자성향은</div>
+          <div className="irs-lead">{customerName}님의 투자성향은</div>
           <div className="irs-type">
             {profileLabel} <span className="irs-type-suffix">입니다.</span>
           </div>
@@ -87,7 +99,7 @@ export function InvestorResultScreen({ assessment, onBack, onStart }: InvestorRe
           <div className="irs-chart">
             {CHART_BARS.map((bar, i) => (
               <div className="irs-chart-col" key={i} style={{ height: `${bar.heightPct}%` }}>
-                {bar.final ? (
+                {i === profileIndex ? (
                   <div className="irs-chart-dot irs-chart-dot-final">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
                       <path d="M7 12.5l3 3 7-7" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
@@ -109,7 +121,7 @@ export function InvestorResultScreen({ assessment, onBack, onStart }: InvestorRe
           </div>
 
           <div className="irs-desc">
-            신한 개인 일반투자자정보 확인서의 배점 기준으로 산출한 결과입니다. 고객님의 투자성향은 <b className="irs-desc-strong">‘{profileLabel}’</b>이며, ETF 교육용 안내는 이 성향과 보유 연금계좌 규칙 안에서만 제공합니다.
+            {profileDescription} 신한 개인 일반투자자정보 확인서의 배점 기준으로 산출한 결과이며, ETF 교육용 안내는 이 성향과 보유 연금계좌 규칙 안에서만 제공합니다.
           </div>
         </div>
 

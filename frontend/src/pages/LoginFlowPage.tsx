@@ -16,6 +16,7 @@ type LoginStep = "intro" | "form" | "consent" | "success" | "linking" | "risk-as
 
 interface LoginFlowPageProps {
   auth: SupabaseAuthState;
+  displayName?: string;
   onAuthenticated: () => void;
   onProfileSaved: (profile: InvestmentProfileResponse) => void;
   onStart: () => void;
@@ -34,7 +35,7 @@ function StatusBar(): JSX.Element {
   );
 }
 
-export function LoginFlowPage({ auth, onAuthenticated, onProfileSaved, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
+export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSaved, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
   const [step, setStep] = useState<LoginStep>(resurvey ? "investor-info" : "intro");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
@@ -62,8 +63,6 @@ export function LoginFlowPage({ auth, onAuthenticated, onProfileSaved, onStart, 
     catch { setLinkOptionsError("연결 가능한 계좌 정보를 불러오지 못했습니다."); }
     finally { setLinkOptionsLoading(false); }
   }
-
-  function showSignupNotice(): void { setNotice("회원가입은 준비 중입니다."); }
 
   async function saveInvestorInformation(submission: InvestmentProfileSubmission): Promise<void> {
     const accessToken = auth.session?.access_token;
@@ -113,7 +112,7 @@ export function LoginFlowPage({ auth, onAuthenticated, onProfileSaved, onStart, 
             </div>
             <div className="login-intro-actions">
               <button type="button" className="login-primary" onClick={() => setStep("form")}>로그인</button>
-              <button type="button" className="login-secondary" onClick={showSignupNotice}>회원가입</button>
+              <button type="button" className="login-secondary">회원가입</button>
               {notice && <p className="login-inline-notice" role="status">{notice}</p>}
               <p>서비스 시작은 이용약관 및 개인정보 처리방침 동의로 간주됩니다.</p>
             </div>
@@ -137,7 +136,7 @@ export function LoginFlowPage({ auth, onAuthenticated, onProfileSaved, onStart, 
                 <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호를 입력하세요" autoComplete="current-password" disabled={submitting} />
               </label>
               {auth.error && <p className="login-form-error" role="alert">{auth.error}</p>}{notice && <p className="login-inline-notice" role="status">{notice}</p>}
-              <div className="login-links"><button type="button">아이디 찾기</button><i /> <button type="button">비밀번호 찾기</button><i /> <button type="button" onClick={showSignupNotice}>회원가입</button></div>
+              <div className="login-links"><button type="button">아이디 찾기</button><i /> <button type="button">비밀번호 찾기</button><i /> <button type="button">회원가입</button></div>
               <div className="login-submit-wrap"><button type="submit" className="login-primary" disabled={submitting}>{submitting ? "로그인 중..." : "로그인하기"}</button></div>
             </form>
           </div>
@@ -148,14 +147,10 @@ export function LoginFlowPage({ auth, onAuthenticated, onProfileSaved, onStart, 
             <button type="button" className="login-back" onClick={() => setStep("success")} aria-label="로그인 성공 화면으로 돌아가기">←</button>
             <h1>연금계좌 연동</h1>
             <div className="login-consent-content">
-              <div className="login-consent-chips" aria-label="계좌 연동 특징">
-                <span>계좌</span><span>조회</span><b>{linkOptions?.options.filter((option) => option.diagnosable).length ?? 0}종 계좌</b>
-              </div>
               <section className="login-consent-hero">
                 <span>연결 가능한 계좌</span>
                 <h2>{linkOptions?.options.filter((option) => option.diagnosable).length ?? 0}개<br /><em>연금계좌</em></h2>
                 <p>한 번에 불러와 통합 자산으로 확인</p>
-                <small>계좌 정보를 불러와 통합 자산으로 안내합니다.</small>
               </section>
               <section className="login-consent-card">
                 <strong>불러오면 확인하는 내용</strong>
@@ -170,10 +165,7 @@ export function LoginFlowPage({ auth, onAuthenticated, onProfileSaved, onStart, 
                 {linkOptionsError && <div role="alert"><p>{linkOptionsError}</p><button type="button" onClick={() => void loadLinkOptions()}>다시 시도</button></div>}
                 {linkOptions?.options.map((option) => <p key={option.code}><strong>{option.display_name}</strong><b>{option.category_label}</b></p>)}
               </section>
-              <section className="login-consent-safe">
-                <h2>안심하고 연결하세요</h2>
-                <p>{linkOptions?.notice ?? "계좌 불러오기는 조회와 분석을 위한 연결이에요. 계좌가 이전되거나 상품이 자동으로 매매되지 않아요."}</p>
-              </section>
+              <section className="login-consent-safe"><p>마이데이터를 통해 내 연금계좌를 안전하게 연동해서 가져와요.</p></section>
               <section className="login-consent-card login-consent-check-card">
                 <h2>연결 전 확인</h2>
                 <dl><dt>불러오는 정보</dt><dd>금융회사와 계좌 종류<br />잔액 · 평가금액 · 보유 상품 · 정보 기준일</dd><dt>이용 목적</dt><dd>연금자산 통합조회와 운용 현황 분석</dd></dl>
@@ -242,7 +234,7 @@ export function LoginFlowPage({ auth, onAuthenticated, onProfileSaved, onStart, 
         )}
 
         {step === "investor-result" && (
-          <InvestorResultScreen assessment={assessment} onBack={() => setStep("investor-info")} onStart={onStart} />
+          <InvestorResultScreen assessment={assessment} displayName={displayName} onBack={() => setStep("investor-info")} onStart={onStart} />
         )}
 
         {step === "success" && (

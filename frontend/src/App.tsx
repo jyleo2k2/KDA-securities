@@ -132,7 +132,9 @@ export default function App(): JSX.Element {
   async function handleSignOut(): Promise<void> { userLoadGenerationRef.current += 1; clearUserStorage(); setSelectedScenarioCode(""); setCurrentUserData({ context: null, hero: null, investmentProfile: null, loading: false, error: null }); setLoginSuccessPending(false); setResurveyPending(false); setActiveRoute("login"); window.history.replaceState(null, "", "#login"); await auth.signOut(); }
 
   if (auth.loading) return <main className="app-auth-loading" aria-label="로그인 상태 확인 중" />;
-  if (auth.configured && (!accessToken || loginSuccessPending || resurveyPending)) return <LoginFlowPage auth={auth} onAuthenticated={() => setLoginSuccessPending(true)} onProfileSaved={handleProfileSaved} onStart={goToMainHome} resurvey={resurveyPending} />;
+  const metadataName = auth.session?.user.user_metadata?.name;
+  const loginDisplayName = typeof metadataName === "string" && metadataName.trim() ? metadataName.trim() : currentUserData.context?.nickname ?? auth.session?.user.email?.split("@")[0] ?? "고객";
+  if (auth.configured && (!accessToken || loginSuccessPending || resurveyPending)) return <LoginFlowPage auth={auth} displayName={loginDisplayName} onAuthenticated={() => setLoginSuccessPending(true)} onProfileSaved={handleProfileSaved} onStart={goToMainHome} resurvey={resurveyPending} />;
   const resolvedRoute = !auth.configured && activeRoute === "login" ? "home" : activeRoute;
   const activeTab: TabKey = resolvedRoute === "login" || resolvedRoute === "main-home" || resolvedRoute === "planner" || resolvedRoute === "strategy-explore" || resolvedRoute === "user-pick-benchmark" ? "home" : resolvedRoute;
   const CardPage = CARD_PAGES[activeTab];
