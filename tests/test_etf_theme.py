@@ -153,17 +153,17 @@ def _product_descriptions() -> EtfProductDescriptionRepository:
     )
 
 
-def test_catalog_has_exactly_twenty_themes() -> None:
+def test_catalog_has_exactly_twenty_one_themes() -> None:
     repository = _theme_repository()
 
-    assert repository.catalog.catalog_version == "2026-07-20.4"
+    assert repository.catalog.catalog_version == "2026-07-22.1"
     assert (
         repository.catalog.content_status
         == "project_approved_service_interpretation"
     )
     assert repository.catalog.source_urls == EXPECTED_RESEARCH_SOURCE_URLS
-    assert [theme.number for theme in repository.list()] == list(range(1, 21))
-    assert len({theme.theme_id for theme in repository.list()}) == 20
+    assert [theme.number for theme in repository.list()] == list(range(1, 22))
+    assert len({theme.theme_id for theme in repository.list()}) == 21
     assert all(theme.plain_summary for theme in repository.list())
     assert all(theme.exposure_segments for theme in repository.list())
     assert all(len(theme.performance_drivers) == 3 for theme in repository.list())
@@ -181,7 +181,7 @@ def test_catalog_has_exactly_twenty_themes() -> None:
     )
     assert sum(
         len(theme.representative_companies) for theme in repository.list()
-    ) == 60
+    ) == 63
     assert all(
         company.source_url.startswith("https://")
         and company.theme_role
@@ -195,9 +195,10 @@ def test_catalog_has_exactly_twenty_themes() -> None:
     assert repository.resolve("코리아밸류업") is None
     assert repository.resolve("ESG 책임투자") is None
     assert repository.resolve("20번 테마 구성종목은?").theme_id == "shipbuilding"
+    assert repository.resolve("21번 채권 테마 ETF상품").theme_id == "bonds"
 
 
-def test_default_product_policy_restricts_all_twenty_themes() -> None:
+def test_default_product_policy_restricts_all_twenty_one_themes() -> None:
     repository = EtfThemeRepository.from_local_cache(
         catalog_path=CATALOG_PATH,
         kis_cache_root=Path("tests/fixtures/no-kis-cache"),
@@ -209,7 +210,7 @@ def test_default_product_policy_restricts_all_twenty_themes() -> None:
         if repository.allowed_product_codes(theme.theme_id) is not None
     }
 
-    assert len(restricted) == 20
+    assert len(restricted) == 21
     assert repository.product_policy is not None
     assert repository.product_policy.deferred_theme_ids == set()
     assert all(

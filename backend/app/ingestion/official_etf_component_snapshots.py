@@ -225,7 +225,10 @@ def _finish_snapshot(
     for component_code, component_name, weight in rows:
         name = component_name.strip()
         code = component_code.strip() if component_code else None
-        key = code or name.casefold()
+        # Issuers can reuse an internal code for distinct FX-swap contracts.
+        # A code-only key would incorrectly invalidate the entire disclosed
+        # basket; the published code/name pair identifies a component here.
+        key = (code, name.casefold()) if code else name.casefold()
         if not name or key in seen:
             duplicate = duplicate or key in seen
             continue
@@ -306,9 +309,19 @@ def normalize_tiger_pdf_html(
     for cells in table:
         if len(cells) < 5:
             continue
-        weight = _parse_decimal(cells[4])
-        if weight is not None and cells[0].strip() not in _CASH_CODES:
-            rows.append((cells[0], cells[1], weight))
+        # TIGER currently returns six columns (the fifth is the portfolio
+        # weight and the last is a price-change field).  Older responses had
+        # five columns, where the final value was the weight.  Counting from
+        # the right preserves both disclosed formats.
+        weight = _parse_decimal(cells[-2] if len(cells) >= 6 else cells[-1])
+        component_code = cells[0].strip()
+        if weight is not None and component_code not in _CASH_CODES:
+            # Some fixed-income basket rows are published without a ticker.
+            # A literal "-" is not a unique security code, so dedupe by the
+            # disclosed security name instead of discarding later bond rows.
+            rows.append(
+                (None if component_code == "-" else component_code, cells[1], weight)
+            )
     raw_payload = {
         "document_type": "official_creation_basket",
         "overview_html": overview_html,
@@ -382,6 +395,40 @@ def normalize_kiwoom_pdf_html(
     )
 
 
+def normalize_ace_pdf_payload(
+    binding: OfficialEtfSourceBinding, payload: dict[str, Any]
+) -> OfficialEtfComponentSnapshot:
+    """Normalize ACE ETF's issuer-published PDF constituent API response."""
+
+    raw_list_value = payload.get("pdfList")
+    raw_list = raw_list_value if isinstance(raw_list_value, list) else []
+    as_of_value = payload.get("stdDt")
+    if as_of_value is None and raw_list and isinstance(raw_list[0], dict):
+        as_of_value = raw_list[0].get("std_DT")
+    as_of = _parse_date(str(as_of_value or ""))
+    rows: list[tuple[str | None, str, Decimal]] = []
+    for item in raw_list:
+        if not isinstance(item, dict):
+            continue
+        code = str(item.get("jm_KSC_CD") or "").strip()
+        weight = _parse_decimal(item.get("wg"))
+        if code in _CASH_CODES or weight is None:
+            continue
+        rows.append((code or None, str(item.get("sec_NM") or ""), weight))
+    raw_payload = {
+        "document_type": "official_creation_basket",
+        "stdDt": as_of_value,
+        "pdfList": raw_list,
+    }
+    return _finish_snapshot(
+        binding,
+        as_of_date=as_of,
+        rows=rows,
+        source_component_count=len(rows),
+        raw_payload=raw_payload,
+    )
+
+
 def fetch_official_etf_snapshot(
     binding: OfficialEtfSourceBinding,
     client: httpx.Client,
@@ -432,6 +479,13 @@ def fetch_official_etf_snapshot(
         )
         rows.raise_for_status()
         return normalize_tiger_pdf_html(binding, overview.text, rows.text)
+    if binding.adapter_code == "ace_pdf":
+        response = client.get(binding.holdings_url)
+        response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, dict):
+            raise ValueError("official ACE ETF response must be an object")
+        return normalize_ace_pdf_payload(binding, payload)
     raise ValueError(f"unsupported official ETF adapter: {binding.adapter_code}")
 
 

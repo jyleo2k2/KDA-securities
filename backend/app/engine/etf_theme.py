@@ -26,7 +26,7 @@ class RepresentativeCompany(BaseModel):
 class EtfThemeDefinition(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    number: int = Field(ge=1, le=20)
+    number: int = Field(ge=1, le=21)
     theme_id: str = Field(pattern=r"^[a-z0-9_]+$")
     name: str = Field(min_length=1)
     aliases: tuple[str, ...] = Field(min_length=1)

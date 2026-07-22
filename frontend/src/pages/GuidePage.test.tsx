@@ -850,9 +850,9 @@ describe("GuidePage chat history deletion", () => {
       name: "챗봇에게 무엇이든 물어보세요",
     })).toBeInTheDocument();
     const sectorCards = await screen.findByLabelText("ETF 섹터 카드");
-    expect(ETF_THEME_CARDS).toHaveLength(20);
+    expect(ETF_THEME_CARDS).toHaveLength(21);
     expect(ETF_THEME_CARDS.map((card) => card.number)).toEqual(
-      Array.from({ length: 20 }, (_, index) => index + 1),
+      Array.from({ length: 21 }, (_, index) => index + 1),
     );
     expect(ETF_THEME_CARDS.map((card) => card.title)).not.toEqual(
       expect.arrayContaining(["AI·소프트웨어", "코리아밸류업", "ESG"]),
@@ -870,7 +870,7 @@ describe("GuidePage chat history deletion", () => {
     })).not.toBeInTheDocument();
 
     const moreButton = within(sectorCards).getByRole("button", {
-      name: "나머지 ETF 테마 15개 더보기",
+      name: "나머지 ETF 테마 16개 더보기",
     });
     expect(initialButtons[5]).toBe(moreButton);
     expect(moreButton).toHaveAttribute("aria-expanded", "false");
@@ -878,9 +878,12 @@ describe("GuidePage chat history deletion", () => {
 
     expect(within(sectorCards).getAllByRole("button", {
       name: /ETF 테마 설명 보기$/,
-    })).toHaveLength(20);
+    })).toHaveLength(21);
     expect(within(sectorCards).getByRole("button", {
       name: "조선 ETF 테마 설명 보기",
+    })).toBeInTheDocument();
+    expect(within(sectorCards).getByRole("button", {
+      name: "채권 ETF 테마 설명 보기",
     })).toBeInTheDocument();
     const collapseButton = within(sectorCards).getByRole("button", {
       name: "ETF 테마 목록 접기",
@@ -891,6 +894,9 @@ describe("GuidePage chat history deletion", () => {
     expect(within(sectorCards).getAllByRole("button")).toHaveLength(6);
     expect(within(sectorCards).queryByRole("button", {
       name: "조선 ETF 테마 설명 보기",
+    })).not.toBeInTheDocument();
+    expect(within(sectorCards).queryByRole("button", {
+      name: "채권 ETF 테마 설명 보기",
     })).not.toBeInTheDocument();
   });
 

@@ -771,6 +771,14 @@ uv run ruff check .
 - 런타임 E2E: 원격 리포지토리가 승인 코드 11/11의 TOP3를 반환했다. 챗봇 응답 조립은 SOL 3개를 `실제 보유종목 TOP3`, TIGER·KIWOOM·KODEX 표본을 `구성 바스켓 TOP3`로 각각 3개 섹션·3개 출처·9개 수치 근거·한계 0건으로 생성했다.
 - 다음 작업: 현재 브랜치의 코드·workflow가 PR로 머지된 뒤 평일 12:40 KST 자동 갱신 첫 실행을 확인하고, 실패 알림·원격 스냅샷 증가를 모니터링한다.
 
+### 2026-07-22 22:40 KST — Bonds theme (REMOTE-APPLIED)
+
+- Migration `20260722133833_add_bond_theme_component_bindings` was applied to `KDA-securities` after approval.
+- Added five active official-source bindings: TIGER 2, ACE 2, and KODEX 1; `ace_pdf` is server-only and the existing RLS/GRANT deny-by-default model is unchanged.
+- Initial refresh requested 5, succeeded 5, partial 0, failed 0. Each latest snapshot is `complete` and has exactly three stored Top-3 items.
+- Remote ChatService E2E selected `453850`, `0046A0`, and `484790` by the current trading-value rule; the follow-up response rendered all three official creation-basket Top-3 sections.
+- Existing advisor INFO/WARN notices are unchanged and no new migration-specific security or performance finding was introduced.
+
 ## 15. 작업 로그 템플릿
 
 ```markdown

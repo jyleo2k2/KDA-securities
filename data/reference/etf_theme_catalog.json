@@ -1,7 +1,7 @@
 {
   "schema_version": 3,
-  "catalog_version": "2026-07-20.4",
-  "as_of_date": "2026-07-20",
+  "catalog_version": "2026-07-22.1",
+  "as_of_date": "2026-07-22",
   "content_status": "project_approved_service_interpretation",
   "source_urls": [
     "https://chatgpt.com/share/6a5dbc76-9c4c-83ee-9b7f-7729b384befe",
@@ -1010,6 +1010,27 @@
         "글로벌 경기와 해운업황에 따라 신규 수주 변동이 크게 나타날 수 있습니다.",
         "환율·인력난·중국과의 경쟁 및 친환경 연료 표준 불확실성에 노출됩니다."
       ]
+    },
+    {
+      "number": 21,
+      "theme_id": "bonds",
+      "name": "채권",
+      "aliases": ["채권", "채권 ETF", "국채 ETF", "회사채 ETF", "미국채 ETF"],
+      "include_terms": ["채권", "국채", "회사채", "미국채", "TREASURY", "BOND", "CORPORATE BOND"],
+      "exclude_terms": [],
+      "default_sleeve": "capital_preservation",
+      "definition": "국채·정부채·회사채 등 채권에 분산 투자해 이자수익과 채권 가격 변동에 노출되는 ETF 테마입니다.",
+      "plain_summary": "정부나 기업에 돈을 빌려준 여러 차용증을 한 바구니에 담아 주식처럼 거래하는 ETF입니다.",
+      "exposure_segments": ["초단기·단기 국채", "중장기 국채", "투자등급 회사채", "하이일드채", "목표만기형 채권", "해외채권과 환헤지형 채권"],
+      "performance_drivers": ["시장금리 변화: 고정금리 채권 가격은 일반적으로 시장금리와 반대로 움직이므로 ETF의 기준가와 가격 변동을 판단하는 핵심 요인입니다.", "듀레이션: 듀레이션이 길수록 같은 금리 변화에도 가격이 더 크게 움직이므로 단기채와 장기채의 손실 가능성을 비교하는 기준입니다.", "신용스프레드와 환율: 회사채의 발행자 신용상태와 해외채권의 환율 변화는 국채금리와 별도로 수익률을 바꿀 수 있어 함께 확인해야 합니다."],
+      "one_line_analogy": "여러 장의 정부·기업 차용증을 한 바구니에 담아 거래하는 ETF입니다.",
+      "representative_companies": [
+        {"name": "U.S. Department of the Treasury", "theme_role": "미국 국채를 발행하는 정부기관입니다.", "plain_description": "미국 정부가 자금을 조달하기 위해 발행하는 국채의 발행 주체입니다.", "representative_reason": "미국 국채 ETF의 기초자산과 금리위험을 이해하는 대표 발행자이기 때문입니다.", "source_url": "https://home.treasury.gov/", "as_of_date": "2026-07-22"},
+        {"name": "Korea Ministry of Economy and Finance", "theme_role": "국고채 발행 정책을 담당하는 정부 부처입니다.", "plain_description": "한국 정부가 자금을 조달할 때 발행하는 국고채의 구조를 이해하는 공식 출발점입니다.", "representative_reason": "국내 국채와 해외 국채의 발행자 차이를 이해하는 사례이기 때문입니다.", "source_url": "https://english.moef.go.kr/", "as_of_date": "2026-07-22"},
+        {"name": "Investment-grade corporate issuers", "theme_role": "회사채를 발행해 자금을 조달하는 기업 집단입니다.", "plain_description": "회사채 ETF는 여러 기업이 발행한 채권을 담으므로 기업의 신용상태가 수익률에 영향을 줍니다.", "representative_reason": "국채와 달리 신용스프레드와 부도위험이 추가되는 구조를 보여주기 때문입니다.", "source_url": "https://www.investor.gov/introduction-investing/investing-basics/investment-products/bonds-or-fixed-income-products", "as_of_date": "2026-07-22"}
+      ],
+      "benefits": ["여러 채권에 분산 투자해 이자수익과 채권시장 접근성을 함께 얻을 수 있습니다.", "주식과 다른 금리·신용 요인에 반응해 포트폴리오 변동성을 완화하는 데 활용할 수 있습니다.", "국채·회사채와 단기·장기 만기 구간을 ETF 한 종목 단위로 조절할 수 있습니다."],
+      "risks": ["시장금리가 오르면 채권 ETF 가격이 하락할 수 있으며 듀레이션이 길수록 변동폭이 커질 수 있습니다.", "회사채와 하이일드채는 신용등급 하락·부도·신용스프레드 확대로 손실이 발생할 수 있습니다.", "일반 채권 ETF는 매수가격의 원금상환을 보장하지 않으며 해외채권은 환율·환헤지 비용도 수익률에 영향을 줍니다."]
     }
   ]
 }

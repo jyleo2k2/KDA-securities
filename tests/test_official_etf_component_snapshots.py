@@ -6,6 +6,7 @@ import pytest
 
 from backend.app.ingestion.official_etf_component_snapshots import (
     OfficialEtfSourceBinding,
+    normalize_ace_pdf_payload,
     normalize_kiwoom_pdf_html,
     normalize_samsung_product_payload,
     normalize_sol_summary_html,
@@ -184,6 +185,34 @@ def test_fewer_than_three_weighted_rows_are_partial_and_not_top3_complete() -> N
 
     assert snapshot.completeness == "partial"
     assert snapshot.holdings == ()
+
+
+def test_ace_pdf_normalizes_issuer_published_bond_constituents() -> None:
+    payload = {
+        "stdDt": "2026-07-22",
+        "pdfList": [
+            {"jm_KSC_CD": "US9219107094", "sec_NM": "Vanguard Extended", "wg": 23.09},
+            {"jm_KSC_CD": "US4642874329", "sec_NM": "iShares 20+ Year", "wg": 14.82},
+            {"jm_KSC_CD": "US912810UP11", "sec_NM": "U.S. Treasury 2055", "wg": 13.86},
+        ],
+    }
+
+    snapshot = normalize_ace_pdf_payload(
+        _binding(
+            adapter_code="ace_pdf",
+            source_kind="creation_basket",
+            coverage_kind="creation_basket",
+        ),
+        payload,
+    )
+
+    assert snapshot.as_of_date == date(2026, 7, 22)
+    assert snapshot.completeness == "complete"
+    assert [holding.component_name for holding in snapshot.holdings] == [
+        "Vanguard Extended",
+        "iShares 20+ Year",
+        "U.S. Treasury 2055",
+    ]
 
 
 def test_official_component_workflow_runs_each_weekday() -> None:
