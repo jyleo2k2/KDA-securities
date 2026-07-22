@@ -16,14 +16,14 @@ from .planning_return import (
 )
 
 ENGINE_NAME = "educational_pension_portfolio"
-ENGINE_VERSION = "2026-07-16.4"
-POLICY_VERSION = "2026-07-16.2"
+ENGINE_VERSION = "2026-07-22.1"
+POLICY_VERSION = "2026-07-22.1"
 PERCENT_QUANTUM = Decimal("0.0001")
 DRIFT_THRESHOLD_PERCENT = Decimal("5")
 RETIREMENT_RISK_CAP_PERCENT = Decimal("70")
 TRADING_DAYS_PER_YEAR = Decimal("252")
 MINIMUM_RISK_OBSERVATIONS = 60
-CMA_POLICY_ID = "jpm_2026_usd_educational_v1"
+CMA_POLICY_ID = "jpm_2026_usd_educational_v2"
 CMA_SOURCE_AS_OF = date(2025, 9, 30)
 CMA_HORIZON_MIN_YEARS = 10
 CMA_HORIZON_MAX_YEARS = 15
@@ -533,7 +533,7 @@ def calculate_portfolio_planning_return(
         as_of=CMA_SOURCE_AS_OF,
     )
     policy_source = SourceChip(
-        label="연금 코파일럿 CMA 매핑·불확실성 할인 정책",
+        label="연금 코파일럿 CMA 매핑 정책",
         reference="backend/app/engine/educational_portfolio.py",
         as_of=date(2026, 7, 16),
     )
@@ -546,7 +546,7 @@ def calculate_portfolio_planning_return(
     warnings = [
         "planning_assumption_not_realized_return_prediction",
         "cma_is_current_policy_anchor_not_full_horizon_forecast",
-        "currency_adjustment_is_zero_until_approved_krw_assumption",
+        "central_value_is_cma_minus_verified_annual_cost_only",
     ]
     for candidate in candidates:
         product = products[candidate.isu_code]
@@ -560,9 +560,10 @@ def calculate_portfolio_planning_return(
                 "effective_total_cost_missing_uses_kis_stated_expense"
             )
         if cost is None:
-            cost = Decimal("0")
-            component_warnings.append("verified_cost_missing_zero_placeholder")
-        uncertainty = _uncertainty_discount(classification)
+            raise ValueError(
+                "verified annual cost is required for CMA-minus-cost planning: "
+                f"{candidate.isu_code}"
+            )
         result = calculate_etf_planning_return(
             EtfPlanningReturnInput(
                 etf_code=candidate.isu_code,
@@ -572,7 +573,7 @@ def calculate_portfolio_planning_return(
                 industry_excess_earnings_growth_percent=Decimal("0"),
                 industry_growth_confidence=Decimal("0"),
                 industry_growth_persistence=Decimal("0"),
-                uncertainty_discount_percent=uncertainty,
+                uncertainty_discount_percent=Decimal("0"),
                 annual_cost_drag_percent=cost,
                 sources=PlanningReturnSources(
                     asset_class_cma=cma_source,
@@ -591,7 +592,7 @@ def calculate_portfolio_planning_return(
                 target_percent=candidate.target_percent,
                 cma_assumption_code=code,
                 cma_percent=_percent(CMA_ASSUMPTIONS_PERCENT[code]),
-                uncertainty_discount_percent=_percent(uncertainty),
+                uncertainty_discount_percent=Decimal("0"),
                 annual_cost_drag_percent=_percent(cost),
                 gross_planning_return_percent=result.gross_planning_return_percent,
                 net_planning_return_percent=result.net_planning_return_percent,
@@ -626,23 +627,7 @@ def calculate_portfolio_planning_return(
         if coverage
         else None
     )
-    weighted_uncertainty = (
-        sum(
-            (
-                item.target_percent * item.uncertainty_discount_percent
-                for item in components
-            ),
-            Decimal("0"),
-        )
-        / coverage
-        if coverage
-        else None
-    )
-    base = (
-        net + weighted_uncertainty
-        if net is not None and weighted_uncertainty is not None
-        else None
-    )
+    base = net
     if not (
         CMA_HORIZON_MIN_YEARS
         <= portfolio_horizon_years

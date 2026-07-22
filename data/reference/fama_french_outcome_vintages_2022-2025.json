@@ -1,0 +1,37 @@
+{
+  "schema_version": "fama-french-outcome-vintages-2026-07-22.1",
+  "usage": "장기 실현수익 수정치 진단이며 미래 수익률 예측값이 아니다.",
+  "is_forecast": false,
+  "source_archive": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/f-f_factors_archive.html",
+  "current_cut_path": "data/raw/structural-market/2026-07-20/fama_french/fama_french_factors.zip",
+  "vintages": [
+    {
+      "formation_year": 2011,
+      "outcome_end_year": 2021,
+      "release_month": "2022-08",
+      "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/Historical_Archives/08%202022%20Update/ftp/F-F_Research_Data_Factors_CSV.zip",
+      "path": "data/raw/fama-french-vintages/F-F_Research_Data_Factors_2022-08.zip"
+    },
+    {
+      "formation_year": 2012,
+      "outcome_end_year": 2022,
+      "release_month": "2023-08",
+      "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/Historical_Archives/08%202023%20Update/ftp/F-F_Research_Data_Factors_CSV.zip",
+      "path": "data/raw/fama-french-vintages/F-F_Research_Data_Factors_2023-08.zip"
+    },
+    {
+      "formation_year": 2013,
+      "outcome_end_year": 2023,
+      "release_month": "2024-08",
+      "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/Historical_Archives/08%202024%20Update/ftp/F-F_Research_Data_Factors_CSV.zip",
+      "path": "data/raw/fama-french-vintages/F-F_Research_Data_Factors_2024-08.zip"
+    },
+    {
+      "formation_year": 2014,
+      "outcome_end_year": 2024,
+      "release_month": "2025-08",
+      "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/Historical_Archives/08%202025%20Update/ftp/F-F_Research_Data_Factors_CSV.zip",
+      "path": "data/raw/fama-french-vintages/F-F_Research_Data_Factors_2025-08.zip"
+    }
+  ]
+}

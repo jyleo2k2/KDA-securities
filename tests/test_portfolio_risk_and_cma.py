@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
 
+import pytest
+
 from backend.app.engine.educational_portfolio import (
     CMA_ASSUMPTIONS_PERCENT,
     CMA_HORIZON_MAX_YEARS,
@@ -73,7 +75,7 @@ def test_portfolio_risk_uses_history_only_for_risk_metrics() -> None:
     assert result.is_return_forecast is False
 
 
-def test_portfolio_planning_return_uses_cma_discount_and_cost() -> None:
+def test_portfolio_planning_return_uses_cma_minus_verified_cost() -> None:
     candidates = [
         Candidate("EQ", "Equity", "core_equity", Decimal("60")),
         Candidate("CASH", "Cash", "cash", Decimal("40")),
@@ -108,9 +110,36 @@ def test_portfolio_planning_return_uses_cma_discount_and_cost() -> None:
         source_as_of=date(2026, 7, 16),
     )
 
-    assert result.net_planning_return_percent == Decimal("4.9100")
-    assert result.conservative_planning_return_percent == Decimal("4.9100")
+    assert result.gross_planning_return_percent == Decimal("5.2600")
+    assert result.net_planning_return_percent == Decimal("5.1000")
+    assert result.conservative_planning_return_percent == Decimal("5.1000")
     assert result.base_planning_return_percent == Decimal("5.1000")
     assert result.historical_performance_used is False
     assert result.is_forecast is False
     assert "portfolio_horizon_outside_cma_source_horizon" in result.warnings
+    assert "central_value_is_cma_minus_verified_annual_cost_only" in result.warnings
+
+
+def test_portfolio_planning_return_rejects_missing_verified_cost() -> None:
+    candidate = Candidate("EQ", "Equity", "core_equity", Decimal("100"))
+    products = {
+        "EQ": {
+            "classification": {
+                "asset_class": "equity",
+                "strategy": "broad_market",
+                "region": "united_states",
+                "classification_confidence": "high",
+                "currency_hedge": "not_applicable",
+            },
+            "cost": {},
+        },
+    }
+
+    with pytest.raises(ValueError, match="verified annual cost is required"):
+        calculate_portfolio_planning_return(
+            candidates=[candidate],
+            products=products,
+            retirement_start_age=60,
+            portfolio_horizon_years=10,
+            source_as_of=date(2026, 7, 16),
+        )

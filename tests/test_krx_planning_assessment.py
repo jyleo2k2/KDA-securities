@@ -122,7 +122,7 @@ def test_assessment_keeps_krx_returns_out_of_planning_return() -> None:
         universe=[target.historical_metrics],
     )
 
-    assert result.planning_return.net_planning_return_percent == Decimal("5.2000")
+    assert result.planning_return.net_planning_return_percent == Decimal("5.7000")
     assert result.planning_return.historical_performance_used is False
     assert "trailing_return_12m_percent" in result.excluded_from_planning_return
     assert result.relative_risk.volatility_risk_percentile == Decimal("100.0000")
