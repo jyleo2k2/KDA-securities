@@ -250,6 +250,15 @@ def test_general_account_overview_uses_deterministic_verified_response() -> None
     assert all(section.evidence_ids for section in response.sections)
 
 
+def test_explicit_pension_basics_question_returns_verified_overview() -> None:
+    response = service().ask(ChatRequest(message="연금이 뭐야?"))
+
+    assert response.intent is ChatIntent.ACCOUNT_RULE
+    assert response.data_mode == "verified_pension_account_overview"
+    assert response.answer
+    assert response.sources
+
+
 @pytest.mark.parametrize(
     ("message", "expected_excerpt"),
     (
