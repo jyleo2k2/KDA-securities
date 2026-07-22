@@ -694,6 +694,71 @@ def calculate_portfolio_planning_return(
     )
 
 
+def calculate_current_holdings_planning_return(
+    *,
+    holdings: list[CurrentHolding],
+    products: dict[str, dict[str, Any]],
+    retirement_start_age: int,
+    portfolio_horizon_years: int,
+    source_as_of: date,
+) -> PortfolioPlanningEvaluation:
+    """Build a cost-verified CMA planning assumption for the supplied ETF weights."""
+
+    total_amount = sum((holding.amount_krw for holding in holdings), Decimal("0"))
+    if total_amount <= 0:
+        raise ValueError("current holdings must have a positive total")
+
+    candidates: list[EducationalEtfCandidate] = []
+    for holding in holdings:
+        if holding.amount_krw == 0:
+            continue
+        product = products.get(holding.isu_code)
+        if product is None:
+            raise ValueError(
+                "ETF is not in the account-specific universe: "
+                f"{holding.isu_code}"
+            )
+        cost = product.get("cost") or {}
+        if (
+            _numeric(cost.get("effective_total_cost_percent")) is None
+            and _numeric(cost.get("kis_total_expense_ratio_percent")) is None
+        ):
+            raise ValueError(f"verified ETF cost is unavailable: {holding.isu_code}")
+        classification = product.get("classification") or {}
+        candidates.append(
+            EducationalEtfCandidate(
+                isu_code=holding.isu_code,
+                isu_name=str(product.get("isu_name") or holding.isu_code),
+                sleeve=_product_sleeve(product) or "current_holding",
+                target_percent=holding.amount_krw / total_amount * Decimal("100"),
+                quality=CandidateQuality(
+                    total_score=Decimal("0"),
+                    fee_efficiency=Decimal("0"),
+                    liquidity=Decimal("0"),
+                    size=Decimal("0"),
+                    nav_quality=Decimal("0"),
+                    tracking_quality=Decimal("0"),
+                    history_depth=Decimal("0"),
+                ),
+                asset_class=None,
+                region=str(classification.get("region") or "") or None,
+                strategy=str(classification.get("strategy") or "") or None,
+                max_correlation_with_selected=None,
+                price_history_source="not_used_for_planning_return",
+                account_eligibility=product.get("account_eligibility") or {},
+                reasons=["current_holding_weight"],
+            )
+        )
+
+    return calculate_portfolio_planning_return(
+        candidates=candidates,
+        products=products,
+        retirement_start_age=retirement_start_age,
+        portfolio_horizon_years=portfolio_horizon_years,
+        source_as_of=source_as_of,
+    )
+
+
 def _allocation_for_risk(
     risk_percent: Decimal,
     *,

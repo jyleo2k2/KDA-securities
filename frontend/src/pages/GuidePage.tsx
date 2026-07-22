@@ -626,6 +626,7 @@ export function GuidePage({
   auth,
   initialScenarioCode,
   onBack,
+  onOpenPlanner,
   onSignOut,
   surveyProfile,
   userContext,
@@ -634,6 +635,7 @@ export function GuidePage({
   auth: SupabaseAuthState;
   initialScenarioCode?: string;
   onBack?: () => void;
+  onOpenPlanner?: () => void;
   onSignOut: () => Promise<void>;
   surveyProfile: CompletedSurveyProfile | null;
   userContext: DemoUserFinancialContext | null;
@@ -1391,6 +1393,33 @@ export function GuidePage({
                 cards={visibleChatCards.filter((card) => card.intent !== "etf_theme")}
                 onSubmit={(message) => void submitPrompt(message)}
               />
+
+              {onOpenPlanner && (
+                <section className="chat-home-card-section" aria-labelledby="planner-heading">
+                  <header className="chat-home-section-heading">
+                    <p>연금 수령 계획</p>
+                    <h2 id="planner-heading">가정 시나리오로 수령 계획 점검</h2>
+                    <span>
+                      {surveyProfile
+                        ? "현재 잔액과 월 납입액을 바탕으로 규칙 엔진의 가정별 적립금과 월 수령액을 비교합니다."
+                        : "투자 성향을 먼저 확인한 뒤, 규칙 엔진의 가정 시나리오로 수령 계획을 점검합니다."}
+                    </span>
+                  </header>
+                  <div className="prompt-carousel">
+                    <button
+                      aria-label="연금 수령 계획 시나리오 열기"
+                      onClick={onOpenPlanner}
+                      type="button"
+                    >
+                      <span className="design-prompt-copy">
+                        <small>규칙 엔진 가정</small>
+                        <strong>연금 수령 계획</strong>
+                        <em>계획 시나리오 열기</em>
+                      </span>
+                    </button>
+                  </div>
+                </section>
+              )}
 
               <section className="chat-home-card-section holdings-section" aria-labelledby="holdings-heading">
                 <header className="chat-home-section-heading">

@@ -23,6 +23,7 @@ from .models import (
     PensionCalculatorTax,
     PensionCalculatorYear,
     RiskProfile,
+    SourceChip,
 )
 from .strategy_presentation import get_strategy_presentation
 
@@ -85,6 +86,9 @@ def _monthly_rate(annual_return_percent: Decimal) -> Decimal:
 
 def _build_strategies(
     inputs: PensionCalculatorInput,
+    *,
+    selected_profile: RiskProfile | None = None,
+    selected_annual_return_percent: Decimal | None = None,
 ) -> list[PensionCalculatorStrategy]:
     band = age_band(inputs.current_age)
     candidates: list[tuple[RiskProfile, str, AllocationWeights, Decimal]] = []
@@ -95,12 +99,15 @@ def _build_strategies(
             and weights.growth_percent > DC_IRP_GROWTH_LIMIT_PERCENT
         ):
             raise ValueError("DC/IRP growth allocation exceeds the 70 percent limit")
+        annual_return = net_annual_return_percent(weights, inputs.scenario)
+        if profile == selected_profile and selected_annual_return_percent is not None:
+            annual_return = selected_annual_return_percent
         candidates.append(
             (
                 profile,
                 _strategy_id(profile),
                 weights,
-                net_annual_return_percent(weights, inputs.scenario),
+                annual_return,
             )
         )
 
@@ -133,6 +140,7 @@ def _build_strategies(
 def _accumulate(
     inputs: PensionCalculatorInput,
     strategy_profile: RiskProfile,
+    annual_return_override_percent: Decimal | None = None,
 ) -> tuple[Decimal, list[PensionCalculatorYear]]:
     balance = inputs.current_balance_krw
     yearly: list[PensionCalculatorYear] = []
@@ -148,7 +156,11 @@ def _accumulate(
                 age=age,
                 profile=strategy_profile,
             )
-            annual_return = net_annual_return_percent(weights, inputs.scenario)
+            annual_return = (
+                annual_return_override_percent
+                if annual_return_override_percent is not None
+                else net_annual_return_percent(weights, inputs.scenario)
+            )
             monthly_rates[band] = _monthly_rate(annual_return)
         balance = balance * (Decimal("1") + monthly_rates[band])
         balance += inputs.monthly_contribution_krw
@@ -176,7 +188,10 @@ def _accumulate(
 def _payout_rate(
     inputs: PensionCalculatorInput,
     strategy_profile: RiskProfile,
+    annual_return_override_percent: Decimal | None = None,
 ) -> Decimal:
+    if annual_return_override_percent is not None:
+        return _monthly_rate(annual_return_override_percent)
     weights = _allocation(
         account_type=inputs.account_type,
         age=inputs.contribution_end_age,
@@ -245,18 +260,37 @@ def _withdrawal_limit_excess_years(
 
 def calculate_pension(
     inputs: PensionCalculatorInput,
+    *,
+    annual_return_override_percent: Decimal | None = None,
+    assumption_source: SourceChip = ASSUMPTION_SOURCE,
+    assumption_version: str = ASSUMPTION_VERSION,
+    assumption_notice: str = ASSUMPTION_NOTICE,
+    additional_warnings: tuple[str, ...] = (),
 ) -> PensionCalculatorEvaluation:
     """Evaluate accumulation, payout, strategies, and documented 2026 tax rules."""
 
     with localcontext() as context:
         context.prec = 50
+        if (
+            annual_return_override_percent is not None
+            and annual_return_override_percent <= Decimal("-100")
+        ):
+            raise ValueError("annual return override must be greater than -100 percent")
         selected_profile = (
             inputs.risk_profile
             if inputs.strategy_id is None
             else _strategy_profile(inputs.strategy_id)
         )
-        ending_balance, yearly = _accumulate(inputs, selected_profile)
-        monthly_rate = _payout_rate(inputs, selected_profile)
+        ending_balance, yearly = _accumulate(
+            inputs,
+            selected_profile,
+            annual_return_override_percent,
+        )
+        monthly_rate = _payout_rate(
+            inputs,
+            selected_profile,
+            annual_return_override_percent,
+        )
         monthly_payout = _monthly_payout(
             ending_balance,
             monthly_rate,
@@ -273,7 +307,7 @@ def calculate_pension(
             Decimal("1") - rates[0] / ONE_HUNDRED
         )
 
-        warnings = list(BASE_WARNINGS)
+        warnings = list(BASE_WARNINGS) + list(additional_warnings)
         if exceeds_threshold:
             warnings.append(
                 "annual_payout_over_15m_assumes_16_5_percent_separate_taxation;"
@@ -309,7 +343,11 @@ def calculate_pension(
                 ),
             ),
             yearly=yearly,
-            strategies=_build_strategies(inputs),
+            strategies=_build_strategies(
+                inputs,
+                selected_profile=selected_profile,
+                selected_annual_return_percent=annual_return_override_percent,
+            ),
             tax=PensionCalculatorTax(
                 withholding_rate_percent_by_year=rates,
                 effective_rate_percent=effective_rate,
@@ -318,10 +356,10 @@ def calculate_pension(
                 deferred_severance_excluded=True,
             ),
             assumption=PensionCalculatorAssumption(
-                version=ASSUMPTION_VERSION,
+                version=assumption_version,
                 scenario=inputs.scenario,
-                source=ASSUMPTION_SOURCE,
-                notice=ASSUMPTION_NOTICE,
+                source=assumption_source,
+                notice=assumption_notice,
             ),
             warnings=warnings,
         )

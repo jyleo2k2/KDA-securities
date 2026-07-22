@@ -46,7 +46,10 @@ const CHAT_SESSION: ChatSessionSummary = {
   updated_at: "2026-07-19T00:00:00Z",
 };
 
-function renderGuide(onSignOut = vi.fn().mockResolvedValue(undefined)): ReturnType<typeof render> {
+function renderGuide(
+  onSignOut = vi.fn().mockResolvedValue(undefined),
+  onOpenPlanner?: () => void,
+): ReturnType<typeof render> {
   const auth = {
     session: { access_token: "access-token", user: { id: "user-1", email: "owner@example.com" } },
     loading: false,
@@ -55,7 +58,7 @@ function renderGuide(onSignOut = vi.fn().mockResolvedValue(undefined)): ReturnTy
     signIn: vi.fn(),
     signOut: vi.fn(),
   } as unknown as SupabaseAuthState;
-  return render(<GuidePage auth={auth} onSignOut={onSignOut} surveyProfile={null} userContext={null} />);
+  return render(<GuidePage auth={auth} onOpenPlanner={onOpenPlanner} onSignOut={onSignOut} surveyProfile={null} userContext={null} />);
 }
 const RECOMMENDED_CHAT_CARDS: ChatCard[] = [
   {
@@ -1085,6 +1088,30 @@ describe("GuidePage chat history deletion", () => {
 
     expect(section).toHaveAttribute("open");
     expect(limitations).toHaveAttribute("open");
+  });
+});
+
+describe("GuidePage pension planner entry", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getScenarios).mockResolvedValue([]);
+    vi.mocked(getChatCards).mockResolvedValue({ cards: [] });
+    vi.mocked(getChatSessions).mockResolvedValue([]);
+    vi.mocked(getStoredChatMessages).mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("opens the existing profile planner from the chat home card", () => {
+    const onOpenPlanner = vi.fn();
+    renderGuide(undefined, onOpenPlanner);
+
+    expect(screen.getByText("규칙 엔진 가정")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "연금 수령 계획 시나리오 열기" }));
+
+    expect(onOpenPlanner).toHaveBeenCalledOnce();
   });
 });
 
