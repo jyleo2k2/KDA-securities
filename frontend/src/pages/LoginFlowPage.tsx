@@ -16,6 +16,7 @@ type LoginStep = "intro" | "form" | "consent" | "success" | "linking" | "risk-as
 
 interface LoginFlowPageProps {
   auth: SupabaseAuthState;
+  displayName?: string;
   onAuthenticated: () => void;
   onStart: () => void;
   resurvey?: boolean;
@@ -33,7 +34,7 @@ function StatusBar(): JSX.Element {
   );
 }
 
-export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
+export function LoginFlowPage({ auth, displayName, onAuthenticated, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
   const [step, setStep] = useState<LoginStep>(resurvey ? "investor-info" : "intro");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
@@ -231,7 +232,7 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
         )}
 
         {step === "investor-result" && (
-          <InvestorResultScreen assessment={assessment} onBack={() => setStep("investor-info")} onStart={onStart} />
+          <InvestorResultScreen assessment={assessment} displayName={displayName} onBack={() => setStep("investor-info")} onStart={onStart} />
         )}
 
         {step === "success" && (
