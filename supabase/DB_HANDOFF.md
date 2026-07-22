@@ -312,7 +312,7 @@ uv run ruff check .
 | DB-13 | 투자성향 진단 저장·조회 API | `REMOTE-APPLIED` | POST/GET·24개월 KST 정책·append-only 확인 이력·RLS·소유자 스코프·전체 회귀·원격 카탈로그 검증 통과 | `20260720154033_add_investment_profile_confirmations.sql` 적용 완료 |
 | DB-13A | 로그인 투자자정보 확인서 통합 설문 | `REMOTE-APPLIED` | `20260722020126`, 활성 세트 1개·17문항·76선택지, 기존 세트 retire, 0~7점 제약·복수선택 답변 제약·RLS/클라이언트 권한 재검증 | 원격 적용 MCP 버전에 맞춰 로컬 파일명을 `20260722020126`으로 유지; 적용 파일 수정 금지 |
 | DB-14 | KIS ETF 구성종목 신뢰성 보강 | `LOCAL-VERIFIED` | 임시 빈 응답 재시도·재개, 마지막 정상 스냅샷 보존, 선택 종목 재수집 구현·원격 데이터 검증 | 코드 배포 전; KIS 미지원 614개는 KRX PDF·운용사 보조 소스 계약 필요 |
-| DB-15 | 레거시 목계좌 테이블 퇴역 백업 | `LOCAL-VERIFIED` | 읽기 전용 JSON·SHA-256 백업, 공통 계좌 동등성 확인 | `seed.sql`·데모 적재/SQL 생성 스크립트를 공통 계좌 구조로 전환한 뒤 별도 파괴적 migration 검토 |
+| DB-15 | 레거시 목계좌 테이블 퇴역 백업·쓰기 전환 | `LOCAL-VERIFIED` | 읽기 전용 JSON·SHA-256 백업, 공통 계좌 동등성 확인, seed·데모 적재·생성기의 공통 계좌 직접 쓰기 | 복구 절차와 로컬 reset·원격 E2E를 재검증한 뒤 별도 파괴적 migration 검토 |
 
 ## 13. 미결정 사항
 
@@ -326,6 +326,14 @@ uv run ruff check .
 
 ## 14. 작업 로그
 
+### 2026-07-22 KST 레거시 목계좌 쓰기 경로 공통 계좌 전환
+
+- 작업자/브랜치: Codex / `db/jyleo2k2/legacy-account-write-cutover`.
+- 변경: `supabase/seed.sql`의 대표 6명 계좌·보유 초기화는 `pension_accounts`·`account_snapshots`·`account_holding_snapshots`에 직접 13·13·86행을 멱등 적재한다. `scripts/render_demo_customer_sql.py`는 더 이상 적용 완료 migration을 재생성하지 않고 공통 계좌 seed만 생성한다. `scripts/load_benchmark_mock_data.py`도 레거시 계좌 표 갱신을 중단했다.
+- 보존: 역사 migration과 read-only 백업 도구는 복구 근거로 그대로 유지한다. 이번 범위에서는 `mock_accounts`·`mock_holdings` 삭제나 원격 DB 쓰기를 수행하지 않았다.
+- 검증: seed PostgreSQL 파싱 통과, SQL 계약 32 passed, 전체 `uv run pytest` 1022 passed·1 skipped, `uv run ruff check .`, `git diff --check` 통과. seed·생성기·벤치마크 적재기에서 `public.mock_accounts`·`public.mock_holdings` 쓰기 참조는 0건이다.
+- 다음: 백업 복원 리허설·로컬 reset과 Auth/RLS 원격 E2E를 재검증하고, 이재용 승인 후에만 별도 파괴적 migration으로 테이블을 제거한다.
+
 ### 2026-07-22 KST 레거시 목계좌 퇴역 백업 준비
 
 - 작업 브랜치/워크트리: `db/retire-legacy-mock-tables` / `C:\dev\finance-project-1-db-legacy-cleanup`.
@@ -334,6 +342,7 @@ uv run ruff check .
 - 실제 읽기 검증: 2026-07-22 KST에 공통 계좌 동등성 검사를 통과한 뒤 시나리오 6개·계좌 13개·보유 86개·총 평가액 520,290,000원 백업을 생성하고, DB 재접속 없이 SHA-256 검증을 다시 통과했다. 원격 DB 쓰기·migration 적용은 수행하지 않았다.
 - 삭제 전 남은 의존성: `supabase/seed.sql`, `scripts/load_benchmark_mock_data.py`, `scripts/render_demo_customer_sql.py`, 일부 데모 문서가 레거시 테이블을 아직 생성·갱신·설명한다. 이를 공통 계좌 구조로 전환하고 로컬 reset/원격 E2E·복구 절차를 검증하기 전에는 `mock_holdings`·`mock_accounts`를 삭제하지 않는다.
 - 검증: 백업 도구 단위 테스트 3건·Ruff 통과. 챗봇 공통 구조 전환 기준 전체 회귀는 `981 passed, 1 skipped`.
+
 ### 2026-07-22 KST 로그인 투자자정보 확인서 통합 설문 원격 적용
 
 - 작업자/브랜치: Codex / `codex/login-survey-db`.
