@@ -9,6 +9,7 @@ from backend.app.engine.educational_portfolio import (
     CMA_HORIZON_MAX_YEARS,
     CMA_HORIZON_MIN_YEARS,
     CurrentHolding,
+    StressLossPolicyStatus,
     _cma_mapping,
     calculate_current_holdings_planning_return,
     calculate_portfolio_planning_return,
@@ -75,6 +76,24 @@ def test_portfolio_risk_uses_history_only_for_risk_metrics() -> None:
     assert result.maximum_drawdown_percent > 0
     assert result.historical_return_used_for_risk_only is True
     assert result.is_return_forecast is False
+    assert result.stress_loss_limit_percent is None
+    assert result.stress_loss_policy_status == StressLossPolicyStatus.NOT_EVALUATED
+
+
+def test_portfolio_risk_marks_stress_loss_above_user_limit_for_review() -> None:
+    candidate = Candidate("EQ", "Equity", "core_equity", Decimal("100"))
+
+    result = calculate_portfolio_risk(
+        candidates=[candidate],
+        histories={"EQ": _history(Decimal("1"))},
+        source_as_of=date(2026, 7, 16),
+        loss_tolerance_percent=Decimal("20"),
+    )
+
+    assert result.worst_stress_loss_percent == Decimal("35.0000")
+    assert result.stress_loss_limit_percent == Decimal("20")
+    assert result.stress_loss_policy_status == StressLossPolicyStatus.REVIEW_REQUIRED
+    assert "stress_loss_exceeds_user_tolerance_review_required" in result.warnings
 
 
 def test_portfolio_planning_return_uses_cma_minus_verified_cost() -> None:
