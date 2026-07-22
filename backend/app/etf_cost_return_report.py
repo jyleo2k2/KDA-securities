@@ -441,10 +441,19 @@ def build_etf_cost_return_report(
                         if kofia_cost
                         else None
                     ),
-                    "fsc_fund_standard_code": (
-                        kofia_cost.get("fsc_fund_standard_code")
+                    "identity_source_url": (
+                        kofia_cost.get("identity_source_url")
+                        or kofia_cost.get("issuer_identity_source_url")
                         if kofia_cost
                         else None
+                    ),
+                    "identity_evidence_level": (
+                        kofia_cost.get("identity_evidence_level")
+                        if kofia_cost
+                        else None
+                    ),
+                    "fsc_fund_standard_code": (
+                        kofia_cost.get("fsc_fund_standard_code") if kofia_cost else None
                     ),
                     "fsc_match_status": (
                         kofia_cost.get("fsc_match_status") if kofia_cost else None
@@ -455,9 +464,7 @@ def build_etf_cost_return_report(
                         else None
                     ),
                     "kis_fee_cross_check_percent": (
-                        kofia_cost.get("kis_stated_fee_percent")
-                        if kofia_cost
-                        else None
+                        kofia_cost.get("kis_stated_fee_percent") if kofia_cost else None
                     ),
                     "kofia_cost_as_of": (
                         kofia_cost_report.get("as_of")
@@ -575,6 +582,18 @@ def build_etf_cost_return_report(
                         ]
                         if kofia_cost is not None
                         and kofia_cost.get("issuer_identity_source_url")
+                        else []
+                    ),
+                    *(
+                        [
+                            {
+                                "label": "거래소 코드·법정명 일치 보조 확인",
+                                "url": kofia_cost["identity_source_url"],
+                            }
+                        ]
+                        if kofia_cost is not None
+                        and kofia_cost.get("identity_evidence_level")
+                        == "secondary_exact_code_and_legal_name"
                         else []
                     ),
                 ],

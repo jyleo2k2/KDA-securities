@@ -47,8 +47,7 @@ def test_match_kofia_costs_uses_documented_issuer_alias_standard_code() -> None:
         "rows": [
             {
                 "normalized_etf_name": normalize_etf_name(
-                    "미래에셋TIGER원유선물특별자산상장지수투자신탁"
-                    "(원유-파생형)(H)"
+                    "미래에셋TIGER원유선물특별자산상장지수투자신탁(원유-파생형)(H)"
                 ),
                 "ter_percent": "0.75",
                 "standard_code": "KR5225287949",
@@ -64,10 +63,92 @@ def test_match_kofia_costs_uses_documented_issuer_alias_standard_code() -> None:
     )
 
     assert matches["130680"]["ter_percent"] == "0.75"
-    assert matches["130680"]["match_method"] == (
-        "confirmed_issuer_alias_standard_code"
-    )
+    assert matches["130680"]["match_method"] == ("confirmed_issuer_alias_standard_code")
     assert "miraeasset.com" in matches["130680"]["issuer_identity_source_url"]
+
+
+def test_match_kofia_costs_uses_later_issuer_identity_evidence() -> None:
+    report = {
+        "rows": [
+            {
+                "normalized_etf_name": normalize_etf_name(
+                    "KBRISE배터리리사이클링iSelect증권상장지수투자신탁(주식)"
+                ),
+                "ter_percent": "0.40",
+                "standard_code": "K55223DY3945",
+            }
+        ]
+    }
+
+    matches = match_kofia_costs_to_etfs(
+        report,
+        etf_products=[{"isu_code": "446700", "isu_name": "RISE 배터리 리사이클링"}],
+    )
+
+    assert matches["446700"]["ter_percent"] == "0.40"
+    assert matches["446700"]["match_method"] == ("confirmed_issuer_alias_standard_code")
+    assert matches["446700"]["identity_evidence_level"] == (
+        "issuer_code_and_legal_name"
+    )
+    assert "riseetf.co.kr" in matches["446700"]["issuer_identity_source_url"]
+
+
+def test_match_kofia_costs_keeps_secondary_identity_evidence_separate() -> None:
+    report = {
+        "rows": [
+            {
+                "normalized_etf_name": normalize_etf_name(
+                    "NH-AmundiHANARO200TotalReturn증권상장지수투자신탁[주식]"
+                ),
+                "ter_percent": "0.06",
+                "standard_code": "K55232CU2966",
+            }
+        ]
+    }
+
+    matches = match_kofia_costs_to_etfs(
+        report,
+        etf_products=[{"isu_code": "332930", "isu_name": "HANARO 200TR"}],
+    )
+
+    assert matches["332930"]["ter_percent"] == "0.06"
+    assert matches["332930"]["match_method"] == (
+        "confirmed_secondary_identity_standard_code"
+    )
+    assert matches["332930"]["identity_evidence_level"] == (
+        "secondary_exact_code_and_legal_name"
+    )
+    assert "issuer_identity_source_url" not in matches["332930"]
+    assert "investing.com" in matches["332930"]["identity_source_url"]
+
+
+def test_match_kofia_costs_uses_tiger_alphanumeric_exchange_code_evidence() -> None:
+    report = {
+        "rows": [
+            {
+                "normalized_etf_name": normalize_etf_name(
+                    "미래에셋TIGERNVDA-UST커버드콜증권상장지수투자신탁"
+                    "(채권혼합-파생재간접형)(합성)"
+                ),
+                "ter_percent": "0.47",
+                "standard_code": "K55301EG5219",
+            }
+        ]
+    }
+
+    matches = match_kofia_costs_to_etfs(
+        report,
+        etf_products=[
+            {
+                "isu_code": "0000D0",
+                "isu_name": "TIGER 엔비디아미국채커버드콜밸런스(합성)",
+            },
+        ],
+    )
+
+    assert matches["0000D0"]["ter_percent"] == "0.47"
+    assert matches["0000D0"]["match_method"] == ("confirmed_issuer_alias_standard_code")
+    assert "miraeasset.com" in matches["0000D0"]["issuer_identity_source_url"]
 
 
 def test_match_kofia_costs_uses_fsc_exact_name_standard_code() -> None:
