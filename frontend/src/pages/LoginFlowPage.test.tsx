@@ -4,15 +4,30 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getAccountLinkOptions } from "../api/client";
-import type { AccountLinkOptionsResponse } from "../api/types";
+import { getAccountLinkOptions, saveInvestmentProfile } from "../api/client";
+import type { AccountLinkOptionsResponse, InvestmentProfileResponse } from "../api/types";
 import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
 import { LoginFlowPage } from "./LoginFlowPage";
 
-vi.mock("../api/client", () => ({ getAccountLinkOptions: vi.fn() }));
+vi.mock("../api/client", () => ({ getAccountLinkOptions: vi.fn(), saveInvestmentProfile: vi.fn() }));
+vi.mock("./InvestorInfoForm", () => ({
+  InvestorInfoForm: ({ onSubmit }: { onSubmit: (submission: never) => Promise<void> }) => (
+    <button
+      type="button"
+      onClick={() => void onSubmit({
+        survey: { answers: [] },
+        investment_advice_desired: false,
+        investor_information_provided: true,
+      } as never)}
+    >
+      테스트 설문 저장
+    </button>
+  ),
+}));
 
 const onStart = vi.fn();
 const onAuthenticated = vi.fn();
+const onProfileSaved = vi.fn();
 let auth: SupabaseAuthState;
 const linkOptions: AccountLinkOptionsResponse = {
   data_boundary: "mock",
@@ -24,9 +39,19 @@ const linkOptions: AccountLinkOptionsResponse = {
     { code: "db", display_name: "DB형 퇴직연금", category_label: "회사 운용 계좌", diagnosable: false, description: "가입 여부만 확인하며 운용 진단에서는 제외됩니다." },
   ],
 };
+const savedProfile = {
+  assessment: {
+    assessed_at: "2026-07-22T04:30:07.229204+00:00",
+    assessed_on: "2026-07-22",
+    valid_until: "2028-07-21",
+    is_expired: false,
+    risk_profile: "aggressive",
+  },
+  preferences: null,
+} as InvestmentProfileResponse;
 
 function renderLogin(): void {
-  render(<LoginFlowPage auth={auth} onAuthenticated={onAuthenticated} onStart={onStart} />);
+  render(<LoginFlowPage auth={auth} onAuthenticated={onAuthenticated} onProfileSaved={onProfileSaved} onStart={onStart} />);
 }
 
 function openForm(): void {
@@ -52,6 +77,7 @@ describe("LoginFlowPage", () => {
       signOut: vi.fn(),
     };
     vi.mocked(getAccountLinkOptions).mockResolvedValue(linkOptions);
+    vi.mocked(saveInvestmentProfile).mockResolvedValue(savedProfile);
   });
 
   it("shows success only after Supabase sign-in resolves", async () => {
@@ -107,13 +133,6 @@ describe("LoginFlowPage", () => {
     resolveSignIn?.();
   });
 
-  it("shows the signup preparation notice", () => {
-    renderLogin();
-    fireEvent.click(screen.getByRole("button", { name: "회원가입" }));
-
-    expect(screen.getByRole("status")).toHaveTextContent("회원가입은 준비 중입니다.");
-  });
-
   it("loads account metadata and requires consent before entering the app", async () => {
     renderLogin();
     openForm();
@@ -125,7 +144,7 @@ describe("LoginFlowPage", () => {
 
     expect(await screen.findByText("DC형 퇴직연금")).toBeInTheDocument();
     expect(screen.getByText("DB형 퇴직연금")).toBeInTheDocument();
-    expect(screen.getByText(linkOptions.notice)).toBeInTheDocument();
+    expect(screen.getByText("마이데이터를 통해 내 연금계좌를 안전하게 연동해서 가져와요.")).toBeInTheDocument();
     const continueButton = screen.getByRole("button", { name: "연동 내 연금계좌 보기" });
     expect(continueButton).toBeDisabled();
 
@@ -166,5 +185,19 @@ describe("LoginFlowPage", () => {
 
     expect(await screen.findByText("DC형 퇴직연금")).toBeInTheDocument();
     expect(getAccountLinkOptions).toHaveBeenCalledTimes(2);
+  });
+
+  it("publishes the saved profile to the app immediately after resurvey", async () => {
+    auth = {
+      ...auth,
+      session: { access_token: "access-token", user: { id: "user-1" } },
+    } as SupabaseAuthState;
+    render(<LoginFlowPage auth={auth} onAuthenticated={onAuthenticated} onProfileSaved={onProfileSaved} onStart={onStart} resurvey />);
+
+    fireEvent.click(screen.getByRole("button", { name: "테스트 설문 저장" }));
+
+    await waitFor(() => expect(saveInvestmentProfile).toHaveBeenCalledWith(expect.any(Object), "access-token"));
+    expect(onProfileSaved).toHaveBeenCalledWith(savedProfile);
+    expect(screen.getAllByText("공격투자형", { exact: false }).length).toBeGreaterThan(0);
   });
 });

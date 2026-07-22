@@ -233,6 +233,17 @@ class DemoUserContextRepository:
         with self._connection() as connection, connection.cursor() as cursor:
             cursor.execute(
                 """
+                with latest_snapshots as (
+                    select distinct on (snapshot.account_id)
+                        snapshot.account_id,
+                        snapshot.id,
+                        snapshot.market_value_krw
+                    from public.account_snapshots as snapshot
+                    order by
+                        snapshot.account_id,
+                        snapshot.as_of_date desc,
+                        snapshot.captured_at desc
+                )
                 select
                     context.auth_user_id,
                     context.benchmark_user_id,
@@ -252,21 +263,21 @@ class DemoUserContextRepository:
                     context.as_of_date,
                     context.data_kind,
                     coalesce(
-                        sum(account.balance_krw)
+                        sum(snapshot.market_value_krw)
                             filter (where account.account_type = 'dc'),
                         0
                     ) as dc_balance_krw,
                     coalesce(
-                        sum(account.balance_krw)
+                        sum(snapshot.market_value_krw)
                             filter (where account.account_type = 'irp'),
                         0
                     ) as irp_balance_krw,
                     coalesce(
-                        sum(account.balance_krw)
+                        sum(snapshot.market_value_krw)
                             filter (where account.account_type = 'pension_savings'),
                         0
                     ) as pension_savings_balance_krw,
-                    coalesce(sum(account.balance_krw), 0) as total_balance_krw,
+                    coalesce(sum(snapshot.market_value_krw), 0) as total_balance_krw,
                     count(account.id) filter (where account.account_type = 'dc'),
                     count(account.id) filter (where account.account_type = 'irp'),
                     count(account.id)
@@ -274,20 +285,28 @@ class DemoUserContextRepository:
                     coalesce(
                         (
                             select array_agg(distinct asset.code order by asset.code)
-                            from public.mock_accounts as holding_account
-                            join public.mock_holdings as holding
-                              on holding.account_id = holding_account.id
+                            from public.pension_accounts as holding_account
+                            join latest_snapshots as holding_snapshot
+                              on holding_snapshot.account_id = holding_account.id
+                            join public.account_holding_snapshots as holding
+                              on holding.snapshot_id = holding_snapshot.id
                             join public.asset_classes as asset
                               on asset.id = holding.asset_class_id
                             where holding_account.scenario_id = scenario.id
+                              and holding_account.data_kind = 'mock'
+                              and holding_account.origin = 'synthetic'
                         ),
                         array[]::text[]
                     ) as asset_classes
                 from public.demo_user_financial_context as context
                 join public.mock_scenarios as scenario
                   on scenario.id = context.scenario_id
-                left join public.mock_accounts as account
+                left join public.pension_accounts as account
                   on account.scenario_id = scenario.id
+                 and account.data_kind = 'mock'
+                 and account.origin = 'synthetic'
+                left join latest_snapshots as snapshot
+                  on snapshot.account_id = account.id
                 where context.auth_user_id = %s
                 group by
                     context.auth_user_id,

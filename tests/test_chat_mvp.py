@@ -1593,6 +1593,25 @@ def test_guard_allows_negation_attached_after_unsafe_claim(candidate: str) -> No
     assert _unsafe_claims(candidate) == set()
 
 
+@pytest.mark.parametrize(
+    "candidate",
+    (
+        "수익 보장이 될 수 없습니다.",
+        "매수 추천을 드리지 않습니다.",
+        "수익을 보장한다고 볼 수 없습니다.",
+    ),
+)
+def test_guard_allows_common_postfix_negation_variants(candidate: str) -> None:
+    assert _unsafe_claims(candidate) == set()
+
+
+def test_guard_rejects_positive_guarantee_after_negated_first_claim() -> None:
+    candidate = "원금 보장을 하지 않는다고 말하지만 실제로 보장됩니다."
+
+    assert _unsafe_claims(candidate) == {"guarantee"}
+    assert _adds_unverified_content(candidate, "일반적인 설명입니다.")
+
+
 def test_guard_rejects_new_guarantee_instance_in_same_category() -> None:
     source = "안정형 성향은 원금 보장형 상품 중심으로 구성합니다."
     candidate = (

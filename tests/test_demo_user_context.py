@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -233,6 +234,86 @@ def test_repository_normalizes_missing_database_values_to_zero() -> None:
         "macro",
         "fx_rates",
     )
+
+
+class _ContextCursor:
+    def __init__(self, row: tuple[object, ...]) -> None:
+        self._row = row
+        self.query = ""
+
+    def __enter__(self) -> "_ContextCursor":
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def execute(self, query: str, _params: tuple[object, ...]) -> None:
+        self.query = query
+
+    def fetchone(self) -> tuple[object, ...]:
+        return self._row
+
+
+class _ContextConnection:
+    def __init__(self, cursor: _ContextCursor) -> None:
+        self._cursor = cursor
+
+    def cursor(self) -> _ContextCursor:
+        return self._cursor
+
+
+class _ContextPool:
+    def __init__(self, cursor: _ContextCursor) -> None:
+        self._connection = _ContextConnection(cursor)
+
+    @contextmanager
+    def connection(self):
+        yield self._connection
+
+
+def test_repository_reads_common_account_snapshot_tables() -> None:
+    row = (
+        OWNER_ID,
+        "USR09660",
+        "박준호(가상)",
+        46,
+        "DC 방치형",
+        "dc_dormant",
+        "DC형 방치",
+        "40대",
+        "balanced",
+        20,
+        2026,
+        None,
+        None,
+        None,
+        None,
+        date(2026, 7, 16),
+        "mock",
+        Decimal("60000000"),
+        Decimal("0"),
+        Decimal("0"),
+        Decimal("60000000"),
+        1,
+        0,
+        0,
+        ("deposit",),
+    )
+    cursor = _ContextCursor(row)
+    repository = DemoUserContextRepository(
+        "postgresql://test",
+        pool=_ContextPool(cursor),
+    )
+
+    context = repository.get(OWNER_ID)
+
+    assert context is not None
+    assert context.dc_balance_krw == Decimal("60000000")
+    assert "pension_accounts" in cursor.query
+    assert "account_snapshots" in cursor.query
+    assert "account_holding_snapshots" in cursor.query
+    assert "mock_accounts" not in cursor.query
+    assert "mock_holdings" not in cursor.query
 
 
 def test_authenticated_profile_uses_database_age_and_all_positive_accounts() -> None:
@@ -529,8 +610,8 @@ def test_authenticated_tax_uses_database_context_not_client_values() -> None:
     assert response.status_code == 200
     payload = final_sse_response(response.text)["response"]
     credit = payload["pension_tax_result"]["tax_credit"]
-    assert credit["pension_savings_contribution_krw"] == "0.00"
-    assert credit["irp_contribution_krw"] == "0.00"
+    assert credit["pension_savings_contribution_krw"] == "0"
+    assert credit["irp_contribution_krw"] == "0"
     assert payload["data_mode"] == "authenticated_mock_context_engine"
     assert any(source["data_boundary"] == "mock" for source in payload["sources"])
     assert payload["conversation_context"]["scenario_code"] == "dc_dormant"

@@ -11,12 +11,17 @@ import type {
   EducationalPortfolioInput,
   InvestmentProfileResponse,
   InvestmentProfileSubmission,
+  PensionCalculatorEvaluation,
+  PensionCalculatorInput,
+  PensionCalculatorPortfolioCmaEvaluation,
+  PensionCalculatorPortfolioCmaRequest,
   PensionTaxScenarioInput,
   ProfileEvaluation,
   ProfileSurveyInput,
   ScenarioSummary,
   StoredChatMessage,
 } from "./types";
+import { supabase } from "../auth/supabase";
 
 const API_BASE_URL: string = (
   import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000"
@@ -100,13 +105,34 @@ function requestHeaders(accessToken?: string): HeadersInit {
     : {};
 }
 
+async function currentAccessToken(accessToken?: string): Promise<string | undefined> {
+  if (!accessToken || !supabase) return accessToken;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? accessToken;
+}
+
+async function refreshedAccessToken(): Promise<string | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.auth.refreshSession();
+  return error ? null : data.session?.access_token ?? null;
+}
+
 export async function apiGet<T>(
   path: string,
   accessToken?: string,
 ): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: requestHeaders(accessToken),
+  const token = await currentAccessToken(accessToken);
+  let response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: requestHeaders(token),
   });
+  if (response.status === 401 && accessToken) {
+    const refreshedToken = await refreshedAccessToken();
+    if (refreshedToken) {
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        headers: requestHeaders(refreshedToken),
+      });
+    }
+  }
   return parseOrThrow<T>(path, response);
 }
 
@@ -116,15 +142,21 @@ export async function apiPost<TBody, TResult>(
   accessToken?: string,
   idempotencyKey?: string,
 ): Promise<TResult> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const token = await currentAccessToken(accessToken);
+  const request = (requestToken?: string) => fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...requestHeaders(accessToken),
+      ...requestHeaders(requestToken),
       ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
     },
     body: JSON.stringify(body),
   });
+  let response = await request(token);
+  if (response.status === 401 && accessToken) {
+    const refreshedToken = await refreshedAccessToken();
+    if (refreshedToken) response = await request(refreshedToken);
+  }
   return parseOrThrow<TResult>(path, response);
 }
 
@@ -241,6 +273,18 @@ export function getInvestmentProfile(
   accessToken: string,
 ): Promise<InvestmentProfileResponse> {
   return apiGet("/me/investment-profile", accessToken);
+}
+
+export function calculatePortfolioCmaPension(
+  request: PensionCalculatorPortfolioCmaRequest,
+): Promise<PensionCalculatorPortfolioCmaEvaluation> {
+  return apiPost("/engine/pension-calculator/portfolio-cma", request);
+}
+
+export function calculatePension(
+  request: PensionCalculatorInput,
+): Promise<PensionCalculatorEvaluation> {
+  return apiPost("/engine/pension-calculator", request);
 }
 
 interface ChatBodyOptions {

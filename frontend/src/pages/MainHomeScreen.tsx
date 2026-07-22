@@ -3,15 +3,16 @@ import { useState, type JSX } from "react";
 import moneyBag from "../assets/main-home/money-bag.png";
 import piggy from "../assets/main-home/piggy.png";
 import userPickPreview from "../assets/main-home/user-pick-preview.png";
-import type { DemoHeroPortfolio, DemoUserFinancialContext } from "../api/types";
+import type { DemoHeroPortfolio, DemoUserFinancialContext, InvestmentProfileResponse, RiskProfile } from "../api/types";
 import "./MainHomeScreen.css";
 
 interface MainHomeScreenProps {
   error: string | null;
   hero: DemoHeroPortfolio | null;
+  investmentProfile: InvestmentProfileResponse | null;
   loading: boolean;
   onOpenChat: () => void;
-  onOpenPensionCalculator: () => void;
+  onOpenPlanner: () => void;
   onOpenStrategyExplore: () => void;
   onOpenUserPick: () => void;
   onResurvey: () => void;
@@ -32,6 +33,9 @@ interface HoldingSlice {
 }
 
 const HOLDING_DONUT_COLORS = ["#18A860", "#3877E8", "#F0C000", "#F5871F", "#8B5FEB", "#2FBFA0", "#B8C0BA"];
+const PROFILE_LABELS: Record<RiskProfile, string> = {
+  stable: "안정형", stable_seeking: "안정추구형", risk_neutral: "위험중립형", active: "적극투자형", aggressive: "공격투자형",
+};
 const HOLDING_DONUT_MAX_SLICES = 6;
 const HOLDING_DONUT_LABEL_MIN_PERCENT = 5;
 const DONUT_SIZE = 150;
@@ -141,7 +145,7 @@ const ASSET_LABELS: Record<string, string> = { cash: "현금성", deposit: "원�
 const ALLOCATION_COLORS = ["#18A860", "#35B877", "#6ECFA0", "#2E8B57"];
 const formatKrw = (amount: string) => `${Math.round(Number(amount)).toLocaleString("ko-KR")}원`;
 
-export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenPensionCalculator, onOpenStrategyExplore, onOpenUserPick, onResurvey, userContext }: MainHomeScreenProps): JSX.Element {
+export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpenChat, onOpenPlanner, onOpenStrategyExplore, onOpenUserPick, onResurvey, userContext }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
   const allocationSlices: AllocationSlice[] = hero?.asset_allocations.slice(0, 4).map((item, index) => ({ label: ASSET_LABELS[item.asset_class_code] ?? "기타 자산", percent: `${item.allocation_percent}%`, color: ALLOCATION_COLORS[index] })) ?? [];
   const holdingSlices = buildHoldingDonutSlices(hero);
@@ -169,6 +173,7 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenPension
           </div>
           <img src={piggy} alt="송향이" className="mhs-greeting-img" />
         </div>
+        {investmentProfile?.assessment && <p className="mhs-greeting-sub">저장 투자성향 · {PROFILE_LABELS[investmentProfile.assessment.risk_profile]} · {investmentProfile.assessment.assessed_on} 진단{investmentProfile.assessment.is_expired ? " · 만료" : ""}</p>}
         <button type="button" className="mhs-resurvey-button" onClick={onResurvey}>재설문하기</button>
 
         <h2 className="mhs-section-title">내 연금 <span className="mhs-section-title-gold">자산</span></h2>
@@ -176,7 +181,7 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenPension
         <div className="mhs-asset-card">
           <p className="mhs-asset-label">총 연금 자산</p>
           <p className="mhs-asset-total">{loading ? "불러오는 중…" : totalBalance}</p>
-          <p className="mhs-asset-gain">{error ?? (userContext ? `${userContext.nickname}님 · ${userContext.as_of_date} 기준 목데이터` : "연금 데이터를 확인해 주세요.")}</p>
+          <p className="mhs-asset-gain">{error ?? (userContext ? `${userContext.nickname.replace(/\(가상\)/g, "")}님 · ${userContext.as_of_date} 기준` : "연금 데이터를 확인해 주세요.")}</p>
 
           <div className="mhs-donut-wrap">
             {holdingSlices.length > 0 ? <HoldingDonut slices={holdingSlices} /> : (
@@ -240,7 +245,7 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenPension
           <div className="mhs-tax-copy">
             <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
             <p className="mhs-tax-sub">연금저축·IRP 납입 현황과 남은 여력을 확인해 보세요.</p>
-            <button type="button" className="mhs-tax-button" onClick={onOpenPensionCalculator}>완료율 확인하기 <span>→</span></button>
+            <button type="button" className="mhs-tax-button" onClick={onOpenPlanner}>완료율 확인하기 <span>→</span></button>
           </div>
         </div>
 
