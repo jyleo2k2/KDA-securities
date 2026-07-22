@@ -6,8 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .models import SourceChip
 
 ENGINE_NAME = "etf_long_term_planning_return"
-ENGINE_VERSION = "2026-07-15.1"
-POLICY_VERSION = "2026-07-15"
+ENGINE_VERSION = "2026-07-22.1"
+POLICY_VERSION = "2026-07-22"
 PERCENT_QUANTUM = Decimal("0.0001")
 INDUSTRY_ADJUSTMENT_CAP = Decimal("1.0000")
 VALUATION_ADJUSTMENT_CAP = Decimal("1.5000")
@@ -162,7 +162,13 @@ def _component(
 def calculate_etf_planning_return(
     assumption: EtfPlanningReturnInput,
 ) -> EtfPlanningReturnEvaluation:
-    """Calculate a standardized planning assumption, never a return forecast."""
+    """Calculate the approved CMA-minus-verified-cost planning assumption.
+
+    The historical, valuation, factor, currency, and uncertainty fields remain in
+    the input contract for diagnostic compatibility.  They are deliberately not
+    applied to the central value unless a separately versioned evidence gate is
+    approved for production.
+    """
 
     cma = assumption.asset_class_cma_percent
     industry_raw = (
@@ -214,41 +220,41 @@ def calculate_etf_planning_return(
         ),
         _component(
             code="industry_excess_growth",
-            operation="add",
+            operation="diagnostic_not_applied",
             raw=industry_raw,
-            applied=industry,
+            applied=Decimal("0"),
             cap=INDUSTRY_ADJUSTMENT_CAP,
             source=assumption.sources.industry_growth,
         ),
         _component(
             code="valuation_normalization",
-            operation="add",
+            operation="diagnostic_not_applied",
             raw=valuation_raw,
-            applied=valuation,
+            applied=Decimal("0"),
             cap=VALUATION_ADJUSTMENT_CAP,
             source=valuation_source,
         ),
         _component(
             code="factor",
-            operation="add",
+            operation="diagnostic_not_applied",
             raw=assumption.factor_adjustment_percent,
-            applied=factor,
+            applied=Decimal("0"),
             cap=FACTOR_ADJUSTMENT_CAP,
             source=assumption.sources.factor,
         ),
         _component(
             code="currency",
-            operation="add",
+            operation="diagnostic_not_applied",
             raw=assumption.currency_adjustment_percent,
-            applied=currency,
+            applied=Decimal("0"),
             cap=CURRENCY_ADJUSTMENT_CAP,
             source=assumption.sources.currency,
         ),
         _component(
             code="model_uncertainty",
-            operation="subtract",
+            operation="diagnostic_not_applied",
             raw=assumption.uncertainty_discount_percent,
-            applied=uncertainty,
+            applied=Decimal("0"),
             cap=UNCERTAINTY_DISCOUNT_CAP,
             source=assumption.sources.uncertainty,
         ),
@@ -262,13 +268,25 @@ def calculate_etf_planning_return(
         ),
     ]
 
-    gross = cma + industry + valuation + factor + currency - uncertainty
+    gross = cma
     net = gross - cost
     warnings = [
         "standardized_planning_assumption_not_return_forecast",
         "historical_etf_returns_not_used_as_forward_return",
         "risk_is_reported_separately_from_planning_return",
+        "central_value_is_cma_minus_verified_annual_cost_only",
     ]
+    if any(
+        value != 0
+        for value in (
+            industry,
+            valuation,
+            factor,
+            currency,
+            uncertainty,
+        )
+    ):
+        warnings.append("unvalidated_overlay_inputs_retained_for_diagnostic_only")
     if assumption.current_valuation_multiple is None:
         warnings.append("valuation_adjustment_omitted_missing_verified_multiples")
 

@@ -210,11 +210,11 @@ def test_named_mock_scenario_wins_over_tax_credit_word() -> None:
         "국내 실시간 뉴스 기반 운용전략을 보여줘",
     ),
 )
-def test_explicit_live_news_strategy_routes_to_event_strategy(message: str) -> None:
+def test_news_strategy_question_routes_to_stored_news(message: str) -> None:
     plan = plan_question(message)
 
     assert plan.intent == ChatIntent.NEWS
-    assert plan.requests_event_strategy is True
+    assert plan.requests_event_strategy is False
     assert plan.news_query is not None
 
 
@@ -225,12 +225,28 @@ def test_ordinary_pension_strategy_does_not_trigger_live_news() -> None:
     assert plan.requests_event_strategy is False
 
 
-def test_timely_market_news_routes_to_live_lookup() -> None:
+def test_timely_market_news_routes_to_stored_news() -> None:
     plan = plan_question("실시간 증시 뉴스 보여줘")
 
     assert plan.intent == ChatIntent.NEWS
-    assert plan.requests_live_news is True
+    assert plan.requests_live_news is False
     assert plan.requests_event_strategy is False
+
+
+@pytest.mark.parametrize(
+    "message",
+    (
+        "오늘 증시 뉴스 알려줘",
+        "지금 국내 증시 뉴스 보여줘",
+        "지금 미국 증시 뉴스 보여줘",
+        "최신 증시 뉴스 알려줘",
+    ),
+)
+def test_general_freshness_words_keep_stored_three_line_news(message: str) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent == ChatIntent.NEWS
+    assert plan.requests_live_news is False
 
 
 @pytest.mark.parametrize(
@@ -415,6 +431,19 @@ def test_future_phrases_remain_blocked(message: str) -> None:
 
 @pytest.mark.parametrize(
     "message",
+    ("중국 주식에 투자해도 돼?", "삼성전자 주식을 직접 편입해도 돼?"),
+)
+def test_foreign_market_and_individual_stock_requests_are_distinguished(
+    message: str,
+) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent == ChatIntent.OUT_OF_SCOPE
+    assert plan.blocked_reason == BlockedReason.FOREIGN_MARKET_OR_INDIVIDUAL_STOCK
+
+
+@pytest.mark.parametrize(
+    "message",
     (
         "IRP 연금 운용 전략을 알려줘",
         "연금 포트폴리오를 구성해줘",
@@ -450,3 +479,13 @@ def test_explicit_macro_request_takes_priority_over_etf_theme() -> None:
 
     assert plan.intent is ChatIntent.MACRO_EVIDENCE
     assert plan.blocked_reason is None
+
+
+def test_accumulation_question_redirects_to_pension_planner() -> None:
+    response = _service(RecordingKnowledgeRepository()).ask(
+        ChatRequest(message="적립하면 얼마 모여요?")
+    )
+
+    assert response.data_mode == "pension_planner_redirect"
+    assert response.suggested_follow_ups[0].follow_up_id == "open_pension_planner"
+    assert "연금계산기" in response.answer

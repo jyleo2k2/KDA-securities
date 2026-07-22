@@ -16,6 +16,7 @@ class BlockedReason(StrEnum):
     SENSITIVE_INFORMATION = "sensitive_information"
     FUTURE_PREDICTION = "future_prediction"
     ORDER_REQUEST = "order_request"
+    FOREIGN_MARKET_OR_INDIVIDUAL_STOCK = "foreign_market_or_individual_stock"
     PRODUCT_LEVEL_UNAVAILABLE = "product_level_unavailable"
     ACCOUNT_SELECTION_REQUIRED = "account_selection_required"
     UNSUPPORTED = "unsupported"
@@ -57,6 +58,7 @@ class QueryPlan(BaseModel):
     combines_account_rules: bool = False
     requests_tax_credit: bool = False
     requests_withdrawal_tax: bool = False
+    requests_pension_planner: bool = False
     account_rule_topic: AccountRuleTopic | None = None
     theme_id: str | None = None
     theme_content_topic: ThemeContentTopic | None = None
@@ -196,7 +198,7 @@ _NEWS_EVENT_STRATEGY_TERMS = re.compile(
     r"(?:운용|투자|포트폴리오|전략|리밸런싱).{0,20}실시간",
     re.I,
 )
-_NEWS_TIMELINESS_TERMS = re.compile(r"실시간|방금|지금|오늘|최신|장중", re.I)
+_NEWS_TIMELINESS_TERMS = re.compile(r"실시간|방금|장중", re.I)
 _UNSUPPORTED_MARKET_NEWS = re.compile(
     r"(?:중국|일본|유럽|홍콩|대만)\s*(?:증시|시장|주식|뉴스|기사|소식)",
     re.I,
@@ -204,6 +206,14 @@ _UNSUPPORTED_MARKET_NEWS = re.compile(
 _PENSION_NEWS = re.compile(r"연금저축|퇴직연금|(?<![A-Za-z])IRP(?![A-Za-z])|DC형", re.I)
 _COMPANY_NEWS = re.compile(
     r"삼성전자|SK\s*하이닉스|현대차|기아|LG에너지솔루션|NAVER|카카오",
+    re.I,
+)
+_FOREIGN_MARKET_OR_INDIVIDUAL_STOCK = re.compile(
+    r"(?:중국|일본|유럽|홍콩|대만)\s*(?:증시|시장|주식|투자|편입)"
+    r"|(?:개별\s*주식|직접\s*주식).{0,20}(?:담|편입|투자|보유)"
+    r"|(?:담|편입|투자|보유).{0,20}(?:개별\s*주식|직접\s*주식)"
+    r"|(?:삼성전자|SK\s*하이닉스|현대차|기아|LG에너지솔루션|NAVER|카카오)"
+    r".{0,20}(?:담|편입|투자|보유)",
     re.I,
 )
 _MACRO_EVIDENCE_TERMS = re.compile(
@@ -272,6 +282,11 @@ _PENSION_TAX_CALCULATION_TERMS = re.compile(
     r"계산|얼마|공제액|과세액|예상\s*(?:세액|금액)|환급액|돌려\s*받|"
     r"받을\s*수\s*있는|"
     r"\d[\d,]*(?:\.\d+)?\s*(?:억|천만|만|천)?\s*원"
+)
+_PENSION_PLANNER_TERMS = re.compile(
+    r"(?:적립|모으).{0,16}(?:얼마|계산|시뮬)|"
+    r"(?:55|60|65)\s*세.{0,16}(?:얼마|수령|계산)|"
+    r"(?:수령액|연금\s*계산|시뮬레이션).{0,16}(?:얼마|계산|알려)"
 )
 _COUNT = re.compile(r"(?<!\d)([1-5])\s*(?:개|건)(?:만)?(?!\d)")
 _KOREAN_COUNT = (
@@ -411,6 +426,11 @@ def plan_question(
             BlockedReason.FUTURE_PREDICTION,
         ),
         (
+            _FOREIGN_MARKET_OR_INDIVIDUAL_STOCK.search(normalized) is not None
+            and _NEWS_TERMS.search(normalized) is None,
+            BlockedReason.FOREIGN_MARKET_OR_INDIVIDUAL_STOCK,
+        ),
+        (
             _PRODUCT_LEVEL.search(normalized) is not None and theme is None,
             BlockedReason.PRODUCT_LEVEL_UNAVAILABLE,
         ),
@@ -429,6 +449,7 @@ def plan_question(
     has_calculation_input = structured_pension_tax or requests_calculation
     requests_tax_credit = tax_credit_topic and has_calculation_input
     requests_withdrawal_tax = withdrawal_tax_topic and has_calculation_input
+    requests_pension_planner = _PENSION_PLANNER_TERMS.search(normalized) is not None
     if structured_pension_tax and not (tax_credit_topic or withdrawal_tax_topic):
         requests_tax_credit = True
         requests_withdrawal_tax = True
@@ -449,6 +470,8 @@ def plan_question(
         ChatIntent.PROVIDER_DISCLOSURE: bool(account_types)
         and _DISCLOSURE_TERMS.search(normalized) is not None,
         ChatIntent.ACCOUNT_RULE: bool(
+            requests_pension_planner
+            or
             account_types
             or account_rule_topic
             or (
@@ -500,12 +523,8 @@ def plan_question(
             intent=ChatIntent.NEWS,
             account_types=account_types,
             news_query=news_query,
-            requests_event_strategy=(
-                _NEWS_EVENT_STRATEGY_TERMS.search(normalized) is not None
-            ),
-            requests_live_news=(
-                _NEWS_TIMELINESS_TERMS.search(normalized) is not None
-            ),
+            requests_event_strategy=False,
+            requests_live_news=False,
             news_scope_notice=_news_scope_notice(normalized),
             max_results=max_results,
         )
@@ -593,5 +612,6 @@ def plan_question(
                 and _COMBINED_ACCOUNT_RULE.search(normalized) is not None
             ),
             account_rule_topic=account_rule_topic,
+            requests_pension_planner=requests_pension_planner,
         )
     return _blocked(normalized, BlockedReason.UNSUPPORTED, max_results)

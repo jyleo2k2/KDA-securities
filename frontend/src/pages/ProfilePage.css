@@ -1,0 +1,23 @@
+.profile-page { display: grid; gap: 18px; color: #111; font-family: "Cafe24SsurroundAir", "Noto Sans KR", sans-serif; }
+.profile-page-header h1 { margin: 0; font-size: 24px; font-weight: 900; }
+.profile-page-header p { margin: 8px 0 0; color: #8a9691; font-size: 13px; line-height: 1.5; }
+.profile-user-row { display: flex; align-items: center; gap: 14px; padding: 18px; border: 1.5px solid #eaede7; border-radius: 20px; background: #fff; }
+.profile-user-row > img { width: 58px; height: 58px; flex: none; border: 1.5px solid #eaede7; border-radius: 50%; object-fit: cover; }
+.profile-user-row > div { min-width: 0; }
+.profile-user-row strong { display: block; font-size: 20px; font-weight: 900; }
+.profile-user-row p { margin: 7px 0 0; color: #8a9691; font-size: 12px; }
+.profile-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.profile-stat-grid > div { min-height: 82px; padding: 16px; border: 1.5px solid #eaede7; border-radius: 18px; background: #f5faf6; }
+.profile-stat-grid > div:last-child { background: #fff9e8; }
+.profile-stat-grid span { display: block; color: #8a9691; font-size: 12px; font-weight: 700; }
+.profile-stat-grid strong { display: block; margin-top: 10px; color: #18a860; font-size: 18px; font-weight: 900; }
+.profile-stat-grid > div:last-child strong { color: #c88e00; }
+.profile-investor-card { display: flex; align-items: center; gap: 14px; padding: 18px; border-radius: 20px; background: #164a32; }
+.profile-investor-card > div { flex: 1; min-width: 0; }
+.profile-investor-card span, .profile-investor-card p { color: #9dc2ad; font-size: 12px; font-weight: 700; }
+.profile-investor-card strong { display: block; margin-top: 7px; color: #fff; font-size: 22px; font-weight: 900; }
+.profile-investor-card p { margin: 7px 0 0; font-weight: 500; line-height: 1.5; }
+.profile-investor-card .profile-expired { color: #ffd860; }
+.profile-investor-card button { flex: none; padding: 9px 13px; border: 0; border-radius: 999px; background: #ffd860; color: #164a32; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+.profile-boundary-note { margin: 0; padding: 14px 16px; border-radius: 16px; background: #f3f5f2; color: #69736d; font-size: 12px; line-height: 1.6; }
+@media (max-width: 380px) { .profile-stat-grid { grid-template-columns: 1fr; }.profile-investor-card { align-items: flex-start; flex-direction: column; }.profile-investor-card button { width: 100%; } }

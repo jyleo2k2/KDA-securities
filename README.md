@@ -114,16 +114,16 @@ npm run dev
 
 | API | 역할 |
 |---|---|
-| `POST /chat/demo/stream` | 비인증 자연어 질문 → SSE(`phase`·`answer_delta`·선택적 `narration_update`·`response`) |
-| `POST /chat/stream` | 인증 자연어 질문 → 같은 SSE 계약 + 대화 저장·Idempotency-Key 재생 |
-| `GET /chat/demo/capabilities` | 현재 지원·조건부·미지원 기능 확인 |
-| `GET /chat/demo/scenarios` | 발표용 목계좌 시나리오 6종 확인 |
+| `POST /chat/stream` | 인증 자연어 질문 → SSE(`phase`·`answer_delta`·선택적 `narration_update`·`response`) + 대화 저장·Idempotency-Key 재생 |
+| `GET /chat/capabilities` | 인증 사용자용 현재 지원·조건부·미지원 기능 확인 |
+| `GET /chat/scenarios` | 인증 사용자용 발표 목계좌 시나리오 6종 확인 |
+| `GET /chat/heroes` | 인증 사용자용 목시나리오 대표 6명 확인 |
 | `POST /engine/pension-tax-credit` | 연금저축·IRP 당해연도 납입액의 세액공제 교육용 추정 |
 | `POST /engine/non-pension-withdrawal-estimate` | 연금외수령 시 기타소득 원천징수 최대 추정 |
 | `GET /market/etfs` | KRX 기준일 전체 상장 ETF 거래량·거래대금 조회 |
 | `GET /market/etfs/{isu_code}/volume-history` | 종목별 적재된 일별 거래량 이력 조회 |
 
-`POST /chat/demo/stream` 요청 본문 예시:
+`POST /chat/stream` 요청 본문 예시(Authorization Bearer token과 UUID `Idempotency-Key` 필요):
 
 ```json
 {
@@ -150,7 +150,7 @@ npm run dev
 - 확정 스택: React + TypeScript + Vite PWA → FastAPI → Supabase PostgreSQL/pgvector.
 - main 통합 완료:
   - 규칙 엔진 6모듈(성향 분석·계좌 규칙 검사·계좌별 진단·통합 집계·적립 시뮬레이션·포트폴리오 예시) + 전략 수익률 3함수
-  - FastAPI 앱 팩토리·라우터: `/engine/*` 도구 5종, `/disclosures/*`, `/retrieval/*`, `/chat/demo*`
+  - FastAPI 앱 팩토리·라우터: `/engine/*` 도구 5종, `/disclosures/*`, `/retrieval/*`, 인증 `/chat/*`
   - 챗봇 백엔드: 검증 문서 RAG, 목시나리오 진단, 조건부 실공시·뉴스 조회, 선택적 Claude 설명과 새 숫자 차단
   - React PWA 4탭 골격(홈·연금가이드·벤치마크·프로필)과 연금가이드 챗 화면
   - CI(GitHub Actions: ruff·pytest + frontend build)

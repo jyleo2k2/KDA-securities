@@ -173,7 +173,7 @@ def run_market_news_ingestion(
                 raise MarketNewsIngestionError(
                     "BGE-M3 duplicate detection failed"
                 ) from exc
-            selected = select_market_candidates(
+            candidate_pool = select_market_candidates(
                 embedded,
                 existing_urls={
                     identity.canonical_url
@@ -195,7 +195,7 @@ def run_market_news_ingestion(
                     for identity in identities
                     if identity.selection_embedding
                 ],
-                limit=MAX_DAILY_ARTICLES,
+                limit=None,
             )
 
             summarizer = NewsSummarizer(
@@ -210,7 +210,9 @@ def run_market_news_ingestion(
             }
             failures: Counter[str] = Counter()
             ready: list[ReadyMarketNews] = []
-            for candidate in selected:
+            for candidate in candidate_pool:
+                if len(ready) == MAX_DAILY_ARTICLES:
+                    break
                 try:
                     article = fetch_news_article(client, candidate.item.original_url)
                 except NewsArticleFetchError as exc:
@@ -219,13 +221,32 @@ def run_market_news_ingestion(
                 if article.content_sha256 in content_hashes:
                     failures["duplicate_content"] += 1
                     continue
-                try:
-                    summary = summarizer.summarize(
-                        title=candidate.item.title,
-                        article_text=article.text,
-                    )
-                except NewsSummaryError as exc:
-                    failures[exc.code] += 1
+                summary = None
+                correction = None
+                for attempt in range(3):
+                    try:
+                        summary = summarizer.summarize(
+                            title=candidate.item.title,
+                            article_text=article.text,
+                            correction=correction,
+                        )
+                        break
+                    except NewsSummaryError as exc:
+                        if exc.draft is not None:
+                            correction = (
+                                "아래 초안의 사실은 원문 범위에서만 유지하세요. "
+                                "각 문장을 "
+                                "60자 이하로 고치세요. 전망에는 발언 주체를 넣으세요.\n"
+                                f"<draft>{chr(10).join(exc.draft.summary_lines)}</draft>"
+                            )
+                        else:
+                            correction = (
+                                "각 문장을 60자 이하로 줄이세요. "
+                                "전망에는 발언 주체를 넣으세요."
+                            )
+                        if attempt:
+                            failures[exc.code] += 1
+                if summary is None:
                     continue
                 content_hashes.add(article.content_sha256)
                 ready.append(
@@ -262,7 +283,7 @@ def run_market_news_ingestion(
             articles=ready,
             raw_record_count=raw_record_count,
             candidate_count=len(candidates),
-            selected_count=len(selected),
+            selected_count=min(len(candidate_pool), MAX_DAILY_ARTICLES),
             rejected_record_count=max(rejected_record_count, api_rejections),
             processing_failures=dict(failures),
         )
@@ -290,7 +311,7 @@ def run_market_news_ingestion(
         "policy_version": SELECTION_POLICY_VERSION,
         "raw_received": raw_record_count,
         "eligible_candidates": len(candidates),
-        "selected": len(selected),
+        "selected": min(len(candidate_pool), MAX_DAILY_ARTICLES),
         "summarized": len(ready),
         "inserted": rotation.inserted_count,
         "expired": rotation.expired_count,

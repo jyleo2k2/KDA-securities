@@ -11,7 +11,7 @@ from typing import Annotated
 from uuid import UUID
 
 import psycopg
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, Response, status
 from pydantic import BaseModel, ConfigDict
 from starlette.responses import StreamingResponse
 
@@ -19,7 +19,12 @@ from ..auth import require_supabase_user_id
 from ..chat import ChatRequest, ChatResponse, ChatService
 from ..chat.cards import ChatCardCatalog, chat_card_catalog
 from ..chat.heroes import DemoHeroPortfolio, build_demo_heroes
-from ..chat.models import ChatCapabilities, ChatIntent, ScenarioSummary
+from ..chat.models import (
+    ChatCapabilities,
+    ChatIntent,
+    CompletedSurveyProfile,
+    ScenarioSummary,
+)
 from ..chat.narrator import NARRATABLE_INTENTS, ClaudeNarrator
 from ..chat.query_planner import BlockedReason, QueryPlan
 from ..chat.repository import (
@@ -35,6 +40,12 @@ from ..chat.user_context import (
     DemoUserFinancialContext,
     apply_demo_context_evidence,
 )
+from ..engine import AccountType, ProfileSurveyInput, SurveyAnswer, evaluate_profile
+from ..investment_profile_policy import assessment_validity
+from ..investment_profile_repository import (
+    InvestmentProfileRepository,
+    StoredInvestmentProfile,
+)
 from .deps import (
     get_chat_narrator,
     get_chat_repository,
@@ -42,7 +53,9 @@ from .deps import (
     get_demo_user_context_repository,
     get_optional_chat_repository,
     get_optional_demo_user_context_repository,
+    get_optional_investment_profile_repository,
 )
+from .errors import ApiErrorCode, api_error
 
 router = APIRouter(tags=["chat"])
 logger = logging.getLogger("uvicorn.error")
@@ -82,6 +95,51 @@ def _load_authenticated_nickname(
     return repository.get_nickname(owner_id)
 
 
+def _load_saved_survey_profile(
+    repository: InvestmentProfileRepository | None,
+    owner_id: UUID,
+    context: DemoUserFinancialContext | None,
+) -> CompletedSurveyProfile | None:
+    """Build the ETF-engine input from the owner's latest persisted assessment."""
+    if repository is None or context is None:
+        return None
+    stored: StoredInvestmentProfile | None = repository.get_latest(owner_id)
+    if stored is None or assessment_validity(stored.assessment.assessed_at).is_expired:
+        return None
+    if (
+        stored.preferences is None
+        or not stored.preferences.investor_information_provided
+    ):
+        return None
+    if not 20 <= context.representative_age <= 54:
+        return None
+    grouped: dict[str, list[str]] = {}
+    for answer in stored.assessment.answers:
+        grouped.setdefault(answer.question_code, []).append(answer.selected_value)
+    try:
+        survey = ProfileSurveyInput(
+            answers=[
+                SurveyAnswer(question_code=question_code, selected_values=values)
+                for question_code, values in grouped.items()
+            ]
+        )
+        retirement_start_age = int(grouped["retirement_start_age"][0])
+        evaluation = evaluate_profile(survey)
+        return CompletedSurveyProfile(
+            account_type=AccountType.IRP,
+            current_age=context.representative_age,
+            retirement_start_age=retirement_start_age,
+            risk_profile=evaluation.risk_profile,
+            loss_tolerance_percent=evaluation.loss_tolerance_percent,
+        )
+    except (KeyError, ValueError):
+        logger.warning(
+            "Stored investment profile could not be converted to a chat survey "
+            "profile"
+        )
+        return None
+
+
 def _restore_session_conversation_context(
     request: "AuthenticatedChatRequest",
     repository: ChatRepository,
@@ -99,14 +157,25 @@ def _restore_session_conversation_context(
 def _authenticated_request(
     request: "AuthenticatedChatRequest",
     context: DemoUserFinancialContext | None,
+    saved_survey_profile: CompletedSurveyProfile | None = None,
+    *,
+    use_saved_survey_profile: bool = False,
 ) -> ChatRequest:
     payload = request.model_dump(exclude={"session_id"})
     if context is not None:
-        survey_profile = context.personalize_survey_profile(request.survey_profile)
+        candidate_survey = (
+            saved_survey_profile if use_saved_survey_profile else request.survey_profile
+        )
+        survey_profile = context.personalize_survey_profile(candidate_survey)
         conversation_context = request.conversation_context
         if conversation_context is not None:
+            conversation_profile = (
+                saved_survey_profile
+                if use_saved_survey_profile
+                else conversation_context.survey_profile
+            )
             conversation_survey = context.personalize_survey_profile(
-                conversation_context.survey_profile
+                conversation_profile
             )
             conversation_context = conversation_context.model_copy(
                 update={
@@ -184,6 +253,10 @@ def _sse(event: str, payload: dict[str, object]) -> str:
     return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
+def _sse_error(code: ApiErrorCode, message: str) -> str:
+    return _sse("error", {"code": code, "message": message})
+
+
 def _answer_delta_events(answer: str) -> list[str]:
     """Send the safety-checked answer in one SSE event.
 
@@ -214,70 +287,9 @@ def _log_stream_latency(
         (answer_started_at - started_at) * 1000,
         answer_ms * 1000,
         narration_ms * 1000,
-        (
-            (first_delta_at - started_at) * 1000
-            if first_delta_at is not None
-            else -1
-        ),
+        ((first_delta_at - started_at) * 1000 if first_delta_at is not None else -1),
         (finished_at - started_at) * 1000,
     )
-
-
-async def _stream_answer(
-    *,
-    request: ChatRequest,
-    service: ChatService,
-    narrator: ClaudeNarrator | None,
-) -> AsyncIterator[str]:
-    started_at = perf_counter()
-    plan = service.plan(request)
-    yield _sse("phase", {"message": "근거를 검색하고 있습니다."})
-    answer_started_at = perf_counter()
-    try:
-        response = await asyncio.to_thread(service.ask, request, plan=plan)
-    except _DATABASE_ERRORS:
-        yield _sse("error", {"detail": "Chat data source is unavailable"})
-        return
-    except RuntimeError:
-        logger.exception("Chat stream received an invalid stored response")
-        yield _sse("error", {"detail": "Chat data source is unavailable"})
-        return
-    stream_before_narration = (
-        narrator is not None
-        and response.intent in NARRATABLE_INTENTS
-        and bool(response.sources)
-    )
-    first_delta_at = None
-    if stream_before_narration:
-        first_delta_at = perf_counter()
-        for event in _answer_delta_events(response.answer):
-            yield event
-    if narrator is not None:
-        yield _sse("phase", {"message": "검증된 설명을 생성하고 있습니다."})
-        narration_started_at = perf_counter()
-        response = await asyncio.to_thread(
-            narrator.narrate,
-            response,
-            pension_tax_input=request.pension_tax,
-            pension_tax_message=request.message,
-        )
-        if response.narration_mode == "claude_verified":
-            yield _sse("narration_update", {"answer": response.answer})
-    else:
-        narration_started_at = None
-    yield _sse("phase", {"message": "답변 검증을 완료했습니다."})
-    if not stream_before_narration:
-        first_delta_at = perf_counter()
-        for event in _answer_delta_events(response.answer):
-            yield event
-    _log_stream_latency(
-        intent=response.intent,
-        answer_started_at=answer_started_at,
-        narration_started_at=narration_started_at,
-        first_delta_at=first_delta_at,
-        started_at=started_at,
-    )
-    yield _sse("response", {"response": response.model_dump(mode="json")})
 
 
 class AuthenticatedChatRequest(ChatRequest):
@@ -315,8 +327,9 @@ class StoredChatMessageOut(BaseModel):
     evidence: list[MessageEvidenceOut]
 
 
-@router.get("/chat/demo/capabilities", response_model=ChatCapabilities)
+@router.get("/chat/capabilities", response_model=ChatCapabilities)
 def chat_capabilities(
+    owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
     service: Annotated[ChatService, Depends(get_chat_service)],
 ) -> ChatCapabilities:
     return service.capabilities
@@ -327,13 +340,17 @@ def chat_cards() -> ChatCardCatalog:
     return chat_card_catalog()
 
 
-@router.get("/chat/demo/scenarios", response_model=list[ScenarioSummary])
-def chat_scenarios() -> list[ScenarioSummary]:
+@router.get("/chat/scenarios", response_model=list[ScenarioSummary])
+def chat_scenarios(
+    owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
+) -> list[ScenarioSummary]:
     return LocalScenarioRepository().list()
 
 
-@router.get("/chat/demo/heroes", response_model=list[DemoHeroPortfolio])
-def chat_demo_heroes() -> tuple[DemoHeroPortfolio, ...]:
+@router.get("/chat/heroes", response_model=list[DemoHeroPortfolio])
+def chat_heroes(
+    owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
+) -> tuple[DemoHeroPortfolio, ...]:
     return build_demo_heroes()
 
 
@@ -350,45 +367,34 @@ def get_my_pension_context(
     try:
         context = repository.get(owner_id)
     except _DATABASE_ERRORS as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="User pension context database is unavailable",
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "User pension context database is unavailable",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         ) from exc
     if context is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User pension context was not found",
+        raise api_error(
+            ApiErrorCode.RESOURCE_NOT_FOUND,
+            "User pension context was not found",
+            status.HTTP_404_NOT_FOUND,
         )
     return context
-
-
-@router.post("/chat/demo/stream")
-async def chat_demo_stream(
-    request: ChatRequest,
-    service: Annotated[ChatService, Depends(get_chat_service)],
-    narrator: Annotated[ClaudeNarrator | None, Depends(get_chat_narrator)],
-) -> StreamingResponse:
-    """Stream safe progress events and one final validated demo response."""
-
-    return StreamingResponse(
-        _stream_answer(request=request, service=service, narrator=narrator),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
 
 
 @router.post("/chat/stream")
 async def chat_authenticated_stream(
     request: AuthenticatedChatRequest,
     owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
-    repository: Annotated[
-        ChatRepository | None, Depends(get_optional_chat_repository)
-    ],
+    repository: Annotated[ChatRepository | None, Depends(get_optional_chat_repository)],
     service: Annotated[ChatService, Depends(get_chat_service)],
     narrator: Annotated[ClaudeNarrator | None, Depends(get_chat_narrator)],
     context_repository: Annotated[
         DemoUserContextRepository | None,
         Depends(get_optional_demo_user_context_repository),
+    ],
+    investment_profile_repository: Annotated[
+        InvestmentProfileRepository | None,
+        Depends(get_optional_investment_profile_repository),
     ],
     idempotency_key: Annotated[UUID, Header(alias="Idempotency-Key")],
 ) -> StreamingResponse:
@@ -401,7 +407,10 @@ async def chat_authenticated_stream(
     async def events() -> AsyncIterator[str]:
         yield _sse("phase", {"message": "요청을 확인하고 있습니다."})
         if request.session_id is not None and repository is None:
-            yield _sse("error", {"detail": "Chat database is not configured"})
+            yield _sse_error(
+                ApiErrorCode.DATABASE_NOT_CONFIGURED,
+                "Chat database is not configured",
+            )
             return
         if repository is not None:
             try:
@@ -411,11 +420,17 @@ async def chat_authenticated_stream(
                     idempotency_key=idempotency_key,
                 )
             except _DATABASE_ERRORS:
-                yield _sse("error", {"detail": "Chat database is unavailable"})
+                yield _sse_error(
+                    ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+                    "Chat database is unavailable",
+                )
                 return
             except RuntimeError:
                 logger.exception("Chat replay contained an invalid stored response")
-                yield _sse("error", {"detail": "Chat database is unavailable"})
+                yield _sse_error(
+                    ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+                    "Chat database is unavailable",
+                )
                 return
             if replayed is not None and replayed.response is not None:
                 yield _sse(
@@ -448,10 +463,16 @@ async def chat_authenticated_stream(
                 return_exceptions=True,
             )
             if isinstance(session_result, ChatSessionAccessError):
-                yield _sse("error", {"detail": "Chat session not found"})
+                yield _sse_error(
+                    ApiErrorCode.SESSION_NOT_FOUND,
+                    "Chat session not found",
+                )
                 return
             if isinstance(session_result, _DATABASE_ERRORS):
-                yield _sse("error", {"detail": "Chat database is unavailable"})
+                yield _sse_error(
+                    ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+                    "Chat database is unavailable",
+                )
                 return
             if isinstance(session_result, BaseException):
                 raise session_result
@@ -480,7 +501,21 @@ async def chat_authenticated_stream(
             )
         except _DATABASE_ERRORS:
             nickname = None
-        chat_request = _authenticated_request(request_with_context, context)
+        try:
+            saved_survey_profile = await asyncio.to_thread(
+                _load_saved_survey_profile,
+                investment_profile_repository,
+                owner_id,
+                context,
+            )
+        except _DATABASE_ERRORS:
+            saved_survey_profile = None
+        chat_request = _authenticated_request(
+            request_with_context,
+            context,
+            saved_survey_profile,
+            use_saved_survey_profile=investment_profile_repository is not None,
+        )
         started_at = perf_counter()
         plan = service.plan(
             _authenticated_planning_request(request_with_context, chat_request)
@@ -497,11 +532,17 @@ async def chat_authenticated_stream(
                 nickname=nickname,
             )
         except _DATABASE_ERRORS:
-            yield _sse("error", {"detail": "Chat data source is unavailable"})
+            yield _sse_error(
+                ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+                "Chat data source is unavailable",
+            )
             return
         except RuntimeError:
             logger.exception("Chat stream received an invalid stored response")
-            yield _sse("error", {"detail": "Chat data source is unavailable"})
+            yield _sse_error(
+                ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+                "Chat data source is unavailable",
+            )
             return
         stream_before_narration = (
             narrator is not None
@@ -552,7 +593,10 @@ async def chat_authenticated_stream(
             )
             return
         if repository is None:
-            yield _sse("error", {"detail": "Chat database is not configured"})
+            yield _sse_error(
+                ApiErrorCode.DATABASE_NOT_CONFIGURED,
+                "Chat database is not configured",
+            )
             return
 
         yield _sse("phase", {"message": "대화 기록을 저장하고 있습니다."})
@@ -566,14 +610,20 @@ async def chat_authenticated_stream(
                 idempotency_key=idempotency_key,
             )
         except ChatSessionAccessError:
-            yield _sse("error", {"detail": "Chat session not found"})
+            yield _sse_error(ApiErrorCode.SESSION_NOT_FOUND, "Chat session not found")
             return
         except _DATABASE_ERRORS:
-            yield _sse("error", {"detail": "Chat database is unavailable"})
+            yield _sse_error(
+                ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+                "Chat database is unavailable",
+            )
             return
         except RuntimeError:
             logger.exception("Chat save produced an invalid stored response")
-            yield _sse("error", {"detail": "Chat database is unavailable"})
+            yield _sse_error(
+                ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+                "Chat database is unavailable",
+            )
             return
         final_response = saved.response or response
         yield _sse("phase", {"message": "답변 검증을 완료했습니다."})
@@ -615,9 +665,10 @@ def list_chat_sessions(
     try:
         sessions: list[ChatSessionSummary] = repository.list_sessions(owner_id)
     except _DATABASE_ERRORS as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Chat database is unavailable",
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Chat database is unavailable",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         ) from exc
     return [ChatSessionOut.model_validate(session) for session in sessions]
 
@@ -634,14 +685,16 @@ def delete_chat_session(
     try:
         repository.delete_session(owner_id=owner_id, session_id=session_id)
     except ChatSessionAccessError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat session not found",
+        raise api_error(
+            ApiErrorCode.SESSION_NOT_FOUND,
+            "Chat session not found",
+            status.HTTP_404_NOT_FOUND,
         ) from exc
     except _DATABASE_ERRORS as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Chat database is unavailable",
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Chat database is unavailable",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         ) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -656,18 +709,18 @@ def get_chat_messages(
     repository: Annotated[ChatRepository, Depends(get_chat_repository)],
 ) -> list[StoredChatMessageOut]:
     try:
-        messages = repository.get_messages(
-            owner_id=owner_id, session_id=session_id
-        )
+        messages = repository.get_messages(owner_id=owner_id, session_id=session_id)
     except ChatSessionAccessError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat session not found",
+        raise api_error(
+            ApiErrorCode.SESSION_NOT_FOUND,
+            "Chat session not found",
+            status.HTTP_404_NOT_FOUND,
         ) from exc
     except _DATABASE_ERRORS as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Chat database is unavailable",
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Chat database is unavailable",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         ) from exc
     return [_message_out(message) for message in messages]
 

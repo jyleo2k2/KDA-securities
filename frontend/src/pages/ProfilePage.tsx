@@ -1,22 +1,12 @@
-import { useState, type FormEvent } from "react";
+import profileIcon from "../assets/main-home/profile-icon.png";
+import type { DemoUserFinancialContext, InvestmentProfileResponse, RiskProfile } from "../api/types";
+import "./ProfilePage.css";
 
-import { evaluateProfileSurvey } from "../api/client";
-import type {
-  AccountType,
-  CompletedSurveyProfile,
-  DemoUserFinancialContext,
-  RiskProfile,
-  SurveyAnswer,
-} from "../api/types";
-
-const QUESTIONS = [
-  ["investment_horizon", "투자 예정 기간"],
-  ["investment_experience", "투자 경험"],
-  ["financial_knowledge", "금융상품 지식 수준"],
-  ["risky_asset_share", "현재 위험자산 비중"],
-  ["loss_tolerance", "감내 가능한 손실 수준"],
-  ["income_stability", "소득 안정성"],
-] as const;
+interface ProfilePageProps {
+  investmentProfile: InvestmentProfileResponse | null;
+  onResurvey: () => void;
+  userContext: DemoUserFinancialContext | null;
+}
 
 const PROFILE_LABELS: Record<RiskProfile, string> = {
   stable: "안정형",
@@ -26,117 +16,29 @@ const PROFILE_LABELS: Record<RiskProfile, string> = {
   aggressive: "공격투자형",
 };
 
-interface ProfilePageProps {
-  profile: CompletedSurveyProfile | null;
-  onComplete: (profile: CompletedSurveyProfile) => void;
-  userContext: DemoUserFinancialContext | null;
-}
+export function ProfilePage({ investmentProfile, onResurvey, userContext }: ProfilePageProps) {
+  const assessment = investmentProfile?.assessment;
+  const nickname = userContext?.nickname.replace(/\(가상\)/g, "") ?? "연금 사용자";
 
-export function ProfilePage({ profile, onComplete, userContext }: ProfilePageProps) {
-  const [accountType, setAccountType] = useState<AccountType>(
-    profile?.account_type ?? "irp",
-  );
-  const [currentAge, setCurrentAge] = useState(profile?.current_age ?? 35);
-  const [retirementAge, setRetirementAge] = useState(
-    profile?.retirement_start_age ?? 60,
-  );
-  const [scores, setScores] = useState<Record<string, number>>(
-    Object.fromEntries(QUESTIONS.map(([code]) => [code, 3])),
-  );
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (submitting) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const answers: SurveyAnswer[] = QUESTIONS.map(([questionCode]) => ({
-        question_code: questionCode,
-        selected_score: scores[questionCode],
-      }));
-      const evaluation = await evaluateProfileSurvey({ answers });
-      onComplete({
-        account_type: accountType,
-        current_age: currentAge,
-        retirement_start_age: retirementAge,
-        risk_profile: evaluation.risk_profile,
-        loss_tolerance_percent: evaluation.loss_tolerance_percent,
-      });
-    } catch {
-      setError("설문 결과를 계산하지 못했습니다.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <section>
-      <h1 style={{ fontSize: 20 }}>투자성향 설문</h1>
-      {userContext && <section style={{ marginBottom: 20, padding: 14, borderRadius: 12, background: "#f4f7ee" }}><span className="mock-chip">대표 시나리오 목데이터</span><h2 style={{ margin: "8px 0 4px", fontSize: 17 }}>{userContext.nickname}</h2><p style={{ margin: 0, color: "#52645a", fontSize: 13 }}>{userContext.representative_age}세 · {userContext.customer_context}</p></section>}
-      {profile && (
-        <p style={{ color: "#1a6148", fontWeight: 700 }}>
-          현재 결과: {PROFILE_LABELS[profile.risk_profile]}
-        </p>
-      )}
-      <form onSubmit={submit} style={{ display: "grid", gap: 16 }}>
-        <label>
-          <span style={{ display: "block", marginBottom: 6 }}>연금계좌</span>
-          <select
-            value={accountType}
-            onChange={(event) => setAccountType(event.target.value as AccountType)}
-          >
-            <option value="dc">DC형</option>
-            <option value="irp">IRP</option>
-            <option value="pension_savings">연금저축펀드</option>
-          </select>
-        </label>
-        <label>
-          <span style={{ display: "block", marginBottom: 6 }}>현재 나이</span>
-          <input
-            type="number"
-            min={20}
-            max={54}
-            value={currentAge}
-            onChange={(event) => setCurrentAge(Number(event.target.value))}
-            required
-          />
-        </label>
-        <label>
-          <span style={{ display: "block", marginBottom: 6 }}>
-            연금 수령 개시 나이
-          </span>
-          <input
-            type="number"
-            min={55}
-            max={60}
-            value={retirementAge}
-            onChange={(event) => setRetirementAge(Number(event.target.value))}
-            required
-          />
-        </label>
-        {QUESTIONS.map(([code, topic]) => (
-          <label key={code}>
-            <span style={{ display: "block", marginBottom: 6 }}>{topic}</span>
-            <select
-              value={scores[code]}
-              onChange={(event) => setScores((current) => ({
-                ...current,
-                [code]: Number(event.target.value),
-              }))}
-            >
-              {[1, 2, 3, 4, 5].map((score) => (
-                <option value={score} key={score}>{score}점</option>
-              ))}
-            </select>
-          </label>
-        ))}
-        {error && <p style={{ color: "#b42318", margin: 0 }}>{error}</p>}
-        <button type="submit" disabled={submitting}>
-          {submitting ? "계산 중" : "설문 완료"}
-        </button>
-      </form>
+  return <section className="profile-page" aria-label="내 프로필">
+    <header className="profile-page-header"><h1>내 페이지</h1><p>저장된 투자자정보와 연금 데이터 범위를 확인해요.</p></header>
+    <section className="profile-user-row">
+      <img src={profileIcon} alt="프로필" />
+      <div><strong>{nickname}</strong><p>{userContext ? `${userContext.as_of_date} 기준 데모 프로필` : "연금계좌 정보 미연결"}</p></div>
     </section>
-  );
+    <section className="profile-stat-grid" aria-label="프로필 데이터 요약">
+      <div><span>데이터 구분</span><strong>{userContext ? "목데이터" : "미연결"}</strong></div>
+      <div><span>정보 기준일</span><strong>{userContext?.as_of_date ?? "-"}</strong></div>
+    </section>
+    <section className="profile-investor-card">
+      <div>
+        <span>저장 투자성향</span>
+        <strong>{assessment ? PROFILE_LABELS[assessment.risk_profile] : "진단 전"}</strong>
+        {assessment ? <p>진단일 {assessment.assessed_on} · 유효기한 {assessment.valid_until}</p> : <p>저장된 투자성향이 없습니다.</p>}
+        {assessment?.is_expired && <p className="profile-expired">투자성향 유효기간이 만료됐어요.</p>}
+      </div>
+      <button type="button" onClick={onResurvey}>진단 다시하기</button>
+    </section>
+    <p className="profile-boundary-note">표시 정보는 교육용 데모 목데이터이며 실제 금융사 계좌 연결·이전·자동매매가 발생하지 않아요.</p>
+  </section>;
 }

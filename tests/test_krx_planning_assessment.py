@@ -122,7 +122,7 @@ def test_assessment_keeps_krx_returns_out_of_planning_return() -> None:
         universe=[target.historical_metrics],
     )
 
-    assert result.planning_return.net_planning_return_percent == Decimal("5.2000")
+    assert result.planning_return.net_planning_return_percent == Decimal("5.7000")
     assert result.planning_return.historical_performance_used is False
     assert "trailing_return_12m_percent" in result.excluded_from_planning_return
     assert result.relative_risk.volatility_risk_percentile == Decimal("100.0000")
@@ -178,7 +178,7 @@ def test_api_combines_planning_assumption_with_repository_evidence() -> None:
     assert result.relative_risk.universe_count == 1
 
 
-def test_api_rejects_etf_excluded_from_current_krx_report() -> None:
+def test_api_rejects_etf_excluded_from_current_krx_report(caplog) -> None:
     class EmptyRepository:
         universe = []
 
@@ -189,3 +189,8 @@ def test_api_rejects_etf_excluded_from_current_krx_report() -> None:
         etf_planning_assessment(_assumption("MISSING"), EmptyRepository())
 
     assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == {
+        "code": "RESOURCE_NOT_FOUND",
+        "message": "Requested ETF is not in the KRX evidence universe",
+    }
+    assert "krx_evidence_etf_not_found etf_code=MISSING" in caplog.messages

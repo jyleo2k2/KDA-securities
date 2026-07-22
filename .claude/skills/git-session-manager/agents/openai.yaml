@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git Session Manager"
+  short_description: "병렬 Git 세션과 워크트리 충돌을 예방·관리"
+  default_prompt: "Use $git-session-manager to create or audit an isolated task session before editing files."

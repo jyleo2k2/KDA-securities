@@ -47,10 +47,9 @@ from backend.app.engine import (
     PortfolioInput,
     RiskTreatment,
 )
-from backend.app.main import app, get_chat_narrator, get_chat_service
+from backend.app.main import app
 from backend.app.retrieval.repository import KnowledgeMatch, NewsMatch
 from backend.app.settings import get_settings
-from tests.conftest import final_sse_response
 
 
 class FakeDisclosureRepository:
@@ -596,10 +595,10 @@ def test_future_return_and_order_requests_are_blocked() -> None:
 
     assert future.intent == ChatIntent.OUT_OF_SCOPE
     assert future.data_mode == "blocked"
-    assert future.answer.startswith("미래 수익률 예측은 제공하지 않아요.")
+    assert "미래 수익 예측이나 매수·매도 추천" in future.answer
     assert order.intent == ChatIntent.OUT_OF_SCOPE
     assert order.data_mode == "blocked"
-    assert "상품 선택과 주문은 이용자가 직접 해야 해요." in order.answer
+    assert "미래 수익 예측이나 매수·매도 추천" in order.answer
 
 
 def test_narrator_prompt_requires_conclusion_first_heyoche() -> None:
@@ -1594,6 +1593,25 @@ def test_guard_allows_negation_attached_after_unsafe_claim(candidate: str) -> No
     assert _unsafe_claims(candidate) == set()
 
 
+@pytest.mark.parametrize(
+    "candidate",
+    (
+        "수익 보장이 될 수 없습니다.",
+        "매수 추천을 드리지 않습니다.",
+        "수익을 보장한다고 볼 수 없습니다.",
+    ),
+)
+def test_guard_allows_common_postfix_negation_variants(candidate: str) -> None:
+    assert _unsafe_claims(candidate) == set()
+
+
+def test_guard_rejects_positive_guarantee_after_negated_first_claim() -> None:
+    candidate = "원금 보장을 하지 않는다고 말하지만 실제로 보장됩니다."
+
+    assert _unsafe_claims(candidate) == {"guarantee"}
+    assert _adds_unverified_content(candidate, "일반적인 설명입니다.")
+
+
 def test_guard_rejects_new_guarantee_instance_in_same_category() -> None:
     source = "안정형 성향은 원금 보장형 상품 중심으로 구성합니다."
     candidate = (
@@ -1873,37 +1891,6 @@ def test_claude_narrator_drops_reasoning_with_new_numbers() -> None:
     # 본문은 유지되고 검토 과정만 조용히 생략된다.
     assert response.narration_mode == "claude_verified"
     assert response.narration_reasoning is None
-
-
-def test_fastapi_exposes_chat_mvp_golden_path() -> None:
-    chatbot = service()
-    app.dependency_overrides[get_chat_service] = lambda: chatbot
-    app.dependency_overrides[get_chat_narrator] = lambda: None
-    try:
-        with TestClient(app) as client:
-            response = client.post(
-                "/chat/demo/stream",
-                json={"message": "IRP 위험자산 한도를 알려줘"},
-            )
-            capabilities = client.get("/chat/demo/capabilities")
-            scenarios = client.get("/chat/demo/scenarios")
-    finally:
-        app.dependency_overrides.clear()
-
-    assert response.status_code == 200
-    assert final_sse_response(response.text)["response"]["intent"] == "account_rule"
-    assert capabilities.status_code == 200
-    assert "dc_dormant" in capabilities.json()["scenario_codes"]
-    assert "young_retirement_distance" in capabilities.json()["scenario_codes"]
-    assert "family_budget_pressure" in capabilities.json()["scenario_codes"]
-    assert "pension_payout_transition" in capabilities.json()["scenario_codes"]
-    assert scenarios.status_code == 200
-    assert len(scenarios.json()) == 6
-    assert {item["age_band"] for item in scenarios.json()} >= {
-        "20~39세",
-        "40~54세",
-        "55세 이상",
-    }
 
 
 def test_root_redirects_browser_to_api_docs() -> None:

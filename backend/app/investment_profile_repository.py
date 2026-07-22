@@ -270,33 +270,34 @@ class InvestmentProfileRepository:
             evaluation.rule_version,
             evaluation.provisional,
         ):
-            raise RuntimeError(
-                "active profile question set does not match the engine"
-            )
+            raise RuntimeError("active profile question set does not match the engine")
         question_set_ids = {int(row[0]) for row in rows}
         if len(question_set_ids) != 1:
-            raise RuntimeError(
-                "exactly one active profile question set is required"
-            )
-        selected_scores = {
-            answer.question_code: answer.selected_score
-            for answer in survey.answers
+            raise RuntimeError("exactly one active profile question set is required")
+        selected_options = {
+            (answer.question_code, answer.selected_value): answer
+            for answer in evaluation.answers
         }
-        selected: dict[str, tuple[int, int, str, str, int]] = {}
+        selected: dict[tuple[str, str], tuple[int, int, str, str, int]] = {}
         for row in rows:
             question_id, code, option_id, value, label, score = row[5:]
-            if selected_scores.get(str(code)) == score:
-                selected[str(code)] = (
+            key = (str(code), str(value))
+            expected = selected_options.get(key)
+            if expected is not None:
+                if expected.selected_score != score or expected.selected_label != label:
+                    raise RuntimeError(
+                        "profile survey option does not match active DB options"
+                    )
+                selected[key] = (
                     int(question_id),
                     int(option_id),
                     str(value),
                     str(label),
                     int(score),
                 )
-        if set(selected) != set(selected_scores):
-            raise RuntimeError(
-                "profile survey answers do not match active DB options"
-            )
+        if set(selected) != set(selected_options):
+            raise RuntimeError("profile survey answers do not match active DB options")
         return question_set_ids.pop(), [
-            selected[answer.question_code] for answer in survey.answers
+            selected[(answer.question_code, answer.selected_value)]
+            for answer in evaluation.answers
         ]

@@ -86,7 +86,7 @@ SOURCE_LOCATION_ROWS = (
         "과거 수익률·추천(좋아요)",
         "data/mock/demo_public_portfolio_metrics.json",
         "profiles[].scenario_code",
-        "public.demo_public_portfolio_metrics · GET /chat/demo/heroes",
+        "public.demo_public_portfolio_metrics · 인증 GET /chat/heroes",
     ),
     (
         "ETF 상품·과거수익 근거",

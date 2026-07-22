@@ -159,6 +159,26 @@ def test_follow_up_cards_are_bounded_and_route_safely() -> None:
     ).model_copy(
         update={"pension_tax_result": SimpleNamespace(tax_credit=object())}
     )
+    account_rule = ChatResponse(
+        intent=ChatIntent.ACCOUNT_RULE,
+        answer="계좌 규칙 안내예요.",
+        data_mode="verified_knowledge",
+    )
+    disclosure = ChatResponse(
+        intent=ChatIntent.PROVIDER_DISCLOSURE,
+        answer="공시 비교예요.",
+        data_mode="official_disclosure",
+    )
+    macro_evidence = ChatResponse(
+        intent=ChatIntent.MACRO_EVIDENCE,
+        answer="거시 근거예요.",
+        data_mode="verified_knowledge",
+    )
+    educational_portfolio = ChatResponse(
+        intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+        answer="포트폴리오 예시예요.",
+        data_mode="engine",
+    )
     responses = (
         news,
         ChatResponse(
@@ -167,21 +187,28 @@ def test_follow_up_cards_are_bounded_and_route_safely() -> None:
             data_mode="mock",
         ),
         pension_tax,
-        ChatResponse(
-            intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
-            answer="포트폴리오 예시예요.",
-            data_mode="engine",
-        ),
+        account_rule,
+        disclosure,
+        macro_evidence,
+        educational_portfolio,
     )
 
     expected = {
-        "news_detail_1": ChatIntent.NEWS,
         "news_region_us": ChatIntent.NEWS,
-        "news_refresh": ChatIntent.NEWS,
         "mock_risk_cap": ChatIntent.ACCOUNT_RULE,
         "mock_tax": ChatIntent.PENSION_TAX,
         "tax_withdrawal": ChatIntent.PENSION_TAX,
+        "tax_to_diff": ChatIntent.ACCOUNT_RULE,
+        "account_to_tax": ChatIntent.PENSION_TAX,
+        "account_to_edu": ChatIntent.EDUCATIONAL_PORTFOLIO,
+        "account_to_diff": ChatIntent.ACCOUNT_RULE,
+        "disclosure_to_edu": ChatIntent.EDUCATIONAL_PORTFOLIO,
+        "disclosure_to_tax": ChatIntent.PENSION_TAX,
+        "macro_to_edu": ChatIntent.EDUCATIONAL_PORTFOLIO,
+        "macro_to_news": ChatIntent.NEWS,
         "education_risk_cap": ChatIntent.ACCOUNT_RULE,
+        "edu_to_tax": ChatIntent.PENSION_TAX,
+        "edu_to_news": ChatIntent.NEWS,
     }
     follow_ups = [
         follow_up
@@ -191,10 +218,100 @@ def test_follow_up_cards_are_bounded_and_route_safely() -> None:
 
     assert all(len(build_suggested_follow_ups(response)) <= 3 for response in responses)
     assert {follow_up.follow_up_id for follow_up in follow_ups} == set(expected)
+    news_follow_ups = build_suggested_follow_ups(news)
+    assert [(item.label, item.message) for item in news_follow_ups] == [
+        ("미국증시 뉴스", "미국증시 뉴스 알려줘"),
+    ]
+    assert [
+        (item.follow_up_id, item.label, item.message)
+        for item in build_suggested_follow_ups(account_rule)
+    ] == [
+        (
+            "account_to_tax",
+            "연금 세액공제 계산",
+            "올해 연금저축에 600만원 넣으면 세액공제 얼마야?",
+        ),
+        (
+            "account_to_edu",
+            "맞춤형 포트폴리오",
+            "내 상황에 맞는 연금저축전략을 알려줘.",
+        ),
+        ("account_to_diff", "계좌별 차이", "DC형, IRP, 연금저축은 뭐가 달라?"),
+    ]
+    assert [
+        (item.follow_up_id, item.label, item.message)
+        for item in build_suggested_follow_ups(disclosure)
+    ] == [
+        (
+            "disclosure_to_edu",
+            "맞춤형 포트폴리오",
+            "내 상황에 맞는 연금저축전략을 알려줘.",
+        ),
+        (
+            "disclosure_to_tax",
+            "연금 세액공제 계산",
+            "올해 IRP에 900만원 넣으면 세액공제 얼마야?",
+        ),
+    ]
+    assert [
+        (item.follow_up_id, item.label, item.message)
+        for item in build_suggested_follow_ups(macro_evidence)
+    ] == [
+        ("macro_to_edu", "맞춤형 포트폴리오", "내 상황에 맞는 연금저축전략을 알려줘."),
+        ("macro_to_news", "오늘 증시 뉴스", "오늘 증시 뉴스 알려줘."),
+    ]
+    assert [item.follow_up_id for item in build_suggested_follow_ups(pension_tax)] == [
+        "tax_withdrawal",
+        "tax_to_diff",
+    ]
+    assert [
+        item.follow_up_id
+        for item in build_suggested_follow_ups(educational_portfolio)
+    ] == ["education_risk_cap", "edu_to_tax", "edu_to_news"]
     for follow_up in follow_ups:
         plan = plan_question(follow_up.message)
         assert plan.intent == expected[follow_up.follow_up_id]
         assert plan.blocked_reason is None
+
+
+def test_mixed_market_news_offers_korean_and_us_database_queries() -> None:
+    response = ChatResponse(
+        intent=ChatIntent.NEWS,
+        answer="최근 증시 뉴스예요.",
+        data_mode="news_summary",
+        news_items=[
+            ChatNewsItem(
+                evidence_id="news:1",
+                title="첫 번째 뉴스",
+                original_url="https://example.test/news",
+            )
+        ],
+        sources=[
+            SourceEvidence(
+                evidence_id="news:1",
+                label="뉴스",
+                locator="https://example.test/news",
+                data_boundary="news_summary",
+            )
+        ],
+        conversation_context=ConversationContext(
+            news=NewsConversationContext(
+                news_item_ids=["1"],
+                market_region=MarketRegion.ALL,
+            )
+        ),
+    )
+
+    follow_ups = build_suggested_follow_ups(response)
+
+    assert [(item.follow_up_id, item.label, item.message) for item in follow_ups] == [
+        ("news_region_kr", "한국증시 뉴스", "한국증시 뉴스 알려줘"),
+        ("news_region_us", "미국증시 뉴스", "미국증시 뉴스 알려줘"),
+    ]
+    assert [plan_question(item.message).news_query for item in follow_ups] == [
+        "market:kr",
+        "market:us",
+    ]
 
 
 def test_new_response_fields_serialize_as_empty_arrays() -> None:

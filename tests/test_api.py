@@ -1,4 +1,3 @@
-from decimal import ROUND_HALF_UP, Decimal
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -28,7 +27,6 @@ def test_route_paths_cover_engine_tools_and_data_reads() -> None:
         "/engine/profile",
         "/engine/diagnostics",
         "/engine/aggregation",
-        "/engine/simulation",
         "/engine/allocation-example",
         "/engine/mock-scenario/{scenario_code}",
         "/engine/pension-tax-credit",
@@ -105,19 +103,22 @@ def test_account_link_options_do_not_expand_engine_account_type() -> None:
 
 def test_profile_endpoint_scores_survey() -> None:
     answers = [
-        {"question_code": question.code, "selected_score": 5}
+        {
+            "question_code": question.code,
+            "selected_values": [question.options[-1].value],
+        }
         for question in QUESTIONS
     ]
     response = client.post("/engine/profile", json={"answers": answers})
     assert response.status_code == 200
     body = response.json()
     assert body["risk_profile"] == "aggressive"
-    assert body["provisional"] is True
+    assert body["provisional"] is False
 
 
 def test_profile_endpoint_rejects_incomplete_survey() -> None:
     answers = [
-        {"question_code": question.code, "selected_score": 3}
+        {"question_code": question.code, "selected_values": [question.options[0].value]}
         for question in QUESTIONS[:-1]
     ]
     response = client.post("/engine/profile", json={"answers": answers})
@@ -150,30 +151,6 @@ def test_aggregation_endpoint_serializes_decimals_as_strings() -> None:
     assert isinstance(body["total_amount_krw"], str)
     assert body["overlaps"][0]["combined_weight_percent"] == "68.42"
 
-
-def test_simulation_endpoint_matches_engine_golden_value() -> None:
-    response = client.post(
-        "/engine/simulation",
-        json={
-            "current_age": 25,
-            "risk_profile": "risk_neutral",
-            "current_balance_krw": "10000000",
-            "monthly_contribution_krw": "300000",
-        },
-    )
-    assert response.status_code == 200
-    body = response.json()
-    assert body["total_principal_krw"] == "118000000.00"
-    base = next(
-        projection
-        for projection in body["projections"]
-        if projection["scenario"] == "base"
-    )
-    nominal = Decimal(base["nominal_value_at_55_krw"])
-    rounded = (nominal / Decimal("100000")).quantize(
-        Decimal("1"), rounding=ROUND_HALF_UP
-    ) * Decimal("100000")
-    assert rounded == Decimal("259900000")
 
 
 def test_allocation_example_endpoint_returns_approved_cell() -> None:
@@ -239,9 +216,7 @@ def test_knowledge_search_serializes_uuid_document_id() -> None:
 
     app.dependency_overrides[get_retrieval_repository] = FakeRetrievalRepository
     try:
-        response = client.get(
-            "/retrieval/knowledge", params={"query": "위험자산"}
-        )
+        response = client.get("/retrieval/knowledge", params={"query": "위험자산"})
     finally:
         app.dependency_overrides.pop(get_retrieval_repository, None)
     assert response.status_code == 200
@@ -250,24 +225,18 @@ def test_knowledge_search_serializes_uuid_document_id() -> None:
 
 
 def test_cors_allows_vite_dev_origin() -> None:
-    response = client.get(
-        "/health", headers={"Origin": "http://localhost:5173"}
-    )
+    response = client.get("/health", headers={"Origin": "http://localhost:5173"})
     assert response.status_code == 200
     assert (
-        response.headers.get("access-control-allow-origin")
-        == "http://localhost:5173"
+        response.headers.get("access-control-allow-origin") == "http://localhost:5173"
     )
 
 
 def test_cors_allows_vite_fallback_dev_origin() -> None:
-    response = client.get(
-        "/health", headers={"Origin": "http://127.0.0.1:5174"}
-    )
+    response = client.get("/health", headers={"Origin": "http://127.0.0.1:5174"})
     assert response.status_code == 200
     assert (
-        response.headers.get("access-control-allow-origin")
-        == "http://127.0.0.1:5174"
+        response.headers.get("access-control-allow-origin") == "http://127.0.0.1:5174"
     )
 
 

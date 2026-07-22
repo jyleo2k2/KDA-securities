@@ -218,6 +218,38 @@ class EtfThemeConversationContext(BaseModel):
         return self
 
 
+class ReferentItem(BaseModel):
+    """One ordered item from the immediately preceding response."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    label: str = Field(min_length=1)
+    ref: str = Field(min_length=1)
+
+
+class ReferentList(BaseModel):
+    """Small, deterministic follow-up target list; it is replaced every turn."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    intent: ChatIntent
+    topic: str | None = Field(default=None, min_length=1)
+    items: list[ReferentItem] = Field(min_length=1, max_length=6)
+
+    @model_validator(mode="after")
+    def validate_items(self) -> "ReferentList":
+        normalized_items = [
+            ReferentItem(label=item.label.strip(), ref=item.ref.strip())
+            for item in self.items
+        ]
+        if any(not item.label or not item.ref for item in normalized_items):
+            raise ValueError("referent items must not contain blanks")
+        if len({item.ref for item in normalized_items}) != len(normalized_items):
+            raise ValueError("referent items must not contain duplicate refs")
+        self.items = normalized_items
+        return self
+
+
 class ConversationContext(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -228,6 +260,7 @@ class ConversationContext(BaseModel):
     selected_risk_profile: EducationalRiskProfile | None = None
     news: NewsConversationContext | None = None
     etf_theme: EtfThemeConversationContext | None = None
+    referents: ReferentList | None = None
 
 
 class ChatRequest(BaseModel):

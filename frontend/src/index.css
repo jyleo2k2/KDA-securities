@@ -157,8 +157,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .topbar-title strong { font-size: 15px; }
 .topbar-title span { margin-top: 3px; color: #8a9891; font-size: 10px; }
 .trust-label { margin-left: auto; display: flex; align-items: center; gap: 5px; color: #4d6e60; font-size: 11px; font-weight: 600; }
-.menu-button { display: none; width: 38px; height: 38px; border: 0; background: transparent; cursor: pointer; }
-.menu-button span { display: block; width: 20px; height: 2px; margin: 4px auto; border-radius: 2px; background: #26463a; }
+.menu-button { display: none; width: 38px; height: 38px; border: 0; background: transparent; cursor: pointer; font-size: 26px; font-weight: 900; line-height: 1; color: #26463a; }
 .conversation { flex: 1; min-height: 0; overflow-y: auto; }
 .welcome { width: min(720px, calc(100% - 48px)); margin: 0 auto; padding: clamp(55px, 8vh, 90px) 0 38px; text-align: center; animation: fade-up .5s ease both; }
 .welcome-icon { width: 58px; height: 58px; margin: 0 auto 20px; border-radius: 19px; box-shadow: 0 13px 27px rgba(134, 158, 64, .16); }
@@ -274,7 +273,10 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .news-card-meta { display: flex; justify-content: space-between; gap: 8px; color: #87938b; font-size: 9px; }
 .news-card strong { display: block; margin-top: 6px; color: #294838; font-size: 12px; line-height: 1.45; }
 .news-card p { display: -webkit-box; margin: 7px 0; overflow: hidden; color: #617168; font-size: 10px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.news-card-summary { display: grid; gap: 5px; margin: 9px 0; padding-left: 18px; color: #617168; font-size: 10px; line-height: 1.55; }
+.news-card-summary { display: grid; gap: 5px; margin: 9px 0; padding: 0; color: #617168; font-size: 10px; line-height: 1.55; list-style: none; }
+.news-card-summary li { display: grid; grid-template-columns: 15px minmax(0, 1fr); gap: 3px; }
+.news-card-summary-number { color: #617168; }
+.news-card-summary-text { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .news-card small { display: inline-flex; align-items: center; gap: 2px; color: #6f8c49; font-size: 9px; font-weight: 700; }
 .allocation-chart { margin-top: 14px; padding: 13px; border-radius: 10px; background: #f5f8f1; }
 .allocation-chart h3 { margin: 0 0 10px; color: #2d493b; font-size: 11px; }
@@ -343,10 +345,9 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .guide-tab .sidebar.sidebar-open { transform: translateX(0); }
 .guide-tab .chat-main { margin-left: 0; background: #fff; }
 .guide-tab .design-topbar { height: 82px; gap: 10px; padding: 14px 20px 7px; border: 0; background: #fff; }
-.guide-tab .menu-button { display: block; width: 38px; height: 38px; }
-.guide-tab .menu-button span { width: 24px; height: 3px; margin: 4px auto; background: #111; }
-.guide-tab .design-new-chat { display: inline-flex; align-items: center; gap: 6px; height: 42px; padding: 0 16px; border: 1.5px solid #dce0d8; border-radius: 22px; background: #fff; color: #111; font-size: 14px; font-weight: 700; cursor: pointer; }
-.guide-tab .design-new-chat span { color: #18a860; font-size: 22px; line-height: 1; }
+.guide-tab .menu-button { display: block; width: 38px; height: 38px; font-size: 30px; color: #111; }
+.guide-tab .design-history-button { display: inline-flex; align-items: center; height: 42px; padding: 0 16px; border: 1.5px solid #dce0d8; border-radius: 22px; background: #fff; color: #111; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.guide-tab .design-history-button:focus-visible { outline: 3px solid #18a860; outline-offset: 2px; }
 .guide-tab .design-topbar-actions { display: flex; align-items: center; gap: 9px; margin-left: auto; color: #18a860; }
 .guide-tab .design-logout { border: 0; background: transparent; color: #68756e; font-size: 11px; font-weight: 700; cursor: pointer; }
 .guide-tab .design-auth-state { color: #68756e; font-size: 10px; font-weight: 800; white-space: nowrap; }
@@ -374,6 +375,10 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .prompt-carousel::-webkit-scrollbar { display: none; }
 .prompt-carousel button { flex: 0 0 calc(50% - 6px); min-height: 118px; display: grid; grid-template-columns: 1fr; align-items: center; padding: 17px; scroll-snap-align: start; border: 1.5px solid #ecefe9; border-radius: 21px; background: #fff; color: #364940; text-align: left; box-shadow: none; }
 .prompt-carousel .design-prompt-copy { display: grid; gap: 5px; }.prompt-carousel .design-prompt-copy em { color: #65736b; font-size: 11px; font-style: normal; line-height: 1.4; }
+.planner-strategy-grid { display: grid; gap: 10px; }
+.planner-strategy-grid button { display: grid; gap: 5px; padding: 14px; border: 1px solid #e3ebe1; border-radius: 16px; background: #fbfdf9; color: #284436; text-align: left; }
+.planner-strategy-grid button[aria-pressed="true"] { border-color: #18a860; background: #f0fbf3; }
+.planner-strategy-grid small { color: #18a860; font-weight: 800; }.planner-strategy-grid span { color: #65736b; font-size: 12px; line-height: 1.45; }.planner-strategy-grid em { color: #52645a; font-size: 12px; font-style: normal; font-weight: 700; }
 .sector-card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
 .sector-card-grid button { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 9px; min-height: 78px; padding: 12px; border: 1px solid #e3ebe1; border-radius: 16px; background: #fbfdf9; color: #284436; text-align: left; cursor: pointer; }
 .sector-card-grid button:hover { border-color: #a9d8ba; background: #f4fbf4; }
@@ -408,6 +413,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .portfolio-risk-metrics, .stress-scenario-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
 .portfolio-risk-metrics div, .stress-scenario-grid div { display: grid; gap: 3px; padding: 9px; border-radius: 9px; background: #f3f7f2; }.portfolio-risk-metrics span, .stress-scenario-grid span { color: #6f7e75; font-size: 9px; }.portfolio-risk-metrics strong { color: #244535; font-size: 12px; }
 .stress-scenario-grid div { background: #fff4e2; }.stress-scenario-grid strong { color: #9a513e; font-size: 13px; }.stress-scenario-grid small { color: #9b806e; font-size: 8px; }
+.portfolio-risk-policy { display: grid; gap: 4px; padding: 10px; border-radius: 9px; background: #e8f5ea; color: #235b38; }.portfolio-risk-policy strong { font-size: 10px; }.portfolio-risk-policy p, .portfolio-risk-policy small { margin: 0; font-size: 9px; line-height: 1.5; }.portfolio-risk-policy.review-required { background: #fff0df; color: #8a5424; }
 .portfolio-risk-unavailable, .portfolio-risk-note { margin: 0; padding: 9px; border-radius: 9px; font-size: 9px; line-height: 1.55; }.portfolio-risk-unavailable { background: #fff2dd; color: #805c24; }.portfolio-risk-note { background: #eef2ef; color: #66756c; }
 .portfolio-planning-review { display: grid; gap: 11px; padding: 13px; border: 1px solid #d9e5d6; border-radius: 12px; background: #fff; }
 .portfolio-planning-review > header { display: grid; gap: 3px; }.portfolio-planning-review > header span { color: #876400; font-size: 9px; font-weight: 800; }.portfolio-planning-review h4 { margin: 0; color: #203c2e; font-size: 12px; }.portfolio-planning-review > header p { margin: 0; color: #78867e; font-size: 9px; line-height: 1.45; }

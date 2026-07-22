@@ -12,6 +12,7 @@ from ..models import (
     ChatResponse,
     NumericEvidence,
     SectionKind,
+    SuggestedFollowUp,
     extract_numeric_claims,
 )
 from ..pension_account_overview import (
@@ -27,6 +28,7 @@ from ._shared import (
     _plain_knowledge_excerpt,
     _select_knowledge_match,
 )
+from .graceful_decline import GracefulDeclineKind, graceful_decline_response
 
 _NUMBERED_SECTION_HEADING = re.compile(r"^\d+(?:-\d+)?\.\s+")
 _SENTENCE_END = re.compile(r"[.!?](?=\s|$)")
@@ -54,7 +56,7 @@ def _concise_knowledge_answer(excerpt: str) -> str:
     return "\n".join(selected) or excerpt
 
 
-def blocked_response(reason: BlockedReason) -> ChatResponse:
+def blocked_response(reason: BlockedReason, *, user_message: str = "") -> ChatResponse:
     if reason == BlockedReason.SENSITIVE_INFORMATION:
         return ChatResponse(
             intent=ChatIntent.OUT_OF_SCOPE,
@@ -67,29 +69,15 @@ def blocked_response(reason: BlockedReason) -> ChatResponse:
                 "입력 원문은 검색이나 AI 설명 단계로 전달하지 않았습니다."
             ],
         )
-    if reason == BlockedReason.FUTURE_PREDICTION:
-        return ChatResponse(
-            intent=ChatIntent.OUT_OF_SCOPE,
-            answer=(
-                "미래 수익률 예측은 제공하지 않아요. 목표가나 수익 보장도 "
-                "안내하지 않아요. 포트폴리오 입력이 있으면 규칙 엔진이 계산한 "
-                "장기 계획가정과 과거 위험지표를 설명해 드려요."
-            ),
-            data_mode="blocked",
-            limitations=[
-                "LLM의 미래 수익 예측은 지원하지 않습니다.",
-                "계획가정은 예측이나 보장 수익률이 아닙니다.",
-            ],
+    if reason in {BlockedReason.FUTURE_PREDICTION, BlockedReason.ORDER_REQUEST}:
+        return graceful_decline_response(
+            GracefulDeclineKind.PREDICTION_OR_ORDER,
+            user_message,
         )
-    if reason == BlockedReason.ORDER_REQUEST:
-        return ChatResponse(
-            intent=ChatIntent.OUT_OF_SCOPE,
-            answer=(
-                "상품 선택과 주문은 이용자가 직접 해야 해요. 금융회사 공식 "
-                "채널을 이용해 주세요. 챗봇은 판단 기준과 근거만 설명해 드려요."
-            ),
-            data_mode="blocked",
-            limitations=["주문·자동운용은 지원하지 않습니다."],
+    if reason == BlockedReason.FOREIGN_MARKET_OR_INDIVIDUAL_STOCK:
+        return graceful_decline_response(
+            GracefulDeclineKind.FOREIGN_MARKET_OR_INDIVIDUAL_STOCK,
+            user_message,
         )
     if reason == BlockedReason.PRODUCT_LEVEL_UNAVAILABLE:
         return ChatResponse(
@@ -251,6 +239,23 @@ def handle_account_rule(
     *,
     knowledge: KnowledgeSearch,
 ) -> ChatResponse:
+    if plan.requests_pension_planner:
+        return ChatResponse(
+            intent=ChatIntent.ACCOUNT_RULE,
+            answer=(
+                "정확한 수치는 나이와 납입액, 가정에 따라 달라져요. "
+                "연금계산기 화면에서 값을 직접 조정해 보시는 게 가장 정확해요."
+            ),
+            data_mode="pension_planner_redirect",
+            suggested_follow_ups=[
+                SuggestedFollowUp(
+                    follow_up_id="open_pension_planner",
+                    label="연금계산기 열기",
+                    message="연금계산기 열기",
+                )
+            ],
+            limitations=["미래 수익이나 수령액을 확정하거나 보장하지 않습니다."],
+        )
     if plan.account_rule_topic == AccountRuleTopic.PENSION_ACCOUNT_OVERVIEW:
         return build_pension_account_overview_response()
     if plan.account_rule_topic is not None:

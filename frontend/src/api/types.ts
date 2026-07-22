@@ -126,7 +126,7 @@ export interface RiskCapEvaluation {
 // ── /engine/profile ──
 export interface SurveyAnswer {
   question_code: string;
-  selected_score: number;
+  selected_values: string[];
 }
 
 export interface ProfileSurveyInput {
@@ -144,8 +144,52 @@ export interface ProfileEvaluation {
   score_percent: string;
   risk_profile: RiskProfile;
   loss_tolerance_percent: string;
-  band_upper_bounds_percent: Record<RiskProfile, string | null>;
+  answers: Array<{
+    question_code: string;
+    selected_value: string;
+    selected_label: string;
+    selected_score: number;
+  }>;
   evidence: SourceChip[];
+}
+
+export interface InvestmentProfileSubmission {
+  survey: ProfileSurveyInput;
+  investment_advice_desired: boolean;
+  investor_information_provided: boolean;
+}
+
+export interface InvestmentProfileAssessment {
+  assessed_at: string;
+  total_score: number;
+  min_score: number;
+  max_score: number;
+  score_percent: string;
+  risk_profile: RiskProfile;
+  engine_name: string;
+  engine_version: string;
+  rule_version: string;
+  provisional: boolean;
+  answers: Array<{
+    question_code: string;
+    selected_value: string;
+    selected_label: string;
+    selected_score: number;
+  }>;
+  assessed_on: string;
+  valid_until: string;
+  is_expired: boolean;
+  validity_policy_version: string;
+}
+
+export interface InvestmentProfileResponse {
+  assessment: InvestmentProfileAssessment | null;
+  preferences: {
+    investment_advice_desired: boolean;
+    investor_information_provided: boolean;
+    confirmed_at: string;
+    policy_version: string;
+  } | null;
 }
 
 // ── /engine/diagnostics ──
@@ -211,45 +255,6 @@ export interface AggregationEvaluation {
   evidence: SourceChip[];
 }
 
-// ── /engine/simulation ──
-export interface SimulationInput {
-  current_age: number;
-  risk_profile: RiskProfile;
-  current_balance_krw: string;
-  monthly_contribution_krw: string;
-  inflation_percent?: string;
-}
-
-export interface BandSegment {
-  age_band: AgeBand;
-  months: number;
-  weights: AllocationWeights;
-  net_annual_return_percent_by_scenario: Record<AssumptionScenario, string>;
-}
-
-export interface ScenarioProjection {
-  scenario: AssumptionScenario;
-  nominal_value_at_55_krw: string;
-  real_value_at_55_krw: string;
-  investment_gain_krw: string;
-}
-
-export interface SimulationEvaluation {
-  engine_name: string;
-  engine_version: string;
-  assumption_version: string;
-  current_age: number;
-  target_age: number;
-  years_to_55: number;
-  months_to_55: number;
-  inflation_percent: string;
-  total_principal_krw: string;
-  projections: ScenarioProjection[];
-  band_segments: BandSegment[];
-  assumption_notice: string;
-  evidence: SourceChip[];
-}
-
 // ── /engine/pension-calculator ──
 export interface PensionCalculatorInput {
   current_age: number;
@@ -280,8 +285,17 @@ export interface PensionCalculatorYear {
   balance_krw: string;
 }
 
+export interface StrategyPresentation {
+  strategy_id: string;
+  display_name: string;
+  summary: string;
+  risk_badge: string;
+  character_key: string;
+}
+
 export interface PensionCalculatorStrategy {
   strategy_id: string;
+  presentation: StrategyPresentation;
   risk_profile: RiskProfile;
   net_annual_return_percent: string;
   growth_percent: string;
@@ -313,6 +327,19 @@ export interface PensionCalculatorEvaluation {
   tax: PensionCalculatorTax;
   assumption: PensionCalculatorAssumption;
   warnings: string[];
+}
+
+export interface PensionCalculatorPortfolioCmaRequest {
+  calculator: PensionCalculatorInput;
+  current_holdings: Array<{
+    isu_code: string;
+    amount_krw: string;
+  }>;
+}
+
+export interface PensionCalculatorPortfolioCmaEvaluation {
+  calculator: PensionCalculatorEvaluation;
+  planning_return: PortfolioPlanningEvaluation;
 }
 
 // ── /engine/allocation-example ──
@@ -629,7 +656,7 @@ export interface RetirementDisclosureResponse {
   results: RetirementStat[];
 }
 
-// ── /chat/demo* (backend/app/api/chat.py) ──
+// ── /chat (backend/app/api/chat.py) ──
 export type ChatIntent =
   | "account_rule"
   | "mock_portfolio"
@@ -738,31 +765,6 @@ export interface ChatNewsItem {
   summary_lines?: string[];
   original_url: string;
   published_at?: string | null;
-}
-
-export interface BenchmarkDistribution {
-  code: string;
-  count: number;
-}
-
-export interface BenchmarkAccountTypeStat {
-  account_type: string;
-  account_count: number;
-  mean_balance_krw: string;
-  mean_monthly_contribution_krw: string;
-  mean_risky_asset_ratio_percent: string;
-}
-
-export interface BenchmarkSummary {
-  data_boundary: "mock";
-  source_label: string;
-  notice: string;
-  user_count: number;
-  account_count: number;
-  holding_count: number;
-  age_groups: BenchmarkDistribution[];
-  risk_profiles: BenchmarkDistribution[];
-  account_type_stats: BenchmarkAccountTypeStat[];
 }
 
 export type VisualizationKind = "asset_allocation" | "risk_cap" | "tax_summary" | "sleeve_allocation" | "stress_scenarios" | "disclosure_comparison" | "accumulation_projection";
@@ -889,6 +891,8 @@ export interface StressScenarioResult {
   is_forecast: boolean;
 }
 
+export type StressLossPolicyStatus = "not_evaluated" | "within_user_limit" | "review_required";
+
 export interface PortfolioRiskEvaluation {
   engine_name: string;
   engine_version: string;
@@ -906,6 +910,9 @@ export interface PortfolioRiskEvaluation {
   historical_return_used_for_risk_only: boolean;
   is_return_forecast: boolean;
   stress_scenarios: StressScenarioResult[];
+  stress_loss_limit_percent: string | null;
+  worst_stress_loss_percent: string;
+  stress_loss_policy_status: StressLossPolicyStatus;
   sources: Array<{
     label: string;
     reference: string;
@@ -980,6 +987,7 @@ export interface EducationalPortfolioEvaluation {
   candidates: EducationalEtfCandidate[];
   portfolio_risk: PortfolioRiskEvaluation;
   planning_return: PortfolioPlanningEvaluation;
+  current_holdings_planning_return?: PortfolioPlanningEvaluation | null;
   rebalancing: RebalancingGuidance;
   sources: SourceEvidence[];
   warnings: string[];
@@ -994,6 +1002,17 @@ export interface NewsConversationContext {
   shown_at: string;
 }
 
+export interface ReferentItem {
+  label: string;
+  ref: string;
+}
+
+export interface ReferentList {
+  intent: ChatIntent;
+  topic?: string | null;
+  items: ReferentItem[];
+}
+
 export interface ConversationContext {
   account_type?: AccountType | null;
   scenario_code?: string | null;
@@ -1001,6 +1020,7 @@ export interface ConversationContext {
   survey_profile?: CompletedSurveyProfile | null;
   selected_risk_profile?: RiskProfile | null;
   news?: NewsConversationContext | null;
+  referents?: ReferentList | null;
 }
 
 export interface ChatResponse {
@@ -1035,13 +1055,6 @@ export interface ScenarioSummary {
   age_band: string;
   risk_profile: string;
   investment_horizon_years: number;
-}
-
-export interface ChatCapabilities {
-  supported: string[];
-  conditional: string[];
-  unsupported: string[];
-  scenario_codes: string[];
 }
 
 // ── authenticated /chat* history ──

@@ -13,8 +13,7 @@ from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService
 from backend.app.chat.tools import DC_WITHDRAWAL_EXCLUSION_NOTICE
 from backend.app.engine import PensionTaxScenarioInput
-from backend.app.main import app, get_chat_narrator, get_chat_service
-from tests.conftest import final_sse_response
+from backend.app.main import app
 
 
 def _service() -> ChatService:
@@ -307,30 +306,21 @@ def test_unavoidable_withdrawal_ends_with_expert_review_notice() -> None:
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
 
 
-def test_demo_chat_accepts_structured_tax_input() -> None:
-    chatbot = _service()
-    app.dependency_overrides[get_chat_service] = lambda: chatbot
-    app.dependency_overrides[get_chat_narrator] = lambda: None
-    try:
-        with TestClient(app) as client:
-            response = client.post(
-                "/chat/demo/stream",
-                json={
-                    "message": "세액공제 혜택과 중도해지 세금을 알려줘",
-                    "pension_tax": _input_payload(),
-                },
-            )
-    finally:
-        app.dependency_overrides.clear()
+def test_chat_accepts_structured_tax_input() -> None:
+    response = _service().ask(
+        ChatRequest(
+            message="세액공제 혜택과 중도해지 세금을 알려줘",
+            pension_tax=PensionTaxScenarioInput.model_validate(_input_payload()),
+        )
+    )
 
-    assert response.status_code == 200
-    payload = final_sse_response(response.text)["response"]
-    assert payload["intent"] == "pension_tax"
-    assert payload["pension_tax_result"]["tax_credit"] is not None
-    assert payload["pension_tax_result"]["withdrawal"] is not None
+    assert response.intent == ChatIntent.PENSION_TAX
+    assert response.pension_tax_result is not None
+    assert response.pension_tax_result.tax_credit is not None
+    assert response.pension_tax_result.withdrawal is not None
 
 
-def test_demo_chat_runs_all_three_guide_questions_without_form_input() -> None:
+def test_chat_runs_all_three_guide_questions_without_form_input() -> None:
     cases = (
         (
             "올해 연금저축에 700만 원, IRP에 400만 원을 납입했고 "
@@ -353,41 +343,30 @@ def test_demo_chat_runs_all_three_guide_questions_without_form_input() -> None:
             "requires_review",
         ),
     )
-    chatbot = _service()
-    app.dependency_overrides[get_chat_service] = lambda: chatbot
-    app.dependency_overrides[get_chat_narrator] = lambda: None
-    try:
-        with TestClient(app) as client:
-            responses = [
-                client.post("/chat/demo/stream", json={"message": message})
-                for message, _, _ in cases
-            ]
-    finally:
-        app.dependency_overrides.clear()
+    responses = [
+        _service().ask(ChatRequest(message=message)) for message, _, _ in cases
+    ]
 
     for response, (_, expected_credit, expected_withdrawal) in zip(
         responses, cases, strict=True
     ):
-        assert response.status_code == 200
-        payload = final_sse_response(response.text)["response"]
-        assert payload["data_mode"] == "user_input_engine"
-        assert payload["answer"].splitlines()[-1] == EXPECTED_CLOSING_NOTICE
-        result = payload["pension_tax_result"]
+        assert response.data_mode == "user_input_engine"
+        assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
+        assert response.pension_tax_result is not None
+        result = response.pension_tax_result
         if expected_credit is not None:
             assert (
-                result["tax_credit"]["rate_scenarios"][0][
-                    "estimated_tax_credit_krw"
-                ]
-                == expected_credit
+                result.tax_credit.rate_scenarios[0].estimated_tax_credit_krw
+                == Decimal(expected_credit)
             )
         elif expected_withdrawal == "requires_review":
-            assert result["withdrawal"]["status"] == "requires_review"
+            assert result.withdrawal is not None
+            assert result.withdrawal.status == "requires_review"
         else:
+            assert result.withdrawal is not None
             assert (
-                result["withdrawal"][
-                    "estimated_max_other_income_withholding_krw"
-                ]
-                == expected_withdrawal
+                result.withdrawal.estimated_max_other_income_withholding_krw
+                == Decimal(expected_withdrawal)
             )
 
 
@@ -421,12 +400,12 @@ def test_engine_tax_endpoints_share_the_same_contract() -> None:
     assert credit.status_code == 200
     assert (
         credit.json()["rate_scenarios"][0]["estimated_tax_credit_krw"]
-        == "1485000.00"
+        == "1485000"
     )
     assert withdrawal.status_code == 200
     assert (
         withdrawal.json()["estimated_max_other_income_withholding_krw"]
-        == "11715000.00"
+        == "11715000"
     )
 
 

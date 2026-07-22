@@ -4,6 +4,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .handlers.graceful_decline import GracefulDeclineKind, graceful_decline
 from .models import ChatIntent, ChatResponse, MarketRegion, SuggestedFollowUp
 
 
@@ -75,6 +76,9 @@ def chat_card_catalog() -> ChatCardCatalog:
 
 
 def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp]:
+    stock_news_decline = graceful_decline(GracefulDeclineKind.STOCK_NEWS, "")
+    if stock_news_decline.answer in response.limitations:
+        return stock_news_decline.suggested_follow_ups
     has_pension_news_notice = any(
         "연금 제도 뉴스는 제공하지 않아요" in item
         for item in response.limitations
@@ -96,13 +100,7 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
             ),
         ]
     if response.intent == ChatIntent.NEWS and not response.news_items:
-        follow_ups = [
-            SuggestedFollowUp(
-                follow_up_id="live_market_news",
-                label="실시간 증시 뉴스 보기",
-                message="실시간 증시 뉴스 보여줘",
-            )
-        ]
+        follow_ups = []
         if has_pension_news_notice:
             follow_ups.append(
                 SuggestedFollowUp(
@@ -139,42 +137,29 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
                     )
                 )
             return follow_ups
-        follow_ups = [
-            SuggestedFollowUp(
-                follow_up_id="news_detail_1",
-                label="첫 번째 뉴스 자세히",
-                message="첫 번째 뉴스 자세히 알려줘",
-            )
-        ]
+        follow_ups = []
         region = (
             response.conversation_context.news.market_region
             if response.conversation_context is not None
             and response.conversation_context.news is not None
             else MarketRegion.ALL
         )
-        if region == MarketRegion.KR:
-            follow_ups.append(
-                SuggestedFollowUp(
-                    follow_up_id="news_region_us",
-                    label="미국 증시 뉴스도 보기",
-                    message="미국 증시 뉴스도 보여줘",
-                )
-            )
-        elif region == MarketRegion.US:
+        if region in {MarketRegion.ALL, MarketRegion.US}:
             follow_ups.append(
                 SuggestedFollowUp(
                     follow_up_id="news_region_kr",
-                    label="국내 증시 뉴스도 보기",
-                    message="국내 증시 뉴스도 보여줘",
+                    label="한국증시 뉴스",
+                    message="한국증시 뉴스 알려줘",
                 )
             )
-        follow_ups.append(
-            SuggestedFollowUp(
-                follow_up_id="news_refresh",
-                label="다른 뉴스 더 보기",
-                message="다른 뉴스 더 보여줘",
+        if region in {MarketRegion.ALL, MarketRegion.KR}:
+            follow_ups.append(
+                SuggestedFollowUp(
+                    follow_up_id="news_region_us",
+                    label="미국증시 뉴스",
+                    message="미국증시 뉴스 알려줘",
+                )
             )
-        )
         if has_pension_news_notice:
             follow_ups.append(
                 SuggestedFollowUp(
@@ -197,6 +182,50 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
                 message="연금 세액공제도 계산해 줘",
             ),
         ]
+    if response.intent == ChatIntent.ACCOUNT_RULE:
+        return [
+            SuggestedFollowUp(
+                follow_up_id="account_to_tax",
+                label="연금 세액공제 계산",
+                message="올해 연금저축에 600만원 넣으면 세액공제 얼마야?",
+            ),
+            SuggestedFollowUp(
+                follow_up_id="account_to_edu",
+                label="맞춤형 포트폴리오",
+                message="내 상황에 맞는 연금저축전략을 알려줘.",
+            ),
+            SuggestedFollowUp(
+                follow_up_id="account_to_diff",
+                label="계좌별 차이",
+                message="DC형, IRP, 연금저축은 뭐가 달라?",
+            ),
+        ]
+    if response.intent == ChatIntent.PROVIDER_DISCLOSURE:
+        return [
+            SuggestedFollowUp(
+                follow_up_id="disclosure_to_edu",
+                label="맞춤형 포트폴리오",
+                message="내 상황에 맞는 연금저축전략을 알려줘.",
+            ),
+            SuggestedFollowUp(
+                follow_up_id="disclosure_to_tax",
+                label="연금 세액공제 계산",
+                message="올해 IRP에 900만원 넣으면 세액공제 얼마야?",
+            ),
+        ]
+    if response.intent == ChatIntent.MACRO_EVIDENCE:
+        return [
+            SuggestedFollowUp(
+                follow_up_id="macro_to_edu",
+                label="맞춤형 포트폴리오",
+                message="내 상황에 맞는 연금저축전략을 알려줘.",
+            ),
+            SuggestedFollowUp(
+                follow_up_id="macro_to_news",
+                label="오늘 증시 뉴스",
+                message="오늘 증시 뉴스 알려줘.",
+            ),
+        ]
     if (
         response.intent == ChatIntent.PENSION_TAX
         and response.pension_tax_result is not None
@@ -207,7 +236,12 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
                 follow_up_id="tax_withdrawal",
                 label="중도해지 세금",
                 message="연금저축을 중도에 해지하면 세금이 얼마나 나와?",
-            )
+            ),
+            SuggestedFollowUp(
+                follow_up_id="tax_to_diff",
+                label="계좌별 차이",
+                message="DC형, IRP, 연금저축은 뭐가 달라?",
+            ),
         ]
     if response.intent == ChatIntent.EDUCATIONAL_PORTFOLIO:
         return [
@@ -215,7 +249,17 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
                 follow_up_id="education_risk_cap",
                 label="위험자산 한도 적용",
                 message="연금계좌의 위험자산 한도는 어떻게 적용돼?",
-            )
+            ),
+            SuggestedFollowUp(
+                follow_up_id="edu_to_tax",
+                label="연금 세액공제 계산",
+                message="올해 연금저축에 600만원 넣으면 세액공제 얼마야?",
+            ),
+            SuggestedFollowUp(
+                follow_up_id="edu_to_news",
+                label="오늘 증시 뉴스",
+                message="오늘 증시 뉴스 알려줘.",
+            ),
         ]
     if response.intent == ChatIntent.ETF_THEME and response.sections:
         marker = " 테마"

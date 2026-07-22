@@ -12,7 +12,7 @@ from backend.app.structural_market_evidence import (
 
 def _damodaran_html() -> bytes:
     rows = []
-    for year in range(2000, 2013):
+    for year in range(1980, 2013):
         rows.append(
             f"<tr><td>{year}</td><td>5%</td><td>2%</td><td>100</td>"
             "<td>5</td><td>2</td><td>4%</td><td>4%</td><td>4%</td></tr>"
@@ -25,7 +25,7 @@ def _fama_french_zip() -> bytes:
     import zipfile
 
     text = "header\n,Mkt-RF,SMB,HML,RF\n"
-    for year in range(1991, 2023):
+    for year in range(1971, 2023):
         text += f"{year}, 5.00, 0, 0, 1.00\n"
     stream = io.BytesIO()
     with zipfile.ZipFile(stream, "w") as archive:
@@ -51,12 +51,15 @@ def test_parsers_and_ten_year_diagnostics_are_deterministic():
     returns = parse_fama_french_annual_returns(_fama_french_zip())
     diagnostics = build_long_horizon_diagnostics(damodaran, returns)
 
-    assert len(damodaran) == 13
+    assert len(damodaran) == 33
     assert returns[2001] == Decimal("6.00")
     assert diagnostics["horizon_years"] == 10
     assert diagnostics["metrics"]["dividend_yield_plus_smoothed_growth"][
         "mae_percent_point"
     ] == "0.0000"
+    assert diagnostics["time_split"]["calibration"]["formation_year_end"] == 1990
+    assert diagnostics["time_split"]["embargo"]["observation_count"] == 10
+    assert diagnostics["time_split"]["holdout"]["formation_year_start"] == 2001
 
 
 def test_report_builds_equity_and_bond_inputs_without_authorizing_adoption():
@@ -79,9 +82,11 @@ def test_report_builds_equity_and_bond_inputs_without_authorizing_adoption():
     equity = report["asset_inputs"]["us_large_cap_equity"]
     assert equity["structural_estimate_percent"] == "6.0000"
     assert equity["equilibrium_prior_percent"] == "8.0000"
+    assert equity["view_confidence"] == "0.8000"
+    assert equity["view_confidence_calibration"]["formation_year_end"] == 1990
     assert report["asset_inputs"]["us_high_yield"][
         "structural_estimate_percent"
     ] == "6.8000"
-    assert len(report["annual_residuals"]) == 13
+    assert len(report["annual_residuals"]) == 33
     assert report["production_parameter_change_authorized"] is False
     assert report["is_forecast"] is False

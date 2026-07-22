@@ -5,12 +5,13 @@ Except for the audited risk-cap path, nothing here authenticates or writes to
 the database.
 """
 
+import logging
 from typing import Annotated
 from uuid import UUID
 
 import psycopg
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..auth import require_supabase_user_id
 from ..chat.scenarios import LocalScenarioRepository
@@ -21,6 +22,8 @@ from ..engine import (
     AggregationInput,
     AllocationExampleEvaluation,
     AllocationExampleInput,
+    AssumptionScenario,
+    CurrentHolding,
     EducationalPortfolioEvaluation,
     EducationalPortfolioInput,
     EtfPlanningAssessmentEvaluation,
@@ -33,16 +36,16 @@ from ..engine import (
     PensionTaxCreditEvaluation,
     PensionTaxCreditInput,
     PortfolioInput,
+    PortfolioPlanningEvaluation,
     ProfileEvaluation,
     ProfileSurveyInput,
     RiskCapEvaluation,
     ScenarioEvaluation,
-    SimulationEvaluation,
-    SimulationInput,
     aggregate_accounts,
     assess_etf_with_krx_evidence,
     build_allocation_example,
     build_educational_portfolio,
+    calculate_current_holdings_planning_return,
     calculate_etf_planning_return,
     calculate_pension,
     calculate_pension_tax_credit,
@@ -51,7 +54,6 @@ from ..engine import (
     evaluate_mock_scenario,
     evaluate_profile,
     evaluate_risk_cap,
-    simulate_accumulation,
 )
 from ..engine.audit import EngineAuditRepository
 from ..etf_universe_database import PortfolioUniverseLoadError
@@ -62,13 +64,26 @@ from .deps import (
     get_krx_market_evidence_repository,
     get_portfolio_universe_repository,
 )
+from .errors import ApiErrorCode, api_error
 
 router = APIRouter(tags=["engine"])
+logger = logging.getLogger(__name__)
+PORTFOLIO_CMA_CALCULATOR_POLICY_VERSION = "2026-07-22.1"
 
 
 class AuditedRiskCapResponse(BaseModel):
     run_id: UUID
     evaluation: RiskCapEvaluation
+
+
+class PensionCalculatorPortfolioCmaRequest(BaseModel):
+    calculator: PensionCalculatorInput
+    current_holdings: list[CurrentHolding] = Field(min_length=1, max_length=50)
+
+
+class PensionCalculatorPortfolioCmaEvaluation(BaseModel):
+    calculator: PensionCalculatorEvaluation
+    planning_return: PortfolioPlanningEvaluation
 
 
 @router.post("/engine/risk-cap", response_model=RiskCapEvaluation)
@@ -78,7 +93,11 @@ def risk_cap(portfolio: PortfolioInput) -> RiskCapEvaluation:
     return evaluate_risk_cap(portfolio)
 
 
-@router.post("/engine/risk-cap/audited", response_model=AuditedRiskCapResponse)
+@router.post(
+    "/engine/risk-cap/audited",
+    response_model=AuditedRiskCapResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def risk_cap_audited(
     portfolio: PortfolioInput,
     owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
@@ -113,9 +132,13 @@ def etf_planning_assessment(
     try:
         product = repository.get(assumption.etf_code)
     except KeyError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
+        logger.warning(
+            "krx_evidence_etf_not_found etf_code=%s", assumption.etf_code
+        )
+        raise api_error(
+            ApiErrorCode.RESOURCE_NOT_FOUND,
+            "Requested ETF is not in the KRX evidence universe",
+            status.HTTP_404_NOT_FOUND,
         ) from exc
     return assess_etf_with_krx_evidence(
         assumption,
@@ -148,9 +171,10 @@ def educational_portfolio(
         PortfolioUniverseLoadError,
         psycopg.Error,
     ) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Account-specific ETF universe is unavailable",
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Account-specific ETF universe is unavailable",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         ) from exc
     return build_educational_portfolio(
         request,
@@ -184,13 +208,6 @@ def aggregation(inputs: AggregationInput) -> AggregationEvaluation:
     return aggregate_accounts(inputs)
 
 
-@router.post("/engine/simulation", response_model=SimulationEvaluation)
-def simulation(inputs: SimulationInput) -> SimulationEvaluation:
-    """Project balances under approved assumption scenarios (not forecasts)."""
-
-    return simulate_accumulation(inputs)
-
-
 @router.post(
     "/engine/pension-calculator",
     response_model=PensionCalculatorEvaluation,
@@ -201,6 +218,89 @@ def pension_calculator(
     """Calculate an educational accumulation and pension payout scenario."""
 
     return calculate_pension(inputs)
+
+
+@router.post(
+    "/engine/pension-calculator/portfolio-cma",
+    response_model=PensionCalculatorPortfolioCmaEvaluation,
+)
+def pension_calculator_portfolio_cma(
+    request: PensionCalculatorPortfolioCmaRequest,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> PensionCalculatorPortfolioCmaEvaluation:
+    """Calculate from the user's ETF weights with verified costs and CMA mappings."""
+
+    if request.calculator.scenario != AssumptionScenario.BASE:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Portfolio CMA calculator supports the base planning scenario only",
+        )
+
+    database_url = (
+        settings.database_url.get_secret_value().strip()
+        if settings.database_url is not None
+        else ""
+    )
+    try:
+        repository = get_portfolio_universe_repository(
+            request.calculator.account_type,
+            database_url,
+        )
+    except (
+        FileNotFoundError,
+        ValueError,
+        PortfolioUniverseLoadError,
+        psycopg.Error,
+    ) as exc:
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Account-specific ETF universe is unavailable",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+        ) from exc
+
+    products = {product["isu_code"]: product for product in repository.products}
+    try:
+        planning_return = calculate_current_holdings_planning_return(
+            holdings=request.current_holdings,
+            products=products,
+            retirement_start_age=request.calculator.contribution_end_age,
+            portfolio_horizon_years=(
+                request.calculator.contribution_end_age - request.calculator.current_age
+            ),
+            source_as_of=repository.as_of,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+
+    if planning_return.net_planning_return_percent is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Portfolio CMA planning return could not be calculated",
+        )
+
+    calculator = calculate_pension(
+        request.calculator,
+        annual_return_override_percent=planning_return.net_planning_return_percent,
+        assumption_source=planning_return.sources[0],
+        assumption_version=PORTFOLIO_CMA_CALCULATOR_POLICY_VERSION,
+        assumption_notice=(
+            "현재 보유 ETF 비중을 고정한 CMA 매핑·검증 비용·불확실성 할인 기반 "
+            "장기 계획가정입니다. 미래 수익률 예측이 아닙니다."
+        ),
+        additional_warnings=(
+            "portfolio_cma_current_holding_weights_held_constant",
+            "portfolio_cma_selected_strategy_rate_only; "
+            "other strategy rows use the standard bucket comparison",
+            *planning_return.warnings,
+        ),
+    )
+    return PensionCalculatorPortfolioCmaEvaluation(
+        calculator=calculator,
+        planning_return=planning_return,
+    )
 
 
 @router.post(
@@ -249,8 +349,9 @@ def mock_scenario(scenario_code: str) -> ScenarioEvaluation:
 
     scenario = LocalScenarioRepository().get(scenario_code)
     if scenario is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Unknown scenario_code: {scenario_code}",
+        raise api_error(
+            ApiErrorCode.RESOURCE_NOT_FOUND,
+            f"Unknown scenario_code: {scenario_code}",
+            status.HTTP_404_NOT_FOUND,
         )
     return evaluate_mock_scenario(scenario)

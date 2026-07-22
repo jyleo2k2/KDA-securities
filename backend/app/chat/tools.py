@@ -17,15 +17,12 @@ from ..engine import (
     PensionTaxCreditInput,
     ProfileEvaluation,
     ProfileSurveyInput,
-    SimulationEvaluation,
-    SimulationInput,
     aggregate_accounts,
     build_allocation_example,
     calculate_pension_tax_credit,
     estimate_non_pension_withdrawal_tax,
     evaluate_account_diagnostics,
     evaluate_profile,
-    simulate_accumulation,
 )
 
 PENSION_TAX_CLOSING_NOTICE = (
@@ -48,12 +45,6 @@ def account_aggregation_tool(inputs: AggregationInput) -> AggregationEvaluation:
     """Aggregate explicitly supplied pension accounts; no account data is fetched."""
 
     return aggregate_accounts(inputs)
-
-
-def accumulation_simulation_tool(inputs: SimulationInput) -> SimulationEvaluation:
-    """Run the approved educational accumulation assumptions for supplied inputs."""
-
-    return simulate_accumulation(inputs)
 
 
 def profile_assessment_tool(inputs: ProfileSurveyInput) -> ProfileEvaluation:
@@ -101,7 +92,6 @@ def estimate_non_pension_withdrawal_tax_tool(
 
 ENGINE_AGENT_TOOLS = (
     account_diagnostics_tool,
-    accumulation_simulation_tool,
     profile_assessment_tool,
     allocation_example_tool,
     account_aggregation_tool,

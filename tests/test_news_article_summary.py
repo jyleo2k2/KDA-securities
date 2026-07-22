@@ -17,6 +17,7 @@ from backend.app.ingestion.news_article import (
     fetch_news_article,
 )
 from backend.app.ingestion.news_summarizer import (
+    MAX_SUMMARY_LINE_CHARS,
     NewsSummarizer,
     NewsSummaryError,
     NewsSummaryOutput,
@@ -81,6 +82,51 @@ def test_summary_validation_rejects_numbers_absent_from_source() -> None:
 def test_summary_output_requires_exactly_three_clean_lines() -> None:
     with pytest.raises(ValueError):
         NewsSummaryOutput(summary_lines=("한 줄", "두 줄"))
+
+
+def test_summary_output_rejects_a_line_that_exceeds_mobile_contract() -> None:
+    summary = NewsSummaryOutput(
+        summary_lines=(
+            "가" * (MAX_SUMMARY_LINE_CHARS + 1),
+            "둘째 문장",
+            "셋째 문장",
+        )
+    )
+
+    with pytest.raises(NewsSummaryError, match="validation_failed"):
+        validate_summary_against_source(summary, "가" * (MAX_SUMMARY_LINE_CHARS + 1))
+
+
+def test_summary_validation_rejects_recommendations_even_when_source_has_them() -> None:
+    summary = NewsSummaryOutput(
+        summary_lines=(
+            "회사가 실적을 발표했다.",
+            "매수를 권한다는 의견이 나왔다.",
+            "주가 변동 가능성을 확인해야 한다.",
+        )
+    )
+
+    with pytest.raises(NewsSummaryError, match="validation_failed"):
+        validate_summary_against_source(
+            summary,
+            "회사가 실적을 발표했고 매수를 권한다는 의견이 나왔다.",
+        )
+
+
+def test_summary_validation_requires_a_speaker_for_outlook() -> None:
+    summary = NewsSummaryOutput(
+        summary_lines=(
+            "회사가 실적을 발표했다.",
+            "매출은 10% 늘었다.",
+            "시장 반등을 전망했다.",
+        )
+    )
+
+    with pytest.raises(NewsSummaryError, match="validation_failed"):
+        validate_summary_against_source(
+            summary,
+            "회사가 실적을 발표했고 매출은 10% 늘었다. 시장 반등을 전망했다.",
+        )
 
 
 def test_summarizer_parses_native_three_line_output() -> None:

@@ -22,14 +22,14 @@ from .planning_return import (
 from .strategy_presentation import get_strategy_presentation
 
 ENGINE_NAME = "educational_pension_portfolio"
-ENGINE_VERSION = "2026-07-16.4"
-POLICY_VERSION = "2026-07-16.2"
+ENGINE_VERSION = "2026-07-22.2"
+POLICY_VERSION = "2026-07-22.2"
 PERCENT_QUANTUM = Decimal("0.0001")
 DRIFT_THRESHOLD_PERCENT = Decimal("5")
 RETIREMENT_RISK_CAP_PERCENT = Decimal("70")
 TRADING_DAYS_PER_YEAR = Decimal("252")
 MINIMUM_RISK_OBSERVATIONS = 60
-CMA_POLICY_ID = "jpm_2026_usd_educational_v1"
+CMA_POLICY_ID = "jpm_2026_usd_educational_v2"
 CMA_SOURCE_AS_OF = date(2025, 9, 30)
 CMA_HORIZON_MIN_YEARS = 10
 CMA_HORIZON_MAX_YEARS = 15
@@ -54,6 +54,12 @@ class RiskProfile(StrEnum):
     RISK_NEUTRAL = "risk_neutral"
     ACTIVE = "active"
     AGGRESSIVE = "aggressive"
+
+
+class StressLossPolicyStatus(StrEnum):
+    NOT_EVALUATED = "not_evaluated"
+    WITHIN_USER_LIMIT = "within_user_limit"
+    REVIEW_REQUIRED = "review_required"
 
 
 class CurrentHolding(BaseModel):
@@ -180,6 +186,9 @@ class PortfolioRiskEvaluation(BaseModel):
     historical_return_used_for_risk_only: bool
     is_return_forecast: bool
     stress_scenarios: list[StressScenarioResult]
+    stress_loss_limit_percent: Decimal | None
+    worst_stress_loss_percent: Decimal
+    stress_loss_policy_status: StressLossPolicyStatus
     sources: list[SourceChip]
     warnings: list[str]
 
@@ -247,6 +256,7 @@ class EducationalPortfolioEvaluation(BaseModel):
     asset_class_allocation: list[EducationalAssetClassAllocation]
     portfolio_risk: PortfolioRiskEvaluation
     planning_return: PortfolioPlanningEvaluation
+    current_holdings_planning_return: PortfolioPlanningEvaluation | None = None
     rebalancing: RebalancingGuidance
     sources: list[SourceChip]
     warnings: list[str]
@@ -349,14 +359,34 @@ def _stress_results(
     ]
 
 
+def _stress_loss_policy(
+    stress_scenarios: list[StressScenarioResult],
+    loss_tolerance_percent: Decimal | None,
+) -> tuple[Decimal, StressLossPolicyStatus]:
+    worst_loss = max(
+        (scenario.estimated_loss_percent for scenario in stress_scenarios),
+        default=Decimal("0"),
+    )
+    if loss_tolerance_percent is None:
+        return worst_loss, StressLossPolicyStatus.NOT_EVALUATED
+    if worst_loss <= loss_tolerance_percent:
+        return worst_loss, StressLossPolicyStatus.WITHIN_USER_LIMIT
+    return worst_loss, StressLossPolicyStatus.REVIEW_REQUIRED
+
+
 def calculate_portfolio_risk(
     *,
     candidates: list[EducationalEtfCandidate],
     histories: dict[str, dict[date, Decimal]],
     source_as_of: date,
     history_as_of: date | None = None,
+    loss_tolerance_percent: Decimal | None = None,
 ) -> PortfolioRiskEvaluation:
     stress = _stress_results(candidates)
+    worst_stress_loss, stress_policy_status = _stress_loss_policy(
+        stress,
+        loss_tolerance_percent,
+    )
     returns_by_code = {
         candidate.isu_code: _daily_returns(histories.get(candidate.isu_code, {}))
         for candidate in candidates
@@ -375,8 +405,8 @@ def calculate_portfolio_risk(
         ),
         SourceChip(
             label="연금 코파일럿 포트폴리오 스트레스 정책",
-            reference="backend/app/engine/educational_portfolio.py",
-            as_of=date(2026, 7, 16),
+            reference="docs/30_스펙/포트폴리오_위험정책_계약.md",
+            as_of=date(2026, 7, 22),
         ),
     ]
     if len(ordered_dates) < MINIMUM_RISK_OBSERVATIONS:
@@ -397,8 +427,18 @@ def calculate_portfolio_risk(
             historical_return_used_for_risk_only=True,
             is_return_forecast=False,
             stress_scenarios=stress,
+            stress_loss_limit_percent=loss_tolerance_percent,
+            worst_stress_loss_percent=_percent(worst_stress_loss),
+            stress_loss_policy_status=stress_policy_status,
             sources=sources,
-            warnings=["minimum_60_common_daily_returns_required"],
+            warnings=[
+                "minimum_60_common_daily_returns_required",
+                *(
+                    ["stress_loss_exceeds_user_tolerance_review_required"]
+                    if stress_policy_status == StressLossPolicyStatus.REVIEW_REQUIRED
+                    else []
+                ),
+            ],
         )
     total_weight = sum(
         (candidate.target_percent for candidate in candidates), Decimal("0")
@@ -446,11 +486,19 @@ def calculate_portfolio_risk(
         historical_return_used_for_risk_only=True,
         is_return_forecast=False,
         stress_scenarios=stress,
+        stress_loss_limit_percent=loss_tolerance_percent,
+        worst_stress_loss_percent=_percent(worst_stress_loss),
+        stress_loss_policy_status=stress_policy_status,
         sources=sources,
         warnings=[
             "fixed_weight_daily_rebalanced_historical_measurement",
             "historical_risk_does_not_predict_future_loss",
             "stress_shocks_are_policy_scenarios_not_probabilities",
+            *(
+                ["stress_loss_exceeds_user_tolerance_review_required"]
+                if stress_policy_status == StressLossPolicyStatus.REVIEW_REQUIRED
+                else []
+            ),
         ],
     )
 
@@ -548,7 +596,7 @@ def calculate_portfolio_planning_return(
         as_of=CMA_SOURCE_AS_OF,
     )
     policy_source = SourceChip(
-        label="연금 코파일럿 CMA 매핑·불확실성 할인 정책",
+        label="연금 코파일럿 CMA 매핑 정책",
         reference="backend/app/engine/educational_portfolio.py",
         as_of=date(2026, 7, 16),
     )
@@ -561,7 +609,7 @@ def calculate_portfolio_planning_return(
     warnings = [
         "planning_assumption_not_realized_return_prediction",
         "cma_is_current_policy_anchor_not_full_horizon_forecast",
-        "currency_adjustment_is_zero_until_approved_krw_assumption",
+        "central_value_is_cma_minus_verified_annual_cost_only",
     ]
     for candidate in candidates:
         product = products[candidate.isu_code]
@@ -575,9 +623,10 @@ def calculate_portfolio_planning_return(
                 "effective_total_cost_missing_uses_kis_stated_expense"
             )
         if cost is None:
-            cost = Decimal("0")
-            component_warnings.append("verified_cost_missing_zero_placeholder")
-        uncertainty = _uncertainty_discount(classification)
+            raise ValueError(
+                "verified annual cost is required for CMA-minus-cost planning: "
+                f"{candidate.isu_code}"
+            )
         result = calculate_etf_planning_return(
             EtfPlanningReturnInput(
                 etf_code=candidate.isu_code,
@@ -587,7 +636,7 @@ def calculate_portfolio_planning_return(
                 industry_excess_earnings_growth_percent=Decimal("0"),
                 industry_growth_confidence=Decimal("0"),
                 industry_growth_persistence=Decimal("0"),
-                uncertainty_discount_percent=uncertainty,
+                uncertainty_discount_percent=Decimal("0"),
                 annual_cost_drag_percent=cost,
                 sources=PlanningReturnSources(
                     asset_class_cma=cma_source,
@@ -606,7 +655,7 @@ def calculate_portfolio_planning_return(
                 target_percent=candidate.target_percent,
                 cma_assumption_code=code,
                 cma_percent=_percent(CMA_ASSUMPTIONS_PERCENT[code]),
-                uncertainty_discount_percent=_percent(uncertainty),
+                uncertainty_discount_percent=Decimal("0"),
                 annual_cost_drag_percent=_percent(cost),
                 gross_planning_return_percent=result.gross_planning_return_percent,
                 net_planning_return_percent=result.net_planning_return_percent,
@@ -641,23 +690,7 @@ def calculate_portfolio_planning_return(
         if coverage
         else None
     )
-    weighted_uncertainty = (
-        sum(
-            (
-                item.target_percent * item.uncertainty_discount_percent
-                for item in components
-            ),
-            Decimal("0"),
-        )
-        / coverage
-        if coverage
-        else None
-    )
-    base = (
-        net + weighted_uncertainty
-        if net is not None and weighted_uncertainty is not None
-        else None
-    )
+    base = net
     if not (
         CMA_HORIZON_MIN_YEARS
         <= portfolio_horizon_years
@@ -691,6 +724,71 @@ def calculate_portfolio_planning_return(
         components=components,
         sources=[cma_source, policy_source, cost_source],
         warnings=list(dict.fromkeys(warnings)),
+    )
+
+
+def calculate_current_holdings_planning_return(
+    *,
+    holdings: list[CurrentHolding],
+    products: dict[str, dict[str, Any]],
+    retirement_start_age: int,
+    portfolio_horizon_years: int,
+    source_as_of: date,
+) -> PortfolioPlanningEvaluation:
+    """Build a cost-verified CMA planning assumption for the supplied ETF weights."""
+
+    total_amount = sum((holding.amount_krw for holding in holdings), Decimal("0"))
+    if total_amount <= 0:
+        raise ValueError("current holdings must have a positive total")
+
+    candidates: list[EducationalEtfCandidate] = []
+    for holding in holdings:
+        if holding.amount_krw == 0:
+            continue
+        product = products.get(holding.isu_code)
+        if product is None:
+            raise ValueError(
+                "ETF is not in the account-specific universe: "
+                f"{holding.isu_code}"
+            )
+        cost = product.get("cost") or {}
+        if (
+            _numeric(cost.get("effective_total_cost_percent")) is None
+            and _numeric(cost.get("kis_total_expense_ratio_percent")) is None
+        ):
+            raise ValueError(f"verified ETF cost is unavailable: {holding.isu_code}")
+        classification = product.get("classification") or {}
+        candidates.append(
+            EducationalEtfCandidate(
+                isu_code=holding.isu_code,
+                isu_name=str(product.get("isu_name") or holding.isu_code),
+                sleeve=_product_sleeve(product) or "current_holding",
+                target_percent=holding.amount_krw / total_amount * Decimal("100"),
+                quality=CandidateQuality(
+                    total_score=Decimal("0"),
+                    fee_efficiency=Decimal("0"),
+                    liquidity=Decimal("0"),
+                    size=Decimal("0"),
+                    nav_quality=Decimal("0"),
+                    tracking_quality=Decimal("0"),
+                    history_depth=Decimal("0"),
+                ),
+                asset_class=None,
+                region=str(classification.get("region") or "") or None,
+                strategy=str(classification.get("strategy") or "") or None,
+                max_correlation_with_selected=None,
+                price_history_source="not_used_for_planning_return",
+                account_eligibility=product.get("account_eligibility") or {},
+                reasons=["current_holding_weight"],
+            )
+        )
+
+    return calculate_portfolio_planning_return(
+        candidates=candidates,
+        products=products,
+        retirement_start_age=retirement_start_age,
+        portfolio_horizon_years=portfolio_horizon_years,
+        source_as_of=source_as_of,
     )
 
 
@@ -1324,6 +1422,7 @@ def build_educational_portfolio(
         histories=histories,
         source_as_of=source_as_of,
         history_as_of=history_as_of,
+        loss_tolerance_percent=request.loss_tolerance_percent,
     )
     planning_return = calculate_portfolio_planning_return(
         candidates=candidates,
@@ -1332,6 +1431,23 @@ def build_educational_portfolio(
         portfolio_horizon_years=horizon_years,
         source_as_of=source_as_of,
     )
+    current_holdings_planning_return = None
+    current_holdings_planning_warnings: list[str] = []
+    if request.current_holdings:
+        try:
+            current_holdings_planning_return = (
+                calculate_current_holdings_planning_return(
+                    holdings=request.current_holdings,
+                    products=products_by_code,
+                    retirement_start_age=request.retirement_start_age,
+                    portfolio_horizon_years=horizon_years,
+                    source_as_of=source_as_of,
+                )
+            )
+        except ValueError as exc:
+            current_holdings_planning_warnings.append(
+                f"current_holdings_planning_return_unavailable:{exc}"
+            )
     asset_class_allocation, asset_class_warnings = _build_asset_class_allocation(
         candidates
     )
@@ -1384,6 +1500,7 @@ def build_educational_portfolio(
         asset_class_allocation=asset_class_allocation,
         portfolio_risk=portfolio_risk,
         planning_return=planning_return,
+        current_holdings_planning_return=current_holdings_planning_return,
         rebalancing=calculate_rebalancing_guidance(
             request=request,
             products=products_by_code,
@@ -1422,5 +1539,6 @@ def build_educational_portfolio(
             "holdings_overlap_unavailable_until_pdf_data_is_complete",
             "planning_return_is_cma_based_assumption_not_forecast",
             "retirement_horizon_is_selected_between_age_55_and_60",
+            *current_holdings_planning_warnings,
         ],
     )

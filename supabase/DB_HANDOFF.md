@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-21 KST
-> 확인 기준: 대표 고객 6명 투자성향·답변·공개지표 원격 저장과 짧은 로그인 ID Auth 검증
+> 최종 확인: 2026-07-22 KST
+> 확인 기준: 로그인 투자자정보 확인서 통합 설문 migration 원격 적용·카탈로그 재검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -252,6 +252,25 @@ uv run pytest
 uv run ruff check .
 ```
 
+## 스키마 정비 B — 파괴적 변경 사전 조사 (LOCAL-VERIFIED)
+
+### 2026-07-21 KST
+
+- 작업 브랜치: `db/schema-destructive-review` (기준 `origin/main` `c66d0ee`). 원격 DB 쓰기·마이그레이션 작성 없음.
+- 원격 조사: `mock_public_profiles` 3행, `mock_public_portfolios` 3행, `mock_public_portfolio_holdings` 9행, `curated_contents` 0행.
+- 고아 테이블 참조 조사:
+  - `frontend/`, `scripts/`, `tests/`에는 네 테이블의 런타임 참조가 없다.
+  - `supabase/seed.sql`은 `mock_public_*` 세 테이블에 3/3/9행을 넣으며, `curated_contents`에는 seed가 없다.
+  - `docs/`에는 목 벤치마크와 향후 벤치마크 탭의 후보 계약으로 `mock_public_*`가 남아 있다. `curated_contents`는 RAG·콘텐츠 그룹 설명에만 남아 있다.
+  - FK 유입: `mock_public_portfolios.profile_id -> mock_public_profiles.id`, `mock_public_portfolio_holdings.portfolio_id -> mock_public_portfolios.id`, `mock_public_portfolio_holdings.asset_class_id -> asset_classes.id`. `curated_contents`의 FK 유입은 0건이다. `asset_classes`는 `account_holding_snapshots`, `financial_products`, `mock_holdings`, `mock_public_portfolio_holdings`가 참조한다.
+  - 결론: `mock_public_*`는 seed와 문서상 후속 벤치마크 계약이 있어 **보류**. `curated_contents`는 0행·런타임 참조 0건·FK 유입 0건으로 **삭제 가능 후보**이나, 문서의 RAG·콘텐츠 역할 정리와 소유자 확인 후에만 destructive PR에서 처리한다.
+- 레거시 목데이터 이중 저장 조사:
+  - `backend/app/chat/scenarios.py:103,105`, `backend/app/chat/user_context.py:277,278,289`가 `mock_accounts`/`mock_holdings`를 아직 직접 읽는다. `backend/app/benchmark_repository.py`는 이름이 비슷하지만 `benchmark_mock_*`만 읽으므로 삭제 대상과 별개다.
+  - 동등성 쿼리(시나리오별 계좌 수·보유 건수·계좌 잔액 합계·보유 평가액 합계): `dc_dormant` 1/7/60,980,000원, `tax_contribution_uninvested` 2/13/40,680,000원, `overlap_risk_concentration` 3/20/149,330,000원, `young_retirement_distance` 2/13/23,210,000원, `family_budget_pressure` 3/20/88,660,000원, `pension_payout_transition` 2/13/157,430,000원. 여섯 시나리오 모두 legacy/common 지표가 일치했다(총 13계좌·86보유).
+  - 정리 제안: (1) `scenarios.py`와 `user_context.py`를 공용 모델 조회로 전환하고 계약 테스트를 추가한다. (2) 시나리오별 동등성 쿼리와 Auth/RLS E2E를 재실행한다. (3) 백업 가능한 export와 롤백용 복원 SQL을 별도 승인 PR에 포함한 뒤 `mock_holdings` → `mock_accounts` 순서로 삭제한다. 삭제 직후 공용 모델 재조회·동등성 검증을 수행하며, 실패 시 삭제 migration을 되돌리고 백업으로 복원한다.
+  - `mock_scenarios`는 `pension_accounts.scenario_id`가 참조하므로 삭제 대상이 아니다.
+- 다음 단계: TODO: 이재용이 `mock_public_*`의 벤치마크 탭 사용 여부와 `curated_contents` 폐기 여부를 확정한 뒤, 레거시 코드 전환 PR과 별도 destructive 삭제 PR을 승인한다.
+
 - 모든 migration과 seed를 UTF-8로 읽고 SQL 구문 검사를 통과한다.
 - 신규 public 테이블마다 RLS와 의도한 GRANT가 계약 테스트에 존재한다.
 - 승인된 목시나리오 backfill의 계좌 합계, 위험자산 비율, 한도 판정, 자산군 비중이 이전 결과와 동일하다.
@@ -291,7 +310,9 @@ uv run ruff check .
 | DB-11 | KRX 전체 ETF 일별 거래량 DB·API 연결 | `REMOTE-APPLIED` | `20260720080955`, 2026-07-14 전체 1,147행·원본 합계 동등성·RLS/GRANT·FastAPI 원격 E2E 확인 | 일일 갱신 자동화와 보존기간은 후속 결정 |
 | DB-12 | ETF 테마 콘텐츠 검증·승인 RAG 연결 | `REMOTE-APPLIED` | `20260720091219`, `.4` 검토·근거 115/115건(`.3` 포함 총 230/230), 승인 문서 15개·활성 임베딩 청크 56/56건 | 적용 파일 수정 금지; 챗봇 화면 E2E·검토기한 만료 전 재검증 |
 | DB-13 | 투자성향 진단 저장·조회 API | `REMOTE-APPLIED` | POST/GET·24개월 KST 정책·append-only 확인 이력·RLS·소유자 스코프·전체 회귀·원격 카탈로그 검증 통과 | `20260720154033_add_investment_profile_confirmations.sql` 적용 완료 |
+| DB-13A | 로그인 투자자정보 확인서 통합 설문 | `REMOTE-APPLIED` | `20260722020126`, 활성 세트 1개·17문항·76선택지, 기존 세트 retire, 0~7점 제약·복수선택 답변 제약·RLS/클라이언트 권한 재검증 | 원격 적용 MCP 버전에 맞춰 로컬 파일명을 `20260722020126`으로 유지; 적용 파일 수정 금지 |
 | DB-14 | KIS ETF 구성종목 신뢰성 보강 | `LOCAL-VERIFIED` | 임시 빈 응답 재시도·재개, 마지막 정상 스냅샷 보존, 선택 종목 재수집 구현·원격 데이터 검증 | 코드 배포 전; KIS 미지원 614개는 KRX PDF·운용사 보조 소스 계약 필요 |
+| DB-15 | 레거시 목계좌 테이블 퇴역 백업·쓰기 전환 | `LOCAL-VERIFIED` | 읽기 전용 JSON·SHA-256 백업, 공통 계좌 동등성 확인, seed·데모 적재·생성기의 공통 계좌 직접 쓰기 | 복구 절차와 로컬 reset·원격 E2E를 재검증한 뒤 별도 파괴적 migration 검토 |
 
 ## 13. 미결정 사항
 
@@ -304,6 +325,32 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-22 KST 레거시 목계좌 쓰기 경로 공통 계좌 전환
+
+- 작업자/브랜치: Codex / `db/jyleo2k2/legacy-account-write-cutover`.
+- 변경: `supabase/seed.sql`의 대표 6명 계좌·보유 초기화는 `pension_accounts`·`account_snapshots`·`account_holding_snapshots`에 직접 13·13·86행을 멱등 적재한다. `scripts/render_demo_customer_sql.py`는 더 이상 적용 완료 migration을 재생성하지 않고 공통 계좌 seed만 생성한다. `scripts/load_benchmark_mock_data.py`도 레거시 계좌 표 갱신을 중단했다.
+- 보존: 역사 migration과 read-only 백업 도구는 복구 근거로 그대로 유지한다. 이번 범위에서는 `mock_accounts`·`mock_holdings` 삭제나 원격 DB 쓰기를 수행하지 않았다.
+- 검증: seed PostgreSQL 파싱 통과, SQL 계약 32 passed, 전체 `uv run pytest` 1022 passed·1 skipped, `uv run ruff check .`, `git diff --check` 통과. seed·생성기·벤치마크 적재기에서 `public.mock_accounts`·`public.mock_holdings` 쓰기 참조는 0건이다.
+- 다음: 백업 복원 리허설·로컬 reset과 Auth/RLS 원격 E2E를 재검증하고, 이재용 승인 후에만 별도 파괴적 migration으로 테이블을 제거한다.
+
+### 2026-07-22 KST 레거시 목계좌 퇴역 백업 준비
+
+- 작업 브랜치/워크트리: `db/retire-legacy-mock-tables` / `C:\dev\finance-project-1-db-legacy-cleanup`.
+- 코드 전환 기준: 챗봇 시나리오·로그인 사용자 요약은 공통 `pension_accounts`·`account_snapshots`·`account_holding_snapshots`를 읽도록 전환된 커밋 `bf4c848`을 기반으로 한다.
+- 백업: `scripts/backup_legacy_mock_accounts.py`가 repeatable-read·read-only 트랜잭션에서 `mock_scenarios`·`mock_accounts`·`mock_holdings`를 정렬 JSON으로 내보내고 SHA-256 manifest를 생성한다. 출력은 Git 제외 `output/legacy_mock_account_backups/`에만 쓴다.
+- 실제 읽기 검증: 2026-07-22 KST에 공통 계좌 동등성 검사를 통과한 뒤 시나리오 6개·계좌 13개·보유 86개·총 평가액 520,290,000원 백업을 생성하고, DB 재접속 없이 SHA-256 검증을 다시 통과했다. 원격 DB 쓰기·migration 적용은 수행하지 않았다.
+- 삭제 전 남은 의존성: `supabase/seed.sql`, `scripts/load_benchmark_mock_data.py`, `scripts/render_demo_customer_sql.py`, 일부 데모 문서가 레거시 테이블을 아직 생성·갱신·설명한다. 이를 공통 계좌 구조로 전환하고 로컬 reset/원격 E2E·복구 절차를 검증하기 전에는 `mock_holdings`·`mock_accounts`를 삭제하지 않는다.
+- 검증: 백업 도구 단위 테스트 3건·Ruff 통과. 챗봇 공통 구조 전환 기준 전체 회귀는 `981 passed, 1 skipped`.
+
+### 2026-07-22 KST 로그인 투자자정보 확인서 통합 설문 원격 적용
+
+- 작업자/브랜치: Codex / `codex/login-survey-db`.
+- 시작 상태: 원격 활성 설문세트 1개·6문항·30선택지, 사용자 투자성향 평가·답변 행은 각각 0건이었다.
+- 원격 적용: MCP `apply_migration`으로 로그인 설문 통합 SQL을 적용했다. MCP가 실제 원격 버전 `20260722020126_replace_profile_question_set_with_login_union`을 부여했으므로, 로컬 migration 파일도 같은 버전으로 이름을 맞췄다. `migration repair`는 사용하지 않았다.
+- 원격 재검증: 활성 세트 1개·retired 세트 1개, 활성 17문항·76선택지, 점수/답변 점수 CHECK 모두 `0..7`, 답변 유니크 제약은 `(assessment_id, question_id, option_id)`, 관련 public 5테이블 RLS 5/5, `anon`·`authenticated` 테이블 GRANT 0개를 확인했다.
+- Advisor: 신규 경고는 없었다. `RLS Enabled No Policy` INFO는 서버 전용 reference 테이블의 기존 deny-by-default 구성이고, `auth_leaked_password_protection` WARN은 기존 미해결 항목(DB-09)이다.
+- 로컬 검증: `uv run pytest tests/test_demo_user_context.py tests/test_profile.py tests/test_investment_profile_api.py tests/test_schema_contract.py tests/test_embedded_sql.py` 73 passed, `uv run ruff check ...` 통과, 프론트 `npm test` 53 passed·`npm run build` 통과.
 
 ### 2026-07-21 KST KIS ETF 구성종목 빈 응답 신뢰성 보강
 
@@ -685,6 +732,17 @@ uv run ruff check .
 - 원격 적용 여부: 없음. migration history 변경 없음. `supabase/seed.sql`의 로컬 reset용 URL·metadata만 동기화했다.
 - 남은 위험: 원격에 canonical URL과 legacy fragment URL이 동시에 존재하면 자동 병합하지 않고 적재를 실패시킨다. 중복이 확인될 경우 참조 건수를 먼저 확인한 뒤 별도 정리한다.
 - 다음 작업: PR 리뷰 후 승인된 적재 명령 실행, 변경 청크 BGE-M3 재임베딩, 원격 검색 품질 재측정.
+
+## 스키마 정비 A — additive 제약·자동 시각 갱신 (LOCAL-VERIFIED)
+
+### 2026-07-21 KST
+
+- 작업 브랜치: `db/schema-additive` (기준 `origin/main` `c66d0ee`). 새 migration `20260721120000_add_updated_at_triggers_and_holding_constraints.sql`를 추가했으며 원격 적용은 하지 않았다.
+- 원격 사전 카탈로그 조회: `updated_at` 보유 public 테이블은 13개(`chat_sessions`, `data_sources`, `demo_investor_profiles`, `demo_public_portfolio_metrics`, `demo_user_financial_context`, `etf_product_descriptions`, `etf_theme_content_reviews`, `financial_institutions`, `financial_products`, `knowledge_documents`, `mock_scenarios`, `pension_accounts`, `user_profiles`)이고 기존 BEFORE UPDATE 트리거는 0개였다.
+- 변경: `extensions` 스키마의 `moddatetime` extension과 위 13개 테이블의 BEFORE UPDATE 트리거를 명시적으로 추가했다. 앱 코드의 `updated_at = now()`는 유지했다.
+- A-2 사전 위반 조회: `account_holding_snapshots`의 product 중복 그룹 0건·raw 이름 중복 그룹 0건, `account_holding_snapshots.etf_isu_code` 형식 위반 0건, `mock_holdings.etf_isu_code` 형식 위반 0건. 따라서 partial unique index 2개와 두 ETF 코드 형식 CHECK를 추가했다.
+- 검증: `uv run pytest tests/test_schema_contract.py tests/test_embedded_sql.py` 31 passed. 로컬 Supabase reset은 Windows Docker daemon 부재로 실행하지 못했으며, `supabase/seed.sql`의 공용 모델 replay 계약은 schema contract test로 정적 확인했다. TODO: 원격 적용 승인 후 실제 migration 적용·trigger 카탈로그 재조회·seed reset을 재검증한다.
+- 원격 적용 여부: 없음. 상태는 `LOCAL-VERIFIED`이며 이재용 승인 전 원격 migration을 적용하지 않는다.
 
 ## 15. 작업 로그 템플릿
 

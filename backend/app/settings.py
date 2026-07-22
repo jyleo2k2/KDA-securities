@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     enable_etf_product_feature_generation: bool = True
     narration_cache_path: Path = Path("data/cache/narration_cache.json")
     news_summary_model: str = "claude-sonnet-5"
-    news_summary_prompt_version: str = "news-summary-v2"
+    news_summary_prompt_version: str = "news-summary-v3"
     krx_api_key: SecretStr | None = None
     kis_app_key: SecretStr | None = None
     kis_app_secret: SecretStr | None = None

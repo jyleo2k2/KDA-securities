@@ -45,7 +45,7 @@ DB형, 연금저축보험, 연금저축신탁은 생성하지 않는다. 연금�
 후보이고 `pension_payout_transition`은 데이터·Auth 계정을 유지하되 로그인 후보에서
 제외한다. `benchmark_user_id`와 `benchmark_account_id`로 기준 사용자·계좌를
 연결하므로 사용자 29개 컬럼, 계좌 23개 컬럼, 보유자산 6개 컬럼이 빠지지 않는다.
-`GET /chat/demo/heroes`의 `benchmark_customer`에서 한 명 단위 전체 공통 계약을
+인증 `GET /chat/heroes`의 `benchmark_customer`에서 한 명 단위 전체 공통 계약을
 확인할 수 있고, `accounts`는 같은 계좌 잔액을 실제 적격 ETF로 상세 분해한 값이다.
 
 | 시나리오 코드 | 대표 고객 | 연령 | 로그인 ID | 대표 상황 |

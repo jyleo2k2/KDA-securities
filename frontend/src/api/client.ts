@@ -1,6 +1,5 @@
 import type {
   AccountLinkOptionsResponse,
-  BenchmarkSummary,
   ChatCardCatalog,
   CompletedSurveyProfile,
   ConversationContext,
@@ -9,25 +8,52 @@ import type {
   DemoUserFinancialContext,
   DemoHeroPortfolio,
   EducationalPortfolioInput,
+  InvestmentProfileResponse,
+  InvestmentProfileSubmission,
+  PensionCalculatorEvaluation,
+  PensionCalculatorInput,
+  PensionCalculatorPortfolioCmaEvaluation,
+  PensionCalculatorPortfolioCmaRequest,
   PensionTaxScenarioInput,
   ProfileEvaluation,
   ProfileSurveyInput,
   ScenarioSummary,
   StoredChatMessage,
 } from "./types";
+import { supabase } from "../auth/supabase";
+import { noStoreApiRequest } from "../pwa/cachePolicy";
 
 const API_BASE_URL: string = (
   import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000"
 ).replace(/\/$/, "");
 
 export class ApiError extends Error {
-  readonly status: number;
+  readonly status: number | undefined;
+  readonly code: string | null;
 
-  constructor(status: number, message: string) {
+  constructor(status: number | undefined, message: string, code: string | null = null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
+}
+
+const ERROR_MESSAGES: Record<string, string> = {
+  RESOURCE_NOT_FOUND: "요청한 정보를 찾을 수 없습니다.",
+  DATA_SOURCE_UNAVAILABLE: "데이터를 불러오는 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+  SESSION_NOT_FOUND: "요청한 대화 기록을 찾을 수 없습니다.",
+  DATABASE_NOT_CONFIGURED: "현재 서비스를 이용할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+  INVALID_DATE_RANGE: "조회 시작일은 종료일보다 늦을 수 없습니다.",
+};
+
+export function apiErrorMessage(
+  error: ApiError,
+  fallback = "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+): string {
+  if (error.code !== null) return ERROR_MESSAGES[error.code] ?? fallback;
+  if (error.status === 401) return "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+  return fallback;
 }
 
 export interface ChatStreamResult {
@@ -39,13 +65,34 @@ export interface ChatStreamResult {
   idempotency_replayed?: boolean;
 }
 
+function withoutDemoNameMarker(value: string): string {
+  return value.replace(/\(가상\)/g, "").trim();
+}
+
+function normalizeChatResponse(response: ChatResponse): ChatResponse {
+  if (!response.salutation) return response;
+  return { ...response, salutation: withoutDemoNameMarker(response.salutation) };
+}
+
 async function parseOrThrow<T>(path: string, response: Response): Promise<T> {
   if (!response.ok) {
     let detail = `${path} 요청 실패 (${response.status})`;
+    let code: string | null = null;
     try {
       const body = (await response.json()) as {
-        detail?: string | Array<{ msg?: string }>;
+        detail?:
+          | { code?: unknown; message?: unknown }
+          | string
+          | Array<{ msg?: string }>;
       };
+      if (
+        typeof body.detail === "object"
+        && body.detail !== null
+        && !Array.isArray(body.detail)
+      ) {
+        if (typeof body.detail.message === "string") detail = body.detail.message;
+        if (typeof body.detail.code === "string") code = body.detail.code;
+      }
       if (typeof body.detail === "string") detail = body.detail;
       if (Array.isArray(body.detail)) {
         detail = body.detail
@@ -56,7 +103,7 @@ async function parseOrThrow<T>(path: string, response: Response): Promise<T> {
     } catch {
       // Keep the safe default when the server does not return JSON.
     }
-    throw new ApiError(response.status, detail);
+    throw new ApiError(response.status, detail, code);
   }
   return (await response.json()) as T;
 }
@@ -67,13 +114,36 @@ function requestHeaders(accessToken?: string): HeadersInit {
     : {};
 }
 
+async function currentAccessToken(accessToken?: string): Promise<string | undefined> {
+  if (!accessToken || !supabase) return accessToken;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? accessToken;
+}
+
+async function refreshedAccessToken(): Promise<string | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.auth.refreshSession();
+  return error ? null : data.session?.access_token ?? null;
+}
+
 export async function apiGet<T>(
   path: string,
   accessToken?: string,
 ): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: requestHeaders(accessToken),
+  const token = await currentAccessToken(accessToken);
+  let response = await fetch(`${API_BASE_URL}${path}`, {
+    ...noStoreApiRequest(),
+    headers: requestHeaders(token),
   });
+  if (response.status === 401 && accessToken) {
+    const refreshedToken = await refreshedAccessToken();
+    if (refreshedToken) {
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        ...noStoreApiRequest(),
+        headers: requestHeaders(refreshedToken),
+      });
+    }
+  }
   return parseOrThrow<T>(path, response);
 }
 
@@ -83,15 +153,22 @@ export async function apiPost<TBody, TResult>(
   accessToken?: string,
   idempotencyKey?: string,
 ): Promise<TResult> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const token = await currentAccessToken(accessToken);
+  const request = (requestToken?: string) => fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
+    ...noStoreApiRequest(),
     headers: {
       "Content-Type": "application/json",
-      ...requestHeaders(accessToken),
+      ...requestHeaders(requestToken),
       ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
     },
     body: JSON.stringify(body),
   });
+  let response = await request(token);
+  if (response.status === 401 && accessToken) {
+    const refreshedToken = await refreshedAccessToken();
+    if (refreshedToken) response = await request(refreshedToken);
+  }
   return parseOrThrow<TResult>(path, response);
 }
 
@@ -101,6 +178,7 @@ export async function apiDelete(
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "DELETE",
+    ...noStoreApiRequest(),
     headers: requestHeaders(accessToken),
   });
   if (!response.ok) await parseOrThrow<never>(path, response);
@@ -117,6 +195,7 @@ async function apiPostStream<TBody>(
 ): Promise<ChatStreamResult> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
+    ...noStoreApiRequest(),
     headers: {
       "Content-Type": "application/json",
       Accept: "text/event-stream",
@@ -153,10 +232,15 @@ async function apiPostStream<TBody>(
           event === "narration_update" && typeof payload.answer === "string"
         ) {
           onNarrationUpdate(payload.answer);
-        } else if (event === "error" && typeof payload.detail === "string") {
-          throw new Error(payload.detail);
+        } else if (
+          event === "error"
+          && typeof payload.code === "string"
+          && typeof payload.message === "string"
+        ) {
+          throw new ApiError(undefined, payload.message, payload.code);
         } else if (event === "response") {
-          result = payload as unknown as ChatStreamResult;
+          const streamed = payload as unknown as ChatStreamResult;
+          result = { ...streamed, response: normalizeChatResponse(streamed.response) };
         }
       }
       boundary = buffer.indexOf("\n\n");
@@ -167,20 +251,20 @@ async function apiPostStream<TBody>(
   return result;
 }
 
-export function getBenchmarkSummary(): Promise<BenchmarkSummary> {
-  return apiGet("/benchmark/summary");
-}
-
-export function getScenarios(): Promise<ScenarioSummary[]> {
-  return apiGet("/chat/demo/scenarios");
+export function getScenarios(accessToken: string): Promise<ScenarioSummary[]> {
+  return apiGet("/chat/scenarios", accessToken);
 }
 
 export function getChatCards(): Promise<ChatCardCatalog> {
   return apiGet("/chat/cards");
 }
 
-export function getDemoHeroes(): Promise<DemoHeroPortfolio[]> {
-  return apiGet("/chat/demo/heroes");
+export async function getDemoHeroes(accessToken: string): Promise<DemoHeroPortfolio[]> {
+  const heroes = await apiGet<DemoHeroPortfolio[]>("/chat/heroes", accessToken);
+  return heroes.map((hero) => ({
+    ...hero,
+    nickname: withoutDemoNameMarker(hero.nickname),
+  }));
 }
 
 export function getAccountLinkOptions(): Promise<AccountLinkOptionsResponse> {
@@ -191,6 +275,31 @@ export function evaluateProfileSurvey(
   survey: ProfileSurveyInput,
 ): Promise<ProfileEvaluation> {
   return apiPost("/engine/profile", survey);
+}
+
+export function saveInvestmentProfile(
+  submission: InvestmentProfileSubmission,
+  accessToken: string,
+): Promise<InvestmentProfileResponse> {
+  return apiPost("/me/investment-profile", submission, accessToken);
+}
+
+export function getInvestmentProfile(
+  accessToken: string,
+): Promise<InvestmentProfileResponse> {
+  return apiGet("/me/investment-profile", accessToken);
+}
+
+export function calculatePortfolioCmaPension(
+  request: PensionCalculatorPortfolioCmaRequest,
+): Promise<PensionCalculatorPortfolioCmaEvaluation> {
+  return apiPost("/engine/pension-calculator/portfolio-cma", request);
+}
+
+export function calculatePension(
+  request: PensionCalculatorInput,
+): Promise<PensionCalculatorEvaluation> {
+  return apiPost("/engine/pension-calculator", request);
 }
 
 interface ChatBodyOptions {
@@ -218,22 +327,6 @@ function buildChatBody(message: string, options?: ChatBodyOptions) {
       ? { educational_portfolio: options.educationalPortfolio }
       : {}),
   };
-}
-
-export function sendChatStream(
-  message: string,
-  onPhase: (message: string) => void,
-  onAnswerDelta: (delta: string) => void,
-  onNarrationUpdate: (answer: string) => void,
-  options?: ChatBodyOptions,
-): Promise<ChatStreamResult> {
-  return apiPostStream(
-    "/chat/demo/stream",
-    buildChatBody(message, options),
-    onPhase,
-    onAnswerDelta,
-    onNarrationUpdate,
-  );
 }
 
 export function sendAuthenticatedChatStream(
@@ -274,20 +367,24 @@ export function getChatSessions(
   return apiGet("/chat/sessions", accessToken);
 }
 
-export function getMyPensionContext(
+export async function getMyPensionContext(
   accessToken: string,
 ): Promise<DemoUserFinancialContext> {
-  return apiGet("/me/pension-context", accessToken);
+  const context = await apiGet<DemoUserFinancialContext>("/me/pension-context", accessToken);
+  return { ...context, nickname: withoutDemoNameMarker(context.nickname) };
 }
 
-export function getStoredChatMessages(
+export async function getStoredChatMessages(
   sessionId: string,
   accessToken: string,
 ): Promise<StoredChatMessage[]> {
-  return apiGet(
+  const messages = await apiGet<StoredChatMessage[]>(
     `/chat/sessions/${encodeURIComponent(sessionId)}/messages`,
     accessToken,
   );
+  return messages.map((message) => message.response
+    ? { ...message, response: normalizeChatResponse(message.response) }
+    : message);
 }
 
 export function deleteChatSession(
