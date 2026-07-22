@@ -107,13 +107,6 @@ describe("LoginFlowPage", () => {
     resolveSignIn?.();
   });
 
-  it("shows the signup preparation notice", () => {
-    renderLogin();
-    fireEvent.click(screen.getByRole("button", { name: "회원가입" }));
-
-    expect(screen.getByRole("status")).toHaveTextContent("회원가입은 준비 중입니다.");
-  });
-
   it("loads account metadata and requires consent before entering the app", async () => {
     renderLogin();
     openForm();

@@ -62,8 +62,6 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
     finally { setLinkOptionsLoading(false); }
   }
 
-  function showSignupNotice(): void { setNotice("회원가입은 준비 중입니다."); }
-
   async function saveInvestorInformation(submission: InvestmentProfileSubmission): Promise<void> {
     const accessToken = auth.session?.access_token;
     if (!accessToken) throw new Error("authenticated session is missing");
@@ -111,7 +109,7 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
             </div>
             <div className="login-intro-actions">
               <button type="button" className="login-primary" onClick={() => setStep("form")}>로그인</button>
-              <button type="button" className="login-secondary" onClick={showSignupNotice}>회원가입</button>
+              <button type="button" className="login-secondary">회원가입</button>
               {notice && <p className="login-inline-notice" role="status">{notice}</p>}
               <p>서비스 시작은 이용약관 및 개인정보 처리방침 동의로 간주됩니다.</p>
             </div>
@@ -135,7 +133,7 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
                 <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호를 입력하세요" autoComplete="current-password" disabled={submitting} />
               </label>
               {auth.error && <p className="login-form-error" role="alert">{auth.error}</p>}{notice && <p className="login-inline-notice" role="status">{notice}</p>}
-              <div className="login-links"><button type="button">아이디 찾기</button><i /> <button type="button">비밀번호 찾기</button><i /> <button type="button" onClick={showSignupNotice}>회원가입</button></div>
+              <div className="login-links"><button type="button">아이디 찾기</button><i /> <button type="button">비밀번호 찾기</button><i /> <button type="button">회원가입</button></div>
               <div className="login-submit-wrap"><button type="submit" className="login-primary" disabled={submitting}>{submitting ? "로그인 중..." : "로그인하기"}</button></div>
             </form>
           </div>
