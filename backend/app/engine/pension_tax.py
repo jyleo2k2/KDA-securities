@@ -12,10 +12,9 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from .models import AccountType, SourceChip
-from .portfolio import MONEY_QUANTUM
 
 ENGINE_NAME = "pension_tax_guidance"
-ENGINE_VERSION = "2026-07-20.1"
+ENGINE_VERSION = "2026-07-22.1"
 RULE_VERSION = "PENSION_TAX_2026_07_20_V2"
 SUPPORTED_TAX_YEAR = 2026
 
@@ -30,6 +29,7 @@ HIGH_INCOME_TAX_CREDIT_RATE_PERCENT = Decimal("12")
 LOW_INCOME_DISPLAY_RATE_PERCENT = Decimal("16.5")
 HIGH_INCOME_DISPLAY_RATE_PERCENT = Decimal("13.2")
 NON_PENSION_OTHER_INCOME_RATE_PERCENT = Decimal("16.5")
+MONEY_QUANTUM_KRW = Decimal("1")
 PERCENT_QUANTUM = Decimal("0.01")
 
 DOCUMENT_SOURCE = SourceChip(
@@ -483,7 +483,7 @@ class PensionTaxToolResult(BaseModel):
 
 
 def _money(value: Decimal) -> Decimal:
-    return value.quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+    return value.quantize(MONEY_QUANTUM_KRW, rounding=ROUND_HALF_UP)
 
 
 def _percent(value: Decimal) -> Decimal:

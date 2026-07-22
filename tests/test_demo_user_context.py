@@ -610,8 +610,8 @@ def test_authenticated_tax_uses_database_context_not_client_values() -> None:
     assert response.status_code == 200
     payload = final_sse_response(response.text)["response"]
     credit = payload["pension_tax_result"]["tax_credit"]
-    assert credit["pension_savings_contribution_krw"] == "0.00"
-    assert credit["irp_contribution_krw"] == "0.00"
+    assert credit["pension_savings_contribution_krw"] == "0"
+    assert credit["irp_contribution_krw"] == "0"
     assert payload["data_mode"] == "authenticated_mock_context_engine"
     assert any(source["data_boundary"] == "mock" for source in payload["sources"])
     assert payload["conversation_context"]["scenario_code"] == "dc_dormant"
