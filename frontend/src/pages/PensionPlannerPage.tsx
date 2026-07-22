@@ -22,6 +22,13 @@ const SCENARIO_LABELS = {
   base: "기준 가정",
   high: "낙관적 가정",
 } as const;
+const PROFILE_LABELS: Record<RiskProfile, string> = {
+  stable: "안정형",
+  stable_seeking: "안정추구형",
+  risk_neutral: "위험중립형",
+  active: "적극투자형",
+  aggressive: "공격투자형",
+};
 
 export function PensionPlannerPage({
   profile,
@@ -94,7 +101,7 @@ export function PensionPlannerPage({
       </header>
 
       <section aria-label="연금 수령 계획 입력" style={{ display: "grid", gap: 12 }}>
-        <p>투자성향 기준: {profile.current_age}세 · {profile.risk_profile}</p>
+        <p>투자성향 기준: {profile.current_age}세 · {PROFILE_LABELS[profile.risk_profile]}</p>
         <label>계좌 유형<select value={accountType} onChange={(event) => setAccountType(event.target.value as AccountType)}><option value="dc">DC형</option><option value="irp">IRP</option><option value="pension_savings">연금저축펀드</option></select></label>
         <label>현재 연금자산 잔액<input type="number" min="0" inputMode="numeric" value={currentBalance} onChange={(event) => setCurrentBalance(event.target.value)} /></label>
         <label>월 납입액<input type="number" min="0" inputMode="numeric" value={monthlyContribution} onChange={(event) => setMonthlyContribution(event.target.value)} /></label>

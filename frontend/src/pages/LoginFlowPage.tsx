@@ -6,7 +6,7 @@ import piggyForm from "../assets/login/piggy-form.png";
 import piggyIntro from "../assets/login/piggy-intro.png";
 import piggySuccess from "../assets/login/piggy-success.png";
 import { getAccountLinkOptions, saveInvestmentProfile } from "../api/client";
-import type { AccountLinkOptionsResponse, InvestmentProfileAssessment, InvestmentProfileSubmission } from "../api/types";
+import type { AccountLinkOptionsResponse, InvestmentProfileAssessment, InvestmentProfileResponse, InvestmentProfileSubmission } from "../api/types";
 import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
 import { InvestorInfoForm } from "./InvestorInfoForm";
 import { InvestorResultScreen } from "./InvestorResultScreen";
@@ -17,6 +17,7 @@ type LoginStep = "intro" | "form" | "consent" | "success" | "linking" | "risk-as
 interface LoginFlowPageProps {
   auth: SupabaseAuthState;
   onAuthenticated: () => void;
+  onProfileSaved: (profile: InvestmentProfileResponse) => void;
   onStart: () => void;
   resurvey?: boolean;
 }
@@ -33,7 +34,7 @@ function StatusBar(): JSX.Element {
   );
 }
 
-export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
+export function LoginFlowPage({ auth, onAuthenticated, onProfileSaved, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
   const [step, setStep] = useState<LoginStep>(resurvey ? "investor-info" : "intro");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
@@ -69,6 +70,7 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
     if (!accessToken) throw new Error("authenticated session is missing");
     const response = await saveInvestmentProfile(submission, accessToken);
     if (response.assessment === null) throw new Error("saved assessment is missing");
+    onProfileSaved(response);
     setAssessment(response.assessment);
     setStep("investor-result");
   }

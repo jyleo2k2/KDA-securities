@@ -2,6 +2,7 @@ import type {
   AssetClass,
   DemoHeroPortfolio,
   DemoUserFinancialContext,
+  InvestmentProfileResponse,
 } from "../api/types";
 import { conicGradient } from "../charts";
 
@@ -11,6 +12,8 @@ const ASSET_LABELS: Record<AssetClass, string> = {
   alternative: "대체자산", eligible_tdf: "적격 TDF", default_option: "디폴트옵션",
 };
 const RISK_LABELS: Record<string, string> = {
+  stable: "안정형", stable_seeking: "안정추구형", risk_neutral: "위험중립형",
+  active: "적극투자형", aggressive: "공격투자형",
   conservative: "안정형", balanced: "균형형", growth: "성장형",
 };
 const ACCOUNT_LABELS: Record<string, string> = {
@@ -23,14 +26,18 @@ const displayName = (name: string) => name.replace(/\(가상\)/g, "");
 interface HomePageProps {
   error: string | null;
   hero: DemoHeroPortfolio | null;
+  investmentProfile: InvestmentProfileResponse | null;
   loading: boolean;
   onAnalyzeHero: (scenarioCode: string) => void;
   userContext: DemoUserFinancialContext | null;
 }
 
-export function HomePage({ error, hero, loading, onAnalyzeHero, userContext }: HomePageProps) {
+export function HomePage({ error, hero, investmentProfile, loading, onAnalyzeHero, userContext }: HomePageProps) {
   if (loading) return <section className="home-dashboard"><p className="home-loading">내 연금 데이터를 불러오는 중입니다…</p></section>;
   if (!userContext) return <section className="home-dashboard"><p className="home-error">{error ?? "로그인한 사용자의 연금 데이터를 찾지 못했습니다."}</p></section>;
+  const savedRiskProfile = investmentProfile?.assessment && !investmentProfile.assessment.is_expired
+    ? investmentProfile.assessment.risk_profile
+    : null;
 
   return <section className="home-dashboard">
     <header className="home-hero-heading">
@@ -43,7 +50,7 @@ export function HomePage({ error, hero, loading, onAnalyzeHero, userContext }: H
       <article className="portfolio-summary-card">
         <div className="portfolio-summary-top"><div>
           <h2>{hero.scenario_name}</h2>
-          <p>{userContext.age_band} · {userContext.representative_age}세 · {RISK_LABELS[hero.risk_profile] ?? "기타 투자성향"} · 투자기간 {hero.investment_horizon_years}년</p>
+          <p>{userContext.age_band} · {userContext.representative_age}세 · {RISK_LABELS[savedRiskProfile ?? hero.risk_profile] ?? "기타 투자성향"} · 투자기간 {hero.investment_horizon_years}년</p>
         </div><strong>{formatKrw(userContext.total_pension_balance_krw)}</strong></div>
         <p className="peer-metric-note">{userContext.as_of_date} 기준 계좌 현황입니다.</p>
         <div className="risk-metric-grid">

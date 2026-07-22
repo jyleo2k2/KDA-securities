@@ -3,12 +3,13 @@ import { useState, type JSX } from "react";
 import moneyBag from "../assets/main-home/money-bag.png";
 import piggy from "../assets/main-home/piggy.png";
 import userPickPreview from "../assets/main-home/user-pick-preview.png";
-import type { DemoHeroPortfolio, DemoUserFinancialContext } from "../api/types";
+import type { DemoHeroPortfolio, DemoUserFinancialContext, InvestmentProfileResponse, RiskProfile } from "../api/types";
 import "./MainHomeScreen.css";
 
 interface MainHomeScreenProps {
   error: string | null;
   hero: DemoHeroPortfolio | null;
+  investmentProfile: InvestmentProfileResponse | null;
   loading: boolean;
   onOpenChat: () => void;
   onOpenStrategyExplore: () => void;
@@ -31,6 +32,9 @@ interface HoldingSlice {
 }
 
 const HOLDING_DONUT_COLORS = ["#18A860", "#3877E8", "#F0C000", "#F5871F", "#8B5FEB", "#2FBFA0", "#B8C0BA"];
+const PROFILE_LABELS: Record<RiskProfile, string> = {
+  stable: "안정형", stable_seeking: "안정추구형", risk_neutral: "위험중립형", active: "적극투자형", aggressive: "공격투자형",
+};
 const HOLDING_DONUT_MAX_SLICES = 6;
 const HOLDING_DONUT_LABEL_MIN_PERCENT = 5;
 const DONUT_SIZE = 150;
@@ -140,7 +144,7 @@ const ASSET_LABELS: Record<string, string> = { cash: "현금성", deposit: "원�
 const ALLOCATION_COLORS = ["#18A860", "#35B877", "#6ECFA0", "#2E8B57"];
 const formatKrw = (amount: string) => `${Math.round(Number(amount)).toLocaleString("ko-KR")}원`;
 
-export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrategyExplore, onOpenUserPick, onResurvey, userContext }: MainHomeScreenProps): JSX.Element {
+export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpenChat, onOpenStrategyExplore, onOpenUserPick, onResurvey, userContext }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
   const allocationSlices: AllocationSlice[] = hero?.asset_allocations.slice(0, 4).map((item, index) => ({ label: ASSET_LABELS[item.asset_class_code] ?? "기타 자산", percent: `${item.allocation_percent}%`, color: ALLOCATION_COLORS[index] })) ?? [];
   const holdingSlices = buildHoldingDonutSlices(hero);
@@ -168,6 +172,7 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrateg
           </div>
           <img src={piggy} alt="송향이" className="mhs-greeting-img" />
         </div>
+        {investmentProfile?.assessment && <p className="mhs-greeting-sub">저장 투자성향 · {PROFILE_LABELS[investmentProfile.assessment.risk_profile]} · {investmentProfile.assessment.assessed_on} 진단{investmentProfile.assessment.is_expired ? " · 만료" : ""}</p>}
         <button type="button" className="mhs-resurvey-button" onClick={onResurvey}>재설문하기</button>
 
         <h2 className="mhs-section-title">내 연금 <span className="mhs-section-title-gold">자산</span></h2>
