@@ -147,13 +147,13 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
             <h1>연금계좌 연동</h1>
             <div className="login-consent-content">
               <div className="login-consent-chips" aria-label="계좌 연동 특징">
-                <span>데모</span><span>조회</span><b>{linkOptions?.options.filter((option) => option.diagnosable).length ?? 0}종 계좌</b>
+                <span>계좌</span><span>조회</span><b>{linkOptions?.options.filter((option) => option.diagnosable).length ?? 0}종 계좌</b>
               </div>
               <section className="login-consent-hero">
                 <span>연결 가능한 계좌</span>
                 <h2>{linkOptions?.options.filter((option) => option.diagnosable).length ?? 0}개<br /><em>연금계좌</em></h2>
                 <p>한 번에 불러와 통합 자산으로 확인</p>
-                <small>현재 MVP는 목데이터 · 실제 계좌 연결 아님</small>
+                <small>계좌 정보를 불러와 통합 자산으로 안내합니다.</small>
               </section>
               <section className="login-consent-card">
                 <strong>불러오면 확인하는 내용</strong>
