@@ -177,7 +177,14 @@ describe("EducationalPortfolioReview", () => {
           sleeve_shocks_percent: { core_equity: "-35.0000" },
           is_forecast: false,
         }],
-        sources: [],
+        stress_loss_limit_percent: "20.0000",
+        worst_stress_loss_percent: "18.5000",
+        stress_loss_policy_status: "within_user_limit",
+        sources: [{
+          label: "포트폴리오 위험정책",
+          reference: "docs/30_스펙/포트폴리오_위험정책_계약.md",
+          as_of: "2026-07-22",
+        }],
         warnings: [],
       },
       planning_return: {
@@ -268,6 +275,10 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.getByText("12.3%")).toBeInTheDocument();
     expect(screen.getByText("주식시장 급락")).toBeInTheDocument();
     expect(screen.getByText("-18.5%")).toBeInTheDocument();
+    expect(screen.getByText("손실감내도 기준 이내")).toBeInTheDocument();
+    expect(screen.getByText(/사용자 손실감내도 20.0%/)).toBeInTheDocument();
+    expect(screen.getByText(/최악 정책 스트레스 손실 18.5%/)).toBeInTheDocument();
+    expect(screen.getByText(/포트폴리오 위험정책/)).toBeInTheDocument();
     expect(screen.getAllByText(/수익률 예측이 아닙니다/)).toHaveLength(3);
     expect(screen.getByText("현재 보유 ETF CMA·비용 계획가정")).toBeInTheDocument();
     expect(screen.getByText("제안 포트폴리오 CMA·비용 계획가정")).toBeInTheDocument();
@@ -278,6 +289,17 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.getAllByText("-0.1%")).toHaveLength(2);
     expect(screen.getAllByText(/과거 수익률 미사용/)).toHaveLength(2);
     expect(screen.getAllByRole("link", { name: /J.P. Morgan 2026/ })).toHaveLength(2);
+
+    rerender(<EducationalPortfolioReview evaluation={{
+      ...evaluation,
+      portfolio_risk: {
+        ...evaluation.portfolio_risk,
+        worst_stress_loss_percent: "24.0000",
+        stress_loss_policy_status: "review_required",
+      },
+    }} />);
+    expect(screen.getByText("손실감내도 재점검 필요")).toBeInTheDocument();
+    expect(screen.getByText(/자동 매도 지시는 만들지 않습니다/)).toBeInTheDocument();
 
     rerender(<EducationalPortfolioReview evaluation={{
       ...evaluation,

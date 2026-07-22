@@ -891,6 +891,8 @@ export interface StressScenarioResult {
   is_forecast: boolean;
 }
 
+export type StressLossPolicyStatus = "not_evaluated" | "within_user_limit" | "review_required";
+
 export interface PortfolioRiskEvaluation {
   engine_name: string;
   engine_version: string;
@@ -908,6 +910,9 @@ export interface PortfolioRiskEvaluation {
   historical_return_used_for_risk_only: boolean;
   is_return_forecast: boolean;
   stress_scenarios: StressScenarioResult[];
+  stress_loss_limit_percent: string | null;
+  worst_stress_loss_percent: string;
+  stress_loss_policy_status: StressLossPolicyStatus;
   sources: Array<{
     label: string;
     reference: string;

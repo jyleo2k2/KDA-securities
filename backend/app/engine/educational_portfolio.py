@@ -22,8 +22,8 @@ from .planning_return import (
 from .strategy_presentation import get_strategy_presentation
 
 ENGINE_NAME = "educational_pension_portfolio"
-ENGINE_VERSION = "2026-07-22.1"
-POLICY_VERSION = "2026-07-22.1"
+ENGINE_VERSION = "2026-07-22.2"
+POLICY_VERSION = "2026-07-22.2"
 PERCENT_QUANTUM = Decimal("0.0001")
 DRIFT_THRESHOLD_PERCENT = Decimal("5")
 RETIREMENT_RISK_CAP_PERCENT = Decimal("70")
@@ -54,6 +54,12 @@ class RiskProfile(StrEnum):
     RISK_NEUTRAL = "risk_neutral"
     ACTIVE = "active"
     AGGRESSIVE = "aggressive"
+
+
+class StressLossPolicyStatus(StrEnum):
+    NOT_EVALUATED = "not_evaluated"
+    WITHIN_USER_LIMIT = "within_user_limit"
+    REVIEW_REQUIRED = "review_required"
 
 
 class CurrentHolding(BaseModel):
@@ -180,6 +186,9 @@ class PortfolioRiskEvaluation(BaseModel):
     historical_return_used_for_risk_only: bool
     is_return_forecast: bool
     stress_scenarios: list[StressScenarioResult]
+    stress_loss_limit_percent: Decimal | None
+    worst_stress_loss_percent: Decimal
+    stress_loss_policy_status: StressLossPolicyStatus
     sources: list[SourceChip]
     warnings: list[str]
 
@@ -350,14 +359,34 @@ def _stress_results(
     ]
 
 
+def _stress_loss_policy(
+    stress_scenarios: list[StressScenarioResult],
+    loss_tolerance_percent: Decimal | None,
+) -> tuple[Decimal, StressLossPolicyStatus]:
+    worst_loss = max(
+        (scenario.estimated_loss_percent for scenario in stress_scenarios),
+        default=Decimal("0"),
+    )
+    if loss_tolerance_percent is None:
+        return worst_loss, StressLossPolicyStatus.NOT_EVALUATED
+    if worst_loss <= loss_tolerance_percent:
+        return worst_loss, StressLossPolicyStatus.WITHIN_USER_LIMIT
+    return worst_loss, StressLossPolicyStatus.REVIEW_REQUIRED
+
+
 def calculate_portfolio_risk(
     *,
     candidates: list[EducationalEtfCandidate],
     histories: dict[str, dict[date, Decimal]],
     source_as_of: date,
     history_as_of: date | None = None,
+    loss_tolerance_percent: Decimal | None = None,
 ) -> PortfolioRiskEvaluation:
     stress = _stress_results(candidates)
+    worst_stress_loss, stress_policy_status = _stress_loss_policy(
+        stress,
+        loss_tolerance_percent,
+    )
     returns_by_code = {
         candidate.isu_code: _daily_returns(histories.get(candidate.isu_code, {}))
         for candidate in candidates
@@ -376,8 +405,8 @@ def calculate_portfolio_risk(
         ),
         SourceChip(
             label="연금 코파일럿 포트폴리오 스트레스 정책",
-            reference="backend/app/engine/educational_portfolio.py",
-            as_of=date(2026, 7, 16),
+            reference="docs/30_스펙/포트폴리오_위험정책_계약.md",
+            as_of=date(2026, 7, 22),
         ),
     ]
     if len(ordered_dates) < MINIMUM_RISK_OBSERVATIONS:
@@ -398,8 +427,18 @@ def calculate_portfolio_risk(
             historical_return_used_for_risk_only=True,
             is_return_forecast=False,
             stress_scenarios=stress,
+            stress_loss_limit_percent=loss_tolerance_percent,
+            worst_stress_loss_percent=_percent(worst_stress_loss),
+            stress_loss_policy_status=stress_policy_status,
             sources=sources,
-            warnings=["minimum_60_common_daily_returns_required"],
+            warnings=[
+                "minimum_60_common_daily_returns_required",
+                *(
+                    ["stress_loss_exceeds_user_tolerance_review_required"]
+                    if stress_policy_status == StressLossPolicyStatus.REVIEW_REQUIRED
+                    else []
+                ),
+            ],
         )
     total_weight = sum(
         (candidate.target_percent for candidate in candidates), Decimal("0")
@@ -447,11 +486,19 @@ def calculate_portfolio_risk(
         historical_return_used_for_risk_only=True,
         is_return_forecast=False,
         stress_scenarios=stress,
+        stress_loss_limit_percent=loss_tolerance_percent,
+        worst_stress_loss_percent=_percent(worst_stress_loss),
+        stress_loss_policy_status=stress_policy_status,
         sources=sources,
         warnings=[
             "fixed_weight_daily_rebalanced_historical_measurement",
             "historical_risk_does_not_predict_future_loss",
             "stress_shocks_are_policy_scenarios_not_probabilities",
+            *(
+                ["stress_loss_exceeds_user_tolerance_review_required"]
+                if stress_policy_status == StressLossPolicyStatus.REVIEW_REQUIRED
+                else []
+            ),
         ],
     )
 
@@ -1375,6 +1422,7 @@ def build_educational_portfolio(
         histories=histories,
         source_as_of=source_as_of,
         history_as_of=history_as_of,
+        loss_tolerance_percent=request.loss_tolerance_percent,
     )
     planning_return = calculate_portfolio_planning_return(
         candidates=candidates,

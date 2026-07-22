@@ -11,6 +11,7 @@ from backend.app.engine.educational_portfolio import (
     EducationalEtfCandidate,
     EducationalPortfolioInput,
     RiskProfile,
+    StressLossPolicyStatus,
     _build_asset_class_allocation,
     _candidate_counts,
     _display_asset_class,
@@ -308,6 +309,11 @@ def test_portfolio_uses_full_allocation_products_for_defensive_sleeves(
     )
     assert result.portfolio_risk.status == "complete"
     assert result.portfolio_risk.is_return_forecast is False
+    assert result.portfolio_risk.stress_loss_limit_percent == Decimal("15")
+    assert (
+        result.portfolio_risk.stress_loss_policy_status
+        == StressLossPolicyStatus.WITHIN_USER_LIMIT
+    )
     assert result.planning_return.is_forecast is False
     assert result.planning_return.historical_performance_used is False
     assert result.planning_horizon_years == 3

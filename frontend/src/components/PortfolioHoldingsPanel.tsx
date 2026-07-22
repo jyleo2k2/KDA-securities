@@ -37,6 +37,12 @@ const STRESS_SCENARIO_LABELS: Record<string, string> = {
   stagflation: "스태그플레이션",
 };
 
+const STRESS_POLICY_STATUS_LABELS = {
+  not_evaluated: "손실감내도 미비교",
+  within_user_limit: "손실감내도 기준 이내",
+  review_required: "손실감내도 재점검 필요",
+} as const;
+
 const STRATEGY_LABELS: Record<string, string> = {
   capital_preservation_core: "자본보전 중심 전략",
   defensive_diversified_core: "방어적 분산 전략",
@@ -95,6 +101,12 @@ function strategyLabel(value: string): string {
 
 function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
   const complete = risk.status === "complete";
+  const hasStressPolicy = (
+    risk.stress_loss_limit_percent !== null
+    && risk.stress_loss_limit_percent !== undefined
+    && risk.worst_stress_loss_percent !== undefined
+  );
+  const reviewRequired = risk.stress_loss_policy_status === "review_required";
 
   return (
     <section className="portfolio-risk-review" aria-labelledby="portfolio-risk-title">
@@ -126,6 +138,29 @@ function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
             <strong>{percent(scenario.estimated_loss_percent)}</strong>
             <small>정책 충격 가정</small>
           </div>
+        ))}
+      </div>
+      {hasStressPolicy && (
+        <section
+          className={`portfolio-risk-policy ${reviewRequired ? "review-required" : "within-limit"}`}
+          aria-label="손실감내도 정책 점검"
+        >
+          <strong>{STRESS_POLICY_STATUS_LABELS[risk.stress_loss_policy_status]}</strong>
+          <p>
+            사용자 손실감내도 {percent(risk.stress_loss_limit_percent!)} · 최악 정책 스트레스 손실 {percent(risk.worst_stress_loss_percent)}
+          </p>
+          {reviewRequired && <small>목표비중과 추가 납입 계획을 다시 확인해 주세요. 자동 매도 지시는 만들지 않습니다.</small>}
+        </section>
+      )}
+      <div className="planning-source-chips" aria-label="위험·스트레스 출처">
+        {risk.sources.map((source) => (
+          /^https?:\/\//.test(source.reference) ? (
+            <a href={source.reference} target="_blank" rel="noreferrer" key={`${source.label}-${source.reference}`}>
+              {source.label} · {dateText(source.as_of)}
+            </a>
+          ) : (
+            <span key={`${source.label}-${source.reference}`}>{source.label} · {dateText(source.as_of)}</span>
+          )
         ))}
       </div>
       <p className="portfolio-risk-note">
