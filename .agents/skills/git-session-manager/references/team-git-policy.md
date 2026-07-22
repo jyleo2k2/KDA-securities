@@ -1,0 +1,58 @@
+# 팀 병렬 Git 정책
+
+## 역할
+
+- 이재용: 전체 통합 오너, 공유 핫스팟 단일 작성자 지정, PR 병합 승인.
+- git-coordinator: 세션·브랜치·워크트리 생성과 상태 등록을 직렬화.
+- 작업 세션: 할당된 워크트리와 claim 범위만 수정.
+- 팀원: 작업 시작 후 첫 커밋에서 Draft PR을 열어 원격 작업 의도를 공개.
+
+## 저장소 배치
+
+- 루트 워크트리: 항상 깨끗한 `main`, 관제·감사·통합 확인 전용.
+- 기능 작업: 작업마다 별도 브랜치·워크트리·PR.
+- 하나의 브랜치를 여러 PR에 재사용하지 않는다.
+- 병합 후 후속 작업은 최신 `origin/main`에서 새 브랜치로 시작한다.
+
+## 브랜치 형식
+
+`<area>/<owner>/<task>`
+
+허용 area: `front`, `back`, `chat`, `db`, `engine`, `rag`, `integration`, `codex`.
+
+예시:
+
+- `front/jaehyun/strategy-screen`
+- `chat/hoyeon/etf-recommendation`
+- `integration/jyleo2k2/login-profile-contract`
+
+## 공유 핫스팟
+
+정확한 목록은 `.github/session-policy.json`이 SSOT다. 다음 유형은 단일 작성자를 우선한다.
+
+- 앱 진입·라우팅: `frontend/src/App.tsx`
+- 공용 프론트 계약: `frontend/src/api/types.ts`
+- 대형 조립 루트: `GuidePage.tsx`, `MainHomeScreen.tsx`
+- 챗 오케스트레이션: `service.py`, `query_planner.py`
+- 공용 의존성: `backend/app/api/deps.py`
+- DB 운영 SSOT: `supabase/DB_HANDOFF.md`
+- 루트 진입점·아키텍처 문서
+
+## 충돌 처리
+
+1. 열린 PR과 active claim의 수정 경로를 먼저 비교한다.
+2. 겹치지 않으면 병렬 진행한다.
+3. 일반 파일이 겹치면 작업 범위를 분할한다.
+4. 핫스팟이 겹치면 이재용이 작성자 한 명을 지정한다.
+5. 화면 구현자는 신규 파일을 만들고, 공용 라우팅 연결은 통합 오너가 별도 PR로 처리한다.
+6. 계약 변경은 계약 → 구현 → 소비자 → 통합 순으로 병합한다.
+
+## PR 규칙
+
+- 첫 의미 있는 커밋 직후 Draft PR을 연다.
+- PR base는 항상 `main`이다. 병합된 기능 브랜치를 base로 둔 stacked PR을 만들지 않는다.
+- 담당자·작업 범위·공유 핫스팟·계약 변경을 본문에 기록한다.
+- Ready 전 최신 `main`을 반영하고 관련 테스트를 실행한다.
+- `hotspot-approved` 라벨은 이재용이 GitHub에서 직접 적용해야 유효하다.
+- 충돌 해결은 PR 브랜치 소유자 또는 이재용이 담당한다.
+- 병합 후 원격 브랜치는 자동 삭제하고 로컬은 `git-pr-cleanup`으로 정리한다.

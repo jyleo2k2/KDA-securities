@@ -2,7 +2,7 @@
 
 > 적용 범위: `backend/app/chat/` 하위 + `backend/app/api/chat.py`(챗봇 엔드포인트).
 > 이 파일과 같은 폴더의 `AGENTS.md`·`CLAUDE.md`는 내용 동기화 대상이다. 한쪽을 바꾸면 같은 커밋에서 다른 쪽도 바꾼다.
-> 최종 갱신: 2026-07-21
+> 최종 갱신: 2026-07-22
 
 ## 임무
 
@@ -11,9 +11,10 @@
 ## 세션 시작 규칙
 
 - 루트 `CLAUDE.md`/`AGENTS.md` → 헌장 → 이 파일 순서로 읽는다.
-- `git fetch origin main` 후 뒤처졌으면 리베이스한다(트리가 더티면 소유자 확인 → 본인 것만 커밋/스태시).
+- 파일 수정 전에 `git-session-manager`로 담당자와 예상 수정 경로를 claim한다. 루트 `main` 관제 워크트리에서는 수정하지 않는다.
 - 다른 세션의 WIP를 수정·stash·reset·checkout하지 않는다.
-- 작업은 `chat/` 접두사 브랜치에서 하고 PR로 낸다. `main` 직접 push 금지.
+- 작업은 최신 `origin/main`에서 만든 `chat/<owner>/<task>` 브랜치·전용 워크트리에서 하고 첫 커밋 후 Draft PR을 연다. 병합 브랜치 재사용과 `main` 직접 push는 금지한다.
+- `models.py`·`service.py`·`query_planner.py`·`backend/app/api/deps.py`는 공유 핫스팟이다. 다른 active claim/PR과 겹치면 이재용이 단일 작성자를 지정하기 전까지 수정하지 않는다.
 
 ## 소유·금지 경계
 
