@@ -16,6 +16,9 @@ import {
   apiErrorMessage,
   deleteChatSession,
   getBenchmarkSummary,
+  getDemoHeroes,
+  getMyPensionContext,
+  getStoredChatMessages,
   sendAuthenticatedChatStream,
 } from "./client";
 
@@ -136,7 +139,7 @@ describe("chat SSE parser", () => {
         controller.enqueue(encoder.encode(
           'event: answer_delta\ndata: {"delta":"엔진 답변"}\n\n' +
           'event: narration_update\ndata: {"answer":"검증 내레이션"}\n\n' +
-          'event: response\ndata: {"response":{"answer":"검증 내레이션"}}\n\n',
+          'event: response\ndata: {"response":{"answer":"검증 내레이션","salutation":"박준호(가상)님"}}\n\n',
         ));
         controller.close();
       },
@@ -156,6 +159,7 @@ describe("chat SSE parser", () => {
     expect(deltas).toEqual(["엔진 답변"]);
     expect(replacements).toEqual(["검증 내레이션"]);
     expect(result.response.answer).toBe("검증 내레이션");
+    expect(result.response.salutation).toBe("박준호님");
   });
 
   it("sends current holdings as structured educational portfolio input", async () => {
@@ -205,6 +209,36 @@ describe("chat SSE parser", () => {
         new_contribution_krw: "1000000",
       },
     });
+  });
+});
+
+describe("demo customer display names", () => {
+  it("removes the demo marker from hero and pension-context names", async () => {
+    auth.getSession.mockResolvedValue({ data: { session: { access_token: "access-token" } } });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ nickname: "박준호(가상)", scenario_code: "dc_dormant" }])))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ nickname: "이서연(가상)", scenario_code: "tax_contribution_uninvested" })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const heroes = await getDemoHeroes("access-token");
+    const context = await getMyPensionContext("access-token");
+
+    expect(heroes[0]?.nickname).toBe("박준호");
+    expect(context.nickname).toBe("이서연");
+  });
+
+  it("removes the demo marker from stored chat salutations", async () => {
+    auth.getSession.mockResolvedValue({ data: { session: { access_token: "access-token" } } });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify([{
+      id: "message-1",
+      role: "assistant",
+      content: "안녕하세요.",
+      response: { answer: "안녕하세요.", salutation: "정민재(가상)님" },
+    }]))));
+
+    const messages = await getStoredChatMessages("session-1", "access-token");
+
+    expect(messages[0]?.response?.salutation).toBe("정민재님");
   });
 });
 
