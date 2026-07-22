@@ -28,7 +28,7 @@
 
 ## 공유 핫스팟
 
-정확한 목록은 `.github/session-policy.json`이 SSOT다. 다음 유형은 단일 작성자를 우선한다.
+다음 유형은 단일 작성자를 우선한다. PR 자동 검사 대신 작업 시작 시 로컬 claim으로 충돌을 확인한다.
 
 - 앱 진입·라우팅: `frontend/src/App.tsx`
 - 공용 프론트 계약: `frontend/src/api/types.ts`

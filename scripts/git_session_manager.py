@@ -18,13 +18,29 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-POLICY_PATH = Path(".github/session-policy.json")
 REGISTRY_NAME = "codex-sessions.json"
 LOCK_NAME = "codex-sessions.lock"
+LOCAL_SESSION_RULES: dict[str, Any] = {
+    "default_branch": "main",
+    "branch_pattern": (
+        r"^(front|back|chat|db|engine|rag|integration|codex)/"
+        r"[a-z0-9._-]+/[a-z0-9][a-z0-9._-]*$"
+    ),
+    "branch_example": "front/jaehyun/strategy-screen",
+    "integration_owner": "jyleo2k2",
+    "owner_only_paths": ["AGENTS.md", "CLAUDE.md"],
+    "grandfathered_branches": [
+        "front/login-flow",
+        "codex/pr-138-conflict-resolution",
+        "chat/legacy-mock-account-read-cutover",
+        "chat/etf-and-calculator-intents",
+    ],
+    "hotspots": [],
+}
 
 
 class SessionError(RuntimeError):
-    """Raised when a session policy gate fails."""
+    """Raised when a local session guard fails."""
 
 
 def _run(
@@ -55,12 +71,9 @@ def common_git_dir(root: Path) -> Path:
     return (root / raw).resolve() if not raw.is_absolute() else raw.resolve()
 
 
-def load_policy(root: Path) -> dict[str, Any]:
-    path = root / POLICY_PATH
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise SessionError(f"세션 정책을 읽을 수 없습니다: {path}: {exc}") from exc
+def local_session_rules() -> dict[str, Any]:
+    """Return local worktree rules without a PR-enforcing remote policy file."""
+    return LOCAL_SESSION_RULES
 
 
 def utc_now() -> str:
@@ -427,7 +440,7 @@ def _preflight_claim(
 
 def command_claim(args: argparse.Namespace) -> int:
     root = repo_root()
-    policy = load_policy(root)
+    policy = local_session_rules()
     branch = current_branch(root)
     if branch == policy["default_branch"]:
         raise SessionError(
@@ -448,7 +461,7 @@ def command_claim(args: argparse.Namespace) -> int:
 
 def command_start(args: argparse.Namespace) -> int:
     root = repo_root()
-    policy = load_policy(root)
+    policy = local_session_rules()
     if current_branch(root) != policy["default_branch"]:
         raise SessionError("start는 깨끗한 main 관제 워크트리에서만 실행하십시오.")
     if _git("status", "--porcelain", cwd=root):
@@ -553,7 +566,7 @@ def _changed_paths(root: Path) -> set[str]:
 
 def command_guard(args: argparse.Namespace) -> int:
     root = repo_root()
-    policy = load_policy(root)
+    policy = local_session_rules()
     branch = current_branch(root)
     raw_file = _hook_file_from_stdin() if args.hook_input else args.file
     if branch == policy["default_branch"]:
@@ -603,7 +616,7 @@ def command_guard(args: argparse.Namespace) -> int:
 
 def command_check_start(_: argparse.Namespace) -> int:
     root = repo_root()
-    policy = load_policy(root)
+    policy = local_session_rules()
     branch = current_branch(root)
     dirty = bool(_git("status", "--porcelain", cwd=root))
     if branch == policy["default_branch"]:

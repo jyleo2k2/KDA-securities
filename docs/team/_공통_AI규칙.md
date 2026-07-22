@@ -36,7 +36,7 @@
 - 신규 화면·모듈 구현과 `App.tsx`·공용 타입·오케스트레이터 연결을 분리한다. 계약 변경은 **계약 → 생산자 구현 → 소비자 구현 → 통합 연결** 순으로 병합한다.
 - Ready 전과 의존 계약 PR 병합 직후에만 최신 `main`을 반영한다. 다른 세션의 WIP를 이유로 임의 stash·reset·checkout하지 않는다.
 - 병합 후 claim을 release하고, 브랜치·워크트리 삭제는 `git-pr-cleanup`의 병합·조상·clean·ignored 파일 검증을 통과한 뒤 수행한다.
-- 세부 핫스팟과 자동 검사 정책의 SSOT는 [`.github/session-policy.json`](../../.github/session-policy.json), 절차는 `git-session-manager` 스킬이다.
+- 세부 핫스팟과 작업 범위 조율은 `git-session-manager` 스킬의 로컬 claim 절차를 따른다. PR 본문 형식은 CI로 강제하지 않는다.
 
 ## 3. 너가 일하는 방식 (메타 규칙)
 1. 먼저 읽어라(추측 금지). 2. 계획 먼저 제시·승인. 3. 작게 쪼개라(한 번에 하나).
