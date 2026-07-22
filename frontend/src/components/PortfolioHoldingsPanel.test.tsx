@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { CompletedSurveyProfile, EducationalPortfolioEvaluation } from "../api/types";
@@ -16,7 +16,10 @@ const PROFILE: CompletedSurveyProfile = {
   loss_tolerance_percent: "20",
 };
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe("PortfolioHoldingsPanel", () => {
   it("validates and submits current holdings with the completed profile", () => {
@@ -53,6 +56,61 @@ describe("PortfolioHoldingsPanel", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent("같은 ETF는 평가금액을 합쳐 한 줄로 입력해 주세요.");
     expect(onAnalyze).not.toHaveBeenCalled();
+  });
+
+  it("calculates a pension plan from current ETF value weights", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      calculator: {
+        headline: {
+          total_krw: "50000000",
+          monthly_payout_pretax_krw: "200000",
+          monthly_payout_after_tax_krw: "189000",
+        },
+        assumption: {
+          source: {
+            label: "CMA source",
+            reference: "https://example.com/cma",
+            as_of: "2026-07-16",
+          },
+          notice: "This is a planning assumption, not a forecast.",
+        },
+      },
+      planning_return: {
+        net_planning_return_percent: "5.2000",
+        sources: [],
+      },
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<PortfolioHoldingsPanel surveyProfile={PROFILE} disabled={false} onAnalyze={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText("1번째 ETF 종목코드"), { target: { value: "069500" } });
+    fireEvent.change(screen.getByLabelText("1번째 ETF 평가금액"), { target: { value: "10000000" } });
+    fireEvent.change(screen.getByLabelText("월 납입액"), { target: { value: "300000" } });
+    fireEvent.change(screen.getByLabelText("수령기간"), { target: { value: "25" } });
+    fireEvent.click(screen.getByRole("button", { name: "보유 ETF 기준 수령 계획 계산" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/engine/pension-calculator/portfolio-cma",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          calculator: {
+            current_age: 35,
+            contribution_end_age: 60,
+            current_balance_krw: "10000000",
+            monthly_contribution_krw: "300000",
+            account_type: "irp",
+            risk_profile: "risk_neutral",
+            payout_years: 25,
+            scenario: "base",
+          },
+          current_holdings: [{ isu_code: "069500", amount_krw: "10000000" }],
+        }),
+      }),
+    );
+    expect(await screen.findByText("장기 수령 계획 예시")).toBeInTheDocument();
+    expect(screen.getByText("50,000,000원")).toBeInTheDocument();
   });
 });
 
@@ -196,7 +254,11 @@ describe("EducationalPortfolioReview", () => {
       warnings: [],
     } satisfies EducationalPortfolioEvaluation;
 
-    const { rerender } = render(<EducationalPortfolioReview evaluation={evaluation} />);
+    const evaluationWithCurrentHoldingsPlanning = {
+      ...evaluation,
+      current_holdings_planning_return: evaluation.planning_return,
+    };
+    const { rerender } = render(<EducationalPortfolioReview evaluation={evaluationWithCurrentHoldingsPlanning} />);
 
     expect(screen.getByText("70.0%")).toBeInTheDocument();
     expect(screen.getByText("분산 주식")).toBeInTheDocument();
@@ -206,15 +268,16 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.getByText("12.3%")).toBeInTheDocument();
     expect(screen.getByText("주식시장 급락")).toBeInTheDocument();
     expect(screen.getByText("-18.5%")).toBeInTheDocument();
-    expect(screen.getAllByText(/수익률 예측이 아닙니다/)).toHaveLength(2);
-    expect(screen.getByText("장기 계획수익률 가정 근거")).toBeInTheDocument();
-    expect(screen.getByText("6.7%")).toBeInTheDocument();
-    expect(screen.getAllByText("6.2%")).toHaveLength(2);
-    expect(screen.getByText(/대체 CMA/)).toBeInTheDocument();
-    expect(screen.getByText("-0.5%")).toBeInTheDocument();
-    expect(screen.getByText("-0.1%")).toBeInTheDocument();
-    expect(screen.getByText(/과거 수익률 미사용/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /J.P. Morgan 2026/ })).toHaveAttribute("href", "https://example.com/cma");
+    expect(screen.getAllByText(/수익률 예측이 아닙니다/)).toHaveLength(3);
+    expect(screen.getByText("현재 보유 ETF CMA·비용 계획가정")).toBeInTheDocument();
+    expect(screen.getByText("제안 포트폴리오 CMA·비용 계획가정")).toBeInTheDocument();
+    expect(screen.getAllByText("6.7%")).toHaveLength(2);
+    expect(screen.getAllByText("6.2%")).toHaveLength(4);
+    expect(screen.getAllByText(/대체 CMA/)).toHaveLength(2);
+    expect(screen.getAllByText("-0.5%")).toHaveLength(2);
+    expect(screen.getAllByText("-0.1%")).toHaveLength(2);
+    expect(screen.getAllByText(/과거 수익률 미사용/)).toHaveLength(2);
+    expect(screen.getAllByRole("link", { name: /J.P. Morgan 2026/ })).toHaveLength(2);
 
     rerender(<EducationalPortfolioReview evaluation={{
       ...evaluation,

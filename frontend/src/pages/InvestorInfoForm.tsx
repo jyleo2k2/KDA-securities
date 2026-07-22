@@ -72,7 +72,9 @@ export function InvestorInfoForm({ onBack, onSubmit }: InvestorInfoFormProps): J
     const container = scrollRef.current;
     const element = itemRefs.current[id];
     if (!container || !element) return;
-    container.scrollTo({ top: Math.max(0, element.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - 12), behavior: "smooth" });
+    if (typeof container.scrollTo === "function") {
+      container.scrollTo({ top: Math.max(0, element.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - 12), behavior: "smooth" });
+    }
   }
   function toggle(id: string, index: number, multi: boolean | undefined): void {
     setAnswers((previous) => {
@@ -89,6 +91,11 @@ export function InvestorInfoForm({ onBack, onSubmit }: InvestorInfoFormProps): J
     const order = ["recommend", "provide", ...QDEFS.map((q) => q.id)];
     const missing = order.find((id) => !isAnswered(id));
     if (missing) { setErrorId(missing); scrollToItem(missing); return; }
+    if (recommend === "희망" && provide !== "제공") {
+      setSubmitError("투자자정보 제공에 동의해야 투자권유를 받을 수 있어요.");
+      scrollToItem("provide");
+      return;
+    }
     if (submitting) return;
     setErrorId(null); setSubmitError(null); setSubmitting(true);
     try {
@@ -104,7 +111,7 @@ export function InvestorInfoForm({ onBack, onSubmit }: InvestorInfoFormProps): J
         investor_information_provided: provide === "제공",
       });
     } catch {
-      setSubmitError(recommend === "희망" && provide !== "제공" ? "투자권유를 희망하면 투자자정보 제공에 동의해야 합니다." : "설문 결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      setSubmitError("설문 결과를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally { setSubmitting(false); }
   }
   function segClass(active: boolean): string { return active ? "iif-seg iif-seg-active" : "iif-seg"; }

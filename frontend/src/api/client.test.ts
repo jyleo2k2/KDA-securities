@@ -1,16 +1,107 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const auth = vi.hoisted(() => ({
+  getSession: vi.fn(),
+  refreshSession: vi.fn(),
+}));
+
+vi.mock("../auth/supabase", () => ({
+  supabase: { auth },
+}));
+
 import {
   ApiError,
-  apiErrorMessage,
+  apiGet,
+  apiPost,
   deleteChatSession,
-  getBenchmarkSummary,
+  getDemoHeroes,
+  getMyPensionContext,
+  getStoredChatMessages,
   sendAuthenticatedChatStream,
 } from "./client";
 
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  auth.getSession.mockReset();
+  auth.refreshSession.mockReset();
+});
+
+describe("authenticated REST retry", () => {
+  it("refreshes once and retries a GET with the refreshed token", async () => {
+    auth.getSession.mockResolvedValue({
+      data: { session: { access_token: "expired-token" } },
+    });
+    auth.refreshSession.mockResolvedValue({
+      data: { session: { access_token: "fresh-token" } },
+      error: null,
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiGet<{ ok: boolean }>("/protected", "expired-token"))
+      .resolves.toEqual({ ok: true });
+
+    expect(auth.refreshSession).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "http://127.0.0.1:8000/protected", {
+      headers: { Authorization: "Bearer expired-token" },
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "http://127.0.0.1:8000/protected", {
+      headers: { Authorization: "Bearer fresh-token" },
+    });
+  });
+
+  it("refreshes once and retries a POST with the refreshed token", async () => {
+    auth.getSession.mockResolvedValue({
+      data: { session: { access_token: "expired-token" } },
+    });
+    auth.refreshSession.mockResolvedValue({
+      data: { session: { access_token: "fresh-token" } },
+      error: null,
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiPost<{ name: string }, { ok: boolean }>(
+      "/protected",
+      { name: "pension" },
+      "expired-token",
+    )).resolves.toEqual({ ok: true });
+
+    expect(auth.refreshSession).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer fresh-token",
+      },
+    });
+  });
+
+  it("does not retry again after refresh fails", async () => {
+    auth.getSession.mockResolvedValue({
+      data: { session: { access_token: "expired-token" } },
+    });
+    auth.refreshSession.mockResolvedValue({
+      data: { session: null },
+      error: new Error("invalid refresh token"),
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ detail: { message: "Unauthorized" } }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    ));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiGet("/protected", "expired-token"))
+      .rejects.toMatchObject({ status: 401 });
+
+    expect(auth.refreshSession).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
 });
 
 
@@ -46,7 +137,7 @@ describe("chat SSE parser", () => {
         controller.enqueue(encoder.encode(
           'event: answer_delta\ndata: {"delta":"엔진 답변"}\n\n' +
           'event: narration_update\ndata: {"answer":"검증 내레이션"}\n\n' +
-          'event: response\ndata: {"response":{"answer":"검증 내레이션"}}\n\n',
+          'event: response\ndata: {"response":{"answer":"검증 내레이션","salutation":"박준호(가상)님"}}\n\n',
         ));
         controller.close();
       },
@@ -66,6 +157,7 @@ describe("chat SSE parser", () => {
     expect(deltas).toEqual(["엔진 답변"]);
     expect(replacements).toEqual(["검증 내레이션"]);
     expect(result.response.answer).toBe("검증 내레이션");
+    expect(result.response.salutation).toBe("박준호님");
   });
 
   it("sends current holdings as structured educational portfolio input", async () => {
@@ -118,31 +210,36 @@ describe("chat SSE parser", () => {
   });
 });
 
-describe("API error parser", () => {
-  it("preserves the REST error code and maps it to a Korean message", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
-      JSON.stringify({
-        detail: {
-          code: "RESOURCE_NOT_FOUND",
-          message: "Requested resource was not found",
-        },
-      }),
-      { status: 404, headers: { "Content-Type": "application/json" } },
-    )));
+describe("demo customer display names", () => {
+  it("removes the demo marker from hero and pension-context names", async () => {
+    auth.getSession.mockResolvedValue({ data: { session: { access_token: "access-token" } } });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ nickname: "박준호(가상)", scenario_code: "dc_dormant" }])))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ nickname: "이서연(가상)", scenario_code: "tax_contribution_uninvested" })));
+    vi.stubGlobal("fetch", fetchMock);
 
-    try {
-      await getBenchmarkSummary();
-      throw new Error("Expected getBenchmarkSummary to reject");
-    } catch (error) {
-      expect(error).toMatchObject({
-        code: "RESOURCE_NOT_FOUND",
-        message: "Requested resource was not found",
-        status: 404,
-      } satisfies Partial<ApiError>);
-      expect(apiErrorMessage(error as ApiError)).toBe("요청한 정보를 찾을 수 없습니다.");
-    }
+    const heroes = await getDemoHeroes("access-token");
+    const context = await getMyPensionContext("access-token");
+
+    expect(heroes[0]?.nickname).toBe("박준호");
+    expect(context.nickname).toBe("이서연");
+  });
+
+  it("removes the demo marker from stored chat salutations", async () => {
+    auth.getSession.mockResolvedValue({ data: { session: { access_token: "access-token" } } });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify([{
+      id: "message-1",
+      role: "assistant",
+      content: "안녕하세요.",
+      response: { answer: "안녕하세요.", salutation: "정민재(가상)님" },
+    }]))));
+
+    const messages = await getStoredChatMessages("session-1", "access-token");
+
+    expect(messages[0]?.response?.salutation).toBe("정민재님");
   });
 });
+
 
 describe("chat session deletion", () => {
   it("sends an authenticated DELETE request with an encoded session id", async () => {

@@ -7,7 +7,14 @@ import pytest
 
 from backend.app.chat.disclosures import ProviderDisclosure
 from backend.app.chat.knowledge import FallbackKnowledgeRepository
-from backend.app.chat.models import ChatIntent, ChatRequest, ConversationContext
+from backend.app.chat.models import (
+    ChatIntent,
+    ChatRequest,
+    ConversationContext,
+    ReferentItem,
+    ReferentList,
+)
+from backend.app.chat.routing import IntentRouter
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService
 from backend.app.engine import AccountType
@@ -133,6 +140,109 @@ def test_follow_up_disclosure_question_uses_prior_account_context() -> None:
     assert response.intent is ChatIntent.PROVIDER_DISCLOSURE
     assert response.conversation_context is not None
     assert response.conversation_context.account_type is AccountType.IRP
+
+
+def _account_referent_context(*account_types: AccountType) -> ConversationContext:
+    return ConversationContext(
+        referents=ReferentList(
+            intent=ChatIntent.ACCOUNT_RULE,
+            topic="pension_account_overview",
+            items=[
+                ReferentItem(
+                    label={
+                        AccountType.DC: "DC형",
+                        AccountType.IRP: "IRP",
+                        AccountType.PENSION_SAVINGS: "연금저축펀드",
+                    }[account_type],
+                    ref=account_type.value,
+                )
+                for account_type in account_types
+            ],
+        )
+    )
+
+
+def test_ordinal_account_referent_selects_irp() -> None:
+    request = ChatRequest(
+        message="두 번째 계좌 자세히 설명해줘",
+        conversation_context=_account_referent_context(
+            AccountType.DC,
+            AccountType.IRP,
+            AccountType.PENSION_SAVINGS,
+        ),
+    )
+
+    referent = IntentRouter.resolve_referent(request)
+
+    assert referent is not None
+    assert referent.ref == "irp"
+    assert IntentRouter.contextual_message(request).startswith("IRP ")
+
+
+def test_account_overview_response_carries_referents_into_irp_follow_up() -> None:
+    initial = _service().ask(ChatRequest(message="연금 계좌 유형 뭐 있어?"))
+
+    assert initial.conversation_context is not None
+    assert initial.conversation_context.referents is not None
+    assert [item.ref for item in initial.conversation_context.referents.items] == [
+        "dc",
+        "irp",
+        "pension_savings",
+    ]
+
+    follow_up = _service().ask(
+        ChatRequest(
+            message="두 번째 계좌 자세히 설명해줘",
+            conversation_context=initial.conversation_context,
+        )
+    )
+
+    assert follow_up.intent is ChatIntent.ACCOUNT_RULE
+    assert follow_up.conversation_context is not None
+    assert follow_up.conversation_context.account_type is AccountType.IRP
+
+
+def test_pronoun_and_out_of_range_referents_do_not_guess() -> None:
+    single = ChatRequest(
+        message="그 계좌 자세히 설명해줘",
+        conversation_context=_account_referent_context(AccountType.IRP),
+    )
+    multiple = ChatRequest(
+        message="그 계좌 자세히 설명해줘",
+        conversation_context=_account_referent_context(
+            AccountType.DC, AccountType.IRP
+        ),
+    )
+    out_of_range = ChatRequest(
+        message="네 번째 계좌 자세히 설명해줘",
+        conversation_context=_account_referent_context(
+            AccountType.DC, AccountType.IRP, AccountType.PENSION_SAVINGS
+        ),
+    )
+
+    assert IntentRouter.resolve_referent(single) is not None
+    assert IntentRouter.resolve_referent(multiple) is None
+    assert IntentRouter.resolve_referent(out_of_range) is None
+    assert IntentRouter.contextual_message(multiple) == multiple.message
+    assert IntentRouter.contextual_message(out_of_range) == out_of_range.message
+
+
+@pytest.mark.parametrize(
+    "message",
+    ("두 번째 계좌 내년 수익률 예측해줘", "두 번째 계좌 대신 매수해줘"),
+)
+def test_referents_do_not_bypass_safety_blocks(message: str) -> None:
+    plan = _service().plan(
+        ChatRequest(
+            message=message,
+            conversation_context=_account_referent_context(
+                AccountType.DC, AccountType.IRP, AccountType.PENSION_SAVINGS
+            ),
+        )
+    )
+
+    assert plan.intent is ChatIntent.OUT_OF_SCOPE
+    assert plan.blocked_reason is not None
 
 
 def test_direct_identifiers_are_blocked_before_chat_processing() -> None:

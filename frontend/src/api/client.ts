@@ -1,6 +1,5 @@
 import type {
   AccountLinkOptionsResponse,
-  BenchmarkSummary,
   ChatCardCatalog,
   CompletedSurveyProfile,
   ConversationContext,
@@ -11,12 +10,17 @@ import type {
   EducationalPortfolioInput,
   InvestmentProfileResponse,
   InvestmentProfileSubmission,
+  PensionCalculatorEvaluation,
+  PensionCalculatorInput,
+  PensionCalculatorPortfolioCmaEvaluation,
+  PensionCalculatorPortfolioCmaRequest,
   PensionTaxScenarioInput,
   ProfileEvaluation,
   ProfileSurveyInput,
   ScenarioSummary,
   StoredChatMessage,
 } from "./types";
+import { supabase } from "../auth/supabase";
 
 const API_BASE_URL: string = (
   import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000"
@@ -60,6 +64,15 @@ export interface ChatStreamResult {
   idempotency_replayed?: boolean;
 }
 
+function withoutDemoNameMarker(value: string): string {
+  return value.replace(/\(가상\)/g, "").trim();
+}
+
+function normalizeChatResponse(response: ChatResponse): ChatResponse {
+  if (!response.salutation) return response;
+  return { ...response, salutation: withoutDemoNameMarker(response.salutation) };
+}
+
 async function parseOrThrow<T>(path: string, response: Response): Promise<T> {
   if (!response.ok) {
     let detail = `${path} 요청 실패 (${response.status})`;
@@ -100,13 +113,34 @@ function requestHeaders(accessToken?: string): HeadersInit {
     : {};
 }
 
+async function currentAccessToken(accessToken?: string): Promise<string | undefined> {
+  if (!accessToken || !supabase) return accessToken;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? accessToken;
+}
+
+async function refreshedAccessToken(): Promise<string | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.auth.refreshSession();
+  return error ? null : data.session?.access_token ?? null;
+}
+
 export async function apiGet<T>(
   path: string,
   accessToken?: string,
 ): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: requestHeaders(accessToken),
+  const token = await currentAccessToken(accessToken);
+  let response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: requestHeaders(token),
   });
+  if (response.status === 401 && accessToken) {
+    const refreshedToken = await refreshedAccessToken();
+    if (refreshedToken) {
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        headers: requestHeaders(refreshedToken),
+      });
+    }
+  }
   return parseOrThrow<T>(path, response);
 }
 
@@ -116,15 +150,21 @@ export async function apiPost<TBody, TResult>(
   accessToken?: string,
   idempotencyKey?: string,
 ): Promise<TResult> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const token = await currentAccessToken(accessToken);
+  const request = (requestToken?: string) => fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...requestHeaders(accessToken),
+      ...requestHeaders(requestToken),
       ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
     },
     body: JSON.stringify(body),
   });
+  let response = await request(token);
+  if (response.status === 401 && accessToken) {
+    const refreshedToken = await refreshedAccessToken();
+    if (refreshedToken) response = await request(refreshedToken);
+  }
   return parseOrThrow<TResult>(path, response);
 }
 
@@ -193,7 +233,8 @@ async function apiPostStream<TBody>(
         ) {
           throw new ApiError(undefined, payload.message, payload.code);
         } else if (event === "response") {
-          result = payload as unknown as ChatStreamResult;
+          const streamed = payload as unknown as ChatStreamResult;
+          result = { ...streamed, response: normalizeChatResponse(streamed.response) };
         }
       }
       boundary = buffer.indexOf("\n\n");
@@ -204,10 +245,6 @@ async function apiPostStream<TBody>(
   return result;
 }
 
-export function getBenchmarkSummary(): Promise<BenchmarkSummary> {
-  return apiGet("/benchmark/summary");
-}
-
 export function getScenarios(accessToken: string): Promise<ScenarioSummary[]> {
   return apiGet("/chat/scenarios", accessToken);
 }
@@ -216,8 +253,12 @@ export function getChatCards(): Promise<ChatCardCatalog> {
   return apiGet("/chat/cards");
 }
 
-export function getDemoHeroes(accessToken: string): Promise<DemoHeroPortfolio[]> {
-  return apiGet("/chat/heroes", accessToken);
+export async function getDemoHeroes(accessToken: string): Promise<DemoHeroPortfolio[]> {
+  const heroes = await apiGet<DemoHeroPortfolio[]>("/chat/heroes", accessToken);
+  return heroes.map((hero) => ({
+    ...hero,
+    nickname: withoutDemoNameMarker(hero.nickname),
+  }));
 }
 
 export function getAccountLinkOptions(): Promise<AccountLinkOptionsResponse> {
@@ -241,6 +282,18 @@ export function getInvestmentProfile(
   accessToken: string,
 ): Promise<InvestmentProfileResponse> {
   return apiGet("/me/investment-profile", accessToken);
+}
+
+export function calculatePortfolioCmaPension(
+  request: PensionCalculatorPortfolioCmaRequest,
+): Promise<PensionCalculatorPortfolioCmaEvaluation> {
+  return apiPost("/engine/pension-calculator/portfolio-cma", request);
+}
+
+export function calculatePension(
+  request: PensionCalculatorInput,
+): Promise<PensionCalculatorEvaluation> {
+  return apiPost("/engine/pension-calculator", request);
 }
 
 interface ChatBodyOptions {
@@ -308,20 +361,24 @@ export function getChatSessions(
   return apiGet("/chat/sessions", accessToken);
 }
 
-export function getMyPensionContext(
+export async function getMyPensionContext(
   accessToken: string,
 ): Promise<DemoUserFinancialContext> {
-  return apiGet("/me/pension-context", accessToken);
+  const context = await apiGet<DemoUserFinancialContext>("/me/pension-context", accessToken);
+  return { ...context, nickname: withoutDemoNameMarker(context.nickname) };
 }
 
-export function getStoredChatMessages(
+export async function getStoredChatMessages(
   sessionId: string,
   accessToken: string,
 ): Promise<StoredChatMessage[]> {
-  return apiGet(
+  const messages = await apiGet<StoredChatMessage[]>(
     `/chat/sessions/${encodeURIComponent(sessionId)}/messages`,
     accessToken,
   );
+  return messages.map((message) => message.response
+    ? { ...message, response: normalizeChatResponse(message.response) }
+    : message);
 }
 
 export function deleteChatSession(

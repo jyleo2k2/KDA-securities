@@ -1,10 +1,12 @@
 import { useMemo, useState, type FormEvent } from "react";
 
+import { calculatePortfolioCmaPension } from "../api/client";
 import type {
   AccountType,
   CompletedSurveyProfile,
   EducationalPortfolioEvaluation,
   EducationalPortfolioInput,
+  PensionCalculatorPortfolioCmaEvaluation,
   PortfolioPlanningEvaluation,
   PortfolioRiskEvaluation,
 } from "../api/types";
@@ -135,16 +137,22 @@ function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
 
 function PortfolioPlanningReview({
   planning,
+  titleId,
+  title,
+  description,
 }: {
   planning: PortfolioPlanningEvaluation;
+  titleId: string;
+  title: string;
+  description: string;
 }) {
   return (
-    <section className="portfolio-planning-review" aria-labelledby="portfolio-planning-title">
+    <section className="portfolio-planning-review" aria-labelledby={titleId}>
       <header>
         <span>승인된 교육용 계획가정</span>
-        <h4 id="portfolio-planning-title">장기 계획수익률 가정 근거</h4>
+        <h4 id={titleId}>{title}</h4>
         <p>
-          승인 장기 가정 · CMA {planning.cma_source_horizon_min_years}~{planning.cma_source_horizon_max_years}년 기준
+          {description} · CMA {planning.cma_source_horizon_min_years}~{planning.cma_source_horizon_max_years}년 기준
           {planning.annual_review_required ? " · 매년 재검토" : ""}
         </p>
       </header>
@@ -199,6 +207,41 @@ function PortfolioPlanningReview({
   );
 }
 
+function PensionPlanReview({
+  evaluation,
+}: {
+  evaluation: PensionCalculatorPortfolioCmaEvaluation;
+}) {
+  const { calculator, planning_return: planning } = evaluation;
+  return (
+    <section className="portfolio-planning-review" aria-labelledby="portfolio-pension-plan-title">
+      <header>
+        <span>현재 보유 ETF 기준</span>
+        <h4 id="portfolio-pension-plan-title">장기 수령 계획 예시</h4>
+        <p>현재 평가금액 비중과 CMA·검증 비용을 반영한 교육용 계획가정입니다.</p>
+      </header>
+      <div className="portfolio-review-summary">
+        <div><span>수령 시작 시점 계획 잔액</span><strong>{won(calculator.headline.total_krw)}</strong></div>
+        <div><span>월 수령 계획금액(세전)</span><strong>{won(calculator.headline.monthly_payout_pretax_krw)}</strong></div>
+        <div><span>월 수령 계획금액(1년차 세후)</span><strong>{won(calculator.headline.monthly_payout_after_tax_krw)}</strong></div>
+        <div><span>비용 차감 후 계획가정</span><strong>{optionalPercent(planning.net_planning_return_percent)}</strong></div>
+      </div>
+      <div className="planning-source-chips" aria-label="수령 계획 출처">
+        {[calculator.assumption.source, ...planning.sources].map((source) => (
+          /^https?:\/\//.test(source.reference) ? (
+            <a href={source.reference} target="_blank" rel="noreferrer" key={`${source.label}-${source.reference}`}>
+              {source.label} · {dateText(source.as_of)}
+            </a>
+          ) : (
+            <span key={`${source.label}-${source.reference}`}>{source.label} · {dateText(source.as_of)}</span>
+          )
+        ))}
+      </div>
+      <p className="portfolio-planning-note">{calculator.assumption.notice}</p>
+    </section>
+  );
+}
+
 export function PortfolioHoldingsPanel({
   surveyProfile,
   disabled,
@@ -218,6 +261,11 @@ export function PortfolioHoldingsPanel({
   const [selectedAccount, setSelectedAccount] = useState<AccountType | "">("");
   const [holdings, setHoldings] = useState<HoldingDraft[]>([newHolding()]);
   const [newContribution, setNewContribution] = useState("0");
+  const [monthlyContribution, setMonthlyContribution] = useState("0");
+  const [payoutYears, setPayoutYears] = useState("20");
+  const [pensionPlan, setPensionPlan] = useState<PensionCalculatorPortfolioCmaEvaluation | null>(null);
+  const [pensionPlanError, setPensionPlanError] = useState("");
+  const [pensionPlanLoading, setPensionPlanLoading] = useState(false);
   const [error, setError] = useState("");
 
   const accountType = availableAccounts.includes(selectedAccount as AccountType)
@@ -243,6 +291,29 @@ export function PortfolioHoldingsPanel({
       holding.id === id ? { ...holding, [field]: value } : holding
     )));
     setError("");
+  };
+
+  const validatedHoldings = () => {
+    const normalized = holdings.map((holding) => ({
+      isu_code: holding.isuCode.trim(),
+      amount_krw: wholeWon(holding.amountKrw),
+    }));
+    if (normalized.some((holding) => !/^\d{6}$/.test(holding.isu_code))) {
+      setError("ETF 종목코드는 6자리 숫자로 입력해 주세요.");
+      return null;
+    }
+    if (normalized.some((holding) => holding.amount_krw === null || BigInt(holding.amount_krw) <= 0n)) {
+      setError("각 ETF의 평가금액은 1원 이상 정수로 입력해 주세요.");
+      return null;
+    }
+    if (new Set(normalized.map((holding) => holding.isu_code)).size !== normalized.length) {
+      setError("같은 ETF는 평가금액을 합친 뒤 한 줄로 입력해 주세요.");
+      return null;
+    }
+    return normalized.map((holding) => ({
+      isu_code: holding.isu_code,
+      amount_krw: holding.amount_krw!,
+    }));
   };
 
   const submit = (event: FormEvent) => {
@@ -281,6 +352,42 @@ export function PortfolioHoldingsPanel({
       })),
       new_contribution_krw: contribution,
     });
+  };
+
+  const calculatePensionPlan = async () => {
+    const normalized = validatedHoldings();
+    if (normalized === null) return;
+    const monthly = wholeWon(monthlyContribution);
+    if (monthly === null) {
+      setPensionPlanError("월 납입액은 0원 이상의 정수로 입력해 주세요.");
+      return;
+    }
+    const currentBalance = normalized
+      .reduce((total, holding) => total + BigInt(holding.amount_krw), 0n)
+      .toString();
+    setPensionPlanError("");
+    setPensionPlanLoading(true);
+    try {
+      const result = await calculatePortfolioCmaPension({
+        calculator: {
+          current_age: surveyProfile.current_age,
+          contribution_end_age: surveyProfile.retirement_start_age,
+          current_balance_krw: currentBalance,
+          monthly_contribution_krw: monthly,
+          account_type: accountType,
+          risk_profile: surveyProfile.risk_profile,
+          payout_years: Number(payoutYears),
+          scenario: "base",
+        },
+        current_holdings: normalized,
+      });
+      setPensionPlan(result);
+    } catch {
+      setPensionPlan(null);
+      setPensionPlanError("현재 보유 ETF의 비용·적격성 데이터를 확인하지 못해 수령 계획을 계산하지 못했습니다. 종목코드와 데이터 기준일을 확인해 주세요.");
+    } finally {
+      setPensionPlanLoading(false);
+    }
   };
 
   return (
@@ -374,10 +481,47 @@ export function PortfolioHoldingsPanel({
         />
         <small>새 납입금으로 비중 차이를 먼저 줄이는 교육용 예시를 계산합니다.</small>
       </div>
+      <fieldset>
+        <legend>장기 수령 계획 입력</legend>
+        <p className="holdings-field-help">월 납입액과 수령기간만 입력하면, 위 ETF 평가금액 합계와 현재 비중을 사용합니다.</p>
+        <div className="holding-row">
+          <label>
+            <span>월 납입액(원)</span>
+            <input
+              aria-label="월 납입액"
+              inputMode="numeric"
+              value={monthlyContribution}
+              onChange={(event) => {
+                setMonthlyContribution(event.target.value.replace(/\D/g, ""));
+                setPensionPlanError("");
+              }}
+              disabled={disabled || pensionPlanLoading}
+            />
+          </label>
+          <label>
+            <span>수령기간</span>
+            <select
+              aria-label="수령기간"
+              value={payoutYears}
+              onChange={(event) => setPayoutYears(event.target.value)}
+              disabled={disabled || pensionPlanLoading}
+            >
+              {[10, 15, 20, 25, 30, 40].map((years) => (
+                <option key={years} value={years}>{years}년</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </fieldset>
       {error && <p className="holdings-form-error" role="alert">{error}</p>}
+      {pensionPlanError && <p className="holdings-form-error" role="alert">{pensionPlanError}</p>}
       <button className="holdings-analyze" type="submit" disabled={disabled}>
         {disabled ? "분석 중…" : "보유 ETF 분석하기"}
       </button>
+      <button className="holdings-analyze" type="button" onClick={() => void calculatePensionPlan()} disabled={disabled || pensionPlanLoading}>
+        {pensionPlanLoading ? "수령 계획 계산 중…" : "보유 ETF 기준 수령 계획 계산"}
+      </button>
+      {pensionPlan && <PensionPlanReview evaluation={pensionPlan} />}
     </form>
   );
 }
@@ -454,7 +598,24 @@ export function EducationalPortfolioReview({
       </div>
 
       <PortfolioRiskReview risk={evaluation.portfolio_risk} />
-      <PortfolioPlanningReview planning={evaluation.planning_return} />
+      {evaluation.current_holdings_planning_return ? (
+        <PortfolioPlanningReview
+          planning={evaluation.current_holdings_planning_return}
+          titleId="current-holdings-planning-title"
+          title="현재 보유 ETF CMA·비용 계획가정"
+          description="현재 평가금액 비중으로 가중한 보유 ETF 기준"
+        />
+      ) : evaluation.warnings.some((warning) => warning.startsWith("current_holdings_planning_return_unavailable:")) ? (
+        <p className="portfolio-review-warning">
+          현재 보유 ETF 중 검증된 비용 또는 계좌별 적격성 데이터가 없는 항목이 있어 CMA·비용 계획가정을 표시하지 못했습니다. 종목코드와 데이터 기준일을 확인해 주세요.
+        </p>
+      ) : null}
+      <PortfolioPlanningReview
+        planning={evaluation.planning_return}
+        titleId="target-portfolio-planning-title"
+        title="제안 포트폴리오 CMA·비용 계획가정"
+        description="목표 비중으로 가중한 제안 포트폴리오 기준"
+      />
 
       {Number(rebalancing.unclassified_holding_amount_krw) > 0 && (
         <p className="portfolio-review-warning">

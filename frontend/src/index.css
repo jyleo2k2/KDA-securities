@@ -375,6 +375,10 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .prompt-carousel::-webkit-scrollbar { display: none; }
 .prompt-carousel button { flex: 0 0 calc(50% - 6px); min-height: 118px; display: grid; grid-template-columns: 1fr; align-items: center; padding: 17px; scroll-snap-align: start; border: 1.5px solid #ecefe9; border-radius: 21px; background: #fff; color: #364940; text-align: left; box-shadow: none; }
 .prompt-carousel .design-prompt-copy { display: grid; gap: 5px; }.prompt-carousel .design-prompt-copy em { color: #65736b; font-size: 11px; font-style: normal; line-height: 1.4; }
+.planner-strategy-grid { display: grid; gap: 10px; }
+.planner-strategy-grid button { display: grid; gap: 5px; padding: 14px; border: 1px solid #e3ebe1; border-radius: 16px; background: #fbfdf9; color: #284436; text-align: left; }
+.planner-strategy-grid button[aria-pressed="true"] { border-color: #18a860; background: #f0fbf3; }
+.planner-strategy-grid small { color: #18a860; font-weight: 800; }.planner-strategy-grid span { color: #65736b; font-size: 12px; line-height: 1.45; }.planner-strategy-grid em { color: #52645a; font-size: 12px; font-style: normal; font-weight: 700; }
 .sector-card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
 .sector-card-grid button { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 9px; min-height: 78px; padding: 12px; border: 1px solid #e3ebe1; border-radius: 16px; background: #fbfdf9; color: #284436; text-align: left; cursor: pointer; }
 .sector-card-grid button:hover { border-color: #a9d8ba; background: #f4fbf4; }

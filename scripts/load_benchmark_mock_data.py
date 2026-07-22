@@ -42,24 +42,6 @@ def _sync_demo_links(cursor: psycopg.Cursor) -> None:
         """,
         [(benchmark_id, auth_id) for benchmark_id, auth_id, _ in rows],
     )
-    cursor.executemany(
-        """
-        update public.mock_accounts as demo_account
-        set benchmark_account_id = benchmark.account_id,
-            balance_krw = benchmark.balance_krw::numeric
-        from public.mock_scenarios as scenario,
-             public.benchmark_mock_accounts as benchmark
-        where scenario.code = %s
-          and demo_account.scenario_id = scenario.id
-          and benchmark.user_id = %s
-          and demo_account.account_type = case benchmark.account_type
-              when 'DC' then 'dc'
-              when 'IRP' then 'irp'
-              when 'PENSION_SAVINGS_FUND' then 'pension_savings'
-          end
-        """,
-        [(scenario_code, benchmark_id) for benchmark_id, _, scenario_code in rows],
-    )
 
 
 def main() -> None:
@@ -70,7 +52,6 @@ def main() -> None:
         cursor.execute(
             "update public.demo_user_financial_context set benchmark_user_id = null"
         )
-        cursor.execute("update public.mock_accounts set benchmark_account_id = null")
         for table, _ in reversed(LOADS):
             cursor.execute(f"truncate table public.{table}")
         for table, path in LOADS:
