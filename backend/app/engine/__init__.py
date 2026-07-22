@@ -139,13 +139,6 @@ from .profile import (
     evaluate_profile,
 )
 from .scenario import evaluate_mock_scenario
-from .simulation import (
-    BandSegment,
-    ScenarioProjection,
-    SimulationEvaluation,
-    SimulationInput,
-    simulate_accumulation,
-)
 from .strategy import (
     evaluate_historical_returns,
     evaluate_profit_lock,
@@ -169,7 +162,6 @@ __all__ = [
     "AssetBucket",
     "AssetClass",
     "AssumptionScenario",
-    "BandSegment",
     "DiagnosticFinding",
     "CurrentHolding",
     "EducationalEtfCandidate",
@@ -231,9 +223,6 @@ __all__ = [
     "ScenarioEvaluation",
     "ScenarioHoldingInput",
     "ScenarioPortfolioInput",
-    "ScenarioProjection",
-    "SimulationEvaluation",
-    "SimulationInput",
     "StatutoryException",
     "StrategyPresentation",
     "SleeveTarget",
@@ -275,5 +264,4 @@ __all__ = [
     "normalize_kis_holdings",
     "resolve_theme",
     "select_theme_etf_candidates",
-    "simulate_accumulation",
 ]

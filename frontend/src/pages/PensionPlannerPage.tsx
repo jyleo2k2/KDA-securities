@@ -105,7 +105,7 @@ export function PensionPlannerPage({
         <label>계좌 유형<select value={accountType} onChange={(event) => setAccountType(event.target.value as AccountType)}><option value="dc">DC형</option><option value="irp">IRP</option><option value="pension_savings">연금저축펀드</option></select></label>
         <label>현재 연금자산 잔액<input type="number" min="0" inputMode="numeric" value={currentBalance} onChange={(event) => setCurrentBalance(event.target.value)} /></label>
         <label>월 납입액<input type="number" min="0" inputMode="numeric" value={monthlyContribution} onChange={(event) => setMonthlyContribution(event.target.value)} /></label>
-        <label>납입 종료 나이<select value={contributionEndAge} onChange={(event) => setContributionEndAge(event.target.value)}>{Array.from({ length: 16 }, (_, index) => 55 + index).map((age) => <option key={age} value={age}>{age}세</option>)}</select></label>
+        <label>납입 종료 나이 <strong>{contributionEndAge}세</strong><input aria-label="납입 종료 나이" type="range" min="55" max="70" step="1" value={contributionEndAge} onChange={(event) => setContributionEndAge(event.target.value)} /></label>
         <label>수령기간<select value={payoutYears} onChange={(event) => setPayoutYears(event.target.value)}>{[10, 15, 20, 25, 30, 40].map((years) => <option key={years} value={years}>{years}년</option>)}</select></label>
         <label>가정 시나리오<select value={scenario} onChange={(event) => setScenario(event.target.value as typeof scenario)}>{Object.entries(SCENARIO_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         {error && <p role="alert">{error}</p>}

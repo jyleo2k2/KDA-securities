@@ -58,6 +58,7 @@ class QueryPlan(BaseModel):
     combines_account_rules: bool = False
     requests_tax_credit: bool = False
     requests_withdrawal_tax: bool = False
+    requests_pension_planner: bool = False
     account_rule_topic: AccountRuleTopic | None = None
     theme_id: str | None = None
     theme_content_topic: ThemeContentTopic | None = None
@@ -282,6 +283,11 @@ _PENSION_TAX_CALCULATION_TERMS = re.compile(
     r"받을\s*수\s*있는|"
     r"\d[\d,]*(?:\.\d+)?\s*(?:억|천만|만|천)?\s*원"
 )
+_PENSION_PLANNER_TERMS = re.compile(
+    r"(?:적립|모으).{0,16}(?:얼마|계산|시뮬)|"
+    r"(?:55|60|65)\s*세.{0,16}(?:얼마|수령|계산)|"
+    r"(?:수령액|연금\s*계산|시뮬레이션).{0,16}(?:얼마|계산|알려)"
+)
 _COUNT = re.compile(r"(?<!\d)([1-5])\s*(?:개|건)(?:만)?(?!\d)")
 _KOREAN_COUNT = (
     (re.compile(r"(?:한\s*(?:개|건)|하나)(?:만)?"), 1),
@@ -443,6 +449,7 @@ def plan_question(
     has_calculation_input = structured_pension_tax or requests_calculation
     requests_tax_credit = tax_credit_topic and has_calculation_input
     requests_withdrawal_tax = withdrawal_tax_topic and has_calculation_input
+    requests_pension_planner = _PENSION_PLANNER_TERMS.search(normalized) is not None
     if structured_pension_tax and not (tax_credit_topic or withdrawal_tax_topic):
         requests_tax_credit = True
         requests_withdrawal_tax = True
@@ -463,6 +470,8 @@ def plan_question(
         ChatIntent.PROVIDER_DISCLOSURE: bool(account_types)
         and _DISCLOSURE_TERMS.search(normalized) is not None,
         ChatIntent.ACCOUNT_RULE: bool(
+            requests_pension_planner
+            or
             account_types
             or account_rule_topic
             or (
@@ -603,5 +612,6 @@ def plan_question(
                 and _COMBINED_ACCOUNT_RULE.search(normalized) is not None
             ),
             account_rule_topic=account_rule_topic,
+            requests_pension_planner=requests_pension_planner,
         )
     return _blocked(normalized, BlockedReason.UNSUPPORTED, max_results)

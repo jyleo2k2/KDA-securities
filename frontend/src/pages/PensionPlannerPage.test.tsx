@@ -39,6 +39,8 @@ describe("PensionPlannerPage", () => {
     expect(screen.getByText("투자성향 기준: 35세 · 위험중립형")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("현재 연금자산 잔액"), { target: { value: "10000000" } });
     fireEvent.change(screen.getByLabelText("월 납입액"), { target: { value: "300000" } });
+    fireEvent.change(screen.getByLabelText("납입 종료 나이"), { target: { value: "62" } });
+    expect(screen.getByText("62세")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "수령 계획 계산" }));
 
     await waitFor(() => expect(calculatePension).toHaveBeenCalledWith(expect.objectContaining({
@@ -48,6 +50,7 @@ describe("PensionPlannerPage", () => {
       account_type: "irp",
       risk_profile: "risk_neutral",
       scenario: "base",
+      contribution_end_age: 62,
     })));
     expect(await screen.findByRole("heading", { name: "가정 시나리오 결과" })).toBeInTheDocument();
     expect(screen.getByText("50,000,000원")).toBeInTheDocument();

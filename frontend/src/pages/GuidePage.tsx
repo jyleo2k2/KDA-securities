@@ -454,11 +454,13 @@ function AssistantMessage({
   response,
   text,
   onFollowUp,
+  onOpenPlanner,
   usedFollowUpMessages,
 }: {
   response?: ChatResponse;
   text: string;
   onFollowUp?: (message: string) => void;
+  onOpenPlanner?: () => void;
   usedFollowUpMessages: ReadonlySet<string>;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -487,7 +489,7 @@ function AssistantMessage({
   const followUpCards = visibleFollowUps.length > 0 ? (
     <div className="follow-up-cards" aria-label="이어서 물어보기">
       {visibleFollowUps.map((followUp) => (
-        <button key={followUp.follow_up_id} onClick={() => onFollowUp?.(followUp.message)} type="button">
+        <button key={followUp.follow_up_id} onClick={() => followUp.follow_up_id === "open_pension_planner" ? onOpenPlanner?.() : onFollowUp?.(followUp.message)} type="button">
           {followUp.label}<Icon name="chevron" size={14} />
         </button>
       ))}
@@ -1475,6 +1477,7 @@ export function GuidePage({
               renderMessage={(message) => (
                 <AssistantMessage
                   onFollowUp={(prompt) => void submitPrompt(prompt)}
+                  onOpenPlanner={onOpenPlanner}
                   response={message.response}
                   text={message.text}
                   usedFollowUpMessages={usedFollowUpMessages}
