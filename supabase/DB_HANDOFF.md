@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-21 KST
-> 확인 기준: 대표 고객 6명 투자성향·답변·공개지표 원격 저장과 짧은 로그인 ID Auth 검증
+> 최종 확인: 2026-07-22 KST
+> 확인 기준: 로그인 투자자정보 확인서 통합 설문 migration 원격 적용·카탈로그 재검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -310,6 +310,7 @@ uv run ruff check .
 | DB-11 | KRX 전체 ETF 일별 거래량 DB·API 연결 | `REMOTE-APPLIED` | `20260720080955`, 2026-07-14 전체 1,147행·원본 합계 동등성·RLS/GRANT·FastAPI 원격 E2E 확인 | 일일 갱신 자동화와 보존기간은 후속 결정 |
 | DB-12 | ETF 테마 콘텐츠 검증·승인 RAG 연결 | `REMOTE-APPLIED` | `20260720091219`, `.4` 검토·근거 115/115건(`.3` 포함 총 230/230), 승인 문서 15개·활성 임베딩 청크 56/56건 | 적용 파일 수정 금지; 챗봇 화면 E2E·검토기한 만료 전 재검증 |
 | DB-13 | 투자성향 진단 저장·조회 API | `REMOTE-APPLIED` | POST/GET·24개월 KST 정책·append-only 확인 이력·RLS·소유자 스코프·전체 회귀·원격 카탈로그 검증 통과 | `20260720154033_add_investment_profile_confirmations.sql` 적용 완료 |
+| DB-13A | 로그인 투자자정보 확인서 통합 설문 | `REMOTE-APPLIED` | `20260722020126`, 활성 세트 1개·17문항·76선택지, 기존 세트 retire, 0~7점 제약·복수선택 답변 제약·RLS/클라이언트 권한 재검증 | 원격 적용 MCP 버전에 맞춰 로컬 파일명을 `20260722020126`으로 유지; 적용 파일 수정 금지 |
 | DB-14 | KIS ETF 구성종목 신뢰성 보강 | `LOCAL-VERIFIED` | 임시 빈 응답 재시도·재개, 마지막 정상 스냅샷 보존, 선택 종목 재수집 구현·원격 데이터 검증 | 코드 배포 전; KIS 미지원 614개는 KRX PDF·운용사 보조 소스 계약 필요 |
 
 ## 13. 미결정 사항
@@ -323,6 +324,15 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-22 KST 로그인 투자자정보 확인서 통합 설문 원격 적용
+
+- 작업자/브랜치: Codex / `codex/login-survey-db`.
+- 시작 상태: 원격 활성 설문세트 1개·6문항·30선택지, 사용자 투자성향 평가·답변 행은 각각 0건이었다.
+- 원격 적용: MCP `apply_migration`으로 로그인 설문 통합 SQL을 적용했다. MCP가 실제 원격 버전 `20260722020126_replace_profile_question_set_with_login_union`을 부여했으므로, 로컬 migration 파일도 같은 버전으로 이름을 맞췄다. `migration repair`는 사용하지 않았다.
+- 원격 재검증: 활성 세트 1개·retired 세트 1개, 활성 17문항·76선택지, 점수/답변 점수 CHECK 모두 `0..7`, 답변 유니크 제약은 `(assessment_id, question_id, option_id)`, 관련 public 5테이블 RLS 5/5, `anon`·`authenticated` 테이블 GRANT 0개를 확인했다.
+- Advisor: 신규 경고는 없었다. `RLS Enabled No Policy` INFO는 서버 전용 reference 테이블의 기존 deny-by-default 구성이고, `auth_leaked_password_protection` WARN은 기존 미해결 항목(DB-09)이다.
+- 로컬 검증: `uv run pytest tests/test_demo_user_context.py tests/test_profile.py tests/test_investment_profile_api.py tests/test_schema_contract.py tests/test_embedded_sql.py` 73 passed, `uv run ruff check ...` 통과, 프론트 `npm test` 53 passed·`npm run build` 통과.
 
 ### 2026-07-21 KST KIS ETF 구성종목 빈 응답 신뢰성 보강
 
