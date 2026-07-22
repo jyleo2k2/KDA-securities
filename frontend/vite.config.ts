@@ -12,6 +12,12 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      workbox: {
+        // Only revisioned build assets enter Cache Storage. API and SSE routes
+        // have no runtime rule and are explicitly fetched with cache: no-store.
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2,webmanifest}"],
+        runtimeCaching: [],
+      },
       manifest: {
         name: "연금 코파일럿",
         short_name: "연금코파일럿",

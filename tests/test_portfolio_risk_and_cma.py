@@ -2,11 +2,15 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
 
+import pytest
+
 from backend.app.engine.educational_portfolio import (
     CMA_ASSUMPTIONS_PERCENT,
     CMA_HORIZON_MAX_YEARS,
     CMA_HORIZON_MIN_YEARS,
+    CurrentHolding,
     _cma_mapping,
+    calculate_current_holdings_planning_return,
     calculate_portfolio_planning_return,
     calculate_portfolio_risk,
 )
@@ -73,7 +77,7 @@ def test_portfolio_risk_uses_history_only_for_risk_metrics() -> None:
     assert result.is_return_forecast is False
 
 
-def test_portfolio_planning_return_uses_cma_discount_and_cost() -> None:
+def test_portfolio_planning_return_uses_cma_minus_verified_cost() -> None:
     candidates = [
         Candidate("EQ", "Equity", "core_equity", Decimal("60")),
         Candidate("CASH", "Cash", "cash", Decimal("40")),
@@ -108,9 +112,106 @@ def test_portfolio_planning_return_uses_cma_discount_and_cost() -> None:
         source_as_of=date(2026, 7, 16),
     )
 
-    assert result.net_planning_return_percent == Decimal("4.9100")
-    assert result.conservative_planning_return_percent == Decimal("4.9100")
+    assert result.gross_planning_return_percent == Decimal("5.2600")
+    assert result.net_planning_return_percent == Decimal("5.1000")
+    assert result.conservative_planning_return_percent == Decimal("5.1000")
     assert result.base_planning_return_percent == Decimal("5.1000")
     assert result.historical_performance_used is False
     assert result.is_forecast is False
     assert "portfolio_horizon_outside_cma_source_horizon" in result.warnings
+    assert "central_value_is_cma_minus_verified_annual_cost_only" in result.warnings
+
+
+def test_portfolio_planning_return_rejects_missing_verified_cost() -> None:
+    candidate = Candidate("EQ", "Equity", "core_equity", Decimal("100"))
+    products = {
+        "EQ": {
+            "classification": {
+                "asset_class": "equity",
+                "strategy": "broad_market",
+                "region": "united_states",
+                "classification_confidence": "high",
+                "currency_hedge": "not_applicable",
+            },
+            "cost": {},
+        },
+    }
+
+    with pytest.raises(ValueError, match="verified annual cost is required"):
+        calculate_portfolio_planning_return(
+            candidates=[candidate],
+            products=products,
+            retirement_start_age=60,
+            portfolio_horizon_years=10,
+            source_as_of=date(2026, 7, 16),
+        )
+
+
+def test_holdings_planning_return_uses_actual_weights_and_verified_costs() -> None:
+    products = {
+        "EQ": {
+            "isu_name": "Equity ETF",
+            "classification": {
+                "asset_class": "equity",
+                "strategy": "broad_market",
+                "region": "united_states",
+                "currency_hedge": "hedged",
+            },
+            "cost": {"effective_total_cost_percent": "0.20"},
+        },
+        "CASH": {
+            "isu_name": "Cash ETF",
+            "classification": {
+                "asset_class": "cash_equivalent",
+                "strategy": "money_market",
+                "region": "south_korea",
+                "currency_hedge": "not_applicable",
+            },
+            "cost": {"effective_total_cost_percent": "0.10"},
+        },
+    }
+
+    result = calculate_current_holdings_planning_return(
+        holdings=[
+            CurrentHolding(isu_code="EQ", amount_krw=Decimal("6000000")),
+            CurrentHolding(isu_code="CASH", amount_krw=Decimal("4000000")),
+        ],
+        products=products,
+        retirement_start_age=60,
+        portfolio_horizon_years=35,
+        source_as_of=date(2026, 7, 16),
+    )
+
+    assert result.coverage_weight_percent == Decimal("100.0000")
+    assert result.net_planning_return_percent == Decimal("5.1000")
+    assert [item.annual_cost_drag_percent for item in result.components] == [
+        Decimal("0.2000"),
+        Decimal("0.1000"),
+    ]
+
+
+def test_current_holdings_planning_return_rejects_missing_verified_cost() -> None:
+    products = {
+        "EQ": {
+            "isu_name": "Equity ETF",
+            "classification": {
+                "asset_class": "equity",
+                "strategy": "broad_market",
+                "region": "united_states",
+            },
+            "cost": {},
+        },
+    }
+
+    try:
+        calculate_current_holdings_planning_return(
+            holdings=[CurrentHolding(isu_code="EQ", amount_krw=Decimal("1000000"))],
+            products=products,
+            retirement_start_age=60,
+            portfolio_horizon_years=25,
+            source_as_of=date(2026, 7, 16),
+        )
+    except ValueError as exc:
+        assert str(exc) == "verified ETF cost is unavailable: EQ"
+    else:
+        raise AssertionError("missing verified ETF cost must reject the calculation")

@@ -32,16 +32,17 @@ export function useSupabaseAuth(): SupabaseAuthState {
     let active = true;
     void supabase.auth.getSession().then(({ data, error: sessionError }) => {
       if (!active) return;
-      setSession(data.session);
+      setSession(sessionError ? null : data.session);
       setError(sessionError ? "로그인 상태를 확인하지 못했습니다." : null);
       setLoading(false);
     }).catch(() => {
       if (!active) return;
+      setSession(null);
       setError("로그인 상태를 확인하지 못했습니다.");
       setLoading(false);
     });
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (!active) return;
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (!active || event === "INITIAL_SESSION") return;
       setSession(nextSession);
       setLoading(false);
     });
