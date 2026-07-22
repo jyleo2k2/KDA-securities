@@ -55,11 +55,18 @@ ETF_SUFFIX_PATTERN = re.compile(
 )
 NORMALIZATION_PATTERN = re.compile(r"[^0-9A-Za-z가-힣]+")
 
-# These six KRX listings use marketing names that differ materially from the
+# These KRX listings use marketing names that differ materially from the
 # legal fund names in KOFIA's XLS.  Each link is an issuer product page/fact
 # sheet that identifies the KRX code and legal fund name; the KOFIA standard
 # code then identifies the reported fee row.  Do not add fuzzy aliases here.
 CONFIRMED_ISSUER_ALIAS_EVIDENCE: dict[str, dict[str, str]] = {
+    "0000D0": {
+        "standard_code": "K55301EG5219",
+        "source_url": (
+            "https://investments.miraeasset.com/tigeretf/upload/etf/"
+            "20250611092527004879.pdf"
+        ),
+    },
     "130680": {
         "standard_code": "KR5225287949",
         "source_url": (
@@ -119,6 +126,78 @@ CONFIRMED_ISSUER_ALIAS_EVIDENCE: dict[str, dict[str, str]] = {
         "standard_code": "K55101E19692",
         "source_url": "https://www.aceetf.co.kr/fund/K55101E19692",
     },
+    "102780": {"standard_code": "KR5105834570", "source_url": "https://m.samsungfund.com/etf/product/view.do?id=2ETF14"},
+    "102970": {"standard_code": "KR5105837847", "source_url": "https://m.samsungfund.com/etf/product/view.do?id=2ETF15"},
+    "169950": {"standard_code": "KR5105AE5728", "source_url": "https://m.samsungfund.com/etf/product/view.do?id=2ETF38"},
+    "185680": {"standard_code": "KR5105AL9630", "source_url": "https://www.samsungfund.com/etf/product/view.do?id=2ETF40"},
+    "278540": {"standard_code": "K55105BW1235", "source_url": "https://www.samsungfund.com/etf/product/view.do?id=2ETF93"},
+    "289040": {"standard_code": "K55105BZ5845", "source_url": "https://www.samsungfund.com/etf/product/view.do?id=2ETFA1"},
+    "321410": {"standard_code": "K55105CK0701", "source_url": "https://www.samsungfund.com/etf/product/view.do?id=2ETFB7"},
+    "359210": {"standard_code": "K55105B62905", "source_url": "https://m.samsungfund.com/etf/product/view.do?id=2ETFD2"},
+    "363580": {"standard_code": "K55105D67108", "source_url": "https://www.samsungfund.com/etf/product/view.do?id=2ETFD5"},
+    "441640": {"standard_code": "K55105DW2744", "source_url": "https://www.samsungfund.com/etf/product/view.do?id=2ETFH4"},
+    "367770": {"standard_code": "K55223DB4890", "source_url": "https://www.riseetf.co.kr/prod/finderDetail/44A8"},
+    "399580": {"standard_code": "K55223DK6670", "source_url": "https://www.riseetf.co.kr/prod/finderDetail/44C3"},
+    "448630": {"standard_code": "K55223DY8589", "source_url": "https://www.riseetf.co.kr/prod/finderDetail/44E0"},
+    "449580": {"standard_code": "K55223DZ2888", "source_url": "https://www.riseetf.co.kr/prod/finderDetail/44E1"},
+    "417450": {"standard_code": "K55223DQ9652", "source_url": "https://www.riseetf.co.kr/prod/finderDetail/44C6"},
+    "437370": {"standard_code": "K55223DV1611", "source_url": "https://www.riseetf.co.kr/prod/finderDetail/44D1"},
+    "442320": {"standard_code": "K55223DX4944", "source_url": "https://www.riseetf.co.kr/prod/finderDetail/44D6"},
+    "446700": {"standard_code": "K55223DY3945", "source_url": "https://www.riseetf.co.kr/prod/finderDetail/44D7"},
+    "354240": {"standard_code": "K55223D48455", "source_url": "https://www.riseetf.co.kr/prod/finderDetail/44A4"},
+    "361580": {"standard_code": "KR5223A66905", "source_url": "https://www.riseetf.co.kr/prod/finderDetail/44A5"},
+    "401170": {"standard_code": "K55223DN5018", "source_url": "https://www.riseetf.co.kr/prod/finderDetail/44C2"},
+    "465330": {"standard_code": "K55223E57140", "source_url": "https://www.riseetf.co.kr/prod/finderDetail/44F2"},
+    "418670": {"standard_code": "K55301DQ2231", "source_url": "https://www.tigeretf.com/upload/etf/20250523021322000228.pdf"},
+    "476690": {"standard_code": "K55301E88149", "source_url": "https://www.tigeretf.com/upload/etf/20250523022712005444.pdf"},
+    "0013R0": {"standard_code": "K55223EH6161", "source_url": "https://www.riseetf.co.kr/prod/finderDetail/44I1"},
+    "114470": {"standard_code": "KR5206150033", "source_url": "https://www.kiwoometf.com/service/etf/KO02010200M?gcode=114470"},
+    "138530": {"standard_code": "KR5225A04026", "source_url": "https://www.tigeretf.com/ko/product/search/detail/index.do?ksdFund=KR7138530001"},
+    "269540": {"standard_code": "K55213BO8445", "source_url": "https://www.plusetf.co.kr/product/detail?n=006306"},
+    "278530": {"standard_code": "K55105BW3843", "source_url": "https://m.samsungfund.com/etf/product/view.do?id=2ETF92"},
+    "295040": {"standard_code": "K55210C54247", "source_url": "https://www.soletf.co.kr/ko/fund/etf/210734"},
+    "494210": {"standard_code": "K55210EC9637", "source_url": "https://www.soletf.co.kr/ko/fund/etf/211064"},
+    "495550": {"standard_code": "K55210EF9550", "source_url": "https://www.soletf.co.kr/ko/fund/etf/211073"},
+    "138540": {"standard_code": "KR5225A04034", "source_url": "https://www.tigeretf.com/ko/product/search/detail/index.do?fundTypeCode=01000400&ksdFund=KR7138540000"},
+    "182490": {"standard_code": "KR5301AK4675", "source_url": "https://www.tigeretf.com/upload/etf/20240704125954008412.pdf"},
+    "195920": {"standard_code": "KR5301AR6046", "source_url": "https://www.tigeretf.com/upload/etf/20250611092529002223.pdf"},
+    "276000": {"standard_code": "K55301BS2827", "source_url": "https://www.tigeretf.com/ko/product/search/detail/index.do?ksdFund=KR7276000007"},
+    "105010": {"standard_code": "KR5225844749", "source_url": "https://www.tigeretf.com/ko/product/search/detail/index.do?ksdFund=KR7105010003"},
+    "114820": {"standard_code": "KR5225151061", "source_url": "https://www.tigeretf.com/upload/etf/20250708095820005220.pdf"},
+    "117690": {"standard_code": "KR5225874118", "source_url": "https://www.tigeretf.com/ko/product/search/detail/index.do?ksdFund=KR7117690008"},
+    "182480": {"standard_code": "KR5301AJ8059", "source_url": "https://www.tigeretf.com/ko/product/search/detail/index.do?ksdFund=KR7182480004"},
+    "203780": {"standard_code": "KR5301AT7943", "source_url": "https://www.tigeretf.com/ko/product/search/detail/index.do?ksdFund=KR7203780002"},
+    "237440": {"standard_code": "K55301BA0110", "source_url": "https://www.tigeretf.com/ko/product/search/detail/index.do?ksdFund=KR7237440003"},
+    "248270": {"standard_code": "K55301BE6980", "source_url": "https://www.tigeretf.com/ko/product/search/detail/index.do?ksdFund=KR7248270001"},
+    "275980": {"standard_code": "K55301BS2819", "source_url": "https://www.tigeretf.com/ko/product/search/detail/index.do?ksdFund=KR7275980001"},
+    "310960": {"standard_code": "K55301CG5203", "source_url": "https://www.tigeretf.com/ko/product/search/detail/index.do?ksdFund=KR7310960000"},
+    "310970": {"standard_code": "K55301CG5815", "source_url": "https://www.tigeretf.com/ko/product/search/detail/index.do?ksdFund=KR7310970009"},
+    "069660": {"standard_code": "KR5206352894", "source_url": "https://www.kiwoometf.com/service/etf/KO02010200M?gcode=069660"},
+    "100910": {"standard_code": "KR5206773776", "source_url": "https://www.kiwoometf.com/service/etf/KO02010200M?gcode=100910"},
+    "104520": {"standard_code": "KR5206853859", "source_url": "https://www.kiwoometf.com/service/etf/KO02010200M?gcode=104520"},
+    "104530": {"standard_code": "KR5206853842", "source_url": "https://www.kiwoometf.com/service/etf/KO02010200M?gcode=104530"},
+    "122260": {"standard_code": "KR5206184115", "source_url": "https://www.kiwoometf.com/service/etf/KO02010200M?gcode=122260"},
+    "153270": {"standard_code": "KR5391A83228", "source_url": "https://www.kiwoometf.com/service/etf/KO02010200M?gcode=153270"},
+    "200250": {"standard_code": "KR5206AS8419", "source_url": "https://www.kiwoometf.com/service/etf/KO02010200M?gcode=200250"},
+    "294400": {"standard_code": "K55206C46472", "source_url": "https://www.kiwoometf.com/service/etf/KO02010200M?gcode=294400"},
+    "315930": {"standard_code": "K55105CG9781", "source_url": "https://m.samsungfund.com/sheet/20211014/2ETFB5_20210930.pdf"},
+    "315960": {"standard_code": "K55223CJ3036", "source_url": "https://www.riseetf.co.kr/prod/finderDetail/4494"},
+    "328370": {"standard_code": "K55213CQ4342", "source_url": "https://www.plusetf.co.kr/upload/fund/PLUS_%EC%BD%94%EC%8A%A4%ED%94%BCTR_20260228.pdf"},
+    "332500": {"standard_code": "K55101CT6711", "source_url": "https://www.aceetf.co.kr/fund/K55101CT6711"},
+    "491220": {"standard_code": "K55213EE1753", "source_url": "https://www.plusetf.co.kr/upload/fund/PLUS_200TR_20260228.pdf"},
+}
+
+# These listings have no issuer document that states both the exact KRX code
+# and the legal KOFIA fund name.  The mapping is therefore intentionally kept
+# separate from issuer evidence: an exact-code market-data page and the KOFIA
+# legal name/standard-code row must both be present.  It is not a fuzzy match.
+CONFIRMED_SECONDARY_IDENTITY_EVIDENCE: dict[str, dict[str, str]] = {
+    "0073X0": {"standard_code": "K55104EL0816", "source_url": "https://kr.investing.com/etfs/0073x0-seoul"},
+    "140950": {"standard_code": "KR5207A24857", "source_url": "https://www.ktb.co.kr/calendar/calendar.jspx?cmd=day&date=20210730&hts="},
+    "152870": {"standard_code": "KR5207A82418", "source_url": "https://www.ktb.co.kr/calendar/calendar.jspx?cmd=day&date=20210730&hts="},
+    "159800": {"standard_code": "KR5216AB3979", "source_url": "https://kr.investing.com/etfs/dongbu-mighty-kospi-100"},
+    "285690": {"standard_code": "K55104C03165", "source_url": "https://kr.investing.com/etfs/hi-focus-esg-leaders-150"},
+    "332930": {"standard_code": "K55232CU2966", "source_url": "https://kr.investing.com/etfs/332930"},
 }
 
 
