@@ -12,6 +12,7 @@ interface MainHomeScreenProps {
   investmentProfile: InvestmentProfileResponse | null;
   loading: boolean;
   onOpenChat: () => void;
+  onOpenPlanner: () => void;
   onOpenStrategyExplore: () => void;
   onOpenUserPick: () => void;
   onResurvey: () => void;
@@ -144,7 +145,7 @@ const ASSET_LABELS: Record<string, string> = { cash: "현금성", deposit: "원�
 const ALLOCATION_COLORS = ["#18A860", "#35B877", "#6ECFA0", "#2E8B57"];
 const formatKrw = (amount: string) => `${Math.round(Number(amount)).toLocaleString("ko-KR")}원`;
 
-export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpenChat, onOpenStrategyExplore, onOpenUserPick, onResurvey, userContext }: MainHomeScreenProps): JSX.Element {
+export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpenChat, onOpenPlanner, onOpenStrategyExplore, onOpenUserPick, onResurvey, userContext }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
   const allocationSlices: AllocationSlice[] = hero?.asset_allocations.slice(0, 4).map((item, index) => ({ label: ASSET_LABELS[item.asset_class_code] ?? "기타 자산", percent: `${item.allocation_percent}%`, color: ALLOCATION_COLORS[index] })) ?? [];
   const holdingSlices = buildHoldingDonutSlices(hero);
@@ -244,7 +245,7 @@ export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpen
           <div className="mhs-tax-copy">
             <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
             <p className="mhs-tax-sub">연금저축·IRP 납입 현황과 남은 여력을 확인해 보세요.</p>
-            <button type="button" className="mhs-tax-button">완료율 확인하기 <span>→</span></button>
+            <button type="button" className="mhs-tax-button" onClick={onOpenPlanner}>완료율 확인하기 <span>→</span></button>
           </div>
         </div>
 
@@ -258,13 +259,20 @@ export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpen
 
         <div className="mhs-strategy-scroll">
           {STRATEGY_CARDS.map((card) => (
-            <div className="mhs-strategy-card" style={{ background: card.bg }} key={card.title}>
+            <button
+              type="button"
+              className="mhs-strategy-card mhs-strategy-card-button"
+              style={{ background: card.bg }}
+              key={card.title}
+              onClick={onOpenStrategyExplore}
+              aria-label={`${card.title} 전략 상세 보기`}
+            >
               <span className="mhs-strategy-card-title">{card.title}</span>
               <p className="mhs-strategy-card-value" style={{ color: card.valueColor }}>교육용 안내</p>
               <p className="mhs-strategy-card-desc">{card.desc}</p>
               {card.warning && <p className="mhs-strategy-card-warning">{card.warning}</p>}
               <p className="mhs-strategy-card-footnote">{card.footnote}</p>
-            </div>
+            </button>
           ))}
         </div>
         <p className="mhs-strategy-disclaimer">전략별 특징을 설명하는 교육용 화면이며, 미래 수익을 보장하거나 예측하지 않아요.</p>
