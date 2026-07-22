@@ -140,7 +140,7 @@ export default function App(): JSX.Element {
   const plannerProfile = plannerProfileFromContext(currentUserData.context, currentUserData.investmentProfile);
 
   if (resolvedRoute === "strategy-explore") return <StrategyExploreScreen onBack={goToMainHome} />;
-  if (resolvedRoute === "user-pick-benchmark") return <UserPickBenchmarkScreen currentHero={currentUserData.hero} heroes={currentUserData.heroes} onBack={goToMainHome} />;
+  if (resolvedRoute === "user-pick-benchmark") return <UserPickBenchmarkScreen heroes={currentUserData.heroes} onBack={goToMainHome} />;
   if (resolvedRoute === "main-home") return <MainHomeScreen error={currentUserData.error} hero={currentUserData.hero} investmentProfile={currentUserData.investmentProfile} loading={currentUserData.loading} onOpenChat={() => changeTab("guide")} onOpenPlanner={goToPlanner} onOpenStrategyExplore={goToStrategyExplore} onOpenUserPick={goToUserPickBenchmark} onResurvey={beginResurvey} userContext={currentUserData.context} />;
   if (resolvedRoute === "planner") return <PensionPlannerPage profile={plannerProfile} userContext={currentUserData.context} onBack={() => changeTab("guide")} onOpenProfile={beginResurvey} />;
   const content = activeTab === "guide" ? (
