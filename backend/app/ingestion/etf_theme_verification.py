@@ -1,4 +1,4 @@
-"""Validate and load the approved 23-theme verification ledger."""
+"""Validate and load the approved 20-theme verification ledger."""
 
 import json
 from dataclasses import dataclass
@@ -129,7 +129,7 @@ def load_theme_verification_ledger(
     repository: EtfThemeRepository,
     manifest: ThemeEvidenceManifest,
 ) -> ThemeVerificationLoadResult:
-    """Upsert all 115 approvals and their exact RAG chunk evidence atomically."""
+    """Upsert all 100 approvals and their exact RAG chunk evidence atomically."""
 
     if not database_url:
         raise ValueError("database_url is required")

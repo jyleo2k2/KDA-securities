@@ -1,9 +1,13 @@
+import pytest
+
 from backend.app.ingestion.kis_client import KisApiResponse
 from backend.app.ingestion.kis_component_snapshots import (
+    KisComponentRefreshSummary,
     KisComponentSnapshotWriter,
     _fetch_components_with_retry,
     _is_transient_empty,
     _reported_component_count,
+    _run_with_resume_sweeps,
 )
 
 
@@ -11,6 +15,7 @@ class _TargetCursor:
     def __init__(self) -> None:
         self.queries: list[str] = []
         self.params: list[tuple[object, ...] | None] = []
+        self.rowcount = 1
 
     def execute(
         self, query: str, _params: tuple[object, ...] | None = None
@@ -152,4 +157,98 @@ def test_resume_skips_only_success_and_explicit_true_empty() -> None:
     assert "etf_cnfg_issu_cnt" in query
     assert "snapshot.status = 'empty'" in query
     assert "isu_code = any(%s)" in query
+    assert "payload->'classification'->>'asset_class' = 'equity'" in query
+    assert "payload->'classification'->>'region' = 'south_korea'" in query
     assert connection.cursor_obj.params[1][1] == ["069500"]
+
+
+def _summary(
+    *,
+    requested: int = 1,
+    succeeded: int = 1,
+    transient_empty: int = 0,
+    true_empty: int = 0,
+    failed: int = 0,
+) -> KisComponentRefreshSummary:
+    return KisComponentRefreshSummary(
+        requested_etf_count=requested,
+        succeeded_etf_count=succeeded,
+        empty_etf_count=transient_empty + true_empty,
+        failed_etf_count=failed,
+        transient_empty_etf_count=transient_empty,
+        true_empty_etf_count=true_empty,
+    )
+
+
+def test_summary_rejects_inconsistent_terminal_counts() -> None:
+    with pytest.raises(ValueError, match="all terminal outcomes"):
+        KisComponentRefreshSummary(
+            requested_etf_count=2,
+            succeeded_etf_count=1,
+            empty_etf_count=0,
+            failed_etf_count=0,
+            transient_empty_etf_count=0,
+            true_empty_etf_count=0,
+        )
+
+
+def test_partial_run_is_persisted_as_failed_not_succeeded() -> None:
+    connection = _TargetConnection()
+    writer = KisComponentSnapshotWriter(
+        "postgresql://example",
+        connection_factory=lambda _: connection,
+    )
+
+    writer.complete_run(
+        run_id="run-id",
+        summary=_summary(requested=1, succeeded=0, transient_empty=1),
+    )
+
+    query = connection.cursor_obj.queries[0].lower()
+    params = connection.cursor_obj.params[0]
+    assert "set status = %s" in query
+    assert params is not None
+    assert params[0] == "failed"
+    assert params[3] == "207"
+
+
+def test_complete_run_is_persisted_as_succeeded() -> None:
+    connection = _TargetConnection()
+    writer = KisComponentSnapshotWriter(
+        "postgresql://example",
+        connection_factory=lambda _: connection,
+    )
+
+    writer.complete_run(run_id="run-id", summary=_summary())
+
+    params = connection.cursor_obj.params[0]
+    assert params is not None
+    assert params[0] == "succeeded"
+    assert params[3] == "200"
+
+
+def test_resume_sweeps_are_bounded_and_switch_to_resume_mode() -> None:
+    resume_modes: list[bool] = []
+
+    def refresh(resume_today: bool) -> KisComponentRefreshSummary:
+        resume_modes.append(resume_today)
+        return _summary(requested=1, succeeded=0, transient_empty=1)
+
+    summaries = _run_with_resume_sweeps(refresh, max_resume_sweeps=3)
+
+    assert len(summaries) == 4
+    assert resume_modes == [False, True, True, True]
+
+
+def test_resume_sweeps_stop_after_unresolved_etfs_recover() -> None:
+    outcomes = iter(
+        [
+            _summary(requested=1, succeeded=0, transient_empty=1),
+            _summary(),
+        ]
+    )
+
+    summaries = _run_with_resume_sweeps(lambda _: next(outcomes))
+
+    assert len(summaries) == 2
+    assert summaries[-1].has_partial_failure is False

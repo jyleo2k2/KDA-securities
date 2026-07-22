@@ -4,24 +4,40 @@ export function ChatSessionList({
   activeSessionId,
   chatSessions,
   deleteStatus,
+  deletingAllSessions,
   deletingSessionId,
   historyLoading,
   isSending,
   onDelete,
+  onDeleteAll,
   onLoad,
 }: {
   activeSessionId: string | null;
   chatSessions: ChatSessionSummary[];
   deleteStatus: string | null;
+  deletingAllSessions: boolean;
   deletingSessionId: string | null;
   historyLoading: boolean;
   isSending: boolean;
   onDelete: (session: ChatSessionSummary) => void;
+  onDeleteAll: () => void;
   onLoad: (sessionId: string) => void;
 }) {
   return (
     <>
-      <p className="sidebar-label history-label">저장된 대화</p>
+      <div className="history-heading">
+        <p className="sidebar-label history-label">저장된 대화</p>
+        {chatSessions.length > 0 && (
+          <button
+            className="history-delete-all"
+            type="button"
+            onClick={onDeleteAll}
+            disabled={historyLoading || isSending || deletingSessionId !== null || deletingAllSessions}
+          >
+            {deletingAllSessions ? "삭제 중" : "전체 삭제"}
+          </button>
+        )}
+      </div>
       <div className="history-list">
         {historyLoading && chatSessions.length === 0 ? (
           <p className="auth-note">대화 이력을 불러오는 중...</p>
@@ -30,7 +46,7 @@ export function ChatSessionList({
         ) : chatSessions.map((session) => {
           const title = session.title || "새 대화";
           const deleting = deletingSessionId === session.session_id;
-          const disabled = historyLoading || isSending || deletingSessionId !== null;
+          const disabled = historyLoading || isSending || deletingSessionId !== null || deletingAllSessions;
           return (
             <div
               className={`history-item ${activeSessionId === session.session_id ? "active" : ""}`}

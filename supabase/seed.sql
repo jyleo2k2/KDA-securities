@@ -46,6 +46,51 @@ values
         'project://docs',
         null,
         '{"scope":"공식 근거를 프로젝트가 요약·검증한 RAG 데모 지식"}'::jsonb
+    ),
+    (
+        'official_sol_etf',
+        'SOL ETF 공식 상품정보',
+        'official_document',
+        '신한자산운용',
+        'https://www.soletf.com',
+        'percent',
+        '{"data_boundary":"official_disclosure","is_mock":false}'::jsonb
+    ),
+    (
+        'official_tiger_etf',
+        'TIGER ETF 공식 구성종목',
+        'official_document',
+        '미래에셋자산운용',
+        'https://www.tigeretf.com',
+        'percent',
+        '{"data_boundary":"official_disclosure","is_mock":false}'::jsonb
+    ),
+    (
+        'official_kiwoom_etf',
+        'KIWOOM ETF 공식 구성종목',
+        'official_document',
+        '키움투자자산운용',
+        'https://www.kiwoometf.com',
+        'percent',
+        '{"data_boundary":"official_disclosure","is_mock":false}'::jsonb
+    ),
+    (
+        'official_kodex_etf',
+        'KODEX ETF 공식 구성종목',
+        'official_document',
+        '삼성자산운용',
+        'https://www.samsungfund.com',
+        'percent',
+        '{"data_boundary":"official_disclosure","is_mock":false}'::jsonb
+    ),
+    (
+        'official_koact_etf',
+        'KoAct ETF 공식 구성종목',
+        'official_document',
+        '삼성액티브자산운용',
+        'https://www.samsungactive.co.kr',
+        'percent',
+        '{"data_boundary":"official_disclosure","is_mock":false}'::jsonb
     )
 on conflict (code) do update set
     name = excluded.name,

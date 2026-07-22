@@ -53,6 +53,14 @@ class PortfolioUniverseLoadSummary:
     source_sha256: str
 
 
+@dataclass(frozen=True, slots=True)
+class EtfThemeProductUniverse:
+    """ETF 테마 카드에 필요한 상품 payload만 담는 경량 읽기 모델."""
+
+    products: list[dict[str, Any]]
+    as_of: date
+
+
 class PostgresPortfolioUniverseRepository:
     """최신 ready ETF 데이터셋을 계좌별 엔진 입력으로 복원한다."""
 
@@ -231,6 +239,70 @@ class PostgresPortfolioUniverseRepository:
                 version_id, account_type, isu_codes
             ),
         )
+
+    def latest_theme_products(
+        self,
+        isu_codes: tuple[str, ...] | None,
+    ) -> EtfThemeProductUniverse:
+        """Return canonical product payloads without loading return histories."""
+
+        normalized_codes = (
+            tuple(sorted(set(isu_codes))) if isu_codes is not None else None
+        )
+        query_codes = list(normalized_codes) if normalized_codes is not None else None
+        with self._connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
+                select id, as_of
+                from public.etf_dataset_versions
+                where status = 'ready'
+                order by as_of desc, id desc
+                limit 1
+                """
+            )
+            version_row = cursor.fetchone()
+            if version_row is None:
+                raise PortfolioUniverseLoadError(
+                    "database has no ready ETF dataset version"
+                )
+            version_id = int(version_row[0])
+            as_of = (
+                version_row[1]
+                if isinstance(version_row[1], date)
+                else date.fromisoformat(str(version_row[1]))
+            )
+
+            cursor.execute(
+                """
+                select distinct on (isu_code) isu_code, payload
+                from public.etf_universe_products
+                where version_id = %s
+                  and (%s::text[] is null or isu_code = any(%s::text[]))
+                order by
+                    isu_code,
+                    case account_type
+                        when 'dc' then 1
+                        when 'irp' then 2
+                        when 'pension_savings' then 3
+                        else 4
+                    end
+                """,
+                (version_id, query_codes, query_codes),
+            )
+            product_rows = cursor.fetchall()
+
+        products: list[dict[str, Any]] = []
+        for isu_code, payload in product_rows:
+            if not isinstance(payload, dict):
+                raise PortfolioUniverseLoadError(
+                    f"ETF product payload is not an object: {isu_code}"
+                )
+            if payload.get("isu_code") != isu_code:
+                raise PortfolioUniverseLoadError(
+                    f"ETF product code does not match payload: {isu_code}"
+                )
+            products.append(payload)
+        return EtfThemeProductUniverse(products=products, as_of=as_of)
 
 
 def _combined_source_sha256(source_files: list[tuple[str, Path]]) -> str:

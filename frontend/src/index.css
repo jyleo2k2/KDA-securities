@@ -112,7 +112,11 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .auth-user > span { min-width: 0; flex: 1; }.auth-user strong, .auth-user small { display: block; }
 .auth-user strong { color: #e9f1ec; font-size: 10px; }.auth-user small { overflow: hidden; margin-top: 2px; color: #8eaa9e; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
 .auth-user button { padding: 4px 0; border: 0; background: transparent; color: #b9cbc2; font-size: 8px; cursor: pointer; }
-.history-label { margin: 14px 0 7px; }
+.history-heading { display: flex; align-items: center; justify-content: space-between; margin: 14px 0 7px; }
+.history-label { margin: 0; }
+.history-delete-all { border: 0; background: transparent; color: #b9cbc2; cursor: pointer; font-size: 9px; padding: 3px 5px; border-radius: 6px; }
+.history-delete-all:hover { color: #ffc0a6; background: rgba(255,255,255,.08); }
+.history-delete-all:disabled { cursor: wait; opacity: .6; }
 .history-list { max-height: 145px; display: grid; gap: 4px; overflow-y: auto; }
 .history-item { display: grid; grid-template-columns: minmax(0, 1fr) 38px; align-items: center; border-radius: 8px; }
 .history-item:hover, .history-item.active { background: rgba(255,255,255,.08); color: white; }

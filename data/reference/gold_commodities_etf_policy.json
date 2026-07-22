@@ -1,0 +1,71 @@
+{
+  "schema_version": "1.0",
+  "as_of_date": "2026-07-22",
+  "theme_id": "gold_commodities",
+  "source_url": "https://chatgpt.com/share/6a606f6d-abf0-83ee-8ee7-08703fb5bee0",
+  "metric_basis": "승인된 공유 대화의 최근 10거래일 평균 거래량과 운용보수",
+  "ranking_rule": "각 실물 슬롯 안에서 최근 일평균 거래량 내림차순, 동률이면 운용보수 오름차순",
+  "slots": [
+    {
+      "slot_id": "gold",
+      "slot_label": "금",
+      "exposure_label": "금 현물",
+      "candidates": [
+        {
+          "isu_code": "411060",
+          "isu_name": "ACE KRX금현물",
+          "average_daily_trading_volume": 733000,
+          "average_daily_trading_value_krw": 19810000000,
+          "fee_percent": "0.19",
+          "benchmark_name": "KRX 금현물지수"
+        },
+        {
+          "isu_code": "0072R0",
+          "isu_name": "TIGER KRX금현물",
+          "average_daily_trading_volume": 462000,
+          "average_daily_trading_value_krw": 5990000000,
+          "fee_percent": "0.15",
+          "benchmark_name": "KRX 금현물지수"
+        }
+      ]
+    },
+    {
+      "slot_id": "silver",
+      "slot_label": "은",
+      "exposure_label": "은 현물",
+      "candidates": [
+        {
+          "isu_code": "0172V0",
+          "isu_name": "1Q 은액티브",
+          "average_daily_trading_volume": 122000,
+          "average_daily_trading_value_krw": 1010000000,
+          "fee_percent": "0.30",
+          "benchmark_name": "Bloomberg Blended Silver Spot USD Index"
+        },
+        {
+          "isu_code": "0189B0",
+          "isu_name": "TIGER 은액티브",
+          "average_daily_trading_volume": 77000,
+          "average_daily_trading_value_krw": 610000000,
+          "fee_percent": "0.30",
+          "benchmark_name": "ICE Silver Spot Index"
+        }
+      ]
+    },
+    {
+      "slot_id": "copper",
+      "slot_label": "구리",
+      "exposure_label": "구리 실물",
+      "candidates": [
+        {
+          "isu_code": "160580",
+          "isu_name": "TIGER 구리실물",
+          "average_daily_trading_volume": 87000,
+          "average_daily_trading_value_krw": 1430000000,
+          "fee_percent": "0.83",
+          "benchmark_name": "S&P GSCI Cash Copper Index"
+        }
+      ]
+    }
+  ]
+}

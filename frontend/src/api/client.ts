@@ -396,3 +396,7 @@ export function deleteChatSession(
     accessToken,
   );
 }
+
+export function deleteAllChatSessions(accessToken: string): Promise<void> {
+  return apiDelete("/chat/sessions", accessToken);
+}

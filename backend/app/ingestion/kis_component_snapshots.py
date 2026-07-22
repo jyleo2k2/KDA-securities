@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 import httpx
 import psycopg
 from psycopg.types.json import Jsonb
+from psycopg_pool import ConnectionPool
 
 from backend.app.engine.etf_theme import normalize_kis_holdings
 from backend.app.settings import get_settings
@@ -31,6 +32,7 @@ from .kis_client import (
 
 KIS_COMPONENT_SOURCE_CODE = "kis_etf_components"
 DEFAULT_DELAY_SECONDS = 0.25
+DEFAULT_MAX_RESUME_SWEEPS = 3
 KST = ZoneInfo("Asia/Seoul")
 
 
@@ -58,6 +60,32 @@ class KisComponentRefreshSummary:
     failed_etf_count: int
     transient_empty_etf_count: int
     true_empty_etf_count: int
+
+    def __post_init__(self) -> None:
+        counts = (
+            self.requested_etf_count,
+            self.succeeded_etf_count,
+            self.empty_etf_count,
+            self.failed_etf_count,
+            self.transient_empty_etf_count,
+            self.true_empty_etf_count,
+        )
+        if any(count < 0 for count in counts):
+            raise ValueError("ETF refresh summary counts must not be negative")
+        if self.empty_etf_count != (
+            self.transient_empty_etf_count + self.true_empty_etf_count
+        ):
+            raise ValueError("empty ETF count must equal transient plus true empty")
+        if self.requested_etf_count != (
+            self.succeeded_etf_count
+            + self.empty_etf_count
+            + self.failed_etf_count
+        ):
+            raise ValueError("requested ETF count must equal all terminal outcomes")
+
+    @property
+    def has_partial_failure(self) -> bool:
+        return bool(self.failed_etf_count or self.transient_empty_etf_count)
 
 
 def _reported_component_count(payload: dict[str, Any]) -> int | None:
@@ -109,15 +137,21 @@ class KisComponentSnapshotWriter:
         self,
         database_url: str,
         *,
+        pool: ConnectionPool | None = None,
         connection_factory: Callable[[str], Any] = psycopg.connect,
     ) -> None:
         if not database_url:
             raise ValueError("database_url is required")
         self._database_url = database_url
+        self._pool = pool
         self._connection_factory = connection_factory
 
     @contextmanager
     def _connection(self) -> Iterator[Any]:
+        if self._pool is not None:
+            with self._pool.connection() as connection:
+                yield connection
+            return
         with self._connection_factory(self._database_url) as connection:
             yield connection
 
@@ -186,6 +220,8 @@ class KisComponentSnapshotWriter:
                 select distinct isu_code
                 from public.etf_universe_products product
                 where version_id = %s
+                  and payload->'classification'->>'asset_class' = 'equity'
+                  and payload->'classification'->>'region' = 'south_korea'
                 """
                 + selected_clause
                 + resume_clause
@@ -302,25 +338,36 @@ class KisComponentSnapshotWriter:
     def complete_run(
         self, *, run_id: Any, summary: KisComponentRefreshSummary
     ) -> None:
+        run_status = "failed" if summary.has_partial_failure else "succeeded"
+        response_code = "207" if summary.has_partial_failure else "200"
         with self._connection() as connection, connection.cursor() as cursor:
             cursor.execute(
                 """
                 update public.ingestion_runs
-                set status = 'succeeded', completed_at = now(),
+                set status = %s, completed_at = now(),
                     normalized_record_count = %s, upserted_record_count = %s,
-                    response_code = '200', response_message = 'KIS ETF components',
+                    response_code = %s, response_message = 'KIS ETF components',
+                    error_message = %s,
                     metadata = metadata || %s
                 where id = %s and status = 'running'
                 """,
                 (
+                    run_status,
                     summary.succeeded_etf_count,
                     summary.succeeded_etf_count + summary.empty_etf_count,
+                    response_code,
+                    (
+                        "KIS component refresh completed with unresolved ETFs"
+                        if summary.has_partial_failure
+                        else None
+                    ),
                     Jsonb(
                         {
-                            "outcome": "partial"
-                            if summary.failed_etf_count
-                            or summary.transient_empty_etf_count
-                            else "succeeded",
+                            "outcome": (
+                                "partial"
+                                if summary.has_partial_failure
+                                else "succeeded"
+                            ),
                             "empty_etf_count": summary.empty_etf_count,
                             "transient_empty_etf_count": (
                                 summary.transient_empty_etf_count
@@ -361,7 +408,36 @@ def refresh_kis_component_snapshots(
 ) -> KisComponentRefreshSummary:
     if delay_seconds < 0:
         raise ValueError("delay_seconds must not be negative")
-    writer = KisComponentSnapshotWriter(database_url)
+    with ConnectionPool(
+        conninfo=database_url,
+        min_size=1,
+        max_size=1,
+        timeout=10,
+        kwargs={"connect_timeout": 10},
+        open=False,
+    ) as pool:
+        writer = KisComponentSnapshotWriter(database_url, pool=pool)
+        return _refresh_kis_component_snapshots(
+            writer=writer,
+            app_key=app_key,
+            app_secret=app_secret,
+            limit=limit,
+            delay_seconds=delay_seconds,
+            resume_today=resume_today,
+            isu_codes=isu_codes,
+        )
+
+
+def _refresh_kis_component_snapshots(
+    *,
+    writer: KisComponentSnapshotWriter,
+    app_key: str,
+    app_secret: str,
+    limit: int | None,
+    delay_seconds: float,
+    resume_today: bool,
+    isu_codes: Sequence[str] | None,
+) -> KisComponentRefreshSummary:
     resume_since = (
         datetime.now(KST).replace(hour=0, minute=0, second=0, microsecond=0)
         if resume_today
@@ -438,6 +514,25 @@ def refresh_kis_component_snapshots(
         raise
 
 
+def _run_with_resume_sweeps(
+    refresh: Callable[[bool], KisComponentRefreshSummary],
+    *,
+    initial_resume_today: bool = False,
+    max_resume_sweeps: int = DEFAULT_MAX_RESUME_SWEEPS,
+) -> tuple[KisComponentRefreshSummary, ...]:
+    if not 0 <= max_resume_sweeps <= DEFAULT_MAX_RESUME_SWEEPS:
+        raise ValueError(
+            f"max_resume_sweeps must be between 0 and {DEFAULT_MAX_RESUME_SWEEPS}"
+        )
+    summaries: list[KisComponentRefreshSummary] = []
+    for sweep in range(max_resume_sweeps + 1):
+        summary = refresh(initial_resume_today or sweep > 0)
+        summaries.append(summary)
+        if not summary.has_partial_failure:
+            break
+    return tuple(summaries)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Refresh KIS ETF component TOP3 snapshots"
@@ -455,24 +550,43 @@ def main() -> int:
         help="skip ETFs with a component snapshot already captured today in KST",
     )
     parser.add_argument("--delay-seconds", type=float, default=DEFAULT_DELAY_SECONDS)
+    parser.add_argument(
+        "--max-resume-sweeps",
+        type=int,
+        choices=range(DEFAULT_MAX_RESUME_SWEEPS + 1),
+        default=DEFAULT_MAX_RESUME_SWEEPS,
+        help="retry unresolved ETFs captured today, at most three times",
+    )
     args = parser.parse_args()
     settings = get_settings()
     database_url = require_secret(settings.database_url, "DATABASE_URL")
-    summary = refresh_kis_component_snapshots(
-        database_url=database_url,
-        app_key=require_secret(
-            settings.kis_app_key, "KIS_APP_KEY and KIS_APP_SECRET"
-        ),
-        app_secret=require_secret(
-            settings.kis_app_secret, "KIS_APP_KEY and KIS_APP_SECRET"
-        ),
-        limit=args.limit,
-        delay_seconds=args.delay_seconds,
-        resume_today=args.resume_today,
-        isu_codes=args.isu_codes,
+    app_key = require_secret(
+        settings.kis_app_key, "KIS_APP_KEY and KIS_APP_SECRET"
     )
-    print(json.dumps(asdict(summary), sort_keys=True))
-    return 1 if summary.failed_etf_count or summary.transient_empty_etf_count else 0
+    app_secret = require_secret(
+        settings.kis_app_secret, "KIS_APP_KEY and KIS_APP_SECRET"
+    )
+    summaries = _run_with_resume_sweeps(
+        lambda resume_today: refresh_kis_component_snapshots(
+            database_url=database_url,
+            app_key=app_key,
+            app_secret=app_secret,
+            limit=args.limit,
+            delay_seconds=args.delay_seconds,
+            resume_today=resume_today,
+            isu_codes=args.isu_codes,
+        ),
+        initial_resume_today=args.resume_today,
+        max_resume_sweeps=args.max_resume_sweeps,
+    )
+    summary = summaries[-1]
+    print(
+        json.dumps(
+            {**asdict(summary), "resume_sweeps": len(summaries) - 1},
+            sort_keys=True,
+        )
+    )
+    return 1 if summary.has_partial_failure else 0
 
 
 if __name__ == "__main__":

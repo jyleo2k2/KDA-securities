@@ -22,6 +22,7 @@ from .handlers._shared import (
     LiveNewsSearch,
     NewsSearch,
     PortfolioUniverseLoader,
+    ThemeProductUniverseLoader,
     _knowledge_topic,
     _mentioned_retirement_start_age,
     _requests_age_style_portfolio_guide,
@@ -90,6 +91,7 @@ class ChatService:
         news: NewsSearch | None = None,
         live_news: LiveNewsSearch | None = None,
         portfolio_universe_loader: PortfolioUniverseLoader | None = None,
+        theme_product_universe_loader: ThemeProductUniverseLoader | None = None,
         theme_repository: EtfThemeRepository | None = None,
         product_descriptions: EtfProductDescriptionRepository | None = None,
         product_feature_generator: EtfProductFeatureGenerator | None = None,
@@ -104,6 +106,7 @@ class ChatService:
         self._news = news
         self._live_news = live_news
         self._portfolio_universe_loader = portfolio_universe_loader
+        self._theme_product_universe_loader = theme_product_universe_loader
         self._theme_repository = theme_repository
         self._product_descriptions = product_descriptions
         self._product_feature_generator = product_feature_generator
@@ -312,6 +315,9 @@ class ChatService:
                     original_request,
                     resolved_plan,
                     portfolio_universe_loader=self._portfolio_universe_loader,
+                    theme_product_universe_loader=(
+                        self._theme_product_universe_loader
+                    ),
                     theme_repository=self._theme_repository,
                     product_descriptions=self._product_descriptions,
                     product_feature_generator=self._product_feature_generator,

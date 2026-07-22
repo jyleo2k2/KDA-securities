@@ -17,7 +17,10 @@ from ...etf_component_repository import EtfComponentSnapshotRepository
 from ...etf_product_description_repository import (
     EtfProductDescriptionRepository,
 )
-from ...etf_theme_repository import EtfThemeRepository
+from ...etf_theme_repository import (
+    CommodityEtfSelectionPolicy,
+    EtfThemeRepository,
+)
 from ...etf_theme_verification_repository import (
     EtfThemeVerificationReader,
     etf_theme_content_sha256,
@@ -58,6 +61,7 @@ from ._shared import (
     _STRATEGY_LABELS,
     _STRESS_SCENARIO_LABELS,
     PortfolioUniverseLoader,
+    ThemeProductUniverseLoader,
     _decimal_text,
     _one_decimal,
     _rebalancing_items,
@@ -67,6 +71,19 @@ from ._shared import (
 )
 
 logger = logging.getLogger(__name__)
+
+_HOLDING_SCOPE_TITLES = {
+    "actual_portfolio": "실제 보유종목 TOP3",
+    "creation_basket": "구성 바스켓 TOP3",
+    "index_exposure": "기초지수 노출 TOP3",
+    "look_through": "룩스루 기준 기업 노출 TOP3",
+}
+_HOLDING_SCOPE_BASES = {
+    "actual_portfolio": "운용사 공식 보유비중",
+    "creation_basket": "운용사 공식 설정·환매 바스켓 비중",
+    "index_exposure": "공식 기초지수 편입비중",
+    "look_through": "공식 자료를 연결한 룩스루 비중",
+}
 
 
 def _product_fee_text(value: Decimal | None) -> str:
@@ -84,6 +101,12 @@ def _product_trading_value_text(value: Decimal | None) -> str:
         rounding=ROUND_HALF_UP,
     )
     return f"{eok_krw:,.0f}억원"
+
+
+def _product_trading_volume_text(value: Decimal | None) -> str:
+    if value is None:
+        return "확인 필요"
+    return f"{value.quantize(Decimal('1'), rounding=ROUND_HALF_UP):,.0f}주"
 
 
 def _representative_reason_text(reason: str) -> str:
@@ -109,7 +132,7 @@ def _theme_holdings_response(
             intent=ChatIntent.ETF_THEME,
             answer="ETF 구성종목 데이터베이스에 연결할 수 없습니다.",
             data_mode="unavailable",
-            limitations=["저장된 KIS 구성종목 스냅샷이 필요합니다."],
+            limitations=["검증된 ETF 구성정보 스냅샷이 필요합니다."],
             conversation_context=ConversationContext(etf_theme=context),
         )
     try:
@@ -120,7 +143,7 @@ def _theme_holdings_response(
             intent=ChatIntent.ETF_THEME,
             answer="ETF 구성종목 데이터를 불러오지 못했습니다.",
             data_mode="unavailable",
-            limitations=["저장된 KIS 구성종목 스냅샷을 다시 확인해 주세요."],
+            limitations=["저장된 공식 ETF 구성정보를 다시 확인해 주세요."],
             conversation_context=ConversationContext(etf_theme=context),
         )
 
@@ -136,19 +159,23 @@ def _theme_holdings_response(
             limitations.append(f"{name}의 최신 구성종목 스냅샷이 없습니다.")
             continue
         if not snapshot.holdings:
-            limitations.append(f"{name}은 KIS 구성종목 목록이 비어 있습니다.")
+            limitations.append(f"{name}의 검증된 구성정보 목록이 비어 있습니다.")
             continue
-        source_id = f"kis:components:{code}:{snapshot.captured_at.isoformat()}"
+        as_of = snapshot.as_of_date or snapshot.captured_at
+        scope_title = _HOLDING_SCOPE_TITLES.get(
+            snapshot.source_kind, "공식 구성정보 TOP3"
+        )
+        source_id = (
+            f"{snapshot.source_code}:components:{code}:"
+            f"{as_of.isoformat()}"
+        )
         sources.append(
             SourceEvidence(
                 evidence_id=source_id,
-                label=f"{name} 구성종목",
-                locator=(
-                    "https://openapi.koreainvestment.com:9443/uapi/etfetn/"
-                    "v1/quotations/inquire-component-stock-price"
-                ),
-                publisher="한국투자증권 Open Trading API",
-                as_of=snapshot.captured_at,
+                label=f"{name} {scope_title}",
+                locator=snapshot.source_locator,
+                publisher=snapshot.publisher,
+                as_of=as_of,
                 data_boundary=DataBoundary.OFFICIAL_DISCLOSURE,
             )
         )
@@ -166,13 +193,15 @@ def _theme_holdings_response(
                     value=holding.weight_percent,
                     unit="%",
                     evidence_id=source_id,
-                    basis="KIS etf_cnfg_issu_rlim 원문 필드",
+                    basis=_HOLDING_SCOPE_BASES.get(
+                        snapshot.source_kind, snapshot.weight_basis
+                    ),
                 )
             )
         sections.append(
             AnswerSection(
                 kind=SectionKind.FACT,
-                title=f"{name} 구성종목 TOP3",
+                title=f"{name} {scope_title}",
                 content="",
                 evidence_ids=[source_id],
                 blocks=[
@@ -187,7 +216,7 @@ def _theme_holdings_response(
     return ChatResponse(
         intent=ChatIntent.ETF_THEME,
         answer=(
-            f"직전에 소개한 {theme_name} 테마 ETF 3개의 구성종목 비중 TOP3입니다."
+            f"{theme_name} 테마 ETF {len(sections)}개의 공식 상위 구성정보입니다."
             if sections
             else "직전에 소개한 ETF의 구성종목 스냅샷을 아직 준비하지 못했습니다."
         ),
@@ -205,6 +234,7 @@ def etf_theme_response(
     plan: QueryPlan,
     *,
     portfolio_universe_loader: PortfolioUniverseLoader | None,
+    theme_product_universe_loader: ThemeProductUniverseLoader | None,
     theme_repository: EtfThemeRepository | None,
     product_descriptions: EtfProductDescriptionRepository | None,
     product_feature_generator: EtfProductFeatureGenerator | None,
@@ -225,6 +255,7 @@ def etf_theme_response(
             answer="요청한 ETF 테마를 현재 카탈로그에서 찾지 못했습니다.",
             data_mode="unavailable",
         )
+    commodity_policy = theme_repository.commodity_selection_policy(theme.theme_id)
     prior_theme = (
         request.conversation_context.etf_theme
         if request.conversation_context is not None
@@ -235,6 +266,12 @@ def etf_theme_response(
         and prior_theme is not None
         and prior_theme.theme_id == theme.theme_id
     ):
+        if commodity_policy is not None:
+            return _commodity_exposure_response(
+                theme_name=theme.name,
+                context=prior_theme,
+                policy=commodity_policy,
+            )
         return _theme_holdings_response(
             theme_name=theme.name,
             context=prior_theme,
@@ -449,7 +486,10 @@ def etf_theme_response(
             limitations=limitations,
         )
 
-    if portfolio_universe_loader is None:
+    if commodity_policy is None and (
+        portfolio_universe_loader is None
+        and theme_product_universe_loader is None
+    ):
         limitations.append("통합 ETF 상품 데이터를 불러올 수 없습니다.")
         return ChatResponse(
             intent=ChatIntent.ETF_THEME,
@@ -466,27 +506,85 @@ def etf_theme_response(
     candidate_context_names: list[str] = []
     product_description_source_id: str | None = None
     product_feature_source_id: str | None = None
+    commodity_source_id: str | None = None
+    allowed_product_codes = theme_repository.allowed_product_codes(theme.theme_id)
+    if (
+        allowed_product_codes is not None
+        and theme_repository.product_policy is not None
+    ):
+        sources.append(
+            SourceEvidence(
+                evidence_id="policy:theme_product_classification",
+                label="검토된 ETF 테마 상품 분류표",
+                locator=str(
+                    theme_repository.product_policy_path
+                    or theme_repository.product_policy.source_document
+                ),
+                publisher="연금 코파일럿 팀",
+                as_of=theme_repository.product_policy.as_of_date,
+                data_boundary=DataBoundary.ENGINE,
+            )
+        )
+    if commodity_policy is not None:
+        commodity_source_id = "policy:gold_commodities_selection"
+        sources.append(
+            SourceEvidence(
+                evidence_id=commodity_source_id,
+                label="승인된 금·원자재 ETF 거래량·운용보수 비교",
+                locator=commodity_policy.source_url,
+                publisher="연금 코파일럿 팀",
+                as_of=commodity_policy.as_of_date,
+                data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
+            )
+        )
+
     loaded_universes = []
     common_products_by_code: dict[str, dict[str, object]] = {}
-    for account_type in AccountType:
-        try:
-            universe = portfolio_universe_loader(account_type)
-        except (FileNotFoundError, ValueError):
-            limitations.append(
-                f"{_ACCOUNT_TYPE_LABELS[account_type]} ETF 적격 유니버스를 "
-                "불러오지 못했습니다."
-            )
-            continue
-        loaded_universes.append(universe)
-        for product in universe.products:
-            if not isinstance(product, dict):
+    if theme_product_universe_loader is not None:
+        requested_codes = (
+            tuple(sorted(allowed_product_codes))
+            if allowed_product_codes is not None
+            else None
+        )
+        if requested_codes is not None and not requested_codes:
+            limitations.append("검토된 ETF 테마 상품 분류표가 비어 있습니다.")
+        else:
+            try:
+                universe = theme_product_universe_loader(requested_codes)
+            except (FileNotFoundError, ValueError):
+                limitations.append("통합 ETF 상품 데이터를 불러오지 못했습니다.")
+            else:
+                loaded_universes.append(universe)
+                for product in universe.products:
+                    if not isinstance(product, dict):
+                        continue
+                    code = str(product.get("isu_code") or "")
+                    if code:
+                        common_products_by_code.setdefault(code, product)
+    elif portfolio_universe_loader is not None:
+        for account_type in AccountType:
+            try:
+                universe = portfolio_universe_loader(account_type)
+            except (FileNotFoundError, ValueError):
+                limitations.append(
+                    f"{_ACCOUNT_TYPE_LABELS[account_type]} ETF 적격 유니버스를 "
+                    "불러오지 못했습니다."
+                )
                 continue
-            code = str(product.get("isu_code") or "")
-            if code:
-                common_products_by_code.setdefault(code, product)
+            loaded_universes.append(universe)
+            for product in universe.products:
+                if not isinstance(product, dict):
+                    continue
+                code = str(product.get("isu_code") or "")
+                if code:
+                    common_products_by_code.setdefault(code, product)
+
+    if commodity_policy is not None:
+        for product in commodity_policy.products:
+            common_products_by_code[str(product["isu_code"])] = product
 
     common_products = list(common_products_by_code.values())
-    if not loaded_universes or not common_products:
+    if not common_products:
         limitations.append("통합 ETF 상품 데이터가 비어 있습니다.")
         return ChatResponse(
             intent=ChatIntent.ETF_THEME,
@@ -497,7 +595,11 @@ def etf_theme_response(
             limitations=list(dict.fromkeys(limitations)),
         )
 
-    common_as_of = max(item.as_of for item in loaded_universes)
+    common_as_of = (
+        max(item.as_of for item in loaded_universes)
+        if loaded_universes
+        else commodity_policy.as_of_date
+    )
     if common_products:
         evaluation = select_theme_etf_candidates(
             catalog=theme_repository.catalog,
@@ -510,6 +612,12 @@ def etf_theme_response(
                 theme_repository.component_snapshot_date
             ),
             limit=plan.max_results,
+            allowed_isu_codes=allowed_product_codes,
+            ordered_candidate_groups=(
+                commodity_policy.ordered_candidate_groups
+                if commodity_policy is not None
+                else None
+            ),
         )
         if evaluation.status != "ok":
             limitations.extend(evaluation.limitations)
@@ -519,7 +627,12 @@ def etf_theme_response(
             )
             return ChatResponse(
                 intent=ChatIntent.ETF_THEME,
-                answer=f"{theme.name} 테마 설명만 제공했습니다.",
+                answer=(
+                    f"{theme.name} 테마에서 거래대금과 총보수를 확인할 수 있는 "
+                    "ETF 상품이 현재 부족합니다."
+                    if allowed_product_codes is not None
+                    else f"{theme.name} 테마 설명만 제공했습니다."
+                ),
                 data_mode="theme_overview_only",
                 sections=sections,
                 sources=sources,
@@ -594,6 +707,7 @@ def etf_theme_response(
             if len(candidate_blocks) >= plan.max_results:
                 break
             rank = len(candidate_blocks) + 1
+            candidate_evidence_id = commodity_source_id or master_source_id
             fee_text = _product_fee_text(candidate.fee_percent)
             if candidate.fee_percent is not None:
                 displayed_fee = candidate.fee_percent.quantize(
@@ -605,8 +719,12 @@ def etf_theme_response(
                         label=f"{candidate.isu_name} 총보수",
                         value=candidate.fee_percent,
                         unit="%",
-                        evidence_id=master_source_id,
-                        basis="ETF 통합 실데이터 마스터",
+                        evidence_id=candidate_evidence_id,
+                        basis=(
+                            commodity_policy.metric_basis
+                            if commodity_policy is not None
+                            else "ETF 통합 실데이터 마스터"
+                        ),
                     )
                 )
                 if displayed_fee != candidate.fee_percent:
@@ -615,14 +733,30 @@ def etf_theme_response(
                             label=f"{candidate.isu_name} 표시 운용보수",
                             value=displayed_fee,
                             unit="%",
-                            evidence_id=master_source_id,
+                            evidence_id=candidate_evidence_id,
                             basis="원본 총보수를 소수점 둘째 자리로 반올림",
                         )
                     )
             trading_value_text = _product_trading_value_text(
                 candidate.median_daily_trading_value_krw
             )
-            if candidate.median_daily_trading_value_krw is not None:
+            trading_volume_text = _product_trading_volume_text(
+                candidate.average_daily_trading_volume
+            )
+            if (
+                commodity_policy is not None
+                and candidate.average_daily_trading_volume is not None
+            ):
+                numeric.append(
+                    NumericEvidence(
+                        label=f"{candidate.isu_name} 최근 일평균 거래량",
+                        value=candidate.average_daily_trading_volume,
+                        unit="주",
+                        evidence_id=candidate_evidence_id,
+                        basis=commodity_policy.metric_basis,
+                    )
+                )
+            elif candidate.median_daily_trading_value_krw is not None:
                 displayed_trading_value = (
                     candidate.median_daily_trading_value_krw
                     / Decimal("100000000")
@@ -634,7 +768,7 @@ def etf_theme_response(
                         label=f"{candidate.isu_name} 일별 거래대금 중앙값",
                         value=candidate.median_daily_trading_value_krw,
                         unit="KRW",
-                        evidence_id=master_source_id,
+                        evidence_id=candidate_evidence_id,
                         basis="ETF 통합 실데이터 마스터의 관측기간 중앙값",
                     )
                 )
@@ -647,7 +781,7 @@ def etf_theme_response(
                             label=f"{candidate.isu_name} 표시 하루 평균 거래대금",
                             value=displayed_trading_value,
                             unit="KRW",
-                            evidence_id=master_source_id,
+                            evidence_id=candidate_evidence_id,
                             basis="관측기간 중앙값을 억원 단위로 반올림",
                         )
                     )
@@ -691,8 +825,12 @@ def etf_theme_response(
                     title=f"{rank}. {candidate.isu_name}",
                     text=(
                         f"연간 수수료율(운용보수): {fee_text}\n\n"
-                        f"하루 평균 거래대금: {trading_value_text}\n\n"
-                        f"상품 특징: {feature_text}"
+                        + (
+                            f"최근 일평균 거래량: {trading_volume_text}\n\n"
+                            if commodity_policy is not None
+                            else f"하루 평균 거래대금: {trading_value_text}\n\n"
+                        )
+                        + f"상품 특징: {feature_text}"
                     ),
                 )
             )
@@ -704,6 +842,11 @@ def etf_theme_response(
             source.evidence_id
             for source in sources
             if source.evidence_id.startswith("engine:theme_candidates:")
+            or source.evidence_id
+            in {
+                "policy:theme_product_classification",
+                "policy:gold_commodities_selection",
+            }
         ]
         if product_description_source_id is not None:
             master_ids.append(product_description_source_id)
@@ -725,15 +868,45 @@ def etf_theme_response(
         )
 
     limitations.append(
-        "투자성향·보유 계좌를 반영한 매수 추천이 아니라 거래대금·총보수 기준의 "
-        "정보성 비교 후보입니다."
+        "투자성향·보유 계좌를 반영한 매수 추천이 아니라 "
+        + (
+            "금·은·구리별 거래량·운용보수 기준의 정보성 비교 후보입니다."
+            if commodity_policy is not None
+            else "거래대금·총보수 기준의 정보성 비교 후보입니다."
+        )
     )
+    candidate_context = (
+        EtfThemeConversationContext(
+            theme_id=theme.theme_id,
+            candidate_isu_codes=candidate_context_codes,
+            candidate_names=candidate_context_names,
+        )
+        if candidate_context_codes
+        else None
+    )
+    if plan.requests_theme_holdings and candidate_context is not None:
+        if commodity_policy is not None:
+            return _commodity_exposure_response(
+                theme_name=theme.name,
+                context=candidate_context,
+                policy=commodity_policy,
+            )
+        return _theme_holdings_response(
+            theme_name=theme.name,
+            context=candidate_context,
+            component_snapshots=component_snapshots,
+        )
 
     return ChatResponse(
         intent=ChatIntent.ETF_THEME,
         answer=(
-            f"{theme.name} 테마에서 거래가 가장 활발하고 "
-            "수수료가 저렴한 ETF 3개를 보여드리겠습니다."
+            (
+                f"{theme.name} 테마에서 금·은·구리별로 거래량과 운용보수를 "
+                "비교해 선정한 ETF 3개입니다."
+                if commodity_policy is not None
+                else f"{theme.name} 테마에서 거래가 가장 활발하고 "
+                "수수료가 저렴한 ETF 3개를 보여드리겠습니다."
+            )
             if candidate_blocks
             else f"{theme.name} 테마 설명만 제공했습니다."
         ),
@@ -746,16 +919,76 @@ def etf_theme_response(
         limitations=list(dict.fromkeys(limitations)),
         conversation_context=ConversationContext(
             last_intent=ChatIntent.ETF_THEME,
-            etf_theme=(
-                EtfThemeConversationContext(
-                    theme_id=theme.theme_id,
-                    candidate_isu_codes=candidate_context_codes,
-                    candidate_names=candidate_context_names,
-                )
-                if candidate_context_codes
-                else None
-            ),
+            etf_theme=candidate_context,
         ),
+    )
+
+
+def _commodity_exposure_response(
+    *,
+    theme_name: str,
+    context: EtfThemeConversationContext,
+    policy: CommodityEtfSelectionPolicy,
+) -> ChatResponse:
+    source_id = "policy:gold_commodities_physical_exposure"
+    source = SourceEvidence(
+        evidence_id=source_id,
+        label="승인된 금·원자재 ETF 조사 대화",
+        locator=policy.source_url,
+        publisher="연금 코파일럿 팀",
+        as_of=policy.as_of_date,
+        data_boundary=DataBoundary.VERIFIED_KNOWLEDGE,
+    )
+    sections: list[AnswerSection] = []
+    numeric: list[NumericEvidence] = []
+    limitations: list[str] = []
+    for code, name in zip(
+        context.candidate_isu_codes, context.candidate_names, strict=True
+    ):
+        exposure_label = policy.exposure_label(code)
+        if exposure_label is None:
+            limitations.append(f"{name}의 승인된 실물가격 노출 구분이 없습니다.")
+            continue
+        sections.append(
+            AnswerSection(
+                kind=SectionKind.FACT,
+                title=f"{name} 실물가격 노출",
+                content="",
+                evidence_ids=[source_id],
+                blocks=[
+                    AnswerBlock(
+                        kind=AnswerBlockKind.TABLE,
+                        headers=["실물가격 노출", "노출비중"],
+                        rows=[[exposure_label, "100%"]],
+                    )
+                ],
+            )
+        )
+        numeric.append(
+            NumericEvidence(
+                label=f"{name} {exposure_label} 노출비중",
+                value=Decimal("100"),
+                unit="%",
+                evidence_id=source_id,
+                basis="승인된 공유 대화의 실물가격 추종 분류",
+            )
+        )
+    limitations.append(
+        "100%는 이 답변에서 사용하는 실물가격 추종 노출 구분이며, "
+        "일반 주식형 ETF의 보유종목 TOP3 표가 아닙니다."
+    )
+    return ChatResponse(
+        intent=ChatIntent.ETF_THEME,
+        answer=(
+            f"직전에 소개한 {theme_name} ETF 3개의 실물가격 노출은 "
+            "각각 금 현물 100%, 은 현물 100%, 구리 실물 100%입니다."
+        ),
+        data_mode="theme_physical_commodity_exposure",
+        sections=sections,
+        sources=[source],
+        numeric_evidence=numeric,
+        limitations=limitations,
+        conversation_context=ConversationContext(etf_theme=context),
     )
 
 

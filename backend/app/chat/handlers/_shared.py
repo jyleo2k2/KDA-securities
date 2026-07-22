@@ -89,6 +89,18 @@ class PortfolioUniverseLoader(Protocol):
     def __call__(self, account_type: AccountType) -> PortfolioUniverse: ...
 
 
+class ThemeProductUniverse(Protocol):
+    products: list[dict[str, Any]]
+    as_of: date
+
+
+class ThemeProductUniverseLoader(Protocol):
+    def __call__(
+        self,
+        isu_codes: tuple[str, ...] | None,
+    ) -> ThemeProductUniverse: ...
+
+
 SCENARIO_KEYWORDS = {
     "방치": "dc_dormant",
     "세액공제": "tax_contribution_uninvested",

@@ -673,6 +673,24 @@ def list_chat_sessions(
     return [ChatSessionOut.model_validate(session) for session in sessions]
 
 
+@router.delete("/chat/sessions", status_code=status.HTTP_204_NO_CONTENT)
+def delete_all_chat_sessions(
+    owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
+    repository: Annotated[ChatRepository, Depends(get_chat_repository)],
+) -> Response:
+    """Delete all stored conversations owned by the authenticated user."""
+
+    try:
+        repository.delete_all_sessions(owner_id=owner_id)
+    except _DATABASE_ERRORS as exc:
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Chat database is unavailable",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+        ) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.delete(
     "/chat/sessions/{session_id}",
     status_code=status.HTTP_204_NO_CONTENT,

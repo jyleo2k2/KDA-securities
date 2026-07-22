@@ -428,6 +428,22 @@ class ChatRepository:
                 raise ChatSessionAccessError("chat session was not found")
             return row[0]
 
+    def delete_all_sessions(self, *, owner_id: UUID) -> int:
+        """Delete every chat session owned by one authenticated user."""
+
+        with (
+            self._connection() as connection,
+            connection.cursor() as cursor,
+        ):
+            cursor.execute(
+                """
+                delete from public.chat_sessions
+                where owner_id = %s
+                """,
+                (owner_id,),
+            )
+            return cursor.rowcount
+
     @staticmethod
     def _require_owned_session(
         cursor: Any, session_id: UUID, owner_id: UUID

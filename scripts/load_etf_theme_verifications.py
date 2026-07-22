@@ -1,4 +1,4 @@
-"""Load the approved 23 themes x 5 content topics into Supabase."""
+"""Load the approved 20 themes x 5 content topics into Supabase."""
 
 import argparse
 import sys
