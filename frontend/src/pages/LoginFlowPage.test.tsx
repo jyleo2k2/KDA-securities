@@ -133,13 +133,6 @@ describe("LoginFlowPage", () => {
     resolveSignIn?.();
   });
 
-  it("shows the signup preparation notice", () => {
-    renderLogin();
-    fireEvent.click(screen.getByRole("button", { name: "회원가입" }));
-
-    expect(screen.getByRole("status")).toHaveTextContent("회원가입은 준비 중입니다.");
-  });
-
   it("loads account metadata and requires consent before entering the app", async () => {
     renderLogin();
     openForm();
@@ -151,7 +144,7 @@ describe("LoginFlowPage", () => {
 
     expect(await screen.findByText("DC형 퇴직연금")).toBeInTheDocument();
     expect(screen.getByText("DB형 퇴직연금")).toBeInTheDocument();
-    expect(screen.getByText(linkOptions.notice)).toBeInTheDocument();
+    expect(screen.getByText("마이데이터를 통해 내 연금계좌를 안전하게 연동해서 가져와요.")).toBeInTheDocument();
     const continueButton = screen.getByRole("button", { name: "연동 내 연금계좌 보기" });
     expect(continueButton).toBeDisabled();
 
