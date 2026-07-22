@@ -25,9 +25,13 @@ import {
 import { ProfilePage } from "./pages/ProfilePage";
 import { StrategyExploreScreen } from "./pages/StrategyExploreScreen";
 import { UserPickBenchmarkScreen } from "./pages/UserPickBenchmarkScreen";
+import {
+  clearPersistedUserState,
+  persistSelectedScenario,
+  selectedScenarioFromStorage,
+} from "./pwa/cachePolicy";
 
 const TAB_KEYS: readonly TabKey[] = ["home", "guide", "profile"];
-const USER_STORAGE_KEYS = ["pension-copilot:survey-profile", "pension-copilot:mvp-profile-version", "pension-copilot:selected-scenario"] as const;
 type AppRoute = TabKey | "login" | "main-home" | "planner" | "strategy-explore" | "user-pick-benchmark";
 const RISK_PROFILES = new Set(["stable", "stable_seeking", "risk_neutral", "active", "aggressive"]);
 
@@ -43,10 +47,6 @@ interface CurrentUserData {
 function routeFromHash(): AppRoute {
   const candidate = window.location.hash.slice(1) as AppRoute;
   return candidate === "login" || candidate === "main-home" || candidate === "planner" || candidate === "strategy-explore" || candidate === "user-pick-benchmark" || TAB_KEYS.includes(candidate as TabKey) ? candidate : "login";
-}
-
-function clearUserStorage(): void {
-  USER_STORAGE_KEYS.forEach((key) => window.localStorage.removeItem(key));
 }
 
 function pensionContextErrorMessage(error: unknown): string {
@@ -77,7 +77,7 @@ export default function App(): JSX.Element {
   const [activeRoute, setActiveRoute] = useState<AppRoute>(routeFromHash);
   const [loginSuccessPending, setLoginSuccessPending] = useState(false);
   const [resurveyPending, setResurveyPending] = useState(false);
-  const [selectedScenarioCode, setSelectedScenarioCode] = useState(() => window.localStorage.getItem("pension-copilot:selected-scenario") ?? "");
+  const [selectedScenarioCode, setSelectedScenarioCode] = useState(selectedScenarioFromStorage);
   const [currentUserData, setCurrentUserData] = useState<CurrentUserData>({ context: null, hero: null, heroes: [], investmentProfile: null, loading: false, error: null });
   const previousAuthRef = useRef<{ userId: string | null; token: string | null } | null>(null);
   const userLoadGenerationRef = useRef(0);
@@ -99,7 +99,7 @@ export default function App(): JSX.Element {
     if (!userChanged && previous?.token === accessToken) return;
     previousAuthRef.current = { userId: authenticatedUserId, token: accessToken };
     const generation = ++userLoadGenerationRef.current;
-    if (userChanged) { clearUserStorage(); setSelectedScenarioCode(""); }
+    if (userChanged) { clearPersistedUserState(); setSelectedScenarioCode(""); }
     if (!accessToken) { setCurrentUserData({ context: null, hero: null, heroes: [], investmentProfile: null, loading: false, error: null }); return; }
     setCurrentUserData({ context: null, hero: null, heroes: [], investmentProfile: null, loading: true, error: null });
     void Promise.all([
@@ -124,11 +124,11 @@ export default function App(): JSX.Element {
   function goToStrategyExplore(): void { setActiveRoute("strategy-explore"); window.history.replaceState(null, "", "#strategy-explore"); }
   function goToUserPickBenchmark(): void { setActiveRoute("user-pick-benchmark"); window.history.replaceState(null, "", "#user-pick-benchmark"); }
   function beginResurvey(): void { setResurveyPending(true); }
-  function analyzeHero(scenarioCode: string): void { window.localStorage.setItem("pension-copilot:selected-scenario", scenarioCode); setSelectedScenarioCode(scenarioCode); changeTab("guide"); }
+  function analyzeHero(scenarioCode: string): void { persistSelectedScenario(scenarioCode); setSelectedScenarioCode(scenarioCode); changeTab("guide"); }
   function handleProfileSaved(investmentProfile: InvestmentProfileResponse): void {
     setCurrentUserData((previous) => ({ ...previous, investmentProfile }));
   }
-  async function handleSignOut(): Promise<void> { userLoadGenerationRef.current += 1; clearUserStorage(); setSelectedScenarioCode(""); setCurrentUserData({ context: null, hero: null, heroes: [], investmentProfile: null, loading: false, error: null }); setLoginSuccessPending(false); setResurveyPending(false); setActiveRoute("login"); window.history.replaceState(null, "", "#login"); await auth.signOut(); }
+  async function handleSignOut(): Promise<void> { userLoadGenerationRef.current += 1; clearPersistedUserState(); setSelectedScenarioCode(""); setCurrentUserData({ context: null, hero: null, heroes: [], investmentProfile: null, loading: false, error: null }); setLoginSuccessPending(false); setResurveyPending(false); setActiveRoute("login"); window.history.replaceState(null, "", "#login"); await auth.signOut(); }
 
   if (auth.loading) return <main className="app-auth-loading" aria-label="로그인 상태 확인 중" />;
   const metadataName = auth.session?.user.user_metadata?.name;

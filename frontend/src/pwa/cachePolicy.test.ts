@@ -1,9 +1,14 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 
 import {
   API_REQUEST_CACHE_MODE,
   CACHE_POLICY,
+  PERSISTED_USER_STORAGE_KEYS,
+  clearPersistedUserState,
   noStoreApiRequest,
+  persistSelectedScenario,
+  selectedScenarioFromStorage,
 } from "./cachePolicy";
 
 describe("PWA cache policy", () => {
@@ -16,5 +21,20 @@ describe("PWA cache policy", () => {
     expect(noStoreApiRequest()).toEqual({ cache: "no-store" });
     expect(CACHE_POLICY.api).toBe("never cache in the browser or service worker");
     expect(CACHE_POLICY.stream).toBe("never cache; process only the active response body");
+  });
+
+  it("keeps the selected scenario only for the active user session", () => {
+    window.localStorage.clear();
+    persistSelectedScenario("scenario-a");
+
+    expect(selectedScenarioFromStorage()).toBe("scenario-a");
+
+    PERSISTED_USER_STORAGE_KEYS
+      .filter((key) => key !== "pension-copilot:selected-scenario")
+      .forEach((key) => window.localStorage.setItem(key, "value"));
+    clearPersistedUserState();
+
+    expect(selectedScenarioFromStorage()).toBe("");
+    expect(PERSISTED_USER_STORAGE_KEYS.every((key) => window.localStorage.getItem(key) === null)).toBe(true);
   });
 });
