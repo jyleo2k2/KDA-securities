@@ -624,6 +624,7 @@ function authenticatedErrorMessage(error: unknown): string {
 export function GuidePage({
   auth,
   initialScenarioCode,
+  onBack,
   onSignOut,
   surveyProfile,
   userContext,
@@ -631,6 +632,7 @@ export function GuidePage({
 }: {
   auth: SupabaseAuthState;
   initialScenarioCode?: string;
+  onBack?: () => void;
   onSignOut: () => Promise<void>;
   surveyProfile: CompletedSurveyProfile | null;
   userContext: DemoUserFinancialContext | null;
@@ -1337,7 +1339,7 @@ export function GuidePage({
 
       <main className="chat-main">
         <header className="topbar design-topbar">
-          <button className="menu-button" type="button" aria-label="메뉴 열기" onClick={() => setIsSidebarOpen(true)}><span /><span /><span /></button>
+          <button className="menu-button" type="button" aria-label="뒤로 가기" onClick={onBack ?? (() => setIsSidebarOpen(true))}>‹</button>
           <button className="design-new-chat" type="button" onClick={startNewChat}><span>+</span> 새 대화</button>
           <div className="design-topbar-actions">
             <Icon name="database" size={25} />

@@ -23,8 +23,85 @@ interface AllocationSlice {
   color: string;
 }
 
-const DONUT_GRADIENT =
-  "conic-gradient(#18A860 0deg 86deg, #35B877 86deg 144deg, #6ECFA0 144deg 187deg, #2E8B57 187deg 230deg, #9BDDBF 230deg 259deg, #48C078 259deg 302deg, #C5EAD5 302deg 331deg, #E3E7E4 331deg 360deg)";
+interface HoldingSlice {
+  label: string;
+  amountKrw: number;
+  percent: number;
+  color: string;
+}
+
+const HOLDING_DONUT_COLORS = ["#18A860", "#3877E8", "#F0C000", "#F5871F", "#8B5FEB", "#2FBFA0", "#B8C0BA"];
+const HOLDING_DONUT_MAX_SLICES = 6;
+const HOLDING_DONUT_LABEL_MIN_PERCENT = 5;
+const DONUT_SIZE = 150;
+const DONUT_CENTER = DONUT_SIZE / 2;
+const DONUT_RADIUS = 60;
+const DONUT_STROKE_WIDTH = 30;
+const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;
+
+function buildHoldingDonutSlices(hero: DemoHeroPortfolio | null): HoldingSlice[] {
+  if (!hero) return [];
+  const amountsByInstrument = new Map<string, number>();
+  for (const account of hero.accounts) {
+    for (const holding of account.holdings) {
+      const amount = Number(holding.amount_krw);
+      amountsByInstrument.set(holding.instrument_name, (amountsByInstrument.get(holding.instrument_name) ?? 0) + amount);
+    }
+  }
+  const sorted = [...amountsByInstrument.entries()].sort((a, b) => b[1] - a[1]);
+  const total = Number(hero.total_amount_krw) || sorted.reduce((sum, [, amount]) => sum + amount, 0);
+  if (total <= 0) return [];
+  const main = sorted.slice(0, HOLDING_DONUT_MAX_SLICES);
+  const restAmount = sorted.slice(HOLDING_DONUT_MAX_SLICES).reduce((sum, [, amount]) => sum + amount, 0);
+  const entries: Array<[string, number]> = restAmount > 0 ? [...main, ["기타", restAmount]] : main;
+  return entries.map(([label, amountKrw], index) => ({
+    label,
+    amountKrw,
+    percent: (amountKrw / total) * 100,
+    color: label === "기타" ? HOLDING_DONUT_COLORS[HOLDING_DONUT_COLORS.length - 1] : HOLDING_DONUT_COLORS[index % (HOLDING_DONUT_COLORS.length - 1)],
+  }));
+}
+
+function polarPoint(centerDeg: number, radius: number): { x: number; y: number } {
+  const angleRad = ((centerDeg - 90) * Math.PI) / 180;
+  return { x: DONUT_CENTER + radius * Math.cos(angleRad), y: DONUT_CENTER + radius * Math.sin(angleRad) };
+}
+
+function HoldingDonut({ slices }: { slices: HoldingSlice[] }): JSX.Element {
+  let cumulativePercent = 0;
+  return (
+    <svg width={DONUT_SIZE} height={DONUT_SIZE} viewBox={`0 0 ${DONUT_SIZE} ${DONUT_SIZE}`} role="img" aria-label="총 연금 자산 보유 종목 비중">
+      {slices.map((slice) => {
+        const segmentLength = (slice.percent / 100) * DONUT_CIRCUMFERENCE;
+        const dashArray = `${segmentLength} ${DONUT_CIRCUMFERENCE - segmentLength}`;
+        const dashOffset = -((cumulativePercent / 100) * DONUT_CIRCUMFERENCE);
+        const labelCenterDeg = (cumulativePercent + slice.percent / 2) * 3.6;
+        cumulativePercent += slice.percent;
+        const labelPoint = polarPoint(labelCenterDeg, DONUT_RADIUS);
+        return (
+          <g key={slice.label}>
+            <circle
+              cx={DONUT_CENTER}
+              cy={DONUT_CENTER}
+              r={DONUT_RADIUS}
+              fill="none"
+              stroke={slice.color}
+              strokeWidth={DONUT_STROKE_WIDTH}
+              strokeDasharray={dashArray}
+              strokeDashoffset={dashOffset}
+              transform={`rotate(-90 ${DONUT_CENTER} ${DONUT_CENTER})`}
+            />
+            {slice.percent >= HOLDING_DONUT_LABEL_MIN_PERCENT && (
+              <text x={labelPoint.x} y={labelPoint.y} textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={800} fill="#fff">
+                {Math.round(slice.percent)}%
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
 
 interface StrategyCard {
   title: string;
@@ -66,6 +143,7 @@ const formatKrw = (amount: string) => `${Math.round(Number(amount)).toLocaleStri
 export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrategyExplore, onOpenUserPick, onResurvey, userContext }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
   const allocationSlices: AllocationSlice[] = hero?.asset_allocations.slice(0, 4).map((item, index) => ({ label: ASSET_LABELS[item.asset_class_code] ?? "기타 자산", percent: `${item.allocation_percent}%`, color: ALLOCATION_COLORS[index] })) ?? [];
+  const holdingSlices = buildHoldingDonutSlices(hero);
   const totalBalance = userContext ? formatKrw(userContext.total_pension_balance_krw) : "-";
 
   return (
@@ -100,13 +178,18 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenStrateg
           <p className="mhs-asset-gain">{error ?? (userContext ? `${userContext.nickname}님 · ${userContext.as_of_date} 기준 목데이터` : "연금 데이터를 확인해 주세요.")}</p>
 
           <div className="mhs-donut-wrap">
-            <div className="mhs-donut-outer" style={{ background: DONUT_GRADIENT }}>
-              <div className="mhs-donut-inner" />
-            </div>
+            {holdingSlices.length > 0 ? <HoldingDonut slices={holdingSlices} /> : (
+              <div className="mhs-donut-outer" style={{ background: "#EEF0F1" }}>
+                <div className="mhs-donut-inner" />
+              </div>
+            )}
           </div>
 
           <div className="mhs-allocation-grid">
-            {allocationSlices.map((slice) => (
+            {(holdingSlices.length > 0
+              ? holdingSlices.map((slice) => ({ label: slice.label, percent: `${slice.percent.toFixed(1)}%`, color: slice.color }))
+              : allocationSlices
+            ).map((slice) => (
               <span className="mhs-allocation-item" key={slice.label}>
                 <span className="mhs-allocation-dot" style={{ background: slice.color }} />
                 <span className="mhs-allocation-label">{slice.label}</span>
