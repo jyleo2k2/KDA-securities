@@ -1152,6 +1152,32 @@ describe("GuidePage pension planner entry", () => {
 
     expect(onOpenPlanner).toHaveBeenCalledOnce();
   });
+
+  it("opens the planner instead of resending its dedicated follow-up", async () => {
+    const onOpenPlanner = vi.fn();
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      persisted: false,
+      session_id: null,
+      response: {
+        ...THEME_RESPONSE,
+        intent: "account_rule",
+        data_mode: "pension_planner_redirect",
+        suggested_follow_ups: [{
+          follow_up_id: "open_pension_planner",
+          label: "연금계산기 열기",
+          message: "연금계산기 열기",
+        }],
+      },
+    } as Awaited<ReturnType<typeof sendAuthenticatedChatStream>>);
+    vi.mocked(getChatCards).mockResolvedValue({ cards: [RECOMMENDED_CHAT_CARDS[0]] });
+    renderGuide(undefined, onOpenPlanner);
+
+    fireEvent.click(await screen.findByRole("button", { name: /오늘 증시 뉴스/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "연금계산기 열기" }));
+
+    expect(onOpenPlanner).toHaveBeenCalledOnce();
+    expect(sendAuthenticatedChatStream).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("filterChatCards", () => {

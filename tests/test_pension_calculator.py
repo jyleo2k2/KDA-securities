@@ -10,9 +10,7 @@ from backend.app.engine import (
     AccountType,
     PensionCalculatorInput,
     RiskProfile,
-    SimulationInput,
     calculate_pension,
-    simulate_accumulation,
 )
 from backend.app.engine.assumptions import (
     ALLOCATION_MATRIX,
@@ -226,21 +224,6 @@ def test_portfolio_cma_override_changes_only_selected_strategy_rate() -> None:
     assert result.assumption.version == "portfolio-cma-test"
     assert "current_holding_weights_held_constant" in result.warnings
 
-
-def test_existing_simulation_still_returns_current_balance_at_55() -> None:
-    result = simulate_accumulation(
-        SimulationInput(
-            current_age=55,
-            risk_profile=RiskProfile.RISK_NEUTRAL,
-            current_balance_krw=Decimal("10000000"),
-            monthly_contribution_krw=Decimal("300000"),
-        )
-    )
-
-    assert result.years_to_55 == 0
-    assert result.total_principal_krw == Decimal("10000000.00")
-    assert result.projections == []
-    assert result.band_segments == []
 
 
 def test_educational_portfolio_120_case_allocation_regression() -> None:

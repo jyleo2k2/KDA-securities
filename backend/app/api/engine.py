@@ -41,8 +41,6 @@ from ..engine import (
     ProfileSurveyInput,
     RiskCapEvaluation,
     ScenarioEvaluation,
-    SimulationEvaluation,
-    SimulationInput,
     aggregate_accounts,
     assess_etf_with_krx_evidence,
     build_allocation_example,
@@ -56,7 +54,6 @@ from ..engine import (
     evaluate_mock_scenario,
     evaluate_profile,
     evaluate_risk_cap,
-    simulate_accumulation,
 )
 from ..engine.audit import EngineAuditRepository
 from ..etf_universe_database import PortfolioUniverseLoadError
@@ -209,13 +206,6 @@ def aggregation(inputs: AggregationInput) -> AggregationEvaluation:
     """Aggregate accounts for display without judging combined rules."""
 
     return aggregate_accounts(inputs)
-
-
-@router.post("/engine/simulation", response_model=SimulationEvaluation)
-def simulation(inputs: SimulationInput) -> SimulationEvaluation:
-    """Project balances under approved assumption scenarios (not forecasts)."""
-
-    return simulate_accumulation(inputs)
 
 
 @router.post(

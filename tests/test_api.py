@@ -1,4 +1,3 @@
-from decimal import ROUND_HALF_UP, Decimal
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -28,7 +27,6 @@ def test_route_paths_cover_engine_tools_and_data_reads() -> None:
         "/engine/profile",
         "/engine/diagnostics",
         "/engine/aggregation",
-        "/engine/simulation",
         "/engine/allocation-example",
         "/engine/mock-scenario/{scenario_code}",
         "/engine/pension-tax-credit",
@@ -153,30 +151,6 @@ def test_aggregation_endpoint_serializes_decimals_as_strings() -> None:
     assert isinstance(body["total_amount_krw"], str)
     assert body["overlaps"][0]["combined_weight_percent"] == "68.42"
 
-
-def test_simulation_endpoint_matches_engine_golden_value() -> None:
-    response = client.post(
-        "/engine/simulation",
-        json={
-            "current_age": 25,
-            "risk_profile": "risk_neutral",
-            "current_balance_krw": "10000000",
-            "monthly_contribution_krw": "300000",
-        },
-    )
-    assert response.status_code == 200
-    body = response.json()
-    assert body["total_principal_krw"] == "118000000.00"
-    base = next(
-        projection
-        for projection in body["projections"]
-        if projection["scenario"] == "base"
-    )
-    nominal = Decimal(base["nominal_value_at_55_krw"])
-    rounded = (nominal / Decimal("100000")).quantize(
-        Decimal("1"), rounding=ROUND_HALF_UP
-    ) * Decimal("100000")
-    assert rounded == Decimal("259900000")
 
 
 def test_allocation_example_endpoint_returns_approved_cell() -> None:

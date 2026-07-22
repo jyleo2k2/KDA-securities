@@ -255,45 +255,6 @@ export interface AggregationEvaluation {
   evidence: SourceChip[];
 }
 
-// ── /engine/simulation ──
-export interface SimulationInput {
-  current_age: number;
-  risk_profile: RiskProfile;
-  current_balance_krw: string;
-  monthly_contribution_krw: string;
-  inflation_percent?: string;
-}
-
-export interface BandSegment {
-  age_band: AgeBand;
-  months: number;
-  weights: AllocationWeights;
-  net_annual_return_percent_by_scenario: Record<AssumptionScenario, string>;
-}
-
-export interface ScenarioProjection {
-  scenario: AssumptionScenario;
-  nominal_value_at_55_krw: string;
-  real_value_at_55_krw: string;
-  investment_gain_krw: string;
-}
-
-export interface SimulationEvaluation {
-  engine_name: string;
-  engine_version: string;
-  assumption_version: string;
-  current_age: number;
-  target_age: number;
-  years_to_55: number;
-  months_to_55: number;
-  inflation_percent: string;
-  total_principal_krw: string;
-  projections: ScenarioProjection[];
-  band_segments: BandSegment[];
-  assumption_notice: string;
-  evidence: SourceChip[];
-}
-
 // ── /engine/pension-calculator ──
 export interface PensionCalculatorInput {
   current_age: number;
@@ -930,6 +891,8 @@ export interface StressScenarioResult {
   is_forecast: boolean;
 }
 
+export type StressLossPolicyStatus = "not_evaluated" | "within_user_limit" | "review_required";
+
 export interface PortfolioRiskEvaluation {
   engine_name: string;
   engine_version: string;
@@ -947,6 +910,9 @@ export interface PortfolioRiskEvaluation {
   historical_return_used_for_risk_only: boolean;
   is_return_forecast: boolean;
   stress_scenarios: StressScenarioResult[];
+  stress_loss_limit_percent: string | null;
+  worst_stress_loss_percent: string;
+  stress_loss_policy_status: StressLossPolicyStatus;
   sources: Array<{
     label: string;
     reference: string;

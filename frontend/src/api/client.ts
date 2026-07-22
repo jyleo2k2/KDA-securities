@@ -21,6 +21,7 @@ import type {
   StoredChatMessage,
 } from "./types";
 import { supabase } from "../auth/supabase";
+import { noStoreApiRequest } from "../pwa/cachePolicy";
 
 const API_BASE_URL: string = (
   import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000"
@@ -131,12 +132,14 @@ export async function apiGet<T>(
 ): Promise<T> {
   const token = await currentAccessToken(accessToken);
   let response = await fetch(`${API_BASE_URL}${path}`, {
+    ...noStoreApiRequest(),
     headers: requestHeaders(token),
   });
   if (response.status === 401 && accessToken) {
     const refreshedToken = await refreshedAccessToken();
     if (refreshedToken) {
       response = await fetch(`${API_BASE_URL}${path}`, {
+        ...noStoreApiRequest(),
         headers: requestHeaders(refreshedToken),
       });
     }
@@ -153,6 +156,7 @@ export async function apiPost<TBody, TResult>(
   const token = await currentAccessToken(accessToken);
   const request = (requestToken?: string) => fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
+    ...noStoreApiRequest(),
     headers: {
       "Content-Type": "application/json",
       ...requestHeaders(requestToken),
@@ -174,6 +178,7 @@ export async function apiDelete(
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "DELETE",
+    ...noStoreApiRequest(),
     headers: requestHeaders(accessToken),
   });
   if (!response.ok) await parseOrThrow<never>(path, response);
@@ -190,6 +195,7 @@ async function apiPostStream<TBody>(
 ): Promise<ChatStreamResult> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
+    ...noStoreApiRequest(),
     headers: {
       "Content-Type": "application/json",
       Accept: "text/event-stream",

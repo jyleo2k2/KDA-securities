@@ -1,0 +1,16 @@
+# Local dependencies and build artifacts are recreated by Vercel.
+node_modules
+dist
+dev-dist
+coverage
+
+# Do not upload local configuration or logs.
+.env
+.env.*
+*.log
+
+# Test and contributor-only files are not required for the Vite build.
+src/**/*.test.*
+AGENTS.md
+CLAUDE.md
+README.md

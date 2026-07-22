@@ -46,9 +46,11 @@ describe("authenticated REST retry", () => {
 
     expect(auth.refreshSession).toHaveBeenCalledOnce();
     expect(fetchMock).toHaveBeenNthCalledWith(1, "http://127.0.0.1:8000/protected", {
+      cache: "no-store",
       headers: { Authorization: "Bearer expired-token" },
     });
     expect(fetchMock).toHaveBeenNthCalledWith(2, "http://127.0.0.1:8000/protected", {
+      cache: "no-store",
       headers: { Authorization: "Bearer fresh-token" },
     });
   });
@@ -254,6 +256,7 @@ describe("chat session deletion", () => {
       "http://127.0.0.1:8000/chat/sessions/session%2Fid",
       {
         method: "DELETE",
+        cache: "no-store",
         headers: { Authorization: "Bearer access-token" },
       },
     );

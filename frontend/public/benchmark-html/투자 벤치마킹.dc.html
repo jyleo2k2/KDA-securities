@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  @font-face { font-family: 'Cafe24SsurroundAir'; src: url('https://gcore.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/Cafe24SsurroundAir.woff') format('woff'); font-weight: normal; font-style: normal; font-display: swap; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; }
+  a { color: #22A94D; text-decoration: none; }
+  a:hover { color: #148A3C; }
+  .scrolly::-webkit-scrollbar { width: 0; }
+</style>
+</helmet>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#22A94D"></rect><text x="50" y="60" font-size="30" font-weight="800" text-anchor="middle" fill="#fff" font-family="sans-serif">벤치</text></svg></template>
+<div style="width:390px; height:844px; background:#F5F6F8; margin:0 auto; font-family:'Cafe24SsurroundAir', Pretendard, -apple-system, sans-serif; color:#1E2124; display:flex; flex-direction:column; position:relative; overflow:hidden;">
+
+  <div style="flex:none; background:#fff; height:44px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; font-weight:600; font-size:15px;">
+    <span>9:41</span>
+    <div style="width:17px; height:11px; border:1.5px solid #1E2124; border-radius:3px; position:relative;"><div style="position:absolute; inset:1.5px; width:9px; background:#1E2124; border-radius:1px;"></div></div>
+  </div>
+
+  <div style="flex:none; background:#fff; display:flex; align-items:center; justify-content:space-between; height:52px; padding:0 20px;">
+    <svg width="11" height="20" viewBox="0 0 11 20" fill="none" style="cursor:pointer;"><path d="M9.5 1L1.5 10L9.5 19" stroke="#1E2124" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+    <span style="font-size:18px; font-weight:800;">투자 <span style="color:#22A94D;">벤치마킹</span>하기</span>
+    <div style="width:11px;"></div>
+  </div>
+
+  <div style="flex:none; padding:18px 16px 4px;">
+
+    <div style="font-size:13px; font-weight:700; color:#8B9096; margin:2px 4px 12px;">내 포트폴리오</div>
+
+    <div style="background:#fff; border:1.5px solid #C9EBD4; border-radius:20px; padding:22px 20px; box-shadow:0 4px 16px rgba(34,169,77,0.08);">
+      <div style="display:flex; align-items:center; gap:7px; margin-bottom:18px;">
+        <div style="width:4px; height:16px; border-radius:2px; background:#22A94D;"></div>
+        <span style="font-size:16px; font-weight:800;">현재 포트폴리오</span>
+      </div>
+      <div style="display:flex; gap:16px;">
+        <div style="width:88px; height:88px; flex:none; border-radius:50%; background:conic-gradient(#22A94D 0 42%, #7FD79A 42% 68%, #FDC526 68% 86%, #E6E8EB 86% 100%); display:flex; align-items:center; justify-content:center;">
+          <div style="width:44px; height:44px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:800; color:#4A5058;">4자산군</div>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:11px;">
+          <div style="display:flex; justify-content:space-between; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">ID</span><span style="font-size:14px; font-weight:800; white-space:nowrap;">투자하는너구리</span></div>
+          <div style="display:flex; justify-content:space-between; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">직업군</span><span style="font-size:14px; font-weight:700; white-space:nowrap;">반도체 종사자</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">금액</span><span style="font-size:16px; font-weight:800; white-space:nowrap;">1,240만원</span></div>
+        </div>
+      </div>
+
+      <div style="margin-top:18px;">
+        <div style="font-size:12.5px; color:#8B9096; font-weight:700; margin-bottom:8px;">포트폴리오 구성 비율</div>
+        <div style="display:flex; height:14px; border-radius:99px; overflow:hidden; background:#EEF0F2;">
+          <div style="width:42%; background:#22A94D;"></div>
+          <div style="width:26%; background:#7FD79A;"></div>
+          <div style="width:18%; background:#FDC526;"></div>
+          <div style="width:14%; background:#CFD4DA;"></div>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px 16px; margin-top:10px;">
+          <span style="font-size:11.5px; font-weight:700; color:#4A5058;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#22A94D;margin-right:5px;"></span>국내주식 42%</span>
+          <span style="font-size:11.5px; font-weight:700; color:#4A5058;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#7FD79A;margin-right:5px;"></span>해외주식·ETF 26%</span>
+          <span style="font-size:11.5px; font-weight:700; color:#4A5058;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#FDC526;margin-right:5px;"></span>채권 18%</span>
+          <span style="font-size:11.5px; font-weight:700; color:#4A5058;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#CFD4DA;margin-right:5px;"></span>현금성자산 14%</span>
+        </div>
+      </div>
+
+      <div style="margin-top:18px; padding-top:16px; border-top:1px solid #EEF0F2;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span style="font-size:13px; color:#8B9096; font-weight:700;">투자전략</span>
+          <span style="font-size:13.5px; font-weight:800; color:#1E2124;">탑다운</span>
+          <span style="font-size:11px; font-weight:800; color:#166F39; background:#E7F6EC; border-radius:99px; padding:3px 9px; white-space:nowrap;">직접 구현 가능</span>
+        </div>
+        <div style="font-size:12px; color:#9AA0A6; font-weight:600; line-height:1.5; margin-top:7px;">국가·산업·채권 비중 결정 규칙 미정</div>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; justify-content:space-between; margin:22px 2px 0;">
+      <span style="font-size:13px; font-weight:700; color:#8B9096;">추천 벤치마킹 포트폴리오</span>
+      <div onClick="{{ toggleFilter }}" style="display:flex; align-items:center; gap:5px; background:#fff; border:1px solid #E1E4E7; border-radius:99px; padding:6px 11px; cursor:pointer;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 5h18M6 12h12M10 19h4" stroke="#22A94D" stroke-width="2.2" stroke-linecap="round"></path></svg>
+        <span style="font-size:12px; font-weight:800; color:#22A94D;">{{ filterLabel }}</span>
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8L9.5 4.5" stroke="#22A94D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </div>
+    </div>
+    <sc-if value="{{ filterOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; gap:8px; margin:12px 2px 2px;">
+        <div onClick="{{ setFilterRate }}" style="{{ chipRate }}">수익률순</div>
+        <div onClick="{{ setFilterPeriod }}" style="{{ chipPeriod }}">운용기간순</div>
+        <div onClick="{{ setFilterJob }}" style="{{ chipJob }}">직업군별</div>
+        <div onClick="{{ setFilterLikes }}" style="{{ chipLikes }}">좋아요순</div>
+      </div>
+    </sc-if>
+  </div>
+
+  <div class="scrolly" style="flex:1; overflow-y:auto; padding:12px 16px 30px;">
+    <sc-for list="{{ others }}" as="p" hint-placeholder-count="2">
+      <div onClick="{{ p.open }}" style="background:#fff; border:1px solid #E6E8EB; border-radius:20px; padding:20px; margin-bottom:16px; box-shadow:0 2px 10px rgba(0,0,0,0.04); cursor:pointer;">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between;">
+          <div style="display:flex; flex-direction:column; gap:9px;">
+            <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:12px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">ID</span><span style="font-size:15px; font-weight:800; white-space:nowrap;">{{ p.id }}</span></div>
+            <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:12px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">직업군</span><span style="font-size:13.5px; font-weight:700; white-space:nowrap;">{{ p.sector }}</span></div>
+            <div style="font-size:11.5px; font-weight:700; color:#B0B5BB;">{{ p.period }}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11.5px; color:#8B9096; font-weight:700; white-space:nowrap;">수익률</div>
+            <div style="font-size:19px; font-weight:800; color:{{ p.rateColor }};">{{ p.rate }}</div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:12px;">
+          <span style="font-size:12px; color:#8B9096; font-weight:700; white-space:nowrap;">금액</span>
+          <span style="font-size:16px; font-weight:800;">{{ p.amount }}</span>
+        </div>
+
+        <div style="margin-top:14px;">
+          <div style="font-size:12px; color:#8B9096; font-weight:700; margin-bottom:7px;">포트폴리오 구성 비율</div>
+          <div style="display:flex; height:12px; border-radius:99px; overflow:hidden; background:#EEF0F2;">
+            <div style="width:{{ p.s1 }}; background:#22A94D;"></div>
+            <div style="width:{{ p.s2 }}; background:#7FD79A;"></div>
+            <div style="width:{{ p.s3 }}; background:#FDC526;"></div>
+            <div style="flex:1; background:#CFD4DA;"></div>
+          </div>
+          <div style="font-size:11.5px; color:#9AA0A6; font-weight:600; margin-top:7px;">{{ p.holdings }}</div>
+        </div>
+
+        <div style="margin-top:14px; padding-top:13px; border-top:1px solid #EEF0F2;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:12.5px; color:#8B9096; font-weight:700;">투자전략</span>
+            <sc-if value="{{ p.hasStrategy }}" hint-placeholder-val="{{ true }}">
+              <span style="font-size:13.5px; font-weight:800; color:#1E2124;">{{ p.strategyName }}</span>
+              <span style="{{ p.badgeStyle }}">{{ p.badgeText }}</span>
+            </sc-if>
+            <sc-if value="{{ p.noStrategy }}" hint-placeholder-val="{{ false }}">
+              <span style="font-size:13px; font-weight:700; color:#B0B5BB;">투자 전략 없음</span>
+            </sc-if>
+          </div>
+          <sc-if value="{{ p.hasStrategy }}" hint-placeholder-val="{{ true }}">
+            <div style="font-size:12px; color:#9AA0A6; font-weight:600; line-height:1.5; margin-top:7px;">{{ p.strategyDetail }}</div>
+          </sc-if>
+          <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+            <div onClick="{{ p.toggleFollow }}" style="{{ p.followPillStyle }}">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="{{ p.heartFill }}"><path d="M12 21s-7.5-4.6-10-9.1C.3 8.8 2 5.5 5.2 5.5c1.9 0 3.2 1.1 3.8 2 .6-.9 1.9-2 3.8-2 3.2 0 4.9 3.3 3.2 6.4C19.5 16.4 12 21 12 21z" stroke="{{ p.heartStroke }}" stroke-width="2"></path></svg>
+              <span style="{{ p.followCountStyle }}">{{ p.likesDisplay }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-for>
+
+  </div>
+
+  <div style="position:absolute; left:0; right:0; bottom:0; height:40px; background:linear-gradient(rgba(245,246,248,0), #F5F6F8); pointer-events:none;"></div>
+
+  <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeSheet }}" style="position:absolute; inset:0; background:rgba(20,30,25,0.28); z-index:20;"></div>
+    <div style="position:absolute; left:0; right:0; bottom:0; height:372px; background:#fff; border-radius:26px 26px 0 0; z-index:21; box-shadow:0 -8px 30px rgba(0,0,0,0.16); display:flex; flex-direction:column; overflow:hidden;">
+      <div style="flex:none; display:flex; justify-content:center; padding:12px 0 4px;"><div style="width:40px; height:5px; border-radius:99px; background:#D8DCE0;"></div></div>
+
+      <div class="scrolly" style="flex:1; overflow-y:auto; padding:12px 22px 28px;">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between;">
+          <div>
+            <div style="font-size:22px; font-weight:800; line-height:1.3;"><span style="color:#22A94D;">{{ sheet.id }}</span>님</div>
+            <div style="font-size:22px; font-weight:800; line-height:1.3;">포트폴리오</div>
+          </div>
+          <div onClick="{{ sheet.toggleFollow }}" style="text-align:center; cursor:pointer;">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="{{ sheet.starFill }}"><path d="M12 20.7l-1.45-1.32C5.4 14.72 2 11.64 2 7.87 2 4.79 4.42 2.4 7.5 2.4c1.74 0 3.41 0.81 4.5 2.09C13.09 3.21 14.76 2.4 16.5 2.4 19.58 2.4 22 4.79 22 7.87c0 3.77-3.4 6.85-8.55 11.52L12 20.7z" stroke="{{ sheet.starStroke }}" stroke-width="1.6" stroke-linejoin="round"></path></svg>
+            <div style="font-size:11.5px; font-weight:700; color:{{ sheet.followColor }}; margin-top:2px;">팔로우 {{ sheet.likesDisplay }}</div>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:20px; margin-top:20px;">
+          <div style="width:120px; height:120px; flex:none; border-radius:50%; background:{{ sheet.donut }}; display:flex; align-items:center; justify-content:center;">
+            <div style="width:66px; height:66px; border-radius:50%; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+              <div style="font-size:10px; font-weight:700; color:#8B9096;">벤치마크</div>
+              <div style="font-size:15px; font-weight:800; color:{{ sheet.rateColor }};">{{ sheet.rate }}</div>
+            </div>
+          </div>
+          <div style="flex:1; display:flex; flex-direction:column; gap:11px;">
+            <sc-for list="{{ sheet.alloc }}" as="a" hint-placeholder-count="4">
+              <div style="display:flex; align-items:center; justify-content:space-between;">
+                <span style="font-size:13.5px; font-weight:700; color:#4A5058;"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:{{ a.color }};margin-right:8px;"></span>{{ a.label }}</span>
+                <span style="font-size:14.5px; font-weight:800;">{{ a.pct }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="font-size:17px; font-weight:800; margin:26px 0 6px;">내 포트폴리오와 <span style="color:#22A94D;">비교</span></div>
+        <div style="font-size:12px; color:#9AA0A6; font-weight:600; margin-bottom:12px;">연금저축·IRP 구성종목 기준 · 따라하면 이 회원 비중만큼 변동돼요</div>
+        <div style="border:1px solid #EDEFF1; border-radius:16px; overflow:hidden;">
+          <div style="display:grid; grid-template-columns:1.15fr 0.8fr 0.8fr 0.85fr; background:#F6F7F8; padding:12px 14px;">
+            <span style="font-size:11.5px; font-weight:700; color:#8B9096;">구성종목</span>
+            <span style="font-size:11.5px; font-weight:700; color:#8B9096; text-align:right;">내 비중</span>
+            <span style="font-size:11.5px; font-weight:700; color:#4A5058; text-align:right;">이 회원</span>
+            <span style="font-size:11.5px; font-weight:700; color:#22A94D; text-align:right;">따라하면</span>
+          </div>
+          <sc-for list="{{ sheet.rows }}" as="r" hint-placeholder-count="4">
+            <div style="display:grid; grid-template-columns:1.15fr 0.8fr 0.8fr 0.85fr; align-items:center; padding:14px 14px; border-top:1px solid #EDEFF1;">
+              <div><div style="font-size:13.5px; font-weight:800;">{{ r.name }}</div><div style="font-size:10.5px; font-weight:700; color:#B0B5BB; margin-top:2px;">{{ r.cat }}</div></div>
+              <span style="font-size:13px; font-weight:700; color:#B0B5BB; text-align:right;">{{ r.mine }}</span>
+              <span style="font-size:13.5px; font-weight:800; color:#1E2124; text-align:right;">{{ r.theirs }}</span>
+              <span style="display:flex; align-items:center; justify-content:flex-end; gap:3px; font-size:13px; font-weight:800; color:{{ r.color }};"><span style="font-size:10px;">{{ r.arrow }}</span>{{ r.delta }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:22px;">
+          <div onClick="{{ sheet.openDetail }}" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; background:#22A94D; color:#fff; border-radius:14px; padding:15px; font-size:15px; font-weight:800; cursor:pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#fff" stroke-width="2.2"></circle><path d="M16.5 16.5L21 21" stroke="#fff" stroke-width="2.2" stroke-linecap="round"></path></svg>
+            상세히 보기
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ detailOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute; inset:0; background:#F5F6F8; z-index:30; display:flex; flex-direction:column;">
+      <div style="flex:none; background:#fff; height:44px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; font-weight:600; font-size:15px;">
+        <span>9:41</span>
+        <div style="width:17px; height:11px; border:1.5px solid #1E2124; border-radius:3px; position:relative;"><div style="position:absolute; inset:1.5px; width:9px; background:#1E2124; border-radius:1px;"></div></div>
+      </div>
+      <div style="flex:none; background:#fff; display:flex; align-items:center; gap:14px; height:52px; padding:0 20px; border-bottom:1px solid #EEF0F2;">
+        <svg onClick="{{ closeDetail }}" width="11" height="20" viewBox="0 0 11 20" fill="none" style="cursor:pointer;"><path d="M9.5 1L1.5 10L9.5 19" stroke="#1E2124" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <span style="font-size:17px; font-weight:800;"><span style="color:#22A94D;">{{ detail.id }}</span>님 운용 상세</span>
+      </div>
+
+      <div class="scrolly" style="flex:1; overflow-y:auto; padding:20px 16px 40px;">
+        <div style="font-size:13px; font-weight:700; color:#8B9096; margin:0 4px 12px;">이 회원의 운용 근거</div>
+        <div style="background:#fff; border:1.5px solid #C9EBD4; border-radius:20px; padding:22px 20px; box-shadow:0 4px 16px rgba(34,169,77,0.08);">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:18px;">
+            <span style="font-size:12.5px; color:#8B9096; font-weight:700;">투자전략</span>
+            <span style="font-size:15px; font-weight:800;">{{ detail.strategyName }}</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:18px;">
+            <sc-for list="{{ detail.rationale }}" as="r" hint-placeholder-count="3">
+              <div style="display:flex; gap:12px;">
+                <div style="width:26px; height:26px; flex:none; border-radius:8px; background:#E7F6EC; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#166F39;">{{ r.no }}</div>
+                <div>
+                  <div style="font-size:14.5px; font-weight:800; margin-bottom:5px;">{{ r.t }}</div>
+                  <div style="font-size:13px; color:#6B7178; font-weight:600; line-height:1.6;">{{ r.b }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:7px; margin:26px 4px 12px;">
+          <span style="font-size:16px; font-weight:800;">따라하기 후기</span>
+          <span style="font-size:14px; font-weight:800; color:#22A94D;">{{ detail.reviewCount }}</span>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <sc-for list="{{ detail.reviews }}" as="rv" hint-placeholder-count="2">
+            <div style="background:#fff; border:1px solid #E6E8EB; border-radius:18px; padding:18px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:11px;">
+                <div style="width:34px; height:34px; flex:none; border-radius:50%; background:#E4F5E9; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; color:#166F39;">{{ rv.initial }}</div>
+                <div style="flex:1;">
+                  <div style="font-size:13.5px; font-weight:800;">{{ rv.name }}</div>
+                  <div style="font-size:11px; font-weight:700; color:#B0B5BB; margin-top:1px;">{{ rv.date }}</div>
+                </div>
+                <div style="font-size:11.5px; font-weight:800; color:#166F39; background:#F0F9F3; border-radius:99px; padding:4px 10px; white-space:nowrap;">{{ rv.tag }}</div>
+              </div>
+              <div style="font-size:13.5px; color:#3A4047; font-weight:600; line-height:1.6;">{{ rv.text }}</div>
+              <div style="display:flex; gap:8px; margin-top:14px;">
+                <div onClick="{{ rv.toggleLike }}" style="{{ rv.likePillStyle }}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="{{ rv.heartFill }}"><path d="M12 21s-7.5-4.6-10-9.1C.3 8.8 2 5.5 5.2 5.5c1.9 0 3.2 1.1 3.8 2 .6-.9 1.9-2 3.8-2 3.2 0 4.9 3.3 3.2 6.4C19.5 16.4 12 21 12 21z" stroke="{{ rv.heartStroke }}" stroke-width="2"></path></svg>
+                  <span style="{{ rv.likeCountStyle }}">{{ rv.likeCount }}</span>
+                </div>
+                <div onClick="{{ rv.toggleComments }}" style="display:flex; align-items:center; gap:5px; border-radius:99px; padding:7px 13px; cursor:pointer; background:#F5F6F8; border:1px solid #E6E8EB;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 3.5V16H4V5z" stroke="#8B9096" stroke-width="2" stroke-linejoin="round"></path></svg>
+                  <span style="font-size:12.5px; font-weight:800; color:#8B9096;">{{ rv.commentCount }}</span>
+                </div>
+              </div>
+              <sc-if value="{{ rv.commentsOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:14px; padding-top:14px; border-top:1px solid #EEF0F2; display:flex; flex-direction:column; gap:12px;">
+                  <sc-for list="{{ rv.comments }}" as="c" hint-placeholder-count="1">
+                    <div style="display:flex; gap:9px;">
+                      <div style="width:26px; height:26px; flex:none; border-radius:50%; background:#EEF0F2; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:#6B7178;">{{ c.initial }}</div>
+                      <div style="flex:1;">
+                        <div style="font-size:12.5px; font-weight:800;">{{ c.name }}</div>
+                        <div style="font-size:12.5px; color:#4A5058; font-weight:600; line-height:1.5; margin-top:2px;">{{ c.text }}</div>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <input value="{{ rv.draft }}" onInput="{{ rv.onDraft }}" placeholder="댓글을 입력하세요" style="flex:1; border:1px solid #E1E4E7; border-radius:99px; padding:9px 14px; font-size:13px; font-family:inherit; outline:none;">
+                    <div onClick="{{ rv.submitComment }}" style="flex:none; background:#22A94D; color:#fff; border-radius:99px; padding:9px 16px; font-size:13px; font-weight:800; cursor:pointer;">등록</div>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  state = { filter:'rate', filterOpen:false, sheetId:null, followed:{}, detailId:null, reviewLikes:{}, reviewComments:{}, drafts:{}, openComments:{} };
+
+  REVIEWS = {
+    _default: [
+      { rid:'a', name:'따라가는다람쥐', date:'2026.06.14', tag:'3개월째 따라하는 중', text:'비중 그대로 따라 담았는데 변동성이 확실히 줄었어요. 리밸런싱 시점 안내가 있으면 더 좋겠네요.', likes:24, comments:[{name:'배당모으미', text:'저도 같은 생각이에요!'}] },
+      { rid:'b', name:'느긋한초보', date:'2026.05.29', tag:'입문자', text:'설명이 구체적이라 왜 이렇게 담는지 이해하고 따라할 수 있었어요.', likes:11, comments:[] },
+    ],
+    '꾸준한거북이': [
+      { rid:'a', name:'장기러버', date:'2026.06.20', tag:'8개월째 따라하는 중', text:'국내주식 비중이 높은데도 방어가 잘 되네요. 채권 비중 덕분인 듯.', likes:58, comments:[{name:'꾸준한거북이', text:'맞아요, 하단을 채권으로 받치는 게 핵심이에요.'}, {name:'순동이', text:'계좌 개설하고 바로 따라했습니다 🙏'}] },
+      { rid:'b', name:'거북팬1호', date:'2026.06.11', tag:'미러복제 성공', text:'설명대로 월 1회만 점검해도 충분해서 맘 편해요.', likes:32, comments:[] },
+      { rid:'c', name:'안정형직장인', date:'2026.05.30', tag:'6개월째', text:'수익률도 좋지만 변동이 작아서 심리적으로 난 편해요.', likes:19, comments:[] },
+    ],
+  };
+
+  MINE = { 국내주식:'42%', '해외주식·ETF':'26%', 채권:'18%', 현금성자산:'14%' };
+
+  detailData(p) {
+    const rationale = [
+      { no:1, t:'왜 이렇게 나눴냐면요', b:`저는 국내주식 ${p.a1}%, 해외주식·ETF ${p.a2}%, 채권 ${p.a3}%로 담고 있어요. 한 자산에 몰면 흔들릴 때 버티기 힘들더라고요. 그래서 성장에 기대는 부분과 지켜주는 부분을 일부러 갈라 놨어요.` },
+      { no:2, t:'이 전략을 고른 이유', b: (p.strategyDetail ? `${p.strategyName} 방식으로 가고 있는데, ${p.strategyDetail} 저한테는 이게 가장 마음 편하게 오래 끌고 갈 수 있는 방법이었어요.` : '저는 시장을 예측하기보다, 정해둔 비중을 지키는 게 결국 오래 남는 길이라고 믿어서 이렇게 운용해요.') },
+      { no:3, t:'언제 다시 맞추냐면요', b:'처음 정한 비중에서 5%포인트 넘게 벌어지면, 저는 그때 분기에 한 번씩 원래 비중으로 되돌려요. 오른 걸 조금 덜고 빠진 걸 채우는 식이라 자연스럽게 싸게 사고 비싸게 팔게 되더라고요.' },
+    ];
+    const baseReviews = this.REVIEWS[p.id] || this.REVIEWS._default;
+    const reviews = baseReviews.map(rv => {
+      const key = p.id + '::' + rv.rid;
+      const liked = !!this.state.reviewLikes[key];
+      const extra = (this.state.reviewComments[key] || []);
+      const comments = [...(rv.comments || []), ...extra].map(c => ({ ...c, initial: c.name.slice(0,1) }));
+      const open = !!this.state.openComments[key];
+      return {
+        initial: rv.name.slice(0,1), name: rv.name, date: rv.date, tag: rv.tag, text: rv.text,
+        likeCount: rv.likes + (liked ? 1 : 0),
+        heartFill: liked ? '#E8503A' : 'none',
+        heartStroke: liked ? '#E8503A' : '#B8BDC2',
+        likePillStyle: 'display:flex; align-items:center; gap:5px; border-radius:99px; padding:7px 13px; cursor:pointer;' + (liked ? 'background:#FDECE8; border:1px solid #F1B7AC;' : 'background:#F5F6F8; border:1px solid #E6E8EB;'),
+        likeCountStyle: 'font-size:12.5px; font-weight:800; color:' + (liked ? '#E8503A' : '#8B9096') + ';',
+        toggleLike: () => this.setState(s => ({ reviewLikes: { ...s.reviewLikes, [key]: !s.reviewLikes[key] } })),
+        commentsOpen: open, commentCount: comments.length, comments,
+        toggleComments: () => this.setState(s => ({ openComments: { ...s.openComments, [key]: !s.openComments[key] } })),
+        draft: this.state.drafts[key] || '',
+        onDraft: (e) => { const v = e.target.value; this.setState(s => ({ drafts: { ...s.drafts, [key]: v } })); },
+        submitComment: () => {
+          const text = (this.state.drafts[key] || '').trim();
+          if (!text) return;
+          this.setState(s => ({
+            reviewComments: { ...s.reviewComments, [key]: [...(s.reviewComments[key] || []), { name:'나', text }] },
+            drafts: { ...s.drafts, [key]: '' },
+            openComments: { ...s.openComments, [key]: true },
+          }));
+        },
+      };
+    });
+    return { id:p.id, strategyName: p.strategyName || '전략 미설정', rationale, reviews, reviewCount: reviews.length };
+  }
+
+  sheetData(p) {
+    const donut = `conic-gradient(#22A94D 0 ${p.a1}%, #7FD79A ${p.a1}% ${p.a1+p.a2}%, #FDC526 ${p.a1+p.a2}% ${p.a1+p.a2+p.a3}%, #E6E8EB ${p.a1+p.a2+p.a3}% 100%)`;
+    const alloc = [
+      { color:'#22A94D', label:'국내주식', pct:p.a1+'%' },
+      { color:'#7FD79A', label:'해외주식·ETF', pct:p.a2+'%' },
+      { color:'#FDC526', label:'채권', pct:p.a3+'%' },
+      { color:'#CFD4DA', label:'현금성자산', pct:(100-p.a1-p.a2-p.a3)+'%' },
+    ];
+    const mineNums = { 국내주식:42, '해외주식·ETF':26, 채권:18, 현금성자산:14 };
+    const rows = [
+      { name:'국내주식형', cat:'연금저축·IRP', mineN:42, theirsN:p.a1 },
+      { name:'해외주식·ETF형', cat:'연금저축·IRP', mineN:26, theirsN:p.a2 },
+      { name:'채권형', cat:'연금저축·IRP', mineN:18, theirsN:p.a3 },
+      { name:'현금성', cat:'IRP 예수금', mineN:14, theirsN:100-p.a1-p.a2-p.a3 },
+    ].map(r => {
+      const d = r.theirsN - r.mineN;
+      return { name:r.name, cat:r.cat, mine:r.mineN+'%', theirs:r.theirsN+'%',
+        delta: (d > 0 ? '+' : '') + d + '%p',
+        arrow: d > 0 ? '▲' : (d < 0 ? '▼' : '='), color: d > 0 ? '#22A94D' : (d < 0 ? '#E0453A' : '#8B9096') };
+    });
+    const on = !!(this.state.followed && this.state.followed[p.id]);
+    const likesNum = s => parseInt(String(s).replace(/[^0-9]/g, ''), 10) || 0;
+    const likesDisplay = (likesNum(p.likes) + (on ? 1 : 0)).toLocaleString('en-US');
+    return { id:p.id, likes:p.likes, likesDisplay, rate:p.rate, rateColor:p.rateColor, donut, alloc, rows,
+      toggleFollow: () => this.setState(s => ({ followed: { ...s.followed, [p.id]: !(s.followed && s.followed[p.id]) } })),
+      starFill: on ? '#22A94D' : 'none',
+      starStroke: on ? '#22A94D' : '#7FB894',
+      followColor: on ? '#166F39' : '#8B9096',
+      openDetail: () => this.setState({ detailId: p.id }) };
+  }
+
+  badge(kind) {
+    return kind === 'direct'
+      ? 'font-size:11px;font-weight:800;color:#166F39;background:#E7F6EC;border-radius:99px;padding:3px 9px;white-space:nowrap;'
+      : 'font-size:11px;font-weight:800;color:#9A6B00;background:#FFF4D6;border-radius:99px;padding:3px 9px;white-space:nowrap;';
+  }
+  chip(active) {
+    return active
+      ? 'padding:8px 14px;border-radius:99px;background:#22A94D;color:#fff;font-size:12.5px;font-weight:800;cursor:pointer;border:1px solid #22A94D;'
+      : 'padding:8px 14px;border-radius:99px;background:#fff;color:#6B7178;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid #E1E4E7;';
+  }
+  renderVals() {
+    const raw = [
+      { id:'꾸준한거북이', sector:'2차전지 종사자', rate:'+18.2%', rateNum:18.2, rateColor:'#166F39',
+        months:44, period:'운용 3년 8개월', job:'직장인', a1:55, a2:19, a3:18,
+        amount:'2,860만원', s1:'38%', s2:'27%', s3:'20%',
+        holdings:'국내주식 38% · 해외주식·ETF 27% · 채권 20% · 현금성자산 15%',
+        feas:'direct', strategyName:'테마', strategyDetail:'테마 선정·교체 규칙 일부 정의, 모델 비중 미정', likes:'1,204' },
+      { id:'배당모으미', sector:'금융업 종사자', rate:'+9.6%', rateNum:9.6, rateColor:'#166F39',
+        months:30, period:'운용 2년 6개월', job:'자영업자', a1:34, a2:30, a3:22,
+        amount:'5,120만원', s1:'34%', s2:'30%', s3:'22%',
+        holdings:'국내주식 34% · 해외주식·ETF 30% · 채권 22% · 현금성자산 14%',
+        feas:'direct', strategyName:'팩터', strategyDetail:'가치·퀄리티·모멘텀 비중 미정', likes:'876' },
+      { id:'느긋한바벨러', sector:'자산운용 종사자', rate:'+6.1%', rateNum:6.1, rateColor:'#166F39',
+        months:62, period:'운용 5년 2개월', job:'전문직', a1:30, a2:20, a3:34,
+        amount:'8,430만원', s1:'30%', s2:'20%', s3:'34%',
+        holdings:'국내주식 30% · 해외주식·ETF 20% · 채권 34% · 현금성자산 16%',
+        feas:'direct', strategyName:'바벨', strategyDetail:'성장·안전자산 구성 비중을 연령별로만 일부 정의', likes:'642' },
+      { id:'중립러버', sector:'IT업 종사자', rate:'+3.8%', rateNum:3.8, rateColor:'#166F39',
+        months:14, period:'운용 1년 2개월', job:'직장인', a1:26, a2:24, a3:28,
+        amount:'3,270만원', s1:'26%', s2:'24%', s3:'28%',
+        holdings:'국내주식 26% · 해외주식·ETF 24% · 채권 28% · 현금성자산 22%',
+        feas:'product', strategyName:'롱숏·시장중립', strategyDetail:'계좌 적격 상품과 실제 성과 데이터 없음', likes:'415' },
+      { id:'초보투자자', sector:'학생', rate:'-2.4%', rateNum:-2.4, rateColor:'#2E7CE0',
+        months:5, period:'운용 5개월', job:'학생', a1:62, a2:12, a3:8,
+        amount:'540만원', s1:'62%', s2:'12%', s3:'8%',
+        holdings:'국내주식 62% · 해외주식·ETF 12% · 채권 8% · 현금성자산 18%',
+        feas:null, strategyName:null, strategyDetail:null, likes:'37' },
+    ];
+    const f = this.state.filter;
+    const likesNum = s => parseInt(String(s).replace(/[^0-9]/g, ''), 10) || 0;
+    const sorted = [...raw].sort((a, b) => {
+      if (f === 'period') return b.months - a.months;
+      if (f === 'job') return a.sector.localeCompare(b.sector, 'ko') || b.rateNum - a.rateNum;
+      if (f === 'likes') return likesNum(b.likes) - likesNum(a.likes);
+      return b.rateNum - a.rateNum;
+    });
+    const labels = { rate:'수익률순', period:'운용기간순', job:'직업군별', likes:'좋아요순' };
+    const sel = raw.find(p => p.id === this.state.sheetId);
+    const detailSel = raw.find(p => p.id === this.state.detailId);
+    return {
+      filterOpen: this.state.filterOpen,
+      sheetOpen: !!sel,
+      sheet: sel ? this.sheetData(sel) : {},
+      closeSheet: () => this.setState({ sheetId:null }),
+      detailOpen: !!detailSel,
+      detail: detailSel ? this.detailData(detailSel) : {},
+      closeDetail: () => this.setState({ detailId:null }),
+      filterLabel: labels[f],
+      toggleFilter: () => this.setState(s => ({ filterOpen: !s.filterOpen })),
+      setFilterRate: () => this.setState({ filter:'rate', filterOpen:false }),
+      setFilterPeriod: () => this.setState({ filter:'period', filterOpen:false }),
+      setFilterJob: () => this.setState({ filter:'job', filterOpen:false }),
+      setFilterLikes: () => this.setState({ filter:'likes', filterOpen:false }),
+      chipRate: this.chip(f === 'rate'), chipPeriod: this.chip(f === 'period'), chipJob: this.chip(f === 'job'), chipLikes: this.chip(f === 'likes'),
+      others: sorted.map(p => {
+        const on = !!(this.state.followed && this.state.followed[p.id]);
+        const base = likesNum(p.likes);
+        const display = (base + (on ? 1 : 0)).toLocaleString('en-US');
+        return {
+        ...p,
+        open: () => this.setState({ sheetId: p.id }),
+        hasStrategy: !!p.strategyName,
+        noStrategy: !p.strategyName,
+        badgeText: p.feas === 'direct' ? '직접 구현 가능' : '상품 확인 후 가능',
+        badgeStyle: this.badge(p.feas),
+        toggleFollow: (e) => { e.stopPropagation(); this.setState(s => ({ followed: { ...s.followed, [p.id]: !(s.followed && s.followed[p.id]) } })); },
+        likesDisplay: display,
+        heartFill: on ? '#22A94D' : 'none',
+        heartStroke: on ? '#22A94D' : '#7FB894',
+        followPillStyle: 'display:flex; align-items:center; gap:5px; border-radius:99px; padding:7px 13px; cursor:pointer;' + (on ? 'background:#E4F5E9; border:1px solid #22A94D;' : 'background:#F6FBF7; border:1px solid #DCEFE1;'),
+        followCountStyle: 'font-size:12.5px; font-weight:800; color:' + (on ? '#166F39' : '#8DA895') + ';',
+        };
+      }),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; }
+  a { color: #22A94D; text-decoration: none; }
+  a:hover { color: #1B9442; }
+  .scrolly::-webkit-scrollbar { width: 0; }
+</style>
+</helmet>
+<div style="width:390px; height:844px; background:#ffffff; margin:0 auto; font-family:Pretendard, -apple-system, sans-serif; color:#1E2124; display:flex; flex-direction:column; position:relative; overflow:hidden;">
+
+  <div style="height:44px; flex:none; display:flex; align-items:center; justify-content:space-between; padding:0 22px; font-weight:600; font-size:15px;">
+    <span>9:41</span>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <div style="width:17px; height:11px; border:1.5px solid #1E2124; border-radius:3px; position:relative;"><div style="position:absolute; inset:1.5px; width:9px; background:#1E2124; border-radius:1px;"></div></div>
+    </div>
+  </div>
+
+  <div style="flex:none; display:flex; align-items:center; height:52px; padding:0 16px; position:relative;">
+    <svg width="11" height="20" viewBox="0 0 11 20" fill="none" style="cursor:pointer;"><path d="M9.5 1L1.5 10L9.5 19" stroke="#1E2124" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+    <div style="position:absolute; left:0; right:0; text-align:center; font-size:19px; font-weight:700; pointer-events:none;">투자자정보 확인서</div>
+  </div>
+
+  <div style="flex:none; background:#EAF7F0; padding:15px 0; text-align:center; font-size:18px; font-weight:700; color:#1E7F41;">일반금융소비자 투자성향진단</div>
+
+  <div class="scrolly" ref="{{ scrollRef }}" style="flex:1; overflow-y:auto; padding:18px 16px 24px;">
+
+    <div style="display:flex; flex-direction:column; gap:14px; padding:4px 4px 20px;">
+      <div ref="{{ recRef }}" style="display:flex; align-items:center; justify-content:space-between; position:relative;">
+        <span style="font-size:17px; font-weight:700;">투자권유</span>
+        <div style="display:flex; gap:8px;">
+          <div onClick="{{ setRecommendYes }}" style="{{ recYesStyle }}">희망</div>
+          <div onClick="{{ setRecommendNo }}" style="{{ recNoStyle }}">미희망</div>
+        </div>
+        <sc-if value="{{ recError }}"><div style="position:absolute; left:-8px; right:-8px; top:-8px; bottom:-8px; border:2px solid #E8503A; border-radius:12px; pointer-events:none;"></div></sc-if>
+      </div>
+      <div ref="{{ provRef }}" style="display:flex; align-items:center; justify-content:space-between; position:relative;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:17px; font-weight:700;">투자자정보</span>
+          <div style="width:20px; height:20px; border-radius:50%; background:#C9CDD2; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center;">?</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <div onClick="{{ setProvideYes }}" style="{{ provYesStyle }}">제공</div>
+          <div onClick="{{ setProvideNo }}" style="{{ provNoStyle }}">미제공</div>
+        </div>
+        <sc-if value="{{ provError }}"><div style="position:absolute; left:-8px; right:-8px; top:-8px; bottom:-8px; border:2px solid #E8503A; border-radius:12px; pointer-events:none;"></div></sc-if>
+      </div>
+    </div>
+
+    <div style="height:1px; background:#EDEFF1; margin:0 4px 18px;"></div>
+
+    <sc-for list="{{ questions }}" as="q" hint-placeholder-count="6">
+      <div ref="{{ q.setRef }}" style="border:1px solid #E6E8EB; border-radius:16px; overflow:hidden; margin-bottom:20px; box-shadow:0 2px 10px rgba(0,0,0,0.03); position:relative;">
+        <div style="background:#F6F7F8; padding:18px 18px; font-size:16px; font-weight:700; line-height:1.5;">
+          <span style="color:#22A94D;">{{ q.num }}.</span> {{ q.title }}
+        </div>
+        <div style="height:1px; background:#E6E8EB;"></div>
+        <div style="padding:10px 18px 16px;">
+
+          <sc-if value="{{ q.grid }}" hint-placeholder-val="{{ true }}">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 10px;">
+              <sc-for list="{{ q.options }}" as="opt" hint-placeholder-count="6">
+                <div onClick="{{ opt.toggle }}" style="display:flex; align-items:center; gap:12px; padding:12px 2px; cursor:pointer;">
+                  <sc-if value="{{ opt.radioOn }}"><div style="width:24px;height:24px;flex:none;border-radius:50%;border:2px solid #22A94D;display:flex;align-items:center;justify-content:center;"><div style="width:11px;height:11px;border-radius:50%;background:#22A94D;"></div></div></sc-if>
+                  <sc-if value="{{ opt.radioOff }}"><div style="width:24px;height:24px;flex:none;border-radius:50%;border:2px solid #CDD1D6;"></div></sc-if>
+                  <span style="font-size:15px; font-weight:500; line-height:1.35;">{{ opt.label }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ q.notGrid }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex; flex-direction:column;">
+              <sc-for list="{{ q.options }}" as="opt" hint-placeholder-count="4">
+                <div onClick="{{ opt.toggle }}" style="display:flex; align-items:flex-start; gap:13px; padding:13px 2px; cursor:pointer;">
+                  <sc-if value="{{ opt.radioOn }}"><div style="width:26px;height:26px;flex:none;border-radius:50%;border:2px solid #22A94D;display:flex;align-items:center;justify-content:center;margin-top:1px;"><div style="width:12px;height:12px;border-radius:50%;background:#22A94D;"></div></div></sc-if>
+                  <sc-if value="{{ opt.radioOff }}"><div style="width:26px;height:26px;flex:none;border-radius:50%;border:2px solid #CDD1D6;margin-top:1px;"></div></sc-if>
+                  <sc-if value="{{ opt.checkOn }}"><div style="width:26px;height:26px;flex:none;border-radius:8px;background:#22A94D;display:flex;align-items:center;justify-content:center;margin-top:1px;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4.5" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></div></sc-if>
+                  <sc-if value="{{ opt.checkOff }}"><div style="width:26px;height:26px;flex:none;border-radius:8px;border:2px solid #CDD1D6;margin-top:1px;"></div></sc-if>
+                  <span style="font-size:15.5px; font-weight:500; line-height:1.45; padding-top:2px;">{{ opt.label }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ q.hasNote }}" hint-placeholder-val="{{ false }}">
+            <div style="color:#E8503A; font-size:13.5px; line-height:1.5; margin-top:8px; white-space:pre-line;">{{ q.note }}</div>
+          </sc-if>
+
+        </div>
+        <sc-if value="{{ q.error }}"><div style="position:absolute; inset:0; border:2px solid #E8503A; border-radius:16px; pointer-events:none;"></div></sc-if>
+      </div>
+    </sc-for>
+
+    <div style="height:12px;"></div>
+  </div>
+
+  
+
+  <div style="flex:none; display:flex; gap:10px; padding:12px 16px 26px; border-top:1px solid #EDEFF1; background:#fff;">
+    <div style="flex:none; width:110px; height:52px; border-radius:26px; background:#F1F3F5; color:#6B7178; font-size:16px; font-weight:700; display:flex; align-items:center; justify-content:center; cursor:pointer;">취소</div>
+    <div onClick="{{ submit }}" style="flex:1; height:52px; border-radius:26px; background:#22A94D; color:#fff; font-size:16px; font-weight:700; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 6px 16px rgba(34,169,77,0.28);">투자자정보확인서 제출<br></div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  QDEFS = [
+    { id:'q1', num:'01', title:'고객님의 연령대는 어떻게 되시나요?', grid:true, def:1,
+      options:['만19세 미만','만19세~만40세','만41세~만50세','만51세~만64세','만65세~만79세','만80세 이상'] },
+    { id:'q2', num:'02', title:'고객님의 연소득(급여, 금융소득 등) 금액은 어느 정도 되시나요?', def:0,
+      options:['5천만원 이하','5천만원 초과 ~ 7천만원','7천만원 초과 ~ 1억원','1억원 초과'] },
+    { id:'q3', num:'03', title:'고객님의 전체 자산 중 금융자산의 비중은 어느 정도 되시나요?', def:4,
+      options:['10% 미만','10% ~ 20% 미만','20% ~ 30% 미만','30% ~ 50% 미만','50% 이상'] },
+    { id:'q4', num:'04', title:'고객님의 전체 금융자산 중 투자성상품(주식, 펀드 등)의 비중은 어느 정도 되시나요?', def:4,
+      options:['10% 미만','10% ~ 20% 미만','20% ~ 30% 미만','30% ~ 50% 미만','50% 이상'] },
+    { id:'q5', num:'05', title:'고객님께서 투자경험이 있는 금융상품을 모두 선택해주세요.', multi:true, def:[3,4],
+      options:['예금, CMA, MMF, RP, 국공채 등','채권형펀드, 원금보장형 ELB/DLB, 금융채 등','혼합형펀드, 원금부분보장형 ELS/DLS, 일반회사채','주식, 주식형펀드, 원금비보장형 ELS/DLS, 고위험회사채','파생상품펀드, ELW, 선물·옵션, 주식신용거래 등'] },
+    { id:'q6', num:'06', title:'고객님께서 금융상품을 투자하는 목적을 모두 선택해주세요.', multi:true, def:[0,1,2],
+      options:['교육비','생활비','결혼자금','채무상환','주택마련자금','자산증식자금'] },
+    { id:'q7', num:'07', title:'고객님의 금융상품 투자를 위한 금융지식/이해도는 어느 정도라고 생각하시나요?', def:3,
+      note:'(※ 해당 문항은 당일 투자성향 등록 이력이 있는 경우 선택되지 않습니다.)',
+      options:['매우낮은위험(CMA, RP 등) 금융상품의 내용만 이해하고 있음','널리 알려진 금융상품(주식, 채권, 펀드 등)의 구조 및 위험 등을 일정 부분 이해하고 있음','널리 알려진 금융상품(주식, 채권, 펀드 등)의 구조 및 위험 등을 깊이 있게 이해하고 있음','파생상품을 포함한 대부분의 금융상품 구조 및 위험 등을 이해하고 있음'] },
+    { id:'q8', num:'08', title:'고객님의 투자 자금의 투자 예정 기간은 얼마나 되시나요?', def:2,
+      options:['1년 미만','1년 ~ 3년 미만','3년 이상','투자기간과 상관없이 만기일까지 보유'] },
+    { id:'q9', num:'09', title:'고객님께서 금융상품 투자를 통해 기대하는 수익과 감내할 수 있는 손실의 중요도는 어떻게 되시나요?', def:2,
+      note:'(※ 해당 문항은 당일 투자성향 등록 이력이 있는 경우 선택되지 않습니다.)',
+      options:['투자 수익보다 원금 보존이 더 중요함','원금 보존보다 투자 수익이 더 중요함','손실 위험이 있더라도 투자 수익이 중요함'] },
+    { id:'q10', num:'10', title:'고객님께서 금융상품 투자 시 감내할 수 있는 손실은 어느 정도 되시나요?', def:3,
+      options:['원금의 10%까지 손실을 감내할 수 있음','원금의 30%까지 손실을 감내할 수 있음','원금의 50%까지 손실을 감내할 수 있음','원금 100% 손실까지 감내할 수 있음','원금 초과 손실까지 감내할 수 있음'] },
+    { id:'q11', num:'11', title:'고객님의 파생상품(선물·옵션, ELW, ELS/DLS, 파생상품펀드 등)에 대한 투자경험은 얼마나 되시나요?', def:0,
+      options:['투자경험 없음','1년 미만','1년 ~ 3년 미만','3년 이상'] },
+    { id:'q12', num:'12', title:'고객님께서는 취약투자자에 해당되십니까?', def:1,
+      note:'※ 취약투자자란?\n고령투자자/미성년자/금융상품 투자경험이 없는 분 등이 대상이며, 금융상품 투자 시 불이익에 대한 정보를 다른 정보보다 우선하여 설명 받으실 수 있습니다.',
+      options:['예','아니오'] },
+  ];
+
+  state = (() => {
+    const a = {};
+    this.QDEFS.forEach(q => { a[q.id] = q.multi ? [] : null; });
+    return { answers:a, recommend:null, provide:null, errorId:null };
+  })();
+
+  itemRefs = {};
+
+  answered(id) {
+    if (id === 'recommend') return this.state.recommend != null;
+    if (id === 'provide') return this.state.provide != null;
+    const q = this.QDEFS.find(x => x.id === id);
+    const v = this.state.answers[id];
+    return q.multi ? (Array.isArray(v) && v.length > 0) : v != null;
+  }
+
+  clearErr(id) {
+    if (this.state.errorId === id) this.setState({ errorId: null });
+  }
+
+  scrollToItem(id) {
+    const sc = this.itemRefs.scroll, el = this.itemRefs[id];
+    if (!sc || !el) return;
+    const top = el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 12;
+    sc.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }
+
+  submit() {
+    const order = ['recommend', 'provide', ...this.QDEFS.map(q => q.id)];
+    const missing = order.find(id => !this.answered(id));
+    if (missing) {
+      this.setState({ errorId: missing });
+      this.scrollToItem(missing);
+    } else {
+      this.setState({ errorId: null });
+    }
+  }
+
+  toggle(id, i, multi) {
+    this.setState(s => {
+      const a = { ...s.answers };
+      if (multi) {
+        const cur = a[id] || [];
+        a[id] = cur.includes(i) ? cur.filter(x => x !== i) : [...cur, i];
+      } else {
+        a[id] = i;
+      }
+      return { answers: a, errorId: s.errorId === id ? null : s.errorId };
+    });
+  }
+
+  seg(active, tone) {
+    const color = tone === 'no' ? '#E8503A' : '#22A94D';
+    return active
+      ? 'white-space:nowrap;padding:9px 22px;border-radius:12px;background:'+color+';color:#fff;font-size:15px;font-weight:700;cursor:pointer;border:1px solid '+color+';'
+      : 'white-space:nowrap;padding:9px 22px;border-radius:12px;background:#fff;color:#9AA0A6;font-size:15px;font-weight:700;cursor:pointer;border:1px solid #E1E4E7;';
+  }
+
+  renderVals() {
+    const ans = this.state.answers;
+    const eid = this.state.errorId;
+    const questions = this.QDEFS.map(q => ({
+      num: q.num, title: q.title, grid: !!q.grid, notGrid: !q.grid,
+      hasNote: !!q.note, note: q.note || '', error: eid === q.id,
+      setRef: (el) => { this.itemRefs[q.id] = el; },
+      options: q.options.map((label, i) => {
+        const sel = q.multi ? (ans[q.id] || []).includes(i) : ans[q.id] === i;
+        return {
+          label, toggle: () => this.toggle(q.id, i, q.multi),
+          radioOn: !q.multi && sel, radioOff: !q.multi && !sel,
+          checkOn: !!q.multi && sel, checkOff: !!q.multi && !sel,
+        };
+      }),
+    }));
+    return {
+      questions, score: 80,
+      scrollRef: (el) => { this.itemRefs.scroll = el; },
+      recRef: (el) => { this.itemRefs.recommend = el; },
+      provRef: (el) => { this.itemRefs.provide = el; },
+      recError: eid === 'recommend',
+      provError: eid === 'provide',
+      submit: () => this.submit(),
+      setRecommendYes: () => this.setState({ recommend:'희망', errorId: this.state.errorId==='recommend'?null:this.state.errorId }),
+      setRecommendNo: () => this.setState({ recommend:'미희망', errorId: this.state.errorId==='recommend'?null:this.state.errorId }),
+      setProvideYes: () => this.setState({ provide:'제공', errorId: this.state.errorId==='provide'?null:this.state.errorId }),
+      setProvideNo: () => this.setState({ provide:'미제공', errorId: this.state.errorId==='provide'?null:this.state.errorId }),
+      recYesStyle: this.seg(this.state.recommend === '희망', 'yes'),
+      recNoStyle: this.seg(this.state.recommend === '미희망', 'no'),
+      provYesStyle: this.seg(this.state.provide === '제공', 'yes'),
+      provNoStyle: this.seg(this.state.provide === '미제공', 'no'),
+    };
+  }
+}
+</script>
+</body>
+</html>
