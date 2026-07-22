@@ -5,6 +5,8 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  ApiError,
+  deleteAllChatSessions,
   deleteChatSession,
   getChatCards,
   getChatSessions,
@@ -29,6 +31,7 @@ vi.mock("../api/client", () => ({
       this.status = status;
     }
   },
+  deleteAllChatSessions: vi.fn(),
   deleteChatSession: vi.fn(),
   getChatCards: vi.fn(),
   getChatSessions: vi.fn(),
@@ -351,6 +354,7 @@ describe("GuidePage chat history deletion", () => {
       },
     ]);
     vi.mocked(deleteChatSession).mockResolvedValue(undefined);
+    vi.mocked(deleteAllChatSessions).mockResolvedValue(undefined);
     vi.mocked(sendAuthenticatedChatStream).mockReset();
     vi.spyOn(window, "confirm").mockReturnValue(true);
     Element.prototype.scrollIntoView = vi.fn();
@@ -397,6 +401,21 @@ describe("GuidePage chat history deletion", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "로그아웃" })[0]);
     await waitFor(() => expect(onSignOut).toHaveBeenCalledOnce());
     expect(deleteChatSession).not.toHaveBeenCalled();
+  });
+
+  it("falls back to owned per-session deletion while an older API is deployed", async () => {
+    vi.mocked(deleteAllChatSessions).mockRejectedValue(
+      new ApiError(405, "Method Not Allowed"),
+    );
+    renderGuide();
+
+    fireEvent.click(await screen.findByRole("button", { name: "전체 삭제" }));
+
+    await waitFor(() => {
+      expect(deleteAllChatSessions).toHaveBeenCalledWith("access-token");
+      expect(deleteChatSession).toHaveBeenCalledWith(SESSION_ID, "access-token");
+    });
+    expect(await screen.findByRole("status")).toHaveTextContent("모든 대화");
   });
 
   it("labels an unsummarized live headline without implying a three-line summary", async () => {
@@ -761,9 +780,12 @@ describe("GuidePage chat history deletion", () => {
       name: "챗봇에게 무엇이든 물어보세요",
     })).toBeInTheDocument();
     const sectorCards = await screen.findByLabelText("ETF 섹터 카드");
-    expect(ETF_THEME_CARDS).toHaveLength(23);
+    expect(ETF_THEME_CARDS).toHaveLength(20);
     expect(ETF_THEME_CARDS.map((card) => card.number)).toEqual(
-      Array.from({ length: 23 }, (_, index) => index + 1),
+      Array.from({ length: 20 }, (_, index) => index + 1),
+    );
+    expect(ETF_THEME_CARDS.map((card) => card.title)).not.toEqual(
+      expect.arrayContaining(["AI·소프트웨어", "코리아밸류업", "ESG"]),
     );
     const initialButtons = within(sectorCards).getAllByRole("button");
     expect(initialButtons).toHaveLength(6);
@@ -774,11 +796,11 @@ describe("GuidePage chat history deletion", () => {
       name: "반도체 ETF 테마 설명 보기",
     })).toBeInTheDocument();
     expect(within(sectorCards).queryByRole("button", {
-      name: "건설·기계·인프라 ETF 테마 설명 보기",
+      name: "자동차·모빌리티 ETF 테마 설명 보기",
     })).not.toBeInTheDocument();
 
     const moreButton = within(sectorCards).getByRole("button", {
-      name: "나머지 ETF 테마 18개 더보기",
+      name: "나머지 ETF 테마 15개 더보기",
     });
     expect(initialButtons[5]).toBe(moreButton);
     expect(moreButton).toHaveAttribute("aria-expanded", "false");
@@ -786,7 +808,7 @@ describe("GuidePage chat history deletion", () => {
 
     expect(within(sectorCards).getAllByRole("button", {
       name: /ETF 테마 설명 보기$/,
-    })).toHaveLength(23);
+    })).toHaveLength(20);
     expect(within(sectorCards).getByRole("button", {
       name: "조선 ETF 테마 설명 보기",
     })).toBeInTheDocument();

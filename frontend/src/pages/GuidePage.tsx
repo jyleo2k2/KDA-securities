@@ -16,6 +16,7 @@ import {
   ApiError,
   apiErrorMessage,
   deleteChatSession,
+  deleteAllChatSessions,
   getChatCards,
   getChatSessions,
   getScenarios,
@@ -82,29 +83,26 @@ const BOUNDARY_LABELS: Record<DataBoundary, string> = {
 const DEFAULT_TYPING_INTERVAL_MS = 50;
 
 export const ETF_THEME_CARDS = [
-  { number: 1, title: "AI·소프트웨어", message: "AI·소프트웨어 테마가 뭐야?" },
-  { number: 2, title: "반도체", message: "반도체 테마가 뭐야?" },
-  { number: 3, title: "신재생·친환경", message: "신재생·친환경 테마가 뭐야?" },
-  { number: 4, title: "바이오·헬스케어", message: "바이오·헬스케어 테마가 뭐야?" },
-  { number: 5, title: "2차전지·배터리", message: "2차전지·배터리 테마가 뭐야?" },
-  { number: 6, title: "건설·기계·인프라", message: "건설·기계·인프라 테마가 뭐야?" },
-  { number: 7, title: "자동차·모빌리티", message: "자동차·모빌리티 테마가 뭐야?" },
-  { number: 8, title: "그룹주", message: "그룹주 테마가 뭐야?" },
-  { number: 9, title: "에너지·정유", message: "에너지·정유 테마가 뭐야?" },
-  { number: 10, title: "미디어·엔터·게임", message: "미디어·엔터·게임 테마가 뭐야?" },
-  { number: 11, title: "원자력·전력", message: "원자력·전력 테마가 뭐야?" },
-  { number: 12, title: "리츠·부동산", message: "리츠·부동산 테마가 뭐야?" },
-  { number: 13, title: "로봇", message: "로봇 테마가 뭐야?" },
-  { number: 14, title: "은행·금융", message: "은행·금융 테마가 뭐야?" },
-  { number: 15, title: "방산·우주", message: "방산·우주 테마가 뭐야?" },
-  { number: 16, title: "소비재·음식료", message: "소비재·음식료 테마가 뭐야?" },
-  { number: 17, title: "금·원자재", message: "금·원자재 테마가 뭐야?" },
-  { number: 18, title: "코리아밸류업", message: "코리아밸류업 테마가 뭐야?" },
-  { number: 19, title: "ESG", message: "ESG 테마가 뭐야?" },
-  { number: 20, title: "철강·소재", message: "철강·소재 테마가 뭐야?" },
-  { number: 21, title: "양자컴퓨팅", message: "양자컴퓨팅 테마가 뭐야?" },
-  { number: 22, title: "메타버스", message: "메타버스 테마가 뭐야?" },
-  { number: 23, title: "조선", message: "조선 테마가 뭐야?" },
+  { number: 1, title: "반도체", message: "반도체 테마가 뭐야?" },
+  { number: 2, title: "신재생·친환경", message: "신재생·친환경 테마가 뭐야?" },
+  { number: 3, title: "바이오·헬스케어", message: "바이오·헬스케어 테마가 뭐야?" },
+  { number: 4, title: "2차전지·배터리", message: "2차전지·배터리 테마가 뭐야?" },
+  { number: 5, title: "건설·기계·인프라", message: "건설·기계·인프라 테마가 뭐야?" },
+  { number: 6, title: "자동차·모빌리티", message: "자동차·모빌리티 테마가 뭐야?" },
+  { number: 7, title: "그룹주", message: "그룹주 테마가 뭐야?" },
+  { number: 8, title: "에너지·정유", message: "에너지·정유 테마가 뭐야?" },
+  { number: 9, title: "미디어·엔터·게임", message: "미디어·엔터·게임 테마가 뭐야?" },
+  { number: 10, title: "원자력·전력", message: "원자력·전력 테마가 뭐야?" },
+  { number: 11, title: "리츠·부동산", message: "리츠·부동산 테마가 뭐야?" },
+  { number: 12, title: "로봇", message: "로봇 테마가 뭐야?" },
+  { number: 13, title: "은행·금융", message: "은행·금융 테마가 뭐야?" },
+  { number: 14, title: "방산·우주", message: "방산·우주 테마가 뭐야?" },
+  { number: 15, title: "소비재·음식료", message: "소비재·음식료 테마가 뭐야?" },
+  { number: 16, title: "금·원자재", message: "금·원자재 테마가 뭐야?" },
+  { number: 17, title: "철강·소재", message: "철강·소재 테마가 뭐야?" },
+  { number: 18, title: "양자컴퓨팅", message: "양자컴퓨팅 테마가 뭐야?" },
+  { number: 19, title: "메타버스", message: "메타버스 테마가 뭐야?" },
+  { number: 20, title: "조선", message: "조선 테마가 뭐야?" },
 ] as const;
 function numericText(value: string | number, unit: string): string {
   if (unit.toUpperCase() === "KRW") {
@@ -652,6 +650,7 @@ export function GuidePage({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [deletingAllSessions, setDeletingAllSessions] = useState(false);
   const [deleteStatus, setDeleteStatus] = useState<string | null>(null);
   const [loginPanelOpen, setLoginPanelOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -1129,6 +1128,66 @@ export function GuidePage({
     }
   }
 
+  async function deleteAllStoredSessions() {
+    if (
+      !accessToken
+      || !authenticatedUserId
+      || historyLoading
+      || isSending
+      || deletingSessionId
+      || deletingAllSessions
+      || chatSessions.length === 0
+    ) return;
+    if (!window.confirm("저장된 모든 대화를 삭제할까요?\n삭제한 대화는 복구할 수 없습니다.")) {
+      return;
+    }
+
+    const requestToken = accessToken;
+    const requestUserId = authenticatedUserId;
+    const authGeneration = authGenerationRef.current;
+    sessionListGenerationRef.current += 1;
+    setDeletingAllSessions(true);
+    setDeleteStatus(null);
+    setHistoryError(null);
+    try {
+      try {
+        await deleteAllChatSessions(requestToken);
+      } catch (error) {
+        // During a rolling API update an older server may not have the
+        // collection DELETE route yet. The established per-session route
+        // still enforces the same owner boundary, so use it only for that
+        // compatibility case.
+        if (
+          !(error instanceof ApiError)
+          || (error.status !== 404 && error.status !== 405)
+        ) {
+          throw error;
+        }
+        await Promise.all(
+          chatSessions.map((session) => deleteChatSession(
+            session.session_id,
+            requestToken,
+          )),
+        );
+      }
+      if (!isCurrentOperation(authGeneration, requestUserId, requestToken)) return;
+      conversationGenerationRef.current += 1;
+      setChatSessions([]);
+      setMessages([]);
+      setActiveSessionId(null);
+      setConversationContext(null);
+      setDeleteStatus("저장된 모든 대화를 삭제했습니다.");
+      window.setTimeout(() => textareaRef.current?.focus(), 0);
+    } catch (error) {
+      if (!isCurrentOperation(authGeneration, requestUserId, requestToken)) return;
+      setHistoryError(authenticatedErrorMessage(error));
+    } finally {
+      if (isCurrentOperation(authGeneration, requestUserId, requestToken)) {
+        setDeletingAllSessions(false);
+      }
+    }
+  }
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     void submitPrompt(input);
@@ -1166,10 +1225,12 @@ export function GuidePage({
                 activeSessionId={activeSessionId}
                 chatSessions={chatSessions}
                 deleteStatus={deleteStatus}
+                deletingAllSessions={deletingAllSessions}
                 deletingSessionId={deletingSessionId}
                 historyLoading={historyLoading}
                 isSending={isSending}
                 onDelete={(session) => void deleteStoredSession(session)}
+                onDeleteAll={() => void deleteAllStoredSessions()}
                 onLoad={(sessionId) => void loadStoredSession(sessionId)}
               />
             </>

@@ -385,6 +385,28 @@ def test_delete_session_hides_missing_or_foreign_session(monkeypatch) -> None:
         )
 
 
+def test_delete_all_sessions_uses_only_the_owner_predicate(monkeypatch) -> None:
+    owner_id = uuid4()
+    cursor = FakeCursor([])
+    cursor.rowcount = 3
+    connection = FakeConnection(cursor)
+    monkeypatch.setattr(
+        repository_module.psycopg,
+        "connect",
+        lambda database_url: connection,
+    )
+
+    deleted_count = ChatRepository("postgresql://test").delete_all_sessions(
+        owner_id=owner_id,
+    )
+
+    delete_query, delete_params = cursor.executed[0]
+    assert "delete from public.chat_sessions" in delete_query
+    assert "where owner_id = %s" in delete_query
+    assert delete_params == (owner_id,)
+    assert deleted_count == 3
+
+
 def test_assistant_failure_rolls_back_the_same_connection(monkeypatch) -> None:
     cursor = FakeCursor(
         [(uuid4(),), (uuid4(),)], fail_on_assistant=True

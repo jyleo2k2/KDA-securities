@@ -12,7 +12,9 @@ def get_database_pool(database_url: str) -> ConnectionPool:
     return ConnectionPool(
         conninfo=database_url,
         min_size=2,
-        max_size=15,
+        # Keep headroom under the Supabase session-pool hard cap (15) for
+        # ingestion jobs and other API processes sharing the same role.
+        max_size=5,
         timeout=5,
         check=ConnectionPool.check_connection,
         # 현재 DATABASE_URL은 Supavisor session pooler(5432)라 prepared statement가

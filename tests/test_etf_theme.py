@@ -1,6 +1,9 @@
+import json
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
+
+import pytest
 
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
 from backend.app.chat.models import (
@@ -129,6 +132,11 @@ class _UniverseWithProduct(_Universe):
         self.products = [product]
 
 
+class _UniverseWithProducts(_Universe):
+    def __init__(self, products: list[dict[str, object]]) -> None:
+        self.products = products
+
+
 def _product_descriptions() -> EtfProductDescriptionRepository:
     return EtfProductDescriptionRepository(
         (
@@ -145,7 +153,7 @@ def _product_descriptions() -> EtfProductDescriptionRepository:
     )
 
 
-def test_catalog_has_exactly_twenty_three_themes() -> None:
+def test_catalog_has_exactly_twenty_themes() -> None:
     repository = _theme_repository()
 
     assert repository.catalog.catalog_version == "2026-07-20.4"
@@ -154,8 +162,8 @@ def test_catalog_has_exactly_twenty_three_themes() -> None:
         == "project_approved_service_interpretation"
     )
     assert repository.catalog.source_urls == EXPECTED_RESEARCH_SOURCE_URLS
-    assert [theme.number for theme in repository.list()] == list(range(1, 24))
-    assert len({theme.theme_id for theme in repository.list()}) == 23
+    assert [theme.number for theme in repository.list()] == list(range(1, 21))
+    assert len({theme.theme_id for theme in repository.list()}) == 20
     assert all(theme.plain_summary for theme in repository.list())
     assert all(theme.exposure_segments for theme in repository.list())
     assert all(len(theme.performance_drivers) == 3 for theme in repository.list())
@@ -173,7 +181,7 @@ def test_catalog_has_exactly_twenty_three_themes() -> None:
     )
     assert sum(
         len(theme.representative_companies) for theme in repository.list()
-    ) == 69
+    ) == 60
     assert all(
         company.source_url.startswith("https://")
         and company.theme_role
@@ -182,12 +190,87 @@ def test_catalog_has_exactly_twenty_three_themes() -> None:
         for theme in repository.list()
         for company in theme.representative_companies
     )
-    assert repository.resolve("2번 테마의 특징은?").theme_id == "semiconductor"
-    assert repository.resolve("AI 소프트웨어 ETF").theme_id == "ai_software"
-    assert repository.resolve("23번 테마 구성종목은?").theme_id == "shipbuilding"
+    assert repository.resolve("1번 테마의 특징은?").theme_id == "semiconductor"
+    assert repository.resolve("AI 소프트웨어 ETF") is None
+    assert repository.resolve("코리아밸류업") is None
+    assert repository.resolve("ESG 책임투자") is None
+    assert repository.resolve("20번 테마 구성종목은?").theme_id == "shipbuilding"
 
 
-def test_themes_nine_through_twenty_three_resolve_by_name() -> None:
+def test_default_product_policy_restricts_all_twenty_themes() -> None:
+    repository = EtfThemeRepository.from_local_cache(
+        catalog_path=CATALOG_PATH,
+        kis_cache_root=Path("tests/fixtures/no-kis-cache"),
+    )
+
+    restricted = {
+        theme.theme_id
+        for theme in repository.list()
+        if repository.allowed_product_codes(theme.theme_id) is not None
+    }
+
+    assert len(restricted) == 20
+    assert repository.product_policy is not None
+    assert repository.product_policy.deferred_theme_ids == set()
+    assert all(
+        len(repository.allowed_product_codes(theme_id) or ()) >= 3
+        for theme_id in restricted
+    )
+    assert repository.allowed_product_codes("gold_commodities") >= {
+        "0072R0",
+        "411060",
+        "0172V0",
+        "0189B0",
+        "160580",
+    }
+    assert repository.allowed_product_codes("gold_commodities") == {
+        "0072R0",
+        "411060",
+        "0172V0",
+        "0189B0",
+        "160580",
+    }
+    commodity_policy = repository.commodity_selection_policy("gold_commodities")
+    assert commodity_policy is not None
+    assert [slot.slot_id for slot in commodity_policy.slots] == [
+        "gold",
+        "silver",
+        "copper",
+    ]
+    assert repository.allowed_product_codes("metaverse") >= {
+        "400970",
+        "401170",
+        "401470",
+    }
+    assert repository.allowed_product_codes("energy_refining") >= {
+        "117460",
+        "139250",
+        "474800",
+    }
+
+
+def test_product_policy_rejects_empty_ready_theme(tmp_path: Path) -> None:
+    policy = json.loads(
+        Path("data/reference/etf_theme_product_allowlist.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    policy["restricted_themes"]["energy_refining"] = []
+    policy_path = tmp_path / "invalid_policy.json"
+    policy_path.write_text(
+        json.dumps(policy, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="must contain at least 3 products"):
+        EtfThemeRepository.from_local_cache(
+            catalog_path=CATALOG_PATH,
+            kis_cache_root=Path("tests/fixtures/no-kis-cache"),
+            product_policy_path=policy_path,
+        )
+
+
+def test_remaining_themes_resolve_by_name() -> None:
     repository = _theme_repository()
     cases = {
         "정유 ETF": "energy_refining",
@@ -199,8 +282,6 @@ def test_themes_nine_through_twenty_three_resolve_by_name() -> None:
         "방산 우주": "defense_space",
         "K푸드 소비재": "consumer_food",
         "금 ETF": "gold_commodities",
-        "코리아밸류업": "korea_value_up",
-        "ESG 책임투자": "esg",
         "철강 소재": "steel_materials",
         "양자컴퓨팅": "quantum_computing",
         "메타버스": "metaverse",
@@ -214,7 +295,7 @@ def test_themes_nine_through_twenty_three_resolve_by_name() -> None:
     assert repository.resolve("연금 ETF 운용 원리") is None
 
 
-def test_themes_nine_through_twenty_three_classify_etf_text() -> None:
+def test_remaining_themes_classify_etf_text() -> None:
     repository = _theme_repository()
     cases = {
         "OIL & GAS 정유": "energy_refining",
@@ -226,8 +307,6 @@ def test_themes_nine_through_twenty_three_classify_etf_text() -> None:
         "SPACE DEFENSE": "defense_space",
         "K-FOOD 생활소비재": "consumer_food",
         "GOLD COMMODITY": "gold_commodities",
-        "KOREA VALUE-UP": "korea_value_up",
-        "ESG SUSTAINABLE": "esg",
         "STEEL MATERIALS": "steel_materials",
         "QUANTUM 양자암호": "quantum_computing",
         "METAVERSE XR": "metaverse",
@@ -248,14 +327,14 @@ def test_theme_classification_can_be_many_to_many() -> None:
 
     matches = classify_etf_theme_matches(
         repository.catalog,
-        isu_name="AI 반도체 모빌리티 ETF",
+        isu_name="반도체 자동차 모빌리티 ETF",
     )
     matched = classify_etf_themes(
         repository.catalog,
-        isu_name="AI 반도체 모빌리티 ETF",
+        isu_name="반도체 자동차 모빌리티 ETF",
     )
 
-    assert {"ai_software", "semiconductor", "automotive_mobility"} <= set(matched)
+    assert {"semiconductor", "automotive_mobility"} <= set(matched)
     assert matched == tuple(match.theme_id for match in matches)
     assert all(match.is_ambiguous for match in matches)
     assert all("isu_name" in match.matched_sources for match in matches)
@@ -345,6 +424,68 @@ def test_candidate_engine_ranks_liquidity_first_then_lower_fee() -> None:
         "000003",
     ]
     assert any("거래대금 또는 총보수" in item for item in evaluation.limitations)
+
+
+def test_candidate_allowlist_keeps_foreign_etf_without_component_snapshot() -> None:
+    repository = _theme_repository()
+    theme = repository.get("semiconductor")
+    assert theme is not None
+    allowed = _rankable_product(
+        "381180",
+        liquidity="2000000000",
+        fee="0.45",
+    )
+    allowed["isu_name"] = "TIGER 미국필라델피아반도체나스닥"
+    allowed["classification"]["region"] = "united_states"
+    outside = _rankable_product(
+        "0067Y0",
+        liquidity="9000000000",
+        fee="0.01",
+    )
+    outside["isu_name"] = "테스트 해외반도체 ETF"
+
+    evaluation = select_theme_etf_candidates(
+        catalog=repository.catalog,
+        theme=theme,
+        products=[outside, allowed],
+        kis_products_by_code={},
+        component_snapshot_date=None,
+        limit=3,
+        allowed_isu_codes=frozenset({"381180"}),
+    )
+
+    assert [candidate.isu_code for candidate in evaluation.candidates] == [
+        "381180"
+    ]
+    assert evaluation.candidates[0].top_holdings == ()
+    assert "theme_matched_from_research_allowlist" in (
+        evaluation.candidates[0].reasons
+    )
+
+
+def test_candidate_engine_ignores_kis_holdings_for_foreign_equity() -> None:
+    repository = _theme_repository()
+    theme = repository.get("semiconductor")
+    assert theme is not None
+    product = _rankable_product("381180", liquidity="2000000000", fee="0.45")
+    product["isu_name"] = "TIGER 미국필라델피아반도체나스닥"
+    product["classification"]["region"] = "united_states"
+
+    evaluation = select_theme_etf_candidates(
+        catalog=repository.catalog,
+        theme=theme,
+        products=[product],
+        kis_products_by_code={
+            "381180": repository.kis_products_by_code["123456"],
+        },
+        component_snapshot_date=repository.component_snapshot_date,
+        limit=3,
+        allowed_isu_codes=frozenset({"381180"}),
+    )
+
+    candidate = evaluation.candidates[0]
+    assert candidate.top_holdings == ()
+    assert candidate.component_count == 0
 
 
 def test_query_planner_routes_theme_and_holding_request() -> None:
@@ -486,6 +627,302 @@ def test_all_themes_return_candidates_without_completed_survey() -> None:
         assert response.conversation_context.survey_profile is None
 
 
+def test_all_ready_themes_return_three_candidates_with_production_policy() -> None:
+    repository = EtfThemeRepository.from_local_cache(
+        catalog_path=CATALOG_PATH,
+        kis_cache_root=Path("tests/fixtures/no-kis-cache"),
+    )
+    assert repository.product_policy is not None
+    products_by_code: dict[str, dict[str, object]] = {}
+    for codes in repository.product_policy.allowed_codes_by_theme.values():
+        for rank, code in enumerate(sorted(codes), start=1):
+            products_by_code.setdefault(
+                code,
+                _rankable_product(
+                    code,
+                    liquidity=str(10_000_000_000 - rank),
+                    fee="0.30",
+                ),
+            )
+
+    def load_theme_products(codes: tuple[str, ...] | None):
+        assert codes is not None
+        return _UniverseWithProducts([products_by_code[code] for code in codes])
+
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        theme_repository=repository,
+        theme_product_universe_loader=load_theme_products,
+    )
+    for theme in repository.list():
+        if theme.theme_id in repository.product_policy.deferred_theme_ids:
+            continue
+
+        response = service.ask(
+            ChatRequest(message=f"{theme.name} 테마 ETF상품 3개를 보여줘")
+        )
+
+        assert response.data_mode == "theme_candidates", theme.theme_id
+        assert len(response.sections[0].blocks) == 3, theme.theme_id
+        assert "제시할 ETF 상품이 없습니다" not in response.answer
+
+
+def test_chat_uses_research_allowlist_and_keeps_foreign_product_candidate() -> None:
+    repository = EtfThemeRepository.from_local_cache(
+        catalog_path=CATALOG_PATH,
+        kis_cache_root=Path("tests/fixtures/no-kis-cache"),
+    )
+    product = _rankable_product(
+        "381180",
+        liquidity="2000000000",
+        fee="0.45",
+    )
+    product["isu_name"] = "TIGER 미국필라델피아반도체나스닥"
+    product["classification"]["region"] = "united_states"
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        theme_repository=repository,
+        portfolio_universe_loader=lambda account_type: _UniverseWithProduct(
+            product
+        ),
+    )
+
+    response = service.ask(
+        ChatRequest(message="반도체 테마 ETF상품 3개를 보여줘")
+    )
+
+    assert response.data_mode == "theme_candidates"
+    assert [block.title for block in response.sections[0].blocks] == [
+        "1. TIGER 미국필라델피아반도체나스닥"
+    ]
+    assert response.conversation_context.etf_theme.candidate_isu_codes == [
+        "381180"
+    ]
+    assert "policy:theme_product_classification" in (
+        response.sections[0].evidence_ids
+    )
+    assert all(
+        "상품 범위는 공유 대화에 언급된 ETF" not in item
+        for item in response.limitations
+    )
+
+
+def test_restricted_theme_uses_filtered_product_loader_without_history() -> None:
+    repository = EtfThemeRepository.from_local_cache(
+        catalog_path=CATALOG_PATH,
+        kis_cache_root=Path("tests/fixtures/no-kis-cache"),
+    )
+    product = _rankable_product(
+        "381180",
+        liquidity="2000000000",
+        fee="0.45",
+    )
+    product["isu_name"] = "TIGER 미국필라델피아반도체나스닥"
+    requested_codes: list[tuple[str, ...] | None] = []
+
+    def load_theme_products(codes: tuple[str, ...] | None):
+        requested_codes.append(codes)
+        return _UniverseWithProduct(product)
+
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        theme_repository=repository,
+        portfolio_universe_loader=lambda _account_type: (_ for _ in ()).throw(
+            AssertionError("theme cards must not load portfolio histories")
+        ),
+        theme_product_universe_loader=load_theme_products,
+    )
+
+    response = service.ask(
+        ChatRequest(message="반도체 테마 ETF상품 3개를 보여줘")
+    )
+    legacy_response = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        theme_repository=repository,
+        portfolio_universe_loader=lambda _account_type: _UniverseWithProduct(
+            product
+        ),
+    ).ask(ChatRequest(message="반도체 테마 ETF상품 3개를 보여줘"))
+
+    assert requested_codes == [
+        tuple(sorted(repository.allowed_product_codes("semiconductor") or ()))
+    ]
+    assert response.data_mode == "theme_candidates"
+    assert [block.title for block in response.sections[0].blocks] == [
+        "1. TIGER 미국필라델피아반도체나스닥"
+    ]
+    assert response == legacy_response
+
+
+def test_gold_theme_uses_filtered_product_loader() -> None:
+    repository = EtfThemeRepository.from_local_cache(
+        catalog_path=CATALOG_PATH,
+        kis_cache_root=Path("tests/fixtures/no-kis-cache"),
+    )
+    product = _rankable_product(
+        "411060",
+        liquidity="2000000000",
+        fee="0.10",
+    )
+    product["isu_name"] = "ACE KRX금현물"
+    requested_codes: list[tuple[str, ...] | None] = []
+
+    def load_theme_products(codes: tuple[str, ...] | None):
+        requested_codes.append(codes)
+        return _UniverseWithProduct(product)
+
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        theme_repository=repository,
+        portfolio_universe_loader=lambda _account_type: (_ for _ in ()).throw(
+            AssertionError("theme cards must not load portfolio histories")
+        ),
+        theme_product_universe_loader=load_theme_products,
+    )
+
+    response = service.ask(
+        ChatRequest(message="금·원자재 테마 ETF상품 3개를 보여줘")
+    )
+
+    assert requested_codes == [
+        tuple(sorted(repository.allowed_product_codes("gold_commodities") or ()))
+    ]
+    assert response.data_mode == "theme_candidates"
+    assert [block.title for block in response.sections[0].blocks] == [
+        "1. ACE KRX금현물",
+        "2. 1Q 은액티브",
+        "3. TIGER 구리실물",
+    ]
+    assert response.conversation_context.etf_theme.candidate_isu_codes == [
+        "411060",
+        "0172V0",
+        "160580",
+    ]
+    assert [
+        item.value
+        for item in response.numeric_evidence
+        if item.label.endswith("최근 일평균 거래량")
+    ] == [Decimal("733000"), Decimal("122000"), Decimal("87000")]
+    assert all(
+        "최근 일평균 거래량" in block.text
+        for block in response.sections[0].blocks
+    )
+
+
+def test_reviewed_theme_does_not_backfill_unclassified_product() -> None:
+    repository = EtfThemeRepository.from_local_cache(
+        catalog_path=CATALOG_PATH,
+        kis_cache_root=Path("tests/fixtures/no-kis-cache"),
+    )
+    product = _rankable_product(
+        "999999",
+        liquidity="2000000000",
+        fee="0.10",
+    )
+    product["isu_name"] = "테스트 정유 ETF"
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        theme_repository=repository,
+        portfolio_universe_loader=lambda account_type: _UniverseWithProduct(
+            product
+        ),
+    )
+
+    response = service.ask(
+        ChatRequest(message="에너지·정유 테마 ETF상품 3개를 보여줘")
+    )
+
+    assert response.data_mode == "theme_overview_only"
+    assert "거래대금과 총보수를 확인할 수 있는" in response.answer
+    assert all("테스트 정유 ETF" not in str(section) for section in response.sections)
+    assert all("교집합" not in item for item in response.limitations)
+
+
+def test_reviewed_gold_theme_uses_approved_policy_not_unclassified_product() -> None:
+    repository = EtfThemeRepository.from_local_cache(
+        catalog_path=CATALOG_PATH,
+        kis_cache_root=Path("tests/fixtures/no-kis-cache"),
+    )
+    product = _rankable_product(
+        "999998",
+        liquidity="2000000000",
+        fee="0.10",
+    )
+    product["isu_name"] = "테스트 GOLD ETF"
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        theme_repository=repository,
+        portfolio_universe_loader=lambda account_type: _UniverseWithProduct(
+            product
+        ),
+    )
+
+    response = service.ask(
+        ChatRequest(message="금·원자재 테마 ETF상품 3개를 보여줘")
+    )
+
+    assert response.data_mode == "theme_candidates"
+    assert all("테스트 GOLD ETF" not in str(section) for section in response.sections)
+    assert [block.title for block in response.sections[0].blocks] == [
+        "1. ACE KRX금현물",
+        "2. 1Q 은액티브",
+        "3. TIGER 구리실물",
+    ]
+
+
+class _ForbiddenCommodityComponents:
+    def latest_for(self, _isu_codes: list[str]) -> dict[str, EtfComponentSnapshot]:
+        raise AssertionError("physical commodity follow-up must not query components")
+
+
+def test_gold_theme_follow_up_returns_physical_exposure_not_components() -> None:
+    repository = EtfThemeRepository.from_local_cache(
+        catalog_path=CATALOG_PATH,
+        kis_cache_root=Path("tests/fixtures/no-kis-cache"),
+    )
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        theme_repository=repository,
+        component_snapshots=_ForbiddenCommodityComponents(),
+    )
+    candidate_response = service.ask(
+        ChatRequest(message="금·원자재 테마 ETF상품 3개를 보여줘")
+    )
+
+    response = service.ask(
+        ChatRequest(
+            message="금·원자재 ETF구성종목 비중을 보여줘",
+            conversation_context=candidate_response.conversation_context,
+        )
+    )
+
+    assert response.data_mode == "theme_physical_commodity_exposure"
+    assert [section.blocks[0].rows for section in response.sections] == [
+        [["금 현물", "100%"]],
+        [["은 현물", "100%"]],
+        [["구리 실물", "100%"]],
+    ]
+    assert all(
+        block.headers == ["실물가격 노출", "노출비중"]
+        for section in response.sections
+        for block in section.blocks
+    )
+    assert [item.value for item in response.numeric_evidence] == [
+        Decimal("100"),
+        Decimal("100"),
+        Decimal("100"),
+    ]
+    assert "구성종목 TOP3" not in response.answer
+
+
 class _ComponentSnapshots:
     def latest_for(self, isu_codes: list[str]) -> dict[str, EtfComponentSnapshot]:
         assert isu_codes == ["123456"]
@@ -507,8 +944,45 @@ class _ComponentSnapshots:
                         weight_percent=Decimal("18.25"),
                     ),
                 ),
+                as_of_date=date(2026, 7, 21),
+                source_kind="actual_portfolio",
+                coverage_kind="published_top_n",
+                weight_basis="fund_nav_percent",
+                source_code="official_sol_etf",
+                publisher="신한자산운용",
+                source_locator="https://www.soletf.com/example",
             )
         }
+
+
+class _PartialComponentSnapshots:
+    def __init__(self) -> None:
+        self.requested_codes: list[str] = []
+
+    def latest_for(self, isu_codes: list[str]) -> dict[str, EtfComponentSnapshot]:
+        self.requested_codes = list(isu_codes)
+        snapshots: dict[str, EtfComponentSnapshot] = {}
+        for code in isu_codes[:2]:
+            snapshots[code] = EtfComponentSnapshot(
+                isu_code=code,
+                captured_at=datetime(2026, 7, 21, 3, tzinfo=UTC),
+                holdings=(
+                    EtfComponentHolding(
+                        rank=1,
+                        component_isu_code="005930",
+                        component_name=f"구성종목 {code}",
+                        weight_percent=Decimal("25.5"),
+                    ),
+                ),
+                as_of_date=date(2026, 7, 21),
+                source_kind="creation_basket",
+                coverage_kind="creation_basket",
+                weight_basis="basket_value_percent",
+                source_code="official_tiger_etf",
+                publisher="미래에셋자산운용",
+                source_locator="https://www.tigeretf.com/example",
+            )
+        return snapshots
 
 
 def test_theme_holdings_follow_up_uses_previous_candidate_codes() -> None:
@@ -542,14 +1016,19 @@ def test_theme_holdings_follow_up_uses_previous_candidate_codes() -> None:
     assert response.intent == ChatIntent.ETF_THEME
     assert response.data_mode == "theme_component_holdings"
     assert any(
-        source.evidence_id.startswith("kis:components:123456:")
+        source.evidence_id.startswith("official_sol_etf:components:123456:")
         for source in response.sources
     )
     assert {item.value for item in response.numeric_evidence} >= {
         Decimal("25.5"),
         Decimal("18.25"),
     }
-    assert any(section.title.endswith("구성종목 TOP3") for section in response.sections)
+    assert any(
+        section.title.endswith("실제 보유종목 TOP3")
+        for section in response.sections
+    )
+    assert response.sources[0].publisher == "신한자산운용"
+    assert response.sources[0].locator == "https://www.soletf.com/example"
     assert all("테마 ETF상품" not in section.title for section in response.sections)
     assert all(section.content == "" for section in response.sections)
     assert all(
@@ -563,6 +1042,41 @@ def test_theme_holdings_follow_up_uses_previous_candidate_codes() -> None:
     ]
     assert "005930" not in str(response.sections)
     assert "000660" not in str(response.sections)
+
+
+def test_first_theme_holdings_request_batches_ranked_candidate_codes() -> None:
+    products = [
+        _rankable_product("000001", liquidity="3000000000", fee="0.30"),
+        _rankable_product("000002", liquidity="2000000000", fee="0.20"),
+        _rankable_product("000003", liquidity="1000000000", fee="0.10"),
+    ]
+    snapshots = _PartialComponentSnapshots()
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        theme_repository=_theme_repository(),
+        component_snapshots=snapshots,
+        portfolio_universe_loader=lambda _account_type: _UniverseWithProducts(
+            products
+        ),
+    )
+
+    response = service.ask(
+        ChatRequest(message="반도체 테마 ETF 구성종목 TOP3를 보여줘")
+    )
+
+    assert snapshots.requested_codes == ["000001", "000002", "000003"]
+    assert response.data_mode == "theme_component_holdings"
+    assert [section.title for section in response.sections] == [
+        "테스트 반도체 ETF 000001 구성 바스켓 TOP3",
+        "테스트 반도체 ETF 000002 구성 바스켓 TOP3",
+    ]
+    assert response.conversation_context.etf_theme.candidate_isu_codes == [
+        "000001",
+        "000002",
+        "000003",
+    ]
+    assert "ETF 2개의 공식 상위 구성정보" in response.answer
 
 
 def test_theme_products_explain_trading_value_and_fee_per_etf() -> None:
@@ -644,6 +1158,28 @@ def test_theme_product_without_approved_description_uses_grounded_fallback() -> 
     assert "상품 설명 확인 필요" not in text
     assert "상품 특징: 테스트 반도체 지수를 기준으로" in text
     assert "삼성전자·SK하이닉스 등을 담아 반도체 분야에 투자합니다." in text
+
+
+def test_theme_product_feature_omits_numeric_benchmark_claim() -> None:
+    product = _product()
+    product["implementation_metrics"]["benchmark_name"] = (
+        "테스트 금융지수 15% 프리미엄"
+    )
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        theme_repository=_theme_repository(),
+        portfolio_universe_loader=lambda account_type: _UniverseWithProduct(
+            product
+        ),
+    )
+
+    response = service.ask(
+        ChatRequest(message="반도체 테마 ETF상품 3개를 보여줘")
+    )
+
+    assert response.data_mode == "theme_candidates"
+    assert "15%" not in response.sections[0].blocks[0].text
 
 
 class _ProductFeatureGenerator:

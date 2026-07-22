@@ -1,0 +1,200 @@
+{
+  "schema_version": "1.2",
+  "as_of_date": "2026-07-22",
+  "product_universe_as_of": "2026-07-20",
+  "source_document": "docs/20_리서치/ETF_상품/ETF_상품_설명_통합원문.md",
+  "source_text_sha256": "515a5bf993aa470305335069bc3afda430649a70cd62d88cf8510266076a1489",
+  "source_urls": [
+    "https://chatgpt.com/share/6a5d9df1-9eb0-83e8-a285-0d2aec036054",
+    "https://chatgpt.com/share/6a5dbc9e-9d78-83e8-bb9c-5c2007c15d35",
+    "https://chatgpt.com/share/6a5dbca9-74bc-83e8-9f83-7f105074a7be",
+    "https://chatgpt.com/share/6a606f6d-abf0-83ee-8ee7-08703fb5bee0"
+  ],
+  "mapping_basis": "승인된 테마 정의를 현재 통합 ETF 유니버스의 상품명·기초지수와 대조해 검토한 분류표",
+  "deferred_themes": [],
+  "restricted_themes": {
+    "semiconductor": [
+      {"isu_code": "091160", "isu_name": "KODEX 반도체"},
+      {"isu_code": "091230", "isu_name": "TIGER 반도체"},
+      {"isu_code": "381180", "isu_name": "TIGER 미국필라델피아반도체나스닥"},
+      {"isu_code": "479620", "isu_name": "SOL 미국AI반도체칩메이커"}
+    ],
+    "renewable_green": [
+      {"isu_code": "377990", "isu_name": "TIGER Fn신재생에너지"},
+      {"isu_code": "381560", "isu_name": "HANARO Fn전기&수소차"},
+      {"isu_code": "381570", "isu_name": "HANARO Fn친환경에너지"},
+      {"isu_code": "385510", "isu_name": "KODEX 신재생에너지액티브"},
+      {"isu_code": "396510", "isu_name": "TIGER 차이나클린에너지SOLACTIVE"},
+      {"isu_code": "404540", "isu_name": "TIGER KRX기후변화솔루션"},
+      {"isu_code": "413220", "isu_name": "SOL 차이나태양광CSI(합성)"},
+      {"isu_code": "419420", "isu_name": "KODEX 미국클린에너지나스닥"},
+      {"isu_code": "419650", "isu_name": "PLUS 글로벌수소&차세대연료전지"},
+      {"isu_code": "475070", "isu_name": "KoAct 글로벌친환경전력인프라액티브"}
+    ],
+    "bio_healthcare": [
+      {"isu_code": "185680", "isu_name": "KODEX 미국S&P바이오(합성)"},
+      {"isu_code": "203780", "isu_name": "TIGER 미국나스닥바이오"},
+      {"isu_code": "266420", "isu_name": "KODEX 헬스케어"},
+      {"isu_code": "364970", "isu_name": "TIGER 바이오TOP10"},
+      {"isu_code": "462900", "isu_name": "KoAct 바이오헬스케어액티브"},
+      {"isu_code": "476310", "isu_name": "RISE 글로벌비만산업TOP2+"}
+    ],
+    "secondary_battery": [
+      {"isu_code": "305540", "isu_name": "TIGER 2차전지테마"},
+      {"isu_code": "305720", "isu_name": "KODEX 2차전지산업"},
+      {"isu_code": "394670", "isu_name": "TIGER 글로벌리튬&2차전지SOLACTIVE(합성)"},
+      {"isu_code": "419430", "isu_name": "KODEX 차이나2차전지MSCI(합성)"},
+      {"isu_code": "455860", "isu_name": "SOL 2차전지소부장Fn"},
+      {"isu_code": "461950", "isu_name": "KODEX 2차전지핵심소재10"},
+      {"isu_code": "462010", "isu_name": "TIGER 2차전지소재Fn"},
+      {"isu_code": "465330", "isu_name": "RISE 2차전지TOP10"}
+    ],
+    "construction_machinery_infra": [
+      {"isu_code": "102960", "isu_name": "KODEX 기계장비"},
+      {"isu_code": "117700", "isu_name": "KODEX 건설"},
+      {"isu_code": "139220", "isu_name": "TIGER 200 건설"},
+      {"isu_code": "269420", "isu_name": "KODEX S&P글로벌인프라(합성)"}
+    ],
+    "automotive_mobility": [
+      {"isu_code": "091180", "isu_name": "KODEX 자동차"},
+      {"isu_code": "138540", "isu_name": "TIGER 현대차그룹플러스"},
+      {"isu_code": "371460", "isu_name": "TIGER 차이나전기차SOLACTIVE"},
+      {"isu_code": "381560", "isu_name": "HANARO Fn전기&수소차"},
+      {"isu_code": "390400", "isu_name": "KODEX 미국스마트모빌리티S&P"},
+      {"isu_code": "394660", "isu_name": "TIGER 글로벌자율주행&전기차SOLACTIVE"},
+      {"isu_code": "414270", "isu_name": "ACE 글로벌자율주행액티브"},
+      {"isu_code": "429980", "isu_name": "SOL 한국형글로벌전기차&2차전지액티브"},
+      {"isu_code": "450180", "isu_name": "KODEX 한중전기차(합성)"},
+      {"isu_code": "466930", "isu_name": "SOL 자동차TOP3플러스"}
+    ],
+    "business_groups": [
+      {"isu_code": "0000J0", "isu_name": "PLUS 한화그룹주"},
+      {"isu_code": "102780", "isu_name": "KODEX 삼성그룹"},
+      {"isu_code": "138540", "isu_name": "TIGER 현대차그룹플러스"}
+    ],
+    "energy_refining": [
+      {"isu_code": "0036Z0", "isu_name": "RISE 미국천연가스밸류체인"},
+      {"isu_code": "117460", "isu_name": "KODEX 에너지화학"},
+      {"isu_code": "139250", "isu_name": "TIGER 200 에너지화학"},
+      {"isu_code": "219390", "isu_name": "RISE 미국S&P원유생산기업(합성 H)"},
+      {"isu_code": "474800", "isu_name": "KIWOOM 미국원유에너지기업"},
+      {"isu_code": "497780", "isu_name": "KoAct 미국천연가스인프라액티브"}
+    ],
+    "media_entertainment_gaming": [
+      {"isu_code": "228810", "isu_name": "TIGER 미디어컨텐츠"},
+      {"isu_code": "266360", "isu_name": "KODEX K콘텐츠"},
+      {"isu_code": "300610", "isu_name": "TIGER K게임"},
+      {"isu_code": "300640", "isu_name": "RISE 게임테마"},
+      {"isu_code": "300950", "isu_name": "KODEX 게임산업"},
+      {"isu_code": "364990", "isu_name": "TIGER 게임TOP10"},
+      {"isu_code": "388280", "isu_name": "RISE K엔터&여행레저"},
+      {"isu_code": "395150", "isu_name": "KODEX 웹툰&드라마"},
+      {"isu_code": "395280", "isu_name": "HANARO Fn K-게임"},
+      {"isu_code": "395290", "isu_name": "HANARO Fn K-POP&미디어"},
+      {"isu_code": "475050", "isu_name": "ACE KPOP포커스"}
+    ],
+    "nuclear_power_grid": [
+      {"isu_code": "0007G0", "isu_name": "PLUS 글로벌원자력밸류체인"},
+      {"isu_code": "0051G0", "isu_name": "SOL 미국원자력SMR"},
+      {"isu_code": "433500", "isu_name": "ACE 원자력TOP10"},
+      {"isu_code": "434730", "isu_name": "HANARO 원자력iSelect"},
+      {"isu_code": "442320", "isu_name": "RISE 글로벌원자력"},
+      {"isu_code": "475070", "isu_name": "KoAct 글로벌친환경전력인프라액티브"},
+      {"isu_code": "486450", "isu_name": "SOL 미국AI전력인프라"},
+      {"isu_code": "489860", "isu_name": "KIWOOM 글로벌전력GRID인프라"},
+      {"isu_code": "491010", "isu_name": "TIGER 글로벌AI전력인프라액티브"}
+    ],
+    "reit_real_estate": [
+      {"isu_code": "182480", "isu_name": "TIGER 미국MSCI리츠(합성 H)"},
+      {"isu_code": "329200", "isu_name": "TIGER 리츠부동산인프라"},
+      {"isu_code": "341850", "isu_name": "TIGER 리츠부동산인프라채권"},
+      {"isu_code": "352540", "isu_name": "KODEX 일본부동산리츠(H)"},
+      {"isu_code": "352560", "isu_name": "KODEX 미국부동산리츠(H)"},
+      {"isu_code": "375270", "isu_name": "RISE 글로벌데이터센터리츠(합성)"},
+      {"isu_code": "429740", "isu_name": "PLUS K리츠"},
+      {"isu_code": "476800", "isu_name": "KODEX 한국부동산리츠인프라"},
+      {"isu_code": "480460", "isu_name": "WON 한국부동산TOP3플러스"}
+    ],
+    "robotics": [
+      {"isu_code": "0035T0", "isu_name": "PLUS 글로벌휴머노이드로봇액티브"},
+      {"isu_code": "0036R0", "isu_name": "RISE 미국휴머노이드로봇"},
+      {"isu_code": "0038A0", "isu_name": "KODEX 미국휴머노이드로봇"},
+      {"isu_code": "0048K0", "isu_name": "KODEX 차이나휴머노이드로봇"},
+      {"isu_code": "0053L0", "isu_name": "TIGER 차이나휴머노이드로봇"},
+      {"isu_code": "276990", "isu_name": "KODEX 글로벌로봇(합성)"},
+      {"isu_code": "445290", "isu_name": "KODEX 로봇액티브"},
+      {"isu_code": "464310", "isu_name": "TIGER 글로벌AI&로보틱스 INDXX"},
+      {"isu_code": "469070", "isu_name": "RISE AI&로봇"},
+      {"isu_code": "471040", "isu_name": "KoAct 글로벌AI&로봇액티브"}
+    ],
+    "bank_finance": [
+      {"isu_code": "0013P0", "isu_name": "RISE 미국은행TOP10"},
+      {"isu_code": "0028X0", "isu_name": "KODEX 미국금융테크액티브"},
+      {"isu_code": "091170", "isu_name": "KODEX 은행"},
+      {"isu_code": "091220", "isu_name": "TIGER 은행"},
+      {"isu_code": "102970", "isu_name": "KODEX 증권"},
+      {"isu_code": "139270", "isu_name": "TIGER 200 금융"},
+      {"isu_code": "140700", "isu_name": "KODEX 보험"},
+      {"isu_code": "157500", "isu_name": "TIGER 증권"},
+      {"isu_code": "284980", "isu_name": "RISE 200금융"},
+      {"isu_code": "453650", "isu_name": "KODEX 미국S&P500금융"},
+      {"isu_code": "466940", "isu_name": "TIGER 은행고배당플러스TOP10"},
+      {"isu_code": "484880", "isu_name": "SOL 금융지주플러스고배당"},
+      {"isu_code": "498410", "isu_name": "KODEX 금융고배당TOP10타겟위클리커버드콜"},
+      {"isu_code": "498860", "isu_name": "RISE 코리아금융고배당"}
+    ],
+    "defense_space": [
+      {"isu_code": "421320", "isu_name": "PLUS 우주항공"},
+      {"isu_code": "440910", "isu_name": "WON 미국우주항공방산"},
+      {"isu_code": "449450", "isu_name": "PLUS K방산"},
+      {"isu_code": "463250", "isu_name": "TIGER K방산&우주"},
+      {"isu_code": "478150", "isu_name": "TIME 글로벌우주테크&방산액티브"},
+      {"isu_code": "490480", "isu_name": "SOL K방산"},
+      {"isu_code": "494840", "isu_name": "TIGER 미국방산TOP10"},
+      {"isu_code": "496770", "isu_name": "PLUS 글로벌방산"}
+    ],
+    "consumer_food": [
+      {"isu_code": "227560", "isu_name": "TIGER 200 생활소비재"},
+      {"isu_code": "228790", "isu_name": "TIGER 화장품"},
+      {"isu_code": "266390", "isu_name": "KODEX 경기소비재"},
+      {"isu_code": "266410", "isu_name": "KODEX 필수소비재"},
+      {"isu_code": "354350", "isu_name": "HANARO 글로벌럭셔리S&P(합성)"},
+      {"isu_code": "438900", "isu_name": "HANARO Fn K-푸드"},
+      {"isu_code": "453630", "isu_name": "KODEX 미국S&P500필수소비재"},
+      {"isu_code": "453660", "isu_name": "KODEX 미국S&P500경기소비재"},
+      {"isu_code": "456250", "isu_name": "KODEX 유럽명품TOP10 STOXX"}
+    ],
+    "gold_commodities": [
+      {"isu_code": "411060", "isu_name": "ACE KRX금현물"},
+      {"isu_code": "0072R0", "isu_name": "TIGER KRX금현물"},
+      {"isu_code": "0172V0", "isu_name": "1Q 은액티브"},
+      {"isu_code": "0189B0", "isu_name": "TIGER 은액티브"},
+      {"isu_code": "160580", "isu_name": "TIGER 구리실물"}
+    ],
+    "steel_materials": [
+      {"isu_code": "117680", "isu_name": "KODEX 철강"},
+      {"isu_code": "139240", "isu_name": "TIGER 200 철강소재"},
+      {"isu_code": "461950", "isu_name": "KODEX 2차전지핵심소재10"},
+      {"isu_code": "482030", "isu_name": "KoAct 반도체&2차전지핵심소재액티브"}
+    ],
+    "quantum_computing": [
+      {"isu_code": "0018Z0", "isu_name": "RISE 미국양자컴퓨팅"},
+      {"isu_code": "0020H0", "isu_name": "KoAct 글로벌양자컴퓨팅액티브"},
+      {"isu_code": "0023A0", "isu_name": "SOL 미국양자컴퓨팅TOP10"},
+      {"isu_code": "0023B0", "isu_name": "PLUS 미국양자컴퓨팅TOP10"},
+      {"isu_code": "498270", "isu_name": "KIWOOM 미국양자컴퓨팅"}
+    ],
+    "metaverse": [
+      {"isu_code": "401470", "isu_name": "KODEX 메타버스액티브"},
+      {"isu_code": "400970", "isu_name": "TIGER Fn메타버스"},
+      {"isu_code": "401170", "isu_name": "RISE 메타버스"},
+      {"isu_code": "402460", "isu_name": "HANARO Fn K-메타버스MZ"}
+    ],
+    "shipbuilding": [
+      {"isu_code": "441540", "isu_name": "HANARO Fn조선해운"},
+      {"isu_code": "445150", "isu_name": "KODEX 친환경조선해운액티브"},
+      {"isu_code": "466920", "isu_name": "SOL 조선TOP3플러스"},
+      {"isu_code": "494670", "isu_name": "TIGER 조선TOP10"}
+    ]
+  }
+}

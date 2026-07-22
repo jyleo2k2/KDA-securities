@@ -50,6 +50,7 @@ class FakeChatRepository(_BaseFakeChatRepository):
             assistant_message_id=ASSISTANT_MESSAGE_ID,
         )
         self.deleted: list[dict[str, UUID]] = []
+        self.deleted_all: list[UUID] = []
 
     def list_sessions(self, owner_id: UUID) -> list[ChatSessionSummary]:
         assert owner_id == OWNER_ID
@@ -99,6 +100,10 @@ class FakeChatRepository(_BaseFakeChatRepository):
     def delete_session(self, *, owner_id: UUID, session_id: UUID) -> UUID:
         self.deleted.append({"owner_id": owner_id, "session_id": session_id})
         return session_id
+
+    def delete_all_sessions(self, *, owner_id: UUID) -> int:
+        self.deleted_all.append(owner_id)
+        return 1
 
 
 def test_authenticated_session_restores_server_context_over_client_context() -> None:
@@ -448,6 +453,19 @@ def test_delete_chat_session_requires_bearer_authentication() -> None:
     assert repository.deleted == []
 
 
+def test_delete_all_chat_sessions_requires_bearer_authentication() -> None:
+    repository = FakeChatRepository()
+    app.dependency_overrides[get_chat_repository] = lambda: repository
+    try:
+        with TestClient(app) as client:
+            response = client.delete("/chat/sessions")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 401
+    assert repository.deleted_all == []
+
+
 def test_session_history_returns_current_chat_response_contract() -> None:
     repository = FakeChatRepository()
     _override_authenticated_dependencies(repository)
@@ -481,6 +499,20 @@ def test_authenticated_user_can_delete_owned_session() -> None:
     assert repository.deleted == [
         {"owner_id": OWNER_ID, "session_id": SESSION_ID}
     ]
+
+
+def test_authenticated_user_can_delete_all_owned_sessions() -> None:
+    repository = FakeChatRepository()
+    _override_authenticated_dependencies(repository)
+    try:
+        with TestClient(app) as client:
+            response = client.delete("/chat/sessions")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 204
+    assert response.content == b""
+    assert repository.deleted_all == [OWNER_ID]
 
 
 class ForeignSessionRepository(FakeChatRepository):

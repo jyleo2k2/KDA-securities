@@ -26,7 +26,7 @@ class RepresentativeCompany(BaseModel):
 class EtfThemeDefinition(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    number: int = Field(ge=1, le=23)
+    number: int = Field(ge=1, le=20)
     theme_id: str = Field(pattern=r"^[a-z0-9_]+$")
     name: str = Field(min_length=1)
     aliases: tuple[str, ...] = Field(min_length=1)
@@ -89,6 +89,7 @@ class ThemeEtfCandidate(BaseModel):
     sleeve: str
     quality: CandidateQuality
     fee_percent: Decimal | None = None
+    average_daily_trading_volume: Decimal | None = None
     median_daily_trading_value_krw: Decimal | None = None
     median_net_assets_krw: Decimal | None = None
     median_abs_premium_discount_percent: Decimal | None = None
@@ -274,6 +275,8 @@ def _decimal(value: object) -> Decimal | None:
 
 def _rank_theme_products(
     products: list[dict[str, object]],
+    *,
+    by_trading_volume: bool = False,
 ) -> tuple[list[tuple[dict[str, object], CandidateQuality]], int]:
     quality_by_code = {
         str(product["isu_code"]): quality
@@ -296,7 +299,11 @@ def _rank_theme_products(
             metrics = {}
         if not isinstance(cost, dict):
             cost = {}
-        liquidity = _decimal(metrics.get("median_daily_trading_value_krw"))
+        liquidity = _decimal(
+            metrics.get("average_daily_trading_volume")
+            if by_trading_volume
+            else metrics.get("median_daily_trading_value_krw")
+        )
         fee = _decimal(cost.get("kis_total_expense_ratio_percent"))
         if liquidity is None or fee is None:
             excluded_count += 1
@@ -331,12 +338,18 @@ def select_theme_etf_candidates(
     kis_products_by_code: dict[str, dict[str, object]],
     component_snapshot_date: date | None,
     limit: int,
+    allowed_isu_codes: frozenset[str] | None = None,
+    ordered_candidate_groups: tuple[frozenset[str], ...] | None = None,
 ) -> ThemeCandidateEvaluation:
     if limit < 1 or limit > 5:
         raise ValueError("theme ETF candidate limit must be between 1 and 5")
     pool: list[dict[str, object]] = []
     for product in products:
         code = str(product.get("isu_code") or "")
+        if allowed_isu_codes is not None:
+            if code in allowed_isu_codes:
+                pool.append(product)
+            continue
         snapshot = kis_products_by_code.get(code, {})
         price = snapshot.get("price") if isinstance(snapshot, dict) else None
         if not isinstance(price, dict):
@@ -361,8 +374,36 @@ def select_theme_etf_candidates(
             ),
         )
 
-    ranked, excluded_count = _rank_theme_products(pool)
-    ranked = ranked[:limit]
+    if ordered_candidate_groups is None:
+        ranked, excluded_count = _rank_theme_products(pool)
+        ranked = ranked[:limit]
+    else:
+        ranked = []
+        excluded_count = 0
+        for group in ordered_candidate_groups[:limit]:
+            group_pool = [
+                product
+                for product in pool
+                if str(product.get("isu_code") or "") in group
+            ]
+            group_ranked, group_excluded = _rank_theme_products(
+                group_pool,
+                by_trading_volume=True,
+            )
+            excluded_count += group_excluded
+            if group_ranked:
+                ranked.append(group_ranked[0])
+        expected_count = min(limit, len(ordered_candidate_groups))
+        if len(ranked) != expected_count:
+            return ThemeCandidateEvaluation(
+                theme_id=theme.theme_id,
+                theme_name=theme.name,
+                status="data_unavailable",
+                limitations=(
+                    "금·은·구리 중 거래량과 운용보수를 모두 확인할 수 없는 "
+                    "실물 슬롯이 있습니다.",
+                ),
+            )
     if not ranked:
         return ThemeCandidateEvaluation(
             theme_id=theme.theme_id,
@@ -377,6 +418,12 @@ def select_theme_etf_candidates(
         code = str(product["isu_code"])
         snapshot = kis_products_by_code.get(code, {})
         holdings = normalize_kis_holdings(snapshot.get("components"))
+        classification = product.get("classification")
+        if (
+            isinstance(classification, dict)
+            and classification.get("region") != "south_korea"
+        ):
+            holdings = ()
         metrics = product.get("implementation_metrics")
         cost = product.get("cost")
         if not isinstance(metrics, dict):
@@ -393,6 +440,9 @@ def select_theme_etf_candidates(
                 sleeve=_product_sleeve(product) or "unclassified",
                 quality=quality,
                 fee_percent=_decimal(cost.get("kis_total_expense_ratio_percent")),
+                average_daily_trading_volume=_decimal(
+                    metrics.get("average_daily_trading_volume")
+                ),
                 median_daily_trading_value_krw=_decimal(
                     metrics.get("median_daily_trading_value_krw")
                 ),
@@ -410,8 +460,16 @@ def select_theme_etf_candidates(
                 top_holdings=holdings[:10],
                 reasons=(
                     "common_cross_account_universe",
-                    "theme_matched_from_etf_name_or_kis_index",
-                    "ranked_by_median_daily_trading_value_desc",
+                    (
+                        "theme_matched_from_research_allowlist"
+                        if allowed_isu_codes is not None
+                        else "theme_matched_from_etf_name_or_kis_index"
+                    ),
+                    (
+                        "ranked_within_ordered_group_by_average_volume_desc"
+                        if ordered_candidate_groups is not None
+                        else "ranked_by_median_daily_trading_value_desc"
+                    ),
                     "lower_fee_breaks_liquidity_ties",
                     "kis_component_weights_preserved_as_reported",
                 ),
@@ -426,7 +484,11 @@ def select_theme_etf_candidates(
             item
             for item in (
                 "교육용 비교 후보이며 매수 순위나 주문 지시가 아닙니다.",
-                "거래대금 또는 총보수가 없는 ETF는 순위에서 제외했습니다."
+                (
+                    "거래량 또는 운용보수가 없는 ETF는 순위에서 제외했습니다."
+                    if ordered_candidate_groups is not None
+                    else "거래대금 또는 총보수가 없는 ETF는 순위에서 제외했습니다."
+                )
                 if excluded_count
                 else None,
                 "한국투자증권 구성종목 배열이 비어 있는 ETF는 "

@@ -4,6 +4,7 @@ import {
   ApiError,
   apiErrorMessage,
   deleteChatSession,
+  deleteAllChatSessions,
   getBenchmarkSummary,
   sendAuthenticatedChatStream,
 } from "./client";
@@ -145,6 +146,23 @@ describe("API error parser", () => {
 });
 
 describe("chat session deletion", () => {
+  it("sends an authenticated DELETE request for every owned session", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(null, { status: 204 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await deleteAllChatSessions("access-token");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/chat/sessions",
+      {
+        method: "DELETE",
+        headers: { Authorization: "Bearer access-token" },
+      },
+    );
+  });
+
   it("sends an authenticated DELETE request with an encoded session id", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(null, { status: 204 }),

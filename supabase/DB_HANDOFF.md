@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-22 KST
-> 확인 기준: 로그인 투자자정보 확인서 통합 설문 migration 원격 적용·카탈로그 재검증
+> 최종 확인: 2026-07-22 18:38 KST
+> 확인 기준: 해외 ETF 공식 구성정보 migration 2건·최초 11종목 적재·카탈로그/RLS/GRANT/Advisor·챗봇 조회 재검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -30,19 +30,19 @@
 
 ## 3. 현재 원격 상태
 
-2026-07-20 KST에 승인된 KRX ETF 일별시장과 ETF 테마 콘텐츠 검증 migration, 데이터 및 승인 RAG를 모두 적용한 뒤 연결된 Supabase 프로젝트를 읽기 전용으로 재확인했다.
+2026-07-22 KST에 승인된 해외 ETF 공식 구성정보 migration 2건과 최초 11종목 스냅샷을 적용한 뒤 연결된 Supabase 프로젝트를 읽기 전용으로 재확인했다.
 
 | 항목 | 원격 상태 |
 |---|---|
-| public 기본 테이블 | 49개 |
-| 적용 마이그레이션 | 26개(`20260715005435` ~ `20260721025143`) |
-| RLS | 49/49 활성화 |
+| public 기본 테이블 | 54개 |
+| 적용 마이그레이션 | 29개(`20260715005435` ~ `20260722093547`) |
+| RLS | 54/54 활성화 |
 | `anon` 테이블 권한 | 없음 |
 | `authenticated` 권한 | 사용자 소유 엔진 결과·채팅 관련 5개 테이블 |
-| `service_role` 권한 | 49개 테이블 |
+| `service_role` 권한 | 54개 테이블 |
 | `knowledge_chunks.embedding` 타입 | `vector(1024)` |
 | HNSW 인덱스 | `knowledge_chunks_embedding_hnsw_idx` 존재 |
-| PostgreSQL / 프로젝트 상태 | 17.6 / `ACTIVE_HEALTHY` |
+| PostgreSQL / 프로젝트 상태 | 17.6.1 / `ACTIVE_HEALTHY` |
 | Supabase MCP 현재 연결 | 정상 |
 
 ### 원격 주요 행 수
@@ -70,6 +70,8 @@
 | `profile_question_sets` / `profile_questions` / `profile_question_options` | 1 / 6 / 30 |
 | `pension_accounts` / `account_snapshots` / `account_holding_snapshots` | 13 / 13 / 86 |
 | `account_cash_flows` / `financial_products` | 0 / 0 |
+| `etf_component_snapshots` / `etf_component_snapshot_items` | 911 / 729 |
+| 공식 해외 ETF 완전 스냅샷 / TOP3 항목 / 활성 바인딩 | 11 / 33 / 11 |
 
 원격에서 직접 수정된 시나리오 설명 5건과 대표 고객 납입액 5건은 `20260718131917_sync_modified_mock_data.sql`로 migration history에 정식 반영했다. 적용 전후 값과 `updated_at`이 모두 같아 데이터 재기록 없이 이력만 정상 추가됐음을 확인했다.
 
@@ -77,7 +79,7 @@
 
 원격 컬럼 설명 3건(`pension_savings_provider_stats.fee_rate_1y`, `retirement_provider_stats.response_division`, `knowledge_chunks.embedding`)은 `20260718154819_repair_corrupted_column_comments.sql`로 교정했다. 실제 설명을 재조회해 목표 문구와 일치하고 U+FFFD 대체문자가 없음을 확인했다. 테이블·컬럼·데이터·RLS·GRANT는 바뀌지 않았다.
 
-### 현재 46개 테이블의 역할
+### 현재 54개 테이블의 역할
 
 | 영역 | 테이블 |
 |---|---|
@@ -85,13 +87,16 @@
 | 금융기관·공시 | `financial_institutions`, `institution_aliases`, `pension_savings_provider_stats`, `retirement_provider_stats` |
 | 자산·목계좌 | `asset_classes`, `mock_scenarios`, `mock_accounts`, `mock_holdings` |
 | 목 벤치마크 | `mock_public_profiles`, `mock_public_portfolios`, `mock_public_portfolio_holdings` |
-| 대표 고객 공개 계약 | `demo_investor_profiles`, `demo_investor_profile_answers`, `demo_public_portfolio_metrics` |
+| 대규모 벤치마크 | `benchmark_mock_users`, `benchmark_mock_accounts`, `benchmark_mock_holdings` |
+| 대표 고객 공개 계약 | `demo_user_financial_context`, `demo_investor_profiles`, `demo_investor_profile_answers`, `demo_public_portfolio_metrics` |
 | 규칙·감사 | `rule_sets`, `pension_rules`, `engine_runs`, `engine_run_evidence` |
 | RAG·뉴스 | `knowledge_documents`, `knowledge_chunks`, `news_items`, `curated_contents`, `etf_theme_content_reviews`, `etf_theme_content_evidence` |
 | 채팅 | `chat_sessions`, `chat_messages`, `chat_message_evidence`, `chat_request_idempotency` |
-| 사용자·성향·계좌 | `user_profiles`, `profile_question_sets`, `profile_questions`, `profile_question_options`, `investment_profile_assessments`, `investment_profile_answers`, `pension_accounts`, `account_snapshots`, `account_cash_flows`, `financial_products`, `account_holding_snapshots` |
+| 사용자·성향·계좌 | `user_profiles`, `profile_question_sets`, `profile_questions`, `profile_question_options`, `investment_profile_assessments`, `investment_profile_answers`, `investment_profile_confirmations`, `pension_accounts`, `account_snapshots`, `account_cash_flows`, `financial_products`, `account_holding_snapshots` |
 | ETF 유니버스 | `etf_dataset_versions`, `etf_universe_products`, `etf_return_histories` |
 | ETF 일별 시장 | `etf_daily_market_snapshots` |
+| ETF 승인 설명 | `etf_product_descriptions` |
+| ETF 구성정보 | `etf_component_snapshots`, `etf_component_snapshot_items`, `etf_component_source_bindings` |
 
 ## 4. 현재 작업트리의 진행 중 작업
 
@@ -311,7 +316,7 @@ uv run ruff check .
 | DB-12 | ETF 테마 콘텐츠 검증·승인 RAG 연결 | `REMOTE-APPLIED` | `20260720091219`, `.4` 검토·근거 115/115건(`.3` 포함 총 230/230), 승인 문서 15개·활성 임베딩 청크 56/56건 | 적용 파일 수정 금지; 챗봇 화면 E2E·검토기한 만료 전 재검증 |
 | DB-13 | 투자성향 진단 저장·조회 API | `REMOTE-APPLIED` | POST/GET·24개월 KST 정책·append-only 확인 이력·RLS·소유자 스코프·전체 회귀·원격 카탈로그 검증 통과 | `20260720154033_add_investment_profile_confirmations.sql` 적용 완료 |
 | DB-13A | 로그인 투자자정보 확인서 통합 설문 | `REMOTE-APPLIED` | `20260722020126`, 활성 세트 1개·17문항·76선택지, 기존 세트 retire, 0~7점 제약·복수선택 답변 제약·RLS/클라이언트 권한 재검증 | 원격 적용 MCP 버전에 맞춰 로컬 파일명을 `20260722020126`으로 유지; 적용 파일 수정 금지 |
-| DB-14 | KIS ETF 구성종목 신뢰성 보강 | `LOCAL-VERIFIED` | 임시 빈 응답 재시도·재개, 마지막 정상 스냅샷 보존, 선택 종목 재수집 구현·원격 데이터 검증 | 코드 배포 전; KIS 미지원 614개는 KRX PDF·운용사 보조 소스 계약 필요 |
+| DB-14 | KIS ETF 구성종목 신뢰성 보강 | `LOCAL-VERIFIED` | 국내주식형 장중 수집·최대 3회 재개, 단일 연결 풀, 해외 KIS 부분 스냅샷 비노출, 첫 질문 TOP3 조회까지 로컬 검증 | 코드 배포·국내 335개 장중 백필 전; 해외형은 운용사 공식 보유내역 소스 계약 필요 |
 
 ## 13. 미결정 사항
 
@@ -324,6 +329,14 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-22 KST KIS ETF 구성종목 P0 수집·표시 보강
+
+- 수집 범위를 최신 ready 유니버스의 국내주식형(`equity`·`south_korea`)으로 제한하고, 월요일 11:30 KST 전체 실행 뒤 임시 빈 응답만 최대 3회 재개하도록 변경했다. 부분 결과는 `failed`·HTTP 의미코드 `207`·`outcome=partial`로 기록하며 프로세스도 실패 코드로 종료한다.
+- 수집기는 최대 1개 연결의 전용 풀을 재사용하고, API 공용 풀은 원격 세션 한도 15를 전부 점유하지 않도록 최대 5개로 축소했다.
+- 챗봇 조회기는 최신 ready 상품 분류에서 해외주식형으로 확인된 KIS 스냅샷을 반환하지 않는다. 최초 상품 특징 경로에서도 해외형 KIS 구성종목을 비우며, 첫 질문에서 구성종목을 요청하면 후보 순위를 바꾸지 않고 선정된 최대 3개 코드를 한 번에 조회한다.
+- 원격 읽기 검증: 최신 version 2에서 새 수집 대상은 국내주식형 335개다. 동일 조회기로 `069500`·`381180`·`0020H0`를 함께 요청했을 때 국내형 `069500`만 반환되고 TOP3 3행이 유지됐다.
+- 검증: 전체 Python `999 passed, 1 skipped`, `uv run ruff check .`, `git diff --check` 통과. 신규 migration과 원격 쓰기·백필은 수행하지 않았다. 해외형 운용사 공식 보유내역 adapter와 출처별 기준일 계약은 후속 작업이다.
 
 ### 2026-07-22 KST 로그인 투자자정보 확인서 통합 설문 원격 적용
 
@@ -725,6 +738,21 @@ uv run ruff check .
 - A-2 사전 위반 조회: `account_holding_snapshots`의 product 중복 그룹 0건·raw 이름 중복 그룹 0건, `account_holding_snapshots.etf_isu_code` 형식 위반 0건, `mock_holdings.etf_isu_code` 형식 위반 0건. 따라서 partial unique index 2개와 두 ETF 코드 형식 CHECK를 추가했다.
 - 검증: `uv run pytest tests/test_schema_contract.py tests/test_embedded_sql.py` 31 passed. 로컬 Supabase reset은 Windows Docker daemon 부재로 실행하지 못했으며, `supabase/seed.sql`의 공용 모델 replay 계약은 schema contract test로 정적 확인했다. TODO: 원격 적용 승인 후 실제 migration 적용·trigger 카탈로그 재조회·seed reset을 재검증한다.
 - 원격 적용 여부: 없음. 상태는 `LOCAL-VERIFIED`이며 이재용 승인 전 원격 migration을 적용하지 않는다.
+
+## 해외주식형 ETF 공식 상위 구성정보 (REMOTE-APPLIED)
+
+### 2026-07-22 18:27 KST
+
+- 작업자/브랜치/기준: Codex / `ETF테마소개` / 시작 HEAD `7fa6507`; 기존 ETF 테마 P0 dirty 변경을 보존한 채 후속 구현했다.
+- 계약 변경: 국내주식형은 기존 KIS 스냅샷을 사용하고, 해외주식형은 승인된 운용사 공식 공시를 사용한다. `actual_portfolio`는 `실제 보유종목 TOP3`, PDF/PCF의 `creation_basket`은 `구성 바스켓 TOP3`로 답변에 구분하며 기준일·원문 URL·운용사·비중 근거를 함께 보존한다. 공식 기준일 10일 초과, 유효 비중 종목 3개 미만, 담보자산은 답변에서 제외한다.
+- migration: `20260722093206_add_official_etf_component_sources.sql`은 기존 스냅샷에 기준일·출처 유형·커버리지·완전성·비중 기준·원문 위치를 additive하게 추가하고, 서버 전용 `etf_component_source_bindings` 테이블과 RLS/GRANT를 추가한다. 운용사 출처 5개와 승인 종목 11개를 멱등 등록하며 `seed.sql`의 출처 reference data도 동기화했다. Advisor가 신규 `source_id` 외래키 covering index를 지적해 실패 계약 테스트를 추가한 뒤 `20260722093547_add_official_etf_binding_source_index.sql`로 보완했다.
+- 승인 범위: 별도 공유 대화 대기 중인 17 금/원자재, 18 코리아밸류업, 19 ESG, 22 메타버스는 건드리지 않았다. 초기 바인딩은 그 밖의 현재 해외주식형 후보 11개(SOL 3, TIGER 3, KIWOOM 2, KODEX 1, KoAct 2)로 제한했다.
+- 수집기: 다섯 운용사별 HTML/JSON 어댑터, 원문 JSON·SHA-256, 종목별 실패 격리, 부분 응답 품질 게이트, 평일 12:40 KST GitHub Actions를 추가했다. TLS 검증은 끄지 않고 `truststore` 운영체제 신뢰 저장소를 사용한다.
+- 실사이트·최초 적재: 2026-07-22 KST에 11/11 상품이 모두 `complete`로 파싱·원격 적재됐고 각 상품의 TOP3·기준일·원문 종목 수를 확인했다. 기준일은 SOL·TIGER 2026-07-21, KIWOOM·KODEX·KoAct 2026-07-22였다. 공식 스냅샷 11건·TOP3 항목 33건·성공 수집이력 11건이며 실패·부분·날짜/URL/해시/항목 수 오류는 모두 0건이다.
+- 로컬 검증: 관련 ETF 테스트 81 passed, 인덱스 보완 후 스키마 계약 테스트 32 passed, 최종 전체 `uv run pytest` 1008 passed·1 skipped, `uv run ruff check .` 통과, `git diff --check` 통과했다.
+- 원격 적용·보안 검증: 이재용 승인에 따라 원격 migration `20260722093206`, `20260722093547`을 적용했다. public 테이블 54/54 RLS, `anon` 0개·`authenticated` 5개·`service_role` 54개 테이블 권한을 재확인했다. 신규 바인딩은 정책 0개·브라우저 GRANT 0개인 서버 전용 deny-by-default 구조다. Advisor의 `rls_enabled_no_policy` INFO는 이 구조에 따른 의도된 알림이고, 보완 인덱스의 `unused_index` INFO는 최초 생성 직후라 유지한다.
+- 런타임 E2E: 원격 리포지토리가 승인 코드 11/11의 TOP3를 반환했다. 챗봇 응답 조립은 SOL 3개를 `실제 보유종목 TOP3`, TIGER·KIWOOM·KODEX 표본을 `구성 바스켓 TOP3`로 각각 3개 섹션·3개 출처·9개 수치 근거·한계 0건으로 생성했다.
+- 다음 작업: 현재 브랜치의 코드·workflow가 PR로 머지된 뒤 평일 12:40 KST 자동 갱신 첫 실행을 확인하고, 실패 알림·원격 스냅샷 증가를 모니터링한다.
 
 ## 15. 작업 로그 템플릿
 

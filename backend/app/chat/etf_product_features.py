@@ -24,6 +24,10 @@ ETF_FEATURE_PROMPT_VERSION = "etf-product-feature-v1"
 ETF_FEATURE_CACHE_MAX_ENTRIES = 256
 ETF_FEATURE_MAX_LENGTH = 180
 
+_NUMERIC_UNIT = re.compile(
+    r"(?<![A-Za-z0-9])\d(?:[\d,.]*\d)?\s*(?:%|원|만원|억원)"
+)
+
 _FORBIDDEN_FEATURE_TERMS = (
     "수익률",
     "보장",
@@ -90,15 +94,21 @@ def deterministic_etf_product_feature(facts: EtfProductFeatureFacts) -> str:
     if facts.approved_description:
         return " ".join(facts.approved_description.split())
     holdings = tuple(name for name in facts.top_holding_names if name)[:3]
-    if facts.benchmark_name and holdings:
+    benchmark_name = (
+        facts.benchmark_name
+        if facts.benchmark_name
+        and _NUMERIC_UNIT.search(facts.benchmark_name) is None
+        else None
+    )
+    if benchmark_name and holdings:
         names = "·".join(holdings)
         return (
-            f"{facts.benchmark_name}를 기준으로 {names} 등을 담아 "
+            f"{benchmark_name}를 기준으로 {names} 등을 담아 "
             f"{facts.theme_name} 분야에 투자합니다."
         )
-    if facts.benchmark_name:
+    if benchmark_name:
         return (
-            f"{facts.benchmark_name}를 기준으로 {facts.theme_name} 관련 "
+            f"{benchmark_name}를 기준으로 {facts.theme_name} 관련 "
             "기업·자산에 투자합니다."
         )
     if holdings:

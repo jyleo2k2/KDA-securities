@@ -252,6 +252,50 @@ def test_reads_latest_ready_universe_for_one_account() -> None:
     assert connection.cursor_obj.executed[2][1] == (7, "dc", 253)
 
 
+def test_reads_theme_products_without_return_histories() -> None:
+    connection = _ReadConnection(
+        version_row=(7, date(2026, 7, 16)),
+        product_rows=[
+            (
+                "069500",
+                {
+                    "isu_code": "069500",
+                    "isu_name": "KODEX 200",
+                },
+            ),
+            (
+                "229200",
+                {
+                    "isu_code": "229200",
+                    "isu_name": "KODEX 코스닥150",
+                },
+            ),
+        ],
+        history_rows=[],
+    )
+
+    universe = PostgresPortfolioUniverseRepository(
+        "postgresql://unused",
+        connection_factory=lambda _url: connection,
+    ).latest_theme_products(("229200", "069500", "069500"))
+
+    assert universe.as_of == date(2026, 7, 16)
+    assert [product["isu_code"] for product in universe.products] == [
+        "069500",
+        "229200",
+    ]
+    assert len(connection.cursor_obj.executed) == 2
+    product_sql, product_params = connection.cursor_obj.executed[1]
+    assert "etf_return_histories" not in product_sql
+    assert "distinct on (isu_code)" in product_sql
+    assert "when 'dc' then 1" in product_sql
+    assert product_params == (
+        7,
+        ["069500", "229200"],
+        ["069500", "229200"],
+    )
+
+
 def test_rejects_database_without_ready_universe() -> None:
     connection = _ReadConnection(
         version_row=None,

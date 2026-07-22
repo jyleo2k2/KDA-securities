@@ -35,7 +35,10 @@ from ..etf_theme_repository import get_default_etf_theme_repository
 from ..etf_theme_verification_repository import (
     PostgresEtfThemeVerificationRepository,
 )
-from ..etf_universe_database import PostgresPortfolioUniverseRepository
+from ..etf_universe_database import (
+    EtfThemeProductUniverse,
+    PostgresPortfolioUniverseRepository,
+)
 from ..ingestion.embeddings import get_query_embedder
 from ..investment_profile_repository import InvestmentProfileRepository
 from ..macro_evidence import MacroEvidenceRepository
@@ -101,6 +104,17 @@ def get_portfolio_universe_repository(
             pool=get_database_pool(database_url),
         ).latest(account_type)
     return PortfolioUniverseRepository.from_latest_cache(account_type)
+
+
+@lru_cache(maxsize=64)
+def get_etf_theme_product_universe(
+    isu_codes: tuple[str, ...] | None,
+    database_url: str,
+) -> EtfThemeProductUniverse:
+    return PostgresPortfolioUniverseRepository(
+        database_url,
+        pool=get_database_pool(database_url),
+    ).latest_theme_products(isu_codes)
 
 
 def portfolio_return_master_readiness(
@@ -300,6 +314,11 @@ def _chat_service(
             get_portfolio_universe_repository,
             database_url=database_url,
         ),
+        theme_product_universe_loader=(
+            partial(get_etf_theme_product_universe, database_url=database_url)
+            if database_url
+            else None
+        ),
         theme_repository=get_default_etf_theme_repository(),
         product_descriptions=get_default_etf_product_description_repository(),
         product_feature_generator=(
@@ -457,3 +476,4 @@ def clear_chat_dependencies() -> None:
     _chat_service.cache_clear()
     _chat_narrator.cache_clear()
     get_portfolio_universe_repository.cache_clear()
+    get_etf_theme_product_universe.cache_clear()
