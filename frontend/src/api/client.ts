@@ -1,6 +1,5 @@
 import type {
   AccountLinkOptionsResponse,
-  BenchmarkSummary,
   ChatCardCatalog,
   CompletedSurveyProfile,
   ConversationContext,
@@ -244,10 +243,6 @@ async function apiPostStream<TBody>(
   }
   if (result === null) throw new Error("최종 챗봇 응답을 받지 못했습니다.");
   return result;
-}
-
-export function getBenchmarkSummary(): Promise<BenchmarkSummary> {
-  return apiGet("/benchmark/summary");
 }
 
 export function getScenarios(accessToken: string): Promise<ScenarioSummary[]> {

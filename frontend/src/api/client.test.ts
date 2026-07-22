@@ -13,9 +13,7 @@ import {
   ApiError,
   apiGet,
   apiPost,
-  apiErrorMessage,
   deleteChatSession,
-  getBenchmarkSummary,
   getDemoHeroes,
   getMyPensionContext,
   getStoredChatMessages,
@@ -242,31 +240,6 @@ describe("demo customer display names", () => {
   });
 });
 
-describe("API error parser", () => {
-  it("preserves the REST error code and maps it to a Korean message", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
-      JSON.stringify({
-        detail: {
-          code: "RESOURCE_NOT_FOUND",
-          message: "Requested resource was not found",
-        },
-      }),
-      { status: 404, headers: { "Content-Type": "application/json" } },
-    )));
-
-    try {
-      await getBenchmarkSummary();
-      throw new Error("Expected getBenchmarkSummary to reject");
-    } catch (error) {
-      expect(error).toMatchObject({
-        code: "RESOURCE_NOT_FOUND",
-        message: "Requested resource was not found",
-        status: 404,
-      } satisfies Partial<ApiError>);
-      expect(apiErrorMessage(error as ApiError)).toBe("요청한 정보를 찾을 수 없습니다.");
-    }
-  });
-});
 
 describe("chat session deletion", () => {
   it("sends an authenticated DELETE request with an encoded session id", async () => {
