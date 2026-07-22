@@ -44,7 +44,7 @@ function pensionContextErrorMessage(error: unknown): string {
 export default function App(): JSX.Element {
   const auth = useSupabaseAuth();
   // 새로 앱을 열면 저장된 세션·마지막 해시와 관계없이 로그인 화면부터 시작한다.
-  const [activeRoute, setActiveRoute] = useState<AppRoute>("login");
+  const [activeRoute, setActiveRoute] = useState<AppRoute>(routeFromHash);
   const [loginSuccessPending, setLoginSuccessPending] = useState(false);
   const [resurveyPending, setResurveyPending] = useState(false);
   const [selectedScenarioCode, setSelectedScenarioCode] = useState(() => window.localStorage.getItem("pension-copilot:selected-scenario") ?? "");

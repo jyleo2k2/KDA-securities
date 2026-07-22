@@ -359,6 +359,19 @@ export interface PensionCalculatorEvaluation {
   warnings: string[];
 }
 
+export interface PensionCalculatorPortfolioCmaRequest {
+  calculator: PensionCalculatorInput;
+  current_holdings: Array<{
+    isu_code: string;
+    amount_krw: string;
+  }>;
+}
+
+export interface PensionCalculatorPortfolioCmaEvaluation {
+  calculator: PensionCalculatorEvaluation;
+  planning_return: PortfolioPlanningEvaluation;
+}
+
 // ── /engine/allocation-example ──
 export interface AllocationExampleInput {
   current_age: number;
@@ -1024,6 +1037,7 @@ export interface EducationalPortfolioEvaluation {
   candidates: EducationalEtfCandidate[];
   portfolio_risk: PortfolioRiskEvaluation;
   planning_return: PortfolioPlanningEvaluation;
+  current_holdings_planning_return?: PortfolioPlanningEvaluation | null;
   rebalancing: RebalancingGuidance;
   sources: SourceEvidence[];
   warnings: string[];

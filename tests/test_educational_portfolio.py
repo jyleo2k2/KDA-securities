@@ -243,7 +243,9 @@ def test_large_tactical_sleeve_is_split_across_two_candidates() -> None:
     assert counts["tactical"] == 2
 
 
-def test_portfolio_uses_full_allocation_products_for_defensive_sleeves() -> None:
+def test_portfolio_uses_full_allocation_products_for_defensive_sleeves(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     products = [
         _product("CORE01", asset_class="equity", strategy="broad_market"),
         _product(
@@ -309,6 +311,31 @@ def test_portfolio_uses_full_allocation_products_for_defensive_sleeves() -> None
     assert result.planning_return.is_forecast is False
     assert result.planning_return.historical_performance_used is False
     assert result.planning_horizon_years == 3
+    assert result.current_holdings_planning_return is not None
+    assert result.current_holdings_planning_return.components[0].isu_code == "CORE01"
+    assert result.current_holdings_planning_return.components[0].target_percent == 100
+
+    def unavailable_current_holdings_planning(**_: object) -> None:
+        raise ValueError("verified ETF cost is unavailable: CORE01")
+
+    monkeypatch.setattr(
+        portfolio_module,
+        "calculate_current_holdings_planning_return",
+        unavailable_current_holdings_planning,
+    )
+    unavailable = build_educational_portfolio(
+        request,
+        products=products,
+        histories=histories,
+        source_as_of=date(2026, 7, 16),
+    )
+
+    assert unavailable.current_holdings_planning_return is None
+    assert unavailable.rebalancing.status == "calculated"
+    assert any(
+        warning.startswith("current_holdings_planning_return_unavailable:")
+        for warning in unavailable.warnings
+    )
 
 
 def test_asset_class_allocation_includes_all_display_buckets_and_corrects_rounding(

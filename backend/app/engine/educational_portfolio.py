@@ -247,6 +247,7 @@ class EducationalPortfolioEvaluation(BaseModel):
     asset_class_allocation: list[EducationalAssetClassAllocation]
     portfolio_risk: PortfolioRiskEvaluation
     planning_return: PortfolioPlanningEvaluation
+    current_holdings_planning_return: PortfolioPlanningEvaluation | None = None
     rebalancing: RebalancingGuidance
     sources: list[SourceChip]
     warnings: list[str]
@@ -1397,6 +1398,23 @@ def build_educational_portfolio(
         portfolio_horizon_years=horizon_years,
         source_as_of=source_as_of,
     )
+    current_holdings_planning_return = None
+    current_holdings_planning_warnings: list[str] = []
+    if request.current_holdings:
+        try:
+            current_holdings_planning_return = (
+                calculate_current_holdings_planning_return(
+                    holdings=request.current_holdings,
+                    products=products_by_code,
+                    retirement_start_age=request.retirement_start_age,
+                    portfolio_horizon_years=horizon_years,
+                    source_as_of=source_as_of,
+                )
+            )
+        except ValueError as exc:
+            current_holdings_planning_warnings.append(
+                f"current_holdings_planning_return_unavailable:{exc}"
+            )
     asset_class_allocation, asset_class_warnings = _build_asset_class_allocation(
         candidates
     )
@@ -1449,6 +1467,7 @@ def build_educational_portfolio(
         asset_class_allocation=asset_class_allocation,
         portfolio_risk=portfolio_risk,
         planning_return=planning_return,
+        current_holdings_planning_return=current_holdings_planning_return,
         rebalancing=calculate_rebalancing_guidance(
             request=request,
             products=products_by_code,
@@ -1487,5 +1506,6 @@ def build_educational_portfolio(
             "holdings_overlap_unavailable_until_pdf_data_is_complete",
             "planning_return_is_cma_based_assumption_not_forecast",
             "retirement_horizon_is_selected_between_age_55_and_60",
+            *current_holdings_planning_warnings,
         ],
     )
