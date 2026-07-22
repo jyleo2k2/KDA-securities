@@ -11,6 +11,8 @@ import type {
   EducationalPortfolioInput,
   InvestmentProfileResponse,
   InvestmentProfileSubmission,
+  PensionCalculatorEvaluation,
+  PensionCalculatorInput,
   PensionCalculatorPortfolioCmaEvaluation,
   PensionCalculatorPortfolioCmaRequest,
   PensionTaxScenarioInput,
@@ -260,7 +262,6 @@ export function evaluateProfileSurvey(
   return apiPost("/engine/profile", survey);
 }
 
-<<<<<<< HEAD
 export function saveInvestmentProfile(
   submission: InvestmentProfileSubmission,
   accessToken: string,
@@ -278,6 +279,12 @@ export function calculatePortfolioCmaPension(
   request: PensionCalculatorPortfolioCmaRequest,
 ): Promise<PensionCalculatorPortfolioCmaEvaluation> {
   return apiPost("/engine/pension-calculator/portfolio-cma", request);
+}
+
+export function calculatePension(
+  request: PensionCalculatorInput,
+): Promise<PensionCalculatorEvaluation> {
+  return apiPost("/engine/pension-calculator", request);
 }
 
 interface ChatBodyOptions {

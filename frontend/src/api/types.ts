@@ -324,8 +324,17 @@ export interface PensionCalculatorYear {
   balance_krw: string;
 }
 
+export interface StrategyPresentation {
+  strategy_id: string;
+  display_name: string;
+  summary: string;
+  risk_badge: string;
+  character_key: string;
+}
+
 export interface PensionCalculatorStrategy {
   strategy_id: string;
+  presentation: StrategyPresentation;
   risk_profile: RiskProfile;
   net_annual_return_percent: string;
   growth_percent: string;
