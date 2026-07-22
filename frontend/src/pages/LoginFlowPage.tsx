@@ -144,14 +144,10 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
             <button type="button" className="login-back" onClick={() => setStep("success")} aria-label="로그인 성공 화면으로 돌아가기">←</button>
             <h1>연금계좌 연동</h1>
             <div className="login-consent-content">
-              <div className="login-consent-chips" aria-label="계좌 연동 특징">
-                <span>데모</span><span>조회</span><b>{linkOptions?.options.filter((option) => option.diagnosable).length ?? 0}종 계좌</b>
-              </div>
               <section className="login-consent-hero">
                 <span>연결 가능한 계좌</span>
                 <h2>{linkOptions?.options.filter((option) => option.diagnosable).length ?? 0}개<br /><em>연금계좌</em></h2>
                 <p>한 번에 불러와 통합 자산으로 확인</p>
-                <small>현재 MVP는 목데이터 · 실제 계좌 연결 아님</small>
               </section>
               <section className="login-consent-card">
                 <strong>불러오면 확인하는 내용</strong>
@@ -166,10 +162,7 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false
                 {linkOptionsError && <div role="alert"><p>{linkOptionsError}</p><button type="button" onClick={() => void loadLinkOptions()}>다시 시도</button></div>}
                 {linkOptions?.options.map((option) => <p key={option.code}><strong>{option.display_name}</strong><b>{option.category_label}</b></p>)}
               </section>
-              <section className="login-consent-safe">
-                <h2>안심하고 연결하세요</h2>
-                <p>{linkOptions?.notice ?? "계좌 불러오기는 조회와 분석을 위한 연결이에요. 계좌가 이전되거나 상품이 자동으로 매매되지 않아요."}</p>
-              </section>
+              <section className="login-consent-safe"><p>마이데이터를 통해 내 연금계좌를 안전하게 연동해서 가져와요.</p></section>
               <section className="login-consent-card login-consent-check-card">
                 <h2>연결 전 확인</h2>
                 <dl><dt>불러오는 정보</dt><dd>금융회사와 계좌 종류<br />잔액 · 평가금액 · 보유 상품 · 정보 기준일</dd><dt>이용 목적</dt><dd>연금자산 통합조회와 운용 현황 분석</dd></dl>
