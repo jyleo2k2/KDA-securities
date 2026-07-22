@@ -1,43 +1,37 @@
-.benchmark-html-stage {
+.upb-stage {
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  background: #e8e8dd;
+  background: #edf2ee;
 }
 
-.benchmark-html-frame-wrap {
-  position: relative;
+.upb-phone {
+  box-sizing: border-box;
   width: min(100%, 390px);
-  height: min(844px, 100dvh);
-  overflow: hidden;
+  min-height: 100dvh;
+  padding: 28px 20px 40px;
+  background: #f8fbf8;
+  color: #202920;
 }
 
-.benchmark-html-frame {
-  display: block;
-  width: 390px;
-  height: 844px;
-  border: 0;
-  transform-origin: top left;
-}
+.upb-header { display: flex; align-items: center; gap: 12px; }
+.upb-header p { margin: 0 0 3px; color: #249557; font-size: 13px; font-weight: 800; }
+.upb-header h1 { margin: 0; font-size: 22px; }
+.upb-back { width: 38px; height: 38px; border: 0; border-radius: 50%; background: #e6f3e9; color: #176f3d; font-size: 32px; line-height: 1; cursor: pointer; }
+.upb-notice { margin: 24px 0 16px; color: #647067; font-size: 13px; line-height: 1.5; }
+.upb-filters { display: flex; gap: 8px; margin-bottom: 16px; }
+.upb-filters button { border: 1px solid #cfe3d4; border-radius: 999px; padding: 8px 13px; background: #fff; color: #5a685d; font-weight: 700; cursor: pointer; }
+.upb-filters button[aria-pressed="true"] { border-color: #249557; background: #249557; color: #fff; }
+.upb-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.upb-card { padding: 17px; border: 1px solid #dfe8e1; border-radius: 16px; background: #fff; box-shadow: 0 3px 12px rgb(39 87 52 / 6%); }
+.upb-card-heading, .upb-card footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.upb-card-heading strong { display: block; font-size: 16px; }
+.upb-card-heading span { color: #6d776f; font-size: 12px; }
+.upb-card-heading b { color: #168048; font-size: 18px; }
+.upb-card-heading .upb-negative { color: #2f75c8; }
+.upb-card > p { margin: 14px 0; color: #38443b; font-size: 13px; line-height: 1.5; }
+.upb-card footer { padding-top: 12px; border-top: 1px solid #edf1ee; color: #667168; font-size: 12px; }
 
-.benchmark-html-back-button {
-  position: absolute;
-  top: 44px;
-  left: 0;
-  width: 52px;
-  height: 52px;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-
-@media (max-width: 390px) {
-  .benchmark-html-stage {
-    place-items: start center;
-    background: #f5f6f8;
-  }
-
-  .benchmark-html-frame-wrap {
-    height: 100dvh;
-  }
+@media (min-width: 391px) {
+  .upb-phone { min-height: 844px; }
 }
