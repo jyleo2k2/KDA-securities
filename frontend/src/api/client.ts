@@ -9,6 +9,8 @@ import type {
   DemoUserFinancialContext,
   DemoHeroPortfolio,
   EducationalPortfolioInput,
+  InvestmentProfileResponse,
+  InvestmentProfileSubmission,
   PensionTaxScenarioInput,
   ProfileEvaluation,
   ProfileSurveyInput,
@@ -226,6 +228,19 @@ export function evaluateProfileSurvey(
   survey: ProfileSurveyInput,
 ): Promise<ProfileEvaluation> {
   return apiPost("/engine/profile", survey);
+}
+
+export function saveInvestmentProfile(
+  submission: InvestmentProfileSubmission,
+  accessToken: string,
+): Promise<InvestmentProfileResponse> {
+  return apiPost("/me/investment-profile", submission, accessToken);
+}
+
+export function getInvestmentProfile(
+  accessToken: string,
+): Promise<InvestmentProfileResponse> {
+  return apiGet("/me/investment-profile", accessToken);
 }
 
 interface ChatBodyOptions {

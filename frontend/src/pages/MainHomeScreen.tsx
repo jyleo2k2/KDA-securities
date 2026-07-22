@@ -11,6 +11,7 @@ interface MainHomeScreenProps {
   hero: DemoHeroPortfolio | null;
   loading: boolean;
   onOpenChat: () => void;
+  onResurvey: () => void;
   userContext: DemoUserFinancialContext | null;
 }
 
@@ -60,7 +61,7 @@ const ASSET_LABELS: Record<string, string> = { cash: "현금성", deposit: "원�
 const ALLOCATION_COLORS = ["#18A860", "#35B877", "#6ECFA0", "#2E8B57"];
 const formatKrw = (amount: string) => `${Math.round(Number(amount)).toLocaleString("ko-KR")}원`;
 
-export function MainHomeScreen({ error, hero, loading, onOpenChat, userContext }: MainHomeScreenProps): JSX.Element {
+export function MainHomeScreen({ error, hero, loading, onOpenChat, onResurvey, userContext }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
   const allocationSlices: AllocationSlice[] = hero?.asset_allocations.slice(0, 4).map((item, index) => ({ label: ASSET_LABELS[item.asset_class_code] ?? "기타 자산", percent: `${item.allocation_percent}%`, color: ALLOCATION_COLORS[index] })) ?? [];
   const totalBalance = userContext ? formatKrw(userContext.total_pension_balance_krw) : "-";
@@ -87,6 +88,7 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, userContext }
           </div>
           <img src={piggy} alt="송향이" className="mhs-greeting-img" />
         </div>
+        <button type="button" className="mhs-resurvey-button" onClick={onResurvey}>재설문하기</button>
 
         <h2 className="mhs-section-title">내 연금 <span className="mhs-section-title-gold">자산</span></h2>
 

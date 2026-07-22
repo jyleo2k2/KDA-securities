@@ -22,13 +22,14 @@ def _payload(**preferences: bool) -> dict:
     return {
         "survey": {
             "answers": [
-                {"question_code": question.code, "selected_score": 3}
+                {
+                    "question_code": question.code,
+                    "selected_values": [question.options[0].value],
+                }
                 for question in QUESTIONS
             ]
         },
-        "investment_advice_desired": preferences.get(
-            "investment_advice_desired", True
-        ),
+        "investment_advice_desired": preferences.get("investment_advice_desired", True),
         "investor_information_provided": preferences.get(
             "investor_information_provided", True
         ),
@@ -56,7 +57,7 @@ def _stored(owner_id: UUID) -> StoredInvestmentProfile:
                     question_code=question.code,
                     selected_value="sample",
                     selected_label="예시",
-                    selected_score=3,
+                    selected_score=0,
                 )
                 for question in QUESTIONS
             ],
@@ -113,7 +114,7 @@ def test_post_uses_authenticated_owner_and_existing_engine_evaluation() -> None:
     assert response.status_code == 201
     assert recorded[0][0] == OWNER_ID
     assert recorded[0][2] == evaluate_profile(recorded[0][1])
-    assert response.json()["assessment"]["risk_profile"] == "risk_neutral"
+    assert response.json()["assessment"]["risk_profile"] == "stable"
 
 
 def test_post_rejects_inconsistent_confirmation_preferences() -> None:

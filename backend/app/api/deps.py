@@ -76,9 +76,7 @@ def get_engine_audit_repository(
     database_url = _database_url_or_503(
         settings, detail="Engine audit database is not configured"
     )
-    return EngineAuditRepository(
-        database_url, pool=get_database_pool(database_url)
-    )
+    return EngineAuditRepository(database_url, pool=get_database_pool(database_url))
 
 
 def get_krx_market_evidence_repository() -> KrxMarketEvidenceRepository:
@@ -119,9 +117,7 @@ def portfolio_return_master_readiness(
 def get_retrieval_repository(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> RetrievalRepository:
-    database_url = _database_url_or_503(
-        settings, detail="Database is not configured"
-    )
+    database_url = _database_url_or_503(settings, detail="Database is not configured")
     return RetrievalRepository(
         database_url,
         embedder=get_query_embedder(),
@@ -132,12 +128,8 @@ def get_retrieval_repository(
 def get_disclosures_repository(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> DisclosureReadRepository:
-    database_url = _database_url_or_503(
-        settings, detail="Database is not configured"
-    )
-    return DisclosureReadRepository(
-        database_url, pool=get_database_pool(database_url)
-    )
+    database_url = _database_url_or_503(settings, detail="Database is not configured")
+    return DisclosureReadRepository(database_url, pool=get_database_pool(database_url))
 
 
 def get_benchmark_repository(
@@ -216,6 +208,22 @@ def get_investment_profile_repository(
     return InvestmentProfileRepository(
         database_url,
         pool=get_database_pool(database_url),
+    )
+
+
+def get_optional_investment_profile_repository(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> InvestmentProfileRepository | None:
+    if settings.database_url is None:
+        return None
+    database_url = settings.database_url.get_secret_value().strip()
+    return (
+        InvestmentProfileRepository(
+            database_url,
+            pool=get_database_pool(database_url),
+        )
+        if database_url
+        else None
     )
 
 

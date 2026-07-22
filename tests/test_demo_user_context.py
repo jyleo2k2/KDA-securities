@@ -17,6 +17,7 @@ from backend.app.api.deps import (
     get_demo_user_context_repository,
     get_optional_chat_repository,
     get_optional_demo_user_context_repository,
+    get_optional_investment_profile_repository,
 )
 from backend.app.auth import require_supabase_user_id
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
@@ -164,6 +165,7 @@ def _override_chat(
     app.dependency_overrides[get_optional_demo_user_context_repository] = lambda: (
         context_repository
     )
+    app.dependency_overrides[get_optional_investment_profile_repository] = lambda: None
     app.dependency_overrides[get_demo_user_context_repository] = lambda: (
         context_repository
     )

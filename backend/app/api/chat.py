@@ -19,7 +19,12 @@ from ..auth import require_supabase_user_id
 from ..chat import ChatRequest, ChatResponse, ChatService
 from ..chat.cards import ChatCardCatalog, chat_card_catalog
 from ..chat.heroes import DemoHeroPortfolio, build_demo_heroes
-from ..chat.models import ChatCapabilities, ChatIntent, ScenarioSummary
+from ..chat.models import (
+    ChatCapabilities,
+    ChatIntent,
+    CompletedSurveyProfile,
+    ScenarioSummary,
+)
 from ..chat.narrator import NARRATABLE_INTENTS, ClaudeNarrator
 from ..chat.query_planner import BlockedReason, QueryPlan
 from ..chat.repository import (
@@ -35,6 +40,12 @@ from ..chat.user_context import (
     DemoUserFinancialContext,
     apply_demo_context_evidence,
 )
+from ..engine import AccountType, ProfileSurveyInput, SurveyAnswer, evaluate_profile
+from ..investment_profile_policy import assessment_validity
+from ..investment_profile_repository import (
+    InvestmentProfileRepository,
+    StoredInvestmentProfile,
+)
 from .deps import (
     get_chat_narrator,
     get_chat_repository,
@@ -42,6 +53,7 @@ from .deps import (
     get_demo_user_context_repository,
     get_optional_chat_repository,
     get_optional_demo_user_context_repository,
+    get_optional_investment_profile_repository,
 )
 from .errors import ApiErrorCode, api_error
 
@@ -83,6 +95,51 @@ def _load_authenticated_nickname(
     return repository.get_nickname(owner_id)
 
 
+def _load_saved_survey_profile(
+    repository: InvestmentProfileRepository | None,
+    owner_id: UUID,
+    context: DemoUserFinancialContext | None,
+) -> CompletedSurveyProfile | None:
+    """Build the ETF-engine input from the owner's latest persisted assessment."""
+    if repository is None or context is None:
+        return None
+    stored: StoredInvestmentProfile | None = repository.get_latest(owner_id)
+    if stored is None or assessment_validity(stored.assessment.assessed_at).is_expired:
+        return None
+    if (
+        stored.preferences is None
+        or not stored.preferences.investor_information_provided
+    ):
+        return None
+    if not 20 <= context.representative_age <= 54:
+        return None
+    grouped: dict[str, list[str]] = {}
+    for answer in stored.assessment.answers:
+        grouped.setdefault(answer.question_code, []).append(answer.selected_value)
+    try:
+        survey = ProfileSurveyInput(
+            answers=[
+                SurveyAnswer(question_code=question_code, selected_values=values)
+                for question_code, values in grouped.items()
+            ]
+        )
+        retirement_start_age = int(grouped["retirement_start_age"][0])
+        evaluation = evaluate_profile(survey)
+        return CompletedSurveyProfile(
+            account_type=AccountType.IRP,
+            current_age=context.representative_age,
+            retirement_start_age=retirement_start_age,
+            risk_profile=evaluation.risk_profile,
+            loss_tolerance_percent=evaluation.loss_tolerance_percent,
+        )
+    except (KeyError, ValueError):
+        logger.warning(
+            "Stored investment profile could not be converted to a chat survey "
+            "profile"
+        )
+        return None
+
+
 def _restore_session_conversation_context(
     request: "AuthenticatedChatRequest",
     repository: ChatRepository,
@@ -100,14 +157,25 @@ def _restore_session_conversation_context(
 def _authenticated_request(
     request: "AuthenticatedChatRequest",
     context: DemoUserFinancialContext | None,
+    saved_survey_profile: CompletedSurveyProfile | None = None,
+    *,
+    use_saved_survey_profile: bool = False,
 ) -> ChatRequest:
     payload = request.model_dump(exclude={"session_id"})
     if context is not None:
-        survey_profile = context.personalize_survey_profile(request.survey_profile)
+        candidate_survey = (
+            saved_survey_profile if use_saved_survey_profile else request.survey_profile
+        )
+        survey_profile = context.personalize_survey_profile(candidate_survey)
         conversation_context = request.conversation_context
         if conversation_context is not None:
+            conversation_profile = (
+                saved_survey_profile
+                if use_saved_survey_profile
+                else conversation_context.survey_profile
+            )
             conversation_survey = context.personalize_survey_profile(
-                conversation_context.survey_profile
+                conversation_profile
             )
             conversation_context = conversation_context.model_copy(
                 update={
@@ -219,11 +287,7 @@ def _log_stream_latency(
         (answer_started_at - started_at) * 1000,
         answer_ms * 1000,
         narration_ms * 1000,
-        (
-            (first_delta_at - started_at) * 1000
-            if first_delta_at is not None
-            else -1
-        ),
+        ((first_delta_at - started_at) * 1000 if first_delta_at is not None else -1),
         (finished_at - started_at) * 1000,
     )
 
@@ -321,14 +385,16 @@ def get_my_pension_context(
 async def chat_authenticated_stream(
     request: AuthenticatedChatRequest,
     owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
-    repository: Annotated[
-        ChatRepository | None, Depends(get_optional_chat_repository)
-    ],
+    repository: Annotated[ChatRepository | None, Depends(get_optional_chat_repository)],
     service: Annotated[ChatService, Depends(get_chat_service)],
     narrator: Annotated[ClaudeNarrator | None, Depends(get_chat_narrator)],
     context_repository: Annotated[
         DemoUserContextRepository | None,
         Depends(get_optional_demo_user_context_repository),
+    ],
+    investment_profile_repository: Annotated[
+        InvestmentProfileRepository | None,
+        Depends(get_optional_investment_profile_repository),
     ],
     idempotency_key: Annotated[UUID, Header(alias="Idempotency-Key")],
 ) -> StreamingResponse:
@@ -435,7 +501,21 @@ async def chat_authenticated_stream(
             )
         except _DATABASE_ERRORS:
             nickname = None
-        chat_request = _authenticated_request(request_with_context, context)
+        try:
+            saved_survey_profile = await asyncio.to_thread(
+                _load_saved_survey_profile,
+                investment_profile_repository,
+                owner_id,
+                context,
+            )
+        except _DATABASE_ERRORS:
+            saved_survey_profile = None
+        chat_request = _authenticated_request(
+            request_with_context,
+            context,
+            saved_survey_profile,
+            use_saved_survey_profile=investment_profile_repository is not None,
+        )
         started_at = perf_counter()
         plan = service.plan(
             _authenticated_planning_request(request_with_context, chat_request)
@@ -629,9 +709,7 @@ def get_chat_messages(
     repository: Annotated[ChatRepository, Depends(get_chat_repository)],
 ) -> list[StoredChatMessageOut]:
     try:
-        messages = repository.get_messages(
-            owner_id=owner_id, session_id=session_id
-        )
+        messages = repository.get_messages(owner_id=owner_id, session_id=session_id)
     except ChatSessionAccessError as exc:
         raise api_error(
             ApiErrorCode.SESSION_NOT_FOUND,

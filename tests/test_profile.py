@@ -12,105 +12,102 @@ from backend.app.engine.profile import (
 )
 
 
-def survey_with_total(total_score: int) -> ProfileSurveyInput:
-    extra = total_score - len(QUESTIONS)
-    assert 0 <= extra <= len(QUESTIONS) * 4
-    answers = []
-    for question in QUESTIONS:
-        bump = min(extra, 4)
-        extra -= bump
-        answers.append(
-            SurveyAnswer(question_code=question.code, selected_score=1 + bump)
-        )
-    return ProfileSurveyInput(answers=answers)
+def _survey_with_total(total_score: int) -> ProfileSurveyInput:
+    """Build a valid complete survey with the requested Shinhan score."""
+    scored = [
+        question
+        for question in QUESTIONS
+        if any(option.score for option in question.options)
+    ]
+    choices: dict[int, dict[int, str]] = {0: {}}
+    for question in scored:
+        next_choices: dict[int, dict[int, str]] = {}
+        for subtotal, chosen in choices.items():
+            for option in question.options:
+                candidate = subtotal + option.score
+                next_choices.setdefault(
+                    candidate, {**chosen, id(question): option.value}
+                )
+        choices = next_choices
+    assert total_score in choices
+    selected = choices[total_score]
+    return ProfileSurveyInput(
+        answers=[
+            SurveyAnswer(
+                question_code=question.code,
+                selected_values=[selected.get(id(question), question.options[0].value)],
+            )
+            for question in QUESTIONS
+        ]
+    )
 
 
 @pytest.mark.parametrize(
     ("total_score", "expected_profile"),
     [
-        (6, RiskProfile.STABLE),
         (10, RiskProfile.STABLE),
-        (11, RiskProfile.STABLE_SEEKING),
-        (15, RiskProfile.STABLE_SEEKING),
-        (16, RiskProfile.RISK_NEUTRAL),
-        (20, RiskProfile.RISK_NEUTRAL),
-        (21, RiskProfile.ACTIVE),
-        (25, RiskProfile.ACTIVE),
-        (26, RiskProfile.AGGRESSIVE),
-        (30, RiskProfile.AGGRESSIVE),
+        (16, RiskProfile.STABLE),
+        (17, RiskProfile.STABLE_SEEKING),
+        (24, RiskProfile.STABLE_SEEKING),
+        (25, RiskProfile.RISK_NEUTRAL),
+        (32, RiskProfile.RISK_NEUTRAL),
+        (33, RiskProfile.ACTIVE),
+        (40, RiskProfile.ACTIVE),
+        (41, RiskProfile.AGGRESSIVE),
+        (56, RiskProfile.AGGRESSIVE),
     ],
 )
-def test_band_boundaries(total_score: int, expected_profile: RiskProfile) -> None:
-    evaluation = evaluate_profile(survey_with_total(total_score))
+def test_shinhan_score_bands(total_score: int, expected_profile: RiskProfile) -> None:
+    evaluation = evaluate_profile(_survey_with_total(total_score))
     assert evaluation.total_score == total_score
     assert evaluation.risk_profile == expected_profile
 
 
 def test_score_percent_spans_zero_to_hundred() -> None:
-    assert evaluate_profile(survey_with_total(6)).score_percent == Decimal("0.00")
-    assert evaluate_profile(survey_with_total(30)).score_percent == Decimal("100.00")
+    assert evaluate_profile(_survey_with_total(10)).score_percent == Decimal("0.00")
+    assert evaluate_profile(_survey_with_total(56)).score_percent == Decimal("100.00")
 
 
 def test_missing_question_is_rejected() -> None:
-    answers = [
-        SurveyAnswer(question_code=question.code, selected_score=3)
-        for question in QUESTIONS[:-1]
-    ]
     with pytest.raises(ValidationError):
-        ProfileSurveyInput(answers=answers)
+        ProfileSurveyInput(answers=_survey_with_total(10).answers[:-1])
 
 
 def test_duplicate_question_is_rejected() -> None:
-    answers = [
-        SurveyAnswer(question_code=question.code, selected_score=3)
-        for question in QUESTIONS
-    ]
-    answers[-1] = SurveyAnswer(
-        question_code=QUESTIONS[0].code, selected_score=3
+    answers = _survey_with_total(10).answers
+    answers[-1] = answers[0]
+    with pytest.raises(ValidationError):
+        ProfileSurveyInput(answers=answers)
+
+
+def test_unknown_option_is_rejected() -> None:
+    answers = _survey_with_total(10).answers
+    answers[0] = SurveyAnswer(
+        question_code=answers[0].question_code, selected_values=["unknown"]
     )
     with pytest.raises(ValidationError):
         ProfileSurveyInput(answers=answers)
 
 
-def test_unknown_question_is_rejected() -> None:
-    answers = [
-        SurveyAnswer(question_code=question.code, selected_score=3)
-        for question in QUESTIONS[:-1]
+def test_multi_select_uses_the_highest_shinhan_score_and_persists_all_choices() -> None:
+    survey = _survey_with_total(10)
+    survey.answers[6] = SurveyAnswer(
+        question_code="investment_experience_product",
+        selected_values=["very_low", "very_high"],
+    )
+    evaluation = evaluate_profile(survey)
+    assert evaluation.total_score == 15
+    stored = [
+        answer
+        for answer in evaluation.answers
+        if answer.question_code == "investment_experience_product"
     ]
-    answers.append(SurveyAnswer(question_code="unknown_topic", selected_score=3))
-    with pytest.raises(ValidationError):
-        ProfileSurveyInput(answers=answers)
-
-
-def test_out_of_range_score_is_rejected() -> None:
-    with pytest.raises(ValidationError):
-        SurveyAnswer(question_code=QUESTIONS[0].code, selected_score=0)
-    with pytest.raises(ValidationError):
-        SurveyAnswer(question_code=QUESTIONS[0].code, selected_score=6)
-
-
-def test_evaluation_is_deterministic_and_marked_provisional() -> None:
-    survey = survey_with_total(18)
-    first = evaluate_profile(survey).model_dump(mode="json")
-    second = evaluate_profile(survey).model_dump(mode="json")
-    assert first == second
-    assert first["provisional"] is True
-    assert "provisional" in first["rule_version"]
+    assert [answer.selected_value for answer in stored] == ["very_low", "very_high"]
 
 
 def test_loss_tolerance_answer_becomes_engine_input_percent() -> None:
-    evaluation = evaluate_profile(survey_with_total(18))
-    loss_answer = next(
-        answer
-        for answer in survey_with_total(18).answers
-        if answer.question_code == "loss_tolerance"
+    survey = _survey_with_total(10)
+    survey.answers[12] = SurveyAnswer(
+        question_code="loss_tolerance", selected_values=["beyond_principal"]
     )
-    expected = {
-        1: Decimal("5"),
-        2: Decimal("10"),
-        3: Decimal("20"),
-        4: Decimal("30"),
-        5: Decimal("40"),
-    }[loss_answer.selected_score]
-
-    assert evaluation.loss_tolerance_percent == expected
+    assert evaluate_profile(survey).loss_tolerance_percent == Decimal("50")

@@ -5,8 +5,8 @@ import piggyClean from "../assets/login/piggy-clean.png";
 import piggyForm from "../assets/login/piggy-form.png";
 import piggyIntro from "../assets/login/piggy-intro.png";
 import piggySuccess from "../assets/login/piggy-success.png";
-import { getAccountLinkOptions } from "../api/client";
-import type { AccountLinkOptionsResponse } from "../api/types";
+import { getAccountLinkOptions, saveInvestmentProfile } from "../api/client";
+import type { AccountLinkOptionsResponse, InvestmentProfileAssessment, InvestmentProfileSubmission } from "../api/types";
 import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
 import { InvestorInfoForm } from "./InvestorInfoForm";
 import { InvestorResultScreen } from "./InvestorResultScreen";
@@ -18,6 +18,7 @@ interface LoginFlowPageProps {
   auth: SupabaseAuthState;
   onAuthenticated: () => void;
   onStart: () => void;
+  resurvey?: boolean;
 }
 
 const REQUIRED_CONSENT_ID = "account-link";
@@ -32,8 +33,8 @@ function StatusBar(): JSX.Element {
   );
 }
 
-export function LoginFlowPage({ auth, onAuthenticated, onStart }: LoginFlowPageProps): JSX.Element {
-  const [step, setStep] = useState<LoginStep>("intro");
+export function LoginFlowPage({ auth, onAuthenticated, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
+  const [step, setStep] = useState<LoginStep>(resurvey ? "investor-info" : "intro");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -42,6 +43,7 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart }: LoginFlowPageP
   const [linkOptions, setLinkOptions] = useState<AccountLinkOptionsResponse | null>(null);
   const [linkOptionsLoading, setLinkOptionsLoading] = useState(false);
   const [linkOptionsError, setLinkOptionsError] = useState<string | null>(null);
+  const [assessment, setAssessment] = useState<InvestmentProfileAssessment | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -61,6 +63,15 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart }: LoginFlowPageP
   }
 
   function showSignupNotice(): void { setNotice("회원가입은 준비 중입니다."); }
+
+  async function saveInvestorInformation(submission: InvestmentProfileSubmission): Promise<void> {
+    const accessToken = auth.session?.access_token;
+    if (!accessToken) throw new Error("authenticated session is missing");
+    const response = await saveInvestmentProfile(submission, accessToken);
+    if (response.assessment === null) throw new Error("saved assessment is missing");
+    setAssessment(response.assessment);
+    setStep("investor-result");
+  }
 
   function openConsent(): void {
     setConsents({}); setStep("consent");
@@ -225,11 +236,11 @@ export function LoginFlowPage({ auth, onAuthenticated, onStart }: LoginFlowPageP
         )}
 
         {step === "investor-info" && (
-          <InvestorInfoForm onBack={() => setStep("risk-assessment")} onSubmit={() => setStep("investor-result")} />
+          <InvestorInfoForm onBack={resurvey ? onStart : () => setStep("risk-assessment")} onSubmit={saveInvestorInformation} />
         )}
 
         {step === "investor-result" && (
-          <InvestorResultScreen onBack={() => setStep("investor-info")} onStart={onStart} />
+          <InvestorResultScreen assessment={assessment} onBack={() => setStep("investor-info")} onStart={onStart} />
         )}
 
         {step === "success" && (
