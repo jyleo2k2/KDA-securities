@@ -469,6 +469,15 @@ function AssistantMessage({
   const visibleFollowUps = (response.suggested_follow_ups ?? []).filter(
     (followUp) => !usedFollowUpMessages.has(followUp.message.trim()),
   );
+  const isEducationalPortfolio = response.intent === "educational_portfolio";
+  const shouldShowNumericEvidence = (
+    response.intent !== "mock_portfolio"
+    && response.intent !== "macro_evidence"
+    && !isEducationalPortfolio
+    && response.data_mode !== "theme_candidates"
+    && response.data_mode !== "theme_component_holdings"
+    && response.numeric_evidence.length > 0
+  );
   const hasHiddenNumericEvidence = (
     response.numeric_evidence.length > NUMBER_EVIDENCE_DEFAULT_LIMIT
   );
@@ -494,7 +503,9 @@ function AssistantMessage({
     >
       <div className="answer-meta">
         <span className={`intent-pill intent-${response.intent}`}>{INTENT_LABELS[response.intent]}</span>
-        <span>{response.narration_mode === "deterministic" ? "검증 답변" : "AI 서술"}</span>
+        {!isEducationalPortfolio && (
+          <span>{response.narration_mode === "deterministic" ? "검증 답변" : "AI 서술"}</span>
+        )}
       </div>
       {response.intent !== "macro_evidence" && (response.data_mode !== "news_summary" || response.news_items.length === 0) && (
         <p className="message-copy">
@@ -506,7 +517,7 @@ function AssistantMessage({
       <MacroEvidenceCards response={response} />
       <MacroRegimeOutcomeCards response={response} />
 
-      {response.intent !== "mock_portfolio" && response.intent !== "macro_evidence" && response.data_mode !== "theme_candidates" && response.data_mode !== "theme_component_holdings" && response.numeric_evidence.length > 0 && (
+      {shouldShowNumericEvidence && (
         <>
           <div className="number-grid" aria-label="수치 근거">
             {displayedNumericEvidence.map((item, index) => (
