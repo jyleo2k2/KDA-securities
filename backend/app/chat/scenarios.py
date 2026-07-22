@@ -56,7 +56,7 @@ class LocalScenarioRepository:
 
 
 class PostgresScenarioRepository:
-    """Read the same scenario contract from the authoritative mock tables."""
+    """Read the scenario contract from the common pension-account tables."""
 
     def __init__(
         self, database_url: str, *, pool: ConnectionPool | None = None
@@ -88,7 +88,7 @@ class PostgresScenarioRepository:
                     scenario.investment_horizon_years,
                     account.id,
                     account.account_type,
-                    account.label,
+                    account.account_name,
                     holding.id,
                     coalesce(
                         product.payload ->> 'isu_name',
@@ -100,10 +100,20 @@ class PostgresScenarioRepository:
                     holding.statutory_exception,
                     holding.etf_isu_code
                 from public.mock_scenarios as scenario
-                join public.mock_accounts as account
+                join public.pension_accounts as account
                   on account.scenario_id = scenario.id
-                join public.mock_holdings as holding
-                  on holding.account_id = account.id
+                 and account.data_kind = 'mock'
+                 and account.origin = 'synthetic'
+                join lateral (
+                    select current_snapshot.id
+                    from public.account_snapshots as current_snapshot
+                    where current_snapshot.account_id = account.id
+                    order by current_snapshot.as_of_date desc,
+                             current_snapshot.captured_at desc
+                    limit 1
+                ) as snapshot on true
+                join public.account_holding_snapshots as holding
+                  on holding.snapshot_id = snapshot.id
                 join public.asset_classes as asset
                   on asset.id = holding.asset_class_id
                 left join public.etf_dataset_versions as version
@@ -127,8 +137,8 @@ class PostgresScenarioRepository:
         if not rows:
             return None
 
-        account_rows: dict[int, tuple[str, str]] = {}
-        holdings_by_account: dict[int, list[ScenarioHoldingInput]] = {}
+        account_rows: dict[object, tuple[str, str]] = {}
+        holdings_by_account: dict[object, list[ScenarioHoldingInput]] = {}
         for row in rows:
             account_id = row[6]
             holdings_by_account.setdefault(account_id, []).append(

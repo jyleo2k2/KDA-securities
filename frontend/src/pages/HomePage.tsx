@@ -1,13 +1,68 @@
-import type { AssetClass, DemoHeroPortfolio, DemoUserFinancialContext } from "../api/types";
+import type {
+  AssetClass,
+  DemoHeroPortfolio,
+  DemoUserFinancialContext,
+} from "../api/types";
 import { conicGradient } from "../charts";
-const ASSET_LABELS: Record<AssetClass, string> = { cash: "현금성", deposit: "원리금보장", bond: "채권", domestic_equity: "국내주식", global_equity: "글로벌주식", alternative: "대체자산", eligible_tdf: "적격 TDF", default_option: "디폴트옵션" };
-const RISK_LABELS: Record<string, string> = { conservative: "안정형", balanced: "균형형", growth: "성장형" };
-const ACCOUNT_LABELS: Record<string, string> = { dc: "DC", irp: "IRP", pension_savings: "연금저축" };
+
+const ASSET_LABELS: Record<AssetClass, string> = {
+  cash: "현금성", deposit: "원리금보장", bond: "채권",
+  domestic_equity: "국내주식", global_equity: "글로벌주식",
+  alternative: "대체자산", eligible_tdf: "적격 TDF", default_option: "디폴트옵션",
+};
+const RISK_LABELS: Record<string, string> = {
+  conservative: "안정형", balanced: "균형형", growth: "성장형",
+};
+const ACCOUNT_LABELS: Record<string, string> = {
+  dc: "DC", irp: "IRP", pension_savings: "연금저축",
+};
 const COLORS = ["#007848", "#8ead52", "#d7a44d", "#6887aa", "#d37c67"];
 const formatKrw = (value: string) => `${Math.round(Number(value)).toLocaleString("ko-KR")}원`;
-interface HomePageProps { error: string | null; hero: DemoHeroPortfolio | null; loading: boolean; onAnalyzeHero: (scenarioCode: string) => void; userContext: DemoUserFinancialContext | null; }
+const displayName = (name: string) => name.replace(/\(가상\)/g, "");
+
+interface HomePageProps {
+  error: string | null;
+  hero: DemoHeroPortfolio | null;
+  loading: boolean;
+  onAnalyzeHero: (scenarioCode: string) => void;
+  userContext: DemoUserFinancialContext | null;
+}
+
 export function HomePage({ error, hero, loading, onAnalyzeHero, userContext }: HomePageProps) {
   if (loading) return <section className="home-dashboard"><p className="home-loading">내 연금 데이터를 불러오는 중입니다…</p></section>;
   if (!userContext) return <section className="home-dashboard"><p className="home-error">{error ?? "로그인한 사용자의 연금 데이터를 찾지 못했습니다."}</p></section>;
-  return <section className="home-dashboard"><header className="home-hero-heading"><span>연금계좌 운용 가이드</span><h1>{userContext.nickname}님의<br />연금 현황이에요</h1><p>{userContext.customer_context}</p></header><p className="mock-chip">대표 시나리오 목데이터</p>{error && <p className="home-error">{error}</p>}{hero ? <><article className="portfolio-summary-card"><div className="portfolio-summary-top"><div><span className="mock-chip">가상 목데이터</span><h2>{hero.scenario_name}</h2><p>{userContext.age_band} · {userContext.representative_age}세 · {RISK_LABELS[hero.risk_profile] ?? "기타 투자성향"} · 투자기간 {hero.investment_horizon_years}년</p></div><strong>{formatKrw(userContext.total_pension_balance_krw)}</strong></div><div className="peer-metric-grid"><div><span>{hero.past_performance.label}</span><strong>{Number(hero.past_performance.trailing_12m_return_pct).toFixed(2)}%</strong><small>{hero.past_performance.period_start}~{hero.past_performance.period_end}</small></div><div><span>{hero.like_summary.label}</span><strong>{hero.like_summary.count.toLocaleString("ko-KR")}</strong><small>{hero.like_summary.as_of_date} 기준 합성값</small></div></div><p className="peer-metric-note">과거 목데이터 참고값이며 미래 성과 예측이나 공식 수익률 순위가 아닙니다. 좋아요 수도 수익률과 무관한 시연용 합성값입니다.</p><div className="peer-metric-sources" aria-label="공개 비교 지표 출처"><span>{hero.past_performance.source_label}</span><span>좋아요: 시연용 합성 참여지표</span></div><div className="risk-metric-grid"><div><span>DC</span><strong>{formatKrw(userContext.dc_balance_krw)}</strong></div><div><span>IRP</span><strong>{formatKrw(userContext.irp_balance_krw)}</strong></div><div><span>연금저축</span><strong>{formatKrw(userContext.pension_savings_balance_krw)}</strong></div></div><div className="allocation-layout"><div aria-label={hero.asset_allocations.map((item) => `${ASSET_LABELS[item.asset_class_code as AssetClass] ?? "기타 자산군"} ${item.allocation_percent}%`).join(", ")} className="home-allocation-donut" role="img" style={{ background: `conic-gradient(${conicGradient(hero.asset_allocations.map((item) => Number(item.allocation_percent)), COLORS)})` }}><span>총자산<br /><strong>100%</strong></span></div><ul className="home-allocation-list">{hero.asset_allocations.map((item, index) => <li key={item.asset_class_code}><i style={{ backgroundColor: COLORS[index % COLORS.length] }} /><span>{ASSET_LABELS[item.asset_class_code as AssetClass] ?? "기타 자산군"}</span><strong>{item.allocation_percent}%</strong></li>)}</ul></div></article><article className="risk-review-card"><div className="section-heading-row"><div><span>규칙 엔진 점검</span><h2>위험·스트레스 확인</h2></div><b className={hero.risk_summary.requires_rebalancing_review ? "review-needed" : "review-ok"}>{hero.risk_summary.requires_rebalancing_review ? "리밸런싱 점검 필요" : "현재 기준 내"}</b></div><div className="risk-metric-grid"><div><span>일반 위험자산</span><strong>{hero.risk_summary.general_risky_asset_percent}%</strong></div><div><span>최대 자산군</span><strong>{hero.risk_summary.dominant_asset_percent}%</strong></div><div className="stress-metric"><span>주식 급락 충격 시 교육용 손실 점검값</span><strong>{hero.risk_summary.estimated_stress_loss_percent}%</strong></div></div>{hero.duplicated_asset_classes.length > 0 && <p>중복 자산군: {hero.duplicated_asset_classes.map((item) => ASSET_LABELS[item as AssetClass] ?? "기타 자산군").join(", ")}</p>}<p>고정 충격을 적용한 점검값이며 미래 손실 예측이나 수익률 전망이 아닙니다.</p></article><section className="account-holdings-section"><div className="section-heading-row"><div><span>계좌별 구성</span><h2>보유 항목</h2></div><small>ETF 종목코드 표시</small></div><div className="account-card-list">{hero.accounts.map((account) => <article key={account.account_id}><header><strong>{account.label}</strong><span>{ACCOUNT_LABELS[account.account_type]}</span></header><ul>{account.holdings.map((holding) => <li key={holding.holding_id}><div><strong>{holding.instrument_name}</strong><small>{ASSET_LABELS[holding.asset_class_code] ?? "기타 자산군"}</small></div><div>{holding.etf_isu_code && <code>{holding.etf_isu_code}</code>}<span>{formatKrw(holding.amount_krw)}</span></div></li>)}</ul></article>)}</div></section><button className="analyze-hero-button" type="button" onClick={() => onAnalyzeHero(hero.scenario_code)}>내 연금 분석하기</button></> : <article className="portfolio-summary-card"><span className="mock-chip">가상 목데이터</span><h2>{userContext.scenario_name}</h2><p>총 연금 잔액 {formatKrw(userContext.total_pension_balance_krw)}</p></article>}</section>;
+
+  return <section className="home-dashboard">
+    <header className="home-hero-heading">
+      <span>연금계좌 운용 가이드</span>
+      <h1>{displayName(userContext.nickname)}님의<br />연금 현황이에요</h1>
+      <p>{userContext.customer_context}</p>
+    </header>
+    {error && <p className="home-error">{error}</p>}
+    {hero ? <>
+      <article className="portfolio-summary-card">
+        <div className="portfolio-summary-top"><div>
+          <h2>{hero.scenario_name}</h2>
+          <p>{userContext.age_band} · {userContext.representative_age}세 · {RISK_LABELS[hero.risk_profile] ?? "기타 투자성향"} · 투자기간 {hero.investment_horizon_years}년</p>
+        </div><strong>{formatKrw(userContext.total_pension_balance_krw)}</strong></div>
+        <p className="peer-metric-note">{userContext.as_of_date} 기준 계좌 현황입니다.</p>
+        <div className="risk-metric-grid">
+          <div><span>DC</span><strong>{formatKrw(userContext.dc_balance_krw)}</strong></div>
+          <div><span>IRP</span><strong>{formatKrw(userContext.irp_balance_krw)}</strong></div>
+          <div><span>연금저축</span><strong>{formatKrw(userContext.pension_savings_balance_krw)}</strong></div>
+        </div>
+        <div className="allocation-layout">
+          <div aria-label={hero.asset_allocations.map((item) => `${ASSET_LABELS[item.asset_class_code as AssetClass] ?? "기타 자산군"} ${item.allocation_percent}%`).join(", ")} className="home-allocation-donut" role="img" style={{ background: `conic-gradient(${conicGradient(hero.asset_allocations.map((item) => Number(item.allocation_percent)), COLORS)})` }}><span>총자산<br /><strong>100%</strong></span></div>
+          <ul className="home-allocation-list">{hero.asset_allocations.map((item, index) => <li key={item.asset_class_code}><i style={{ backgroundColor: COLORS[index % COLORS.length] }} /><span>{ASSET_LABELS[item.asset_class_code as AssetClass] ?? "기타 자산군"}</span><strong>{item.allocation_percent}%</strong></li>)}</ul>
+        </div>
+      </article>
+      <article className="risk-review-card">
+        <div className="section-heading-row"><div><span>규칙 엔진 점검</span><h2>위험·스트레스 확인</h2></div><b className={hero.risk_summary.requires_rebalancing_review ? "review-needed" : "review-ok"}>{hero.risk_summary.requires_rebalancing_review ? "리밸런싱 점검 필요" : "현재 기준 내"}</b></div>
+        <div className="risk-metric-grid"><div><span>일반 위험자산</span><strong>{hero.risk_summary.general_risky_asset_percent}%</strong></div><div><span>최대 자산군</span><strong>{hero.risk_summary.dominant_asset_percent}%</strong></div><div className="stress-metric"><span>주식 급락 충격 시 교육용 손실 점검값</span><strong>{hero.risk_summary.estimated_stress_loss_percent}%</strong></div></div>
+        <p>고정 충격을 적용한 점검값이며 미래 손실 예측이나 수익률 전망이 아닙니다.</p>
+      </article>
+      <section className="account-holdings-section"><div className="section-heading-row"><div><span>계좌별 구성</span><h2>보유 항목</h2></div><small>ETF 종목코드 표시</small></div><div className="account-card-list">{hero.accounts.map((account) => <article key={account.account_id}><header><strong>{account.label}</strong><span>{ACCOUNT_LABELS[account.account_type]}</span></header><ul>{account.holdings.map((holding) => <li key={holding.holding_id}><div><strong>{holding.instrument_name}</strong><small>{ASSET_LABELS[holding.asset_class_code] ?? "기타 자산군"}</small></div><div>{holding.etf_isu_code && <code>{holding.etf_isu_code}</code>}<span>{formatKrw(holding.amount_krw)}</span></div></li>)}</ul></article>)}</div></section>
+      <button className="analyze-hero-button" type="button" onClick={() => onAnalyzeHero(hero.scenario_code)}>내 연금 분석하기</button>
+    </> : <article className="portfolio-summary-card"><h2>{userContext.scenario_name}</h2><p>총 연금 잔액 {formatKrw(userContext.total_pension_balance_krw)}</p></article>}
+  </section>;
 }
