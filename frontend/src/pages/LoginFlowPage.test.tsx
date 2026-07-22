@@ -4,12 +4,12 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getAccountLinkOptions } from "../api/client";
-import type { AccountLinkOptionsResponse } from "../api/types";
+import { getAccountLinkOptions, saveInvestmentProfile } from "../api/client";
+import type { AccountLinkOptionsResponse, InvestmentProfileResponse } from "../api/types";
 import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
 import { LoginFlowPage } from "./LoginFlowPage";
 
-vi.mock("../api/client", () => ({ getAccountLinkOptions: vi.fn() }));
+vi.mock("../api/client", () => ({ getAccountLinkOptions: vi.fn(), saveInvestmentProfile: vi.fn(), getInvestmentProfile: vi.fn() }));
 
 const onStart = vi.fn();
 const onAuthenticated = vi.fn();
@@ -38,6 +38,19 @@ function fillLoginForm(): void {
   fireEvent.change(screen.getByLabelText("비밀번호"), { target: { value: "password" } });
 }
 
+const savedProfile: InvestmentProfileResponse = {
+  assessment: { assessed_at: "2026-07-22T00:00:00Z", assessed_on: "2026-07-22", valid_until: "2028-07-21", is_expired: false, validity_policy_version: "2026-07-20.1", total_score: 25, min_score: 10, max_score: 56, score_percent: "32.61", risk_profile: "risk_neutral", engine_name: "investor_profile", engine_version: "2026-07-22.1", rule_version: "shinhan-personal-general-login-union-2026-07-22", provisional: false, answers: [] },
+  preferences: { investment_advice_desired: true, investor_information_provided: true, confirmed_at: "2026-07-22T00:00:00Z", policy_version: "2026-07-20.1" },
+};
+
+function selectCompleteSurvey(provide = "제공"): void {
+  fireEvent.click(screen.getByRole("button", { name: "희망" }));
+  fireEvent.click(screen.getByRole("button", { name: provide }));
+  ["만19세 미만", "1억원 미만", "2천만원 미만", "10% 미만"].forEach((name) => fireEvent.click(screen.getByRole("button", { name })));
+  screen.getAllByRole("button", { name: "0~9%" }).forEach((button) => fireEvent.click(button));
+  ["예금, CMA, MMF, RP, 국공채 등", "1년 이상~3년 미만", "교육비", "금융투자상품에 투자해 본 경험이 없음", "1년 이상~2년 미만", "투자 수익을 고려하나 원금 보존이 더 중요함", "제한적인 손실을 감수하여 시중금리 수준의 수익을 기대", "1년 ~ 3년 미만", "예", "동의", "만 55세"].forEach((name) => fireEvent.click(screen.getByRole("button", { name })));
+}
+
 describe("LoginFlowPage", () => {
   afterEach(cleanup);
 
@@ -52,6 +65,7 @@ describe("LoginFlowPage", () => {
       signOut: vi.fn(),
     };
     vi.mocked(getAccountLinkOptions).mockResolvedValue(linkOptions);
+    vi.mocked(saveInvestmentProfile).mockResolvedValue(savedProfile);
   });
 
   it("shows success only after Supabase sign-in resolves", async () => {
@@ -160,4 +174,28 @@ describe("LoginFlowPage", () => {
     expect(await screen.findByText("DC형 퇴직연금")).toBeInTheDocument();
     expect(getAccountLinkOptions).toHaveBeenCalledTimes(2);
   });
+
+  it("submits every server-defined survey answer for scoring and storage", async () => {
+    auth.session = { access_token: "token", user: { user_metadata: {} } } as unknown as SupabaseAuthState["session"];
+    render(<LoginFlowPage auth={auth} onAuthenticated={onAuthenticated} onStart={onStart} resurvey />);
+    selectCompleteSurvey();
+    fireEvent.click(screen.getByRole("button", { name: "투자자정보확인서 제출" }));
+
+    await waitFor(() => expect(saveInvestmentProfile).toHaveBeenCalledOnce());
+    const [submission, token] = vi.mocked(saveInvestmentProfile).mock.calls[0];
+    expect(token).toBe("token");
+    expect(submission.investment_advice_desired).toBe(true);
+    expect(submission.investor_information_provided).toBe(true);
+    expect(submission.survey.answers.map((answer) => answer.question_code)).toEqual(["age_band", "total_net_assets", "annual_income", "financial_asset_share", "investment_product_share", "loan_product_share", "investment_experience_product", "investment_experience_period", "investment_purpose", "financial_knowledge", "investment_horizon", "risk_attitude", "loss_tolerance", "derivative_experience", "vulnerable_investor", "validity_consent", "retirement_start_age"]);
+  }, 15000);
+
+  it("blocks investment advice when investor information is not provided", () => {
+    auth.session = { access_token: "token", user: { user_metadata: {} } } as unknown as SupabaseAuthState["session"];
+    render(<LoginFlowPage auth={auth} onAuthenticated={onAuthenticated} onStart={onStart} resurvey />);
+    selectCompleteSurvey("미제공");
+    fireEvent.click(screen.getByRole("button", { name: "투자자정보확인서 제출" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("투자자정보 제공에 동의해야 투자권유를 받을 수 있어요");
+    expect(saveInvestmentProfile).not.toHaveBeenCalled();
+  }, 15000);
 });
