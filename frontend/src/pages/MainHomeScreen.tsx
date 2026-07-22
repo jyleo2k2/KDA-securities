@@ -15,7 +15,6 @@ interface MainHomeScreenProps {
   onOpenPensionCalculator: () => void;
   onOpenStrategyExplore: () => void;
   onOpenUserPick: () => void;
-  onResurvey: () => void;
   userContext: DemoUserFinancialContext | null;
 }
 
@@ -27,42 +26,25 @@ interface AllocationSlice {
 
 interface HoldingSlice {
   label: string;
-  amountKrw: number;
   percent: number;
   color: string;
 }
 
-const HOLDING_DONUT_COLORS = ["#18A860", "#3877E8", "#F0C000", "#F5871F", "#8B5FEB", "#2FBFA0", "#B8C0BA"];
-const HOLDING_DONUT_MAX_SLICES = 6;
-const HOLDING_DONUT_LABEL_MIN_PERCENT = 5;
-const DONUT_SIZE = 150;
+const DONUT_SIZE = 174;
 const DONUT_CENTER = DONUT_SIZE / 2;
-const DONUT_RADIUS = 60;
-const DONUT_STROKE_WIDTH = 30;
+const DONUT_RADIUS = 64;
+const DONUT_STROKE_WIDTH = 46;
 const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;
-
-function buildHoldingDonutSlices(hero: DemoHeroPortfolio | null): HoldingSlice[] {
-  if (!hero) return [];
-  const amountsByInstrument = new Map<string, number>();
-  for (const account of hero.accounts) {
-    for (const holding of account.holdings) {
-      const amount = Number(holding.amount_krw);
-      amountsByInstrument.set(holding.instrument_name, (amountsByInstrument.get(holding.instrument_name) ?? 0) + amount);
-    }
-  }
-  const sorted = [...amountsByInstrument.entries()].sort((a, b) => b[1] - a[1]);
-  const total = Number(hero.total_amount_krw) || sorted.reduce((sum, [, amount]) => sum + amount, 0);
-  if (total <= 0) return [];
-  const main = sorted.slice(0, HOLDING_DONUT_MAX_SLICES);
-  const restAmount = sorted.slice(HOLDING_DONUT_MAX_SLICES).reduce((sum, [, amount]) => sum + amount, 0);
-  const entries: Array<[string, number]> = restAmount > 0 ? [...main, ["기타", restAmount]] : main;
-  return entries.map(([label, amountKrw], index) => ({
-    label,
-    amountKrw,
-    percent: (amountKrw / total) * 100,
-    color: label === "기타" ? HOLDING_DONUT_COLORS[HOLDING_DONUT_COLORS.length - 1] : HOLDING_DONUT_COLORS[index % (HOLDING_DONUT_COLORS.length - 1)],
-  }));
-}
+const HOME_DONUT_PREVIEW_SLICES: HoldingSlice[] = [
+  { label: "TIGER 미국…", percent: 24, color: "#18A860" },
+  { label: "KODEX 20…", percent: 16, color: "#3877E8" },
+  { label: "TIGER 미국…", percent: 12, color: "#F0C000" },
+  { label: "KODEX 국…", percent: 12, color: "#FF893D" },
+  { label: "", percent: 8, color: "#8B5FEB" },
+  { label: "", percent: 12, color: "#1DB9AD" },
+  { label: "", percent: 8, color: "#EC5D9A" },
+  { label: "", percent: 8, color: "#AAB2AC" },
+];
 
 function polarPoint(centerDeg: number, radius: number): { x: number; y: number } {
   const angleRad = ((centerDeg - 90) * Math.PI) / 180;
@@ -93,11 +75,7 @@ function HoldingDonut({ slices }: { slices: HoldingSlice[] }): JSX.Element {
               strokeDashoffset={dashOffset}
               transform={`rotate(-90 ${DONUT_CENTER} ${DONUT_CENTER})`}
             />
-            {slice.percent >= HOLDING_DONUT_LABEL_MIN_PERCENT && (
-              <text x={labelPoint.x} y={labelPoint.y} textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={800} fill="#fff">
-                {Math.round(slice.percent)}%
-              </text>
-            )}
+            <text x={labelPoint.x} y={labelPoint.y} textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={800} fill="#fff">{slice.percent}%</text>
           </g>
         );
       })}
@@ -142,10 +120,9 @@ const ASSET_LABELS: Record<string, string> = { cash: "현금성", deposit: "원�
 const ALLOCATION_COLORS = ["#18A860", "#35B877", "#6ECFA0", "#2E8B57"];
 const formatKrw = (amount: string) => `${Math.round(Number(amount)).toLocaleString("ko-KR")}원`;
 
-export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenPensionCalculator, onOpenStrategyExplore, onOpenUserPick, onResurvey, userContext }: MainHomeScreenProps): JSX.Element {
+export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenPensionCalculator, onOpenStrategyExplore, onOpenUserPick, userContext }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
   const allocationSlices: AllocationSlice[] = hero?.asset_allocations.slice(0, 4).map((item, index) => ({ label: ASSET_LABELS[item.asset_class_code] ?? "기타 자산", percent: `${item.allocation_percent}%`, color: ALLOCATION_COLORS[index] })) ?? [];
-  const holdingSlices = buildHoldingDonutSlices(hero);
   const totalBalance = userContext ? formatKrw(userContext.total_pension_balance_krw) : "-";
 
   return (
@@ -171,8 +148,6 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenPension
           </div>
           <img src={piggy} alt="송향이" className="mhs-greeting-img" />
         </div>
-        <button type="button" className="mhs-resurvey-button" onClick={onResurvey}>재설문하기</button>
-
         <h2 className="mhs-section-title">내 연금 <span className="mhs-section-title-gold">자산</span></h2>
 
         <div className="mhs-asset-card">
@@ -181,22 +156,15 @@ export function MainHomeScreen({ error, hero, loading, onOpenChat, onOpenPension
           <p className="mhs-asset-gain">{error ?? (userContext ? `${userContext.nickname}님 · ${userContext.as_of_date} 기준 목데이터` : "연금 데이터를 확인해 주세요.")}</p>
 
           <div className="mhs-donut-wrap">
-            {holdingSlices.length > 0 ? <HoldingDonut slices={holdingSlices} /> : (
-              <div className="mhs-donut-outer" style={{ background: "#EEF0F1" }}>
-                <div className="mhs-donut-inner" />
-              </div>
-            )}
+            <HoldingDonut slices={HOME_DONUT_PREVIEW_SLICES} />
           </div>
 
           <div className="mhs-allocation-grid">
-            {(holdingSlices.length > 0
-              ? holdingSlices.map((slice) => ({ label: slice.label, percent: `${slice.percent.toFixed(1)}%`, color: slice.color }))
-              : allocationSlices
-            ).map((slice) => (
-              <span className="mhs-allocation-item" key={slice.label}>
+            {HOME_DONUT_PREVIEW_SLICES.slice(0, 4).map((slice, index) => (
+              <span className="mhs-allocation-item" key={`${slice.label}-${index}`}>
                 <span className="mhs-allocation-dot" style={{ background: slice.color }} />
                 <span className="mhs-allocation-label">{slice.label}</span>
-                <span className="mhs-allocation-percent">{slice.percent}</span>
+                <span className="mhs-allocation-percent">{slice.percent}%</span>
               </span>
             ))}
           </div>
