@@ -1061,6 +1061,17 @@ export interface NewsConversationContext {
   shown_at: string;
 }
 
+export interface ReferentItem {
+  label: string;
+  ref: string;
+}
+
+export interface ReferentList {
+  intent: ChatIntent;
+  topic?: string | null;
+  items: ReferentItem[];
+}
+
 export interface ConversationContext {
   account_type?: AccountType | null;
   scenario_code?: string | null;
@@ -1068,6 +1079,7 @@ export interface ConversationContext {
   survey_profile?: CompletedSurveyProfile | null;
   selected_risk_profile?: RiskProfile | null;
   news?: NewsConversationContext | null;
+  referents?: ReferentList | null;
 }
 
 export interface ChatResponse {
