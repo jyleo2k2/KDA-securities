@@ -1,4 +1,3 @@
-from decimal import ROUND_HALF_UP, Decimal
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
