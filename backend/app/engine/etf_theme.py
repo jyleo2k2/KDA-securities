@@ -6,10 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .educational_portfolio import (
     CandidateQuality,
-    EducationalPortfolioInput,
     _product_sleeve,
     _score_candidates,
-    calculate_target_allocation,
 )
 from .models import AccountType
 
@@ -85,7 +83,7 @@ class KisComponentHolding(BaseModel):
 class ThemeEtfCandidate(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    account_type: AccountType
+    account_type: AccountType | None = None
     isu_code: str
     isu_name: str
     sleeve: str
@@ -108,7 +106,7 @@ class ThemeCandidateEvaluation(BaseModel):
 
     theme_id: str
     theme_name: str
-    account_type: AccountType
+    account_type: AccountType | None = None
     status: str
     candidates: tuple[ThemeEtfCandidate, ...] = ()
     limitations: tuple[str, ...] = ()
@@ -332,12 +330,10 @@ def select_theme_etf_candidates(
     products: list[dict[str, object]],
     kis_products_by_code: dict[str, dict[str, object]],
     component_snapshot_date: date | None,
-    request: EducationalPortfolioInput,
     limit: int,
 ) -> ThemeCandidateEvaluation:
     if limit < 1 or limit > 5:
         raise ValueError("theme ETF candidate limit must be between 1 and 5")
-    sleeves, _ = calculate_target_allocation(request)
     pool: list[dict[str, object]] = []
     for product in products:
         code = str(product.get("isu_code") or "")
@@ -353,19 +349,15 @@ def select_theme_etf_candidates(
         )
         if theme.theme_id not in theme_ids:
             continue
-        sleeve = _product_sleeve(product)
-        if sleeve is None or sleeves.get(sleeve, Decimal("0")) <= 0:
-            continue
         pool.append(product)
 
     if not pool:
         return ThemeCandidateEvaluation(
             theme_id=theme.theme_id,
             theme_name=theme.name,
-            account_type=request.account_type,
-            status="profile_or_data_unavailable",
+            status="data_unavailable",
             limitations=(
-                "계좌 적격 유니버스와 투자성향 범위 안에서 제시할 테마 ETF가 없습니다.",
+                "통합 ETF 상품 데이터에서 제시할 테마 ETF가 없습니다.",
             ),
         )
 
@@ -375,8 +367,7 @@ def select_theme_etf_candidates(
         return ThemeCandidateEvaluation(
             theme_id=theme.theme_id,
             theme_name=theme.name,
-            account_type=request.account_type,
-            status="profile_or_data_unavailable",
+            status="data_unavailable",
             limitations=(
                 "거래대금과 총보수가 모두 확인되는 테마 ETF가 없습니다.",
             ),
@@ -397,10 +388,9 @@ def select_theme_etf_candidates(
             tracking = _decimal(metrics.get("tracking_error_proxy_percent"))
         candidates.append(
             ThemeEtfCandidate(
-                account_type=request.account_type,
                 isu_code=code,
                 isu_name=str(product["isu_name"]),
-                sleeve=str(_product_sleeve(product)),
+                sleeve=_product_sleeve(product) or "unclassified",
                 quality=quality,
                 fee_percent=_decimal(cost.get("kis_total_expense_ratio_percent")),
                 median_daily_trading_value_krw=_decimal(
@@ -419,7 +409,7 @@ def select_theme_etf_candidates(
                 ),
                 top_holdings=holdings[:10],
                 reasons=(
-                    "account_specific_eligible_universe",
+                    "common_cross_account_universe",
                     "theme_matched_from_etf_name_or_kis_index",
                     "ranked_by_median_daily_trading_value_desc",
                     "lower_fee_breaks_liquidity_ties",
@@ -430,7 +420,6 @@ def select_theme_etf_candidates(
     return ThemeCandidateEvaluation(
         theme_id=theme.theme_id,
         theme_name=theme.name,
-        account_type=request.account_type,
         status="ok",
         candidates=tuple(candidates),
         limitations=tuple(
