@@ -1,3 +1,4 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css");
 @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap");
 
 @font-face {
@@ -632,7 +633,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   max-height: calc(100dvh - 46px);
   background: #fff;
   color: #0f1113;
-  font-family: Pretendard, "Cafe24SsurroundAir", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: Pretendard, "Cafe24SsurroundAir", -apple-system, sans-serif;
   box-shadow: none;
 }
 .guide-tab .chat-main {
@@ -705,7 +706,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   border-radius: 11px;
   background: #22a94d;
   color: #fff;
-  font-family: Pretendard, -apple-system, sans-serif;
+  font-family: inherit;
   font-size: 16px;
   font-weight: 800;
 }
@@ -884,7 +885,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   line-height: normal;
 }
 .guide-tab .sidebar {
-  inset: 0 auto 46px 0;
+  position: absolute;
+  inset: 0 auto 0 0;
   width: 300px;
   padding: 0;
   overflow: hidden;
@@ -898,7 +900,11 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   justify-content: space-between;
   padding: 18px 18px 12px;
 }
-.guide-tab .design-drawer-heading strong { font-size: 18px; font-weight: 900; }
+.guide-tab .design-drawer-heading strong {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: normal;
+}
 .guide-tab .design-drawer-heading button {
   width: 30px;
   height: 30px;
@@ -983,7 +989,15 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   font-size: 13.5px;
   font-weight: 800;
 }
-.guide-tab .sidebar-backdrop { inset: 0 0 46px; z-index: 39; background: rgba(15, 17, 19, .35); backdrop-filter: none; }
+.guide-tab .sidebar-backdrop {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 39;
+  border: 0;
+  background: rgba(15, 17, 19, .35);
+  backdrop-filter: none;
+}
 
 @media (max-width: 560px) {
   .guide-tab .welcome.design-welcome { padding: 14px 22px 8px; }
