@@ -10,9 +10,13 @@ afterEach(cleanup);
 
 describe("StatusBar", () => {
   it("renders the iOS clock and tone class", () => {
-    const { container } = render(<StatusBar />);
+    const { container } = render(<StatusBar className="desktop-preview-status" />);
     expect(container.querySelector(".ios-statusbar-time")).toHaveTextContent("9:41");
     expect(container.querySelector(".ios-statusbar--dark")).not.toBeNull();
+    expect(container.querySelector(".desktop-preview-status")).not.toBeNull();
+    expect(container.querySelector(".ios-statusbar-cellular")).not.toBeNull();
+    expect(container.querySelector(".ios-statusbar-wifi")).not.toBeNull();
+    expect(container.querySelector(".ios-statusbar-battery")).not.toBeNull();
   });
 
   it("switches to the light tone on demand", () => {
