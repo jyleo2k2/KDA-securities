@@ -22,6 +22,7 @@ from ..chat.repository import ChatRepository
 from ..chat.scenarios import LocalScenarioRepository, PostgresScenarioRepository
 from ..chat.service import ChatService
 from ..chat.suggested_prompts import SUGGESTED_CHAT_PROMPTS
+from ..chat.topic_guard import ClaudeTopicGuard
 from ..chat.user_context import DemoUserContextRepository
 from ..database import get_database_pool
 from ..engine.audit import EngineAuditRepository
@@ -433,6 +434,24 @@ def get_chat_narrator(
         settings.anthropic_model,
         settings.narration_cache_path,
     )
+
+
+@lru_cache(maxsize=1)
+def _chat_topic_guard(api_key: str, model: str) -> ClaudeTopicGuard:
+    return ClaudeTopicGuard(api_key=api_key, model=model)
+
+
+def get_chat_topic_guard(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ClaudeTopicGuard | None:
+    if not settings.enable_claude_topic_guard:
+        return None
+    if settings.anthropic_api_key is None:
+        return None
+    api_key = settings.anthropic_api_key.get_secret_value().strip()
+    if not api_key:
+        return None
+    return _chat_topic_guard(api_key, settings.anthropic_topic_guard_model)
 
 
 def precompute_chat_narrations(settings: Settings) -> None:
