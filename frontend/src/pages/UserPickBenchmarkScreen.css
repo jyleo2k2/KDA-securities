@@ -9,8 +9,12 @@
   position: relative;
   width: min(100%, 390px);
   height: min(844px, 100dvh);
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
 }
+
+.benchmark-html-frame-wrap::-webkit-scrollbar { width: 0; }
 
 .benchmark-html-frame {
   display: block;

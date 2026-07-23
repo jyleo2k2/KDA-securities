@@ -34,19 +34,18 @@ interface HoldingSlice {
   color: string;
 }
 
-const HOLDING_DONUT_COLORS = ["#18A860", "#3877E8", "#F0C000", "#F5871F", "#8B5FEB", "#2FBFA0", "#B8C0BA"];
+const HOLDING_PIE_COLORS = ["#18A860", "#3877E8", "#F0C000", "#F5871F", "#8B5FEB", "#2FBFA0", "#B8C0BA"];
 const PROFILE_LABELS: Record<RiskProfile, string> = {
   stable: "안정형", stable_seeking: "안정추구형", risk_neutral: "위험중립형", active: "적극투자형", aggressive: "공격투자형",
 };
-const HOLDING_DONUT_MAX_SLICES = 6;
-const HOLDING_DONUT_LABEL_MIN_PERCENT = 5;
-const DONUT_SIZE = 174;
-const DONUT_CENTER = DONUT_SIZE / 2;
-const DONUT_RADIUS = 64;
-const DONUT_STROKE_WIDTH = 46;
-const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;
+const HOLDING_PIE_MAX_SLICES = 6;
+const HOLDING_PIE_LABEL_MIN_PERCENT = 5;
+const PIE_SIZE = 174;
+const PIE_CENTER = PIE_SIZE / 2;
+const PIE_RADIUS = 78;
+const PIE_LABEL_RADIUS = 48;
 
-function buildHoldingDonutSlices(hero: DemoHeroPortfolio | null): HoldingSlice[] {
+function buildHoldingPieSlices(hero: DemoHeroPortfolio | null): HoldingSlice[] {
   if (!hero) return [];
   const amountsByInstrument = new Map<string, number>();
   for (const account of hero.accounts) {
@@ -58,47 +57,45 @@ function buildHoldingDonutSlices(hero: DemoHeroPortfolio | null): HoldingSlice[]
   const sorted = [...amountsByInstrument.entries()].sort((a, b) => b[1] - a[1]);
   const total = Number(hero.total_amount_krw) || sorted.reduce((sum, [, amount]) => sum + amount, 0);
   if (total <= 0) return [];
-  const main = sorted.slice(0, HOLDING_DONUT_MAX_SLICES);
-  const restAmount = sorted.slice(HOLDING_DONUT_MAX_SLICES).reduce((sum, [, amount]) => sum + amount, 0);
+  const main = sorted.slice(0, HOLDING_PIE_MAX_SLICES);
+  const restAmount = sorted.slice(HOLDING_PIE_MAX_SLICES).reduce((sum, [, amount]) => sum + amount, 0);
   const entries: Array<[string, number]> = restAmount > 0 ? [...main, ["기타", restAmount]] : main;
   return entries.map(([label, amountKrw], index) => ({
     label,
     amountKrw,
     percent: (amountKrw / total) * 100,
-    color: label === "기타" ? HOLDING_DONUT_COLORS[HOLDING_DONUT_COLORS.length - 1] : HOLDING_DONUT_COLORS[index % (HOLDING_DONUT_COLORS.length - 1)],
+    color: label === "기타" ? HOLDING_PIE_COLORS[HOLDING_PIE_COLORS.length - 1] : HOLDING_PIE_COLORS[index % (HOLDING_PIE_COLORS.length - 1)],
   }));
 }
 
 function polarPoint(centerDeg: number, radius: number): { x: number; y: number } {
   const angleRad = ((centerDeg - 90) * Math.PI) / 180;
-  return { x: DONUT_CENTER + radius * Math.cos(angleRad), y: DONUT_CENTER + radius * Math.sin(angleRad) };
+  return { x: PIE_CENTER + radius * Math.cos(angleRad), y: PIE_CENTER + radius * Math.sin(angleRad) };
 }
 
-function HoldingDonut({ slices }: { slices: HoldingSlice[] }): JSX.Element {
+function pieSlicePath(startDeg: number, endDeg: number): string {
+  const start = polarPoint(startDeg, PIE_RADIUS);
+  const end = polarPoint(endDeg, PIE_RADIUS);
+  const largeArcFlag = endDeg - startDeg > 180 ? 1 : 0;
+  return `M ${PIE_CENTER} ${PIE_CENTER} L ${start.x} ${start.y} A ${PIE_RADIUS} ${PIE_RADIUS} 0 ${largeArcFlag} 1 ${end.x} ${end.y} Z`;
+}
+
+function HoldingPie({ slices }: { slices: HoldingSlice[] }): JSX.Element {
   let cumulativePercent = 0;
   return (
-    <svg width={DONUT_SIZE} height={DONUT_SIZE} viewBox={`0 0 ${DONUT_SIZE} ${DONUT_SIZE}`} role="img" aria-label="총 연금 자산 보유 종목 비중">
+    <svg width={PIE_SIZE} height={PIE_SIZE} viewBox={`0 0 ${PIE_SIZE} ${PIE_SIZE}`} role="img" aria-label="총 연금 자산 보유 종목 비중">
       {slices.map((slice) => {
-        const segmentLength = (slice.percent / 100) * DONUT_CIRCUMFERENCE;
-        const dashArray = `${segmentLength} ${DONUT_CIRCUMFERENCE - segmentLength}`;
-        const dashOffset = -((cumulativePercent / 100) * DONUT_CIRCUMFERENCE);
+        const startDeg = cumulativePercent * 3.6;
+        const endDeg = (cumulativePercent + slice.percent) * 3.6;
         const labelCenterDeg = (cumulativePercent + slice.percent / 2) * 3.6;
         cumulativePercent += slice.percent;
-        const labelPoint = polarPoint(labelCenterDeg, DONUT_RADIUS);
+        const labelPoint = polarPoint(labelCenterDeg, PIE_LABEL_RADIUS);
         return (
           <g key={slice.label}>
-            <circle
-              cx={DONUT_CENTER}
-              cy={DONUT_CENTER}
-              r={DONUT_RADIUS}
-              fill="none"
-              stroke={slice.color}
-              strokeWidth={DONUT_STROKE_WIDTH}
-              strokeDasharray={dashArray}
-              strokeDashoffset={dashOffset}
-              transform={`rotate(-90 ${DONUT_CENTER} ${DONUT_CENTER})`}
-            />
-            {slice.percent >= HOLDING_DONUT_LABEL_MIN_PERCENT && (
+            {slice.percent >= 99.999
+              ? <circle cx={PIE_CENTER} cy={PIE_CENTER} r={PIE_RADIUS} fill={slice.color} />
+              : <path d={pieSlicePath(startDeg, endDeg)} fill={slice.color} />}
+            {slice.percent >= HOLDING_PIE_LABEL_MIN_PERCENT && (
               <text x={labelPoint.x} y={labelPoint.y} textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={800} fill="#fff">
                 {Math.round(slice.percent)}%
               </text>
@@ -161,10 +158,10 @@ function buildPortfolioOneLineSummary(hero: DemoHeroPortfolio | null): string {
   return `${dominantLabel} 비중이 가장 높고, 전체 주식 비중은 ${equityPercent.toFixed(1)}%예요.`;
 }
 
-export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpenChat, onOpenPlanner, onOpenProfile, onOpenStrategyExplore, onOpenUserPick, onResurvey, userContext }: MainHomeScreenProps): JSX.Element {
+export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpenChat, onOpenPlanner, onOpenProfile, onOpenStrategyExplore, onOpenUserPick, userContext }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
   const allocationSlices: AllocationSlice[] = hero?.asset_allocations.slice(0, 4).map((item, index) => ({ label: ASSET_LABELS[item.asset_class_code] ?? "기타 자산", percent: `${item.allocation_percent}%`, color: ALLOCATION_COLORS[index] })) ?? [];
-  const holdingSlices = buildHoldingDonutSlices(hero);
+  const holdingSlices = buildHoldingPieSlices(hero);
   const totalBalance = userContext ? formatKrw(userContext.total_pension_balance_krw) : "-";
 
   return (
@@ -193,8 +190,6 @@ export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpen
           <img src={piggy} alt="송향이" className="mhs-greeting-img" />
         </div>
         {investmentProfile?.assessment && <p className="mhs-greeting-sub">저장 투자성향 · {PROFILE_LABELS[investmentProfile.assessment.risk_profile]} · {investmentProfile.assessment.assessed_on} 진단{investmentProfile.assessment.is_expired ? " · 만료" : ""}</p>}
-        <button type="button" className="mhs-resurvey-button" onClick={onResurvey}>재설문하기</button>
-
         <h2 className="mhs-section-title">내 연금 <span className="mhs-section-title-gold">자산</span></h2>
 
         <div className="mhs-asset-card">
@@ -202,11 +197,9 @@ export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpen
           <p className="mhs-asset-total">{loading ? "불러오는 중…" : totalBalance}</p>
           <p className="mhs-asset-gain">{error ?? (userContext ? `${userContext.nickname.replace(/\(가상\)/g, "")}님 · ${userContext.as_of_date} 기준` : "연금 데이터를 확인해 주세요.")}</p>
 
-          <div className="mhs-donut-wrap">
-            {holdingSlices.length > 0 ? <HoldingDonut slices={holdingSlices} /> : (
-              <div className="mhs-donut-outer" style={{ background: "#EEF0F1" }}>
-                <div className="mhs-donut-inner" />
-              </div>
+          <div className="mhs-pie-wrap">
+            {holdingSlices.length > 0 ? <HoldingPie slices={holdingSlices} /> : (
+              <div className="mhs-pie-empty" style={{ background: "#EEF0F1" }} />
             )}
           </div>
 
