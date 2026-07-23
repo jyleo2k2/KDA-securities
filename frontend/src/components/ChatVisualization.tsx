@@ -1,5 +1,17 @@
-import { conicGradient } from "../charts";
-import type { ChatVisualization as ChatVisualizationData } from "../api/types";
+import { useState } from "react";
+import { donutArcPaths } from "../charts";
+import type { ChatVisualization as ChatVisualizationData, SourceEvidence } from "../api/types";
+
+const BOUNDARY_LABELS: Record<SourceEvidence["data_boundary"], string> = {
+  verified_knowledge: "검증 지식",
+  official_disclosure: "공식 공시",
+  official_statistics: "공식 통계",
+  news_metadata: "뉴스 메타데이터",
+  mock: "계좌 데이터",
+  engine: "규칙 엔진",
+  user_input: "사용자 입력",
+  unavailable: "출처 확인 필요",
+};
 
 function numericText(value: string | number, unit: string): string {
   if (unit.toUpperCase() === "KRW") {
@@ -8,7 +20,10 @@ function numericText(value: string | number, unit: string): string {
   return `${value}${unit}`;
 }
 
-export function ChatVisualization({ visualization }: { visualization: ChatVisualizationData }) {
+export function ChatVisualization({ visualization, sources }: {
+  visualization: ChatVisualizationData;
+  sources: SourceEvidence[];
+}) {
   if (visualization.kind === "tax_summary") {
     return (
       <section className="allocation-chart tax-visualization" aria-label={visualization.title}>
@@ -88,34 +103,80 @@ export function ChatVisualization({ visualization }: { visualization: ChatVisual
     );
   }
 
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const colors = ["#4f8a70", "#84ad67", "#d8a45e", "#7183b1", "#bf7d70"];
-  const gradientStops = conicGradient(
-    visualization.items.map((item) => Number(item.value)),
-    colors,
-  );
+  const selectedItem = selectedIndex === null ? null : visualization.items[selectedIndex];
+  const sourceById = new Map(sources.map((source) => [source.evidence_id, source]));
+  const evidenceSources = (visualization.evidence_ids ?? [])
+    .map((evidenceId) => sourceById.get(evidenceId))
+    .filter((source): source is SourceEvidence => Boolean(source));
+  const toggle = (index: number) => setSelectedIndex((current) => (current === index ? null : index));
+
   return (
     <section className="allocation-chart" aria-label={visualization.title}>
       <h3>{visualization.title}</h3>
       <p className="visualization-description">{visualization.description}</p>
       <div className="allocation-pie-layout">
-        <div
-          aria-label={visualization.items.map((item) => `${item.label} ${item.value}%`).join(", ")}
-          className="allocation-donut"
-          role="img"
-          style={{ background: `conic-gradient(${gradientStops})` }}
-        >
-          <span>전체<br /><strong>100%</strong></span>
-        </div>
+        <svg className="allocation-donut" viewBox="0 0 100 100" aria-label="자산군 비중을 탭해 상세 보기">
+          {donutArcPaths(visualization.items.map((item) => Number(item.value))).map((d, index) => {
+            const item = visualization.items[index];
+            const selected = selectedIndex === index;
+            return (
+              <path
+                key={`${item.label}-${index}`}
+                d={d}
+                fill={colors[index % colors.length]}
+                className={selectedIndex !== null && !selected ? "is-dim" : ""}
+                transform={selected ? "translate(2 0)" : undefined}
+                role="button"
+                tabIndex={0}
+                aria-label={`${item.label} ${item.value}%`}
+                onClick={() => toggle(index)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    toggle(index);
+                  }
+                }}
+              />
+            );
+          })}
+          <text x="50" y="48" textAnchor="middle">전체</text>
+          <text x="50" y="60" textAnchor="middle" className="allocation-donut-total">100%</text>
+        </svg>
         <ul className="allocation-legend">
           {visualization.items.map((item, index) => (
             <li key={item.label}>
-              <i style={{ backgroundColor: colors[index % colors.length] }} />
-              <span>{item.label}</span>
-              <strong>{item.value}%</strong>
+              <button
+                type="button"
+                className={selectedIndex === index ? "is-selected" : ""}
+                onClick={() => toggle(index)}
+              >
+                <i style={{ backgroundColor: colors[index % colors.length] }} />
+                <span>{item.label}</span>
+                <strong>{item.value}%</strong>
+              </button>
             </li>
           ))}
         </ul>
       </div>
+      {selectedItem && (
+        <section className="allocation-detail" aria-live="polite">
+          <strong>{selectedItem.label} 상세</strong>
+          <p>비중 {selectedItem.value}%</p>
+          {evidenceSources.length > 0 && (
+            <div className="allocation-detail-sources" aria-label="출처">
+              {evidenceSources.map((source) => (
+                <span key={source.evidence_id}>
+                  {BOUNDARY_LABELS[source.data_boundary]} · {source.label}
+                  {source.publisher ? ` · ${source.publisher}` : ""}
+                  {source.as_of ? ` · ${source.as_of}` : ""}
+                </span>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </section>
   );
 }

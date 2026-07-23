@@ -54,14 +54,12 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .peer-metric-sources span { padding: 4px 7px; border: 1px solid #d8e5dc; border-radius: 999px; background: #fff; color: #5f7168; font-size: 8px; }
 .mock-chip { display: inline-flex; padding: 4px 8px; border-radius: 999px; background: #fff1df; color: #9b5c1f; font-size: 9px; font-weight: 800; }
 .allocation-layout { display: grid; grid-template-columns: 132px 1fr; align-items: center; gap: 16px; margin-top: 22px; }
-.home-allocation-donut { position: relative; width: 132px; height: 132px; display: grid; place-items: center; border-radius: 50%; }
-.home-allocation-donut::before { width: 76px; height: 76px; border-radius: 50%; background: #fff; content: ""; }
-.home-allocation-donut > span { position: absolute; color: #718078; text-align: center; font-size: 9px; line-height: 1.35; }
-.home-allocation-donut > span strong { color: #12372a; font-size: 15px; }
+.home-allocation-donut { width: 132px; height: 132px; overflow: visible; }.home-allocation-donut path { cursor: pointer; transition: opacity .15s, transform .15s; }.home-allocation-donut path.is-dim { opacity: .35; }.home-allocation-donut text { fill: #718078; font-size: 8px; }.home-allocation-donut .home-donut-total { fill: #12372a; font-size: 12px; font-weight: 700; }
 .home-allocation-list { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
-.home-allocation-list li { display: grid; grid-template-columns: 8px 1fr auto; align-items: center; gap: 7px; font-size: 10px; }
+.home-allocation-list li button { display: grid; grid-template-columns: 8px 1fr auto; align-items: center; gap: 7px; width: 100%; border: 0; background: none; text-align: left; font: inherit; cursor: pointer; }.home-allocation-list li button.is-selected { font-weight: 700; }
 .home-allocation-list i { width: 8px; height: 8px; border-radius: 50%; }
 .home-allocation-list span { color: #6d7c74; }.home-allocation-list strong { font-size: 10px; }
+.home-allocation-detail { margin-top: 12px; padding: 12px; border-radius: 12px; background: #f3f8f4; font-size: 12px; }.home-allocation-detail p,.home-allocation-detail ul { margin: 7px 0; }.home-allocation-detail small { color: #6d7c74; }
 .section-heading-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .section-heading-row h2 { margin: 3px 0 0; font-size: 18px; }
 .section-heading-row > small { color: #88948e; font-size: 9px; }
@@ -288,10 +286,9 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .visualization-description { margin: -4px 0 10px; color: #748076; font-size: 10px; line-height: 1.5; }
 .tax-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }.tax-summary-grid > div { padding: 10px; border-radius: 9px; background: #eaf2e4; }.tax-summary-grid span, .tax-summary-grid strong { display: block; }.tax-summary-grid span { color: #748076; font-size: 9px; }.tax-summary-grid strong { margin-top: 4px; color: #234435; font-size: 16px; }
 .allocation-pie-layout { display: flex; align-items: center; gap: 14px; }
-.allocation-donut { display: grid; width: 126px; height: 126px; flex: 0 0 auto; place-items: center; border-radius: 50%; }
-.allocation-donut::before { grid-area: 1 / 1; width: 78px; height: 78px; border-radius: 50%; background: #f5f8f1; content: ""; }
-.allocation-donut > span { z-index: 1; grid-area: 1 / 1; color: #748076; text-align: center; font-size: 10px; line-height: 1.35; }.allocation-donut strong { color: #234435; font-size: 17px; }
-.allocation-legend { display: grid; min-width: 0; flex: 1; gap: 6px; margin: 0; padding: 0; list-style: none; }.allocation-legend li { display: flex; align-items: center; gap: 5px; min-width: 0; color: #586b60; font-size: 9px; }.allocation-legend i { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; }.allocation-legend span { overflow: hidden; flex: 1; text-overflow: ellipsis; white-space: nowrap; }.allocation-legend strong { color: #234435; font-size: 9px; }
+.allocation-donut { width: 126px; height: 126px; flex: 0 0 auto; overflow: visible; }.allocation-donut path { cursor: pointer; transition: opacity .15s, transform .15s; }.allocation-donut path.is-dim { opacity: .35; }.allocation-donut text { fill: #748076; font-size: 10px; }.allocation-donut .allocation-donut-total { fill: #234435; font-size: 17px; font-weight: 700; }
+.allocation-legend { display: grid; min-width: 0; flex: 1; gap: 6px; margin: 0; padding: 0; list-style: none; }.allocation-legend li button { display: flex; align-items: center; gap: 5px; width: 100%; min-width: 0; border: 0; background: none; color: #586b60; cursor: pointer; font: inherit; font-size: 9px; text-align: left; }.allocation-legend li button.is-selected { font-weight: 700; }.allocation-legend i { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; }.allocation-legend span { overflow: hidden; flex: 1; text-overflow: ellipsis; white-space: nowrap; }.allocation-legend strong { color: #234435; font-size: 9px; }
+.allocation-detail { margin-top: 10px; padding: 10px; border-radius: 9px; background: #eaf2e4; color: #586b60; font-size: 10px; }.allocation-detail strong { color: #234435; }.allocation-detail p { margin: 4px 0 0; }.allocation-detail-sources { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }.allocation-detail-sources span { padding: 4px 7px; border: 1px solid #d8e5dc; border-radius: 999px; background: #fff; color: #5f7168; font-size: 8px; }
 .allocation-row + .allocation-row { margin-top: 9px; }
 .allocation-row > div:first-child { display: flex; justify-content: space-between; gap: 12px; color: #586b60; font-size: 10px; }
 .allocation-row strong { color: #234435; font-weight: 700; }
