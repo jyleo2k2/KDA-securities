@@ -22,7 +22,7 @@ from .planning_return import (
 from .strategy_presentation import get_strategy_presentation
 
 ENGINE_NAME = "educational_pension_portfolio"
-ENGINE_VERSION = "2026-07-22.2"
+ENGINE_VERSION = "2026-07-23.1"
 POLICY_VERSION = "2026-07-22.2"
 PERCENT_QUANTUM = Decimal("0.0001")
 DRIFT_THRESHOLD_PERCENT = Decimal("5")
@@ -193,6 +193,17 @@ class PortfolioRiskEvaluation(BaseModel):
     warnings: list[str]
 
 
+class PortfolioPlanningCostEvidence(BaseModel):
+    asset_manager: str | None
+    source_status: str
+    source_as_of: date | None
+    stated_fee_total_percent: Decimal | None
+    other_cost_percent: Decimal | None
+    effective_total_cost_percent: Decimal
+    brokerage_commission_percent: Decimal | None
+    brokerage_commission_included: bool
+
+
 class PortfolioPlanningComponent(BaseModel):
     isu_code: str
     isu_name: str
@@ -204,6 +215,7 @@ class PortfolioPlanningComponent(BaseModel):
     annual_cost_drag_percent: Decimal
     gross_planning_return_percent: Decimal
     net_planning_return_percent: Decimal
+    cost_evidence: PortfolioPlanningCostEvidence
     proxy_used: bool
     warnings: list[str]
 
@@ -221,6 +233,7 @@ class PortfolioPlanningEvaluation(BaseModel):
     cma_source_horizon_max_years: int
     annual_review_required: bool
     coverage_weight_percent: Decimal
+    weighted_annual_cost_drag_percent: Decimal | None
     gross_planning_return_percent: Decimal | None
     net_planning_return_percent: Decimal | None
     conservative_planning_return_percent: Decimal | None
@@ -617,8 +630,15 @@ def calculate_portfolio_planning_return(
         code, proxy, component_warnings = _cma_mapping(classification)
         cost_data = product.get("cost") or {}
         cost = _numeric(cost_data.get("effective_total_cost_percent"))
+        cost_source_status = str(
+            cost_data.get("effective_total_cost_status")
+            or "verified_effective_total_cost"
+        )
+        cost_source_as_of = cost_data.get("effective_total_cost_as_of")
         if cost is None:
             cost = _numeric(cost_data.get("kis_total_expense_ratio_percent"))
+            cost_source_status = "kis_stated_total_expense_ratio"
+            cost_source_as_of = cost_data.get("kis_cost_as_of")
             component_warnings.append(
                 "effective_total_cost_missing_uses_kis_stated_expense"
             )
@@ -659,6 +679,24 @@ def calculate_portfolio_planning_return(
                 annual_cost_drag_percent=_percent(cost),
                 gross_planning_return_percent=result.gross_planning_return_percent,
                 net_planning_return_percent=result.net_planning_return_percent,
+                cost_evidence=PortfolioPlanningCostEvidence(
+                    asset_manager=cost_data.get("asset_manager"),
+                    source_status=cost_source_status,
+                    source_as_of=cost_source_as_of,
+                    stated_fee_total_percent=_numeric(
+                        cost_data.get("kofia_reported_stated_fee_total_percent")
+                    ),
+                    other_cost_percent=_numeric(
+                        cost_data.get("kofia_reported_other_cost_percent")
+                    ),
+                    effective_total_cost_percent=_percent(cost),
+                    brokerage_commission_percent=_numeric(
+                        cost_data.get(
+                            "kofia_reported_brokerage_commission_percent"
+                        )
+                    ),
+                    brokerage_commission_included=False,
+                ),
                 proxy_used=proxy,
                 warnings=component_warnings,
             )
@@ -690,6 +728,18 @@ def calculate_portfolio_planning_return(
         if coverage
         else None
     )
+    weighted_cost = (
+        sum(
+            (
+                item.target_percent * item.annual_cost_drag_percent
+                for item in components
+            ),
+            Decimal("0"),
+        )
+        / coverage
+        if coverage
+        else None
+    )
     base = net
     if not (
         CMA_HORIZON_MIN_YEARS
@@ -710,6 +760,9 @@ def calculate_portfolio_planning_return(
         cma_source_horizon_max_years=CMA_HORIZON_MAX_YEARS,
         annual_review_required=True,
         coverage_weight_percent=_percent(coverage),
+        weighted_annual_cost_drag_percent=(
+            _percent(weighted_cost) if weighted_cost is not None else None
+        ),
         gross_planning_return_percent=_percent(gross) if gross is not None else None,
         net_planning_return_percent=_percent(net) if net is not None else None,
         conservative_planning_return_percent=(
