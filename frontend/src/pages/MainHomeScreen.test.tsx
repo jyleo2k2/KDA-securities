@@ -40,6 +40,8 @@ describe("MainHomeScreen", () => {
 
     expect(screen.getByText("사용자 보유 ETF")).toBeInTheDocument();
     expect(screen.getByText("100.0%")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "총 연금 자산 보유 종목 비중" }).querySelector("circle")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "재설문하기" })).not.toBeInTheDocument();
   });
 
   it("shows the saved investment profile after login", () => {
