@@ -1633,12 +1633,20 @@ export function GuidePage({
 
               {/* 정민재 박스는 로그인 컨텍스트로 즉시 채워진다. 리밸런싱 카드는 API 응답이 늦으므로 로딩 중 같은 골격의 스켈레톤으로 자리를 잡아 아래 추천 질문이 밀리지 않게 한다. */}
               <div className="welcome-intro-cards">
-                {(userContext || selectedScenarioData) && (
+                {(userContext || selectedScenarioData) ? (
                   <div className="selected-scenario-card">
                     <div><Icon name="database" size={19} /></div>
                     <span>
                       <strong>{userContext?.nickname ?? selectedScenarioData?.name}</strong>
                       <small>{userContext?.customer_context ?? selectedScenarioData?.description}</small>
+                    </span>
+                  </div>
+                ) : accessToken && (
+                  <div className="selected-scenario-card is-skeleton" aria-hidden="true">
+                    <div className="scenario-skeleton-icon" />
+                    <span>
+                      <strong><span className="skeleton-line" style={{ width: "40%" }} /></strong>
+                      <small><span className="skeleton-line" /><span className="skeleton-line" style={{ width: "76%" }} /></small>
                     </span>
                   </div>
                 )}
