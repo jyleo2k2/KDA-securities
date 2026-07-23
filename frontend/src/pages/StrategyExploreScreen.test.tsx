@@ -16,11 +16,22 @@ afterEach(() => {
 describe("StrategyExploreScreen", () => {
   it("opens detail for the active card when the top image is tapped", () => {
     render(<StrategyExploreScreen onBack={() => {}} />);
-    const activeCard = screen.getByRole("button", { name: `1번째 전략: ${STRATEGIES[0].name}` });
+    const activeCard = screen.getByRole("button", { name: `1번째 전략 상세 보기: ${STRATEGIES[0].name}` });
 
     fireEvent.click(activeCard);
 
     expect(window.location.hash).toBe(`#/strategy-detail?strategy=${STRATEGIES[0].id}`);
+  });
+
+  it("centers a side card when tapped instead of opening detail", () => {
+    render(<StrategyExploreScreen onBack={() => {}} />);
+    // 비활성 카드는 부모 li가 aria-hidden이라 role 질의가 안 되므로 라벨로 직접 찾는다.
+    const sideCard = screen.getByLabelText(`2번째 전략 선택: ${STRATEGIES[1].name}`);
+    fireEvent.click(sideCard);
+
+    // 옆 카드 탭은 상세를 열지 않고 가운데로만 옮긴다.
+    expect(window.location.hash).toBe("");
+    expect(screen.getByLabelText(`2번째 전략 상세 보기: ${STRATEGIES[1].name}`)).toHaveAttribute("tabindex", "0");
   });
 
   it("restores the last viewed strategy as the centered card", () => {
@@ -28,6 +39,6 @@ describe("StrategyExploreScreen", () => {
 
     render(<StrategyExploreScreen onBack={() => {}} />);
 
-    expect(screen.getByLabelText(`3번째 전략: ${STRATEGIES[2].name}`)).toHaveAttribute("tabindex", "0");
+    expect(screen.getByLabelText(`3번째 전략 상세 보기: ${STRATEGIES[2].name}`)).toHaveAttribute("tabindex", "0");
   });
 });
