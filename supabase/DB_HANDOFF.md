@@ -874,6 +874,17 @@ uv run ruff check .
 - Post-maintenance verification: only ready v4 remains, with 2,507 product rows and 1,207,952 history rows. Direct IRP repository E2E returned v4 (`2026-07-23`), 823 products, and 823 history codes.
 - No schema or API response contract changed. Storage + Parquet migration remains pending its separate direct-read credential and parallel-read gates.
 
+### 2026-07-23 KST — 죽은 mock_public·curated_contents 테이블 드롭 (LOCAL-DRAFT)
+
+- 작업자/브랜치/커밋: 이재용 / `claude/이재용/drop-dead-mock-public-tables`
+- 시작 상태: 원격 DB 306MB/500MB, 테이블 91개. `20260723043507_annotate_table_domains`가 대상 4종을 `[dead] … 별도 승인 후 드롭 예정`으로 표기해 둔 상태.
+- 변경 내용: `20260723061500_drop_dead_mock_public_and_curated_tables` 추가. `mock_public_portfolio_holdings` → `mock_public_portfolios` → `mock_public_profiles` → `curated_contents` 순으로 드롭한다. `seed.sql`에서 mock_public 3종 seed 블록을 제거했다.
+- 결정 및 근거: 사전 참조 조사에서 backend/app·scripts·tests 참조 0건을 확인했다. FK 자식→부모 순으로 제거하고 cascade는 쓰지 않아, 예상 밖 의존 객체가 있으면 조용히 지우지 않고 실패하도록 했다. 같은 조사에서 `engine_runs`·`engine_run_evidence`(EngineAuditRepository가 사용), `financial_products`(pension_accounts_repository가 조인), `account_cash_flows`(테스트 참조 + 실계좌 연동 예정 자리)는 살아 있어 드롭 대상에서 제외했다.
+- 로컬 검증과 실제 결과: `uv run pytest tests/test_schema_contract.py tests/test_embedded_sql.py` 37 passed. `seed.sql` 잔여 mock_public 참조 0건.
+- 원격 적용 여부와 migration version: 미적용(LOCAL-DRAFT). 원격 적용은 백업과 이재용 승인 후 별도로 수행한다.
+- 남은 위험 또는 blocker: 삭제 직전 행 수는 profiles 3 / portfolios 3 / holdings 9 / curated_contents 0이라 용량 효과는 약 230KB에 불과하다. 이 작업의 목적은 용량 확보가 아니라 스키마 정리다.
+- 다음 작업: 원격 적용 승인 후 적용, 적용 직후 테이블 수·행 수·GRANT 재검증.
+
 ## 15. 작업 로그 템플릿
 
 ```markdown
