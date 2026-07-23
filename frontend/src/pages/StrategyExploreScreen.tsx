@@ -36,8 +36,8 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
   function move(direction: number): void {
     select(active + direction);
   }
-  function openStrategyDetail(): void {
-    window.location.hash = STRATEGY_DETAIL_URL;
+  function openStrategyDetail(strategyId: string): void {
+    window.location.hash = `${STRATEGY_DETAIL_URL}?strategy=${encodeURIComponent(strategyId)}`;
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>): void {
@@ -108,7 +108,7 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
                         pointerEvents: isVisible ? "auto" : "none",
                       } as React.CSSProperties}
                     >
-                      <button type="button" className="se-fan-frame" aria-label={`${i + 1}번째 전략: ${strategy.name}`} tabIndex={isVisible ? 0 : -1} onClick={openStrategyDetail}>
+                      <button type="button" className="se-fan-frame" aria-label={`${i + 1}번째 전략: ${strategy.name}`} tabIndex={isVisible ? 0 : -1} onClick={() => openStrategyDetail(strategy.id)}>
                         <img src={strategy.img} alt={strategy.name} draggable="false" />
                       </button>
                     </li>
@@ -146,7 +146,7 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
               <span className="se-intro-title"><em>전략</em> 소개</span>
               <div className="se-intro-body">
                 <div className="se-intro-avatar">
-                  <img src={current.img} alt={current.name} onClick={openStrategyDetail} />
+                  <img src={current.img} alt={current.name} onClick={() => openStrategyDetail(current.id)} />
                 </div>
                 <div className="se-intro-summary">
                   <span className="se-intro-label">전략 요약</span>
