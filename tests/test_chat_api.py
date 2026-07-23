@@ -359,10 +359,56 @@ def test_authenticated_pension_tax_keeps_context_and_idempotency() -> None:
     assert payload["persisted"] is True
     assert payload["response"]["intent"] == "pension_tax"
     assert payload["response"]["pension_tax_result"]["tax_credit"] is not None
+    assert payload["response"]["answer"].startswith("고객님의 올해 연금세액공제 혜택")
     assert payload["response"]["conversation_context"]["account_type"] == "irp"
     assert repository.saved[0]["idempotency_key"] == UUID(
         CHAT_HEADERS["Idempotency-Key"]
     )
+
+
+@pytest.mark.parametrize("nickname", ["정민재", "김연금"])
+def test_authenticated_pension_tax_personalizes_any_user(nickname: str) -> None:
+    class NicknameRepository:
+        def get(self, owner_id):
+            assert owner_id == OWNER_ID
+            return None
+
+        def get_nickname(self, owner_id):
+            assert owner_id == OWNER_ID
+            return nickname
+
+    repository = FakeChatRepository()
+    _override_authenticated_dependencies(repository)
+    app.dependency_overrides[get_optional_demo_user_context_repository] = (
+        lambda: NicknameRepository()
+    )
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={
+                    "message": (
+                        "올해 연금저축에 600만원, IRP에 300만원을 납입했고 "
+                        "총급여는 5000만원이야. 세액공제 혜택을 알려줘"
+                    )
+                },
+                headers=CHAT_HEADERS,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    payload = final_sse_response(response.text)
+    assert payload["response"]["answer"].startswith(
+        f"{nickname}님의 올해 연금세액공제 혜택을 정리했어요."
+    )
+    assert [item["label"] for item in payload["response"]["numeric_evidence"][:6]] == [
+        "소득금액",
+        "확인된 소득구간 표시율",
+        "연금저축 당해연도 납입액",
+        "IRP 당해연도 납입액",
+        "합산 세액공제 대상 납입액",
+        "확인된 소득구간 지방세 포함 예상 절세효과",
+    ]
 
 
 def test_sensitive_query_is_not_persisted_or_echoed() -> None:

@@ -80,11 +80,25 @@ def test_natural_language_tax_credit_question_runs_without_form_input() -> None:
     assert response.pension_tax_result.withdrawal is None
     assert "900만 원" in response.answer
     assert "148.5만 원" in response.answer
-    assert response.visualizations[0].kind == "tax_summary"
+    assert [item.kind.value for item in response.visualizations] == ["tax_summary"]
+    assert response.visualizations[0].title == "세액공제 요약"
     assert response.visualizations[0].items[0].value == Decimal("9000000")
     assert response.visualizations[0].items[1].label == "법정 세액공제액"
     assert response.visualizations[0].items[1].value == Decimal("1350000")
     assert response.visualizations[0].items[2].value == Decimal("1485000")
+    assert response.visualizations[0].items[3].value == Decimal("16.5")
+    assert [item.label for item in response.numeric_evidence[:6]] == [
+        "소득금액",
+        "확인된 소득구간 표시율",
+        "연금저축 당해연도 납입액",
+        "IRP 당해연도 납입액",
+        "합산 세액공제 대상 납입액",
+        "확인된 소득구간 지방세 포함 예상 절세효과",
+    ]
+    assert response.limitations[0] == (
+        "실제 환급액은 소득세 결정세액 등에 따라 달라질 수 있으므로 자세한 "
+        "내용은 금융기관에 확인하거나 세무전문가와 상담해야 해요."
+    )
     assert DC_WITHDRAWAL_EXCLUSION_NOTICE not in response.answer
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
 

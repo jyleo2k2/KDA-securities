@@ -45,6 +45,7 @@ import type {
   ChatSessionSummary,
   DataBoundary,
   DemoUserFinancialContext,
+  EducationalPortfolioInput,
   IncomeBasis,
   IrpDeferredIncomeStatus,
   IsaTransferEligibilityStatus,
@@ -455,12 +456,18 @@ function AssistantMessage({
   text,
   onFollowUp,
   onOpenPlanner,
+  onAnalyzeHoldings,
+  surveyProfile,
+  disabled,
   usedFollowUpMessages,
 }: {
   response?: ChatResponse;
   text: string;
   onFollowUp?: (message: string) => void;
   onOpenPlanner?: () => void;
+  onAnalyzeHoldings?: (portfolio: EducationalPortfolioInput) => void;
+  surveyProfile: CompletedSurveyProfile | null;
+  disabled: boolean;
   usedFollowUpMessages: ReadonlySet<string>;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -472,6 +479,22 @@ function AssistantMessage({
     (followUp) => !usedFollowUpMessages.has(followUp.message.trim()),
   );
   const isEducationalPortfolio = response.intent === "educational_portfolio";
+  const isPensionTaxCredit = (
+    response.intent === "pension_tax"
+    && response.pension_tax_result?.tax_credit != null
+  );
+  const taxSummaryVisualization = isPensionTaxCredit
+    ? response.visualizations.find((item) => (
+      item.kind === "tax_summary" && item.title === "세액공제 요약"
+    ))
+    : undefined;
+  const remainingVisualizations = taxSummaryVisualization
+    ? response.visualizations.filter((item) => item !== taxSummaryVisualization)
+    : response.visualizations;
+  const shouldShowHoldingsPanel = (
+    response.intent === "educational_portfolio"
+    || response.data_mode === "etf_selection_required"
+  );
   const shouldShowNumericEvidence = (
     response.intent !== "mock_portfolio"
     && response.intent !== "macro_evidence"
@@ -486,6 +509,52 @@ function AssistantMessage({
   const displayedNumericEvidence = allNumericEvidenceOpen
     ? response.numeric_evidence
     : response.numeric_evidence.slice(0, NUMBER_EVIDENCE_DEFAULT_LIMIT);
+  const numericEvidenceCards = shouldShowNumericEvidence ? (
+    <>
+      <div
+        className="number-grid"
+        aria-label="수치 근거"
+        style={isPensionTaxCredit
+          ? { gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }
+          : undefined}
+      >
+        {displayedNumericEvidence.map((item, index) => (
+          <div
+            className="number-card"
+            key={`${item.evidence_id}-${index}`}
+            style={{ minWidth: 0, padding: 12 }}
+          >
+            <span style={{ fontSize: 10, lineHeight: 1.4 }}>{item.label}</span>
+            <strong
+              style={{
+                fontSize: "clamp(16px, 4.5vw, 19px)",
+                lineHeight: 1.2,
+                margin: "5px 0 0",
+                overflowWrap: "anywhere",
+              }}
+            >
+              {numericText(item.value, item.unit)}
+            </strong>
+          </div>
+        ))}
+      </div>
+      {hasHiddenNumericEvidence && (
+        <button
+          className="evidence-toggle number-evidence-toggle"
+          type="button"
+          onClick={() => setAllNumericEvidenceOpen((value) => !value)}
+          aria-expanded={allNumericEvidenceOpen}
+        >
+          <span>
+            {allNumericEvidenceOpen
+              ? "숫자 근거 접기"
+              : `숫자 근거 전체 ${response.numeric_evidence.length}개 보기`}
+          </span>
+          <Icon name="chevron" size={16} />
+        </button>
+      )}
+    </>
+  ) : null;
   const followUpCards = visibleFollowUps.length > 0 ? (
     <div className="follow-up-cards" aria-label="이어서 물어보기">
       {visibleFollowUps.map((followUp) => (
@@ -512,47 +581,43 @@ function AssistantMessage({
       {response.intent !== "macro_evidence" && (response.data_mode !== "news_summary" || response.news_items.length === 0) && (
         <p className="message-copy">
           {response.salutation && <><strong>{response.salutation},</strong>{" "}</>}
-          {displayText(response.answer)}
+          {displayText(
+            isPensionTaxCredit
+              ? response.answer.split(/\r?\n/, 1)[0]
+              : response.answer,
+          )}
         </p>
       )}
+
+      {isPensionTaxCredit && taxSummaryVisualization && (
+        <ChatVisualization
+          visualization={taxSummaryVisualization}
+          sources={response.sources}
+        />
+      )}
+      {isPensionTaxCredit && (
+        <p className="message-copy">세액공제액은 이렇게 계산했어요.</p>
+      )}
+      {isPensionTaxCredit && numericEvidenceCards}
 
       <MacroEvidenceCards response={response} />
       <MacroRegimeOutcomeCards response={response} />
 
-      {shouldShowNumericEvidence && (
-        <>
-          <div className="number-grid" aria-label="수치 근거">
-            {displayedNumericEvidence.map((item, index) => (
-              <div className="number-card" key={`${item.evidence_id}-${index}`}>
-                <span>{item.label}</span>
-                <strong>{numericText(item.value, item.unit)}</strong>
-                <small>{item.basis}</small>
-              </div>
-            ))}
-          </div>
-          {hasHiddenNumericEvidence && (
-            <button
-              className="evidence-toggle number-evidence-toggle"
-              type="button"
-              onClick={() => setAllNumericEvidenceOpen((value) => !value)}
-              aria-expanded={allNumericEvidenceOpen}
-            >
-              <span>
-                {allNumericEvidenceOpen
-                  ? "숫자 근거 접기"
-                  : `숫자 근거 전체 ${response.numeric_evidence.length}개 보기`}
-              </span>
-              <Icon name="chevron" size={16} />
-            </button>
-          )}
-        </>
-      )}
+      {!isPensionTaxCredit && numericEvidenceCards}
 
       <EducationalPortfolioReview evaluation={response.educational_portfolio_evaluation} />
 
+      {shouldShowHoldingsPanel && onAnalyzeHoldings && (
+        <PortfolioHoldingsPanel
+          surveyProfile={surveyProfile}
+          disabled={disabled}
+          onAnalyze={onAnalyzeHoldings}
+        />
+      )}
+
       <NewsCards response={response} />
 
-      {response.visualizations.map((visualization, index) => (
+      {remainingVisualizations.map((visualization, index) => (
         <ChatVisualization
           visualization={visualization}
           sources={response.sources}
@@ -1484,49 +1549,6 @@ export function GuidePage({
                 onRetry={() => setChatCardsRequestVersion((version) => version + 1)}
               />
 
-              {onOpenPlanner && (
-                <section className="chat-home-card-section" aria-labelledby="planner-heading">
-                  <header className="chat-home-section-heading">
-                    <p>연금 수령 계획</p>
-                    <h2 id="planner-heading">가정 시나리오로 수령 계획 점검</h2>
-                    <span>
-                      {surveyProfile
-                        ? "현재 잔액과 월 납입액을 바탕으로 규칙 엔진의 가정별 적립금과 월 수령액을 비교합니다."
-                        : "투자 성향을 먼저 확인한 뒤, 규칙 엔진의 가정 시나리오로 수령 계획을 점검합니다."}
-                    </span>
-                  </header>
-                  <div className="prompt-carousel">
-                    <button
-                      aria-label="연금 수령 계획 시나리오 열기"
-                      onClick={onOpenPlanner}
-                      type="button"
-                    >
-                      <span className="design-prompt-copy">
-                        <small>규칙 엔진 가정</small>
-                        <strong>연금 수령 계획</strong>
-                        <em>계획 시나리오 열기</em>
-                      </span>
-                    </button>
-                  </div>
-                </section>
-              )}
-
-              <section className="chat-home-card-section holdings-section" aria-labelledby="holdings-heading">
-                <header className="chat-home-section-heading">
-                  <p>내 ETF 점검</p>
-                  <h2 id="holdings-heading">현재 보유 ETF 리밸런싱 가이드</h2>
-                  <span>평가금액을 입력하면 계좌 한도와 자산군 편중을 규칙 엔진으로 점검합니다.</span>
-                </header>
-                <PortfolioHoldingsPanel
-                  surveyProfile={surveyProfile}
-                  disabled={isSending || deletingSessionId !== null}
-                  onAnalyze={(portfolio) => void submitPrompt(
-                    "현재 보유 ETF의 중복도와 계좌 한도, 리밸런싱 가이드를 보여줘",
-                    portfolio,
-                  )}
-                />
-              </section>
-
               <ChatEtfThemeCards
                 allVisible={allEtfThemesVisible}
                 onSubmit={(message) => void submitPrompt(message)}
@@ -1548,7 +1570,13 @@ export function GuidePage({
                 <AssistantMessage
                   onFollowUp={(prompt) => void submitPrompt(prompt)}
                   onOpenPlanner={onOpenPlanner}
+                  onAnalyzeHoldings={(portfolio) => void submitPrompt(
+                    "현재 보유 ETF의 중복도와 계좌 한도, 리밸런싱 가이드를 보여줘",
+                    portfolio,
+                  )}
                   response={message.response}
+                  surveyProfile={surveyProfile}
+                  disabled={isSending || deletingSessionId !== null}
                   text={message.text}
                   usedFollowUpMessages={usedFollowUpMessages}
                 />

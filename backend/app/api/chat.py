@@ -35,6 +35,7 @@ from ..chat.repository import (
     StoredMessageEvidence,
 )
 from ..chat.scenarios import LocalScenarioRepository
+from ..chat.tools import PENSION_TAX_CLOSING_NOTICE
 from ..chat.topic_guard import ClaudeTopicGuard
 from ..chat.user_context import (
     DemoUserContextRepository,
@@ -74,6 +75,16 @@ def _format_salutation(nickname: str | None) -> str:
         return "고객님"
     normalized = re.sub(r"\s+님$", "님", normalized)
     return normalized if normalized.endswith("님") else f"{normalized}님"
+
+
+def _personalized_pension_tax_answer(nickname: str | None) -> str:
+    customer = _format_salutation(nickname)
+    return (
+        f"{customer}의 올해 연금세액공제 혜택을 정리했어요.\n"
+        "돌려받을 세금은 이렇게 계산했어요.\n"
+        f"실제 환급액은 {customer}의 소득세 결정세액 등에 따라 달라질 수 있어요.\n"
+        f"{PENSION_TAX_CLOSING_NOTICE}"
+    )
 
 
 def _load_demo_context(
@@ -241,6 +252,14 @@ def _authenticated_response(
     )
     if context is not None:
         response = apply_demo_context_evidence(response, context)
+    if (
+        response.intent == ChatIntent.PENSION_TAX
+        and response.pension_tax_result is not None
+        and response.pension_tax_result.tax_credit is not None
+    ):
+        response = response.model_copy(
+            update={"answer": _personalized_pension_tax_answer(nickname)}
+        )
     if response.data_mode in {
         "verified_pension_account_overview",
         "verified_pension_account_deferred_topic",
@@ -248,7 +267,10 @@ def _authenticated_response(
         response = response.model_copy(
             update={"salutation": _format_salutation(nickname)}
         )
-    return response, response.intent is not ChatIntent.OUT_OF_SCOPE
+    return response, response.intent not in {
+        ChatIntent.OUT_OF_SCOPE,
+        ChatIntent.PENSION_TAX,
+    }
 
 
 def _sse(event: str, payload: dict[str, object]) -> str:

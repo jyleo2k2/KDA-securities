@@ -734,6 +734,13 @@ describe("GuidePage chat history deletion", () => {
 
     await screen.findByText("카드 수치 6");
     expect(screen.queryByText("카드 수치 7")).not.toBeInTheDocument();
+    expect(screen.queryByText(response.numeric_evidence[0].basis)).not.toBeInTheDocument();
+    const firstCard = screen.getByText("카드 수치 1").closest(".number-card");
+    expect(firstCard?.querySelector("small")).toBeNull();
+    expect(within(firstCard as HTMLElement).getByText("1%")).toHaveStyle({
+      fontSize: "clamp(16px, 4.5vw, 19px)",
+      overflowWrap: "anywhere",
+    });
     const toggle = screen.getByRole("button", {
       name: "숫자 근거 전체 7개 보기",
     });
@@ -744,6 +751,87 @@ describe("GuidePage chat history deletion", () => {
       "aria-expanded",
       "true",
     );
+  });
+
+  it("shows every authenticated pension-tax answer in the required field order", async () => {
+    const primaryLabels = [
+      "소득금액",
+      "확인된 소득구간 표시율",
+      "연금저축 당해연도 납입액",
+      "IRP 당해연도 납입액",
+      "합산 세액공제 대상 납입액",
+      "확인된 소득구간 지방세 포함 예상 절세효과",
+    ];
+    const response = {
+      ...THEME_RESPONSE,
+      intent: "pension_tax",
+      answer: [
+        "김연금님의 올해 연금세액공제 혜택을 정리했어요.",
+        "이 문장은 새 구성에서 표시하지 않아요.",
+      ].join("\n"),
+      data_mode: "authenticated_mock_context_engine",
+      pension_tax_result: { tax_credit: {} },
+      visualizations: [{
+        kind: "tax_summary",
+        title: "세액공제 요약",
+        description: "",
+        data_boundary: "engine",
+        evidence_ids: ["engine:pension_tax"],
+        items: [
+          { label: "세액공제 대상 납입액", value: "8760000", unit: "KRW", role: "value" },
+          { label: "적용 세액공제율 (지방소득세 포함)", value: "13.2", unit: "%", role: "value" },
+        ],
+        series: [],
+      }],
+      numeric_evidence: [
+        ...primaryLabels.map((label, index) => ({
+          label,
+          value: String(index + 1),
+          unit: index === 1 ? "%" : "KRW",
+          evidence_id: `evidence:${index + 1}`,
+          basis: "로그인 사용자 DB 목데이터",
+        })),
+        {
+          label: "숨겨진 추가 근거",
+          value: "7",
+          unit: "KRW",
+          evidence_id: "evidence:7",
+          basis: "규칙 엔진",
+        },
+      ],
+      limitations: [
+        "실제 환급액은 소득세 결정세액 등에 따라 달라질 수 있으므로 자세한 내용은 금융기관에 확인하거나 세무전문가와 상담해야 해요.",
+      ],
+    } as unknown as ChatResponse;
+    vi.mocked(getChatCards).mockResolvedValue({ cards: [RECOMMENDED_CHAT_CARDS[1]] });
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      persisted: true,
+      session_id: SESSION_ID,
+      response,
+    } as Awaited<ReturnType<typeof sendAuthenticatedChatStream>>);
+    renderGuide();
+
+    fireEvent.click(await screen.findByRole("button", { name: /연금세액공제/ }));
+
+    const lead = await screen.findByText(
+      "김연금님의 올해 연금세액공제 혜택을 정리했어요.",
+    );
+    const summary = screen.getByRole("region", { name: "세액공제 요약" });
+    const calculationLead = screen.getByText("세액공제액은 이렇게 계산했어요.");
+    const grid = screen.getByLabelText("수치 근거");
+    expect(lead.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(summary.compareDocumentPosition(calculationLead) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(calculationLead.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(grid).toHaveStyle({ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" });
+    expect(within(grid).getAllByText(/소득금액|표시율|당해연도 납입액|합산 세액공제|예상 절세효과/).map(
+      (item) => item.textContent,
+    )).toEqual(primaryLabels);
+    expect(screen.queryByText("숨겨진 추가 근거")).not.toBeInTheDocument();
+    expect(screen.queryByText("이 문장은 새 구성에서 표시하지 않아요.")).not.toBeInTheDocument();
+    expect(within(summary).getByText("8,760,000원")).toHaveStyle({
+      fontSize: "clamp(13px, 3.4vw, 16px)",
+      whiteSpace: "nowrap",
+    });
   });
 
   it("numbers each news summary line and submits the selected market question", async () => {
@@ -1154,6 +1242,7 @@ describe("GuidePage chat history deletion", () => {
     expect(section?.querySelector(".answer-table-wrap")).not.toBeNull();
     expect(section?.querySelectorAll(".answer-bullets li")).toHaveLength(1);
     expect(limitations).not.toHaveAttribute("open");
+    expect(document.querySelector(".holdings-required-panel")).not.toBeNull();
 
     fireEvent.click(preview.closest("summary")!);
     fireEvent.click(screen.getByText("확인할 점 1가지 보기").closest("summary")!);
@@ -1176,14 +1265,13 @@ describe("GuidePage pension planner entry", () => {
     cleanup();
   });
 
-  it("opens the existing profile planner from the chat home card", () => {
+  it("keeps the planner card out of the chat home", () => {
     const onOpenPlanner = vi.fn();
     renderGuide(undefined, onOpenPlanner);
 
-    expect(screen.getByText("규칙 엔진 가정")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "연금 수령 계획 시나리오 열기" }));
-
-    expect(onOpenPlanner).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("button", { name: "연금 수령 계획 시나리오 열기" })).not.toBeInTheDocument();
+    expect(screen.queryByText("현재 보유 ETF 리밸런싱 가이드")).not.toBeInTheDocument();
+    expect(onOpenPlanner).not.toHaveBeenCalled();
   });
 
   it("opens the planner instead of resending its dedicated follow-up", async () => {
