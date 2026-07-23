@@ -368,13 +368,14 @@ describe("GuidePage chat history deletion", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders the attached pension-helper conversation shell", async () => {
+  it("renders the attached Canvas-2 conversation shell", async () => {
     renderGuide();
 
-    expect(await screen.findByText("막막한 노후 준비,", { exact: false })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "새 대화 시작" })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("연금에 대해 무엇이든 물어보세요.")).toBeInTheDocument();
-    expect(screen.getAllByText(/실제 투자·가입 결정은 본인의 판단과 전문가 상담/)).toHaveLength(2);
+    expect(await screen.findByText("고객님 ! 막막한 노후 준비,", { exact: false })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "대화 기록 열기" })).toBeInTheDocument();
+    expect(screen.getByAltText("프로필")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("연금에 대해 무엇이든 물어보세요")).toBeInTheDocument();
+    expect(screen.getByText(/AI 답변은 투자 판단을 돕는 정보이며, 미래 수익을 보장하지 않습니다/)).toBeInTheDocument();
   });
 
   it("confirms deletion, disables controls, removes the row, and clears the active chat", async () => {
