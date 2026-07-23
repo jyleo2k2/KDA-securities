@@ -186,3 +186,8 @@
   margin: 0;
   line-height: 1.55;
 }
+
+@media (max-width: 480px) {
+  .sd-stage { min-height: 100dvh; padding: 0; background: #fff; }
+  .sd-phone { width: 100%; height: 100dvh; border-radius: 0; box-shadow: none; }
+}
