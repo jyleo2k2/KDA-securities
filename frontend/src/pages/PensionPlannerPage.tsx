@@ -185,11 +185,15 @@ export function PensionPlannerPage({
   }, [accountOptions, portfolio, profile]);
 
   return (
+    <main className="pension-planner-stage">
+      <section className="pension-planner-frame" aria-label="연금 계산기">
     <iframe
       ref={iframeRef}
       src={`${import.meta.env.BASE_URL}pension-calculator-html/연금계산기.dc.html`}
-      style={{ border: 0, display: "block", height: "100dvh", width: "100%" }}
+      style={{ border: 0, display: "block", height: "100%", width: "100%" }}
       title="예상 연금 계산 및 세액공제 확인"
     />
+      </section>
+    </main>
   );
 }

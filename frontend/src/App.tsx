@@ -88,7 +88,7 @@ export default function App(): JSX.Element {
 
 function DesktopPreviewStatus(): JSX.Element | null {
   const { pathname } = useLocation();
-  if (["/", "/login", "/main-home", "/strategy-explore", "/strategy-detail"].includes(pathname)) return null;
+  if (["/", "/login", "/main-home", "/planner", "/profile-html", "/strategy-explore", "/strategy-detail", "/user-pick-benchmark"].includes(pathname)) return null;
 
   return (
     <div className="desktop-preview-status" aria-hidden="true">
