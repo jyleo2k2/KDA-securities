@@ -50,5 +50,30 @@
 .irs-grade-row-bar { height: 8px; border-radius: 99px; }
 
 .irs-footer { flex: none; padding: 12px 18px 26px; border-top: 1px solid #F1F2F4; }
-.irs-start { background: #22A94D; border-radius: 16px; height: 54px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 8px 20px rgba(34, 169, 77, .28); font-size: 16px; font-weight: 800; color: #fff; }
-.irs-start:hover { filter: brightness(0.98); }
+.irs-start { background: #22A94D; border-radius: 16px; height: 54px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 8px 20px rgba(34, 169, 77, .28); font-size: 16px; font-weight: 800; color: #fff; transition: transform .16s cubic-bezier(.23,1,.32,1), filter .18s ease; }
+.irs-start:active { transform: scale(.98); }
+@media (hover: hover) and (pointer: fine) { .irs-start:hover { filter: brightness(0.98); } }
+
+/* 성향 결과 진입 delight — 마운트 시 자동 재생. transform/opacity만 사용, 300ms 이하 */
+.irs-chart-bar { transform: scaleY(0); transform-origin: bottom; animation: irs-bar-grow .5s cubic-bezier(.23,1,.32,1) both; }
+.irs-chart-dot { opacity: 0; animation: irs-dot-in .3s cubic-bezier(.23,1,.32,1) both; }
+.irs-chart-col:nth-child(1) .irs-chart-bar, .irs-chart-col:nth-child(1) .irs-chart-dot { animation-delay: 0ms; }
+.irs-chart-col:nth-child(2) .irs-chart-bar, .irs-chart-col:nth-child(2) .irs-chart-dot { animation-delay: 60ms; }
+.irs-chart-col:nth-child(3) .irs-chart-bar, .irs-chart-col:nth-child(3) .irs-chart-dot { animation-delay: 120ms; }
+.irs-chart-col:nth-child(4) .irs-chart-bar, .irs-chart-col:nth-child(4) .irs-chart-dot { animation-delay: 180ms; }
+.irs-chart-col:nth-child(5) .irs-chart-bar, .irs-chart-col:nth-child(5) .irs-chart-dot { animation-delay: 240ms; }
+.irs-chart-dot-final { opacity: 0; animation: irs-dot-pop .42s cubic-bezier(.23,1,.32,1) .46s both; }
+.irs-grade-row-bar { transform: scaleX(0); transform-origin: left; animation: irs-bar-fill .55s cubic-bezier(.23,1,.32,1) both; }
+.irs-grade-row:nth-child(1) .irs-grade-row-bar { animation-delay: 150ms; }
+.irs-grade-row:nth-child(2) .irs-grade-row-bar { animation-delay: 200ms; }
+.irs-grade-row:nth-child(3) .irs-grade-row-bar { animation-delay: 250ms; }
+.irs-grade-row:nth-child(4) .irs-grade-row-bar { animation-delay: 300ms; }
+.irs-grade-row:nth-child(5) .irs-grade-row-bar { animation-delay: 350ms; }
+@keyframes irs-bar-grow { to { transform: scaleY(1); } }
+@keyframes irs-bar-fill { to { transform: scaleX(1); } }
+@keyframes irs-dot-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes irs-dot-pop { 0% { opacity: 0; transform: scale(.5); } 65% { transform: scale(1.18); } 100% { opacity: 1; transform: scale(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .irs-chart-bar, .irs-chart-dot, .irs-chart-dot-final, .irs-grade-row-bar { animation: none; opacity: 1; transform: none; }
+}
