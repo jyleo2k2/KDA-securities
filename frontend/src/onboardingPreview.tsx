@@ -1,16 +1,32 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import { OnboardingEmptyPage } from "./pages/OnboardingEmptyPage";
+import { MainHomeScreen } from "./pages/MainHomeScreen";
+import "./index.css";
 
-const container = document.getElementById("onboarding-preview-root");
+// dev 전용 프리뷰: 실제 MainHomeScreen을 계좌 미연동(aggregation=null) 상태로 렌더한다.
+// 도넛차트가 나오지 않는 자리에 연그미 마스코트가 들어가는지 확인용. 실제 연결/백엔드는 없음.
+const container = document.getElementById("mainhome-preview-root");
 if (!container) {
-  throw new Error("#onboarding-preview-root element is missing");
+  throw new Error("#mainhome-preview-root element is missing");
 }
+
+const noop = () => {};
 
 createRoot(container).render(
   <StrictMode>
-    {/* 프리뷰: 연결은 수행하지 않고 로그만 남긴다. */}
-    <OnboardingEmptyPage onConnect={() => console.info("[preview] 계좌 연결하기 클릭 — 프리뷰라 연결하지 않음")} />
+    <MainHomeScreen
+      aggregation={null}
+      displayName="정민재"
+      error={null}
+      investmentProfile={null}
+      loading={false}
+      portfolio={null}
+      onOpenChat={noop}
+      onOpenPlanner={noop}
+      onOpenProfile={noop}
+      onOpenStrategyExplore={noop}
+      onOpenUserPick={noop}
+    />
   </StrictMode>,
 );

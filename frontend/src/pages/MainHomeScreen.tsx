@@ -11,6 +11,7 @@ import type {
   UserPensionPortfolio,
 } from "../api/types";
 import { latestPortfolioDate } from "../ownerPensionPortfolio";
+import { YeongeumiMascot } from "../components/YeongeumiMascot";
 import "./MainHomeScreen.css";
 
 interface MainHomeScreenProps {
@@ -250,7 +251,7 @@ export function MainHomeScreen({ aggregation, displayName, error, investmentProf
             {holdingSlices.length > 0 ? (
               <HoldingPie slices={holdingSlices} selectedIndex={selectedHolding} onSelect={toggleHolding} />
             ) : (
-              <div className="mhs-pie-empty" style={{ background: "#EEF0F1" }} />
+              <YeongeumiMascot className="mhs-pie-mascot" />
             )}
           </div>
 
