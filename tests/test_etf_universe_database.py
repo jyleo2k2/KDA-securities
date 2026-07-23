@@ -327,7 +327,17 @@ def test_api_repository_uses_database_when_url_is_configured(
 
     globals_pool = pool
     deps.get_portfolio_universe_repository.cache_clear()
-    monkeypatch.setattr(deps, "get_database_pool", lambda _url: pool)
+    observed_max_size: list[int] = []
+
+    def fake_get_database_pool(_url: str, *, max_size: int) -> object:
+        observed_max_size.append(max_size)
+        return pool
+
+    monkeypatch.setattr(
+        deps,
+        "get_database_pool",
+        fake_get_database_pool,
+    )
     monkeypatch.setattr(deps, "PostgresPortfolioUniverseRepository", _Reader)
     monkeypatch.setattr(
         deps.PortfolioUniverseRepository,
@@ -343,6 +353,7 @@ def test_api_repository_uses_database_when_url_is_configured(
         deps.get_portfolio_universe_repository.cache_clear()
 
     assert actual is expected
+    assert observed_max_size == [5]
 
 
 class _FakeCursor:

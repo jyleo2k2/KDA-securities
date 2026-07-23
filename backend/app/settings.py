@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     naver_api_hub_client_id: SecretStr | None = None
     naver_api_hub_client_secret: SecretStr | None = None
     database_url: SecretStr | None = None
+    database_pool_max_size: int = Field(default=5, ge=2, le=15)
     supabase_url: str | None = None
     supabase_publishable_key: SecretStr | None = None
     supabase_secret_key: SecretStr | None = None
