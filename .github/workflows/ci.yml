@@ -36,3 +36,28 @@ jobs:
         run: npm ci
       - name: Typecheck and build
         run: npm run build
+  route-map-sync:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Route map synced with screen/route changes
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          EXEMPT: ${{ contains(github.event.pull_request.labels.*.name, 'route-map-exempt') }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$BASE_REF"
+          MAP="docs/30_스펙/프론트_라우트_화면_지도.html"
+          NS=$(git -c core.quotePath=false diff --name-status "origin/$BASE_REF...HEAD")
+          echo "$NS"
+          trigger=""
+          if grep -qE '^[A-Z][0-9]*[[:space:]]+frontend/src/App\.tsx$' <<< "$NS"; then trigger="App.tsx routes"; fi
+          if grep -E '^[ADR][0-9]*[[:space:]]' <<< "$NS" | grep -E 'frontend/src/pages/.*\.tsx$' | grep -vqE '\.test\.tsx$'; then trigger="${trigger:+$trigger + }pages add/delete/rename"; fi
+          if [ -z "$trigger" ]; then echo "no route/screen structural change - pass"; exit 0; fi
+          if [ "$EXEMPT" = "true" ]; then echo "route-map-exempt label - pass ($trigger)"; exit 0; fi
+          if grep -qF "$MAP" <<< "$NS"; then echo "route map updated - pass ($trigger)"; exit 0; fi
+          echo "::error::라우트/화면 구조 변경($trigger)이 있는데 $MAP 갱신이 없습니다. 지도를 갱신하거나 PR에 route-map-exempt 라벨을 붙이세요."
+          exit 1

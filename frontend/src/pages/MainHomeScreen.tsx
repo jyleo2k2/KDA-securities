@@ -1,15 +1,22 @@
 import { useState, type JSX } from "react";
 
-import moneyBag from "../assets/main-home/money-bag.png";
-import piggy from "../assets/main-home/piggy.png";
-import profileIcon from "../assets/main-home/profile-icon.png";
+import taxCreditMissed from "../assets/main-home/tax-credit-missed.png";
+import piggy from "../assets/main-home/piggy.webp";
+import profileIcon from "../assets/main-home/profile-icon.webp";
 import userPickPreview from "../assets/main-home/user-pick-preview.png";
-import type { DemoHeroPortfolio, DemoUserFinancialContext, InvestmentProfileResponse, RiskProfile } from "../api/types";
+import type {
+  AggregationEvaluation,
+  InvestmentProfileResponse,
+  RiskProfile,
+  UserPensionPortfolio,
+} from "../api/types";
+import { latestPortfolioDate } from "../ownerPensionPortfolio";
 import "./MainHomeScreen.css";
 
 interface MainHomeScreenProps {
+  aggregation: AggregationEvaluation | null;
+  displayName: string;
   error: string | null;
-  hero: DemoHeroPortfolio | null;
   investmentProfile: InvestmentProfileResponse | null;
   loading: boolean;
   onOpenChat: () => void;
@@ -17,8 +24,7 @@ interface MainHomeScreenProps {
   onOpenProfile: () => void;
   onOpenStrategyExplore: () => void;
   onOpenUserPick: () => void;
-  onResurvey: () => void;
-  userContext: DemoUserFinancialContext | null;
+  portfolio: UserPensionPortfolio | null;
 }
 
 interface AllocationSlice {
@@ -29,7 +35,6 @@ interface AllocationSlice {
 
 interface HoldingSlice {
   label: string;
-  amountKrw: number;
   percent: number;
   color: string;
 }
@@ -45,27 +50,18 @@ const PIE_CENTER = PIE_SIZE / 2;
 const PIE_RADIUS = 78;
 const PIE_LABEL_RADIUS = 48;
 
-function buildHoldingPieSlices(hero: DemoHeroPortfolio | null): HoldingSlice[] {
-  if (!hero) return [];
-  const amountsByInstrument = new Map<string, number>();
-  for (const account of hero.accounts) {
-    for (const holding of account.holdings) {
-      const amount = Number(holding.amount_krw);
-      amountsByInstrument.set(holding.instrument_name, (amountsByInstrument.get(holding.instrument_name) ?? 0) + amount);
-    }
-  }
-  const sorted = [...amountsByInstrument.entries()].sort((a, b) => b[1] - a[1]);
-  const total = Number(hero.total_amount_krw) || sorted.reduce((sum, [, amount]) => sum + amount, 0);
-  if (total <= 0) return [];
-  const main = sorted.slice(0, HOLDING_PIE_MAX_SLICES);
-  const restAmount = sorted.slice(HOLDING_PIE_MAX_SLICES).reduce((sum, [, amount]) => sum + amount, 0);
-  const entries: Array<[string, number]> = restAmount > 0 ? [...main, ["기타", restAmount]] : main;
-  return entries.map(([label, amountKrw], index) => ({
-    label,
-    amountKrw,
-    percent: (amountKrw / total) * 100,
-    color: label === "기타" ? HOLDING_PIE_COLORS[HOLDING_PIE_COLORS.length - 1] : HOLDING_PIE_COLORS[index % (HOLDING_PIE_COLORS.length - 1)],
-  }));
+function buildHoldingPieSlices(
+  aggregation: AggregationEvaluation | null,
+): HoldingSlice[] {
+  return aggregation?.asset_class_totals
+    .slice()
+    .sort((left, right) => Number(right.weight_percent) - Number(left.weight_percent))
+    .slice(0, HOLDING_PIE_MAX_SLICES)
+    .map((item, index) => ({
+      label: ASSET_LABELS[item.asset_class] ?? "기타 자산",
+      percent: Number(item.weight_percent),
+      color: HOLDING_PIE_COLORS[index % HOLDING_PIE_COLORS.length],
+    })) ?? [];
 }
 
 function polarPoint(centerDeg: number, radius: number): { x: number; y: number } {
@@ -83,7 +79,7 @@ function pieSlicePath(startDeg: number, endDeg: number): string {
 function HoldingPie({ slices }: { slices: HoldingSlice[] }): JSX.Element {
   let cumulativePercent = 0;
   return (
-    <svg width={PIE_SIZE} height={PIE_SIZE} viewBox={`0 0 ${PIE_SIZE} ${PIE_SIZE}`} role="img" aria-label="총 연금 자산 보유 종목 비중">
+    <svg width={PIE_SIZE} height={PIE_SIZE} viewBox={`0 0 ${PIE_SIZE} ${PIE_SIZE}`} role="img" aria-label="총 연금 자산 자산군 비중">
       {slices.map((slice) => {
         const startDeg = cumulativePercent * 3.6;
         const endDeg = (cumulativePercent + slice.percent) * 3.6;
@@ -144,25 +140,33 @@ const ASSET_LABELS: Record<string, string> = { cash: "현금성", deposit: "원�
 const ALLOCATION_COLORS = ["#18A860", "#35B877", "#6ECFA0", "#2E8B57"];
 const formatKrw = (amount: string) => `${Math.round(Number(amount)).toLocaleString("ko-KR")}원`;
 
-function buildPortfolioOneLineSummary(hero: DemoHeroPortfolio | null): string {
-  if (!hero || hero.asset_allocations.length === 0) {
+function buildPortfolioOneLineSummary(
+  aggregation: AggregationEvaluation | null,
+): string {
+  if (!aggregation || aggregation.asset_class_totals.length === 0) {
     return "포트폴리오 구성을 불러오면 가장 큰 자산 비중을 알려드려요.";
   }
-  const dominant = hero.asset_allocations.reduce((largest, current) => (
-    Number(current.allocation_percent) > Number(largest.allocation_percent) ? current : largest
+  const dominant = aggregation.asset_class_totals.reduce((largest, current) => (
+    Number(current.weight_percent) > Number(largest.weight_percent)
+      ? current
+      : largest
   ));
-  const equityPercent = hero.asset_allocations
-    .filter((item) => item.asset_class_code === "domestic_equity" || item.asset_class_code === "global_equity")
-    .reduce((sum, item) => sum + Number(item.allocation_percent), 0);
-  const dominantLabel = ASSET_LABELS[dominant.asset_class_code] ?? "기타 자산";
-  return `${dominantLabel} 비중이 가장 높고, 전체 주식 비중은 ${equityPercent.toFixed(1)}%예요.`;
+  const dominantLabel = ASSET_LABELS[dominant.asset_class] ?? "기타 자산";
+  return `${dominantLabel} 비중이 ${dominant.weight_percent}%로 가장 높아요.`;
 }
 
-export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpenChat, onOpenPlanner, onOpenProfile, onOpenStrategyExplore, onOpenUserPick, userContext }: MainHomeScreenProps): JSX.Element {
+export function MainHomeScreen({ aggregation, displayName, error, investmentProfile, loading, onOpenChat, onOpenPlanner, onOpenProfile, onOpenStrategyExplore, onOpenUserPick, portfolio }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
-  const allocationSlices: AllocationSlice[] = hero?.asset_allocations.slice(0, 4).map((item, index) => ({ label: ASSET_LABELS[item.asset_class_code] ?? "기타 자산", percent: `${item.allocation_percent}%`, color: ALLOCATION_COLORS[index] })) ?? [];
-  const holdingSlices = buildHoldingPieSlices(hero);
-  const totalBalance = userContext ? formatKrw(userContext.total_pension_balance_krw) : "-";
+  const allocationSlices: AllocationSlice[] = aggregation?.asset_class_totals
+    .slice(0, 4)
+    .map((item, index) => ({
+      label: ASSET_LABELS[item.asset_class] ?? "기타 자산",
+      percent: `${item.weight_percent}%`,
+      color: ALLOCATION_COLORS[index],
+    })) ?? [];
+  const holdingSlices = buildHoldingPieSlices(aggregation);
+  const totalBalance = aggregation ? formatKrw(aggregation.total_amount_krw) : "-";
+  const asOfDate = portfolio ? latestPortfolioDate(portfolio) : null;
 
   return (
     <main className="mhs-stage">
@@ -195,7 +199,7 @@ export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpen
         <div className="mhs-asset-card">
           <p className="mhs-asset-label">총 연금 자산</p>
           <p className="mhs-asset-total">{loading ? "불러오는 중…" : totalBalance}</p>
-          <p className="mhs-asset-gain">{error ?? (userContext ? `${userContext.nickname.replace(/\(가상\)/g, "")}님 · ${userContext.as_of_date} 기준` : "연금 데이터를 확인해 주세요.")}</p>
+          <p className="mhs-asset-gain">{error ?? (asOfDate ? `${displayName}님 · ${asOfDate} 기준` : "연금 데이터를 확인해 주세요.")}</p>
 
           <div className="mhs-pie-wrap">
             {holdingSlices.length > 0 ? <HoldingPie slices={holdingSlices} /> : (
@@ -242,7 +246,7 @@ export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpen
           <div className="mhs-summary-subcard">
             <span className="mhs-summary-label">한 줄 요약</span>
             <p className="mhs-summary-sub-label">포트폴리오 구성</p>
-            <p className="mhs-summary-text">{buildPortfolioOneLineSummary(hero)}</p>
+            <p className="mhs-summary-text">{buildPortfolioOneLineSummary(aggregation)}</p>
             <div className="mhs-summary-cta-row">
               <button type="button" className="mhs-summary-cta mhs-summary-cta-button" onClick={onOpenChat}>자세히 진단받기 <span className="mhs-summary-cta-chevron">›</span></button>
             </div>
@@ -252,11 +256,11 @@ export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpen
         <h2 className="mhs-section-title">세액공제</h2>
         <div className="mhs-tax-card">
           <span className="mhs-tax-icon-wrap">
-            <img src={moneyBag} alt="돈 주머니" className="mhs-tax-icon" />
+            <img src={taxCreditMissed} alt="놓친 세액공제액 찾기" className="mhs-tax-icon" />
           </span>
           <div className="mhs-tax-copy">
             <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
-            <p className="mhs-tax-sub">연금저축·IRP 납입 현황과 남은 여력을 확인해 보세요.</p>
+            <p className="mhs-tax-sub">지금 놓치고 있는 세액공제액이 얼마인지 확인해 보세요.</p>
             <button type="button" className="mhs-tax-button" onClick={onOpenPlanner}>완료율 확인하기 <span>→</span></button>
           </div>
         </div>

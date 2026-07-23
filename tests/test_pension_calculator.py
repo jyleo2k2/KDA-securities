@@ -24,8 +24,15 @@ from backend.app.engine.educational_portfolio import (
 from backend.app.engine.educational_portfolio import (
     RiskProfile as EducationalRiskProfile,
 )
-from backend.app.engine.models import SourceChip
-from backend.app.engine.pension_calculator import _allocation, _tax_rates
+from backend.app.engine.models import (
+    PensionCalculatorCombinedInput,
+    SourceChip,
+)
+from backend.app.engine.pension_calculator import (
+    _allocation,
+    _tax_rates,
+    calculate_combined_pension,
+)
 from backend.app.main import app
 
 client = TestClient(app)
@@ -288,6 +295,71 @@ def test_api_contract_and_validation() -> None:
         assert client.post(
             "/engine/pension-calculator", json=invalid
         ).status_code == 422
+
+
+def test_combined_calculator_keeps_account_rules_separate() -> None:
+    inputs = PensionCalculatorCombinedInput(
+        current_age=35,
+        contribution_end_age=60,
+        accounts=[
+            {
+                "account_id": "dc-1",
+                "account_name": "회사 DC",
+                "account_type": "dc",
+                "current_balance_krw": "40000000",
+            },
+            {
+                "account_id": "pension-1",
+                "account_name": "연금저축",
+                "account_type": "pension_savings",
+                "current_balance_krw": "20000000",
+            },
+        ],
+        risk_profile="risk_neutral",
+    )
+
+    result = calculate_combined_pension(inputs)
+    separate = [
+        calculate_pension(
+            PensionCalculatorInput(
+                current_age=35,
+                contribution_end_age=60,
+                monthly_contribution_krw=0,
+                current_balance_krw=account.current_balance_krw,
+                account_type=account.account_type,
+                risk_profile="risk_neutral",
+            )
+        )
+        for account in inputs.accounts
+    ]
+
+    assert result.headline.total_krw == sum(
+        (item.headline.total_krw for item in separate), Decimal("0")
+    )
+    assert result.yearly[-1].balance_krw == result.headline.total_krw
+    assert "combined_current_balances_only" in result.warnings
+
+
+def test_combined_calculator_api_contract() -> None:
+    response = client.post(
+        "/engine/pension-calculator/combined",
+        json={
+            "current_age": 35,
+            "contribution_end_age": 60,
+            "accounts": [
+                {
+                    "account_id": "irp-1",
+                    "account_name": "개인 IRP",
+                    "account_type": "irp",
+                    "current_balance_krw": "10000000",
+                }
+            ],
+            "risk_profile": "stable_seeking",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "combined_current_balances_only" in response.json()["warnings"]
 
 
 def test_portfolio_cma_api_uses_current_etf_costs(monkeypatch) -> None:

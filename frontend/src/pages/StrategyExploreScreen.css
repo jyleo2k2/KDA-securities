@@ -43,7 +43,8 @@
 .se-fan-controls { flex: none; display: flex; align-items: center; justify-content: center; gap: 22px; margin-top: 12px; }
 .se-fan-arrow { width: 44px; height: 44px; flex: 0 0 auto; display: grid; place-items: center; padding: 0; border: 1px solid #d9e1db; border-radius: 50%; background: rgba(255, 255, 255, .94); box-shadow: 0 8px 22px rgba(17, 42, 30, .08); cursor: pointer; transition: transform 180ms ease, border-color 180ms ease, background 180ms ease; }
 .se-fan-arrow span { margin-top: -4px; font-size: 30px; font-weight: 300; line-height: 1; color: var(--se-ink); }
-.se-fan-arrow:hover { transform: translateY(-2px); border-color: var(--se-brand); background: #f5fbf6; }
+@media (hover: hover) and (pointer: fine) { .se-fan-arrow:hover { transform: translateY(-2px); border-color: var(--se-brand); background: #f5fbf6; } }
+.se-fan-arrow:active { transform: scale(.95); }
 .se-fan-arrow:focus-visible, .se-fan-dots button:focus-visible { outline: 3px solid rgba(24, 168, 96, .34); outline-offset: 3px; }
 .se-fan-dots { display: flex; align-items: center; justify-content: center; gap: 9px; }
 .se-fan-dots button { width: 10px; height: 10px; padding: 0; border: 0; border-radius: 999px; background: #ccd3ce; cursor: pointer; transition: width 260ms ease, background 260ms ease; }

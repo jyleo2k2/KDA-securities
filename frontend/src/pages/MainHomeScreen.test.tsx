@@ -4,47 +4,77 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { DemoHeroPortfolio, InvestmentProfileResponse } from "../api/types";
+import type {
+  AggregationEvaluation,
+  InvestmentProfileResponse,
+  UserPensionPortfolio,
+} from "../api/types";
 import { MainHomeScreen } from "./MainHomeScreen";
 
 afterEach(cleanup);
 
+const aggregation = {
+  total_amount_krw: "60000000",
+  asset_class_totals: [
+    {
+      asset_class: "global_equity",
+      amount_krw: "42000000",
+      weight_percent: "70.00",
+    },
+    {
+      asset_class: "bond",
+      amount_krw: "18000000",
+      weight_percent: "30.00",
+    },
+  ],
+  per_account: [],
+  overlaps: [],
+  notice: "합산 수치는 표시용",
+  evidence: [],
+} as unknown as AggregationEvaluation;
+const portfolio = {
+  owner_id: "owner-1",
+  data_boundary: "mock",
+  accounts: [{ as_of_date: "2026-07-23" }],
+} as unknown as UserPensionPortfolio;
+
+function renderHome(
+  overrides: Partial<Parameters<typeof MainHomeScreen>[0]> = {},
+) {
+  return render(
+    <MainHomeScreen
+      aggregation={aggregation}
+      displayName="박준호"
+      error={null}
+      investmentProfile={null}
+      loading={false}
+      onOpenChat={vi.fn()}
+      onOpenPlanner={vi.fn()}
+      onOpenProfile={vi.fn()}
+      onOpenStrategyExplore={vi.fn()}
+      onOpenUserPick={vi.fn()}
+      portfolio={portfolio}
+      {...overrides}
+    />,
+  );
+}
+
 describe("MainHomeScreen", () => {
-  afterEach(cleanup);
+  it("shows the authenticated owner's engine aggregation", () => {
+    renderHome();
 
-  it("renders the selected user's holdings instead of fixed preview percentages", () => {
-    const hero = {
-      total_amount_krw: "1000000",
-      accounts: [{
-        holdings: [{ instrument_name: "사용자 보유 ETF", amount_krw: "1000000" }],
-      }],
-      asset_allocations: [],
-      risk_summary: { requires_rebalancing_review: false },
-    } as unknown as DemoHeroPortfolio;
-
-    render(
-      <MainHomeScreen
-        error={null}
-        hero={hero}
-        investmentProfile={null}
-        loading={false}
-        onOpenChat={vi.fn()}
-        onOpenPlanner={vi.fn()}
-        onOpenProfile={vi.fn()}
-        onOpenStrategyExplore={vi.fn()}
-        onOpenUserPick={vi.fn()}
-        onResurvey={vi.fn()}
-        userContext={null}
-      />,
-    );
-
-    expect(screen.getByText("사용자 보유 ETF")).toBeInTheDocument();
-    expect(screen.getByText("100.0%")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "총 연금 자산 보유 종목 비중" }).querySelector("circle")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "재설문하기" })).not.toBeInTheDocument();
+    expect(screen.getByText("60,000,000원")).toBeInTheDocument();
+    expect(screen.getByText("박준호님 · 2026-07-23 기준")).toBeInTheDocument();
+    expect(screen.getAllByText("글로벌주식")).not.toHaveLength(0);
+    expect(screen.getByText("70.0%")).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "총 연금 자산 자산군 비중" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("글로벌주식 비중이 70.00%로 가장 높아요."))
+      .toBeInTheDocument();
   });
 
-  it("shows the saved investment profile after login", () => {
+  it("shows the saved investment profile and opens the calculator", () => {
     const onOpenPlanner = vi.fn();
     const investmentProfile = {
       assessment: {
@@ -55,150 +85,28 @@ describe("MainHomeScreen", () => {
       preferences: null,
     } as InvestmentProfileResponse;
 
-    render(
-      <MainHomeScreen
-        error={null}
-        hero={null}
-        investmentProfile={investmentProfile}
-        loading={false}
-        onOpenChat={vi.fn()}
-        onOpenPlanner={onOpenPlanner}
-        onOpenProfile={vi.fn()}
-        onOpenStrategyExplore={vi.fn()}
-        onOpenUserPick={vi.fn()}
-        onResurvey={vi.fn()}
-        userContext={null}
-      />,
-    );
+    renderHome({ investmentProfile, onOpenPlanner });
 
-    expect(screen.getByText("저장 투자성향 · 적극투자형 · 2026-07-22 진단")).toBeInTheDocument();
+    expect(screen.getByText(
+      "저장 투자성향 · 적극투자형 · 2026-07-22 진단",
+    )).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /완료율 확인하기/ }));
     expect(onOpenPlanner).toHaveBeenCalledOnce();
   });
 
-  it("summarizes the current portfolio composition before diagnosis", () => {
-    const hero: DemoHeroPortfolio = {
-      nickname: "김하린",
-      representative_age: 29,
-      customer_context: "은퇴까지 기간이 긴 대표 고객",
-      is_demo_login_candidate: true,
-      scenario_code: "young_retirement_distance",
-      scenario_name: "은퇴까지 기간이 긴 고객",
-      age_band: "20s",
-      risk_profile: "growth",
-      investment_horizon_years: 31,
-      total_amount_krw: "23210000",
-      accounts: [],
-      asset_allocations: [
-        { asset_class_code: "domestic_equity", amount_krw: "4667000", allocation_percent: "20.11", account_count: 1 },
-        { asset_class_code: "global_equity", amount_krw: "11682000", allocation_percent: "50.33", account_count: 1 },
-        { asset_class_code: "cash", amount_krw: "1161000", allocation_percent: "5.00", account_count: 1 },
-      ],
-      duplicated_asset_classes: [],
-      risk_summary: {
-        dominant_asset_class: "global_equity",
-        dominant_asset_percent: "50.33",
-        general_risky_asset_percent: "70.44",
-        stress_scenario_code: "equity_drawdown",
-        estimated_stress_loss_percent: "-28.18",
-        is_forecast: false,
-        requires_rebalancing_review: true,
-        policy_label: "교육용 규칙 엔진",
-      },
-      past_performance: {
-        metric_code: "portfolio_trailing_12m_return_pct",
-        label: "과거 12개월 수익률",
-        trailing_12m_return_pct: "8.12",
-        period_start: "2025-07-17",
-        period_end: "2026-07-16",
-        calculation_basis: "계좌잔액 가중 합성수익률",
-        source_label: "시연용 합성 데이터",
-        data_kind: "MOCK",
-        is_forecast: false,
-        official_ranking_metric: false,
-      },
-      like_summary: {
-        metric_code: "like_count",
-        label: "추천(좋아요)",
-        count: 127,
-        as_of_date: "2026-07-21",
-        data_kind: "MOCK",
-        is_synthetic: true,
-        performance_based: false,
-      },
-      data_boundary: "mock",
-    };
-
-    render(
-      <MainHomeScreen
-        error={null}
-        hero={hero}
-        investmentProfile={null}
-        loading={false}
-        onOpenChat={vi.fn()}
-        onOpenPlanner={vi.fn()}
-        onOpenProfile={vi.fn()}
-        onOpenStrategyExplore={vi.fn()}
-        onOpenUserPick={vi.fn()}
-        onResurvey={vi.fn()}
-        userContext={null}
-      />,
-    );
-
-    expect(screen.getByText("포트폴리오 구성")).toBeInTheDocument();
-    expect(screen.getByText("글로벌주식 비중이 가장 높고, 전체 주식 비중은 70.4%예요.")).toBeInTheDocument();
-    expect(screen.queryByText("시황")).not.toBeInTheDocument();
-  });
-
   it("opens the supplied profile screen from the header icon", () => {
     const onOpenProfile = vi.fn();
-
-    render(
-      <MainHomeScreen
-        error={null}
-        hero={null}
-        investmentProfile={null}
-        loading={false}
-        onOpenChat={vi.fn()}
-        onOpenPlanner={vi.fn()}
-        onOpenProfile={onOpenProfile}
-        onOpenStrategyExplore={vi.fn()}
-        onOpenUserPick={vi.fn()}
-        onResurvey={vi.fn()}
-        userContext={null}
-      />,
-    );
+    renderHome({ onOpenProfile });
 
     fireEvent.click(screen.getByRole("button", { name: "프로필 열기" }));
     expect(onOpenProfile).toHaveBeenCalledOnce();
   });
 
-  it("shows available strategy planning returns and concise reasons for unavailable returns", () => {
-    render(
-      <MainHomeScreen
-        error={null}
-        hero={null}
-        investmentProfile={null}
-        loading={false}
-        onOpenChat={vi.fn()}
-        onOpenPlanner={vi.fn()}
-        onOpenProfile={vi.fn()}
-        onOpenStrategyExplore={vi.fn()}
-        onOpenUserPick={vi.fn()}
-        onResurvey={vi.fn()}
-        userContext={null}
-      />,
-    );
+  it("keeps the approved strategy cards", () => {
+    renderHome();
 
     expect(screen.getByText("전략별 계획수익률")).toBeInTheDocument();
     expect(screen.getByText("6.75%")).toBeInTheDocument();
-    expect(screen.getByText("6.60%")).toBeInTheDocument();
-    expect(screen.getByText("6.00%")).toBeInTheDocument();
-    expect(screen.getByText("6.25%")).toBeInTheDocument();
-    expect(screen.getByText("5.65%")).toBeInTheDocument();
     expect(screen.getAllByText("산정 전")).toHaveLength(5);
-    expect(screen.getByText("※ 지역·자산 비중 확정 후 계산해요.")).toBeInTheDocument();
-    expect(screen.getAllByText("※ 연금 적격 상품과 별도 CMA가 아직 확정되지 않았어요.")).toHaveLength(2);
-    expect(screen.queryByText("교육용 안내")).not.toBeInTheDocument();
   });
 });

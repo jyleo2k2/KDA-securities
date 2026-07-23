@@ -128,10 +128,16 @@
   line-height: 1;
 }
 
-.card-fan-carousel__arrow:hover {
-  transform: translateY(-2px);
-  border-color: #18a860;
-  background: #f5fbf6;
+@media (hover: hover) and (pointer: fine) {
+  .card-fan-carousel__arrow:hover {
+    transform: translateY(-2px);
+    border-color: #18a860;
+    background: #f5fbf6;
+  }
+}
+
+.card-fan-carousel__arrow:active {
+  transform: scale(0.95);
 }
 
 .card-fan-carousel__arrow:focus-visible,

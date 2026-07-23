@@ -2,8 +2,8 @@ import { useEffect, useState, type FormEvent, type JSX } from "react";
 
 import bangIcon from "../assets/login/bang.png";
 import piggyClean from "../assets/login/piggy-clean.png";
-import piggyForm from "../assets/login/piggy-form.png";
-import piggyIntro from "../assets/login/piggy-intro.png";
+import piggyForm from "../assets/login/piggy-form.webp";
+import piggyIntro from "../assets/login/piggy-intro.webp";
 import piggySuccess from "../assets/login/piggy-success.png";
 import { getAccountLinkOptions, saveInvestmentProfile } from "../api/client";
 import type { AccountLinkOptionsResponse, InvestmentProfileAssessment, InvestmentProfileResponse, InvestmentProfileSubmission } from "../api/types";
@@ -36,7 +36,7 @@ function StatusBar(): JSX.Element {
 }
 
 export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSaved, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
-  const [step, setStep] = useState<LoginStep>(resurvey ? "investor-info" : "intro");
+  const [step, setStep] = useState<LoginStep>(resurvey ? "risk-assessment" : "intro");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -241,7 +241,7 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
         )}
 
         {step === "investor-info" && (
-          <InvestorInfoForm onBack={resurvey ? onStart : () => setStep("risk-assessment")} onSubmit={saveInvestorInformation} />
+          <InvestorInfoForm onBack={() => setStep("risk-assessment")} onSubmit={saveInvestorInformation} />
         )}
 
         {step === "investor-result" && (

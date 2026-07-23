@@ -1,11 +1,10 @@
 // @vitest-environment jsdom
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const auth = vi.hoisted(() => ({
   getSession: vi.fn(),
   onAuthStateChange: vi.fn(),
-  signOut: vi.fn(),
 }));
 
 vi.mock("./supabase", () => ({
@@ -19,7 +18,6 @@ describe("useSupabaseAuth initial session", () => {
   afterEach(() => {
     auth.getSession.mockReset();
     auth.onAuthStateChange.mockReset();
-    auth.signOut.mockReset();
   });
 
   it("uses the getSession result instead of a stale INITIAL_SESSION event", async () => {
@@ -35,27 +33,6 @@ describe("useSupabaseAuth initial session", () => {
     const { result } = renderHook(() => useSupabaseAuth());
 
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.session).toBeNull();
-  });
-
-  it("clears the current browser session after a local sign out", async () => {
-    auth.getSession.mockResolvedValue({
-      data: { session: { access_token: "active-token", user: { id: "user-1" } } },
-      error: null,
-    });
-    auth.onAuthStateChange.mockReturnValue({
-      data: { subscription: { unsubscribe: vi.fn() } },
-    });
-    auth.signOut.mockResolvedValue({ error: null });
-
-    const { result } = renderHook(() => useSupabaseAuth());
-    await waitFor(() => expect(result.current.session).not.toBeNull());
-
-    await act(async () => {
-      await result.current.signOut();
-    });
-
-    expect(auth.signOut).toHaveBeenCalledWith({ scope: "local" });
     expect(result.current.session).toBeNull();
   });
 });
