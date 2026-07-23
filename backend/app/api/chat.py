@@ -17,6 +17,7 @@ from starlette.responses import StreamingResponse
 
 from ..auth import require_supabase_user_id
 from ..chat import ChatRequest, ChatResponse, ChatService
+from ..chat._debug_log import log_chat_exchange  # 로컬 디버깅 전용 임시물(삭제 예정)
 from ..chat.cards import ChatCardCatalog, chat_card_catalog
 from ..chat.heroes import DemoHeroPortfolio, build_demo_heroes
 from ..chat.models import (
@@ -605,6 +606,12 @@ async def chat_authenticated_stream(
                 first_delta_at=first_delta_at,
                 started_at=started_at,
             )
+            log_chat_exchange(  # 로컬 디버깅 전용 임시물(삭제 예정)
+                message=chat_request.message,
+                response=response,
+                latency_ms=(perf_counter() - started_at) * 1000,
+                persisted=False,
+            )
             yield _sse(
                 "response",
                 {
@@ -662,6 +669,12 @@ async def chat_authenticated_stream(
             narration_started_at=narration_started_at,
             first_delta_at=first_delta_at,
             started_at=started_at,
+        )
+        log_chat_exchange(  # 로컬 디버깅 전용 임시물(삭제 예정)
+            message=chat_request.message,
+            response=final_response,
+            latency_ms=(perf_counter() - started_at) * 1000,
+            persisted=True,
         )
         yield _sse(
             "response",
