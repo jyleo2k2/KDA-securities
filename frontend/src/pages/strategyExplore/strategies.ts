@@ -1,13 +1,13 @@
-import bottomup from "../../assets/strategy-explore/bottomup.png";
-import eventdriven from "../../assets/strategy-explore/eventdriven.png";
-import factor from "../../assets/strategy-explore/factor.png";
-import longshort from "../../assets/strategy-explore/longshort.png";
-import marketBeta from "../../assets/strategy-explore/market-beta.png";
-import target from "../../assets/strategy-explore/target.png";
-import theme from "../../assets/strategy-explore/theme.png";
-import topdown from "../../assets/strategy-explore/topdown.png";
-import trend from "../../assets/strategy-explore/trend.png";
-import volatility from "../../assets/strategy-explore/volatility.png";
+import bottomup from "../../assets/strategy-explore/bottomup.webp";
+import eventdriven from "../../assets/strategy-explore/eventdriven.webp";
+import factor from "../../assets/strategy-explore/factor.webp";
+import longshort from "../../assets/strategy-explore/longshort.webp";
+import marketBeta from "../../assets/strategy-explore/market-beta.webp";
+import target from "../../assets/strategy-explore/target.webp";
+import theme from "../../assets/strategy-explore/theme.webp";
+import topdown from "../../assets/strategy-explore/topdown.webp";
+import trend from "../../assets/strategy-explore/trend.webp";
+import volatility from "../../assets/strategy-explore/volatility.webp";
 
 export interface StrategyExploreItem {
   id: string;

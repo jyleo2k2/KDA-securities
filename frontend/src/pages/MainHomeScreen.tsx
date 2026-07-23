@@ -1,8 +1,8 @@
 import { useState, type JSX } from "react";
 
 import taxCreditMissed from "../assets/main-home/tax-credit-missed.png";
-import piggy from "../assets/main-home/piggy.png";
-import profileIcon from "../assets/main-home/profile-icon.png";
+import piggy from "../assets/main-home/piggy.webp";
+import profileIcon from "../assets/main-home/profile-icon.webp";
 import userPickPreview from "../assets/main-home/user-pick-preview.png";
 import type { DemoHeroPortfolio, DemoUserFinancialContext, InvestmentProfileResponse, RiskProfile } from "../api/types";
 import "./MainHomeScreen.css";
