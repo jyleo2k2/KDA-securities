@@ -658,6 +658,8 @@ export function GuidePage({
   const [input, setInput] = useState("");
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
   const [chatCards, setChatCards] = useState<ChatCard[]>([]);
+  const [chatCardsLoading, setChatCardsLoading] = useState(true);
+  const [chatCardsRequestVersion, setChatCardsRequestVersion] = useState(0);
   const [allEtfThemesVisible, setAllEtfThemesVisible] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState(initialScenarioCode ?? "");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -859,22 +861,33 @@ export function GuidePage({
     let retryCount = 0;
 
     const check = () => {
-      Promise.all([
+      setChatCardsLoading(true);
+      Promise.allSettled([
         accessToken ? getScenarios(accessToken) : Promise.resolve([]),
         getChatCards(),
       ])
-        .then(([scenarioData, catalog]) => {
+        .then(([scenarioResult, cardsResult]) => {
           if (cancelled) return;
-          setScenarios(scenarioData);
-          setChatCards(catalog.cards);
-          setServerReady(true);
-        })
-        .catch((error: unknown) => {
-          if (cancelled) return;
+          if (scenarioResult.status === "fulfilled") {
+            setScenarios(scenarioResult.value);
+          }
+          if (cardsResult.status === "fulfilled") {
+            setChatCards(cardsResult.value.cards);
+          }
+          setChatCardsLoading(false);
+
+          const errors = [scenarioResult, cardsResult]
+            .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+            .map((result) => result.reason);
+          if (errors.length === 0) {
+            setServerReady(true);
+            return;
+          }
+
           setServerReady(false);
-          const retryable = !(error instanceof ApiError)
+          const retryable = errors.some((error: unknown) => !(error instanceof ApiError)
             || error.status === undefined
-            || error.status >= 500;
+            || error.status >= 500);
           const delay = SERVER_READY_RETRY_DELAYS_MS[retryCount];
           if (retryable && delay !== undefined) {
             retryCount += 1;
@@ -888,7 +901,7 @@ export function GuidePage({
       cancelled = true;
       window.clearTimeout(retryTimer);
     };
-  }, [accessToken]);
+  }, [accessToken, chatCardsRequestVersion]);
 
   useEffect(() => {
     const previousAuth = previousAuthRef.current;
@@ -1478,7 +1491,9 @@ export function GuidePage({
 
               <ChatQuestionRecommendations
                 cards={visibleChatCards.filter((card) => card.intent !== "etf_theme")}
+                isLoading={chatCardsLoading}
                 onSubmit={(message) => void submitPrompt(message)}
+                onRetry={() => setChatCardsRequestVersion((version) => version + 1)}
               />
 
               {onOpenPlanner && (

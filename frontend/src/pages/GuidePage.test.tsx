@@ -391,13 +391,26 @@ describe("GuidePage chat history deletion", () => {
   it("does not retry server readiness after an authentication failure", async () => {
     const setTimeoutSpy = vi.spyOn(window, "setTimeout");
     vi.mocked(getScenarios).mockRejectedValue(new ApiError(401, "Unauthorized"));
+    vi.mocked(getChatCards).mockResolvedValue({ cards: RECOMMENDED_CHAT_CARDS });
     renderGuide();
 
     expect(await screen.findByText("API 연결 필요")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("챗봇 추천 질문")).getAllByRole("button")).toHaveLength(3);
     expect(getScenarios).toHaveBeenCalledOnce();
     expect(setTimeoutSpy).not.toHaveBeenCalledWith(expect.any(Function), 3000);
     expect(setTimeoutSpy).not.toHaveBeenCalledWith(expect.any(Function), 6000);
     expect(setTimeoutSpy).not.toHaveBeenCalledWith(expect.any(Function), 12000);
+  });
+
+  it("shows a retry action when the recommendation catalog fails", async () => {
+    vi.mocked(getChatCards)
+      .mockRejectedValueOnce(new Error("catalog unavailable"))
+      .mockResolvedValueOnce({ cards: RECOMMENDED_CHAT_CARDS });
+    renderGuide();
+
+    expect(await screen.findByText("추천 질문을 불러오지 못했어요.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
+    expect(within(await screen.findByLabelText("챗봇 추천 질문")).getAllByRole("button")).toHaveLength(3);
   });
 
   it("does not load protected endpoints without a session", async () => {

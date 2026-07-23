@@ -9,10 +9,14 @@ interface ThemeCard {
 
 export function ChatQuestionRecommendations({
   cards,
+  isLoading,
   onSubmit,
+  onRetry,
 }: {
   cards: ChatCard[];
+  isLoading: boolean;
   onSubmit: (message: string) => void;
+  onRetry: () => void;
 }) {
   return (
     <section className="chat-home-card-section" aria-labelledby="chat-question-heading">
@@ -20,13 +24,22 @@ export function ChatQuestionRecommendations({
         <p>추천 질문</p>
         <h2 id="chat-question-heading">챗봇에게 무엇이든 물어보세요</h2>
       </header>
-      <div className="chat-question-grid" aria-label="챗봇 추천 질문">
-        {cards.map((card) => (
-          <button type="button" key={card.card_id} onClick={() => onSubmit(card.message)}>
-            <span className="design-prompt-copy"><small>추천 질문</small><strong>{card.title}</strong><em>{card.message}</em></span>
-          </button>
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="chat-question-load-error" aria-live="polite">추천 질문을 불러오는 중이에요.</div>
+      ) : cards.length > 0 ? (
+        <div className="chat-question-grid" aria-label="챗봇 추천 질문">
+          {cards.map((card) => (
+            <button type="button" key={card.card_id} onClick={() => onSubmit(card.message)}>
+              <span className="design-prompt-copy"><small>추천 질문</small><strong>{card.title}</strong><em>{card.message}</em></span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="chat-question-load-error" aria-live="polite">
+          <span>추천 질문을 불러오지 못했어요.</span>
+          <button type="button" onClick={onRetry}>다시 시도</button>
+        </div>
+      )}
     </section>
   );
 }
