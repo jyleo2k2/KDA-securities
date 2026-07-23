@@ -4,7 +4,6 @@ import logging
 from datetime import UTC, datetime
 
 from ...engine import AccountType, EducationalRiskProfile
-from ...engine.etf_theme import select_theme_etf_candidates
 from ...etf_theme_repository import EtfThemeRepository
 from ...retrieval.repository import NewsMatch
 from ..live_news import LiveMarketNewsSnapshot, LiveNewsUnavailable
@@ -28,7 +27,6 @@ from ..news_event_strategy import (
     NEWS_EVENT_POLICY_AS_OF,
     NEWS_EVENT_POLICY_VERSION,
     classify_news_event,
-    tactical_sleeve_policy,
 )
 from ..query_planner import NewsScopeNotice
 from ..routing import NewsFollowUp, NewsFollowUpAction
@@ -683,46 +681,16 @@ def attach_event_strategy(
         and _RISK_PROFILE_RANKS[survey.risk_profile]
         >= _RISK_PROFILE_RANKS[EducationalRiskProfile.ACTIVE]
     )
-    sleeve_policy = (
-        tactical_sleeve_policy(survey.risk_profile)
-        if survey is not None
-        else None
-    )
-    candidate_rows, candidate_source, candidate_limitations = (
-        _event_tactical_candidate_rows(
-            theme_ids=tuple(
-                theme_id
-                for item in response.news_items
-                for theme_id in classify_news_event(
-                    title=item.title,
-                    description=(item.description or " ".join(item.summary_lines)),
-                    topics=topics_by_evidence.get(item.evidence_id, ()),
-                    theme_catalog=catalog,
-                ).theme_ids
-            ),
-            account_type=survey.account_type if survey is not None else None,
-            maximum_percent=(sleeve_policy.maximum_percent if sleeve_policy else None),
-            theme_repository=theme_repository,
-            portfolio_universe_loader=portfolio_universe_loader,
-        )
-        if tactical_allowed and sleeve_policy is not None
-        else ([], None, [])
-    )
     if tactical_allowed:
         strategy_intro = (
             "현재 설문 성향 범위에서 전술 관찰 가이드를 제공해요. "
-            "뉴스만으로 비중이나 주문을 결정하지 않아요."
+            "뉴스만으로 상품이나 비중을 결정하지 않아요."
         )
         strategy_items = [
-            sleeve_policy.core_policy if sleeve_policy is not None else "",
-            (
-                f"후보 ETF를 합산해도 전술 슬리브는 최대 "
-                f"{_decimal_text(sleeve_policy.maximum_percent)}%까지만 허용"
-                if sleeve_policy is not None
-                else ""
-            ),
+            "기존 장기 코어 배분과 규칙 엔진 목표비중을 먼저 유지",
             "공식 발표·가격·거래대금·ETF 구성종목을 함께 확인",
-            "계좌별 위험자산 한도와 규칙 엔진 목표비중을 먼저 적용",
+            "상품 비교는 별도 ETF 테마 정보에서 확인하고 뉴스와 연결해 개인화하지 않기",
+            "계좌별 위험자산 한도와 사용자 투자성향을 먼저 적용",
             "리밸런싱은 목표비중 이탈과 신규 납입금 기준으로 별도 계산",
         ]
     elif survey is None:
@@ -784,50 +752,16 @@ def attach_event_strategy(
             ],
         ),
     ]
-    if tactical_allowed and sleeve_policy is not None:
-        tactical_blocks = [
-            AnswerBlock(
-                kind=AnswerBlockKind.BULLETS,
-                title="적용 원칙",
-                items=[item for item in strategy_items if item],
-            )
-        ]
-        if candidate_rows:
-            tactical_blocks.append(
-                AnswerBlock(
-                    kind=AnswerBlockKind.TABLE,
-                    headers=["후보 ETF", "이벤트 테마", "허용 비중", "선정 근거"],
-                    rows=candidate_rows,
-                )
-            )
-        sections.append(
-            AnswerSection(
-                kind=SectionKind.SERVICE_EXPLANATION,
-                title="이벤트 드리븐 포트폴리오 가이드",
-                content=(
-                    "후보 ETF는 현재 계좌의 적격 유니버스에서 고른 교육용 비교 "
-                    "대안입니다. 뉴스만으로 매수·매도하지 않고, 다음 정기 리밸런싱이나 "
-                    "이벤트 근거 정정 시 다시 점검해요."
-                ),
-                evidence_ids=[
-                    policy_source_id,
-                    *([candidate_source.evidence_id] if candidate_source else []),
-                ],
-                blocks=tactical_blocks,
-            )
-        )
     return response.model_copy(
         update={
             "sections": sections,
-            "sources": [
-                *response.sources,
-                policy_source,
-                *([candidate_source] if candidate_source else []),
-            ],
+            "sources": [*response.sources, policy_source],
             "limitations": [
                 *response.limitations,
-                *candidate_limitations,
-                "이벤트 분류는 방향성·수익률 예측이나 자동운용 신호가 아닙니다.",
+                (
+                    "이벤트 분류는 상품 추천·목표비중·방향성·수익률 예측이나 "
+                    "자동운용 신호가 아닙니다."
+                ),
             ],
             "conversation_context": ConversationContext(
                 account_type=(survey.account_type if survey is not None else None),
@@ -835,75 +769,6 @@ def attach_event_strategy(
                 survey_profile=survey,
             ),
         }
-    )
-
-
-def _event_tactical_candidate_rows(
-    *,
-    theme_ids: tuple[str, ...],
-    account_type: AccountType | None,
-    maximum_percent,
-    theme_repository: EtfThemeRepository | None,
-    portfolio_universe_loader: PortfolioUniverseLoader | None,
-) -> tuple[list[list[str]], SourceEvidence | None, list[str]]:
-    if (
-        account_type is None
-        or maximum_percent is None
-        or theme_repository is None
-        or portfolio_universe_loader is None
-    ):
-        return [], None, []
-    try:
-        universe = portfolio_universe_loader(account_type)
-    except (FileNotFoundError, ValueError):
-        return [], None, [
-            "계좌별 ETF 적격 유니버스를 불러오지 못해 후보를 제시하지 않았어요."
-        ]
-
-    rows: list[list[str]] = []
-    seen_codes: set[str] = set()
-    for theme_id in dict.fromkeys(theme_ids):
-        theme = theme_repository.get(theme_id)
-        if theme is None:
-            continue
-        evaluation = select_theme_etf_candidates(
-            catalog=theme_repository.catalog,
-            theme=theme,
-            products=universe.products,
-            kis_products_by_code=theme_repository.kis_products_by_code,
-            component_snapshot_date=theme_repository.component_snapshot_date,
-            limit=3,
-            allowed_isu_codes=theme_repository.allowed_product_codes(theme_id),
-        )
-        if evaluation.status != "ok":
-            continue
-        for candidate in evaluation.candidates:
-            if candidate.isu_code in seen_codes or len(rows) >= 3:
-                continue
-            seen_codes.add(candidate.isu_code)
-            rows.append(
-                [
-                    candidate.isu_name,
-                    theme.name,
-                    f"후보 합산 최대 {_decimal_text(maximum_percent)}%",
-                    " · ".join(candidate.reasons[:2]),
-                ]
-            )
-    if not rows:
-        return [], None, [
-            "현재 계좌의 적격 ETF 유니버스에서 이벤트 테마 후보를 찾지 못했어요."
-        ]
-    return (
-        rows,
-        SourceEvidence(
-            evidence_id="engine:event_tactical_candidates",
-            label=f"{_ACCOUNT_TYPE_LABELS[account_type]} 적격 ETF 유니버스",
-            locator="engine://etf-theme/account-eligible-universe",
-            publisher="연금 코파일럿 규칙 엔진",
-            as_of=universe.as_of,
-            data_boundary=DataBoundary.ENGINE,
-        ),
-        [],
     )
 
 
