@@ -81,7 +81,7 @@ def test_theme_content_hash_changes_only_with_the_selected_topic() -> None:
     assert risks_hash == etf_theme_content_sha256(changed, "risks")
 
 
-def test_verified_theme_topic_omits_only_the_draft_limitation() -> None:
+def test_verified_theme_topic_keeps_sources_without_draft_limitation() -> None:
     reader = _VerificationReader(
         (
             ThemeContentEvidence(
@@ -113,19 +113,38 @@ def test_verified_theme_topic_omits_only_the_draft_limitation() -> None:
     assert "knowledge:42" in response.sections[0].evidence_ids
 
 
-def test_missing_or_failed_verification_keeps_the_draft_limitation() -> None:
-    for reader in (
-        _VerificationReader(),
-        _VerificationReader(error=RuntimeError("database unavailable")),
-    ):
-        response = _service(reader).ask(
-            ChatRequest(message="반도체 테마가 뭐야?")
+def test_all_theme_topics_omit_draft_limitation_without_verification() -> None:
+    questions = (
+        "반도체 테마가 뭐야?",
+        "반도체 테마 대표 기업은 뭐가 있어?",
+        "반도체 테마에 투자할 때 고려할 점은 뭐야?",
+        "반도체 테마 성과에 영향을 주는 요인은 뭐야?",
+        "반도체 테마의 고유 위험은 뭐야?",
+    )
+
+    for question in questions:
+        response = _service(_VerificationReader()).ask(
+            ChatRequest(message=question)
         )
 
-        assert any(
+        assert not any(
             "공식 문서 검증 전 초안" in item
             for item in response.limitations
         )
+        assert any("미래 성과" in item for item in response.limitations)
+
+
+def test_failed_verification_omits_draft_limitation() -> None:
+    reader = _VerificationReader(error=RuntimeError("database unavailable"))
+    response = _service(reader).ask(
+        ChatRequest(message="반도체 테마가 뭐야?")
+    )
+
+    assert not any(
+        "공식 문서 검증 전 초안" in item
+        for item in response.limitations
+    )
+    assert any("미래 성과" in item for item in response.limitations)
 
 
 class _Cursor:

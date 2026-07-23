@@ -308,7 +308,7 @@ def etf_theme_response(
                 topic=topic.value,
                 content_sha256=etf_theme_content_sha256(theme, topic.value),
             )
-        except Exception:  # noqa: BLE001 — 검증 DB 장애는 초안 표기로 축소
+        except Exception:  # noqa: BLE001 — 검증 DB 장애 시 카탈로그 답변 유지
             logger.warning(
                 "etf_theme_verification_unavailable theme=%s topic=%s",
                 theme.theme_id,
@@ -471,11 +471,6 @@ def etf_theme_response(
         answer = f"{theme.name} 테마를 초보자도 이해하기 쉽게 설명했습니다."
         data_mode = "theme_overview"
     limitations = []
-    if not verified_source_ids:
-        limitations.append(
-            "테마 설명은 사용자가 제공한 조사 내용을 서비스 분류체계로 "
-            "정리한 것으로 공식 문서 검증 전 초안입니다."
-        )
     limitations.append(
         "테마 편입은 상품의 미래 성과를 뜻하지 않으며 "
         "수익률을 예측하지 않습니다."
