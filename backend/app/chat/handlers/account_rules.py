@@ -41,6 +41,10 @@ _ACCOUNT_BRIEF_QUESTION = re.compile(
     r"어떤\s*(?:계좌|연금)|설명|알려",
     re.I,
 )
+_ACCOUNT_BRIEF_ONLY = re.compile(
+    r"(?:DC|IRP|연금저축펀드)",
+    re.I,
+)
 _ACCOUNT_BRIEF_NARROW_TOPIC = re.compile(
     r"위험\s*자산|한도|세액\s*공제|공제율|중도\s*인출|해지|"
     r"수령|세금|과세|편입|상품|수익률|납입",
@@ -389,6 +393,7 @@ def _requests_account_brief(request: ChatRequest, plan: QueryPlan) -> bool:
     return (
         plan.account_rule_topic == AccountRuleTopic.PENSION_ACCOUNT_OVERVIEW
         or _ACCOUNT_BRIEF_QUESTION.search(request.message) is not None
+        or _ACCOUNT_BRIEF_ONLY.fullmatch(request.message.strip()) is not None
     )
 
 

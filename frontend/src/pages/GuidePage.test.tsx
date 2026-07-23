@@ -765,7 +765,7 @@ describe("GuidePage chat history deletion", () => {
     );
   });
 
-  it("shows concise account copy without rendering its validation evidence cards", async () => {
+  it("shows the concise single-account heading without rendering its validation evidence cards", async () => {
     const response: ChatResponse = {
       ...THEME_RESPONSE,
       intent: "account_rule",
@@ -796,6 +796,18 @@ describe("GuidePage chat history deletion", () => {
         evidence_id: "rule:pension_overview:law",
         basis: "검증된 연금계좌 제도 근거",
       }],
+      suggested_follow_ups: [
+        {
+          follow_up_id: "account_to_tax",
+          label: "연금 세액공제 계산",
+          message: "올해 연금저축에 600만원 넣으면 세액공제 얼마야?",
+        },
+        {
+          follow_up_id: "account_to_edu",
+          label: "맞춤형 포트폴리오",
+          message: "내 상황에 맞는 연금저축전략을 알려줘.",
+        },
+      ],
     };
     vi.mocked(getChatCards).mockResolvedValue({
       cards: [RECOMMENDED_CHAT_CARDS[0]],
@@ -814,10 +826,23 @@ describe("GuidePage chat history deletion", () => {
     });
     const section = cardTitle.closest("details");
     expect(section).toHaveAttribute("open");
+    expect(within(section as HTMLElement).getByText("개인형 퇴직연금(IRP) 특징", {
+      exact: true,
+    })).toBeInTheDocument();
+    expect(screen.queryByText(
+      "개인형 퇴직연금(IRP) 특징 — 이 계좌의 역할과 핵심 특징을 확인해 보세요.",
+      { exact: true },
+    )).not.toBeInTheDocument();
+    expect(within(section as HTMLElement).getByText(
+      "이 계좌의 역할과 핵심 특징을 확인해 보세요.",
+      { exact: true },
+    )).toBeInTheDocument();
     expect(within(section as HTMLElement).getByText("한눈에 보면:")).toBeInTheDocument();
     expect(within(section as HTMLElement).getByText("핵심 특징:")).toBeInTheDocument();
     expect(screen.queryByText("연금계좌 특징 수치 근거 1")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("수치 근거")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "연금 세액공제 계산" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "맞춤형 포트폴리오" })).not.toBeInTheDocument();
   });
 
   it("opens pension tax-rule cards without duplicate numeric evidence cards", async () => {
@@ -854,6 +879,23 @@ describe("GuidePage chat history deletion", () => {
         evidence_id: "rule:pension_overview:tax_credit",
         basis: "국세청·소득세법 연금계좌 세액공제 규칙",
       }],
+      suggested_follow_ups: [
+        {
+          follow_up_id: "account_to_tax",
+          label: "연금 세액공제 계산",
+          message: "올해 연금저축에 600만원 넣으면 세액공제 얼마야?",
+        },
+        {
+          follow_up_id: "account_to_edu",
+          label: "맞춤형 포트폴리오",
+          message: "내 상황에 맞는 연금저축전략을 알려줘.",
+        },
+        {
+          follow_up_id: "account_to_diff",
+          label: "계좌별 차이",
+          message: "DC형, IRP, 연금저축은 뭐가 달라?",
+        },
+      ],
     };
     vi.mocked(getChatCards).mockResolvedValue({
       cards: [RECOMMENDED_CHAT_CARDS[0]],
@@ -876,6 +918,9 @@ describe("GuidePage chat history deletion", () => {
       screen.queryByText("연금계좌 세액공제 규칙 수치 근거 1"),
     ).not.toBeInTheDocument();
     expect(screen.queryByLabelText("수치 근거")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "계좌별 차이" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "연금 세액공제 계산" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "맞춤형 포트폴리오" })).not.toBeInTheDocument();
   });
 
   it("shows every authenticated pension-tax answer in the required field order", async () => {
@@ -949,6 +994,23 @@ describe("GuidePage chat history deletion", () => {
       limitations: [
         "실제 환급액은 소득세 결정세액 등에 따라 달라질 수 있으므로 자세한 내용은 금융기관에 확인하거나 세무전문가와 상담해야 해요.",
       ],
+      suggested_follow_ups: [
+        {
+          follow_up_id: "tax_withdrawal",
+          label: "중도해지 세금",
+          message: "연금저축을 중도에 해지하면 세금이 얼마나 나와?",
+        },
+        {
+          follow_up_id: "tax_to_diff",
+          label: "계좌별 차이",
+          message: "DC형, IRP, 연금저축은 뭐가 달라?",
+        },
+        {
+          follow_up_id: "tax_missed_benefit",
+          label: "내가 놓친 혜택",
+          message: "내가 놓치고 있는 세액공제혜택을 알려줘",
+        },
+      ],
     } as unknown as ChatResponse;
     vi.mocked(getChatCards).mockResolvedValue({ cards: [RECOMMENDED_CHAT_CARDS[1]] });
     vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
@@ -1003,11 +1065,84 @@ describe("GuidePage chat history deletion", () => {
       fontSize: "clamp(13px, 3.4vw, 16px)",
       whiteSpace: "nowrap",
     });
+    expect(screen.getByRole("button", { name: "계좌별 차이" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "내가 놓친 혜택" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "중도해지 세금" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "숫자 근거 더보기" }));
     expect(await screen.findByText("숨겨진 추가 근거")).toBeInTheDocument();
     expect(screen.getByText("지방세 제외 세액공제율")).toBeInTheDocument();
     expect(screen.queryByText("확인된 소득구간 법정 세액공제액")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "내가 놓친 혜택" }));
+    await waitFor(() => {
+      expect(vi.mocked(sendAuthenticatedChatStream).mock.calls.at(-1)?.[0]).toBe(
+        "내가 놓치고 있는 세액공제혜택을 알려줘",
+      );
+    });
+    expect(screen.queryByRole("button", { name: "내가 놓친 혜택" })).not.toBeInTheDocument();
+  });
+
+  it("shows the missed-benefit answer without the ordinary tax breakdown", async () => {
+    const response = {
+      ...THEME_RESPONSE,
+      intent: "pension_tax",
+      answer: [
+        "정민재님은 올해 217,800원 만큼의 세금을 덜 돌려받고 있어요.",
+        "",
+        "연금저축계좌나 IRP 또는 DC형 계좌에 1,320,000원 만큼을 추가로 납입하세요.",
+        "",
+        "그러면 정민재님의 최대 세액공제혜택 1,485,000원을 온전히 받을 수 있어요.",
+      ].join("\n"),
+      data_mode: "missed_pension_tax_credit_engine",
+      pension_tax_result: { tax_credit: {} },
+      visualizations: [{
+        kind: "tax_summary",
+        title: "세액공제 요약",
+        description: "",
+        data_boundary: "engine",
+        evidence_ids: ["engine:pension_tax"],
+        items: [
+          { label: "세액공제 대상 납입액", value: "7680000", unit: "KRW", role: "value" },
+        ],
+        series: [],
+      }],
+      numeric_evidence: [{
+        label: "추가 납입 가능액",
+        value: "1320000",
+        unit: "KRW",
+        evidence_id: "engine:pension_tax",
+        basis: "규칙 엔진",
+      }],
+      sections: [],
+      limitations: [
+        "실제 환급액은 소득세 결정세액 등에 따라 달라질 수 있으므로 자세한 내용은 금융기관에 확인하거나 세무전문가와 상담해야 해요.",
+      ],
+      suggested_follow_ups: [{
+        follow_up_id: "tax_to_diff",
+        label: "계좌별 차이",
+        message: "DC형, IRP, 연금저축은 뭐가 달라?",
+      }],
+    } as unknown as ChatResponse;
+    vi.mocked(getChatCards).mockResolvedValue({ cards: [RECOMMENDED_CHAT_CARDS[1]] });
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      persisted: true,
+      session_id: SESSION_ID,
+      response,
+    } as Awaited<ReturnType<typeof sendAuthenticatedChatStream>>);
+    renderGuide();
+
+    fireEvent.click(await screen.findByRole("button", { name: /연금세액공제/ }));
+
+    const missedBenefitCopy = await screen.findByText(
+      "정민재님은 올해 217,800원 만큼의 세금을 덜 돌려받고 있어요.",
+      { exact: false },
+    );
+    expect(missedBenefitCopy.textContent).toBe(response.answer);
+    expect(screen.queryByRole("region", { name: "세액공제 요약" })).not.toBeInTheDocument();
+    expect(screen.queryByText("세액공제액은 이렇게 계산했어요.")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("수치 근거")).not.toBeInTheDocument();
+    expect(screen.getByText(response.limitations[0])).toBeInTheDocument();
   });
 
   it("numbers each news summary line and submits the selected market question", async () => {

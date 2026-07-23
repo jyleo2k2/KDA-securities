@@ -4,6 +4,7 @@ from datetime import date
 from decimal import Decimal
 
 from ...engine import (
+    IsaTransferEligibilityStatus,
     NonPensionWithdrawalEvaluation,
     PensionTaxCreditEvaluation,
     PensionTaxToolResult,
@@ -20,7 +21,7 @@ from ..models import (
     SourceEvidence,
 )
 from ..pension_tax_parser import resolve_pension_tax_inputs
-from ..query_planner import QueryPlan
+from ..query_planner import QueryPlan, is_missed_tax_credit_question
 from ..tools import (
     PENSION_TAX_CLOSING_NOTICE,
     calculate_pension_tax_credit_tool,
@@ -35,6 +36,7 @@ PENSION_TAX_REFUND_NOTICE = (
 PENSION_TAX_LOCAL_INCOME_TAX_NOTICE = (
     "세액공제율과 세액공제액은 지방소득세를 고려해서 계산했어요."
 )
+MISSED_TAX_CREDIT_DATA_MODE = "missed_pension_tax_credit_engine"
 
 
 def pension_tax_response(
@@ -73,9 +75,7 @@ def pension_tax_response(
     withdrawal: NonPensionWithdrawalEvaluation | None = None
     if plan.requests_tax_credit:
         assert resolved_inputs.tax_credit is not None
-        tax_credit = calculate_pension_tax_credit_tool(
-            resolved_inputs.tax_credit
-        )
+        tax_credit = calculate_pension_tax_credit_tool(resolved_inputs.tax_credit)
     if plan.requests_withdrawal_tax:
         assert resolved_inputs.withdrawal is not None
         withdrawal = estimate_non_pension_withdrawal_tax_tool(
@@ -92,6 +92,78 @@ def pension_tax_response(
     limitations: list[str] = []
 
     if tax_credit is not None:
+        if (
+            is_missed_tax_credit_question(request.message)
+            and tax_credit.rate_determined
+            and resolved_inputs.tax_credit is not None
+            and tax_credit.additional_tax_credit_krw is not None
+        ):
+            maximum_input = resolved_inputs.tax_credit.model_copy(
+                update={
+                    "pension_savings_contribution_krw": Decimal("6000000"),
+                    "irp_contribution_krw": Decimal("3000000"),
+                    "dc_employee_additional_contribution_krw": Decimal("0"),
+                    "isa_maturity_transfer_krw": Decimal("0"),
+                    "isa_transfer_eligibility_status": (
+                        IsaTransferEligibilityStatus.NONE
+                    ),
+                    "isa_additional_limit_used_prior_tax_year_krw": Decimal("0"),
+                }
+            )
+            maximum_credit = calculate_pension_tax_credit_tool(maximum_input)
+            maximum_effect = maximum_credit.rate_scenarios[
+                0
+            ].estimated_total_tax_reduction_effect_krw
+            remaining = tax_credit.remaining_eligible_contribution_krw
+            missed_effect = tax_credit.additional_tax_credit_krw
+            return ChatResponse(
+                intent=ChatIntent.PENSION_TAX,
+                answer=(
+                    "고객님은 올해 "
+                    f"{missed_effect:,.0f}원 만큼의 세금을 덜 돌려받고 있어요.\n\n"
+                    "연금저축계좌나 IRP 또는 DC형 계좌에 "
+                    f"{remaining:,.0f}원 만큼을 추가로 납입하세요.\n\n"
+                    "그러면 고객님의 "
+                    f"최대 세액공제혜택 {maximum_effect:,.0f}원을 온전히 "
+                    "받을 수 있어요."
+                ),
+                data_mode=MISSED_TAX_CREDIT_DATA_MODE,
+                sources=pension_tax_sources(
+                    PensionTaxToolResult(tax_credit=tax_credit)
+                ),
+                numeric_evidence=[
+                    NumericEvidence(
+                        label="추가 납입 가능액",
+                        value=remaining,
+                        unit="KRW",
+                        evidence_id="engine:pension_tax",
+                        basis="일반 합산 세액공제 대상 한도 900만원의 남은 금액",
+                    ),
+                    NumericEvidence(
+                        label="놓친 예상 세액공제혜택",
+                        value=missed_effect,
+                        unit="KRW",
+                        evidence_id="engine:pension_tax",
+                        basis="남은 합산 한도와 지방소득세 포함 세액공제율",
+                    ),
+                    NumericEvidence(
+                        label="최대 세액공제혜택",
+                        value=maximum_effect,
+                        unit="KRW",
+                        evidence_id="engine:pension_tax",
+                        basis="합산 한도 900만원을 채운 규칙 엔진 시나리오",
+                    ),
+                ],
+                pension_tax_result=PensionTaxToolResult(tax_credit=tax_credit),
+                limitations=[
+                    PENSION_TAX_REFUND_NOTICE,
+                    PENSION_TAX_LOCAL_INCOME_TAX_NOTICE,
+                    (
+                        "연금저축은 연 600만원 한도 안에서, 나머지는 IRP 또는 "
+                        "DC형 본인 추가납입 한도 안에서 채워야 해요."
+                    ),
+                ],
+            )
         credit_text = tax_credit_text(tax_credit)
         answer_parts.append(credit_text)
         tax_input = resolved_inputs.tax_credit
@@ -166,9 +238,7 @@ def pension_tax_response(
             numeric.extend(tax_numeric)
         limitations.append(PENSION_TAX_REFUND_NOTICE)
         limitations.append(PENSION_TAX_LOCAL_INCOME_TAX_NOTICE)
-        limitations.append(
-            "세액공제 계산과 같은 해 중도해지 추정은 별도 가정이에요."
-        )
+        limitations.append("세액공제 계산과 같은 해 중도해지 추정은 별도 가정이에요.")
         if "ISA 만기자금" in tax_credit.assumption_notice:
             limitations.append(
                 "ISA 만기자금 전환의 법정 요건이 확인되지 않아 해당 금액은 "
@@ -211,16 +281,8 @@ def pension_tax_sources(
     result: PensionTaxToolResult,
 ) -> list[SourceEvidence]:
     evidence = [
-        *(
-            result.tax_credit.evidence
-            if result.tax_credit is not None
-            else []
-        ),
-        *(
-            result.withdrawal.evidence
-            if result.withdrawal is not None
-            else []
-        ),
+        *(result.tax_credit.evidence if result.tax_credit is not None else []),
+        *(result.withdrawal.evidence if result.withdrawal is not None else []),
     ]
     credit_source = next(
         (item for item in evidence if "59조의3" in item.label),

@@ -83,9 +83,7 @@ class QueryPlan(BaseModel):
             raise ValueError("out_of_scope intent requires blocked_reason")
         if self.intent != ChatIntent.OUT_OF_SCOPE and self.blocked_reason is not None:
             raise ValueError("blocked_reason is only valid for out_of_scope")
-        requests_pension_tax = (
-            self.requests_tax_credit or self.requests_withdrawal_tax
-        )
+        requests_pension_tax = self.requests_tax_credit or self.requests_withdrawal_tax
         if self.intent == ChatIntent.PENSION_TAX and not requests_pension_tax:
             raise ValueError("pension_tax intent requires a requested calculation")
         if self.intent != ChatIntent.PENSION_TAX and requests_pension_tax:
@@ -297,6 +295,10 @@ _PENSION_TAX_CALCULATION_TERMS = re.compile(
     r"받을\s*수\s*있는|"
     r"\d[\d,]*(?:\.\d+)?\s*(?:억|천만|만|천)?\s*원"
 )
+_MISSED_TAX_CREDIT_TERMS = re.compile(
+    r"놓치.{0,12}(?:세액\s*공제|공제)\s*혜택|"
+    r"(?:세액\s*공제|공제)\s*혜택.{0,12}놓치"
+)
 _PENSION_PLANNER_TERMS = re.compile(
     r"(?:적립|모으).{0,16}(?:얼마|계산|시뮬)|"
     r"(?:55|60|65)\s*세.{0,16}(?:얼마|수령|계산)|"
@@ -333,13 +335,15 @@ def _account_types(message: str) -> tuple[AccountType, ...]:
     found: list[AccountType] = []
     if re.search(r"(?<![A-Za-z])DC(?![A-Za-z])|확정기여형", message, re.I):
         found.append(AccountType.DC)
-    if re.search(
-        r"(?<![A-Za-z])IRP(?![A-Za-z])|개인형\s*퇴직연금", message, re.I
-    ):
+    if re.search(r"(?<![A-Za-z])IRP(?![A-Za-z])|개인형\s*퇴직연금", message, re.I):
         found.append(AccountType.IRP)
     if "연금저축" in message:
         found.append(AccountType.PENSION_SAVINGS)
     return tuple(found)
+
+
+def is_missed_tax_credit_question(message: str) -> bool:
+    return _MISSED_TAX_CREDIT_TERMS.search(message) is not None
 
 
 def _contains_sensitive_information(message: str) -> bool:
@@ -347,9 +351,7 @@ def _contains_sensitive_information(message: str) -> bool:
         _RRN.search(message) is not None
         or _PHONE.search(message) is not None
         or _EMAIL.search(message) is not None
-        or any(
-        pattern.search(message) for pattern in _SENSITIVE_VALUE_PATTERNS
-        )
+        or any(pattern.search(message) for pattern in _SENSITIVE_VALUE_PATTERNS)
     )
 
 
@@ -471,9 +473,9 @@ def plan_question(
     account_rule_topic = _account_rule_topic(normalized, account_types)
     tax_credit_topic = _TAX_CREDIT_TERMS.search(normalized) is not None
     withdrawal_tax_topic = _WITHDRAWAL_TAX_TERMS.search(normalized) is not None
-    requests_calculation = (
-        _PENSION_TAX_CALCULATION_TERMS.search(normalized) is not None
-    )
+    requests_calculation = _PENSION_TAX_CALCULATION_TERMS.search(
+        normalized
+    ) is not None or is_missed_tax_credit_question(normalized)
     has_calculation_input = structured_pension_tax or requests_calculation
     requests_tax_credit = tax_credit_topic and has_calculation_input
     requests_withdrawal_tax = withdrawal_tax_topic and has_calculation_input
@@ -484,8 +486,7 @@ def plan_question(
     intent_matches = {
         ChatIntent.MOCK_PORTFOLIO: _SCENARIO_TERMS.search(normalized) is not None,
         ChatIntent.PENSION_TAX: requests_tax_credit or requests_withdrawal_tax,
-        ChatIntent.ETF_DISTRIBUTION: _DISTRIBUTION_TERMS.search(normalized)
-        is not None,
+        ChatIntent.ETF_DISTRIBUTION: _DISTRIBUTION_TERMS.search(normalized) is not None,
         ChatIntent.NEWS: (
             _NEWS_TERMS.search(normalized) is not None
             or _NEWS_EVENT_STRATEGY_TERMS.search(normalized) is not None
@@ -501,13 +502,9 @@ def plan_question(
         and _DISCLOSURE_TERMS.search(normalized) is not None,
         ChatIntent.ACCOUNT_RULE: bool(
             requests_pension_planner
-            or
-            account_types
+            or account_types
             or account_rule_topic
-            or (
-                _PENSION_CONTEXT.search(normalized)
-                and _RULE_TERMS.search(normalized)
-            )
+            or (_PENSION_CONTEXT.search(normalized) and _RULE_TERMS.search(normalized))
         ),
     }
     personal_account_tax_request = (
@@ -521,11 +518,7 @@ def plan_question(
         ChatIntent.PENSION_TAX
         if personal_account_tax_request
         else next(
-            (
-                candidate
-                for candidate in _INTENT_PRIORITY
-                if intent_matches[candidate]
-            ),
+            (candidate for candidate in _INTENT_PRIORITY if intent_matches[candidate]),
             None,
         )
     )
@@ -582,9 +575,7 @@ def plan_question(
         asks_representative_companies = (
             _THEME_REPRESENTATIVE_COMPANY_TERMS.search(normalized) is not None
         )
-        asks_considerations = (
-            _THEME_CONSIDERATION_TERMS.search(normalized) is not None
-        )
+        asks_considerations = _THEME_CONSIDERATION_TERMS.search(normalized) is not None
         asks_performance_drivers = (
             _THEME_PERFORMANCE_DRIVER_TERMS.search(normalized) is not None
         )

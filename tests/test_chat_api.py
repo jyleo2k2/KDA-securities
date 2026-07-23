@@ -1,6 +1,7 @@
 import json
 import threading
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from decimal import Decimal
 from uuid import UUID, uuid4
 
 import psycopg
@@ -33,6 +34,8 @@ from backend.app.chat.repository import (
 )
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService
+from backend.app.chat.user_context import DemoUserFinancialContext
+from backend.app.engine import IncomeBasis
 from backend.app.main import app
 from tests.conftest import FakeChatRepository as _BaseFakeChatRepository
 from tests.conftest import final_sse_response, parse_sse
@@ -69,9 +72,7 @@ class FakeChatRepository(_BaseFakeChatRepository):
     def get_messages(self, *, owner_id: UUID, session_id: UUID):
         assert owner_id == OWNER_ID
         assert session_id == SESSION_ID
-        response = _service().ask(
-            ChatRequest(message="IRP 위험자산 한도를 알려줘")
-        )
+        response = _service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
         timestamp = datetime(2026, 7, 15, tzinfo=UTC)
         return [
             StoredChatMessage(
@@ -312,9 +313,7 @@ def test_authenticated_chat_stream_does_not_persist_sensitive_query() -> None:
         with TestClient(app) as client:
             response = client.post(
                 "/chat/stream",
-                json={
-                    "message": "주민등록번호 900101-1234567로 IRP를 확인해줘"
-                },
+                json={"message": "주민등록번호 900101-1234567로 IRP를 확인해줘"},
                 headers=CHAT_HEADERS,
             )
     finally:
@@ -379,8 +378,8 @@ def test_authenticated_pension_tax_personalizes_any_user(nickname: str) -> None:
 
     repository = FakeChatRepository()
     _override_authenticated_dependencies(repository)
-    app.dependency_overrides[get_optional_demo_user_context_repository] = (
-        lambda: NicknameRepository()
+    app.dependency_overrides[get_optional_demo_user_context_repository] = lambda: (
+        NicknameRepository()
     )
     try:
         with TestClient(app) as client:
@@ -411,6 +410,227 @@ def test_authenticated_pension_tax_personalizes_any_user(nickname: str) -> None:
     ]
 
 
+def test_authenticated_missed_tax_credit_uses_saved_user_context() -> None:
+    context = DemoUserFinancialContext(
+        auth_user_id=OWNER_ID,
+        benchmark_user_id="USR-MISSED-TAX",
+        nickname="정민재",
+        representative_age=35,
+        customer_context="IRP 납입 고객",
+        scenario_code="irp_tax_credit",
+        scenario_name="IRP 세액공제",
+        age_band="30대",
+        risk_profile="balanced",
+        investment_horizon_years=25,
+        tax_year=2026,
+        income_basis=IncomeBasis.GROSS_SALARY,
+        income_amount_krw=Decimal("50000000"),
+        dc_balance_krw=Decimal("0"),
+        irp_balance_krw=Decimal("50000000"),
+        pension_savings_balance_krw=Decimal("0"),
+        total_pension_balance_krw=Decimal("50000000"),
+        irp_contribution_krw=Decimal("7680000"),
+        pension_savings_contribution_krw=Decimal("0"),
+        as_of_date=date(2026, 7, 23),
+        data_kind="mock",
+    )
+
+    class ContextRepository:
+        def get(self, owner_id):
+            assert owner_id == OWNER_ID
+            return context
+
+        def get_nickname(self, owner_id):
+            assert owner_id == OWNER_ID
+            return context.nickname
+
+    repository = FakeChatRepository()
+    _override_authenticated_dependencies(repository)
+    app.dependency_overrides[get_optional_demo_user_context_repository] = lambda: (
+        ContextRepository()
+    )
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={"message": "내가 놓치고 있는 세액공제혜택을 알려줘"},
+                headers=CHAT_HEADERS,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    payload = final_sse_response(response.text)["response"]
+    assert payload["data_mode"] == "missed_pension_tax_credit_engine"
+    assert payload["answer"].splitlines() == [
+        "정민재님은 올해 217,800원 만큼의 세금을 덜 돌려받고 있어요.",
+        "",
+        "연금저축계좌나 IRP 또는 DC형 계좌에 1,320,000원 만큼을 추가로 납입하세요.",
+        "",
+        "그러면 정민재님의 최대 세액공제혜택 1,485,000원을 온전히 받을 수 있어요.",
+    ]
+    assert payload["limitations"][0] == (
+        "실제 환급액은 소득세 결정세액 등에 따라 달라질 수 있으므로 자세한 "
+        "내용은 금융기관에 확인하거나 세무전문가와 상담해야 해요."
+    )
+
+
+@pytest.mark.parametrize(
+    (
+        "owner_id",
+        "benchmark_user_id",
+        "nickname",
+        "income_amount",
+        "pension_savings_contribution",
+        "irp_contribution",
+        "expected_remaining",
+        "expected_missed",
+        "expected_maximum",
+    ),
+    (
+        (
+            "0d3a8c4f-3d6e-4e2e-91a0-7d11a2b71c01",
+            "USR09660",
+            "박준호(가상)",
+            "64640000",
+            "0",
+            "0",
+            "9000000",
+            "1188000",
+            "1188000",
+        ),
+        (
+            "1e4b9d50-4e7f-4f3f-a2b1-8e22b3c82d02",
+            "USR00540",
+            "이서연(가상)",
+            "61730000",
+            "0",
+            "0",
+            "9000000",
+            "1188000",
+            "1188000",
+        ),
+        (
+            "2f5cae61-5f80-4040-b3c2-9f33c4d93e03",
+            "USR03419",
+            "정민재(가상)",
+            "97500000",
+            "3840000",
+            "4920000",
+            "240000",
+            "31680",
+            "1188000",
+        ),
+        (
+            "306dbf72-6091-4141-84d3-a044d5ea4f04",
+            "USR08633",
+            "김하린(가상)",
+            "38810000",
+            "0",
+            "0",
+            "9000000",
+            "1485000",
+            "1485000",
+        ),
+        (
+            "417ec083-71a2-4242-95e4-b155e6fb5005",
+            "USR00109",
+            "최지훈(가상)",
+            "54050000",
+            "0",
+            "7680000",
+            "1320000",
+            "217800",
+            "1485000",
+        ),
+    ),
+)
+def test_all_login_candidates_complete_pension_tax_follow_up_flow(
+    owner_id: str,
+    benchmark_user_id: str,
+    nickname: str,
+    income_amount: str,
+    pension_savings_contribution: str,
+    irp_contribution: str,
+    expected_remaining: str,
+    expected_missed: str,
+    expected_maximum: str,
+) -> None:
+    context = DemoUserFinancialContext(
+        auth_user_id=UUID(owner_id),
+        benchmark_user_id=benchmark_user_id,
+        nickname=nickname,
+        representative_age=40,
+        customer_context="로그인 후보 사용자 회귀 테스트",
+        scenario_code="authenticated_pension_tax_flow",
+        scenario_name="로그인 사용자 연금세액공제",
+        age_band="로그인 후보",
+        risk_profile="balanced",
+        investment_horizon_years=20,
+        tax_year=2026,
+        income_basis=IncomeBasis.GROSS_SALARY,
+        income_amount_krw=Decimal(income_amount),
+        dc_balance_krw=Decimal("0"),
+        irp_balance_krw=Decimal("0"),
+        pension_savings_balance_krw=Decimal("0"),
+        total_pension_balance_krw=Decimal("0"),
+        irp_contribution_krw=Decimal(irp_contribution),
+        pension_savings_contribution_krw=Decimal(pension_savings_contribution),
+        as_of_date=date(2026, 7, 23),
+        data_kind="mock",
+    )
+    service = _service()
+
+    def ask(message: str):
+        authenticated = chat_api.AuthenticatedChatRequest(message=message)
+        request = chat_api._authenticated_request(authenticated, context)
+        planning_request = chat_api._authenticated_planning_request(
+            authenticated, request
+        )
+        response, _ = chat_api._authenticated_response(
+            request=request,
+            plan=service.plan(planning_request),
+            service=service,
+            context=context,
+            nickname=nickname,
+        )
+        return response
+
+    tax_response = ask("올해 받을 수 있는 연금세액공제가 궁금해.")
+    assert tax_response.answer.startswith(
+        f"{nickname}님의 올해 연금세액공제 혜택을 정리했어요."
+    )
+    assert [item.follow_up_id for item in tax_response.suggested_follow_ups] == [
+        "tax_to_diff",
+        "tax_missed_benefit",
+    ]
+
+    missed_response = ask("내가 놓치고 있는 세액공제혜택을 알려줘")
+    assert missed_response.data_mode == "missed_pension_tax_credit_engine"
+    assert missed_response.answer.splitlines() == [
+        (
+            f"{nickname}님은 올해 {Decimal(expected_missed):,.0f}원 만큼의 "
+            "세금을 덜 돌려받고 있어요."
+        ),
+        "",
+        (
+            "연금저축계좌나 IRP 또는 DC형 계좌에 "
+            f"{Decimal(expected_remaining):,.0f}원 만큼을 추가로 납입하세요."
+        ),
+        "",
+        (
+            f"그러면 {nickname}님의 최대 세액공제혜택 "
+            f"{Decimal(expected_maximum):,.0f}원을 온전히 받을 수 있어요."
+        ),
+    ]
+
+    account_response = ask("DC형, IRP, 연금저축은 뭐가 달라?")
+    assert account_response.data_mode == "verified_pension_account_brief"
+    account_content = account_response.model_dump_json()
+    assert "연금저축펀드" in account_content
+    assert "개인형 퇴직연금(IRP)" in account_content
+    assert "DC형 퇴직연금" in account_content
+
+
 def test_sensitive_query_is_not_persisted_or_echoed() -> None:
     repository = FakeChatRepository()
     _override_authenticated_dependencies(repository)
@@ -418,11 +638,7 @@ def test_sensitive_query_is_not_persisted_or_echoed() -> None:
         with TestClient(app) as client:
             response = client.post(
                 "/chat/stream",
-                json={
-                    "message": (
-                        "주민등록번호 900101-1234567로 IRP를 확인해줘"
-                    )
-                },
+                json={"message": ("주민등록번호 900101-1234567로 IRP를 확인해줘")},
                 headers=CHAT_HEADERS,
             )
     finally:
@@ -606,9 +822,7 @@ def test_authenticated_user_can_delete_owned_session() -> None:
 
     assert response.status_code == 204
     assert response.content == b""
-    assert repository.deleted == [
-        {"owner_id": OWNER_ID, "session_id": SESSION_ID}
-    ]
+    assert repository.deleted == [{"owner_id": OWNER_ID, "session_id": SESSION_ID}]
 
 
 def test_authenticated_user_can_delete_all_owned_sessions() -> None:
@@ -837,8 +1051,8 @@ def test_authenticated_chat_loads_session_and_demo_context_in_parallel() -> None
 
     repository = ParallelRepository()
     _override_authenticated_dependencies(repository)
-    app.dependency_overrides[get_optional_demo_user_context_repository] = (
-        lambda: ParallelContextRepository()
+    app.dependency_overrides[get_optional_demo_user_context_repository] = lambda: (
+        ParallelContextRepository()
     )
     try:
         with TestClient(app) as client:
@@ -874,8 +1088,8 @@ def test_demo_context_database_failure_does_not_stop_authenticated_chat() -> Non
 
     repository = ContextRestoringRepository()
     _override_authenticated_dependencies(repository)
-    app.dependency_overrides[get_optional_demo_user_context_repository] = (
-        lambda: UnavailableContextRepository()
+    app.dependency_overrides[get_optional_demo_user_context_repository] = lambda: (
+        UnavailableContextRepository()
     )
     try:
         with TestClient(app) as client:

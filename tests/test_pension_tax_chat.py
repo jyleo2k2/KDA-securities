@@ -52,15 +52,17 @@ EXPECTED_CLOSING_NOTICE = (
 
 def test_tax_question_without_structured_values_requests_input() -> None:
     response = _service().ask(
-        ChatRequest(
-            message="연금저축과 IRP 세액공제와 중도해지 세금을 계산해줘"
-        )
+        ChatRequest(message="연금저축과 IRP 세액공제와 중도해지 세금을 계산해줘")
     )
 
     assert response.intent == ChatIntent.PENSION_TAX
     assert response.data_mode == "input_required"
     assert response.pension_tax_result is None
     assert any("계좌번호" in item for item in response.limitations)
+    assert [item.follow_up_id for item in response.suggested_follow_ups] == [
+        "tax_to_diff",
+        "tax_missed_benefit",
+    ]
 
 
 def test_natural_language_tax_credit_question_runs_without_form_input() -> None:
@@ -78,6 +80,10 @@ def test_natural_language_tax_credit_question_runs_without_form_input() -> None:
     assert response.pension_tax_result is not None
     assert response.pension_tax_result.tax_credit is not None
     assert response.pension_tax_result.withdrawal is None
+    assert [item.follow_up_id for item in response.suggested_follow_ups] == [
+        "tax_to_diff",
+        "tax_missed_benefit",
+    ]
     assert "900만 원" in response.answer
     assert "148.5만 원" in response.answer
     assert [item.kind.value for item in response.visualizations] == ["tax_summary"]
@@ -99,12 +105,10 @@ def test_natural_language_tax_credit_question_runs_without_form_input() -> None:
         "세액공제액",
     ]
     assert any(
-        item.label.endswith("법정 세액공제액")
-        for item in response.numeric_evidence
+        item.label.endswith("법정 세액공제액") for item in response.numeric_evidence
     )
     assert not any(
-        section.title == "당해연도 세액공제 간이 계산"
-        for section in response.sections
+        section.title == "당해연도 세액공제 간이 계산" for section in response.sections
     )
     assert response.limitations[0] == (
         "실제 환급액은 소득세 결정세액 등에 따라 달라질 수 있으므로 자세한 "
@@ -115,11 +119,55 @@ def test_natural_language_tax_credit_question_runs_without_form_input() -> None:
         in response.limitations
     )
     assert any(
-        item.label == "지방세 제외 세액공제율"
-        for item in response.numeric_evidence
+        item.label == "지방세 제외 세액공제율" for item in response.numeric_evidence
     )
     assert DC_WITHDRAWAL_EXCLUSION_NOTICE not in response.answer
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
+
+
+def test_missed_tax_credit_uses_engine_remaining_limit_and_rate() -> None:
+    payload = _input_payload()
+    payload["pension_savings"]["current_year_contribution_krw"] = "0"
+    payload["irp"]["current_year_contribution_krw"] = "7680000"
+
+    response = _service().ask(
+        ChatRequest(
+            message="내가 놓치고 있는 세액공제혜택을 알려줘",
+            pension_tax=PensionTaxScenarioInput.model_validate(payload),
+        )
+    )
+
+    assert response.data_mode == "missed_pension_tax_credit_engine"
+    assert response.answer.splitlines() == [
+        "고객님은 올해 217,800원 만큼의 세금을 덜 돌려받고 있어요.",
+        "",
+        "연금저축계좌나 IRP 또는 DC형 계좌에 1,320,000원 만큼을 추가로 납입하세요.",
+        "",
+        "그러면 고객님의 최대 세액공제혜택 1,485,000원을 온전히 받을 수 있어요.",
+    ]
+    assert [item.value for item in response.numeric_evidence] == [
+        Decimal("1320000"),
+        Decimal("217800"),
+        Decimal("1485000"),
+    ]
+    assert response.limitations[0] == (
+        "실제 환급액은 소득세 결정세액 등에 따라 달라질 수 있으므로 자세한 "
+        "내용은 금융기관에 확인하거나 세무전문가와 상담해야 해요."
+    )
+
+
+def test_missed_tax_credit_at_full_limit_reports_zero_remaining_benefit() -> None:
+    response = _service().ask(
+        ChatRequest(
+            message="내가 놓치고 있는 세액공제혜택을 알려줘",
+            pension_tax=_inputs(),
+        )
+    )
+
+    assert response.data_mode == "missed_pension_tax_credit_engine"
+    assert "0원 만큼의 세금을 덜 돌려받고 있어요." in response.answer
+    assert "0원 만큼을 추가로 납입하세요." in response.answer
+    assert "최대 세액공제혜택 1,485,000원" in response.answer
 
 
 def test_tax_summary_labels_comprehensive_income() -> None:
@@ -228,6 +276,7 @@ def test_natural_language_max_withdrawal_question_runs_without_form_input() -> N
     assert "8,000만 원" in response.answer
     assert "1,320만 원" in response.answer
     assert response.answer.splitlines()[-1] == EXPECTED_CLOSING_NOTICE
+    assert response.suggested_follow_ups == []
 
 
 def test_natural_language_unavoidable_reason_blocks_without_balances() -> None:
@@ -297,18 +346,26 @@ def test_structured_scenario_without_topic_or_calculation_word_runs_both() -> No
 
 
 def test_service_calls_only_the_requested_tax_calculation() -> None:
-    tax_credit = _service().ask(
-        ChatRequest(
-            message="연금계좌 세액공제 혜택을 계산해줘",
-            pension_tax=_inputs(),
+    tax_credit = (
+        _service()
+        .ask(
+            ChatRequest(
+                message="연금계좌 세액공제 혜택을 계산해줘",
+                pension_tax=_inputs(),
+            )
         )
-    ).pension_tax_result
-    withdrawal = _service().ask(
-        ChatRequest(
-            message="연금저축과 IRP 연금외수령 과세액을 알려줘",
-            pension_tax=_inputs(),
+        .pension_tax_result
+    )
+    withdrawal = (
+        _service()
+        .ask(
+            ChatRequest(
+                message="연금저축과 IRP 연금외수령 과세액을 알려줘",
+                pension_tax=_inputs(),
+            )
         )
-    ).pension_tax_result
+        .pension_tax_result
+    )
 
     assert tax_credit is not None
     assert tax_credit.tax_credit is not None
@@ -402,10 +459,9 @@ def test_chat_runs_all_three_guide_questions_without_form_input() -> None:
         assert response.pension_tax_result is not None
         result = response.pension_tax_result
         if expected_credit is not None:
-            assert (
-                result.tax_credit.rate_scenarios[0].estimated_tax_credit_krw
-                == Decimal(expected_credit)
-            )
+            assert result.tax_credit.rate_scenarios[
+                0
+            ].estimated_tax_credit_krw == Decimal(expected_credit)
         elif expected_withdrawal == "requires_review":
             assert result.withdrawal is not None
             assert result.withdrawal.status == "requires_review"
@@ -426,9 +482,7 @@ def test_engine_tax_endpoints_share_the_same_contract() -> None:
         "pension_savings_contribution_krw": payload["pension_savings"][
             "current_year_contribution_krw"
         ],
-        "irp_contribution_krw": payload["irp"][
-            "current_year_contribution_krw"
-        ],
+        "irp_contribution_krw": payload["irp"]["current_year_contribution_krw"],
     }
     withdrawal_input = {
         "tax_year": payload["tax_year"],
@@ -445,15 +499,9 @@ def test_engine_tax_endpoints_share_the_same_contract() -> None:
         )
 
     assert credit.status_code == 200
-    assert (
-        credit.json()["rate_scenarios"][0]["estimated_tax_credit_krw"]
-        == "1485000"
-    )
+    assert credit.json()["rate_scenarios"][0]["estimated_tax_credit_krw"] == "1485000"
     assert withdrawal.status_code == 200
-    assert (
-        withdrawal.json()["estimated_max_other_income_withholding_krw"]
-        == "11715000"
-    )
+    assert withdrawal.json()["estimated_max_other_income_withholding_krw"] == "11715000"
 
 
 def test_narrator_must_call_both_tax_tools_before_rephrasing() -> None:

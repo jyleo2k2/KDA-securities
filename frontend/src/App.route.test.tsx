@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
 
 import App from "./App";
 import { getDemoHeroes, getInvestmentProfile, getMyPensionContext } from "./api/client";
@@ -27,7 +27,13 @@ vi.mock("./pages/GuidePage", () => ({
   GuidePage: () => <main data-testid="guide-page">가이드</main>,
 }));
 
+vi.mock("./pages/LoginFlowPage", () => ({
+  LoginFlowPage: () => <main data-testid="login-page">로그인</main>,
+}));
+
 describe("initial hash routing", () => {
+  afterEach(cleanup);
+
   beforeEach(() => {
     window.history.replaceState(null, "", "#guide");
     vi.mocked(useSupabaseAuth).mockReturnValue({
@@ -47,5 +53,22 @@ describe("initial hash routing", () => {
     render(<App />);
 
     expect(await screen.findByTestId("guide-page")).toBeTruthy();
+  });
+
+  it("opens the login page from the original frontend URL", async () => {
+    window.history.replaceState(null, "", "#/");
+
+    render(<App />);
+
+    expect(await screen.findByTestId("login-page")).toBeTruthy();
+    expect(window.location.hash).toBe("#/login");
+  });
+
+  it("keeps the explicit login route visible with a stored session", async () => {
+    window.history.replaceState(null, "", "#/login");
+
+    render(<App />);
+
+    expect(await screen.findByTestId("login-page")).toBeTruthy();
   });
 });

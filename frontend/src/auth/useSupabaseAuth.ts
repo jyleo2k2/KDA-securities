@@ -70,11 +70,15 @@ export function useSupabaseAuth(): SupabaseAuthState {
   const signOut = useCallback(async () => {
     if (!supabase) return;
     setError(null);
-    const { error: signOutError } = await supabase.auth.signOut();
+    const { error: signOutError } = await supabase.auth.signOut({
+      scope: "local",
+    });
     if (signOutError) {
       setError("로그아웃하지 못했습니다.");
       throw new Error("로그아웃하지 못했습니다.");
     }
+    setSession(null);
+    setLoading(false);
   }, []);
 
   return {

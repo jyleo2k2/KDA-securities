@@ -490,23 +490,47 @@ function AssistantMessage({
 
   if (!response) return <p className="message-copy">{text}</p>;
 
-  const visibleFollowUps = (response.suggested_follow_ups ?? []).filter(
-    (followUp) => !usedFollowUpMessages.has(followUp.message.trim()),
-  );
   const isEducationalPortfolio = response.intent === "educational_portfolio";
   const isPensionTaxCredit = (
     response.intent === "pension_tax"
     && response.pension_tax_result?.tax_credit != null
   );
-  const taxSummaryVisualization = isPensionTaxCredit
+  const isMissedTaxCredit = (
+    response.data_mode === "missed_pension_tax_credit_engine"
+  );
+  const showPensionTaxBreakdown = isPensionTaxCredit && !isMissedTaxCredit;
+  const isPensionTaxRelated = (
+    isPensionTaxCredit
+    || response.data_mode === "verified_pension_tax_rule_brief"
+  );
+  const isPensionAccountBrief = (
+    response.data_mode === "verified_pension_account_brief"
+  );
+  const visibleFollowUps = (response.suggested_follow_ups ?? []).filter(
+    (followUp) => (
+      !isPensionAccountBrief
+      && (
+        !isPensionTaxRelated
+        || followUp.follow_up_id === "tax_to_diff"
+        || followUp.follow_up_id === "tax_missed_benefit"
+        || followUp.follow_up_id === "account_to_diff"
+      )
+      && !usedFollowUpMessages.has(followUp.message.trim())
+    ),
+  );
+  const taxSummaryVisualization = showPensionTaxBreakdown
     ? response.visualizations.find((item) => (
       item.kind === "tax_summary" && item.title === "세액공제 요약"
     ))
     : undefined;
-  const remainingVisualizations = taxSummaryVisualization
-    ? response.visualizations.filter((item) => item !== taxSummaryVisualization)
-    : response.visualizations;
-  const visibleNumericEvidence = isPensionTaxCredit
+  const remainingVisualizations = isMissedTaxCredit
+    ? response.visualizations.filter((item) => item.kind !== "tax_summary")
+    : taxSummaryVisualization
+      ? response.visualizations.filter((item) => item !== taxSummaryVisualization)
+      : response.visualizations;
+  const visibleNumericEvidence = isMissedTaxCredit
+    ? []
+    : isPensionTaxCredit
     ? response.numeric_evidence.filter(
       (item) => !item.label.endsWith("법정 세액공제액"),
     )
@@ -640,30 +664,30 @@ function AssistantMessage({
         <p className="message-copy">
           {response.salutation && <><strong>{response.salutation},</strong>{" "}</>}
           {displayText(
-            isPensionTaxCredit
+            showPensionTaxBreakdown
               ? response.answer.split(/\r?\n/, 1)[0]
               : response.answer,
           )}
         </p>
       )}
 
-      {isPensionTaxCredit && taxSummaryVisualization && (
+      {showPensionTaxBreakdown && taxSummaryVisualization && (
         <ChatVisualization
           visualization={taxSummaryVisualization}
           sources={response.sources}
         />
       )}
-      {isPensionTaxCredit && (
+      {showPensionTaxBreakdown && (
         <p className="message-copy" style={{ marginTop: 20 }}>
           세액공제액은 이렇게 계산했어요.
         </p>
       )}
-      {isPensionTaxCredit && numericEvidenceCards}
+      {showPensionTaxBreakdown && numericEvidenceCards}
 
       <MacroEvidenceCards response={response} />
       <MacroRegimeOutcomeCards response={response} />
 
-      {!isPensionTaxCredit && numericEvidenceCards}
+      {!showPensionTaxBreakdown && numericEvidenceCards}
 
       <EducationalPortfolioReview evaluation={response.educational_portfolio_evaluation} />
 
@@ -694,7 +718,7 @@ function AssistantMessage({
         <Fragment key={`${section.title}-${index}`}>
           <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "verified_pension_account_brief" || response.data_mode === "verified_pension_tax_rule_brief" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
             <summary>
-              <span>{section.title}{sectionPreview(section.content) && ` — ${sectionPreview(section.content)}`}</span>
+              <span>{section.title}{response.data_mode !== "verified_pension_account_brief" && sectionPreview(section.content) && ` — ${sectionPreview(section.content)}`}</span>
               <small>내용 보기</small>
             </summary>
             {section.blocks?.length ? (

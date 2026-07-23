@@ -197,13 +197,19 @@ def test_pension_tax_engine_is_reserved_for_calculation_requests(
 
 
 def test_personalized_pension_tax_request_selects_both_calculations() -> None:
-    plan = plan_question(
-        "연금저축과 IRP 세액공제 혜택과 중도해지 세금을 계산해줘"
-    )
+    plan = plan_question("연금저축과 IRP 세액공제 혜택과 중도해지 세금을 계산해줘")
 
     assert plan.intent == ChatIntent.PENSION_TAX
     assert plan.requests_tax_credit is True
     assert plan.requests_withdrawal_tax is True
+
+
+def test_missed_tax_credit_follow_up_routes_to_tax_credit_calculation() -> None:
+    plan = plan_question("내가 놓치고 있는 세액공제혜택을 알려줘")
+
+    assert plan.intent == ChatIntent.PENSION_TAX
+    assert plan.requests_tax_credit is True
+    assert plan.requests_withdrawal_tax is False
 
 
 def test_structured_tax_input_without_topic_selects_both_calculations() -> None:
@@ -409,9 +415,7 @@ def test_intent_conflicts_follow_explicit_priority(
 
 
 def test_combined_cap_request_is_marked_for_account_separation() -> None:
-    plan = plan_question(
-        "DC와 IRP와 연금저축을 합쳐서 위험자산 70%를 적용하면 돼?"
-    )
+    plan = plan_question("DC와 IRP와 연금저축을 합쳐서 위험자산 70%를 적용하면 돼?")
 
     assert plan.intent == ChatIntent.ACCOUNT_RULE
     assert plan.combines_account_rules is True

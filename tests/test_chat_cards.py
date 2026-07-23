@@ -140,9 +140,7 @@ def test_follow_up_cards_are_bounded_and_route_safely() -> None:
         intent=ChatIntent.PENSION_TAX,
         answer="세액공제 결과예요.",
         data_mode="engine",
-    ).model_copy(
-        update={"pension_tax_result": SimpleNamespace(tax_credit=object())}
-    )
+    ).model_copy(update={"pension_tax_result": SimpleNamespace(tax_credit=object())})
     account_rule = ChatResponse(
         intent=ChatIntent.ACCOUNT_RULE,
         answer="계좌 규칙 안내예요.",
@@ -181,8 +179,8 @@ def test_follow_up_cards_are_bounded_and_route_safely() -> None:
         "news_region_us": ChatIntent.NEWS,
         "mock_risk_cap": ChatIntent.ACCOUNT_RULE,
         "mock_tax": ChatIntent.PENSION_TAX,
-        "tax_withdrawal": ChatIntent.PENSION_TAX,
         "tax_to_diff": ChatIntent.ACCOUNT_RULE,
+        "tax_missed_benefit": ChatIntent.PENSION_TAX,
         "account_to_tax": ChatIntent.PENSION_TAX,
         "account_to_edu": ChatIntent.EDUCATIONAL_PORTFOLIO,
         "account_to_diff": ChatIntent.ACCOUNT_RULE,
@@ -245,12 +243,25 @@ def test_follow_up_cards_are_bounded_and_route_safely() -> None:
         ("macro_to_news", "오늘 증시 뉴스", "오늘 증시 뉴스 알려줘."),
     ]
     assert [item.follow_up_id for item in build_suggested_follow_ups(pension_tax)] == [
-        "tax_withdrawal",
         "tax_to_diff",
+        "tax_missed_benefit",
     ]
+    pension_tax_rule = ChatResponse(
+        intent=ChatIntent.ACCOUNT_RULE,
+        answer="세액공제 규칙 안내예요.",
+        data_mode="verified_pension_tax_rule_brief",
+    )
     assert [
-        item.follow_up_id
-        for item in build_suggested_follow_ups(educational_portfolio)
+        item.follow_up_id for item in build_suggested_follow_ups(pension_tax_rule)
+    ] == ["tax_to_diff", "tax_missed_benefit"]
+    pension_account_brief = ChatResponse(
+        intent=ChatIntent.ACCOUNT_RULE,
+        answer="계좌별 특징 안내예요.",
+        data_mode="verified_pension_account_brief",
+    )
+    assert build_suggested_follow_ups(pension_account_brief) == []
+    assert [
+        item.follow_up_id for item in build_suggested_follow_ups(educational_portfolio)
     ] == ["education_risk_cap", "edu_to_tax", "edu_to_news"]
     for follow_up in follow_ups:
         plan = plan_question(follow_up.message)

@@ -61,13 +61,27 @@ def chat_card_catalog() -> ChatCardCatalog:
     return ChatCardCatalog(cards=list(CHAT_CARDS))
 
 
+def pension_tax_credit_follow_ups() -> list[SuggestedFollowUp]:
+    return [
+        SuggestedFollowUp(
+            follow_up_id="tax_to_diff",
+            label="계좌별 차이",
+            message="DC형, IRP, 연금저축은 뭐가 달라?",
+        ),
+        SuggestedFollowUp(
+            follow_up_id="tax_missed_benefit",
+            label="내가 놓친 혜택",
+            message="내가 놓치고 있는 세액공제혜택을 알려줘",
+        ),
+    ]
+
+
 def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp]:
     stock_news_decline = graceful_decline(GracefulDeclineKind.STOCK_NEWS, "")
     if stock_news_decline.answer in response.limitations:
         return stock_news_decline.suggested_follow_ups
     has_pension_news_notice = any(
-        "연금 제도 뉴스는 제공하지 않아요" in item
-        for item in response.limitations
+        "연금 제도 뉴스는 제공하지 않아요" in item for item in response.limitations
     )
     if response.data_mode in {
         "live_news_event_strategy",
@@ -98,8 +112,7 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
         return follow_ups
     if response.intent == ChatIntent.NEWS and response.news_items:
         has_live_news_source = any(
-            source.evidence_id.startswith("live-news:")
-            for source in response.sources
+            source.evidence_id.startswith("live-news:") for source in response.sources
         )
         if has_live_news_source:
             follow_ups = [
@@ -168,6 +181,10 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
                 message="연금 세액공제도 계산해 줘",
             ),
         ]
+    if response.data_mode == "verified_pension_tax_rule_brief":
+        return pension_tax_credit_follow_ups()
+    if response.data_mode == "verified_pension_account_brief":
+        return []
     if response.intent == ChatIntent.ACCOUNT_RULE:
         return [
             SuggestedFollowUp(
@@ -217,18 +234,7 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
         and response.pension_tax_result is not None
         and response.pension_tax_result.tax_credit is not None
     ):
-        return [
-            SuggestedFollowUp(
-                follow_up_id="tax_withdrawal",
-                label="중도해지 세금",
-                message="연금저축을 중도에 해지하면 세금이 얼마나 나와?",
-            ),
-            SuggestedFollowUp(
-                follow_up_id="tax_to_diff",
-                label="계좌별 차이",
-                message="DC형, IRP, 연금저축은 뭐가 달라?",
-            ),
-        ]
+        return pension_tax_credit_follow_ups()
     if response.intent == ChatIntent.EDUCATIONAL_PORTFOLIO:
         return [
             SuggestedFollowUp(
@@ -268,9 +274,7 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
                 SuggestedFollowUp(
                     follow_up_id="theme_performance_drivers",
                     label="성과 관찰요인",
-                    message=(
-                        f"{theme_name} 테마 성과에 영향을 주는 요인은 뭐야?"
-                    ),
+                    message=(f"{theme_name} 테마 성과에 영향을 주는 요인은 뭐야?"),
                 )
             )
         if response.data_mode not in {
@@ -281,9 +285,7 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
                 SuggestedFollowUp(
                     follow_up_id="theme_pros_cons",
                     label="테마 장단점",
-                    message=(
-                        f"{theme_name} 테마 ETF에 투자할 때 장단점을 알려줘"
-                    ),
+                    message=(f"{theme_name} 테마 ETF에 투자할 때 장단점을 알려줘"),
                 )
             )
         if response.data_mode != "theme_candidates":
@@ -295,8 +297,7 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
                 )
             )
         elif not any(
-            section.title.endswith("주요 구성종목")
-            for section in response.sections
+            section.title.endswith("주요 구성종목") for section in response.sections
         ):
             follow_ups.append(
                 SuggestedFollowUp(

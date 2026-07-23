@@ -27,7 +27,11 @@ from ..chat.models import (
     ScenarioSummary,
 )
 from ..chat.narrator import NARRATABLE_INTENTS, ClaudeNarrator
-from ..chat.query_planner import BlockedReason, QueryPlan
+from ..chat.query_planner import (
+    BlockedReason,
+    QueryPlan,
+    is_missed_tax_credit_question,
+)
 from ..chat.repository import (
     ChatRepository,
     ChatSessionAccessError,
@@ -148,8 +152,7 @@ def _load_saved_survey_profile(
         )
     except (KeyError, ValueError):
         logger.warning(
-            "Stored investment profile could not be converted to a chat survey "
-            "profile"
+            "Stored investment profile could not be converted to a chat survey profile"
         )
         return None
 
@@ -258,8 +261,18 @@ def _authenticated_response(
         and response.pension_tax_result is not None
         and response.pension_tax_result.tax_credit is not None
     ):
+        missed_tax_credit = is_missed_tax_credit_question(request.message)
         response = response.model_copy(
-            update={"answer": _personalized_pension_tax_answer(nickname)}
+            update=(
+                {
+                    "answer": response.answer.replace(
+                        "고객님", _format_salutation(nickname)
+                    ),
+                    "data_mode": "missed_pension_tax_credit_engine",
+                }
+                if missed_tax_credit
+                else {"answer": _personalized_pension_tax_answer(nickname)}
+            )
         )
     if response.data_mode in {
         "verified_pension_account_overview",
@@ -558,10 +571,7 @@ async def chat_authenticated_stream(
             chat_request,
         )
         plan = service.plan(planning_request)
-        if (
-            topic_guard is not None
-            and plan.blocked_reason is BlockedReason.UNSUPPORTED
-        ):
+        if topic_guard is not None and plan.blocked_reason is BlockedReason.UNSUPPORTED:
             yield _sse("phase", {"message": "질문 범위를 추가로 확인하고 있습니다."})
             plan = await asyncio.to_thread(
                 topic_guard.refine_plan,

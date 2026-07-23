@@ -124,12 +124,22 @@ function AppRoutes(): JSX.Element {
   function handleProfileSaved(investmentProfile: InvestmentProfileResponse): void {
     setCurrentUserData((previous) => ({ ...previous, investmentProfile }));
   }
-  async function handleSignOut(): Promise<void> { userLoadGenerationRef.current += 1; clearPersistedUserState(); setSelectedScenarioCode(""); setCurrentUserData({ context: null, hero: null, heroes: [], investmentProfile: null, loading: false, error: null }); setLoginSuccessPending(false); setResurveyPending(false); navigate("/login"); await auth.signOut(); }
+  async function handleSignOut(): Promise<void> {
+    await auth.signOut();
+    userLoadGenerationRef.current += 1;
+    clearPersistedUserState();
+    setSelectedScenarioCode("");
+    setCurrentUserData({ context: null, hero: null, heroes: [], investmentProfile: null, loading: false, error: null });
+    setLoginSuccessPending(false);
+    setResurveyPending(false);
+    navigate("/login", { replace: true });
+  }
 
   if (auth.loading) return <main className="app-auth-loading" aria-label="로그인 상태 확인 중" />;
   const metadataName = auth.session?.user.user_metadata?.name;
   const loginDisplayName = typeof metadataName === "string" && metadataName.trim() ? metadataName.trim() : currentUserData.context?.nickname ?? auth.session?.user.email?.split("@")[0] ?? "고객";
-  if (auth.configured && (!accessToken || loginSuccessPending || resurveyPending)) return <LoginFlowPage auth={auth} displayName={loginDisplayName} onAuthenticated={() => setLoginSuccessPending(true)} onProfileSaved={handleProfileSaved} onStart={goToMainHome} resurvey={resurveyPending} />;
+  const loginPage = <LoginFlowPage auth={auth} displayName={loginDisplayName} onAuthenticated={() => setLoginSuccessPending(true)} onProfileSaved={handleProfileSaved} onStart={goToMainHome} resurvey={resurveyPending} />;
+  if (auth.configured && (!accessToken || loginSuccessPending || resurveyPending)) return loginPage;
   const activeTab: TabKey = location.pathname === "/guide" ? "guide" : location.pathname === "/profile" ? "profile" : "home";
   const displayName = currentUserData.context?.nickname ?? auth.session?.user.email?.replace("@kda-demo.invalid", "") ?? "인증 사용자";
   const plannerProfile = plannerProfileFromContext(currentUserData.context, currentUserData.investmentProfile);
@@ -152,7 +162,8 @@ function AppRoutes(): JSX.Element {
   );
   const tabPage = <>{content}{activeTab !== "guide" && <TabBar activeTab={activeTab} onChange={changeTab} />}</>;
   return <Routes>
-    <Route path="/" element={<Navigate replace to="/home" />} />
+    <Route path="/" element={<Navigate replace to="/login" />} />
+    <Route path="/login" element={loginPage} />
     <Route path="/home" element={tabPage} />
     <Route path="/guide" element={tabPage} />
     <Route path="/profile" element={tabPage} />

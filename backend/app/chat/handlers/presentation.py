@@ -1,6 +1,6 @@
 """Response presentation, context, capabilities, and follow-up cards."""
 
-from ..cards import build_suggested_follow_ups
+from ..cards import build_suggested_follow_ups, pension_tax_credit_follow_ups
 from ..models import (
     ChatCapabilities,
     ChatIntent,
@@ -361,11 +361,14 @@ def finalize_response(
     plan: QueryPlan,
 ) -> ChatResponse:
     response = with_context(attach_visualizations(response), request, plan)
+    suggested_follow_ups = (
+        pension_tax_credit_follow_ups()
+        if (
+            plan.requests_tax_credit
+            or response.data_mode == "verified_pension_tax_rule_brief"
+        )
+        else response.suggested_follow_ups or build_suggested_follow_ups(response)
+    )
     return response.model_copy(
-        update={
-            "suggested_follow_ups": (
-                response.suggested_follow_ups
-                or build_suggested_follow_ups(response)
-            )
-        }
+        update={"suggested_follow_ups": suggested_follow_ups}
     )
