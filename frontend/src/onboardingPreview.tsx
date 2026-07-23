@@ -18,7 +18,7 @@ createRoot(container).render(
     <MainHomeScreen
       aggregation={null}
       displayName="정민재"
-      error={null}
+      error="이 계정에는 연동된 연금 데이터가 없습니다."
       investmentProfile={null}
       loading={false}
       portfolio={null}

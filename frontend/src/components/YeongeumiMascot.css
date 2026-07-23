@@ -1,6 +1,7 @@
+.yeongeumi-svg { color: #d99a00; }
 .yeongeumi-figure { filter: url(#yeongeumi-squiggle); }
-.yeongeumi-body { fill: #e6f6ee; }
-.yeongeumi-snout { fill: #cdeede; }
+.yeongeumi-body { fill: #fff0cc; }
+.yeongeumi-snout { fill: #ffe0a0; }
 
 @media (prefers-reduced-motion: reduce) {
   .yeongeumi-figure { filter: none; }

@@ -34,7 +34,7 @@
 .mhs-asset-gain { font-size: 16px; font-weight: 800; color: #18A860; margin: 8px 0 0; }
 
 .mhs-pie-wrap { display: flex; justify-content: center; padding: 26px 0 22px; }
-.mhs-pie-mascot { width: 156px; height: 156px; color: #12a86a; }
+.mhs-pie-mascot { width: 156px; height: 156px; }
 .mhs-allocation-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
 .mhs-allocation-item { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 800; color: #333; min-width: 0; }
 .mhs-allocation-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }

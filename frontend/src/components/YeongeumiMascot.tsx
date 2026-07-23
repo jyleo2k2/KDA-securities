@@ -17,7 +17,7 @@ export function YeongeumiMascot({ className }: YeongeumiMascotProps): JSX.Elemen
       className={`yeongeumi-svg${className ? ` ${className}` : ""}`}
       viewBox="0 0 120 120"
       fill="none"
-      stroke="#12a86a"
+      stroke="currentColor"
       strokeWidth={3.2}
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -37,15 +37,15 @@ export function YeongeumiMascot({ className }: YeongeumiMascotProps): JSX.Elemen
         <path d="M38 44 L31 30 L50 39" />
         <path d="M82 44 L89 30 L70 39" />
         <ellipse className="yeongeumi-snout" cx={60} cy={70} rx={14} ry={10} />
-        <circle cx={55} cy={70} r={1.9} fill="#12a86a" stroke="none" />
-        <circle cx={65} cy={70} r={1.9} fill="#12a86a" stroke="none" />
-        <circle cx={47} cy={58} r={2.4} fill="#12a86a" stroke="none" />
-        <circle cx={73} cy={58} r={2.4} fill="#12a86a" stroke="none" />
+        <circle cx={55} cy={70} r={1.9} fill="currentColor" stroke="none" />
+        <circle cx={65} cy={70} r={1.9} fill="currentColor" stroke="none" />
+        <circle cx={47} cy={58} r={2.4} fill="currentColor" stroke="none" />
+        <circle cx={73} cy={58} r={2.4} fill="currentColor" stroke="none" />
         <path d="M42 90 L42 100 M54 92 L54 101 M66 92 L66 101 M78 90 L78 100" />
         <path d="M56 40 L64 40" strokeWidth={4} />
         <path d="M90 64 Q100 60 98 70 Q96 78 104 76" />
-        <circle cx={60} cy={20} r={7} stroke="#F0C000" />
-        <path d="M57 20 L63 20 M60 16 L60 24" stroke="#F0C000" strokeWidth={2.4} />
+        <circle cx={60} cy={20} r={7} stroke="#18A860" />
+        <path d="M57 20 L63 20 M60 16 L60 24" stroke="#18A860" strokeWidth={2.4} />
       </g>
     </svg>
   );
