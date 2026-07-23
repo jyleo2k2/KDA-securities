@@ -92,6 +92,20 @@ def test_multiple_accounts_are_preserved_for_rule_comparison() -> None:
     assert plan.blocked_reason is None
 
 
+def test_distribution_question_extracts_etf_code_without_selecting_a_product() -> None:
+    plan = plan_question("069500 ETF 분배금 지급일과 재투자 기준 알려줘")
+
+    assert plan.intent == ChatIntent.ETF_DISTRIBUTION
+    assert plan.distribution_isu_code == "069500"
+
+
+def test_distribution_question_without_code_stays_in_distribution_flow() -> None:
+    plan = plan_question("ETF 배당금 지급일 알려줘")
+
+    assert plan.intent == ChatIntent.ETF_DISTRIBUTION
+    assert plan.distribution_isu_code is None
+
+
 @pytest.mark.parametrize(
     "message",
     (

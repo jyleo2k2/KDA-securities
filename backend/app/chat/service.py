@@ -4,6 +4,7 @@ from ..engine import (
     EducationalPortfolioInput,
 )
 from ..etf_component_repository import EtfComponentSnapshotRepository
+from ..etf_distribution_event_repository import PostgresEtfDistributionEventRepository
 from ..etf_product_description_repository import (
     EtfProductDescriptionRepository,
 )
@@ -44,6 +45,7 @@ from .handlers.disclosures_news import (
     news_follow_up_response,
     news_response,
 )
+from .handlers.distribution_events import distribution_event_response
 from .handlers.pension_tax import pension_tax_response
 from .handlers.portfolio import (
     age_style_portfolio_guide,
@@ -99,6 +101,7 @@ class ChatService:
         component_snapshots: EtfComponentSnapshotRepository | None = None,
         theme_verification: EtfThemeVerificationReader | None = None,
         macro_evidence: MacroEvidenceRepository | None = None,
+        distribution_events: PostgresEtfDistributionEventRepository | None = None,
         router: IntentRouter | None = None,
     ) -> None:
         self._knowledge = knowledge
@@ -114,6 +117,7 @@ class ChatService:
         self._component_snapshots = component_snapshots
         self._theme_verification = theme_verification
         self._macro_evidence = macro_evidence
+        self._distribution_events = distribution_events
         self._router = router or IntentRouter()
         self.capabilities = build_capabilities(scenarios=scenarios)
 
@@ -324,6 +328,11 @@ class ChatService:
                     product_feature_generator=self._product_feature_generator,
                     component_snapshots=self._component_snapshots,
                     theme_verification=self._theme_verification,
+                )
+            elif resolved_plan.intent == ChatIntent.ETF_DISTRIBUTION:
+                response = distribution_event_response(
+                    resolved_plan.distribution_isu_code,
+                    events=self._distribution_events,
                 )
             elif resolved_plan.intent == ChatIntent.PENSION_TAX:
                 response = pension_tax_response(
