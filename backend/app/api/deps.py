@@ -50,6 +50,7 @@ from ..portfolio_universe_repository import (
     DEFAULT_RETURN_ROOT,
     PortfolioUniverseRepository,
 )
+from ..rebalancing_reminder_repository import RebalancingReminderRepository
 from ..retrieval.disclosures_repository import DisclosureReadRepository
 from ..retrieval.repository import RetrievalRepository
 from ..settings import Settings, get_settings
@@ -251,6 +252,18 @@ def get_investment_profile_repository(
         settings, detail="Investment profile database is not configured"
     )
     return InvestmentProfileRepository(
+        database_url,
+        pool=_database_pool(settings, database_url),
+    )
+
+
+def get_rebalancing_reminder_repository(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> RebalancingReminderRepository:
+    database_url = _database_url_or_503(
+        settings, detail="Rebalancing reminder database is not configured"
+    )
+    return RebalancingReminderRepository(
         database_url,
         pool=_database_pool(settings, database_url),
     )
