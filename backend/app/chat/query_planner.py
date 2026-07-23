@@ -1,4 +1,6 @@
 import re
+from datetime import date
+from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -44,6 +46,24 @@ class ThemeContentTopic(StrEnum):
     RISKS = "risks"
 
 
+class DistributionReinvestmentRequest(BaseModel):
+    """Explicit chat inputs for an educational distribution-reinvestment guide."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    isu_code: str = Field(pattern=r"^[0-9A-Z]{6}$")
+    quantity: Decimal = Field(gt=0, allow_inf_nan=False)
+    reinvestment_price_krw: Decimal = Field(gt=0, allow_inf_nan=False)
+    as_of: date
+    rebalance_on: date
+
+    @model_validator(mode="after")
+    def require_rebalance_on_or_after_as_of(self) -> "DistributionReinvestmentRequest":
+        if self.rebalance_on < self.as_of:
+            raise ValueError("rebalance_on must be on or after as_of")
+        return self
+
+
 class QueryPlan(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -65,6 +85,7 @@ class QueryPlan(BaseModel):
     requests_theme_candidates: bool = False
     requests_theme_holdings: bool = False
     distribution_isu_code: str | None = None
+    distribution_reinvestment: DistributionReinvestmentRequest | None = None
     blocked_reason: BlockedReason | None = None
 
     @model_validator(mode="after")
@@ -106,8 +127,10 @@ class QueryPlan(BaseModel):
             or self.requests_theme_holdings
         ):
             raise ValueError("theme fields require etf_theme intent")
-        if self.intent != ChatIntent.ETF_DISTRIBUTION and self.distribution_isu_code:
-            raise ValueError("distribution_isu_code requires etf_distribution intent")
+        if self.intent != ChatIntent.ETF_DISTRIBUTION and (
+            self.distribution_isu_code or self.distribution_reinvestment is not None
+        ):
+            raise ValueError("distribution fields require etf_distribution intent")
         return self
 
 
@@ -308,6 +331,20 @@ _DISTRIBUTION_TERMS = re.compile(
     re.I,
 )
 _ETF_ISU_CODE = re.compile(r"(?<![0-9A-Z])([0-9A-Z]{6})(?![0-9A-Z])", re.I)
+_REINVESTMENT_TERMS = re.compile(r"(?:분배금|배당금)?\s*재투자", re.I)
+_REINVESTMENT_QUANTITY = re.compile(
+    r"(?:보유\s*)?수량\s*[:=]\s*([0-9][0-9,]*(?:\.\d+)?)\s*(?:주)?",
+    re.I,
+)
+_REINVESTMENT_PRICE = re.compile(
+    r"(?:재투자\s*)?기준가\s*[:=]\s*([0-9][0-9,]*(?:\.\d+)?)\s*(?:원|krw)?",
+    re.I,
+)
+_REINVESTMENT_AS_OF = re.compile(r"기준일\s*[:=]\s*(\d{4}-\d{2}-\d{2})")
+_REINVESTMENT_REBALANCE_ON = re.compile(
+    r"리밸런싱\s*일\s*[:=]\s*(\d{4}-\d{2}-\d{2})",
+    re.I,
+)
 _COUNT = re.compile(r"(?<!\d)([1-5])\s*(?:개|건)(?:만)?(?!\d)")
 _KOREAN_COUNT = (
     (re.compile(r"(?:한\s*(?:개|건)|하나)(?:만)?"), 1),
@@ -374,6 +411,31 @@ def _news_query(message: str) -> str:
 def _distribution_isu_code(message: str) -> str | None:
     match = _ETF_ISU_CODE.search(message)
     return match.group(1).upper() if match is not None else None
+
+
+def _distribution_reinvestment_request(
+    message: str,
+    *,
+    isu_code: str | None,
+) -> DistributionReinvestmentRequest | None:
+    if not _REINVESTMENT_TERMS.search(message) or isu_code is None:
+        return None
+    quantity = _REINVESTMENT_QUANTITY.search(message)
+    price = _REINVESTMENT_PRICE.search(message)
+    as_of = _REINVESTMENT_AS_OF.search(message)
+    rebalance_on = _REINVESTMENT_REBALANCE_ON.search(message)
+    if not all((quantity, price, as_of, rebalance_on)):
+        return None
+    try:
+        return DistributionReinvestmentRequest(
+            isu_code=isu_code,
+            quantity=Decimal(quantity.group(1).replace(",", "")),
+            reinvestment_price_krw=Decimal(price.group(1).replace(",", "")),
+            as_of=date.fromisoformat(as_of.group(1)),
+            rebalance_on=date.fromisoformat(rebalance_on.group(1)),
+        )
+    except (InvalidOperation, ValueError):
+        return None
 
 
 def _news_scope_notice(message: str) -> NewsScopeNotice | None:
@@ -547,12 +609,17 @@ def plan_question(
             requests_withdrawal_tax=requests_withdrawal_tax,
         )
     if intent == ChatIntent.ETF_DISTRIBUTION:
+        isu_code = _distribution_isu_code(normalized)
         return QueryPlan(
             normalized_message=normalized,
             intent=ChatIntent.ETF_DISTRIBUTION,
             account_types=account_types,
             max_results=max_results,
-            distribution_isu_code=_distribution_isu_code(normalized),
+            distribution_isu_code=isu_code,
+            distribution_reinvestment=_distribution_reinvestment_request(
+                normalized,
+                isu_code=isu_code,
+            ),
         )
     if intent == ChatIntent.NEWS:
         news_query = _news_query(normalized)

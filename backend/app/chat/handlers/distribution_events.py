@@ -1,10 +1,18 @@
 """Deterministic ETF distribution-event chat responses."""
 
 from collections.abc import Mapping
+from datetime import date
 from decimal import Decimal
 
 import psycopg
 
+from ...engine.distribution_reinvestment import (
+    DistributionEventInput,
+    DistributionHoldingInput,
+    DistributionReinvestmentInput,
+    DistributionStatus,
+    calculate_distribution_reinvestment,
+)
 from ...etf_distribution_event_repository import (
     EtfDistributionEventUnavailable,
     PostgresEtfDistributionEventRepository,
@@ -20,6 +28,7 @@ from ..models import (
     SectionKind,
     SourceEvidence,
 )
+from ..query_planner import DistributionReinvestmentRequest
 
 
 def distribution_event_response(
@@ -117,6 +126,161 @@ def distribution_event_response(
             "자동 재투자나 주문은 실행하지 않습니다.",
         ],
     )
+
+
+def distribution_reinvestment_response(
+    request: DistributionReinvestmentRequest | None,
+    *,
+    events: PostgresEtfDistributionEventRepository | None,
+) -> ChatResponse:
+    if request is None:
+        return ChatResponse(
+            intent=ChatIntent.ETF_DISTRIBUTION,
+            answer="분배금 재투자 교육용 계산에 필요한 입력을 확인해 주세요.",
+            data_mode="distribution_reinvestment_input_required",
+            sections=[
+                AnswerSection(
+                    kind=SectionKind.SERVICE_EXPLANATION,
+                    title="입력 형식",
+                    content=(
+                        "`069500 재투자 수량=10 기준가=30000 "
+                        "기준일=2026-07-01 리밸런싱일=2026-07-31`처럼 입력해 주세요."
+                    ),
+                )
+            ],
+            limitations=[
+                "보유수량과 기준가는 사용자가 직접 입력한 교육용 값입니다.",
+                "자동 재투자나 주문은 실행하지 않습니다.",
+            ],
+        )
+    if events is None:
+        return _unavailable_response()
+    try:
+        dataset = events.latest_for_etf(request.isu_code)
+    except (EtfDistributionEventUnavailable, psycopg.Error):
+        return _unavailable_response()
+
+    inputs: list[DistributionEventInput] = []
+    sources: list[SourceEvidence] = []
+    for index, event in enumerate(dataset.events, start=1):
+        status = _reinvestment_status(event)
+        payment_date = event.get("payment_date")
+        amount = event.get("cash_per_share_krw")
+        if status is None or payment_date is None or amount is None:
+            continue
+        try:
+            inputs.append(
+                DistributionEventInput(
+                    event_id=f"{request.isu_code}:{index}",
+                    isu_code=request.isu_code,
+                    payment_date=date.fromisoformat(str(payment_date)),
+                    cash_per_share_krw=Decimal(str(amount)),
+                    status=status,
+                )
+            )
+        except (ValueError, ArithmeticError):
+            continue
+        sources.append(
+            _event_source(
+                event,
+                f"distribution-event:{request.isu_code}:{index}",
+                dataset.as_of.isoformat(),
+            )
+        )
+    if not inputs:
+        return ChatResponse(
+            intent=ChatIntent.ETF_DISTRIBUTION,
+            answer=(
+                "공식 이벤트 마스터에서 재투자 계산에 쓸 분배금 지급 기록을 "
+                "찾지 못했어요."
+            ),
+            data_mode="official_distribution_event_empty",
+            sources=[_master_source(dataset.as_of.isoformat())],
+            limitations=[
+                "확정 현금분배 또는 참고용 예정 일정에 지급일과 주당 금액이 "
+                "함께 있어야 계산합니다.",
+                "자동 재투자나 주문은 실행하지 않습니다.",
+            ],
+        )
+
+    evaluation = calculate_distribution_reinvestment(
+        DistributionReinvestmentInput(
+            as_of=request.as_of,
+            rebalance_on=request.rebalance_on,
+            holdings=[
+                DistributionHoldingInput(
+                    isu_code=request.isu_code,
+                    quantity=request.quantity,
+                    reinvestment_price_krw=request.reinvestment_price_krw,
+                )
+            ],
+            events=inputs,
+        )
+    )
+    evidence_id = sources[0].evidence_id if sources else "distribution-event-master"
+    lines = [
+        (
+            f"{line.payment_date}: 현금 { _decimal_text(line.gross_cash_krw) }원 · "
+            f"재투자 { _decimal_text(line.reinvested_quantity) }주 · "
+            f"잔여 현금 { _decimal_text(line.remaining_cash_krw) }원"
+        )
+        for line in evaluation.lines
+    ]
+    return ChatResponse(
+        intent=ChatIntent.ETF_DISTRIBUTION,
+        answer=(
+            "공식 분배금 이벤트와 입력한 보유수량으로 재투자·리밸런싱 "
+            "현금흐름을 계산했어요."
+        ),
+        data_mode="distribution_reinvestment_guide",
+        sections=[
+            AnswerSection(
+                kind=SectionKind.FACT,
+                title="재투자·리밸런싱 현금흐름",
+                content=(
+                    f"{request.as_of}부터 {request.rebalance_on}까지 "
+                    "지급되는 확정 현금분배만 리밸런싱 가능 현금으로 반영합니다."
+                ),
+                evidence_ids=[source.evidence_id for source in sources],
+                blocks=[AnswerBlock(kind=AnswerBlockKind.BULLETS, items=lines)],
+            )
+        ],
+        sources=sources,
+        numeric_evidence=[
+            NumericEvidence(
+                label="리밸런싱 가능 현금",
+                value=evaluation.available_for_rebalance_krw,
+                unit="KRW",
+                evidence_id=evidence_id,
+                basis="확정 현금분배 중 입력한 리밸런싱 기간에 지급되는 금액",
+            ),
+            NumericEvidence(
+                label="교육용 재투자 수량",
+                value=evaluation.reinvested_quantity,
+                unit="shares",
+                evidence_id=evidence_id,
+                basis="입력 기준가로 계산한 정수 단위 재투자 수량",
+            ),
+            NumericEvidence(
+                label="재투자 후 잔여 현금",
+                value=evaluation.remaining_cash_krw,
+                unit="KRW",
+                evidence_id=evidence_id,
+                basis="정수 단위 재투자 뒤 남는 현금",
+            ),
+        ],
+        limitations=evaluation.limitations,
+    )
+
+
+def _reinvestment_status(event: Mapping[str, object]) -> DistributionStatus | None:
+    if event.get("event_type") == "cash_distribution" and event.get(
+        "status"
+    ) == "confirmed_cash_flow":
+        return DistributionStatus.CONFIRMED_CASH_FLOW
+    if event.get("event_type") == "scheduled_cash_distribution":
+        return DistributionStatus.REFERENCE_ONLY
+    return None
 
 
 def _unavailable_response() -> ChatResponse:

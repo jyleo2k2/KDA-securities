@@ -70,3 +70,23 @@ def test_distribution_question_without_isu_code_requests_code_without_guessing(
     assert response.intent == ChatIntent.ETF_DISTRIBUTION
     assert response.data_mode == "distribution_code_required"
     assert "6자리" in response.answer
+
+
+def test_distribution_reinvestment_uses_confirmed_cash_only_within_window() -> None:
+    events = FakeDistributionEvents()
+
+    response = _service(events).ask(
+        ChatRequest(
+            message=(
+                "069500 재투자 수량=10 기준가=300 "
+                "기준일=2026-07-01 리밸런싱일=2026-07-31"
+            )
+        )
+    )
+
+    assert response.intent == ChatIntent.ETF_DISTRIBUTION
+    assert response.data_mode == "distribution_reinvestment_guide"
+    assert response.numeric_evidence[0].value == 1250
+    assert response.numeric_evidence[1].value == 4
+    assert response.numeric_evidence[2].value == 50
+    assert response.sources[0].label == "KIND ETF 현금분배 공시"

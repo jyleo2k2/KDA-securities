@@ -73,7 +73,9 @@ def test_excludes_paid_cash_outside_rebalance_window() -> None:
 
     assert evaluation.confirmed_cash_krw == Decimal("230")
     assert evaluation.available_for_rebalance_krw == Decimal("100")
-    assert evaluation.reinvested_quantity == Decimal("7")
+    assert evaluation.reinvested_quantity == Decimal("3")
+    assert evaluation.lines[1].reinvested_quantity == Decimal("0")
+    assert evaluation.lines[1].quantity_after_reinvestment == Decimal("13")
 
 
 def test_rejects_event_for_unknown_holding() -> None:
