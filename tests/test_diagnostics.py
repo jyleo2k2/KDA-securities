@@ -7,6 +7,8 @@ from backend.app.engine.diagnostics import (
     CHECK_CASH_IDLE,
     CHECK_CONCENTRATION,
     CHECK_RISK_CAP,
+    DIAGNOSTICS_SOURCE,
+    ENGINE_VERSION,
     AccountHolding,
     AccountInput,
     evaluate_account_diagnostics,
@@ -110,6 +112,16 @@ def test_cash_idle_threshold_boundary() -> None:
     assert finding(below, CHECK_CASH_IDLE).status == RuleStatus.PASS
     at_threshold = evaluate_account_diagnostics(_cash_ratio_account("8000", "2000"))
     assert finding(at_threshold, CHECK_CASH_IDLE).status == RuleStatus.FAIL
+
+
+def test_diagnostics_exposes_approved_threshold_policy_source() -> None:
+    evaluation = evaluate_account_diagnostics(_cash_ratio_account("8000", "2000"))
+
+    assert evaluation.engine_version == ENGINE_VERSION == "2026-07-23.1"
+    assert DIAGNOSTICS_SOURCE.label == (
+        "계좌별 진단 운영 기준 (현금성 80%·단일 자산군 50%)"
+    )
+    assert DIAGNOSTICS_SOURCE.as_of.isoformat() == "2026-07-23"
 
 
 def test_risk_cap_finding_is_delegated_not_recomputed() -> None:
