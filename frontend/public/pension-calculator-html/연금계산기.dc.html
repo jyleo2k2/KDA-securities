@@ -271,7 +271,7 @@
 class Component extends DCLogic {
   state = { age:35, endAge:55, monthly:50, tab:'pension', salaryLow:true, paidP:0, paidI:0, isa:0, strategyId:'beta' };
 
-  goToMainHome = () => { window.parent.location.hash = "#/main-home"; };
+  goToMainHome = () => { window.parent.location.assign("/main-home"); };
 
   STRATS = [
     { id:'beta', name:'시장 베타', etf:'국내·미국·글로벌 광범위지수 ETF', cma:'글로벌주식 7.0%', discount:'0.25%p', rateText:'6.75%', rateNum:6.75 },
