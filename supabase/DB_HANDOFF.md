@@ -333,6 +333,42 @@ uv run ruff check .
 
 ## 14. 작업 로그
 
+### 2026-07-23 13:45 KST 테이블 도메인·라이프사이클 태그 + 카탈로그 뷰 (REMOTE-APPLIED)
+
+- 작업자/브랜치: Codex(이재용) / `codex/이재용/db-domain-catalog`(origin/main `e4e2878` 기준 워크트리).
+- 배경: public 한 스키마에 56개 테이블이 누적됐고 그중 41개는 테이블 코멘트가
+  전혀 없어 관리자가 라이브·보존·예약·dead를 식별할 수 없었다. 삭제가 아니라
+  경계 식별로 먼저 정리한다(비파괴 B단계).
+- 변경: 신규 `20260723043507_annotate_table_domains.sql` 1건(원격 적용 시 MCP가
+  부여한 실행 시각 버전 `20260723043507`에 로컬 파일명을 맞췄다. SQL 내용은
+  로컬 검증본과 동일하며 migration repair는 하지 않았다).
+  - 코멘트가 없던 41개 테이블에만 `'[<domain>/<lifecycle>] 설명'` 태그를 단다.
+    이미 코멘트가 있던 15개 테이블은 재정의하지 않는다.
+  - domain 11종: `source`, `institution`, `asset`, `mock_scenario`,
+    `mock_public`, `benchmark`, `demo_customer`, `engine_audit`, `rag_news`,
+    `chat`, `user_pension`. lifecycle 4종: `live`, `retained`, `reserved`, `dead`.
+  - `mock_public_*` 3개와 `curated_contents`는 `dead`, `mock_accounts`·
+    `mock_holdings`는 `retained`, `account_cash_flows`·`financial_products`는
+    `reserved`로 표기했다(표기만이며 삭제·이관은 별도 승인 건).
+  - 관리자 식별용 조회 뷰 `public.table_domain_catalog`(security_invoker=true)를
+    추가하고 브라우저 권한을 회수한 뒤 `service_role`에만 `select`를 부여했다.
+- 비변경: 데이터·인덱스·RLS·GRANT(테이블)·스키마·seed.sql은 바꾸지 않았다.
+  seed.sql은 순수 데이터 insert만 있어 `db reset`이 마이그레이션의 코멘트·뷰를
+  먼저 적용하므로 수정 불필요.
+- 검증(로컬): `pglast` 파싱 OK(45 statements). `uv run pytest
+  tests/test_schema_contract.py tests/test_embedded_sql.py` 35 passed.
+  신규 계약 테스트 `test_table_domain_annotations_are_additive_and_complete`는
+  additive-only(alter/create table/drop/insert 금지), 정확히 41개 태그,
+  허용 domain·lifecycle 형식, 기존 15개 미재정의, 카탈로그 뷰 권한을 강제한다.
+  `uv run ruff check` clean, `git diff --check` 오류 0.
+- 검증(원격, 적용 직후 재조회): `apply_migration` success=true.
+  `table_domain_catalog`로 태그 41·미태그 13(기존 코멘트 테이블 수와 일치)을
+  확인했다. public 테이블 54/RLS 54는 적용 전후 동일(비파괴). 뷰는
+  `security_invoker=true`, GRANT는 `service_role`만(anon·authenticated 없음).
+  원격 버전 `20260723043507_annotate_table_domains` 이력 등재 확인.
+- 다음(A단계, 승인 대기): 위 domain 태그를 물리 스키마 경계로 분리한다.
+  파일럿 1순위는 `benchmark`(3개 테이블, `service_role` 전용, 코드 참조 소수).
+
 ### 2026-07-23 11:40 KST ETF 비용 마스터·API 운영 완료 (REMOTE-APPLIED)
 
 - 작업자/브랜치: Codex(김태형) / `codex/김태형/etf-cost-ops-completion`.
