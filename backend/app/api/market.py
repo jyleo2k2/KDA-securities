@@ -9,13 +9,18 @@ import psycopg
 from fastapi import APIRouter, Depends, Path, Query, status
 from pydantic import BaseModel, ConfigDict
 
+from ..etf_distribution_event_repository import (
+    EtfDistributionEventDataset,
+    EtfDistributionEventUnavailable,
+    PostgresEtfDistributionEventRepository,
+)
 from ..etf_market_repository import (
     EtfMarketDataUnavailable,
     EtfMarketObservation,
     EtfMarketRepository,
 )
 from ..ingestion.krx_client import KRX_ETF_DAILY_ENDPOINT
-from .deps import get_etf_market_repository
+from .deps import get_etf_distribution_event_repository, get_etf_market_repository
 from .errors import ApiErrorCode, api_error
 
 router = APIRouter(tags=["market"])
@@ -59,6 +64,26 @@ class EtfVolumeHistoryResponse(BaseModel):
     from_date: date
     to_date: date
     results: list[EtfMarketObservationOut]
+
+
+class EtfDistributionEventOut(BaseModel):
+    event_type: str
+    effective_date: date
+    record_date: date | None
+    payment_date: date | None
+    cash_per_share_krw: Decimal | None
+    ratio: Decimal | None
+    timing_basis: str
+    confidence: str
+    status: str
+    source_chips: list[dict[str, str | None]]
+
+
+class EtfDistributionEventResponse(BaseModel):
+    data_boundary: str = "official_distribution_event_data"
+    as_of: date
+    isu_code: str
+    results: list[EtfDistributionEventOut]
 
 
 @router.get("/market/etfs", response_model=EtfMarketSnapshotResponse)
@@ -138,6 +163,25 @@ def etf_volume_history(
     return _history_response(isu_code, observations)
 
 
+@router.get("/market/etfs/{isu_code}/distribution-events")
+def etf_distribution_events(
+    repository: Annotated[
+        PostgresEtfDistributionEventRepository,
+        Depends(get_etf_distribution_event_repository),
+    ],
+    isu_code: Annotated[str, Path(pattern=r"^[0-9A-Z]{6}$")],
+) -> EtfDistributionEventResponse:
+    try:
+        dataset = repository.latest_for_etf(isu_code)
+    except (EtfDistributionEventUnavailable, psycopg.Error) as exc:
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "ETF distribution event data is unavailable",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+        ) from exc
+    return _distribution_response(isu_code, dataset)
+
+
 def _history_response(
     isu_code: str,
     observations: list[EtfMarketObservation],
@@ -151,3 +195,55 @@ def _history_response(
             EtfMarketObservationOut.model_validate(result) for result in observations
         ],
     )
+
+
+def _distribution_response(
+    isu_code: str, dataset: EtfDistributionEventDataset
+) -> EtfDistributionEventResponse:
+    return EtfDistributionEventResponse(
+        as_of=dataset.as_of,
+        isu_code=isu_code,
+        results=[
+            EtfDistributionEventOut(
+                event_type=str(event["event_type"]),
+                effective_date=date.fromisoformat(str(event["effective_date"])),
+                record_date=_event_date(event.get("record_date")),
+                payment_date=_event_date(event.get("payment_date")),
+                cash_per_share_krw=_event_decimal(event.get("cash_per_share_krw")),
+                ratio=_event_decimal(event.get("ratio")),
+                timing_basis=str(event["timing_basis"]),
+                confidence=str(event["confidence"]),
+                status=str(event["status"]),
+                source_chips=_source_chips(event.get("source_evidence")),
+            )
+            for event in dataset.events
+        ],
+    )
+
+
+def _event_date(value: object) -> date | None:
+    return date.fromisoformat(str(value)) if value is not None else None
+
+
+def _event_decimal(value: object) -> Decimal | None:
+    return Decimal(str(value)) if value is not None else None
+
+
+def _source_chips(value: object) -> list[dict[str, str | None]]:
+    if not isinstance(value, list):
+        return []
+    return [
+        {
+            "source_type": str(item["source_type"]),
+            "reference": next(
+                (
+                    str(item[key])
+                    for key in ("source_url", "endpoint", "receipt_number")
+                    if isinstance(item.get(key), str) and item[key]
+                ),
+                None,
+            ),
+        }
+        for item in value
+        if isinstance(item, dict) and isinstance(item.get("source_type"), str)
+    ]
