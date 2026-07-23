@@ -34,9 +34,12 @@ vi.mock("../api/client", () => ({
   deleteAllChatSessions: vi.fn(),
   deleteChatSession: vi.fn(),
   getChatCards: vi.fn(),
+  getRebalancingReminder: vi.fn().mockResolvedValue({ profile_required: true, enabled: false, risk_profile: null, cadence: null, last_reviewed_at: null, next_review_at: null, is_due: false }),
   getChatSessions: vi.fn(),
   getScenarios: vi.fn(),
   getStoredChatMessages: vi.fn(),
+  updateRebalancingReminder: vi.fn(),
+  completeRebalancingReview: vi.fn(),
   sendAuthenticatedChatStream: vi.fn(),
 }));
 
