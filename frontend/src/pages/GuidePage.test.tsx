@@ -368,6 +368,15 @@ describe("GuidePage chat history deletion", () => {
     vi.restoreAllMocks();
   });
 
+  it("renders the attached pension-helper conversation shell", async () => {
+    renderGuide();
+
+    expect(await screen.findByText("막막한 노후 준비,", { exact: false })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "새 대화 시작" })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("연금에 대해 무엇이든 물어보세요.")).toBeInTheDocument();
+    expect(screen.getAllByText(/실제 투자·가입 결정은 본인의 판단과 전문가 상담/)).toHaveLength(2);
+  });
+
   it("confirms deletion, disables controls, removes the row, and clears the active chat", async () => {
     let finishDelete: (() => void) | undefined;
     vi.mocked(deleteChatSession).mockImplementation(
