@@ -718,7 +718,7 @@ export function GuidePage({
       ? (userContext?.nickname?.trim().charAt(0)
         || auth.session.user.email?.trim().charAt(0).toUpperCase()
         || "연")
-      : "!";
+      : "연금";
 
   currentAuthRef.current = {
     userId: authenticatedUserId,
@@ -1425,14 +1425,16 @@ export function GuidePage({
 
       <main className="chat-main">
         <header className="topbar design-topbar">
-          <button className="menu-button" type="button" aria-label="뒤로 가기" onClick={onBack ?? (() => setIsSidebarOpen(true))}>‹</button>
+          <button className="menu-button design-menu-button" type="button" aria-label={onBack ? "뒤로 가기" : "메뉴 열기"} onClick={onBack ?? (() => setIsSidebarOpen(true))}>
+            <span aria-hidden="true"><i /><i /><i /></span>
+          </button>
           <button
             className="design-history-button"
             type="button"
-            onClick={() => setIsSidebarOpen(true)}
-            aria-label="대화 기록 열기"
+            onClick={startNewChat}
+            aria-label="새 대화 시작"
           >
-            대화 기록
+            <span aria-hidden="true">＋</span> 새 대화
           </button>
           <div className="design-topbar-actions">
             <Icon name="database" size={25} />
@@ -1456,10 +1458,13 @@ export function GuidePage({
           {messages.length === 0 ? (
             <div className="welcome design-welcome">
               <div className="design-brand">
-                <span className="design-brand-mark">연</span>
+                <span className="design-brand-mark">연금</span>
                 <strong>연금 <em>도우미</em></strong>
               </div>
-              <h1>막막한 노후 준비, <em>연금 도우미</em>와<br />대화하며 풀어보세요.</h1>
+              <div className="design-intro-row">
+                <span className="design-intro-avatar" aria-hidden="true">연금</span>
+                <p>막막한 노후 준비, <em>연금 도우미</em>와 대화하며 풀어보세요.</p>
+              </div>
 
               {(userContext || selectedScenarioData) && (
                 <div className="selected-scenario-card">

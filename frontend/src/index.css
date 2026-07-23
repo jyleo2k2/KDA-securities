@@ -460,3 +460,166 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   .prompt-carousel { margin-top: 32px; padding-right: 25%; }.prompt-carousel button { flex-basis: calc(50% - 6px); min-height: 106px; }
   .guide-tab .design-prompt-copy strong { font-size: 16px; }
 }
+
+/* 첨부된 연금도우미 대화 화면의 컴포넌트·테마를 기능형 GuidePage에 맞춘다. */
+.guide-tab {
+  --chat-brand: #22a94d;
+  --chat-brand-dark: #166f39;
+  --chat-brand-soft: #eaf7f0;
+  --chat-ink: #1e2124;
+  --chat-muted: #8b9096;
+  --chat-line: #eef0f2;
+  --chat-surface: #fff;
+  --chat-canvas: #f7f8f9;
+}
+.guide-tab .app-shell {
+  width: min(100%, 390px);
+  color: var(--chat-ink);
+  background: var(--chat-canvas);
+  font-family: "Cafe24SsurroundAir", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.guide-tab .chat-main { background: var(--chat-canvas); }
+.guide-tab .design-topbar {
+  height: 58px;
+  padding: 4px 18px 0;
+  gap: 12px;
+  background: var(--chat-surface);
+  border-bottom: 1px solid #f6f7f7;
+}
+.guide-tab .design-menu-button {
+  display: grid;
+  width: 32px;
+  height: 40px;
+  place-items: center;
+  padding: 0;
+}
+.guide-tab .design-menu-button > span { display: grid; gap: 4px; width: 19px; }
+.guide-tab .design-menu-button i { display: block; height: 2px; border-radius: 99px; background: var(--chat-ink); }
+.guide-tab .design-history-button {
+  height: 36px;
+  margin-left: auto;
+  padding: 0 14px;
+  gap: 5px;
+  border: 1px solid #e6e8eb;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.guide-tab .design-history-button > span { font-size: 17px; line-height: 1; }
+.guide-tab .design-topbar-actions { gap: 10px; margin-left: 0; color: var(--chat-brand); }
+.guide-tab .design-auth-state,
+.guide-tab .design-logout { display: none; }
+.guide-tab .design-avatar {
+  width: 30px;
+  height: 30px;
+  background: var(--chat-brand);
+  color: #fff;
+  font-size: 11px;
+}
+.guide-tab .conversation { scrollbar-width: none; }
+.guide-tab .conversation::-webkit-scrollbar { width: 0; }
+.guide-tab .welcome.design-welcome {
+  width: 100%;
+  padding: 16px 16px 28px;
+  text-align: left;
+}
+.guide-tab .design-brand { gap: 8px; }
+.guide-tab .design-brand-mark,
+.guide-tab .design-intro-avatar,
+.guide-tab .assistant-avatar {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--chat-brand);
+  color: #fff;
+  font-family: Pretendard, -apple-system, sans-serif;
+  font-weight: 800;
+}
+.guide-tab .design-brand-mark { width: 28px; height: 28px; font-size: 10px; }
+.guide-tab .design-brand strong { color: var(--chat-ink); font-size: 17px; letter-spacing: -.5px; }
+.guide-tab .design-brand em,
+.guide-tab .design-intro-row em { color: var(--chat-brand); font-style: normal; }
+.guide-tab .design-intro-row { display: flex; align-items: flex-start; gap: 8px; margin-top: 14px; }
+.guide-tab .design-intro-avatar { width: 26px; height: 26px; font-size: 9px; }
+.guide-tab .design-intro-row p {
+  max-width: 275px;
+  margin: 0;
+  padding: 12px 15px;
+  border: 1px solid var(--chat-line);
+  border-radius: 16px 16px 16px 4px;
+  background: var(--chat-surface);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+.guide-tab .selected-scenario-card {
+  margin: 14px 0 0 34px;
+  padding: 11px 13px;
+  border-color: #dcefe1;
+  border-radius: 14px;
+  background: #f6fbf7;
+}
+.guide-tab .selected-scenario-card > div { background: var(--chat-brand-soft); color: var(--chat-brand-dark); }
+.guide-tab .chat-home-card-section { margin-top: 30px; }
+.guide-tab .chat-home-card-section + .chat-home-card-section { margin-top: 28px; padding-top: 26px; }
+.guide-tab .chat-home-section-heading p { color: var(--chat-brand); }
+.guide-tab .prompt-carousel { gap: 8px; margin-top: 14px; padding: 2px 22% 6px 0; }
+.guide-tab .prompt-carousel button {
+  min-height: 100px;
+  padding: 14px;
+  border: 1px solid #e6e8eb;
+  border-radius: 16px;
+  background: var(--chat-surface);
+}
+.guide-tab .prompt-carousel button:hover { border-color: #b9dfc6; }
+.guide-tab .sector-card-grid button,
+.guide-tab .holdings-input-form,
+.guide-tab .holdings-required-panel { border-color: #dcefe1; background: #f6fbf7; }
+.guide-tab .sector-card-icon { background: var(--chat-brand-soft); color: var(--chat-brand-dark); }
+.guide-tab .message-list { width: 100%; padding: 16px 16px 24px; }
+.guide-tab .message-row { gap: 8px; margin-bottom: 14px; }
+.guide-tab .message-group { max-width: min(285px, 82%); }
+.guide-tab .message-row.user .message-group { max-width: min(260px, 78%); }
+.guide-tab .assistant-avatar { width: 26px; height: 26px; font-size: 9px; }
+.guide-tab .message-bubble {
+  border-color: var(--chat-line);
+  border-radius: 16px 16px 16px 4px;
+  box-shadow: none;
+}
+.guide-tab .user .message-bubble {
+  padding: 12px 16px;
+  border-radius: 16px 16px 4px 16px;
+  background: var(--chat-brand);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+.guide-tab .message-copy { font-size: 14px; line-height: 1.55; }
+.guide-tab .answer-content { padding: 14px 15px; }
+.guide-tab .intent-pill { background: var(--chat-brand-soft); color: var(--chat-brand-dark); }
+.guide-tab .answer-section { border-left-color: var(--chat-brand); background: #f6fbf7; }
+.guide-tab .number-card,
+.guide-tab .answer-callout { background: var(--chat-brand-soft); }
+.guide-tab .follow-up-cards button {
+  border-color: #dcefe1;
+  background: #f6fbf7;
+  color: var(--chat-brand-dark);
+}
+.guide-tab .composer-wrap { padding: 10px 16px 12px; background: var(--chat-canvas); }
+.guide-tab .composer {
+  min-height: 48px;
+  padding: 6px 7px 6px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #f1f2f4;
+}
+.guide-tab .composer textarea { min-height: 32px; padding: 6px 0; color: var(--chat-ink); font-size: 14px; font-weight: 600; }
+.guide-tab .composer button { width: 36px; height: 36px; background: var(--chat-brand); color: #fff; }
+.guide-tab .composer button:hover:not(:disabled) { background: #148a3c; }
+.guide-tab .composer button:disabled { background: #cfd4da; color: #fff; }
+.guide-tab .composer-wrap > p { margin: 8px auto 0; max-width: 340px; color: #b0b5bb; font-size: 10px; line-height: 1.5; }
+
+@media (min-width: 391px) {
+  .guide-tab .app-shell { box-shadow: 0 16px 48px rgba(30, 33, 36, .1); }
+}

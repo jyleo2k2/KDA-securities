@@ -68,6 +68,17 @@ KIND는 2020-01-01부터 2026-07-16까지 공시 407건을 조회했다. 정정 
 총보수 일치의 이중 검증이 포함된다. 이는 **공시된 반복 운용비용(TER)**이지 개인별
 전부담비용이 아니다.
 
+비용 마스터는 ETF마다 `asset_manager`와 `asset_manager_source`를 보존한다. 비용 적용
+우선순위는 KOFIA TER → KIS 공식 총보수이며, 실제 적용값·상태·기준일은 각각
+`effective_total_cost_percent`, `effective_total_cost_status`,
+`effective_total_cost_as_of`에 기록한다. KOFIA가 없고 KIS 총보수만 사용한 경우 상태는
+`kis_stated_total_expense_ratio`다. 둘 다 없으면 `verified_cost_unavailable`로 남기며
+0%나 운용사 평균값으로 대체하지 않는다.
+
+운용사명은 상품 식별·비용 설명을 위한 메타데이터다. 같은 운용사의 ETF라도 상품별
+보수합계·기타비용·TER가 다를 수 있으므로, 운용사 평균비용을 개별 ETF 계획가정에서
+추가 차감하지 않는다.
+
 `brokerage_commission_percent`는 TER와 분리된 펀드 내부 매매·중개수수료 공시다.
 TER에 더하지 않는다. 추적차이·환헤지 비용도 기준지수의 총수익/가격수익 정의,
 TER 중복 여부, 세금·파생·환전 영향이 확인되기 전까지는 과거 구현품질 진단값으로만
@@ -80,6 +91,10 @@ TER 중복 여부, 세금·파생·환전 영향이 확인되기 전까지는 �
 - 금융투자협회 TER 확인: 861 / 861
 - 한투 총보수 보조값만 있음: 0 / 861
 - KOFIA 기타비용·TER 미확인: 0 / 861
+- 운용사 식별·검증비용 적용·KOFIA TER 적용·KIS 대체·비용 미확인 건수는 결과 루트의
+  `asset_manager_identified_product_count`, `verified_cost_product_count`,
+  `kofia_ter_product_count`, `kis_cost_fallback_product_count`,
+  `verified_cost_unavailable_product_count`에 함께 저장
 - KIND 분배금 이력이 한 건 이상 있는 ETF: 795 / 861
 - 정확한 분배락일 연결: 8,029 / 8,048 이벤트
 - 지급기준일 대체: 19 / 8,048 이벤트
@@ -104,8 +119,8 @@ KOFIA 법정명·표준코드 행을 **정확히** 교차 확인했다. 이 경�
 한투 총보수가 있는 종목도 KOFIA 법정 펀드명과 다르면 TER를 추정하지 않는다. 2026-07-22
 기준 566개는 금융위원회 펀드기본정보의 `matched_exact_normalized_name` 표준코드로,
 12개는 단어 순서만 다른 유일 이름과 한투 총보수=KOFIA 보수합계의 이중 검증으로
-연결했다. 위 식별 근거가 모두 없는 경우에만
-`issuer_or_fund_disclosure_required` 상태를 유지한다.
+연결했다. 위 식별 근거가 모두 없으면 KOFIA TER를 추정하지 않고, KIS 공식 총보수가
+있을 때만 명시적 대체 상태로 사용한다.
 
 ## 6. 엔진 가드레일
 

@@ -36,6 +36,56 @@ KIS_RETIREMENT_NOTICE_URL = (
 )
 
 
+def _effective_cost_fields(
+    *,
+    kofia_cost: dict[str, Any] | None,
+    kis_product: dict[str, Any] | None,
+    kofia_cost_as_of: str | None,
+    kis_cost_as_of: str | None,
+) -> dict[str, Any]:
+    kis_fee = (
+        kis_product.get("total_expense_ratio_percent")
+        if kis_product is not None
+        else None
+    )
+    kis_asset_manager = (
+        kis_product.get("asset_manager") if kis_product is not None else None
+    )
+    if kofia_cost is not None:
+        kofia_asset_manager = kofia_cost.get("asset_manager")
+        asset_manager = kofia_asset_manager or kis_asset_manager
+        return {
+            "asset_manager": asset_manager,
+            "asset_manager_source": (
+                "kofia_fund_fee_cost_comparison"
+                if kofia_asset_manager
+                else "kis_retirement_etf_list"
+                if kis_asset_manager
+                else None
+            ),
+            "effective_total_cost_percent": kofia_cost.get("ter_percent"),
+            "effective_total_cost_status": "kofia_reported_ter",
+            "effective_total_cost_as_of": kofia_cost_as_of,
+        }
+    if kis_fee is not None:
+        return {
+            "asset_manager": kis_asset_manager,
+            "asset_manager_source": "kis_retirement_etf_list",
+            "effective_total_cost_percent": kis_fee,
+            "effective_total_cost_status": "kis_stated_total_expense_ratio",
+            "effective_total_cost_as_of": kis_cost_as_of,
+        }
+    return {
+        "asset_manager": kis_asset_manager,
+        "asset_manager_source": (
+            "kis_retirement_etf_list" if kis_asset_manager else None
+        ),
+        "effective_total_cost_percent": None,
+        "effective_total_cost_status": "verified_cost_unavailable",
+        "effective_total_cost_as_of": None,
+    }
+
+
 def _latest(root: Path, pattern: str) -> Path:
     candidates = sorted(root.glob(pattern))
     if not candidates:
@@ -402,6 +452,16 @@ def build_etf_cost_return_report(
             else None
         )
         kofia_cost = kofia_cost_by_code.get(code)
+        effective_cost_fields = _effective_cost_fields(
+            kofia_cost=kofia_cost,
+            kis_product=kis_product,
+            kofia_cost_as_of=(
+                kofia_cost_report.get("as_of")
+                if kofia_cost_report is not None
+                else None
+            ),
+            kis_cost_as_of=eligibility_report.get("eligibility_as_of"),
+        )
         output_products.append(
             {
                 "isu_code": code,
@@ -412,6 +472,7 @@ def build_etf_cost_return_report(
                 "history_end": observations[-1]["date"].isoformat(),
                 "observation_count": len(observations),
                 "cost": {
+                    **effective_cost_fields,
                     "kis_total_expense_ratio_percent": fee,
                     "kis_cost_as_of": eligibility_report.get("eligibility_as_of"),
                     "kofia_reported_ter_percent": (
@@ -470,14 +531,6 @@ def build_etf_cost_return_report(
                         kofia_cost_report.get("as_of")
                         if kofia_cost_report is not None and kofia_cost
                         else None
-                    ),
-                    "effective_total_cost_percent": (
-                        kofia_cost.get("ter_percent") if kofia_cost else None
-                    ),
-                    "effective_total_cost_status": (
-                        "kofia_reported_ter"
-                        if kofia_cost
-                        else "issuer_or_fund_disclosure_required"
                     ),
                     "important_interpretation": (
                         "KRX market price and NAV returns already reflect ongoing "
@@ -607,13 +660,36 @@ def build_etf_cost_return_report(
         "market_data_as_of": market_as_of.isoformat(),
         "generated_at": datetime.now(UTC).isoformat(),
         "engine_name": "pension_etf_cost_return_evidence",
-        "engine_version": "2026-07-22.1",
+        "engine_version": "2026-07-23.1",
         "product_scope": "eligible_in_at_least_one_pension_account",
         "source_files": source_files,
         "eligible_source_product_count": len(products),
         "product_count": len(output_products),
         "missing_history_count": len(missing_history_codes),
         "missing_history_codes": missing_history_codes,
+        "verified_cost_product_count": sum(
+            product["cost"]["effective_total_cost_percent"] is not None
+            for product in output_products
+        ),
+        "kofia_ter_product_count": sum(
+            product["cost"]["effective_total_cost_status"]
+            == "kofia_reported_ter"
+            for product in output_products
+        ),
+        "kis_cost_fallback_product_count": sum(
+            product["cost"]["effective_total_cost_status"]
+            == "kis_stated_total_expense_ratio"
+            for product in output_products
+        ),
+        "verified_cost_unavailable_product_count": sum(
+            product["cost"]["effective_total_cost_status"]
+            == "verified_cost_unavailable"
+            for product in output_products
+        ),
+        "asset_manager_identified_product_count": sum(
+            product["cost"]["asset_manager"] is not None
+            for product in output_products
+        ),
         "distribution_source_complete": source_complete,
         "period_definitions_trading_days": PERIODS,
         "limitations": [
@@ -621,7 +697,7 @@ def build_etf_cost_return_report(
             "Total return timing uses exact KIND ex-distribution dates where "
             "available; remaining events explicitly use record-date fallback.",
             "KOFIA TER is used as the verified recurring fund-cost input only "
-            "when a unique normalized ETF-name match is available.",
+            "when an approved exact identity match is available.",
             "KOFIA brokerage commission is reported separately from TER and is "
             "not added without a benchmark-convention and cost-overlap check.",
             "Brokerage costs, bid-ask spread, taxes, and account-specific order "
