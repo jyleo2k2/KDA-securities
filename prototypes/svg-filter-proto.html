@@ -1,0 +1,207 @@
+<title>글래스 · 마스코트 프로토타입 — 연금 코파일럿</title>
+<style>
+  :root{
+    --ground:#0d1420; --surface:#151f2e; --surface-2:#1c2939; --line:#2a3a4f;
+    --ink:#e8eef5; --muted:#93a4b8; --faint:#63768c;
+    --accent:#35d0ab; --accent-ink:#052b23; --glass:#7aa2ff;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --sans:-apple-system,"Apple SD Gothic Neo","Pretendard","Malgun Gothic",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme: light){:root{
+    --ground:#eef2f6; --surface:#ffffff; --surface-2:#f4f7fa; --line:#d8e0ea;
+    --ink:#15202e; --muted:#5a6b7e; --faint:#8496a8;
+    --accent:#12a888; --accent-ink:#ffffff; --glass:#4f74e0;}}
+  :root[data-theme="dark"]{
+    --ground:#0d1420; --surface:#151f2e; --surface-2:#1c2939; --line:#2a3a4f;
+    --ink:#e8eef5; --muted:#93a4b8; --faint:#63768c;
+    --accent:#35d0ab; --accent-ink:#052b23; --glass:#7aa2ff;}
+  :root[data-theme="light"]{
+    --ground:#eef2f6; --surface:#ffffff; --surface-2:#f4f7fa; --line:#d8e0ea;
+    --ink:#15202e; --muted:#5a6b7e; --faint:#8496a8;
+    --accent:#12a888; --accent-ink:#ffffff; --glass:#4f74e0;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;padding:clamp(16px,4vw,40px)}
+  .wrap{max-width:980px;margin:0 auto}
+  .head{padding-bottom:20px;margin-bottom:26px;border-bottom:1px solid var(--line)}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 8px}
+  h1{margin:0;font-size:clamp(24px,4vw,34px);letter-spacing:-.02em;font-weight:760}
+  .head p{margin:10px 0 0;color:var(--muted);max-width:62ch;font-size:15px}
+  .protos{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:26px}
+  .proto{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px}
+  .proto h2{margin:0 0 3px;font-size:19px;letter-spacing:-.01em}
+  .proto .role{margin:0 0 16px;color:var(--muted);font-size:13.5px}
+  .dev-wrap{display:flex;justify-content:center;margin-bottom:16px}
+  .device{width:min(320px,100%);background:#EFF3F1;border-radius:34px;border:8px solid #0c1622;box-shadow:0 22px 54px rgba(0,0,0,.4);overflow:hidden;position:relative;color:#1E2124}
+  .dev-status{display:flex;justify-content:space-between;padding:11px 20px 3px;font-size:12px;font-weight:700}
+  .ctrls{display:flex;flex-direction:column;gap:12px}
+  .ctrl-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .btn{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:99px;padding:8px 14px;cursor:pointer;transition:border-color .15s,background .15s}
+  .btn:hover{border-color:var(--accent)}
+  .btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .btn:focus-visible{outline:2px solid var(--glass);outline-offset:2px}
+  .slider{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted)}
+  .slider label{min-width:64px;font-family:var(--mono);font-size:11.5px}
+  .slider input[type=range]{flex:1;accent-color:var(--accent)}
+  .slider .val{font-family:var(--mono);color:var(--ink);min-width:44px;text-align:right;font-variant-numeric:tabular-nums}
+  .note{font-size:12px;color:var(--faint);margin:14px 0 0}
+  .note code{font-family:var(--mono);color:var(--muted)}
+  .pk{position:relative;margin:6px 14px 14px;border-radius:20px;overflow:hidden;height:400px;background:#fff;box-shadow:0 6px 20px rgba(20,40,30,.08)}
+  .pf{position:absolute;inset:0;padding:16px 16px 0;display:flex;flex-direction:column;gap:11px}
+  .pf-top{display:flex;justify-content:space-between;align-items:baseline}
+  .pf-ttl{font-size:13px;font-weight:800}
+  .pf-as{font-size:9.5px;color:#8A938D;font-family:var(--mono)}
+  .pf-total{font-size:22px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .pf-sub{font-size:10.5px;color:#8A938D;margin-top:-6px}
+  .pf-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;margin-top:2px}
+  .pf-bar i{height:100%}
+  .pf-rows{display:flex;flex-direction:column;gap:9px;margin-top:4px}
+  .pf-row{display:flex;align-items:center;gap:9px;font-size:11.5px}
+  .pf-row .rd{width:9px;height:9px;border-radius:2px;flex:0 0 9px}
+  .pf-row .rn{flex:1;color:#2b3138;font-weight:600}
+  .pf-row .rp{font-weight:800;font-variant-numeric:tabular-nums}
+  .pf-row .rv{width:82px;text-align:right;color:#6b7680;font-variant-numeric:tabular-nums}
+  .glass-panel{position:absolute;left:14px;right:14px;bottom:78px;top:150px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:18px;--blur:7px; --tint:.18;backdrop-filter:blur(var(--blur)) saturate(1.5);-webkit-backdrop-filter:blur(var(--blur)) saturate(1.5);background:linear-gradient(135deg,rgba(38,192,125,calc(var(--tint) + .05)),rgba(18,168,106,var(--tint)));border:1px solid rgba(255,255,255,.5);box-shadow:0 10px 30px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.4)}
+  .device.no-glass .glass-panel{backdrop-filter:none;-webkit-backdrop-filter:none;background:linear-gradient(135deg,#26c07d,#12a86a)}
+  .glass-panel .gp-t{margin:0;color:#fff;font-weight:800;font-size:15px;line-height:1.4;text-shadow:0 1px 4px rgba(0,0,0,.25)}
+  .glass-panel .gp-t em{font-style:normal;color:#fff3c4}
+  .glass-panel .gp-cta{background:#fff;color:#12a86a;font-weight:800;font-size:12.5px;border:none;border-radius:99px;padding:9px 20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+  .navpill{position:absolute;left:0;right:0;bottom:14px;display:flex;justify-content:center;gap:6px;padding:6px;margin:0 auto;width:max-content;border-radius:99px;backdrop-filter:blur(12px) saturate(1.7);-webkit-backdrop-filter:blur(12px) saturate(1.7);background:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.6);box-shadow:0 8px 22px rgba(0,0,0,.16)}
+  .device.no-glass .navpill{backdrop-filter:none;-webkit-backdrop-filter:none;background:#fff}
+  .navpill b{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#8A938D;padding:8px 16px;border-radius:99px}
+  .navpill b.on{background:#18A860;color:#fff}
+  .spot{position:absolute;z-index:6;font-family:var(--mono);font-size:9px;font-weight:700;background:rgba(12,22,34,.72);color:#fff;padding:2px 7px;border-radius:20px}
+  .ms-screen{padding:8px 18px 22px;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:400px;justify-content:center;background:linear-gradient(180deg,#f3faf6,#e7f4ee)}
+  .ms-badge{font-family:var(--mono);font-size:10px;color:#12a86a;background:#d9f0e4;border:1px solid #b6e0cb;border-radius:20px;padding:3px 10px}
+  .mascot{width:190px;height:190px;cursor:pointer;color:#12a86a;filter:none;transition:transform .1s}
+  .mascot:active{transform:scale(.95)}
+  .mascot.boil{filter:url(#squiggle)}
+  .mascot .fillbody{fill:transparent;transition:fill .2s}
+  .device.filled .mascot .fillbody{fill:#fde4ee}
+  .device.filled .mascot .fillsnout{fill:#fbd0e0}
+  .ms-title{margin:6px 0 0;font-size:16px;font-weight:800;color:#1E2124}
+  .ms-sub{margin:2px 0 0;font-size:12px;color:#6b7680}
+  .ms-hint{margin-top:4px;font-size:11px;color:#12a86a;font-family:var(--mono)}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important}}
+</style>
+<svg width="0" height="0" aria-hidden="true" style="position:absolute"><defs>
+  <filter id="squiggle">
+    <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="2" result="warp">
+      <animate attributeName="seed" values="2;7;2" dur="0.85s" repeatCount="indefinite"/>
+    </feTurbulence>
+    <feDisplacementMap id="sqDisp" in="SourceGraphic" in2="warp" scale="5" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</defs></svg>
+<div class="wrap">
+  <div class="head">
+    <p class="eyebrow">SVG 필터 · 선정 2종 프로토타입</p>
+    <h1>글래스 &amp; 마스코트 자글자글</h1>
+    <p>결정된 두 방향만 실제 연금 도우미 화면에 얹었다. 글래스는 <b style="color:var(--ink)">뒤 포트폴리오가 흐릿하게 비쳐 "아, 포트폴리오구나" 알아볼 정도</b>로 슬라이더 튜닝, 마스코트는 손그림 라인아트 돼지를 톡톡 두드리면 자글자글.</p>
+  </div>
+  <div class="protos">
+    <div class="proto">
+      <h2>① 글래스 — 네비바 + "만나보세요" 패널</h2>
+      <p class="role">뒤 포트폴리오를 알아볼 정도로만 블러. 슬라이더로 강도 조절.</p>
+      <div class="dev-wrap">
+        <div class="device" id="glassDevice">
+          <div class="dev-status"><span>9:41</span><span aria-hidden="true">● ● ▰</span></div>
+          <div class="pk">
+            <span class="spot" style="top:8px;left:8px">뒤: 실제 포트폴리오</span>
+            <div class="pf">
+              <div class="pf-top"><span class="pf-ttl">포트폴리오 상세</span><span class="pf-as">2026-07-16 기준</span></div>
+              <div>
+                <div class="pf-total">84,210,000원</div>
+                <div class="pf-sub">위험자산 62% · 한도 70% 이내</div>
+              </div>
+              <div class="pf-bar"><i style="width:46%;background:#18A860"></i><i style="width:26%;background:#3877E8"></i><i style="width:16%;background:#F0C000"></i><i style="width:12%;background:#F5871F"></i></div>
+              <div class="pf-rows">
+                <div class="pf-row"><span class="rd" style="background:#18A860"></span><span class="rn">KODEX 미국S&amp;P500</span><span class="rp">32.4%</span><span class="rv">27,300,000</span></div>
+                <div class="pf-row"><span class="rd" style="background:#3877E8"></span><span class="rn">TIGER 미국나스닥100</span><span class="rp">18.1%</span><span class="rv">15,240,000</span></div>
+                <div class="pf-row"><span class="rd" style="background:#2FBFA0"></span><span class="rn">KODEX 200</span><span class="rp">14.6%</span><span class="rv">12,290,000</span></div>
+                <div class="pf-row"><span class="rd" style="background:#F0C000"></span><span class="rn">KOSEF 국고채10년</span><span class="rp">12.0%</span><span class="rv">10,100,000</span></div>
+                <div class="pf-row"><span class="rd" style="background:#F5871F"></span><span class="rn">TIGER 미국채10년</span><span class="rp">9.2%</span><span class="rv">7,750,000</span></div>
+                <div class="pf-row"><span class="rd" style="background:#8B5FEB"></span><span class="rn">현금성</span><span class="rp">13.7%</span><span class="rv">11,530,000</span></div>
+              </div>
+            </div>
+            <div class="glass-panel" id="glassPanel">
+              <span class="spot" style="top:-9px;left:0;transform:translateY(-100%)">① 글래스</span>
+              <p class="gp-t">동일 업종 및 다른 이용자의<br>포트폴리오를 <em>만나보세요!</em></p>
+              <button class="gp-cta" type="button">지금 둘러보기 ›</button>
+            </div>
+            <div class="navpill">
+              <span class="spot" style="top:-9px;left:50%;transform:translate(-50%,-100%)">① 글래스</span>
+              <b class="on">⌂ 홈 화면</b><b>💬 챗봇</b>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="slider"><label>블러</label><input type="range" id="blur" min="0" max="16" step="1" value="7"><span class="val" id="blurV">7px</span></div>
+        <div class="slider"><label>초록 틴트</label><input type="range" id="tint" min="0" max="50" step="2" value="18"><span class="val" id="tintV">0.18</span></div>
+        <div class="ctrl-row"><button class="btn" id="glassToggle" aria-pressed="true">글래스: ON (끄면 현재 불투명)</button></div>
+      </div>
+      <p class="note">뒤 리스트가 <b style="color:var(--ink)">색 띠로만 인지</b>되고 글자는 안 읽히는 지점이 목표. 실제 이식: <code>mhs-userpick-overlay</code> + 네비바(<code>TabBar.tsx</code> / <code>mhs-tab-toggle</code>)에 <code>backdrop-filter</code>.</p>
+    </div>
+    <div class="proto">
+      <h2>④ 마스코트 자글자글 — 슬랑이</h2>
+      <p class="role">손그림 라인아트 돼지. 두드리면 1.3초 자글자글.</p>
+      <div class="dev-wrap">
+        <div class="device" id="mascotDevice">
+          <div class="dev-status"><span>9:41</span><span aria-hidden="true">● ● ▰</span></div>
+          <div class="ms-screen">
+            <span class="ms-badge">저축 마스코트</span>
+            <svg class="mascot" id="mascot" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" role="button" aria-label="슬랑이 두드리기" xmlns="http://www.w3.org/2000/svg">
+              <path class="fillbody" d="M30 70 Q26 44 46 40 Q60 37 74 40 Q94 44 90 70 Q88 92 60 92 Q32 92 30 70Z"/>
+              <path d="M38 44 L31 30 L50 39"/>
+              <path d="M82 44 L89 30 L70 39"/>
+              <ellipse class="fillsnout" cx="60" cy="70" rx="14" ry="10"/>
+              <circle cx="55" cy="70" r="1.9" fill="currentColor" stroke="none"/>
+              <circle cx="65" cy="70" r="1.9" fill="currentColor" stroke="none"/>
+              <circle cx="47" cy="58" r="2.4" fill="currentColor" stroke="none"/>
+              <circle cx="73" cy="58" r="2.4" fill="currentColor" stroke="none"/>
+              <path d="M42 90 L42 100 M54 92 L54 101 M66 92 L66 101 M78 90 L78 100"/>
+              <path d="M56 40 L64 40" stroke-width="4"/>
+              <path d="M90 64 Q100 60 98 70 Q96 78 104 76"/>
+              <circle cx="60" cy="20" r="7" stroke="#F0C000"/>
+              <path d="M57 20 L63 20 M60 16 L60 24" stroke="#F0C000" stroke-width="2.4"/>
+            </svg>
+            <p class="ms-title">슬랑이를 만져 보세요!</p>
+            <p class="ms-sub">톡톡 두드리면 오늘의 저축 팁을 알려드려요</p>
+            <p class="ms-hint" id="msHint">👆 돼지를 눌러봐</p>
+          </div>
+        </div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrl-row">
+          <button class="btn" id="boilBtn">톡톡 두드리기</button>
+          <button class="btn" id="alwaysBtn" aria-pressed="false">상시 흔들기</button>
+          <button class="btn" id="fillBtn" aria-pressed="false">채움 스타일</button>
+        </div>
+        <div class="slider"><label>자글 강도</label><input type="range" id="amp" min="2" max="9" step="1" value="5"><span class="val" id="ampV">5</span></div>
+      </div>
+      <p class="note">라인아트라 색만 바꾸면 어디든 재사용. 실제 이식: <code>piggy.webp</code> 대신 이 인라인 SVG를 두고, 탭 핸들러에서 <code>.boil</code> 클래스 1.3초 토글. 강도 = <code>feDisplacementMap scale</code>.</p>
+    </div>
+  </div>
+</div>
+<script>
+  (function(){
+    var panel=document.getElementById("glassPanel");
+    var dev=document.getElementById("glassDevice");
+    var blur=document.getElementById("blur"), blurV=document.getElementById("blurV");
+    var tint=document.getElementById("tint"), tintV=document.getElementById("tintV");
+    var tg=document.getElementById("glassToggle");
+    blur.addEventListener("input",function(){panel.style.setProperty("--blur",blur.value+"px");blurV.textContent=blur.value+"px";});
+    tint.addEventListener("input",function(){var t=(tint.value/100).toFixed(2);panel.style.setProperty("--tint",t);tintV.textContent=t;});
+    tg.addEventListener("click",function(){var off=dev.classList.toggle("no-glass");tg.setAttribute("aria-pressed",String(!off));tg.textContent=off?"글래스: OFF (현재 불투명)":"글래스: ON (끄면 현재 불투명)";});
+  })();
+  (function(){
+    var m=document.getElementById("mascot"), dev=document.getElementById("mascotDevice");
+    var boilBtn=document.getElementById("boilBtn"), always=document.getElementById("alwaysBtn"), fill=document.getElementById("fillBtn");
+    var amp=document.getElementById("amp"), ampV=document.getElementById("ampV"), disp=document.getElementById("sqDisp"), hint=document.getElementById("msHint");
+    var timer;
+    function burst(){ if(always.getAttribute("aria-pressed")==="true") return; m.classList.add("boil"); hint.textContent="✨ 자글자글!"; clearTimeout(timer); timer=setTimeout(function(){m.classList.remove("boil");hint.textContent="👆 돼지를 눌러봐";},1300); }
+    m.addEventListener("click",burst); boilBtn.addEventListener("click",burst);
+    always.addEventListener("click",function(){var on=!(always.getAttribute("aria-pressed")==="true");always.setAttribute("aria-pressed",String(on));m.classList.toggle("boil",on);hint.textContent=on?"♾ 상시 흔들기 켜짐":"👆 돼지를 눌러봐";});
+    fill.addEventListener("click",function(){var on=dev.classList.toggle("filled");fill.setAttribute("aria-pressed",String(on));});
+    amp.addEventListener("input",function(){disp.setAttribute("scale",amp.value);ampV.textContent=amp.value;});
+  })();
+</script>
