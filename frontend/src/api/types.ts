@@ -26,6 +26,36 @@ export interface AccountLinkOptionsResponse {
   notice: string;
   data_boundary: "mock";
 }
+
+export interface PensionHoldingSnapshot {
+  holding_id: string;
+  product_id: string | null;
+  instrument_name: string;
+  etf_isu_code: string | null;
+  asset_class: AssetClass;
+  amount_krw: string;
+  risk_treatment: RiskTreatment;
+  statutory_exception: StatutoryException | null;
+}
+
+export interface PensionAccountSnapshot {
+  account_id: string;
+  account_type: AccountType;
+  account_name: string;
+  data_kind: "real" | "mock";
+  origin: "user_input" | "provider_import" | "synthetic";
+  snapshot_id: string;
+  as_of_date: string;
+  contributed_principal_krw: string | null;
+  market_value_krw: string;
+  holdings: PensionHoldingSnapshot[];
+}
+
+export interface UserPensionPortfolio {
+  owner_id: string;
+  data_boundary: "real" | "mock" | "mixed" | "unavailable";
+  accounts: PensionAccountSnapshot[];
+}
 export type RiskTreatment =
   | "capital_preservation"
   | "general_risky"
@@ -272,6 +302,21 @@ export interface PensionCalculatorInput {
   monthly_contribution_krw: string;
   current_balance_krw?: string;
   account_type: AccountType;
+  risk_profile: RiskProfile;
+  strategy_id?: string | null;
+  payout_years?: number;
+  scenario?: AssumptionScenario;
+}
+
+export interface PensionCalculatorCombinedInput {
+  current_age: number;
+  contribution_end_age: number;
+  accounts: Array<{
+    account_id: string;
+    account_name: string;
+    account_type: AccountType;
+    current_balance_krw: string;
+  }>;
   risk_profile: RiskProfile;
   strategy_id?: string | null;
   payout_years?: number;

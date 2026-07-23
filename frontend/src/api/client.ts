@@ -1,5 +1,7 @@
 import type {
   AccountLinkOptionsResponse,
+  AggregationEvaluation,
+  AggregationInput,
   ChatCardCatalog,
   CompletedSurveyProfile,
   ConversationContext,
@@ -12,6 +14,7 @@ import type {
   InvestmentProfileSubmission,
   RebalancingReminderState,
   PensionCalculatorEvaluation,
+  PensionCalculatorCombinedInput,
   PensionCalculatorInput,
   PensionCalculatorPortfolioCmaEvaluation,
   PensionCalculatorPortfolioCmaRequest,
@@ -20,6 +23,7 @@ import type {
   ProfileSurveyInput,
   ScenarioSummary,
   StoredChatMessage,
+  UserPensionPortfolio,
 } from "./types";
 import { supabase } from "../auth/supabase";
 import { noStoreApiRequest } from "../pwa/cachePolicy";
@@ -284,6 +288,18 @@ export function getAccountLinkOptions(): Promise<AccountLinkOptionsResponse> {
   return apiGet("/accounts/link-options");
 }
 
+export function getMyPensionAccounts(
+  accessToken: string,
+): Promise<UserPensionPortfolio> {
+  return apiGet("/me/pension-accounts", accessToken);
+}
+
+export function aggregatePensionAccounts(
+  request: AggregationInput,
+): Promise<AggregationEvaluation> {
+  return apiPost("/engine/aggregation", request);
+}
+
 export function evaluateProfileSurvey(
   survey: ProfileSurveyInput,
 ): Promise<ProfileEvaluation> {
@@ -313,6 +329,12 @@ export function calculatePension(
   request: PensionCalculatorInput,
 ): Promise<PensionCalculatorEvaluation> {
   return apiPost("/engine/pension-calculator", request);
+}
+
+export function calculateCombinedPension(
+  request: PensionCalculatorCombinedInput,
+): Promise<PensionCalculatorEvaluation> {
+  return apiPost("/engine/pension-calculator/combined", request);
 }
 
 interface ChatBodyOptions {

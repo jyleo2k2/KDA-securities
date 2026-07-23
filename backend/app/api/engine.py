@@ -56,6 +56,8 @@ from ..engine import (
     evaluate_risk_cap,
 )
 from ..engine.audit import EngineAuditRepository
+from ..engine.models import PensionCalculatorCombinedInput
+from ..engine.pension_calculator import calculate_combined_pension
 from ..etf_universe_database import PortfolioUniverseLoadError
 from ..market_evidence_repository import KrxMarketEvidenceRepository
 from ..settings import Settings, get_settings
@@ -218,6 +220,18 @@ def pension_calculator(
     """Calculate an educational accumulation and pension payout scenario."""
 
     return calculate_pension(inputs)
+
+
+@router.post(
+    "/engine/pension-calculator/combined",
+    response_model=PensionCalculatorEvaluation,
+)
+def pension_calculator_combined(
+    inputs: PensionCalculatorCombinedInput,
+) -> PensionCalculatorEvaluation:
+    """Calculate owned account balances separately and combine the result."""
+
+    return calculate_combined_pension(inputs)
 
 
 @router.post(

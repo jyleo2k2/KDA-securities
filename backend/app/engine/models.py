@@ -375,6 +375,52 @@ class PensionCalculatorInput(BaseModel):
         return self
 
 
+class PensionCalculatorAccountBalance(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str = Field(min_length=1)
+    account_name: str = Field(min_length=1)
+    account_type: AccountType
+    current_balance_krw: Decimal = Field(
+        ge=0,
+        allow_inf_nan=False,
+    )
+
+
+class PensionCalculatorCombinedInput(BaseModel):
+    """Calculate owned accounts separately, then present their combined result."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    current_age: int = Field(ge=20, le=69)
+    contribution_end_age: int = Field(ge=55, le=70)
+    accounts: list[PensionCalculatorAccountBalance] = Field(min_length=1)
+    risk_profile: RiskProfile
+    strategy_id: str | None = None
+    payout_years: int = Field(default=20, ge=5, le=40)
+    scenario: AssumptionScenario = AssumptionScenario.BASE
+
+    @model_validator(mode="after")
+    def validate_combined_scope(self) -> "PensionCalculatorCombinedInput":
+        if self.contribution_end_age <= self.current_age:
+            raise ValueError("contribution_end_age must be greater than current_age")
+        if len({account.account_id for account in self.accounts}) != len(
+            self.accounts
+        ):
+            raise ValueError("account_id values must be unique")
+        if not any(account.current_balance_krw > 0 for account in self.accounts):
+            raise ValueError("at least one account balance is required")
+        if self.strategy_id is not None:
+            from .educational_portfolio import PROFILE_POLICY
+
+            known_strategy_ids = {
+                str(policy["strategy"]) for policy in PROFILE_POLICY.values()
+            }
+            if self.strategy_id not in known_strategy_ids:
+                raise ValueError("strategy_id is not a known educational strategy")
+        return self
+
+
 class PensionCalculatorHeadline(BaseModel):
     total_krw: Decimal
     total_principal_krw: Decimal

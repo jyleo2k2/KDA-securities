@@ -15,7 +15,9 @@ import {
   apiPost,
   deleteChatSession,
   deleteAllChatSessions,
+  calculateCombinedPension,
   getDemoHeroes,
+  getMyPensionAccounts,
   getMyPensionContext,
   getStoredChatMessages,
   sendAuthenticatedChatStream,
@@ -240,6 +242,59 @@ describe("demo customer display names", () => {
     const messages = await getStoredChatMessages("session-1", "access-token");
 
     expect(messages[0]?.response?.salutation).toBe("정민재님");
+  });
+});
+
+describe("owned pension accounts", () => {
+  it("loads only the authenticated owner's pension portfolio", async () => {
+    auth.getSession.mockResolvedValue({
+      data: { session: { access_token: "access-token" } },
+    });
+    const portfolio = {
+      owner_id: "owner-1",
+      data_boundary: "mock",
+      accounts: [],
+    };
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(portfolio)),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getMyPensionAccounts("access-token")).resolves.toEqual(portfolio);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/me/pension-accounts",
+      {
+        cache: "no-store",
+        headers: { Authorization: "Bearer access-token" },
+      },
+    );
+  });
+
+  it("posts every account to the combined calculator", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ headline: {}, yearly: [] })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await calculateCombinedPension({
+      current_age: 35,
+      contribution_end_age: 60,
+      accounts: [
+        {
+          account_id: "dc-1",
+          account_name: "회사 DC",
+          account_type: "dc",
+          current_balance_krw: "40000000",
+        },
+      ],
+      risk_profile: "risk_neutral",
+    });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://127.0.0.1:8000/engine/pension-calculator/combined",
+    );
+    expect(JSON.parse((fetchMock.mock.calls[0]?.[1] as RequestInit).body as string))
+      .toMatchObject({ accounts: [{ account_id: "dc-1" }] });
   });
 });
 

@@ -16,6 +16,7 @@ from .models import (
     AccountType,
     AllocationWeights,
     PensionCalculatorAssumption,
+    PensionCalculatorCombinedInput,
     PensionCalculatorEvaluation,
     PensionCalculatorHeadline,
     PensionCalculatorInput,
@@ -363,3 +364,124 @@ def calculate_pension(
             ),
             warnings=warnings,
         )
+
+
+def calculate_combined_pension(
+    inputs: PensionCalculatorCombinedInput,
+) -> PensionCalculatorEvaluation:
+    """Calculate each account with its own legal account rules and combine it."""
+
+    evaluations: list[tuple[str, PensionCalculatorEvaluation]] = []
+    for account in inputs.accounts:
+        if account.current_balance_krw == 0:
+            continue
+        evaluation = calculate_pension(
+            PensionCalculatorInput(
+                current_age=inputs.current_age,
+                contribution_end_age=inputs.contribution_end_age,
+                monthly_contribution_krw=Decimal("0"),
+                current_balance_krw=account.current_balance_krw,
+                account_type=account.account_type,
+                risk_profile=inputs.risk_profile,
+                strategy_id=inputs.strategy_id,
+                payout_years=inputs.payout_years,
+                scenario=inputs.scenario,
+            )
+        )
+        evaluations.append((account.account_id, evaluation))
+
+    first = evaluations[0][1]
+    total = sum(
+        (evaluation.headline.total_krw for _, evaluation in evaluations),
+        Decimal("0"),
+    )
+    principal = sum(
+        (
+            evaluation.headline.total_principal_krw
+            for _, evaluation in evaluations
+        ),
+        Decimal("0"),
+    )
+    monthly_payout = sum(
+        (
+            evaluation.headline.monthly_payout_pretax_krw
+            for _, evaluation in evaluations
+        ),
+        Decimal("0"),
+    )
+    annual_payout = monthly_payout * TWELVE
+    rates, exceeds_threshold = _tax_rates(
+        annual_payout=annual_payout,
+        pension_start_age=inputs.contribution_end_age,
+        payout_years=inputs.payout_years,
+    )
+    effective_rate = sum(rates, Decimal("0")) / Decimal(len(rates))
+    first_year_after_tax = monthly_payout * (
+        Decimal("1") - rates[0] / ONE_HUNDRED
+    )
+
+    yearly = [
+        PensionCalculatorYear(
+            year_index=year_index,
+            age=first.yearly[year_index - 1].age,
+            cumulative_principal_krw=sum(
+                (
+                    evaluation.yearly[year_index - 1].cumulative_principal_krw
+                    for _, evaluation in evaluations
+                ),
+                Decimal("0"),
+            ),
+            cumulative_gain_krw=sum(
+                (
+                    evaluation.yearly[year_index - 1].cumulative_gain_krw
+                    for _, evaluation in evaluations
+                ),
+                Decimal("0"),
+            ),
+            balance_krw=sum(
+                (
+                    evaluation.yearly[year_index - 1].balance_krw
+                    for _, evaluation in evaluations
+                ),
+                Decimal("0"),
+            ),
+        )
+        for year_index in range(1, len(first.yearly) + 1)
+    ]
+
+    warnings = [*BASE_WARNINGS, "combined_current_balances_only"]
+    if exceeds_threshold:
+        warnings.append(
+            "annual_payout_over_15m_assumes_16_5_percent_separate_taxation;"
+            "comprehensive_taxation_may_be_more_favorable"
+        )
+    for account_id, evaluation in evaluations:
+        warnings.extend(
+            f"account:{account_id}:{warning}"
+            for warning in evaluation.warnings
+            if warning.startswith("pension_withdrawal_limit_exceeded_years:")
+        )
+
+    return PensionCalculatorEvaluation(
+        headline=PensionCalculatorHeadline(
+            total_krw=_krw(total),
+            total_principal_krw=_krw(principal),
+            total_gain_krw=_krw(total - principal),
+            monthly_payout_pretax_krw=_krw(monthly_payout),
+            monthly_payout_after_tax_krw=_krw(first_year_after_tax),
+            contribution_years=(
+                inputs.contribution_end_age - inputs.current_age
+            ),
+        ),
+        yearly=yearly,
+        strategies=first.strategies,
+        tax=PensionCalculatorTax(
+            withholding_rate_percent_by_year=rates,
+            effective_rate_percent=effective_rate,
+            annual_payout_krw=_krw(annual_payout),
+            exceeds_annual_15m_threshold=exceeds_threshold,
+            deferred_severance_excluded=True,
+        ),
+        assumption=first.assumption,
+        warnings=warnings,
+    )
