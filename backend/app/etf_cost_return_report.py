@@ -462,6 +462,21 @@ def build_etf_cost_return_report(
             ),
             kis_cost_as_of=eligibility_report.get("eligibility_as_of"),
         )
+        implementation_metrics = _implementation_metrics(observations)
+        kis_tracking_error = _decimal(price.get("trc_errt"))
+        tracking_error_proxy = _decimal(
+            implementation_metrics.get("tracking_error_proxy_percent")
+        )
+        if kis_tracking_error is not None:
+            tracking_error_diagnostic = _percent(kis_tracking_error)
+            tracking_error_source = "kis_current_tracking_error"
+        else:
+            tracking_error_diagnostic = _percent(tracking_error_proxy)
+            tracking_error_source = (
+                "krx_nav_benchmark_tracking_error_proxy"
+                if tracking_error_proxy is not None
+                else None
+            )
         output_products.append(
             {
                 "isu_code": code,
@@ -486,11 +501,24 @@ def build_etf_cost_return_report(
                     "kofia_reported_other_cost_percent": (
                         kofia_cost.get("other_cost_percent") if kofia_cost else None
                     ),
+                    "kofia_ter_reconciliation_difference_percent_points": (
+                        kofia_cost.get(
+                            "ter_reconciliation_difference_percent_points"
+                        )
+                        if kofia_cost
+                        else None
+                    ),
                     "kofia_reported_brokerage_commission_percent": (
                         kofia_cost.get("brokerage_commission_percent")
                         if kofia_cost
                         else None
                     ),
+                    "brokerage_commission_included_in_planning_return": False,
+                    "tracking_cost_percent": None,
+                    "tracking_cost_status": (
+                        "not_quantified_overlap_not_verified"
+                    ),
+                    "tracking_cost_included_in_planning_return": False,
                     "kofia_standard_code": (
                         kofia_cost.get("standard_code") if kofia_cost else None
                     ),
@@ -575,8 +603,12 @@ def build_etf_cost_return_report(
                     for period, periods in PERIODS.items()
                 },
                 "implementation_metrics": {
-                    **_implementation_metrics(observations),
+                    **implementation_metrics,
                     "kis_current_tracking_error_percent": price.get("trc_errt"),
+                    "tracking_error_diagnostic_percent": (
+                        tracking_error_diagnostic
+                    ),
+                    "tracking_error_diagnostic_source": tracking_error_source,
                 },
                 "kis_provider_reported_returns_percent": (
                     kis_product.get("provider_reported_returns_percent")
@@ -660,7 +692,7 @@ def build_etf_cost_return_report(
         "market_data_as_of": market_as_of.isoformat(),
         "generated_at": datetime.now(UTC).isoformat(),
         "engine_name": "pension_etf_cost_return_evidence",
-        "engine_version": "2026-07-23.1",
+        "engine_version": "2026-07-23.2",
         "product_scope": "eligible_in_at_least_one_pension_account",
         "source_files": source_files,
         "eligible_source_product_count": len(products),
@@ -690,6 +722,20 @@ def build_etf_cost_return_report(
             product["cost"]["asset_manager"] is not None
             for product in output_products
         ),
+        "brokerage_commission_diagnostic_product_count": sum(
+            product["cost"]["kofia_reported_brokerage_commission_percent"]
+            is not None
+            for product in output_products
+        ),
+        "tracking_error_diagnostic_product_count": sum(
+            product["implementation_metrics"][
+                "tracking_error_diagnostic_percent"
+            ]
+            is not None
+            for product in output_products
+        ),
+        "brokerage_commission_included_product_count": 0,
+        "tracking_cost_included_product_count": 0,
         "distribution_source_complete": source_complete,
         "period_definitions_trading_days": PERIODS,
         "limitations": [
@@ -707,6 +753,87 @@ def build_etf_cost_return_report(
         ],
         "products": output_products,
     }
+
+
+def _validate_operational_cost_report(report: dict[str, Any]) -> None:
+    products = report.get("products")
+    if not isinstance(products, list):
+        raise ValueError("operational cost master validation failed: products_missing")
+
+    problems: list[str] = []
+    declared_count = report.get("product_count")
+    eligible_count = report.get("eligible_source_product_count")
+    if declared_count != len(products):
+        problems.append("product_count_mismatch")
+    if eligible_count != len(products):
+        problems.append("eligible_product_coverage_incomplete")
+    if report.get("missing_history_count") != 0:
+        problems.append("missing_history")
+
+    for product in products:
+        code = str(product.get("isu_code") or "unknown")
+        cost = product.get("cost")
+        if not isinstance(cost, dict):
+            problems.append(f"{code}:cost_missing")
+            continue
+        if not cost.get("asset_manager"):
+            problems.append(f"{code}:asset_manager_missing")
+        if _decimal(cost.get("effective_total_cost_percent")) is None:
+            problems.append(f"{code}:verified_cost_missing")
+        if _decimal(
+            cost.get("kofia_reported_brokerage_commission_percent")
+        ) is None:
+            problems.append(f"{code}:brokerage_commission_diagnostic_missing")
+        if cost.get("brokerage_commission_included_in_planning_return") is not False:
+            problems.append(f"{code}:brokerage_commission_must_be_diagnostic_only")
+        if cost.get("tracking_cost_percent") is not None:
+            problems.append(f"{code}:tracking_cost_must_not_be_quantified")
+        if (
+            cost.get("tracking_cost_status")
+            != "not_quantified_overlap_not_verified"
+        ):
+            problems.append(f"{code}:tracking_cost_status_invalid")
+        if cost.get("tracking_cost_included_in_planning_return") is not False:
+            problems.append(f"{code}:tracking_cost_must_be_diagnostic_only")
+        implementation_metrics = product.get("implementation_metrics")
+        if not isinstance(implementation_metrics, dict):
+            problems.append(f"{code}:implementation_metrics_missing")
+        else:
+            if _decimal(
+                implementation_metrics.get("tracking_error_diagnostic_percent")
+            ) is None:
+                problems.append(f"{code}:tracking_error_diagnostic_missing")
+            if not implementation_metrics.get("tracking_error_diagnostic_source"):
+                problems.append(f"{code}:tracking_error_source_missing")
+        if cost.get("effective_total_cost_status") == "kofia_reported_ter":
+            ter = _decimal(cost.get("kofia_reported_ter_percent"))
+            stated = _decimal(
+                cost.get("kofia_reported_stated_fee_total_percent")
+            )
+            other = _decimal(cost.get("kofia_reported_other_cost_percent"))
+            reconciliation = _decimal(
+                cost.get(
+                    "kofia_ter_reconciliation_difference_percent_points"
+                )
+            )
+            if (
+                ter is None
+                or stated is None
+                or other is None
+                or reconciliation is None
+                or (
+                    (ter - stated - other).copy_abs() - reconciliation
+                ).copy_abs()
+                > PERCENT_QUANTUM
+                or reconciliation > Decimal("0.01")
+            ):
+                problems.append(f"{code}:kofia_ter_composition_mismatch")
+
+    if problems:
+        preview = ", ".join(problems[:10])
+        if len(problems) > 10:
+            preview += f", ... ({len(problems)} total)"
+        raise ValueError(f"operational cost master validation failed: {preview}")
 
 
 def _account_report(report: dict[str, Any], account: str) -> dict[str, Any]:
@@ -824,6 +951,7 @@ def main() -> int:
             _load(fsc_fund_join_path) if fsc_fund_join_path is not None else None
         ),
     )
+    _validate_operational_cost_report(report)
     union_path = args.output / (f"pension_etf_cost_return_master_{args.as_of}.json")
     _write_json(union_path, report)
     account_paths = {}
@@ -838,6 +966,18 @@ def main() -> int:
                 "market_data_as_of": report["market_data_as_of"],
                 "product_count": report["product_count"],
                 "missing_history_count": report["missing_history_count"],
+                "verified_cost_product_count": report[
+                    "verified_cost_product_count"
+                ],
+                "asset_manager_identified_product_count": report[
+                    "asset_manager_identified_product_count"
+                ],
+                "brokerage_commission_diagnostic_product_count": report[
+                    "brokerage_commission_diagnostic_product_count"
+                ],
+                "tracking_error_diagnostic_product_count": report[
+                    "tracking_error_diagnostic_product_count"
+                ],
                 "distribution_source_complete": report["distribution_source_complete"],
                 "output_path": union_path.as_posix(),
                 "account_output_paths": account_paths,

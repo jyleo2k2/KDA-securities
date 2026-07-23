@@ -2,8 +2,8 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-22 18:38 KST
-> 확인 기준: 해외 ETF 공식 구성정보 migration 2건·최초 11종목 적재·카탈로그/RLS/GRANT/Advisor·챗봇 조회 재검증
+> 최종 확인: 2026-07-23 11:48 KST
+> 확인 기준: ETF 비용 마스터 861개 재검증·원격 데이터셋 version 4 적재·비용 API E2E·Advisor 재검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
 > 머지 승인: 이재용(총괄)
@@ -35,7 +35,7 @@
 | 항목 | 원격 상태 |
 |---|---|
 | public 기본 테이블 | 54개 |
-| 적용 마이그레이션 | 29개(`20260715005435` ~ `20260722093547`) |
+| 적용 마이그레이션 | 32개(`20260715005435` ~ `20260723024221`) |
 | RLS | 54/54 활성화 |
 | `anon` 테이블 권한 | 없음 |
 | `authenticated` 권한 | 사용자 소유 엔진 결과·채팅 관련 5개 테이블 |
@@ -58,6 +58,8 @@
 | `etf_theme_content_reviews` | 230(`.3` 115 + `.4` 115) |
 | `etf_theme_content_evidence` | 230(`.3` 115 + `.4` 115) |
 | `etf_daily_market_snapshots` | 1,147 |
+| 최신 ETF 데이터셋(version 4) 상품 / 총수익 이력 | 2,507 / 1,207,952 |
+| 최신 ETF 데이터셋 계좌별 상품(DC / IRP / 연금저축) | 823 / 823 / 861 |
 | `mock_scenarios` | 6 |
 | `mock_accounts` | 13 |
 | `mock_holdings` | 86 |
@@ -330,6 +332,30 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-23 11:40 KST ETF 비용 마스터·API 운영 완료 (REMOTE-APPLIED)
+
+- 작업자/브랜치: Codex(김태형) / `codex/김태형/etf-cost-ops-completion`.
+- 2026-07-23 비용 마스터를 신규 생성했다. 통합 861개, DC 823개, IRP 823개,
+  연금저축 861개이며 이력 누락 0, 검증비용 861, KOFIA TER 861, 운용사 861,
+  매매·중개수수료 진단 861, 추적오차 진단 861건이다. KIS 비용 대체와 비용 미확인은
+  각각 0건이다.
+- KOFIA TER와 보수합계·기타비용의 원문 반올림 절대차를 별도 보존했다. 최대 0.008%p,
+  파서 허용범위 0.01%p 초과 0건이다. 매매·중개수수료와 독립 추적비용의 계획수익률
+  포함 플래그는 모두 false이며 원격 포함 건수도 각각 0건이다.
+- 원격 적재: 기존 ready 버전을 보존하고 `etf_dataset_versions.id=4`,
+  `as_of=2026-07-23`, `source_sha256=4bbeaa621d99440a747453f2a0c1472cadcffbce2ac77fc6c24421338d56fff2`로
+  상품 2,507행·총수익 이력 1,207,952행을 적재했다. 계좌별 운용사·검증비용·매매중개·
+  추적오차 진단 커버리지는 각 상품 수와 동일하고 중복 차감 플래그는 0건이다.
+- FastAPI 원격 DB E2E: `POST /engine/educational-portfolio`가 200을 반환했다. 연금저축
+  위험중립 표본의 선택 ETF 6개 모두 운용사·매매중개·추적오차 진단값을 반환했고,
+  `brokerage_commission_included=false`, `tracking_cost_included=false`, 비용 기준일
+  2026-07-23, 비중가중 연간비용 0.0975%를 확인했다.
+- Advisor: 신규 DDL은 없다. 기존 서버 전용 테이블의 `rls_enabled_no_policy` INFO와
+  [유출 비밀번호 보호 비활성화 WARN](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)은
+  그대로이며 이번 데이터 적재로 새 보안 경고는 발생하지 않았다.
+- 검증: 관련 회귀 31 passed, 최신 main 병합 후 전체 `1068 passed, 1 skipped`, Ruff와
+  `git diff --check`가 통과했다. GitHub CI는 PR 단계에서 최종 확인한다.
 
 ### 2026-07-22 KST KIS ETF 구성종목 P0 수집·표시 보강
 

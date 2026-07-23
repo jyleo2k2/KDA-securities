@@ -1,9 +1,12 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
+import pytest
+
 from backend.app.etf_cost_return_report import (
     _effective_cost_fields,
     _period_result,
+    _validate_operational_cost_report,
 )
 
 
@@ -46,6 +49,72 @@ def test_effective_cost_uses_explicit_kis_fallback_when_kofia_is_missing() -> No
         "kis_stated_total_expense_ratio"
     )
     assert result["effective_total_cost_as_of"] == "2026-06-30"
+
+
+def test_operational_cost_report_requires_complete_verified_evidence() -> None:
+    report = {
+        "eligible_source_product_count": 1,
+        "product_count": 1,
+        "missing_history_count": 0,
+        "products": [
+            {
+                "isu_code": "123456",
+                "cost": {
+                    "asset_manager": "테스트자산운용",
+                    "effective_total_cost_percent": "0.21",
+                    "effective_total_cost_status": "kofia_reported_ter",
+                    "kofia_reported_ter_percent": "0.21",
+                    "kofia_reported_stated_fee_total_percent": "0.15",
+                    "kofia_reported_other_cost_percent": "0.06",
+                    "kofia_ter_reconciliation_difference_percent_points": "0",
+                    "kofia_reported_brokerage_commission_percent": "0.01",
+                    "brokerage_commission_included_in_planning_return": False,
+                    "tracking_cost_percent": None,
+                    "tracking_cost_status": "not_quantified_overlap_not_verified",
+                    "tracking_cost_included_in_planning_return": False,
+                },
+                "implementation_metrics": {
+                    "tracking_error_diagnostic_percent": "0.20",
+                    "tracking_error_diagnostic_source": (
+                        "kis_current_tracking_error"
+                    ),
+                },
+            }
+        ],
+    }
+
+    _validate_operational_cost_report(report)
+
+
+def test_operational_cost_report_rejects_incomplete_or_double_counted_costs() -> None:
+    report = {
+        "eligible_source_product_count": 1,
+        "product_count": 1,
+        "missing_history_count": 0,
+        "products": [
+            {
+                "isu_code": "123456",
+                "cost": {
+                    "asset_manager": None,
+                    "effective_total_cost_percent": "0.21",
+                    "effective_total_cost_status": "kofia_reported_ter",
+                    "kofia_reported_ter_percent": "0.21",
+                    "kofia_reported_stated_fee_total_percent": "0.15",
+                    "kofia_reported_other_cost_percent": "0.04",
+                    "kofia_ter_reconciliation_difference_percent_points": "-0.02",
+                    "kofia_reported_brokerage_commission_percent": None,
+                    "brokerage_commission_included_in_planning_return": True,
+                    "tracking_cost_percent": "0.10",
+                    "tracking_cost_status": "included",
+                    "tracking_cost_included_in_planning_return": False,
+                },
+                "implementation_metrics": {},
+            }
+        ],
+    }
+
+    with pytest.raises(ValueError, match="operational cost master validation failed"):
+        _validate_operational_cost_report(report)
 
 
 def _observation(day: date, close: str) -> dict[str, object]:
