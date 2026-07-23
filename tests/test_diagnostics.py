@@ -119,7 +119,7 @@ def test_diagnostics_exposes_approved_threshold_policy_source() -> None:
 
     assert evaluation.engine_version == ENGINE_VERSION == "2026-07-23.1"
     assert DIAGNOSTICS_SOURCE.label == (
-        "계좌별 진단 운영 기준 (현금성 80%·단일 자산군 50%)"
+        "계좌별 진단 운영 기준 (현금성 80%·비현금 단일 자산군 50%)"
     )
     assert DIAGNOSTICS_SOURCE.as_of.isoformat() == "2026-07-23"
 
