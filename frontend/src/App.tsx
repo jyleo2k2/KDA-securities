@@ -157,7 +157,7 @@ function AppRoutes(): JSX.Element {
     <Route path="/guide" element={tabPage} />
     <Route path="/profile" element={tabPage} />
     <Route path="/main-home" element={mainHome} />
-    <Route path="/planner" element={<PensionPlannerPage profile={plannerProfile} userContext={currentUserData.context} onBack={() => changeTab("guide")} onOpenProfile={beginResurvey} />} />
+    <Route path="/planner" element={<PensionPlannerPage profile={plannerProfile} userContext={currentUserData.context} onBack={goToMainHome} onOpenProfile={beginResurvey} />} />
     <Route path="/profile-html" element={<iframe title="내 프로필" src={`${import.meta.env.BASE_URL}profile-html/`} style={{ width: "100%", height: "100vh", border: 0, display: "block" }} />} />
     <Route path="/strategy-explore" element={<StrategyExploreScreen onBack={goToMainHome} />} />
     <Route path="/strategy-detail" element={<StrategyDetailScreen onBack={goToStrategyExplore} />} />
