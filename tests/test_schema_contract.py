@@ -89,6 +89,30 @@ SCHEMA_ADDITIVE_MIGRATION = next(
         "*_add_updated_at_triggers_and_holding_constraints.sql"
     )
 )
+BENCHMARK_SCHEMA_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob("*_move_benchmark_tables_to_schema.sql")
+)
+
+
+def test_benchmark_schema_move_is_additive_and_service_role_only() -> None:
+    sql = BENCHMARK_SCHEMA_MIGRATION.read_text(encoding="utf-8").lower()
+    tables = (
+        "benchmark_mock_users",
+        "benchmark_mock_accounts",
+        "benchmark_mock_holdings",
+    )
+    assert "create schema if not exists benchmark" in sql
+    assert "grant usage on schema benchmark to service_role" in sql
+    for table in tables:
+        assert f"alter table public.{table} set schema benchmark" in sql
+        assert f"create view public.{table}" in sql
+        assert f"select * from benchmark.{table}" in sql
+    assert sql.count("security_invoker = true") == 3
+    assert "grant select on public.benchmark_mock_users" in sql
+    assert "to service_role" in sql
+    assert "drop table" not in sql
+    assert "delete from" not in sql
+    assert "truncate" not in sql
 
 
 def test_schema_has_required_data_foundation_groups() -> None:
