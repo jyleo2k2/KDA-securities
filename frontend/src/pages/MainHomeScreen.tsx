@@ -11,6 +11,7 @@ import type {
   UserPensionPortfolio,
 } from "../api/types";
 import { latestPortfolioDate } from "../ownerPensionPortfolio";
+import { YeongeumiMascot } from "../components/YeongeumiMascot";
 import "./MainHomeScreen.css";
 
 interface MainHomeScreenProps {
@@ -233,10 +234,10 @@ export function MainHomeScreen({ aggregation, displayName, error, investmentProf
       <div className="mhs-body">
         <div className="mhs-greeting-card">
           <div className="mhs-greeting-copy">
-            <p className="mhs-greeting-title">슬랑이를 <span className="mhs-greeting-title-accent">만져 보세요!</span></p>
+            <p className="mhs-greeting-title">연그미를 <span className="mhs-greeting-title-accent">만져 보세요!</span></p>
             <p className="mhs-greeting-sub">톡톡 두드리면 오늘의 저축 팁을 알려드려요</p>
           </div>
-          <img src={piggy} alt="송향이" className="mhs-greeting-img" />
+          <img src={piggy} alt="연그미" className="mhs-greeting-img" />
         </div>
         {investmentProfile?.assessment && <p className="mhs-greeting-sub">저장 투자성향 · {PROFILE_LABELS[investmentProfile.assessment.risk_profile]} · {investmentProfile.assessment.assessed_on} 진단{investmentProfile.assessment.is_expired ? " · 만료" : ""}</p>}
         <h2 className="mhs-section-title">내 연금 <span className="mhs-section-title-gold">자산</span></h2>
@@ -250,7 +251,7 @@ export function MainHomeScreen({ aggregation, displayName, error, investmentProf
             {holdingSlices.length > 0 ? (
               <HoldingPie slices={holdingSlices} selectedIndex={selectedHolding} onSelect={toggleHolding} />
             ) : (
-              <div className="mhs-pie-empty" style={{ background: "#EEF0F1" }} />
+              <YeongeumiMascot className="mhs-pie-mascot" />
             )}
           </div>
 
