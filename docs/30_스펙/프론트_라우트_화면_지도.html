@@ -128,7 +128,7 @@
     </p>
     <div class="legend">
       <span class="tag g-gate"><span class="dot"></span>인증 게이트</span>
-      <span class="tag g-tab"><span class="dot"></span>탭 셸 (하단 TabBar)</span>
+      <span class="tag g-tab"><span class="dot"></span>주요 라우트</span>
       <span class="tag g-hub"><span class="dot"></span>메인 허브</span>
       <span class="tag g-react"><span class="dot"></span>React 상세</span>
       <span class="tag g-embed"><span class="dot"></span>정적 임베드 (iframe · HTML)</span>
@@ -140,8 +140,8 @@
       <div class="tier">
         <p class="tier-label">진입 · 리다이렉트</p>
         <div class="noderow">
-          <span class="node c-tab"><span class="path">#/</span><span class="name">→ /home 으로 이동</span></span>
-          <span class="node c-tab"><span class="path">#/* (그 외)</span><span class="name">→ /home 으로 이동</span></span>
+          <span class="node c-tab"><span class="path">#/ · #/login</span><span class="name">→ /main-home 으로 이동</span></span>
+          <span class="node c-tab"><span class="path">#/* (그 외)</span><span class="name">→ /main-home 으로 이동</span></span>
         </div>
       </div>
       <div class="conn">↓ 미로그인이면 게이트가 먼저 뜸</div>
@@ -161,19 +161,10 @@
       </div>
       <div class="conn">↓ <b>“서비스 시작하기 / 나중에 할게요”</b> (onStart)</div>
       <div class="tier">
-        <div class="split">
-          <div class="branch">
-            <p class="tier-label" style="color:var(--c-tab)">탭 셸 · 하단 TabBar 3개 (guide에선 탭바 숨김)</p>
-            <div class="noderow">
-              <span class="node c-tab"><span class="path">#/home</span><span class="name">홈 · 연금 현황</span></span>
-              <span class="node c-tab"><span class="path">#/guide</span><span class="name">연금가이드 · 챗봇</span></span>
-              <span class="node c-tab"><span class="path">#/profile</span><span class="name">프로필</span></span>
-            </div>
-          </div>
-          <div class="branch">
-            <p class="tier-label" style="color:var(--c-hub)">메인 허브 (탭 밖, 라우트 직행)</p>
-            <div class="noderow"><span class="node c-hub"><span class="path">#/main-home</span><span class="name">MainHomeScreen · 기능 허브</span></span></div>
-          </div>
+        <p class="tier-label">로그인 후 주요 라우트</p>
+        <div class="noderow">
+          <span class="node c-hub"><span class="path">#/main-home</span><span class="name">MainHomeScreen · 내 계좌 기반 기능 허브</span></span>
+          <span class="node c-tab"><span class="path">#/guide</span><span class="name">GuidePage · 연금가이드 챗봇</span></span>
         </div>
       </div>
       <div class="conn">↓ 허브 카드/버튼에서 이동 (뒤로가기는 전부 /main-home 복귀)</div>
@@ -209,40 +200,17 @@
   </section>
 
   <section>
-    <div class="sec-head"><span class="num">02</span><h2>탭 화면 · 하단 TabBar</h2><p>“홈 / 연금가이드 / 프로필” — 단, guide 탭에선 TabBar 숨김</p></div>
+    <div class="sec-head"><span class="num">02</span><h2>연금가이드</h2><p>메인 허브에서 진입하는 챗봇 화면</p></div>
     <div class="grid">
       <article class="card c-tab"><div class="rail"></div><div class="body">
-        <div class="top"><span class="route-chip">#/home</span><span class="type-badge">탭 · 홈</span></div>
-        <h3>HomePage <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 연금 현황 대시보드</span></h3>
-        <p class="file">pages/HomePage.tsx</p>
-        <p class="purpose">계좌별 자산·위험·스트레스를 <b>실데이터 중심</b>으로 점검하는 현황 대시보드.</p>
-        <div class="chips"><span>포트폴리오 요약 · 도넛</span><span>DC/IRP/연금저축 잔액</span><span>규칙엔진 점검(위험자산%·최대자산군%)</span><span>주식급락 스트레스</span><span>계좌별 보유 ETF</span></div>
-        <div class="meta">
-          <div class="row"><span class="k">진입</span><span class="v">TabBar “홈” · “내 연금 분석하기”→guide</span></div>
-          <div class="row"><span class="k">데이터</span><span class="v"><code>hero</code> · <code>userContext</code> · <code>investmentProfile</code></span></div>
-        </div>
-      </div></article>
-      <article class="card c-tab"><div class="rail"></div><div class="body">
-        <div class="top"><span class="route-chip">#/guide</span><span class="type-badge">탭 · 챗봇</span></div>
+        <div class="top"><span class="route-chip">#/guide</span><span class="type-badge">React · 챗봇</span></div>
         <h3>GuidePage <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 챗봇 “연그미”</span></h3>
         <p class="file">pages/GuidePage.tsx</p>
         <p class="purpose">규칙 엔진·검증 지식 기반 답변을 <b>SSE 스트리밍</b>으로 보여주는 대화 화면. 이력 저장·관리.</p>
         <div class="chips"><span>대화 사이드바 · 세션</span><span>추천 질문 카드</span><span>ETF 테마 21종</span><span>뉴스 3줄 요약</span><span>수치 근거 · 출처 칩</span><span>이어묻기 카드</span></div>
         <div class="meta">
-          <div class="row"><span class="k">진입</span><span class="v">TabBar “연금가이드” · 허브 “자세히 진단받기/챗봇”</span></div>
+          <div class="row"><span class="k">진입</span><span class="v">허브 “자세히 진단받기/챗봇”</span></div>
           <div class="row"><span class="k">데이터</span><span class="v">SSE 스트림 · <code>getScenarios</code> · <code>getChatCards</code> · 세션 API</span></div>
-          <div class="row"><span class="k">특이</span><span class="v">이 탭에선 하단 TabBar 숨김 (자체 UI 사용)</span></div>
-        </div>
-      </div></article>
-      <article class="card c-tab"><div class="rail"></div><div class="body">
-        <div class="top"><span class="route-chip">#/profile</span><span class="type-badge">탭 · 프로필</span></div>
-        <h3>ProfilePage <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 내 페이지</span></h3>
-        <p class="file">pages/ProfilePage.tsx</p>
-        <p class="purpose">저장된 투자자정보와 연금 데이터 범위를 요약하고 재진단으로 진입.</p>
-        <div class="chips"><span>저장 투자성향</span><span>진단일·유효기한</span><span>만료 안내</span><span>“진단 다시하기”</span><span>데모 목데이터 고지</span></div>
-        <div class="meta">
-          <div class="row"><span class="k">진입</span><span class="v">TabBar “프로필”</span></div>
-          <div class="row"><span class="k">데이터</span><span class="v"><code>investmentProfile.assessment</code> · <code>userContext</code></span></div>
         </div>
       </div></article>
     </div>
@@ -254,11 +222,11 @@
         <div class="top"><span class="route-chip">#/main-home</span><span class="type-badge">메인 허브</span></div>
         <h3>MainHomeScreen <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 기능 허브</span></h3>
         <p class="file">pages/MainHomeScreen.tsx</p>
-        <p class="purpose">연금 자산 요약 + 세액공제 + 전략 카드 + 이용자 Pick으로 각 기능에 진입시키는 디자인 허브.</p>
+        <p class="purpose">소유자 범위 연금 자산 요약 + 세액공제 + 전략 카드 + 이용자 Pick으로 각 기능에 진입시키는 메인 허브.</p>
         <div class="chips"><span>내 연금 자산 · 도넛</span><span>세액공제 “완료율 확인하기”</span><span>전략 카드 10종 · 계획수익률</span><span>이용자 Pick</span><span>프로필 버튼</span></div>
         <div class="meta">
           <div class="row"><span class="k">진입</span><span class="v">LoginFlow <code>onStart</code> · 하위 화면 뒤로가기</span></div>
-          <div class="row"><span class="k">데이터</span><span class="v"><code>hero</code> · <code>userContext</code> · <code>investmentProfile</code> (+ 하드코딩 전략)</span></div>
+          <div class="row"><span class="k">데이터</span><span class="v"><code>GET /me/pension-accounts</code> · 자산 집계 엔진 · <code>investmentProfile</code></span></div>
           <div class="row"><span class="k">연결</span><span class="v">planner · profile-html · strategy-explore · user-pick-benchmark · guide</span></div>
         </div>
       </div></article>
@@ -277,22 +245,22 @@
         <div class="top"><span class="route-chip">#/planner</span><span class="type-badge">정적 임베드</span></div>
         <h3>PensionPlannerPage <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 연금계산기</span></h3>
         <p class="file">pages/PensionPlannerPage.tsx → iframe</p>
-        <p class="purpose">“예상 연금 계산 및 세액공제 확인” 계산기를 정적 HTML iframe으로 임베드하는 래퍼.</p>
-        <div class="chips"><span>연금계산기.dc.html</span><span>계산은 iframe 내부</span><span>뒤로가기 감지</span></div>
+        <p class="purpose">실제 소유 계좌 잔액을 자동 입력하고 개별 계좌 또는 전체 계좌를 규칙 엔진으로 계산한 뒤 iframe에 표시하는 래퍼.</p>
+        <div class="chips"><span>연금계산기.dc.html</span><span>개별·전체 계좌 선택</span><span>전략 칩 왼쪽 자동 스크롤</span><span>뒤로가기 감지</span></div>
         <div class="meta">
           <div class="row"><span class="k">진입</span><span class="v">허브 “완료율 확인하기 →” · 챗봇 이어묻기</span></div>
-          <div class="row"><span class="k">데이터</span><span class="v">React 측 없음 (iframe 내부 처리)</span></div>
+          <div class="row"><span class="k">데이터</span><span class="v"><code>/me/pension-accounts</code> · <code>/engine/pension-calculator</code> · <code>/engine/pension-calculator/combined</code></span></div>
         </div>
       </div></article>
       <article class="card c-embed"><div class="rail"></div><div class="body">
         <div class="top"><span class="route-chip">#/profile-html</span><span class="type-badge">정적 임베드</span></div>
         <h3>ProfileHtmlPage <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 내 프로필</span></h3>
         <p class="file">pages/ProfileHtmlPage.tsx → iframe</p>
-        <p class="purpose">정적 HTML로 만든 “내 프로필” 화면을 iframe으로 임베드하는 래퍼.</p>
-        <div class="chips"><span>profile-html/index.html</span><span>전체화면 iframe</span><span>뒤로가기 감지</span></div>
+        <p class="purpose">정적 HTML 프로필에 인증 사용자와 소유 연금계좌 범위·기준일·저장 투자성향을 주입하는 래퍼.</p>
+        <div class="chips"><span>profile-html/index.html</span><span>사용자 데이터 주입</span><span>로그아웃</span><span>전체화면 iframe</span><span>뒤로가기 감지</span></div>
         <div class="meta">
           <div class="row"><span class="k">진입</span><span class="v">허브 헤더 프로필 버튼</span></div>
-          <div class="row"><span class="k">데이터</span><span class="v">없음</span></div>
+          <div class="row"><span class="k">데이터</span><span class="v">Supabase Auth · <code>/me/pension-accounts</code> · <code>/me/investment-profile</code></span></div>
         </div>
       </div></article>
       <article class="card c-embed"><div class="rail"></div><div class="body">
@@ -311,7 +279,7 @@
         <h3>UserPickBenchmarkScreen <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 이용자 Pick</span></h3>
         <p class="file">pages/UserPickBenchmarkScreen.tsx → iframe</p>
         <p class="purpose">다른 이용자 포트폴리오 “투자 벤치마킹하기”를 iframe으로 임베드하는 래퍼.</p>
-        <div class="chips"><span>투자 벤치마킹.dc.html</span><span>오버레이 뒤로가기</span><span>props heroes 미사용</span></div>
+        <div class="chips"><span>투자 벤치마킹.dc.html</span><span>오버레이 뒤로가기</span><span>내 계좌와 분리된 데모 비교</span></div>
         <div class="meta">
           <div class="row"><span class="k">진입</span><span class="v">허브 “이용자 Pick · 지금 둘러보기 ›”</span></div>
           <div class="row"><span class="k">데이터</span><span class="v">React 측 없음 (iframe 내부)</span></div>
@@ -323,16 +291,16 @@
     <div class="sec-head"><span class="num">!</span><h2>헷갈리기 쉬운 구조</h2><p>이름은 비슷한데 다른 화면들</p></div>
     <div class="notes">
       <div class="note">
-        <div class="h"><span class="pin" style="background:var(--c-tab)"></span>홈이 둘</div>
-        <p><code>HomePage</code>(<code>#/home</code>, 탭·실데이터 대시보드)와 <code>MainHomeScreen</code>(<code>#/main-home</code>, 디자인 허브)은 <b>다른 화면</b>. 허브는 탭바에 없고 라우트로만 노출돼요.</p>
+        <div class="h"><span class="pin" style="background:var(--c-tab)"></span>홈은 하나</div>
+        <p>기존 <code>HomePage</code>와 <code>#/home</code>은 삭제했어요. 로그인 후 홈은 <code>MainHomeScreen</code>(<code>#/main-home</code>) 하나이며 소유자 계좌 데이터를 사용해요.</p>
       </div>
       <div class="note">
-        <div class="h"><span class="pin" style="background:var(--c-hub)"></span>프로필도 둘</div>
-        <p>탭 <code>ProfilePage</code>(<code>#/profile</code>, React)와 허브 헤더가 여는 <code>ProfileHtmlPage</code>(<code>#/profile-html</code>, iframe)는 별개예요.</p>
+        <div class="h"><span class="pin" style="background:var(--c-hub)"></span>프로필도 하나</div>
+        <p>기존 <code>ProfilePage</code>와 <code>#/profile</code>은 삭제했어요. 허브 헤더는 실제 사용자 데이터를 주입하는 <code>ProfileHtmlPage</code>(<code>#/profile-html</code>)를 열어요.</p>
       </div>
       <div class="note">
         <div class="h"><span class="pin" style="background:var(--c-embed)"></span>정적 임베드 4개</div>
-        <p><code>planner</code> · <code>profile-html</code> · <code>strategy-detail</code> · <code>user-pick-benchmark</code>는 iframe/HTML 임베드라 React 측 데이터 바인딩이 거의 없어요. 실제 콘텐츠는 <code>public/</code>의 정적 HTML.</p>
+        <p><code>planner</code>와 <code>profile-html</code>은 iframe이지만 React 래퍼가 실제 사용자·엔진 데이터를 주입해요. <code>user-pick-benchmark</code>는 내 계좌와 분리된 비교 시연 전용이에요.</p>
       </div>
     </div>
   </section>

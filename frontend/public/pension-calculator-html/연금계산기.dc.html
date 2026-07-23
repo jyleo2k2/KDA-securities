@@ -61,6 +61,21 @@
           </div>
 
           <div style="margin-bottom:24px;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;">
+              <span style="font-size:15.5px; font-weight:600; color:#4A5058;">계산할 계좌</span>
+              <span style="font-size:13px; font-weight:700; color:#166F39;">{{ currentBalanceText }}</span>
+            </div>
+            <div data-account-strip style="display:flex; gap:8px; overflow-x:auto; margin:0 -20px; padding:0 20px 4px; scroll-behavior:smooth;">
+              <sc-for list="{{ accounts }}" as="a" hint-placeholder-count="3">
+                <button type="button" data-account-id="{{ a.id }}" onClick="{{ a.select }}" style="{{ a.chipStyle }}">{{ a.name }}</button>
+              </sc-for>
+            </div>
+            <sc-if value="{{ combinedAccount }}" hint-placeholder-val="false">
+              <p style="font-size:11.5px; color:#8B9096; font-weight:600; margin:8px 0 0; line-height:1.5;">전체 계좌는 현재 잔액만 합산해 계산해요. 추가 납입은 개별 계좌를 선택해 입력해 주세요.</p>
+            </sc-if>
+          </div>
+
+          <div style="margin-bottom:24px;">
             <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
               <span style="font-size:15.5px; font-weight:600; color:#4A5058;">현재 나이</span>
               <span style="font-size:19px; font-weight:800;">{{ ageText }}</span>
@@ -73,7 +88,7 @@
               <span style="font-size:15.5px; font-weight:600; color:#4A5058;">연금 납입 종료 시점</span>
               <span style="font-size:19px; font-weight:800;">{{ endAgeText }}</span>
             </div>
-            <input type="range" class="brand-range" min="40" max="70" step="1" value="{{ endAge }}" onInput="{{ onEndAge }}" style="--fill:{{ endAgeFill }};">
+            <input type="range" class="brand-range" min="55" max="70" step="1" value="{{ endAge }}" onInput="{{ onEndAge }}" style="--fill:{{ endAgeFill }};">
           </div>
 
           <div style="margin-bottom:24px;">
@@ -81,7 +96,7 @@
               <span style="font-size:15.5px; font-weight:600; color:#4A5058;">월 납입액</span>
               <span style="font-size:19px; font-weight:800;">{{ monthlyText }}</span>
             </div>
-            <input type="range" class="brand-range" min="10" max="150" step="5" value="{{ monthly }}" onInput="{{ onMonthly }}" style="--fill:{{ monthlyFill }};">
+            <input type="range" class="brand-range" min="0" max="150" step="5" value="{{ monthly }}" onInput="{{ onMonthly }}" style="--fill:{{ monthlyFill }}; opacity:{{ monthlyOpacity }};">
           </div>
 
         </div>
@@ -91,10 +106,11 @@
             <div style="width:4px; height:18px; border-radius:2px; background:#22A94D;"></div>
             <span style="font-size:17px; font-weight:800;">투자 전략 선택</span>
           </div>
-          <div style="display:flex; gap:8px; overflow-x:auto; margin:0 -20px; padding:0 20px 4px;">
+          <div data-strategy-strip style="display:flex; gap:8px; overflow-x:auto; margin:0 -20px; padding:0 20px 4px; scroll-behavior:smooth;">
             <sc-for list="{{ strategies }}" as="s" hint-placeholder-count="4">
-              <div onClick="{{ s.select }}" style="{{ s.chipStyle }}">{{ s.name }}</div>
+              <button type="button" data-strategy-id="{{ s.id }}" onClick="{{ s.select }}" style="{{ s.chipStyle }}">{{ s.name }}</button>
             </sc-for>
+            <div aria-hidden="true" style="flex:0 0 calc(100% - 64px);"></div>
           </div>
 
           <div style="background:#F6F7F8; border-radius:14px; padding:16px; margin-top:14px;">
@@ -275,20 +291,25 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844},&quot;taxRateLow&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:16.5,&quot;min&quot;:0,&quot;max&quot;:20,&quot;step&quot;:0.1,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;세액공제율&quot;},&quot;taxRateHigh&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:13.2,&quot;min&quot;:0,&quot;max&quot;:20,&quot;step&quot;:0.1,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;세액공제율&quot;}}">
 class Component extends DCLogic {
-  state = { age:35, endAge:55, monthly:50, tab:'pension', salaryLow:true, paidP:0, paidI:0, isa:0, strategyId:'beta' };
+  state = { age:35, endAge:55, monthly:0, tab:'pension', salaryLow:true, paidP:0, paidI:0, isa:0, strategyId:null, accountId:'all', accounts:[], calculation:null };
 
-  STRATS = [
-    { id:'beta', name:'시장 베타', etf:'국내·미국·글로벌 광범위지수 ETF', cma:'글로벌주식 7.0%', discount:'0.25%p', rateText:'6.75%', rateNum:6.75 },
-    { id:'factor', name:'팩터', etf:'가치·퀄리티·모멘텀·저변동 ETF', cma:'글로벌주식 7.0%', discount:'0.40%p', rateText:'6.60%', rateNum:6.60 },
-    { id:'theme', name:'테마', etf:'AI·반도체·바이오·인프라 ETF', cma:'글로벌주식 7.0%', discount:'1.00%p', rateText:'6.00%', rateNum:6.00 },
-    { id:'topdown', name:'탑다운', etf:'지역·국가·산업·채권만기 ETF 조합', cma:'실제 구성 가중 CMA', discount:'0.75%p', rateText:'구성별 계산', rateNum:6.25, estimate:true },
-    { id:'bottomup', name:'바텀업', etf:'연금 적격 액티브주식 ETF', cma:'지역별 주식 CMA', discount:'0.75%p', rateText:'글로벌 기준 6.25%', rateNum:6.25 },
-    { id:'barbell', name:'바벨', etf:'주식 ETF + 단기채·현금성 ETF', cma:'실제 구성 가중 CMA', discount:'구성 ETF별 적용', rateText:'비중별 계산', rateNum:5.5, estimate:true },
-    { id:'volmgmt', name:'변동성 관리', etf:'저변동 ETF + 채권·현금성 ETF', cma:'실제 구성 가중 CMA', discount:'구성 ETF별 적용', rateText:'비중별 계산', rateNum:5.0, estimate:true },
-    { id:'longshort', name:'롱숏·시장중립', etf:'적격 시장중립·절대수익 ETF', cma:'별도 CMA 필요', discount:'잠정 0.75%p', rateText:'상품 확인 전 산출 금지', rateNum:null },
-    { id:'eventdriven', name:'이벤트드리븐', etf:'기업행동·합병·스핀오프 ETF', cma:'별도 CMA 필요', discount:'잠정 0.75%p', rateText:'상품 확인 전 산출 금지', rateNum:null },
-    { id:'trend', name:'추세추종·글로벌 매크로', etf:'적격 멀티에셋·추세 ETF', cma:'글로벌 60/40 6.4% 프록시', discount:'0.75%p', rateText:'5.65%', rateNum:5.65 },
-  ];
+  constructor(props) {
+    super(props);
+    window.addEventListener('message', (event) => {
+      if (event.origin !== window.location.origin || event.data?.type !== 'pension-planner-state') return;
+      const payload = event.data.payload || {};
+      this.setState({
+        accounts: Array.isArray(payload.accounts) ? payload.accounts : [],
+        accountId: payload.accountId || 'all',
+        age: Number(payload.age) || 35,
+        endAge: Number(payload.endAge) || 60,
+        monthly: Number(payload.monthly) || 0,
+        strategyId: payload.strategyId || null,
+        calculation: payload.calculation || null,
+      });
+    });
+    window.parent.postMessage({ type:'pension-planner-ready' }, window.location.origin);
+  }
 
   stratChip(active) {
     return active
@@ -297,6 +318,34 @@ class Component extends DCLogic {
   }
 
   set(key, e) { this.setState({ [key]: +e.target.value }); }
+
+  requestCalculation(update = {}) {
+    const next = { ...this.state, ...update };
+    window.parent.postMessage({
+      type:'pension-planner-calculate',
+      payload:{
+        accountId:next.accountId,
+        age:next.age,
+        endAge:next.endAge,
+        monthly:next.accountId === 'all' ? 0 : next.monthly,
+        strategyId:next.strategyId,
+      },
+    }, window.location.origin);
+  }
+
+  selectAndScroll(kind, id, update) {
+    this.setState(update, () => {
+      this.requestCalculation();
+      requestAnimationFrame(() => {
+        const strip = document.querySelector(`[data-${kind}-strip]`);
+        const chip = strip?.querySelector(`[data-${kind}-id="${id}"]`);
+        if (!strip || !chip) return;
+        const left = Math.max(0, chip.offsetLeft - strip.offsetLeft - 20);
+        if (typeof strip.scrollTo === 'function') strip.scrollTo({ left, behavior:'smooth' });
+        else strip.scrollLeft = left;
+      });
+    });
+  }
 
   fmt(won) {
     won = Math.round(won);
@@ -314,22 +363,21 @@ class Component extends DCLogic {
   pct(v, min, max) { return ((v - min) / (max - min) * 100).toFixed(1) + '%'; }
 
   renderVals() {
-    const { age, endAge, monthly, tab, salaryLow, paidP, paidI, isa, strategyId } = this.state;
-    const strat = this.STRATS.find(s => s.id === strategyId) || this.STRATS[0];
-    const rate = strat.rateNum != null ? strat.rateNum : 5.0;
+    const { age, endAge, monthly, tab, salaryLow, paidP, paidI, isa, strategyId, accountId, accounts, calculation } = this.state;
+    const strategies = calculation?.strategies || [];
+    const strat = strategies.find(s => s.strategy_id === strategyId) || strategies.find(s => s.risk_profile === calculation?.selected_risk_profile) || strategies[0] || null;
+    const rate = Number(strat?.net_annual_return_percent || 0);
     const rLow = this.props.taxRateLow ?? 16.5;
     const rHigh = this.props.taxRateHigh ?? 13.2;
 
     const years = Math.max(0, endAge - age);
-    const months = years * 12;
-    const C = monthly * 10000;
-    const i = rate / 100 / 12;
-    const FV = i > 0 ? C * ((Math.pow(1 + i, months) - 1) / i) : C * months;
-    const principal = C * months;
-    const profit = Math.max(0, FV - principal);
-
-    const payMonths = 25 * 12;
-    const payout = i > 0 ? FV * i / (1 - Math.pow(1 + i, -payMonths)) : FV / payMonths;
+    const headline = calculation?.headline || {};
+    const FV = Number(headline.total_krw || 0);
+    const principal = Number(headline.total_principal_krw || 0);
+    const profit = Number(headline.total_gain_krw || 0);
+    const payout = Number(headline.monthly_payout_after_tax_krw || 0);
+    const selectedAccount = accounts.find(account => account.id === accountId) || accounts[0];
+    const combinedAccount = accountId === 'all';
 
     const r = salaryLow ? rLow : rHigh;
     const capP = 600, capAll = 900;
@@ -346,20 +394,31 @@ class Component extends DCLogic {
     const isaDeduct = isaCap * 10000 * r / 100;
 
     return {
-      age, endAge, monthly, rate,
-      ageText: age + '세', endAgeText: endAge + '세',
-      monthlyText: monthly.toLocaleString() + '만원',
-      ageFill: this.pct(age, 20, 64), endAgeFill: this.pct(endAge, 40, 70),
-      monthlyFill: this.pct(monthly, 10, 150),
-      onAge: (e) => this.set('age', e), onEndAge: (e) => this.set('endAge', e),
-      onMonthly: (e) => this.set('monthly', e),
-      strategies: this.STRATS.map(s => ({
-        name: s.name,
-        select: () => this.setState({ strategyId: s.id }),
-        chipStyle: this.stratChip(s.id === strategyId),
+      age, endAge, monthly: combinedAccount ? 0 : monthly, rate,
+      accounts: accounts.map(account => ({
+        ...account,
+        select: () => this.selectAndScroll('account', account.id, { accountId:account.id, monthly:account.id === 'all' ? 0 : monthly }),
+        chipStyle: this.stratChip(account.id === accountId),
       })),
-      selEtf: strat.etf, selCma: strat.cma, selDiscount: strat.discount, selRateText: strat.rateText,
-      selWarn: strat.rateNum == null, selEstimate: !!strat.estimate,
+      combinedAccount,
+      currentBalanceText: this.fmt(Number(selectedAccount?.balance || 0)),
+      ageText: age + '세', endAgeText: endAge + '세',
+      monthlyText: (combinedAccount ? 0 : monthly).toLocaleString() + '만원',
+      ageFill: this.pct(age, 20, 64), endAgeFill: this.pct(endAge, 55, 70),
+      monthlyFill: this.pct(combinedAccount ? 0 : monthly, 0, 150),
+      monthlyOpacity: combinedAccount ? 0.35 : 1,
+      onAge: (e) => { const value=+e.target.value; this.setState({ age:value }, () => this.requestCalculation()); },
+      onEndAge: (e) => { const value=+e.target.value; this.setState({ endAge:value }, () => this.requestCalculation()); },
+      onMonthly: (e) => { if (combinedAccount) return; const value=+e.target.value; this.setState({ monthly:value }, () => this.requestCalculation()); },
+      strategies: strategies.filter(s => s.within_profile).map(s => ({
+        id: s.strategy_id,
+        name: s.presentation.display_name,
+        select: () => this.selectAndScroll('strategy', s.strategy_id, { strategyId:s.strategy_id }),
+        chipStyle: this.stratChip(s.strategy_id === strategyId),
+      })),
+      selEtf: strat?.presentation?.summary || '계좌와 투자성향을 불러오고 있어요.',
+      selCma: '승인된 교육용 가정', selDiscount: '비용 차감 후', selRateText: strat ? rate.toFixed(2) + '%' : '-',
+      selWarn: false, selEstimate: false,
 
       tabPension: tab === 'pension', tabTax: tab === 'tax',
       setPension: () => this.setState({ tab: 'pension' }),

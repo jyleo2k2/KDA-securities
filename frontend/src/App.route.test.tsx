@@ -4,23 +4,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import App from "./App";
-import { getDemoHeroes, getInvestmentProfile, getMyPensionContext } from "./api/client";
+import {
+  getInvestmentProfile,
+  getMyPensionAccounts,
+  getMyPensionContext,
+} from "./api/client";
 import { useSupabaseAuth } from "./auth/useSupabaseAuth";
 
 vi.mock("./api/client", () => ({
   ApiError: class ApiError extends Error {},
+  aggregatePensionAccounts: vi.fn(),
   apiErrorMessage: () => "요청에 실패했습니다.",
-  getDemoHeroes: vi.fn(),
   getInvestmentProfile: vi.fn(),
+  getMyPensionAccounts: vi.fn(),
   getMyPensionContext: vi.fn(),
 }));
 
 vi.mock("./auth/useSupabaseAuth", () => ({
   useSupabaseAuth: vi.fn(),
-}));
-
-vi.mock("./components/TabBar", () => ({
-  TabBar: () => <nav>탭</nav>,
 }));
 
 vi.mock("./pages/GuidePage", () => ({
@@ -38,8 +39,8 @@ describe("initial hash routing", () => {
       signIn: vi.fn(),
       signOut: vi.fn(),
     } as never);
-    vi.mocked(getDemoHeroes).mockResolvedValue([]);
     vi.mocked(getInvestmentProfile).mockResolvedValue({ assessment: null, preferences: null });
+    vi.mocked(getMyPensionAccounts).mockResolvedValue({ owner_id: "user-1", data_boundary: "unavailable", accounts: [] });
     vi.mocked(getMyPensionContext).mockRejectedValue(new Error("연동 데이터 없음"));
   });
 

@@ -1,19 +1,172 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, getDemoHeroes, getInvestmentProfile, getMyPensionContext } from "./api/client";
-import type { DemoHeroPortfolio, DemoUserFinancialContext, InvestmentProfileResponse } from "./api/types";
-import { useSupabaseAuth } from "./auth/useSupabaseAuth";
+
+import {
+  aggregatePensionAccounts,
+  ApiError,
+  getInvestmentProfile,
+  getMyPensionAccounts,
+} from "./api/client";
+import type {
+  InvestmentProfileResponse,
+  UserPensionPortfolio,
+} from "./api/types";
 import App from "./App";
-vi.mock("./api/client", () => ({ ApiError: class ApiError extends Error { status: number; constructor(status: number, message: string) { super(message); this.status = status; } }, getDemoHeroes: vi.fn(), getInvestmentProfile: vi.fn(), getMyPensionContext: vi.fn() }));
+import { useSupabaseAuth } from "./auth/useSupabaseAuth";
+
+vi.mock("./api/client", () => ({
+  aggregatePensionAccounts: vi.fn(),
+  ApiError: class ApiError extends Error {
+    status: number;
+    code: string | null = null;
+    constructor(status: number, message: string) {
+      super(message);
+      this.status = status;
+    }
+  },
+  apiErrorMessage: () => "요청에 실패했습니다.",
+  getInvestmentProfile: vi.fn(),
+  getMyPensionAccounts: vi.fn(),
+  getMyPensionContext: vi.fn(),
+}));
 vi.mock("./auth/useSupabaseAuth", () => ({ useSupabaseAuth: vi.fn() }));
-vi.mock("./components/TabBar", () => ({ TabBar: () => <nav>탭</nav> }));
-vi.mock("./pages/HomePage", () => ({ HomePage: ({ error, hero, investmentProfile, loading, userContext }: { error: string | null; hero: DemoHeroPortfolio | null; investmentProfile: InvestmentProfileResponse | null; loading: boolean; userContext: DemoUserFinancialContext | null }) => <main>{loading ? "로딩" : error ?? <><span>{`${userContext?.nickname ?? "없음"}:${hero?.scenario_code ?? "없음"}`}</span><span data-testid="saved-profile">{investmentProfile?.assessment?.risk_profile ?? "none"}</span></>}</main> }));
-vi.mock("./pages/MainHomeScreen", () => ({ MainHomeScreen: ({ error, hero, investmentProfile, loading, userContext }: { error: string | null; hero: DemoHeroPortfolio | null; investmentProfile: InvestmentProfileResponse | null; loading: boolean; userContext: DemoUserFinancialContext | null }) => <main>{loading ? "로딩" : error ?? <><span>{`${userContext?.nickname ?? "없음"}:${hero?.scenario_code ?? "없음"}`}</span><span data-testid="saved-profile">{investmentProfile?.assessment?.risk_profile ?? "none"}</span></>}</main> }));
-vi.mock("./pages/LoginFlowPage", () => ({ LoginFlowPage: ({ onStart }: { onStart: () => void }) => <button type="button" onClick={onStart}>시작</button> }));
-vi.mock("./pages/GuidePage", () => ({ GuidePage: () => <main>챗</main> })); vi.mock("./pages/ProfilePage", () => ({ ProfilePage: () => <main>프로필</main> }));
-const contextA = { auth_user_id: "user-a", nickname: "사용자 A", scenario_code: "scenario-a" } as DemoUserFinancialContext; const contextB = { auth_user_id: "user-b", nickname: "사용자 B", scenario_code: "scenario-b" } as DemoUserFinancialContext; const heroes = [{ scenario_code: "scenario-a" }, { scenario_code: "scenario-b" }] as DemoHeroPortfolio[];
-const savedProfile = { assessment: { risk_profile: "active", is_expired: false }, preferences: null } as InvestmentProfileResponse;
-let authState: ReturnType<typeof useSupabaseAuth>; function setUser(id: string, token: string): void { authState = { session: { access_token: token, user: { id } }, loading: false, configured: true, error: null, signIn: vi.fn(), signOut: vi.fn() } as unknown as ReturnType<typeof useSupabaseAuth>; }
-describe("App logged-in user data", () => { beforeEach(() => { window.history.replaceState(null, "", "#home"); window.localStorage.clear(); setUser("user-a", "token-a"); vi.mocked(useSupabaseAuth).mockImplementation(() => authState); vi.mocked(getInvestmentProfile).mockResolvedValue(savedProfile); }); afterEach(() => { cleanup(); vi.clearAllMocks(); }); it("clears A while loading B", async () => { let resolveB: ((value: DemoUserFinancialContext) => void) | undefined; vi.mocked(getMyPensionContext).mockResolvedValueOnce(contextA).mockImplementationOnce(() => new Promise((resolve) => { resolveB = resolve; })); vi.mocked(getDemoHeroes).mockResolvedValue(heroes); window.localStorage.setItem("pension-copilot:survey-profile", "A"); const view = render(<App />); expect(await screen.findByText("사용자 A:scenario-a")).toBeInTheDocument(); setUser("user-b", "token-b"); view.rerender(<App />); expect(await screen.findByText("로딩")).toBeInTheDocument(); expect(screen.queryByText("사용자 A:scenario-a")).not.toBeInTheDocument(); expect(window.localStorage.getItem("pension-copilot:survey-profile")).toBeNull(); resolveB?.(contextB); await waitFor(() => expect(screen.getByText("사용자 B:scenario-b")).toBeInTheDocument()); }); it("loads the latest saved investment profile", async () => { vi.mocked(getMyPensionContext).mockResolvedValue(contextA); vi.mocked(getDemoHeroes).mockResolvedValue(heroes); render(<App />); expect(await screen.findByTestId("saved-profile")).toHaveTextContent("active"); expect(getInvestmentProfile).toHaveBeenCalledWith("token-a"); }); it("shows login without protected requests for an expired session", () => { authState = { ...authState, session: { access_token: "expired-token", expires_at: Math.floor(Date.now() / 1000) - 1, user: { id: "user-a" } } } as unknown as ReturnType<typeof useSupabaseAuth>; render(<App />); expect(screen.getByRole("button", { name: "시작" })).toBeInTheDocument(); expect(getMyPensionContext).not.toHaveBeenCalled(); expect(getDemoHeroes).not.toHaveBeenCalled(); expect(getInvestmentProfile).not.toHaveBeenCalled(); }); it("shows the 404 notice", async () => { vi.mocked(getMyPensionContext).mockRejectedValue(new ApiError(404, "missing")); vi.mocked(getDemoHeroes).mockResolvedValue(heroes); render(<App />); expect(await screen.findByText("이 계정에는 연동된 연금 데이터가 없습니다.")).toBeInTheDocument(); }); it("clears browser state on logout", async () => { vi.mocked(getMyPensionContext).mockResolvedValue(contextA); vi.mocked(getDemoHeroes).mockResolvedValue(heroes); const signOut = vi.fn().mockResolvedValue(undefined); authState = { ...authState, signOut }; window.localStorage.setItem("pension-copilot:survey-profile", "A"); render(<App />); await screen.findByText("사용자 A:scenario-a"); fireEvent.click(screen.getByRole("button", { name: "로그아웃" })); expect(signOut).toHaveBeenCalledOnce(); expect(window.localStorage.getItem("pension-copilot:survey-profile")).toBeNull(); }); });
+vi.mock("./pages/MainHomeScreen", () => ({
+  MainHomeScreen: ({
+    aggregation,
+    error,
+    investmentProfile,
+    loading,
+    portfolio,
+  }: {
+    aggregation: { total_amount_krw: string } | null;
+    error: string | null;
+    investmentProfile: InvestmentProfileResponse | null;
+    loading: boolean;
+    portfolio: UserPensionPortfolio | null;
+  }) => (
+    <main>
+      {loading
+        ? "로딩"
+        : error ?? `${portfolio?.owner_id ?? "없음"}:${aggregation?.total_amount_krw ?? "0"}`}
+      <span data-testid="saved-profile">
+        {investmentProfile?.assessment?.risk_profile ?? "none"}
+      </span>
+    </main>
+  ),
+}));
+vi.mock("./pages/LoginFlowPage", () => ({
+  LoginFlowPage: ({ onStart }: { onStart: () => void }) => (
+    <button type="button" onClick={onStart}>시작</button>
+  ),
+}));
+vi.mock("./pages/GuidePage", () => ({ GuidePage: () => <main>챗</main> }));
+
+const savedProfile = {
+  assessment: { risk_profile: "active", is_expired: false },
+  preferences: null,
+} as InvestmentProfileResponse;
+const portfolioA = {
+  owner_id: "user-a",
+  data_boundary: "mock",
+  accounts: [{ account_id: "dc-a", holdings: [] }],
+} as unknown as UserPensionPortfolio;
+const portfolioB = {
+  owner_id: "user-b",
+  data_boundary: "mock",
+  accounts: [{ account_id: "irp-b", holdings: [] }],
+} as unknown as UserPensionPortfolio;
+let authState: ReturnType<typeof useSupabaseAuth>;
+
+function setUser(id: string, token: string): void {
+  authState = {
+    session: {
+      access_token: token,
+      user: {
+        id,
+        user_metadata: { nickname: id, representative_age: 35 },
+      },
+    },
+    loading: false,
+    configured: true,
+    error: null,
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+  } as unknown as ReturnType<typeof useSupabaseAuth>;
+}
+
+describe("App owned pension data", () => {
+  beforeEach(() => {
+    window.history.replaceState(null, "", "#/main-home");
+    window.localStorage.clear();
+    setUser("user-a", "token-a");
+    vi.mocked(useSupabaseAuth).mockImplementation(() => authState);
+    vi.mocked(getInvestmentProfile).mockResolvedValue(savedProfile);
+    vi.mocked(aggregatePensionAccounts).mockResolvedValue({
+      total_amount_krw: "60000000",
+    } as never);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  it("clears the previous owner while loading the next owner", async () => {
+    let resolveB: ((value: UserPensionPortfolio) => void) | undefined;
+    vi.mocked(getMyPensionAccounts)
+      .mockResolvedValueOnce(portfolioA)
+      .mockImplementationOnce(() => new Promise((resolve) => {
+        resolveB = resolve;
+      }));
+    const view = render(<App />);
+    expect(await screen.findByText("user-a:60000000")).toBeInTheDocument();
+
+    setUser("user-b", "token-b");
+    view.rerender(<App />);
+    expect(await screen.findByText("로딩")).toBeInTheDocument();
+    expect(screen.queryByText("user-a:60000000")).not.toBeInTheDocument();
+    resolveB?.(portfolioB);
+
+    await waitFor(() => {
+      expect(screen.getByText("user-b:60000000")).toBeInTheDocument();
+    });
+  });
+
+  it("loads accounts and the latest saved investment profile", async () => {
+    vi.mocked(getMyPensionAccounts).mockResolvedValue(portfolioA);
+    render(<App />);
+
+    expect(await screen.findByTestId("saved-profile")).toHaveTextContent("active");
+    expect(getMyPensionAccounts).toHaveBeenCalledWith("token-a");
+    expect(getInvestmentProfile).toHaveBeenCalledWith("token-a");
+  });
+
+  it("does not request protected data for an expired session", () => {
+    authState = {
+      ...authState,
+      session: {
+        access_token: "expired-token",
+        expires_at: Math.floor(Date.now() / 1000) - 1,
+        user: { id: "user-a" },
+      },
+    } as unknown as ReturnType<typeof useSupabaseAuth>;
+    render(<App />);
+
+    expect(screen.getByRole("button", { name: "시작" })).toBeInTheDocument();
+    expect(getMyPensionAccounts).not.toHaveBeenCalled();
+    expect(getInvestmentProfile).not.toHaveBeenCalled();
+  });
+
+  it("shows the missing-account notice", async () => {
+    vi.mocked(getMyPensionAccounts).mockRejectedValue(
+      new ApiError(404, "missing"),
+    );
+    render(<App />);
+
+    expect(await screen.findByText(
+      "이 계정에는 연동된 연금 데이터가 없습니다.",
+    )).toBeInTheDocument();
+  });
+});

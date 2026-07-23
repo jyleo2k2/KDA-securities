@@ -56,21 +56,21 @@
           <span style="width: 60px; height: 60px; border-radius: 50%; background: #fff; border: 1.5px solid #EAEDE7; flex-shrink: 0; overflow: hidden; display: block;">
             <img src="./assets/profile-icon.png" alt="프로필" style="width: 100%; height: 100%; object-fit: cover; display: block;">
           </span>
-          <p style="font-size: 20px; font-weight: 900; color: #111; margin: 0; line-height: 1.3; flex: 1; min-width: 0;">김연금</p>
+          <p data-profile-name style="font-size: 20px; font-weight: 900; color: #111; margin: 0; line-height: 1.3; flex: 1; min-width: 0;">연금 사용자</p>
           <button style="flex-shrink: 0; border: 1.5px solid #EAEDE7; background: #fff; color: #18A860; font-family: inherit; font-size: 13px; font-weight: 800; padding: 9px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap;">개인정보 변경</button>
         </div>
-        <p style="font-size: 13px; font-weight: 500; color: #8A9691; margin: 12px 0 0 74px;">yeongeum@example.com</p>
+        <p data-profile-email style="font-size: 13px; font-weight: 500; color: #8A9691; margin: 12px 0 0 74px;">로그인 정보 확인 중</p>
       </div>
 
       <!-- stat cards -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px;">
         <div style="border: 1.5px solid #EAEDE7; border-radius: 18px; padding: 16px 16px; background: #F5FAF6;">
-          <p style="font-size: 12px; font-weight: 700; color: #8A9691; margin: 0;">서비스 이용</p>
-          <p style="font-size: 24px; font-weight: 900; color: #18A860; margin: 8px 0 0; letter-spacing: -0.5px;">14<span style="font-size: 14px; font-weight: 800; margin-left: 2px;">개월째</span></p>
+          <p style="font-size: 12px; font-weight: 700; color: #8A9691; margin: 0;">계좌 데이터</p>
+          <p data-profile-boundary style="font-size: 20px; font-weight: 900; color: #18A860; margin: 8px 0 0; letter-spacing: -0.5px;">확인 중</p>
         </div>
         <div style="border: 1.5px solid #EAEDE7; border-radius: 18px; padding: 16px 16px; background: #FFF9E8; width: 173px; height: 83px">
-          <p style="font-size: 12px; font-weight: 700; color: #8A9691; margin: 0;">종사 업종</p>
-          <p style="font-size: 20px; font-weight: 900; color: #E8A600; margin: 8px 0 0; letter-spacing: -0.5px; width: 141px; height: 58px">제조업 · 반도체</p>
+          <p style="font-size: 12px; font-weight: 700; color: #8A9691; margin: 0;">정보 기준일</p>
+          <p data-profile-as-of style="font-size: 18px; font-weight: 900; color: #E8A600; margin: 8px 0 0; letter-spacing: -0.5px; width: 141px; height: 58px">-</p>
         </div>
       </div>
 
@@ -78,7 +78,7 @@
       <div style="border: 1.5px solid #EAEDE7; border-radius: 18px; padding: 16px 18px; background: #164A32; margin-bottom: 18px; display: flex; align-items: center; gap: 14px;">
         <div style="flex: 1; min-width: 0;">
           <p style="font-size: 12px; font-weight: 700; color: #9DC2AD; margin: 0;">투자자 성향</p>
-          <p style="font-size: 22px; font-weight: 900; color: #fff; margin: 6px 0 0; letter-spacing: -0.5px;">적극투자형</p>
+          <p data-profile-risk style="font-size: 22px; font-weight: 900; color: #fff; margin: 6px 0 0; letter-spacing: -0.5px;">진단 전</p>
           <p style="font-size: 11px; font-weight: 500; color: #9DC2AD; margin: 6px 0 0;">일반금융소비자 투자성향 진단 기준</p>
         </div>
         <span style="flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 3px;"><span style="font-size: 13px; font-weight: 800; color: #164A32; background: #FFD860; padding: 8px 12px; border-radius: 999px; white-space: nowrap;">진단 다시하기</span><span style="font-size: 10px; font-weight: 500; color: #9DC2AD; white-space: nowrap;">하루 3회 가능</span></span>
@@ -102,7 +102,10 @@
           <span style="flex: 1; font-size: 16px; font-weight: 700; color: #333;">채팅 기록</span>
           <span style="font-size: 18px; color: #C4CBC6;">›</span>
         </button>
-        
+        <button type="button" data-profile-html-sign-out style="width: 100%; border: none; background: #fff; font-family: inherit; text-align: left; display: flex; align-items: center; gap: 12px; padding: 18px 20px; cursor: pointer;">
+          <span style="flex: 1; font-size: 16px; font-weight: 800; color: #D94841;">로그아웃</span>
+          <span style="font-size: 18px; color: #D94841;">›</span>
+        </button>
       </div>
 
     </div>
