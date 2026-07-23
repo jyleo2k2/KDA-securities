@@ -29,6 +29,9 @@ describe("PensionPlannerPage", () => {
       "src",
       "/pension-calculator-html/연금계산기.dc.html",
     );
+    expect(screen.getByTitle("예상 연금 계산 및 세액공제 확인")).toHaveStyle({
+      height: "100dvh",
+    });
   });
 
   it("forwards the calculator back button to the supplied callback", () => {

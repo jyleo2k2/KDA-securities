@@ -188,7 +188,7 @@ export function PensionPlannerPage({
     <iframe
       ref={iframeRef}
       src={`${import.meta.env.BASE_URL}pension-calculator-html/연금계산기.dc.html`}
-      style={{ border: 0, display: "block", height: "100vh", width: "100%" }}
+      style={{ border: 0, display: "block", height: "100dvh", width: "100%" }}
       title="예상 연금 계산 및 세액공제 확인"
     />
   );
