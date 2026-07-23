@@ -333,6 +333,14 @@ uv run ruff check .
 
 ## 14. 작업 로그
 
+### 2026-07-23 KST — benchmark schema pilot phase 1 (REMOTE-APPLIED)
+
+- Migration `20260723045228_move_benchmark_tables_to_schema` created schema `benchmark`, moved the three benchmark tables, and retained public `security_invoker` compatibility views for the deployed read path.
+- Remote verification: benchmark table counts are users 10,000, accounts 16,900, holdings 79,381; public compatibility views return the identical counts.
+- `public.table_domain_catalog` intentionally no longer lists the three tables because it catalogs only `public` base tables; the benchmark domain tag now remains on the moved table objects.
+- Phase 2 code commit uses explicit `benchmark.` references for the repository, loader, demo scripts, seed, and generated demo migration. Direct repository verification returned 10,000 users, 16,900 accounts, and 79,381 holdings.
+- Do not remove public compatibility views until the Phase 2 code is merged and deployed. Phase 3 requires a new migration and separate approval.
+
 ### 2026-07-23 13:45 KST 테이블 도메인·라이프사이클 태그 + 카탈로그 뷰 (REMOTE-APPLIED)
 
 - 작업자/브랜치: Codex(이재용) / `codex/이재용/db-domain-catalog`(origin/main `e4e2878` 기준 워크트리).
