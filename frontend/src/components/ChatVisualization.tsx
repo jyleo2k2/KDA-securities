@@ -154,7 +154,7 @@ export function ChatVisualization({ visualization, sources }: {
   }
 
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const colors = ["#4f8a70", "#84ad67", "#d8a45e", "#7183b1", "#bf7d70"];
+  const colors = ["#2f8f6b", "#3f7bc4", "#c98a2e", "#d9743f", "#7b5fc0", "#2fa3a3", "#8f9aa6"];
   const selectedItem = selectedIndex === null ? null : visualization.items[selectedIndex];
   const sourceById = new Map(sources.map((source) => [source.evidence_id, source]));
   const evidenceSources = (visualization.evidence_ids ?? [])

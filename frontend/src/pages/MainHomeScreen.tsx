@@ -39,16 +39,16 @@ interface HoldingSlice {
   color: string;
 }
 
-const HOLDING_PIE_COLORS = ["#18A860", "#3877E8", "#F0C000", "#F5871F", "#8B5FEB", "#2FBFA0", "#B8C0BA"];
 const PROFILE_LABELS: Record<RiskProfile, string> = {
   stable: "안정형", stable_seeking: "안정추구형", risk_neutral: "위험중립형", active: "적극투자형", aggressive: "공격투자형",
 };
+const HOLDING_PIE_COLORS = ["#2f8f6b", "#3f7bc4", "#c98a2e", "#d9743f", "#7b5fc0", "#2fa3a3", "#8f9aa6"];
 const HOLDING_PIE_MAX_SLICES = 6;
-const HOLDING_PIE_LABEL_MIN_PERCENT = 5;
 const PIE_SIZE = 174;
 const PIE_CENTER = PIE_SIZE / 2;
 const PIE_RADIUS = 78;
-const PIE_LABEL_RADIUS = 48;
+const PIE_INNER_RADIUS = 48;
+const PIE_SELECT_OFFSET = 7;
 
 function buildHoldingPieSlices(
   aggregation: AggregationEvaluation | null,
@@ -69,36 +69,73 @@ function polarPoint(centerDeg: number, radius: number): { x: number; y: number }
   return { x: PIE_CENTER + radius * Math.cos(angleRad), y: PIE_CENTER + radius * Math.sin(angleRad) };
 }
 
-function pieSlicePath(startDeg: number, endDeg: number): string {
-  const start = polarPoint(startDeg, PIE_RADIUS);
-  const end = polarPoint(endDeg, PIE_RADIUS);
+function donutSlicePath(startDeg: number, endDeg: number): string {
+  const outerStart = polarPoint(startDeg, PIE_RADIUS);
+  const outerEnd = polarPoint(endDeg, PIE_RADIUS);
+  const innerEnd = polarPoint(endDeg, PIE_INNER_RADIUS);
+  const innerStart = polarPoint(startDeg, PIE_INNER_RADIUS);
   const largeArcFlag = endDeg - startDeg > 180 ? 1 : 0;
-  return `M ${PIE_CENTER} ${PIE_CENTER} L ${start.x} ${start.y} A ${PIE_RADIUS} ${PIE_RADIUS} 0 ${largeArcFlag} 1 ${end.x} ${end.y} Z`;
+  return [
+    `M ${outerStart.x} ${outerStart.y}`,
+    `A ${PIE_RADIUS} ${PIE_RADIUS} 0 ${largeArcFlag} 1 ${outerEnd.x} ${outerEnd.y}`,
+    `L ${innerEnd.x} ${innerEnd.y}`,
+    `A ${PIE_INNER_RADIUS} ${PIE_INNER_RADIUS} 0 ${largeArcFlag} 0 ${innerStart.x} ${innerStart.y}`,
+    "Z",
+  ].join(" ");
 }
 
-function HoldingPie({ slices }: { slices: HoldingSlice[] }): JSX.Element {
+function HoldingPie({ slices, selectedIndex, onSelect }: {
+  slices: HoldingSlice[];
+  selectedIndex: number | null;
+  onSelect: (index: number) => void;
+}): JSX.Element {
   let cumulativePercent = 0;
+  const centerLabel = selectedIndex === null ? "총자산" : slices[selectedIndex]?.label ?? "총자산";
+  const centerValue = selectedIndex === null ? "100%" : `${slices[selectedIndex]?.percent.toFixed(1)}%`;
   return (
     <svg width={PIE_SIZE} height={PIE_SIZE} viewBox={`0 0 ${PIE_SIZE} ${PIE_SIZE}`} role="img" aria-label="총 연금 자산 자산군 비중">
-      {slices.map((slice) => {
+      {slices.map((slice, index) => {
         const startDeg = cumulativePercent * 3.6;
         const endDeg = (cumulativePercent + slice.percent) * 3.6;
-        const labelCenterDeg = (cumulativePercent + slice.percent / 2) * 3.6;
+        const midDeg = (startDeg + endDeg) / 2;
         cumulativePercent += slice.percent;
-        const labelPoint = polarPoint(labelCenterDeg, PIE_LABEL_RADIUS);
+        const selected = selectedIndex === index;
+        const dimmed = selectedIndex !== null && !selected;
+        const shift = selected ? polarPoint(midDeg, PIE_SELECT_OFFSET) : { x: PIE_CENTER, y: PIE_CENTER };
+        const shape = slice.percent >= 99.999
+          ? <circle cx={PIE_CENTER} cy={PIE_CENTER} r={PIE_RADIUS} fill={slice.color} />
+          : <path d={donutSlicePath(startDeg, endDeg)} fill={slice.color} stroke="#fff" strokeWidth={2} strokeLinejoin="round" />;
         return (
-          <g key={slice.label}>
-            {slice.percent >= 99.999
-              ? <circle cx={PIE_CENTER} cy={PIE_CENTER} r={PIE_RADIUS} fill={slice.color} />
-              : <path d={pieSlicePath(startDeg, endDeg)} fill={slice.color} />}
-            {slice.percent >= HOLDING_PIE_LABEL_MIN_PERCENT && (
-              <text x={labelPoint.x} y={labelPoint.y} textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={800} fill="#fff">
-                {Math.round(slice.percent)}%
-              </text>
-            )}
+          <g
+            key={slice.label}
+            role="button"
+            tabIndex={0}
+            aria-label={`${slice.label} ${slice.percent.toFixed(1)}%`}
+            aria-pressed={selected}
+            onClick={() => onSelect(index)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onSelect(index);
+              }
+            }}
+            style={{
+              cursor: "pointer",
+              opacity: dimmed ? 0.32 : 1,
+              transform: `translate(${shift.x - PIE_CENTER}px, ${shift.y - PIE_CENTER}px)`,
+              transition: "opacity 140ms ease, transform 160ms ease",
+            }}
+          >
+            {shape}
           </g>
         );
       })}
+      <text x={PIE_CENTER} y={PIE_CENTER - 6} textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={600} fill="#8A9691">
+        {centerLabel}
+      </text>
+      <text x={PIE_CENTER} y={PIE_CENTER + 12} textAnchor="middle" dominantBaseline="central" fontSize={18} fontWeight={800} fill="#333">
+        {centerValue}
+      </text>
     </svg>
   );
 }
@@ -157,6 +194,7 @@ function buildPortfolioOneLineSummary(
 
 export function MainHomeScreen({ aggregation, displayName, error, investmentProfile, loading, onOpenChat, onOpenPlanner, onOpenProfile, onOpenStrategyExplore, onOpenUserPick, portfolio }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
+  const [selectedHolding, setSelectedHolding] = useState<number | null>(null);
   const allocationSlices: AllocationSlice[] = aggregation?.asset_class_totals
     .slice(0, 4)
     .map((item, index) => ({
@@ -165,6 +203,8 @@ export function MainHomeScreen({ aggregation, displayName, error, investmentProf
       color: ALLOCATION_COLORS[index],
     })) ?? [];
   const holdingSlices = buildHoldingPieSlices(aggregation);
+  const activeHolding = selectedHolding !== null ? holdingSlices[selectedHolding] ?? null : null;
+  const toggleHolding = (index: number) => setSelectedHolding((current) => (current === index ? null : index));
   const totalBalance = aggregation ? formatKrw(aggregation.total_amount_krw) : "-";
   const asOfDate = portfolio ? latestPortfolioDate(portfolio) : null;
 
@@ -202,23 +242,51 @@ export function MainHomeScreen({ aggregation, displayName, error, investmentProf
           <p className="mhs-asset-gain">{error ?? (asOfDate ? `${displayName}님 · ${asOfDate} 기준` : "연금 데이터를 확인해 주세요.")}</p>
 
           <div className="mhs-pie-wrap">
-            {holdingSlices.length > 0 ? <HoldingPie slices={holdingSlices} /> : (
+            {holdingSlices.length > 0 ? (
+              <HoldingPie slices={holdingSlices} selectedIndex={selectedHolding} onSelect={toggleHolding} />
+            ) : (
               <div className="mhs-pie-empty" style={{ background: "#EEF0F1" }} />
             )}
           </div>
 
           <div className="mhs-allocation-grid">
             {(holdingSlices.length > 0
-              ? holdingSlices.map((slice) => ({ label: slice.label, percent: `${slice.percent.toFixed(1)}%`, color: slice.color }))
-              : allocationSlices
-            ).map((slice) => (
-              <span className="mhs-allocation-item" key={slice.label}>
-                <span className="mhs-allocation-dot" style={{ background: slice.color }} />
-                <span className="mhs-allocation-label">{slice.label}</span>
-                <span className="mhs-allocation-percent">{slice.percent}</span>
-              </span>
-            ))}
+              ? holdingSlices.map((slice, index) => ({ label: slice.label, percent: `${slice.percent.toFixed(1)}%`, color: slice.color, index }))
+              : allocationSlices.map((slice) => ({ ...slice, index: null as number | null }))
+            ).map((slice) => {
+              const selectable = slice.index !== null;
+              const active = selectable && slice.index === selectedHolding;
+              const dim = selectable && selectedHolding !== null && !active;
+              return (
+                <span
+                  className="mhs-allocation-item"
+                  key={slice.label}
+                  role={selectable ? "button" : undefined}
+                  tabIndex={selectable ? 0 : undefined}
+                  onClick={selectable ? () => toggleHolding(slice.index as number) : undefined}
+                  onKeyDown={selectable ? (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      toggleHolding(slice.index as number);
+                    }
+                  } : undefined}
+                  style={selectable ? { cursor: "pointer", opacity: dim ? 0.4 : 1, fontWeight: active ? 900 : undefined } : undefined}
+                >
+                  <span className="mhs-allocation-dot" style={{ background: slice.color }} />
+                  <span className="mhs-allocation-label">{slice.label}</span>
+                  <span className="mhs-allocation-percent">{slice.percent}</span>
+                </span>
+              );
+            })}
           </div>
+
+          {holdingSlices.length > 0 && (
+            <p className="mhs-asset-gain" style={{ marginTop: 12, textAlign: "center" }} aria-live="polite">
+              {activeHolding
+                ? `${activeHolding.label} · 전체 자산의 ${activeHolding.percent.toFixed(1)}%예요.`
+                : "조각을 누르면 해당 자산군의 비중을 자세히 볼 수 있어요."}
+            </p>
+          )}
 
           <div className="mhs-portfolio-block">
             <span className="mhs-portfolio-heading">
