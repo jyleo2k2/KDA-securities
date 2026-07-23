@@ -254,6 +254,7 @@ def get_investment_profile_repository(
     return InvestmentProfileRepository(
         database_url,
         pool=_database_pool(settings, database_url),
+        ephemeral_owner_ids=settings.ephemeral_investment_profile_owner_id_set(),
     )
 
 
