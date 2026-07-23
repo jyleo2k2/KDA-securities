@@ -1408,6 +1408,15 @@ def educational_portfolio(
             basis="규칙 엔진의 목표비중 이탈 허용 기준",
         )
     )
+    numeric.append(
+        NumericEvidence(
+            label="리밸런싱 정기 점검 주기",
+            value=Decimal(evaluation.rebalancing.cadence.review_interval_months),
+            unit="개월",
+            evidence_id=engine_source.evidence_id,
+            basis="투자성향별 변동성·전술자산 비중을 반영한 규칙 엔진 점검 정책",
+        )
+    )
     numeric.extend(
         NumericEvidence(
             label=(
@@ -1455,17 +1464,28 @@ def educational_portfolio(
         planning_text = (
             "CMA 기반 연간 계획수익률 범위는 보수 약 "
             f"{_decimal_text(conservative)}%에서 기준 약 "
-            f"{_decimal_text(base)}%예요. 미래 예측값이 아니라 매년 다시 "
-            "살펴보는 장기 자산배분 가정이에요."
+            f"{_decimal_text(base)}%예요. J.P. Morgan의 LTCMA 장기 "
+            "자본시장 가정과 ETF 운용비용을 반영해 산출한 교육용 "
+            "계획가정이며, 미래 예측값이 아니라 매년 다시 살펴봐요."
         )
     profile_label = _RISK_PROFILE_LABELS[
         evaluation.evaluated_input.risk_profile.value
     ]
+    strategy_label = _STRATEGY_LABELS[evaluation.strategy_label]
     sections = [
         AnswerSection(
             kind=SectionKind.SERVICE_EXPLANATION,
-            title=f"{profile_label} 투자전략",
+            title=f"{profile_label}의 {strategy_label}",
             content=_strategy_summary(evaluation),
+            evidence_ids=[engine_source.evidence_id],
+        ),
+        AnswerSection(
+            kind=SectionKind.SERVICE_EXPLANATION,
+            title="목표 자산배분",
+            content=(
+                f"이 전략에 따르면 {profile_label} 연금투자전략의 목표 "
+                "자산배분은 아래와 같아요."
+            ),
             evidence_ids=[engine_source.evidence_id],
             blocks=[
                 AnswerBlock(
@@ -1489,6 +1509,16 @@ def educational_portfolio(
                 engine_source.evidence_id,
                 cma_source.evidence_id,
             ],
+        ),
+        AnswerSection(
+            kind=SectionKind.SERVICE_EXPLANATION,
+            title="ETF 섹터 알아보기",
+            content=(
+                "전체적인 자산배분의 틀은 이렇게 가져가고, 각 자산 분류를 "
+                "어떤 테마 ETF로 채울지는 ETF 섹터 알아보기에서 탐색해 "
+                "보세요. 구체 종목의 매수 추천은 하지 않아요."
+            ),
+            evidence_ids=[engine_source.evidence_id],
         ),
     ]
     macro_outcomes = None
@@ -1537,8 +1567,8 @@ def educational_portfolio(
     return ChatResponse(
         intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
         answer=(
-            "설문 결과에 맞는 투자전략과 장기 계획수익률을 정리했어요. "
-            "계좌별 목표비중과 운용 원칙은 아래에서 볼 수 있어요."
+            f"설문 결과는 {profile_label}이며, 가장 적합한 연금투자전략은 "
+            f"{strategy_label}입니다."
         ),
         data_mode="engine_educational_planning",
         sources=sources,

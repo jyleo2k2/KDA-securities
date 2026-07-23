@@ -141,7 +141,32 @@ describe("EducationalPortfolioReview", () => {
       account_cap_binding: false,
       loss_tolerance_binding: false,
       stress_loss_proxy_percent: "20.0000",
-      target_sleeves: [],
+      target_sleeves: [{
+        sleeve: "core_equity",
+        target_percent: "45.0000",
+        risk_treatment: "general_risky",
+        role: "long_term_growth_core",
+      }, {
+        sleeve: "real_assets",
+        target_percent: "5.0000",
+        risk_treatment: "general_risky",
+        role: "inflation_and_diversification",
+      }, {
+        sleeve: "tactical",
+        target_percent: "0.0000",
+        risk_treatment: "general_risky",
+        role: "capped_tactical_satellite",
+      }, {
+        sleeve: "fixed_income",
+        target_percent: "43.0000",
+        risk_treatment: "defensive",
+        role: "drawdown_buffer",
+      }, {
+        sleeve: "cash",
+        target_percent: "7.0000",
+        risk_treatment: "defensive",
+        role: "liquidity_and_rebalancing_reserve",
+      }],
       candidates: [{
         isu_code: "069500",
         isu_name: "KODEX 200",
@@ -239,6 +264,11 @@ describe("EducationalPortfolioReview", () => {
       rebalancing: {
         status: "calculated",
         drift_threshold_percent_points: "5.0000",
+        cadence: {
+          review_interval_months: 3,
+          drift_threshold_percent_points: "5.0000",
+          rationale: "성장·방어 자산을 함께 쓰므로 분기마다 균형이 흐트러졌는지 확인해요.",
+        },
         current_total_krw: "10000000",
         new_contribution_krw: "1000000",
         projected_total_krw: "11000000",
@@ -265,7 +295,55 @@ describe("EducationalPortfolioReview", () => {
       ...evaluation,
       current_holdings_planning_return: evaluation.planning_return,
     };
-    const { rerender } = render(<EducationalPortfolioReview evaluation={evaluationWithCurrentHoldingsPlanning} />);
+    const noHoldingsEvaluation = {
+      ...evaluation,
+      evaluated_input: {
+        ...evaluation.evaluated_input,
+        current_holdings: [],
+        new_contribution_krw: "0",
+      },
+      rebalancing: {
+        ...evaluation.rebalancing,
+        status: "not_requested",
+        current_total_krw: "0",
+        new_contribution_krw: "0",
+        projected_total_krw: "0",
+        sleeves: [],
+      },
+    } satisfies EducationalPortfolioEvaluation;
+    const { rerender } = render(<EducationalPortfolioReview evaluation={noHoldingsEvaluation} />);
+
+    expect(screen.getByText("위험중립형의 코어·위성 전략")).toBeInTheDocument();
+    expect(screen.getByText(/광범위한 주식 ETF를 장기 성장의 코어로 두고/)).toBeInTheDocument();
+    expect(screen.getByText(/큰 기본 식사에 작은 반찬을 더하는 전략/)).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /분산 주식 45.0%, 금·리츠 5.0%, 채권 43.0%, 현금성 7.0%/ })).toBeInTheDocument();
+    expect(screen.getByText("보수 계획수익률")).toBeInTheDocument();
+    expect(screen.getByText("기준 계획수익률")).toBeInTheDocument();
+    expect(screen.getByText(/J.P. Morgan의 LTCMA 장기 자본시장 가정/)).toBeInTheDocument();
+    expect(screen.getByText("그러면 어떤 종목을 살까?")).toBeInTheDocument();
+    expect(screen.getByText(/ETF 섹터 알아보기에서 각 자산 분류를 채울 ETF 테마/)).toBeInTheDocument();
+    expect(screen.queryByText("스태그플레이션")).not.toBeInTheDocument();
+
+    const strategyCases = [
+      ["stable", "안정형의 자본보전 중심 전략", "우산, 우비, 여벌 옷"],
+      ["stable_seeking", "안정추구형의 방어적 분산 전략", "날씨가 좋으면 조금 더 멀리"],
+      ["risk_neutral", "위험중립형의 코어·위성 전략", "큰 기본 식사에 작은 반찬"],
+      ["active", "적극투자형의 성장 코어·위성 전략", "작은 도전도 조금 늘리는 전략"],
+      ["aggressive", "공격투자형의 바벨형 성장·전술 전략", "양쪽 끝에 무게가 달린 긴 막대"],
+    ] as const;
+    for (const [riskProfile, title, analogy] of strategyCases) {
+      rerender(<EducationalPortfolioReview evaluation={{
+        ...noHoldingsEvaluation,
+        evaluated_input: {
+          ...noHoldingsEvaluation.evaluated_input,
+          risk_profile: riskProfile,
+        },
+      }} />);
+      expect(screen.getByText(title)).toBeInTheDocument();
+      expect(screen.getByText(new RegExp(analogy))).toBeInTheDocument();
+    }
+
+    rerender(<EducationalPortfolioReview evaluation={evaluationWithCurrentHoldingsPlanning} />);
 
     expect(screen.getByText("70.0%")).toBeInTheDocument();
     expect(screen.getByText("분산 주식")).toBeInTheDocument();
@@ -280,6 +358,8 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.getByText(/최대 과거 가격 동행성은 82.0%/)).toBeInTheDocument();
     expect(screen.getByText(/구성종목 중복률이 아니라/)).toBeInTheDocument();
     expect(screen.getByText(/매도 주문을 만들지 않으며/)).toBeInTheDocument();
+    expect(screen.getByText("3개월마다 비중 점검")).toBeInTheDocument();
+    expect(screen.getByText(/목표비중은 연령·수령 시점·투자성향·계좌 한도로/)).toBeInTheDocument();
     expect(screen.getByText("12.3%")).toBeInTheDocument();
     expect(screen.getByText("주식시장 급락")).toBeInTheDocument();
     expect(screen.getByText("-18.5%")).toBeInTheDocument();

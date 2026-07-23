@@ -28,12 +28,25 @@ export function ChatVisualization({ visualization, sources }: {
     return (
       <section className="allocation-chart tax-visualization" aria-label={visualization.title}>
         <h3>{visualization.title}</h3>
-        <p className="visualization-description">{visualization.description}</p>
+        {visualization.description && (
+          <p className="visualization-description">{visualization.description}</p>
+        )}
         <div className="tax-summary-grid">
           {visualization.items.map((item) => (
-            <div key={item.label}>
-              <span>{item.label}</span>
-              <strong>{numericText(item.value, item.unit)}</strong>
+            <div key={item.label} style={{ minWidth: 0, padding: 12 }}>
+              <span style={{ fontSize: 10, lineHeight: 1.4 }}>{item.label}</span>
+              <strong
+                style={{
+                  fontSize: "clamp(13px, 3.4vw, 16px)",
+                  lineHeight: 1.2,
+                  letterSpacing: "-0.02em",
+                  marginTop: 5,
+                  overflowWrap: "normal",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {numericText(item.value, item.unit)}
+              </strong>
             </div>
           ))}
         </div>
@@ -70,9 +83,18 @@ export function ChatVisualization({ visualization, sources }: {
         <p className="visualization-description">{visualization.description}</p>
         <div className="tax-summary-grid">
           {visualization.items.map((item) => (
-            <div key={item.label}>
-              <span>{item.label}</span>
-              <strong>{numericText(item.value, item.unit)}</strong>
+            <div key={item.label} style={{ minWidth: 0, padding: 12 }}>
+              <span style={{ fontSize: 10, lineHeight: 1.4 }}>{item.label}</span>
+              <strong
+                style={{
+                  fontSize: "clamp(16px, 4.5vw, 19px)",
+                  lineHeight: 1.2,
+                  marginTop: 5,
+                  overflowWrap: "anywhere",
+                }}
+              >
+                {numericText(item.value, item.unit)}
+              </strong>
             </div>
           ))}
         </div>

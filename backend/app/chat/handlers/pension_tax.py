@@ -28,6 +28,11 @@ from ..tools import (
 )
 from ._shared import _decimal_text
 
+PENSION_TAX_REFUND_NOTICE = (
+    "실제 환급액은 소득세 결정세액 등에 따라 달라질 수 있으므로 자세한 "
+    "내용은 금융기관에 확인하거나 세무전문가와 상담해야 해요."
+)
+
 
 def pension_tax_response(
     request: ChatRequest,
@@ -98,8 +103,81 @@ def pension_tax_response(
                 ],
             )
         )
-        numeric.extend(tax_credit_numeric(tax_credit))
-        limitations.append(tax_credit.assumption_notice)
+        tax_input = resolved_inputs.tax_credit
+        tax_numeric = tax_credit_numeric(tax_credit)
+        if (
+            tax_input is not None
+            and tax_input.income_amount_krw is not None
+            and tax_credit.rate_determined
+        ):
+            rate = tax_credit.rate_scenarios[0]
+            primary_labels = {
+                "연금저축 당해연도 납입액",
+                "IRP 당해연도 납입액",
+                "합산 세액공제 대상 납입액",
+                f"{rate.label} 표시율",
+                f"{rate.label} 지방세 포함 예상 절세효과",
+            }
+            numeric.extend(
+                [
+                    NumericEvidence(
+                        label="소득금액",
+                        value=tax_input.income_amount_krw,
+                        unit="KRW",
+                        evidence_id="user:pension_tax",
+                        basis="세액공제율 적용을 위한 사용자 소득정보",
+                    ),
+                    NumericEvidence(
+                        label="확인된 소득구간 표시율",
+                        value=rate.local_inclusive_display_rate_percent,
+                        unit="%",
+                        evidence_id="rule:pension_tax:credit",
+                        basis="소득세율과 개인지방소득세 효과 포함",
+                    ),
+                    NumericEvidence(
+                        label="연금저축 당해연도 납입액",
+                        value=tax_credit.pension_savings_contribution_krw,
+                        unit="KRW",
+                        evidence_id="user:pension_tax",
+                        basis="사용자 입력",
+                    ),
+                    NumericEvidence(
+                        label="IRP 당해연도 납입액",
+                        value=tax_credit.irp_contribution_krw,
+                        unit="KRW",
+                        evidence_id="user:pension_tax",
+                        basis="사용자 입력",
+                    ),
+                    NumericEvidence(
+                        label="합산 세액공제 대상 납입액",
+                        value=tax_credit.total_eligible_contribution_krw,
+                        unit="KRW",
+                        evidence_id="engine:pension_tax",
+                        basis="2026년 일반 합산 900만원 및 적격 ISA 추가 한도",
+                    ),
+                    NumericEvidence(
+                        label="확인된 소득구간 지방세 포함 예상 절세효과",
+                        value=rate.estimated_total_tax_reduction_effect_krw,
+                        unit="KRW",
+                        evidence_id="engine:pension_tax",
+                        basis="법정 세액공제액과 개인지방소득세 효과 합산",
+                    ),
+                ]
+            )
+            numeric.extend(
+                item for item in tax_numeric if item.label not in primary_labels
+            )
+        else:
+            numeric.extend(tax_numeric)
+        limitations.append(PENSION_TAX_REFUND_NOTICE)
+        limitations.append(
+            "세액공제 계산과 같은 해 중도해지 추정은 별도 가정이에요."
+        )
+        if "ISA 만기자금" in tax_credit.assumption_notice:
+            limitations.append(
+                "ISA 만기자금 전환의 법정 요건이 확인되지 않아 해당 금액은 "
+                "계산에서 제외했어요."
+            )
 
     if withdrawal is not None:
         withdrawal_answer = withdrawal_text(withdrawal)

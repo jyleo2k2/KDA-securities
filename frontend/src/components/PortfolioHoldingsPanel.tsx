@@ -61,6 +61,39 @@ const RISK_PROFILE_LABELS: Record<RiskProfile, string> = {
   aggressive: "공격투자형",
 };
 
+const STRATEGY_GUIDES: Record<RiskProfile, {
+  title: string;
+  description: string;
+  analogy: string;
+}> = {
+  stable: {
+    title: "자본보전 중심 전략",
+    description: "높은 수익을 추구하기보다 연금자산의 큰 손실을 줄이고 안정적으로 유지하는 데 목적이 있습니다.",
+    analogy: "학교 가는 길에 비가 올까 봐 우산, 우비, 여벌 옷까지 챙기는 사람과 비슷해요. 많이 빨리 가는 것보다 비를 맞지 않고 안전하게 가는 것이 더 중요합니다.",
+  },
+  stable_seeking: {
+    title: "방어적 분산 전략",
+    description: "방어자산을 중심에 두되 장기 성장과 물가상승에 대응하기 위해 주식과 실물자산을 조금 더 적극적으로 편입합니다.",
+    analogy: "안정형이 우산과 우비를 모두 챙기는 사람이라면, 안정추구형은 우산을 챙기되 날씨가 좋으면 조금 더 멀리 걸어가 보는 사람에 가깝습니다.",
+  },
+  risk_neutral: {
+    title: "코어·위성 전략",
+    description: "광범위한 주식 ETF를 장기 성장의 코어로 두고 특정 테마 ETF는 5% 이내의 위성자산으로 제한하는 구조입니다.",
+    analogy: "큰 기본 식사에 작은 반찬을 더하는 전략입니다. 코어는 주식시장의 기본 뼈대이고, 위성은 조금만 담는 특별 반찬입니다.",
+  },
+  active: {
+    title: "성장 코어·위성 전략",
+    description: "장기 성장자산의 비중을 확대하면서도 채권과 현금을 완전히 없애지 않는 구조입니다.",
+    analogy: "기본 주식 투자를 크게 하고 작은 도전도 조금 늘리는 전략입니다. 위험중립형보다 성장 가능성을 더 중요하게 생각하는 대신, 시장이 떨어질 때 손실도 더 클 수 있습니다.",
+  },
+  aggressive: {
+    title: "바벨형 성장·전술 전략",
+    description: "주식과 전술자산의 성장축을 크게 두면서 반대편에 최소한의 채권과 현금 방어축을 별도로 유지합니다.",
+    analogy: "바벨은 양쪽 끝에 무게가 달린 긴 막대예요. 중간 성격의 자산을 많이 두기보다 성장 쪽과 안전 쪽의 역할을 분명히 나눠 두는 방식입니다.",
+  },
+};
+
+const TARGET_ALLOCATION_COLORS = ["#4f8a70", "#84ad67", "#d8a45e", "#7183b1", "#bf7d70"];
 const SECTOR_GUIDE_COLORS = ["#4f8a70", "#84ad67", "#d8a45e", "#7183b1", "#bf7d70", "#8b76ad", "#5f9c9c"];
 
 type SectorGuideItem = {
@@ -198,6 +231,151 @@ function PortfolioSectorGuide({ riskProfile }: { riskProfile: RiskProfile }) {
         </ul>
       </div>
       <p className="portfolio-sector-guide-note">테마는 챗봇에서 설명하는 승인된 ETF 테마 카탈로그 중에서만 표시하며, 매수·수익률 예측 안내가 아닙니다.</p>
+    </section>
+  );
+}
+
+function TargetAllocationGuide({
+  evaluation,
+}: {
+  evaluation: EducationalPortfolioEvaluation;
+}) {
+  const items = evaluation.target_sleeves
+    .map((item) => ({
+      label: sleeveLabel(item.sleeve),
+      weight: Number(item.target_percent),
+    }))
+    .filter((item) => Number.isFinite(item.weight) && item.weight > 0);
+  const gradientStops = conicGradient(
+    items.map((item) => item.weight),
+    TARGET_ALLOCATION_COLORS,
+  );
+
+  return (
+    <section className="portfolio-target-allocation" aria-labelledby="portfolio-target-allocation-title">
+      <header>
+        <span>규칙 엔진 목표비중</span>
+        <h4 id="portfolio-target-allocation-title">목표 자산배분</h4>
+        <p>이 전략에 따른 자산군별 목표비중입니다.</p>
+      </header>
+      <div className="portfolio-target-allocation-layout">
+        <div
+          aria-label={items.map((item) => `${item.label} ${item.weight.toFixed(1)}%`).join(", ")}
+          className="portfolio-target-donut"
+          role="img"
+          style={{ background: `conic-gradient(${gradientStops})` }}
+        >
+          <span>전체<br /><strong>100%</strong></span>
+        </div>
+        <ul className="portfolio-target-legend">
+          {items.map((item, index) => (
+            <li key={item.label}>
+              <i style={{ backgroundColor: TARGET_ALLOCATION_COLORS[index % TARGET_ALLOCATION_COLORS.length] }} />
+              <span>{item.label}</span>
+              <strong>{item.weight.toFixed(1)}%</strong>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <p className="portfolio-target-allocation-note">
+        전체적인 자산배분의 틀은 이렇게 가져가고, 각 자산 분류를 어떤 테마 ETF로 채울지는 ETF 섹터 알아보기에서 탐색할 수 있습니다.
+      </p>
+    </section>
+  );
+}
+
+function RebalancingCadenceGuide({
+  evaluation,
+}: {
+  evaluation: EducationalPortfolioEvaluation;
+}) {
+  const cadence = evaluation.rebalancing.cadence;
+  return (
+    <section className="portfolio-rebalance-cadence" aria-labelledby="portfolio-rebalance-cadence-title">
+      <header>
+        <span>규칙 엔진 리밸런싱 정책</span>
+        <h4 id="portfolio-rebalance-cadence-title">{cadence.review_interval_months}개월마다 비중 점검</h4>
+        <p>{cadence.rationale}</p>
+      </header>
+      <div className="portfolio-review-summary">
+        <div><span>정기 점검 주기</span><strong>{cadence.review_interval_months}개월</strong></div>
+        <div><span>목표비중 이탈 기준</span><strong>±{percent(cadence.drift_threshold_percent_points)}</strong></div>
+      </div>
+      <p className="portfolio-target-allocation-note">목표비중은 연령·수령 시점·투자성향·계좌 한도로 다시 계산할 때만 바뀌며, 정기 점검만으로 임의 변경하지 않습니다. 이탈 시에는 새 납입금으로 부족한 자산군을 먼저 보완해요.</p>
+    </section>
+  );
+}
+
+function EducationalStrategyGuide({
+  evaluation,
+}: {
+  evaluation: EducationalPortfolioEvaluation;
+}) {
+  const profile = evaluation.evaluated_input.risk_profile;
+  const guide = STRATEGY_GUIDES[profile];
+  const planning = evaluation.planning_return;
+
+  return (
+    <section className="portfolio-strategy-guide" aria-labelledby="portfolio-strategy-guide-title">
+      <header>
+        <span>투자성향 기반 연금투자전략</span>
+        <h3 id="portfolio-strategy-guide-title">{RISK_PROFILE_LABELS[profile]}의 {guide.title}</h3>
+        <p>
+          {ACCOUNT_LABELS[evaluation.evaluated_input.account_type]} · 연금 수령 개시까지 {evaluation.planning_horizon_years}년
+        </p>
+      </header>
+
+      <article className="portfolio-strategy-explanation">
+        <strong>{guide.title}</strong>
+        <p>{guide.description}</p>
+        <p><b>쉽게 말하면:</b> {guide.analogy}</p>
+      </article>
+
+      <p className="portfolio-strategy-transition">
+        이 전략에 따르면 {RISK_PROFILE_LABELS[profile]} 연금투자전략은 아래와 같습니다.
+      </p>
+      <TargetAllocationGuide evaluation={evaluation} />
+      <RebalancingCadenceGuide evaluation={evaluation} />
+
+      <section className="portfolio-strategy-planning" aria-labelledby="portfolio-strategy-planning-title">
+        <header>
+          <span>장기 계획가정</span>
+          <h4 id="portfolio-strategy-planning-title">보수·기준 계획수익률</h4>
+        </header>
+        <div className="portfolio-planning-metrics">
+          <div>
+            <span>보수 계획수익률</span>
+            <strong>{optionalPercent(planning.conservative_planning_return_percent)}</strong>
+            <small>CMA·비용·불확실성 할인</small>
+          </div>
+          <div>
+            <span>기준 계획수익률</span>
+            <strong>{optionalPercent(planning.base_planning_return_percent)}</strong>
+            <small>CMA·ETF 운용비용 반영</small>
+          </div>
+        </div>
+        <div className="planning-source-chips" aria-label="장기 계획수익률 출처">
+          {planning.sources.map((source) => (
+            /^https?:\/\//.test(source.reference) ? (
+              <a href={source.reference} target="_blank" rel="noreferrer" key={`${source.label}-${source.reference}`}>
+                {source.label} · {dateText(source.as_of)}
+              </a>
+            ) : (
+              <span key={`${source.label}-${source.reference}`}>{source.label} · {dateText(source.as_of)}</span>
+            )
+          ))}
+        </div>
+        <p className="portfolio-planning-note">
+          *이는 J.P. Morgan의 LTCMA 장기 자본시장 가정과 ETF 운용비용을 반영해 산출한 교육용 계획가정이며, 미래 수익률 예측이나 보장값이 아닙니다.
+        </p>
+      </section>
+
+      <section className="portfolio-theme-next-step" aria-labelledby="portfolio-theme-next-step-title">
+        <strong id="portfolio-theme-next-step-title">그러면 어떤 종목을 살까?</strong>
+        <p>
+          구체 종목의 매수 추천은 하지 않습니다. ETF 섹터 알아보기에서 각 자산 분류를 채울 ETF 테마의 구조와 위험을 확인해 보세요.
+        </p>
+      </section>
     </section>
   );
 }
@@ -669,7 +847,10 @@ export function EducationalPortfolioReview({
 }: {
   evaluation?: EducationalPortfolioEvaluation | null;
 }) {
-  if (!evaluation?.evaluated_input.current_holdings.length) return null;
+  if (!evaluation) return null;
+  if (!evaluation.evaluated_input.current_holdings.length) {
+    return <EducationalStrategyGuide evaluation={evaluation} />;
+  }
 
   const rebalancing = evaluation.rebalancing;
   const highestCorrelation = evaluation.candidates.reduce<number | null>((highest, candidate) => {
@@ -700,6 +881,7 @@ export function EducationalPortfolioReview({
       </div>
 
       <PortfolioSectorGuide riskProfile={evaluation.evaluated_input.risk_profile} />
+      <RebalancingCadenceGuide evaluation={evaluation} />
 
       <div className="overlap-check">
         <strong>중복도·편중 점검</strong>

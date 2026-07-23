@@ -525,6 +525,42 @@ _STRATEGY_LABELS = {
     "growth_core_satellite": "성장 코어·위성 전략",
     "barbell_growth_tactical": "바벨형 성장·전술 전략",
 }
+_STRATEGY_EXPLANATIONS = {
+    "capital_preservation_core": (
+        "높은 수익을 추구하기보다 연금자산의 큰 손실을 줄이고 안정적으로 "
+        "유지하는 데 목적이 있어요.",
+        "학교 가는 길에 비가 올까 봐 우산, 우비, 여벌 옷까지 챙기는 "
+        "사람과 비슷해요. 많이 빨리 가는 것보다 비를 맞지 않고 안전하게 "
+        "가는 것이 더 중요해요.",
+    ),
+    "defensive_diversified_core": (
+        "방어자산을 중심에 두되 장기 성장과 물가상승에 대응하기 위해 "
+        "주식과 실물자산을 조금 더 적극적으로 편입해요.",
+        "안정형이 우산과 우비를 모두 챙기는 사람이라면, 안정추구형은 "
+        "우산을 챙기되 날씨가 좋으면 조금 더 멀리 걸어가 보는 사람에 "
+        "가까워요.",
+    ),
+    "balanced_core_satellite": (
+        "광범위한 주식 ETF를 장기 성장의 코어로 두고 특정 테마 ETF는 "
+        "5% 이내의 위성자산으로 제한하는 구조예요.",
+        "큰 기본 식사에 작은 반찬을 더하는 전략이에요. 코어는 주식시장의 "
+        "기본 뼈대이고, 위성은 조금만 담는 특별 반찬이에요.",
+    ),
+    "growth_core_satellite": (
+        "장기 성장자산의 비중을 확대하면서도 채권과 현금을 완전히 없애지 "
+        "않는 구조예요.",
+        "기본 주식 투자를 크게 하고 작은 도전도 조금 늘리는 전략이에요. "
+        "위험중립형보다 성장 가능성을 더 중요하게 생각하는 대신, 시장이 "
+        "떨어질 때 손실도 더 클 수 있어요.",
+    ),
+    "barbell_growth_tactical": (
+        "주식과 전술자산의 성장축을 크게 두면서 반대편에 최소한의 채권과 "
+        "현금 방어축을 별도로 유지해요.",
+        "바벨은 양쪽 끝에 무게가 달린 긴 막대예요. 중간 성격의 자산을 "
+        "많이 두기보다 성장 쪽과 안전 쪽의 역할을 분명히 나눠 두는 "
+        "방식이에요.",
+    ),
+}
 _SLEEVE_LABELS = {
     "core_equity": "주식",
     "real_assets": "실물자산",
@@ -537,21 +573,6 @@ _STRESS_SCENARIO_LABELS = {
     "rate_inflation_shock": "금리·물가 충격",
     "stagflation": "스태그플레이션",
 }
-_ROLE_SENTENCES = {
-    "long_term_growth_core": "주식 ETF를 장기 성장 핵심자산으로 둬요.",
-    "inflation_and_diversification": (
-        "실물자산은 물가 상승에 대비하고 자산을 나누는 역할을 해요."
-    ),
-    "capped_tactical_satellite": (
-        "전술자산은 비중 한도가 있는 보조자산으로만 활용해요."
-    ),
-    "drawdown_buffer": "채권은 가격 하락 충격을 줄이는 역할을 해요.",
-    "liquidity_and_rebalancing_reserve": (
-        "현금은 필요할 때 바로 쓰고 비중을 다시 맞출 여유를 줘요."
-    ),
-}
-
-
 def _selected_risk_profile(message: str) -> EducationalRiskProfile | None:
     for pattern, profile in _RISK_PROFILE_PATTERNS:
         if pattern.search(message):
@@ -602,12 +623,10 @@ def _mentioned_retirement_start_age(message: str) -> int | None:
 def _strategy_summary(evaluation: EducationalPortfolioEvaluation) -> str:
     profile = _RISK_PROFILE_LABELS[evaluation.evaluated_input.risk_profile.value]
     strategy = _STRATEGY_LABELS[evaluation.strategy_label]
-    role_sentences = [
-        _ROLE_SENTENCES[target.role] for target in evaluation.target_sleeves
-    ]
+    explanation, analogy = _STRATEGY_EXPLANATIONS[evaluation.strategy_label]
     return (
-        f"{evaluation.planning_horizon_years}년의 장기 운용기간을 고려한 "
-        f"{profile} {strategy}이에요. " + " ".join(role_sentences)
+        f"{profile}의 {strategy}이에요. {explanation}\n\n"
+        f"쉽게 말하면: {analogy}"
     )
 
 
@@ -630,13 +649,14 @@ def _target_portfolio_rows(
 
 def _rebalancing_items(evaluation: EducationalPortfolioEvaluation) -> list[str]:
     rebalancing = evaluation.rebalancing
-    threshold = _decimal_text(
-        _one_decimal(rebalancing.drift_threshold_percent_points)
-    )
     parts = [
-        f"목표비중에서 {threshold}%포인트를 초과해 벗어난 자산군은 "
-        "리밸런싱(자산 비중을 목표에 맞게 다시 조정하는 일) 점검 대상이에요."
+        f"{rebalancing.cadence.review_interval_months}개월마다 점검해요. "
+        f"{rebalancing.cadence.rationale}"
     ]
+    parts.append(
+        "목표비중에서 엔진이 정한 허용 이탈폭을 초과한 자산군은 "
+        "리밸런싱(자산 비중을 목표에 맞게 다시 조정하는 일) 점검 대상이에요."
+    )
     if rebalancing.contribution_first:
         parts.append("매도보다 새 납입금을 부족한 자산에 먼저 나눠요.")
     if not rebalancing.sell_instruction_produced:
@@ -657,7 +677,6 @@ def _rebalancing_items(evaluation: EducationalPortfolioEvaluation) -> list[str]:
             parts.append("분류되지 않은 보유자산은 따로 확인해야 해요.")
     parts.extend(
         [
-            "분기마다 목표비중 이탈을 점검해요.",
             "매년 나이·투자성향·연금 수령 시점과 계획가정을 다시 확인해요.",
         ]
     )

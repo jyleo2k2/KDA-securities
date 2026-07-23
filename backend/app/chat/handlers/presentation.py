@@ -89,7 +89,7 @@ def attach_visualizations(response: ChatResponse) -> ChatResponse:
             ChatVisualization(
                 kind=VisualizationKind.TAX_SUMMARY,
                 title="세액공제 요약",
-                description="입력한 납입액과 규칙 엔진 계산 결과를 함께 보여줘요.",
+                description="",
                 data_boundary=DataBoundary.ENGINE,
                 evidence_ids=[
                     "user:pension_tax",
@@ -113,6 +113,12 @@ def attach_visualizations(response: ChatResponse) -> ChatResponse:
                     label="지방세 포함 예상 절세효과",
                     value=rate.estimated_total_tax_reduction_effect_krw,
                     unit="KRW",
+                    role=VisualizationDatumRole.VALUE,
+                ),
+                VisualizationDatum(
+                    label="적용 세액공제율 (지방소득세 포함)",
+                    value=rate.local_inclusive_display_rate_percent,
+                    unit="%",
                     role=VisualizationDatumRole.VALUE,
                 ),
                 ],
