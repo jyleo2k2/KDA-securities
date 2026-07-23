@@ -264,6 +264,11 @@ describe("EducationalPortfolioReview", () => {
       rebalancing: {
         status: "calculated",
         drift_threshold_percent_points: "5.0000",
+        cadence: {
+          review_interval_months: 3,
+          drift_threshold_percent_points: "5.0000",
+          rationale: "성장·방어 자산을 함께 쓰므로 분기마다 균형이 흐트러졌는지 확인해요.",
+        },
         current_total_krw: "10000000",
         new_contribution_krw: "1000000",
         projected_total_krw: "11000000",
@@ -353,6 +358,8 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.getByText(/최대 과거 가격 동행성은 82.0%/)).toBeInTheDocument();
     expect(screen.getByText(/구성종목 중복률이 아니라/)).toBeInTheDocument();
     expect(screen.getByText(/매도 주문을 만들지 않으며/)).toBeInTheDocument();
+    expect(screen.getByText("3개월마다 비중 점검")).toBeInTheDocument();
+    expect(screen.getByText(/목표비중은 연령·수령 시점·투자성향·계좌 한도로/)).toBeInTheDocument();
     expect(screen.getByText("12.3%")).toBeInTheDocument();
     expect(screen.getByText("주식시장 급락")).toBeInTheDocument();
     expect(screen.getByText("-18.5%")).toBeInTheDocument();

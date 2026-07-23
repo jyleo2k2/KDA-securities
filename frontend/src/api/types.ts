@@ -875,6 +875,11 @@ export interface RebalancingSleeveGuidance {
 export interface RebalancingGuidance {
   status: string;
   drift_threshold_percent_points: string;
+  cadence: {
+    review_interval_months: number;
+    drift_threshold_percent_points: string;
+    rationale: string;
+  };
   current_total_krw: string;
   new_contribution_krw: string;
   projected_total_krw: string;

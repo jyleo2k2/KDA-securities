@@ -19,6 +19,7 @@ from backend.app.engine.educational_portfolio import (
     build_educational_portfolio,
     calculate_return_correlation,
     calculate_target_allocation,
+    rebalancing_cadence,
     select_educational_candidates,
 )
 from backend.app.engine.models import AccountType, AssetClass
@@ -299,6 +300,8 @@ def test_portfolio_uses_full_allocation_products_for_defensive_sleeves(
     assert "BOND02" not in codes
     assert result.rebalancing.contribution_first is True
     assert result.rebalancing.sell_instruction_produced is False
+    assert result.rebalancing.cadence.review_interval_months == 6
+    assert result.rebalancing.cadence.drift_threshold_percent_points == Decimal("5")
     assert all(
         "historical_return_not_used_for_ranking" in candidate.reasons
         for candidate in result.candidates
@@ -342,6 +345,26 @@ def test_portfolio_uses_full_allocation_products_for_defensive_sleeves(
         warning.startswith("current_holdings_planning_return_unavailable:")
         for warning in unavailable.warnings
     )
+
+
+@pytest.mark.parametrize(
+    ("profile", "months", "threshold"),
+    [
+        (RiskProfile.STABLE, 12, Decimal("5")),
+        (RiskProfile.STABLE_SEEKING, 6, Decimal("5")),
+        (RiskProfile.RISK_NEUTRAL, 3, Decimal("5")),
+        (RiskProfile.ACTIVE, 2, Decimal("3")),
+        (RiskProfile.AGGRESSIVE, 1, Decimal("3")),
+    ],
+)
+def test_rebalancing_cadence_follows_risk_profile(
+    profile: RiskProfile, months: int, threshold: Decimal
+) -> None:
+    cadence = rebalancing_cadence(profile)
+
+    assert cadence.review_interval_months == months
+    assert cadence.drift_threshold_percent_points == threshold
+    assert cadence.rationale
 
 
 def test_asset_class_allocation_includes_all_display_buckets_and_corrects_rounding(
