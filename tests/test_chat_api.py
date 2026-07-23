@@ -189,6 +189,11 @@ class VerifiedNarrator:
         )
 
 
+class MustNotRunNarrator:
+    def narrate(self, response, **kwargs):
+        raise AssertionError("out-of-scope responses must not reach the narrator")
+
+
 def test_authenticated_stream_saves_after_narration_update(monkeypatch) -> None:
     order: list[str] = []
     original_sse = chat_api._sse
@@ -220,6 +225,26 @@ def test_authenticated_stream_saves_after_narration_update(monkeypatch) -> None:
     assert response.status_code == 200
     assert order == ["narration_update", "save_exchange"]
     assert repository.saved[0]["response"].narration_mode == "claude_verified"
+
+
+def test_authenticated_stream_skips_narrator_for_unsupported_question() -> None:
+    repository = FakeChatRepository()
+    _override_authenticated_dependencies(repository)
+    app.dependency_overrides[get_chat_narrator] = MustNotRunNarrator
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={"message": "오늘 밥 뭐 먹었어?"},
+                headers=CHAT_HEADERS,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = final_sse_response(response.text)
+    assert payload["response"]["intent"] == "out_of_scope"
+    assert payload["response"]["narration_mode"] == "deterministic"
 
 
 def test_authenticated_chat_stream_persists_final_response() -> None:
