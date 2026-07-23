@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
@@ -119,6 +119,33 @@ class UnavailableLiveNewsSearch:
         raise LiveNewsUnavailable("sanitized test failure")
 
 
+class EventPortfolioUniverse:
+    as_of = date(2026, 7, 20)
+    products = [
+        {
+            "isu_code": "091160",
+            "isu_name": "KODEX 반도체",
+            "classification": {
+                "asset_class": "equity",
+                "strategy": "sector_or_theme",
+                "region": "south_korea",
+            },
+            "account_eligibility": {
+                "eligible": True,
+                "allocation_bucket": "general_risky_70_cap",
+            },
+            "cost": {"kis_total_expense_ratio_percent": "0.25"},
+            "implementation_metrics": {
+                "median_daily_trading_value_krw": "1000000000",
+                "median_net_assets_krw": "100000000000",
+                "median_abs_premium_discount_percent": "0.1",
+                "kis_current_tracking_error_percent": "0.2",
+            },
+            "observation_count": 756,
+        }
+    ]
+
+
 class StoredNewsRepository:
     def recent_market_news(
         self,
@@ -208,11 +235,17 @@ def _event_strategy_text(response: ChatResponse) -> str:
                 for row in block.rows
                 for cell in row
             ],
+            *[
+                item
+                for section in response.sections
+                for block in section.blocks
+                for item in block.items
+            ],
         ]
     )
 
 
-def test_event_strategy_question_does_not_fetch_live_news() -> None:
+def test_event_strategy_question_uses_live_news_for_tactical_guidance() -> None:
     response = _service().ask(
         ChatRequest(
             message="실시간 뉴스 기반 이벤트 드리븐 운용전략을 알려줘",
@@ -221,14 +254,20 @@ def test_event_strategy_question_does_not_fetch_live_news() -> None:
     )
 
     validated = ChatResponse.model_validate(response.model_dump())
-    assert validated.data_mode == "unavailable"
-    assert not validated.news_items
-    assert not any(
+    assert validated.data_mode == "live_news_event_strategy"
+    assert validated.news_items
+    assert any(
         source.evidence_id.startswith("live-news:") for source in validated.sources
+    )
+    assert "기존 코어에서 최대 5%p까지만 전술 슬리브로 옮기" in (
+        _event_strategy_text(validated)
+    )
+    assert "후보 ETF를 합산해도 전술 슬리브는 최대 15%" in (
+        _event_strategy_text(validated)
     )
 
 
-def test_event_strategy_question_without_stored_news_is_unavailable() -> None:
+def test_event_strategy_keeps_conservative_profile_outside_tactical_guidance() -> None:
     response = _service().ask(
         ChatRequest(
             message="실시간 뉴스 기반 이벤트 드리븐 운용전략을 알려줘",
@@ -236,8 +275,11 @@ def test_event_strategy_question_without_stored_news_is_unavailable() -> None:
         )
     )
 
-    assert response.data_mode == "unavailable"
-    assert not response.news_items
+    assert response.data_mode == "live_news_event_strategy"
+    assert response.news_items
+    assert "현재 설문 성향보다 공격적인 이벤트 전술은 제안하지 않아요" in (
+        _event_strategy_text(response)
+    )
 
 
 def test_event_strategy_question_uses_recent_stored_news() -> None:
@@ -256,10 +298,56 @@ def test_event_strategy_question_uses_recent_stored_news() -> None:
         )
     )
 
-    assert response.data_mode == "news_summary"
+    assert response.data_mode == "stored_news_event_strategy"
     assert response.news_items
     assert not any(
         source.evidence_id.startswith("live-news:") for source in response.sources
+    )
+    assert "기존 코어 비중은 유지하고 전술 슬리브만 후보 ETF로 교체" in (
+        _event_strategy_text(response)
+    )
+    assert "후보 ETF를 합산해도 전술 슬리브는 최대 10%" in (
+        _event_strategy_text(response)
+    )
+
+
+def test_event_strategy_lists_account_eligible_etf_candidates_with_limit() -> None:
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        live_news=FakeLiveNewsSearch(),
+        theme_repository=get_default_etf_theme_repository(),
+        portfolio_universe_loader=lambda account_type: (
+            EventPortfolioUniverse()
+            if account_type == AccountType.IRP
+            else (_ for _ in ()).throw(ValueError("unexpected account"))
+        ),
+    )
+
+    response = service.ask(
+        ChatRequest(
+            message="실시간 뉴스 기반 이벤트 드리븐 운용전략을 알려줘",
+            survey_profile=_survey(EducationalRiskProfile.ACTIVE),
+        )
+    )
+
+    guide = next(
+        section
+        for section in response.sections
+        if section.title == "이벤트 드리븐 포트폴리오 가이드"
+    )
+    candidates = next(
+        block for block in guide.blocks if block.kind.value == "table"
+    )
+    assert candidates.rows[0][:3] == [
+        "KODEX 반도체",
+        "반도체",
+        "후보 합산 최대 10%",
+    ]
+    assert "theme_matched_from_research_allowlist" in candidates.rows[0][3]
+    assert any(
+        source.evidence_id == "engine:event_tactical_candidates"
+        for source in response.sources
     )
 
 

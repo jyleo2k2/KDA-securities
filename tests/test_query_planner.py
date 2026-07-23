@@ -255,11 +255,12 @@ def test_named_mock_scenario_wins_over_tax_credit_word() -> None:
         "국내 실시간 뉴스 기반 운용전략을 보여줘",
     ),
 )
-def test_news_strategy_question_routes_to_stored_news(message: str) -> None:
+def test_news_strategy_question_routes_to_live_event_strategy(message: str) -> None:
     plan = plan_question(message)
 
     assert plan.intent == ChatIntent.NEWS
-    assert plan.requests_event_strategy is False
+    assert plan.requests_event_strategy is True
+    assert plan.requests_live_news is True
     assert plan.news_query is not None
 
 
