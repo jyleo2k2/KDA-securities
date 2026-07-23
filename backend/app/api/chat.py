@@ -492,24 +492,34 @@ async def chat_authenticated_stream(
                 )
             except _DATABASE_ERRORS:
                 context = None
-        try:
-            nickname = await asyncio.to_thread(
+        # Context 이후 독립적인 사용자 정보를 병렬로 읽습니다.
+        nickname_result, survey_result = await asyncio.gather(
+            asyncio.to_thread(
                 _load_authenticated_nickname,
                 context_repository,
                 owner_id,
                 context,
-            )
-        except _DATABASE_ERRORS:
-            nickname = None
-        try:
-            saved_survey_profile = await asyncio.to_thread(
+            ),
+            asyncio.to_thread(
                 _load_saved_survey_profile,
                 investment_profile_repository,
                 owner_id,
                 context,
-            )
-        except _DATABASE_ERRORS:
+            ),
+            return_exceptions=True,
+        )
+        if isinstance(nickname_result, _DATABASE_ERRORS):
+            nickname = None
+        elif isinstance(nickname_result, BaseException):
+            raise nickname_result
+        else:
+            nickname = nickname_result
+        if isinstance(survey_result, _DATABASE_ERRORS):
             saved_survey_profile = None
+        elif isinstance(survey_result, BaseException):
+            raise survey_result
+        else:
+            saved_survey_profile = survey_result
         chat_request = _authenticated_request(
             request_with_context,
             context,
