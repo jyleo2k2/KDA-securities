@@ -1,36 +1,72 @@
-import type { JSX, MouseEvent } from "react";
+import type { JSX } from "react";
+
+import { STRATEGIES, type StrategyExploreItem } from "./strategyExplore/strategies";
+import "./StrategyDetailScreen.css";
 
 interface StrategyDetailScreenProps {
   onBack: () => void;
 }
 
-const DETAIL_HTML = `
-<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #E8E8DD; font-family: 'Cafe24SsurroundAir', 'Noto Sans KR', sans-serif; padding: 40px;">
-  <div style="width: 390px; height: 844px; background: #ffffff; border-radius: 44px; box-shadow: 0 24px 70px rgba(0,0,0,0.16); display: flex; flex-direction: column; overflow: hidden;">
-    <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 26px 0; font-size: 15px; font-weight: 700; color: #111;"><span>9:41</span><div style="display: flex; align-items: center; gap: 6px;"><span style="letter-spacing: 1px;">▪▪▪</span><span>📶</span><span style="width: 22px; height: 11px; border: 1.5px solid #111; border-radius: 3px; display: inline-block; position: relative;"><span style="position: absolute; inset: 1.5px; right: 5px; background: #18A860; border-radius: 1px;"></span></span></div></div>
-    <div style="display: flex; align-items: center; gap: 12px; padding: 16px 22px 0;"><button type="button" data-strategy-detail-back aria-label="뒤로 가기" style="font-size: 24px; color: #111; cursor: pointer; line-height: 1; border: 0; padding: 0; background: none;">‹</button><div style="display: flex; align-items: center; gap: 8px;"><span style="width: 22px; height: 22px; border-radius: 50%; background: #18A860; display: inline-block;"></span><span style="font-size: 18px; font-weight: 900; color: #111;">연금 <span style="color: #18A860;">도우미</span></span></div></div>
-    <div style="flex: 1; overflow-y: auto; padding: 20px 22px 26px; display: flex; flex-direction: column; gap: 18px;">
-      <div style="border: 1.5px solid #ECEEE9; border-radius: 22px; padding: 18px; display: flex; gap: 16px; align-items: flex-start; box-shadow: 0 6px 18px rgba(0,0,0,0.04); width: 339px; height: 147px"><div style="width: 88px; height: 88px; border-radius: 20px; background: #FFF3D1; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; border: 2px solid #FFE49A;"><img src="/strategy-detail-html/assets/char-theme.png" alt="전략 캐릭터" style="width: 82px; height: auto; object-fit: contain;"></div><div style="flex: 1; min-width: 0;"><div style="display: inline-block; background: #E5F6ED; color: #18A860; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 8px;">성장형</div><h2 style="font-size: 19px; font-weight: 900; color: #111; margin: 8px 0 4px; letter-spacing: -0.4px;">테마 <span style="color: #18A860;">전략</span></h2><p style="font-size: 13px; font-weight: 500; color: #8A9691; margin: 0; line-height: 1.5;">유망 산업·테마에 비중을 실어 성장을 추구하는 전략</p></div></div>
-      <div style="border: 1.5px solid #ECEEE9; border-radius: 22px; padding: 20px 18px; box-shadow: 0 6px 18px rgba(0,0,0,0.04); display: flex; flex-direction: column; gap: 22px;">
-        <div><h3 style="font-size: 15px; font-weight: 900; color: #111; margin: 0 0 16px;">자산 배분 <span style="color: #F0C000;">구성 비중</span></h3><div style="display: flex; align-items: center; gap: 20px;"><div style="width: 108px; height: 108px; border-radius: 50%; flex-shrink: 0; background: conic-gradient(#18A860 0 55%, #F0C000 55% 80%, #48C078 80% 92%, #D6DAD3 92% 100%); display: flex; align-items: center; justify-content: center;"><div style="width: 62px; height: 62px; border-radius: 50%; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;"><span style="font-size: 10px; color: #A0AAA4; font-weight: 700;">총자산</span><span style="font-size: 13px; color: #111; font-weight: 900;">100%</span></div></div><div style="flex: 1; display: flex; flex-direction: column; gap: 11px;"><div style="display: flex; align-items: center; gap: 9px;"><span style="width: 11px; height: 11px; border-radius: 3px; background: #18A860;"></span><span style="font-size: 13px; color: #4A544F; font-weight: 500; flex: 1;">국내 주식형</span><span style="font-size: 13px; color: #111; font-weight: 900;">55%</span></div><div style="display: flex; align-items: center; gap: 9px;"><span style="width: 11px; height: 11px; border-radius: 3px; background: #F0C000;"></span><span style="font-size: 13px; color: #4A544F; font-weight: 500; flex: 1;">해외 주식형</span><span style="font-size: 13px; color: #111; font-weight: 900;">25%</span></div><div style="display: flex; align-items: center; gap: 9px;"><span style="width: 11px; height: 11px; border-radius: 3px; background: #48C078;"></span><span style="font-size: 13px; color: #4A544F; font-weight: 500; flex: 1;">채권형</span><span style="font-size: 13px; color: #111; font-weight: 900;">12%</span></div><div style="display: flex; align-items: center; gap: 9px;"><span style="width: 11px; height: 11px; border-radius: 3px; background: #D6DAD3;"></span><span style="font-size: 13px; color: #4A544F; font-weight: 500; flex: 1;">현금성</span><span style="font-size: 13px; color: #111; font-weight: 900;">8%</span></div></div></div></div>
-        <div style="height: 1px; background: #F0F2ED;"></div>
-        <div><h3 style="font-size: 15px; font-weight: 900; color: #111; margin: 0 0 4px;">테마 <span style="color: #18A860;">전략 설명</span></h3><p style="font-size: 13px; font-weight: 500; color: #8A9691; margin: 0 0 18px; line-height: 1.6;">AI·반도체·바이오·인프라 등 구조적으로 성장하는 산업 ETF에 비중을 실어, 시장 평균을 넘어서는 성장을 추구하는 전략이에요.</p>
-          <div style="background: #F6F8F5; border-radius: 14px; padding: 15px 16px; margin-bottom: 12px;"><p style="font-size: 13px; font-weight: 900; color: #18A860; margin: 0 0 6px;">어떻게 운용되나요?</p><p style="font-size: 13px; font-weight: 500; color: #4A544F; margin: 0; line-height: 1.6;">성장성이 검증된 3~5개 핵심 테마를 선정하고, 각 테마의 대표 ETF를 편입해요. 분기마다 테마별 이익 전망과 밸류에이션을 점검해 비중을 리밸런싱합니다.</p></div>
-          <div style="background: #F6F8F5; border-radius: 14px; padding: 15px 16px; margin-bottom: 12px;"><p style="font-size: 13px; font-weight: 900; color: #18A860; margin: 0 0 10px;">투자 비중 구성</p><div style="display: flex; flex-direction: column; gap: 10px;"><div><div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span style="font-size: 12px; font-weight: 700; color: #4A544F;">AI · 반도체</span><span style="font-size: 12px; font-weight: 900; color: #111;">35%</span></div><div style="height: 7px; border-radius: 4px; background: #E3E7DF;"><div style="width: 35%; height: 100%; border-radius: 4px; background: #18A860;"></div></div></div><div><div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span style="font-size: 12px; font-weight: 700; color: #4A544F;">바이오 · 헬스케어</span><span style="font-size: 12px; font-weight: 900; color: #111;">25%</span></div><div style="height: 7px; border-radius: 4px; background: #E3E7DF;"><div style="width: 25%; height: 100%; border-radius: 4px; background: #48C078;"></div></div></div><div><div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span style="font-size: 12px; font-weight: 700; color: #4A544F;">친환경 · 인프라</span><span style="font-size: 12px; font-weight: 900; color: #111;">20%</span></div><div style="height: 7px; border-radius: 4px; background: #E3E7DF;"><div style="width: 20%; height: 100%; border-radius: 4px; background: #F0C000;"></div></div></div><div><div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span style="font-size: 12px; font-weight: 700; color: #4A544F;">채권 · 현금성(완충)</span><span style="font-size: 12px; font-weight: 900; color: #111;">20%</span></div><div style="height: 7px; border-radius: 4px; background: #E3E7DF;"><div style="width: 20%; height: 100%; border-radius: 4px; background: #D6DAD3;"></div></div></div></div></div>
-          <div style="background: #F6F8F5; border-radius: 14px; padding: 15px 16px;"><p style="font-size: 13px; font-weight: 900; color: #18A860; margin: 0 0 4px;">거시경제 흐름에 따른 운용&nbsp;</p><p style="font-size: 12px; font-weight: 500; color: #8A9691; margin: 0 0 14px; line-height: 1.55;">금리·물가·경기 국면 등 경제지표를 반영해 테마 비중을 어떻게 조정해 왔는지 보여줘요.</p><div style="display: flex; flex-direction: column;"><div style="display: flex; gap: 12px;"><div style="display: flex; flex-direction: column; align-items: center; flex-shrink: 0;"><span style="width: 12px; height: 12px; border-radius: 50%; background: #18A860; margin-top: 3px;"></span><span style="width: 2px; flex: 1; background: #D6DAD3;"></span></div><div style="padding-bottom: 16px;"><p style="font-size: 12px; font-weight: 900; color: #111; margin: 0;">2023 · 고금리 정점</p><p style="font-size: 12px; font-weight: 500; color: #8A9691; margin: 3px 0 0; line-height: 1.55;">긴축 부담으로 성장주 변동성 확대 → 채권·현금 완충 비중을 30%까지 늘려 방어.</p></div></div><div style="display: flex; gap: 12px;"><div style="display: flex; flex-direction: column; align-items: center; flex-shrink: 0;"><span style="width: 12px; height: 12px; border-radius: 50%; background: #18A860; margin-top: 3px;"></span><span style="width: 2px; flex: 1; background: #D6DAD3;"></span></div><div style="padding-bottom: 16px;"><p style="font-size: 12px; font-weight: 900; color: #111; margin: 0;">2024 · 금리 인하 기대</p><p style="font-size: 12px; font-weight: 500; color: #8A9691; margin: 3px 0 0; line-height: 1.55;">물가 둔화·인하 신호로 위험선호 회복 → AI·반도체 테마 비중을 35%로 확대.</p></div></div><div style="display: flex; gap: 12px;"><div style="display: flex; flex-direction: column; align-items: center; flex-shrink: 0;"><span style="width: 12px; height: 12px; border-radius: 50%; background: #F0C000; margin-top: 3px;"></span></div><div><p style="font-size: 12px; font-weight: 900; color: #111; margin: 0;">2025~ · 완화적 국면</p><p style="font-size: 12px; font-weight: 500; color: #8A9691; margin: 3px 0 0; line-height: 1.55;">경기 연착륙·유동성 개선 → 바이오·인프라로 테마를 분산해 성장 폭을 넓히는 중.</p></div></div></div></div>
-        </div>
-      </div>
-      <div style="border: 1.5px solid #ECEEE9; border-radius: 22px; padding: 20px 18px; box-shadow: 0 6px 18px rgba(0,0,0,0.04);"><h3 style="font-size: 15px; font-weight: 900; color: #111; margin: 0 0 14px;">자주 묻는 <span style="color: #18A860;">질문</span></h3><div style="display: flex; flex-direction: column; gap: 10px;"><div style="background: #F6F8F5; border-radius: 14px; padding: 14px 15px;"><div style="display: flex; gap: 8px; align-items: flex-start;"><span style="color: #18A860; font-weight: 900; font-size: 13px; flex-shrink: 0;">Q1.</span><p style="font-size: 13px; font-weight: 700; color: #333; margin: 0; line-height: 1.5;">전략에 따른 자산배분 구조는 어떻게 형성되는가?</p></div></div><div style="background: #F6F8F5; border-radius: 14px; padding: 14px 15px;"><div style="display: flex; gap: 8px; align-items: flex-start;"><span style="color: #18A860; font-weight: 900; font-size: 13px; flex-shrink: 0;">Q2.</span><p style="font-size: 13px; font-weight: 700; color: #333; margin: 0; line-height: 1.5;">이 전략은 어떤 투자 성향의 사람과 맞을까?</p></div></div></div></div>
-      <div style="border-radius: 22px; padding: 22px 20px; background: linear-gradient(160deg, #18A860 0%, #0F7A47 100%); color: #fff; overflow: hidden; position: relative; flex-shrink: 0;"><span style="display: inline-block; background: #FFD860; color: #164A32; font-size: 11px; font-weight: 900; padding: 4px 10px; border-radius: 999px;">EVENT · 재미로 보는 연금</span><h3 style="font-size: 19px; font-weight: 900; margin: 12px 0 4px; letter-spacing: -0.5px; line-height: 1.35;">연금 받을 때<br>매달 이만큼 먹을 수 있어요!</h3><p style="font-size: 13px; font-weight: 500; color: #CFEBDB; margin: 0 0 18px;">예상 월 수령액 <b style="color: #FFD860; font-size: 15px;">850,000원</b> 기준</p><div style="display: flex; flex-direction: column; gap: 12px;"><div style="background: rgba(255,255,255,0.12); border-radius: 16px; padding: 16px 18px; display: flex; align-items: center; gap: 14px;"><span style="font-size: 34px; line-height: 1;">🍲</span><div style="flex: 1;"><p style="font-size: 13px; font-weight: 500; color: #CFEBDB; margin: 0;">국밥 한 그릇 1만원이면</p><p style="font-size: 22px; font-weight: 900; margin: 2px 0 0;">매달 <span style="color: #FFD860;">85</span>그릇</p></div></div><div style="background: rgba(255,255,255,0.12); border-radius: 16px; padding: 16px 18px; display: flex; align-items: center; gap: 14px;"><span style="font-size: 34px; line-height: 1;">🍗</span><div style="flex: 1;"><p style="font-size: 13px; font-weight: 500; color: #CFEBDB; margin: 0;">치킨 한 마리 2만5천원이면</p><p style="font-size: 22px; font-weight: 900; margin: 2px 0 0;">매달 <span style="color: #FFD860;">34</span>마리</p></div></div></div><p style="font-size: 11px; font-weight: 500; color: #A7D3BC; margin: 16px 0 0; line-height: 1.5;">※ 재미로 보는 환산 예시예요. 실제 수령액은 적립·운용 결과에 따라 달라져요.</p></div>
-    </div>
-    <div style="padding: 12px 22px 24px; border-top: 1px solid #F0F2ED;"></div>
-  </div>
-</div>`;
+function selectedStrategy(): StrategyExploreItem {
+  const hash = typeof window !== "undefined" ? window.location.hash : "";
+  const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "";
+  const id = new URLSearchParams(query).get("strategy");
+  return STRATEGIES.find((item) => item.id === id) ?? STRATEGIES[0];
+}
 
 export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX.Element {
-  function handleClick(event: MouseEvent<HTMLElement>): void {
-    if (event.target instanceof Element && event.target.closest("[data-strategy-detail-back]")) onBack();
-  }
+  const strategy = selectedStrategy();
 
-  return <main onClick={handleClick} dangerouslySetInnerHTML={{ __html: DETAIL_HTML }} />;
+  return (
+    <main className="sd-stage" style={{ "--sd-accent": strategy.accent } as React.CSSProperties}>
+      <section className="sd-phone" aria-label={`${strategy.name} 상세`}>
+        <div className="sd-statusbar">
+          <span>9:41</span>
+          <span aria-hidden="true">● ● ▰</span>
+        </div>
+
+        <header className="sd-header">
+          <button type="button" className="sd-back" data-strategy-detail-back onClick={onBack} aria-label="뒤로 가기">‹</button>
+          <span className="sd-brand">연금 <em>도우미</em></span>
+        </header>
+
+        <div className="sd-scroll">
+          <div className="sd-hero">
+            <div className="sd-hero-avatar">
+              <img src={strategy.img} alt={strategy.name} />
+            </div>
+            <div className="sd-hero-text">
+              <span className="sd-badge">{strategy.directness}</span>
+              <h1 className="sd-title">{strategy.name}</h1>
+              <p className="sd-desc">{strategy.desc}</p>
+            </div>
+          </div>
+
+          <section className="sd-card">
+            <h2 className="sd-card-title">어떻게 <span>운용되나요?</span></h2>
+            <p className="sd-card-body">{strategy.howItWorks}</p>
+          </section>
+
+          <section className="sd-card">
+            <h2 className="sd-card-title">연금계좌에 <span>이렇게 담아요</span></h2>
+            <p className="sd-card-body">{strategy.accountApplication}</p>
+            <dl className="sd-facts">
+              <div className="sd-fact">
+                <dt>포트폴리오 버킷</dt>
+                <dd>{strategy.bucket}</dd>
+              </div>
+              <div className="sd-fact">
+                <dt>구현 난이도</dt>
+                <dd>{strategy.directness}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section className="sd-card sd-note">
+            <p>전략 설명은 교육용 안내예요. 미래 수익률을 예측하거나 특정 상품을 추천하지 않으며, 실제 운용·주문은 이용자가 직접 결정해요.</p>
+          </section>
+        </div>
+      </section>
+    </main>
+  );
 }
