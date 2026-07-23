@@ -1,7 +1,51 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
-from backend.app.etf_cost_return_report import _period_result
+from backend.app.etf_cost_return_report import (
+    _effective_cost_fields,
+    _period_result,
+)
+
+
+def test_effective_cost_prefers_kofia_ter_and_keeps_manager_identity() -> None:
+    result = _effective_cost_fields(
+        kofia_cost={
+            "asset_manager": "테스트자산운용",
+            "ter_percent": "0.21",
+        },
+        kis_product={
+            "asset_manager": "KIS 표시 운용사",
+            "total_expense_ratio_percent": "0.15",
+        },
+        kofia_cost_as_of="2026-07-22",
+        kis_cost_as_of="2026-06-30",
+    )
+
+    assert result == {
+        "asset_manager": "테스트자산운용",
+        "asset_manager_source": "kofia_fund_fee_cost_comparison",
+        "effective_total_cost_percent": "0.21",
+        "effective_total_cost_status": "kofia_reported_ter",
+        "effective_total_cost_as_of": "2026-07-22",
+    }
+
+
+def test_effective_cost_uses_explicit_kis_fallback_when_kofia_is_missing() -> None:
+    result = _effective_cost_fields(
+        kofia_cost=None,
+        kis_product={
+            "asset_manager": "테스트자산운용",
+            "total_expense_ratio_percent": "0.15",
+        },
+        kofia_cost_as_of="2026-07-22",
+        kis_cost_as_of="2026-06-30",
+    )
+
+    assert result["effective_total_cost_percent"] == "0.15"
+    assert result["effective_total_cost_status"] == (
+        "kis_stated_total_expense_ratio"
+    )
+    assert result["effective_total_cost_as_of"] == "2026-06-30"
 
 
 def _observation(day: date, close: str) -> dict[str, object]:

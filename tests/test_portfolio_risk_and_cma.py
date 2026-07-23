@@ -110,7 +110,15 @@ def test_portfolio_planning_return_uses_cma_minus_verified_cost() -> None:
                 "classification_confidence": "high",
                 "currency_hedge": "hedged",
             },
-            "cost": {"effective_total_cost_percent": "0.20"},
+            "cost": {
+                "asset_manager": "주식자산운용",
+                "effective_total_cost_percent": "0.20",
+                "effective_total_cost_status": "kofia_reported_ter",
+                "effective_total_cost_as_of": "2026-07-22",
+                "kofia_reported_stated_fee_total_percent": "0.15",
+                "kofia_reported_other_cost_percent": "0.05",
+                "kofia_reported_brokerage_commission_percent": "0.03",
+            },
         },
         "CASH": {
             "classification": {
@@ -120,7 +128,12 @@ def test_portfolio_planning_return_uses_cma_minus_verified_cost() -> None:
                 "classification_confidence": "high",
                 "currency_hedge": "not_applicable",
             },
-            "cost": {"effective_total_cost_percent": "0.10"},
+            "cost": {
+                "asset_manager": "현금자산운용",
+                "effective_total_cost_percent": "0.10",
+                "effective_total_cost_status": "kofia_reported_ter",
+                "effective_total_cost_as_of": "2026-07-22",
+            },
         },
     }
     result = calculate_portfolio_planning_return(
@@ -133,10 +146,18 @@ def test_portfolio_planning_return_uses_cma_minus_verified_cost() -> None:
 
     assert result.gross_planning_return_percent == Decimal("5.2600")
     assert result.net_planning_return_percent == Decimal("5.1000")
+    assert result.weighted_annual_cost_drag_percent == Decimal("0.1600")
     assert result.conservative_planning_return_percent == Decimal("5.1000")
     assert result.base_planning_return_percent == Decimal("5.1000")
     assert result.historical_performance_used is False
     assert result.is_forecast is False
+    equity_cost = result.components[0].cost_evidence
+    assert equity_cost.asset_manager == "주식자산운용"
+    assert equity_cost.stated_fee_total_percent == Decimal("0.15")
+    assert equity_cost.other_cost_percent == Decimal("0.05")
+    assert equity_cost.effective_total_cost_percent == Decimal("0.2000")
+    assert equity_cost.brokerage_commission_percent == Decimal("0.03")
+    assert equity_cost.brokerage_commission_included is False
     assert "portfolio_horizon_outside_cma_source_horizon" in result.warnings
     assert "central_value_is_cma_minus_verified_annual_cost_only" in result.warnings
 
