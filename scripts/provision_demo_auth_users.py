@@ -357,7 +357,7 @@ def _sync_demo_financial_context(
                 %s::smallint,
                 %s
             from public.mock_scenarios as scenario
-            join public.benchmark_mock_users as benchmark
+            join benchmark.benchmark_mock_users as benchmark
               on benchmark.user_id = %s
             where scenario.code = %s
             on conflict (auth_user_id) do update set

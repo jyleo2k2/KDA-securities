@@ -112,7 +112,7 @@ set benchmark_user_id = link.benchmark_user_id,
     irp_contribution_krw = benchmark.irp_contribution_krw::numeric,
     updated_at = now()
 from user_link as link
-join public.benchmark_mock_users as benchmark on benchmark.user_id = link.benchmark_user_id
+join benchmark.benchmark_mock_users as benchmark on benchmark.user_id = link.benchmark_user_id
 where context.auth_user_id = link.auth_user_id;
 
 with scenario_seed (scenario_code, age_band, risk_profile, investment_horizon_years) as (

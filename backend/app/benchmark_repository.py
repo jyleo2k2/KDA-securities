@@ -59,9 +59,9 @@ class BenchmarkRepository:
             cursor.execute(
                 """
                 select
-                    (select count(*) from public.benchmark_mock_users),
-                    (select count(*) from public.benchmark_mock_accounts),
-                    (select count(*) from public.benchmark_mock_holdings)
+                    (select count(*) from benchmark.benchmark_mock_users),
+                    (select count(*) from benchmark.benchmark_mock_accounts),
+                    (select count(*) from benchmark.benchmark_mock_holdings)
                 """
             )
             user_count, account_count, holding_count = cursor.fetchone()
@@ -69,7 +69,7 @@ class BenchmarkRepository:
             cursor.execute(
                 """
                 select age_group, count(*)
-                from public.benchmark_mock_users
+                from benchmark.benchmark_mock_users
                 group by age_group
                 order by case age_group
                     when '20s' then 1
@@ -87,7 +87,7 @@ class BenchmarkRepository:
             cursor.execute(
                 """
                 select risk_profile, count(*)
-                from public.benchmark_mock_users
+                from benchmark.benchmark_mock_users
                 group by risk_profile
                 order by case risk_profile
                     when 'STABLE_SEEKING' then 1
@@ -110,7 +110,7 @@ class BenchmarkRepository:
                     avg(nullif(balance_krw, '')::numeric),
                     avg(nullif(monthly_contribution_krw, '')::numeric),
                     avg(nullif(risky_asset_ratio, '')::numeric) * 100
-                from public.benchmark_mock_accounts
+                from benchmark.benchmark_mock_accounts
                 group by account_type
                 order by case account_type
                     when 'DC' then 1

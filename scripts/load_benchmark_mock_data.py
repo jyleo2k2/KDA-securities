@@ -36,7 +36,7 @@ def _sync_demo_links(cursor: psycopg.Cursor) -> None:
             pension_savings_contribution_krw = benchmark.pension_savings_contribution_krw::numeric,
             irp_contribution_krw = benchmark.irp_contribution_krw::numeric,
             updated_at = now()
-        from public.benchmark_mock_users as benchmark
+        from benchmark.benchmark_mock_users as benchmark
         where benchmark.user_id = %s
           and context.auth_user_id = %s::uuid
         """,
@@ -53,13 +53,13 @@ def main() -> None:
             "update public.demo_user_financial_context set benchmark_user_id = null"
         )
         for table, _ in reversed(LOADS):
-            cursor.execute(f"truncate table public.{table}")
+            cursor.execute(f"truncate table benchmark.{table}")
         for table, path in LOADS:
-            copy_sql = f"copy public.{table} from stdin with (format csv, header true)"
+            copy_sql = f"copy benchmark.{table} from stdin with (format csv, header true)"
             with cursor.copy(copy_sql) as copy, path.open("rb") as source:
                 while chunk := source.read(1024 * 1024):
                     copy.write(chunk)
-            cursor.execute(f"select count(*) from public.{table}")
+            cursor.execute(f"select count(*) from benchmark.{table}")
             print(f"{table}={cursor.fetchone()[0]}")
         _sync_demo_links(cursor)
 
