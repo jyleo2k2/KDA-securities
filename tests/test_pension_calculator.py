@@ -303,7 +303,21 @@ def test_portfolio_cma_api_uses_current_etf_costs(monkeypatch) -> None:
                 "region": "united_states",
                 "currency_hedge": "hedged",
             },
-            "cost": {"effective_total_cost_percent": "0.20"},
+            "cost": {
+                "asset_manager": "주식자산운용",
+                "effective_total_cost_percent": "0.20",
+                "effective_total_cost_status": "kofia_reported_ter",
+                "effective_total_cost_as_of": "2026-07-22",
+                "kofia_reported_stated_fee_total_percent": "0.15",
+                "kofia_reported_other_cost_percent": "0.05",
+                "kofia_reported_brokerage_commission_percent": "0.03",
+                "tracking_cost_percent": None,
+                "tracking_cost_status": "not_quantified_overlap_not_verified",
+            },
+            "implementation_metrics": {
+                "tracking_error_diagnostic_percent": "0.42",
+                "tracking_error_diagnostic_source": "kis_current_tracking_error",
+            },
             "account_eligibility": {},
         },
         {
@@ -341,6 +355,22 @@ def test_portfolio_cma_api_uses_current_etf_costs(monkeypatch) -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["planning_return"]["net_planning_return_percent"] == "5.1000"
+    cost_evidence = payload["planning_return"]["components"][0]["cost_evidence"]
+    assert cost_evidence == {
+        "asset_manager": "주식자산운용",
+        "source_status": "kofia_reported_ter",
+        "source_as_of": "2026-07-22",
+        "stated_fee_total_percent": "0.15",
+        "other_cost_percent": "0.05",
+        "effective_total_cost_percent": "0.2000",
+        "brokerage_commission_percent": "0.03",
+        "brokerage_commission_included": False,
+        "tracking_error_diagnostic_percent": "0.42",
+        "tracking_error_diagnostic_source": "kis_current_tracking_error",
+        "tracking_cost_percent": None,
+        "tracking_cost_status": "not_quantified_overlap_not_verified",
+        "tracking_cost_included": False,
+    }
     assert payload["calculator"]["assumption"]["version"] == "2026-07-22.1"
     assert payload["calculator"]["assumption"]["notice"].endswith(
         "미래 수익률 예측이 아닙니다."

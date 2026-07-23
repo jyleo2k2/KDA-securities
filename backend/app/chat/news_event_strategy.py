@@ -7,8 +7,8 @@ from datetime import date
 
 from ..engine.etf_theme import EtfThemeCatalog, classify_etf_themes
 
-NEWS_EVENT_POLICY_VERSION = "news-event-strategy-v1"
-NEWS_EVENT_POLICY_AS_OF = date(2026, 7, 20)
+NEWS_EVENT_POLICY_VERSION = "news-event-strategy-v3"
+NEWS_EVENT_POLICY_AS_OF = date(2026, 7, 23)
 
 _EVENT_LABELS = {
     "indices": "시장 변동성",

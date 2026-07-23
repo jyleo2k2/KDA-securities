@@ -208,11 +208,17 @@ def _event_strategy_text(response: ChatResponse) -> str:
                 for row in block.rows
                 for cell in row
             ],
+            *[
+                item
+                for section in response.sections
+                for block in section.blocks
+                for item in block.items
+            ],
         ]
     )
 
 
-def test_event_strategy_question_does_not_fetch_live_news() -> None:
+def test_event_strategy_question_uses_live_news_for_tactical_guidance() -> None:
     response = _service().ask(
         ChatRequest(
             message="실시간 뉴스 기반 이벤트 드리븐 운용전략을 알려줘",
@@ -221,14 +227,19 @@ def test_event_strategy_question_does_not_fetch_live_news() -> None:
     )
 
     validated = ChatResponse.model_validate(response.model_dump())
-    assert validated.data_mode == "unavailable"
-    assert not validated.news_items
-    assert not any(
+    assert validated.data_mode == "live_news_event_strategy"
+    assert validated.news_items
+    assert any(
         source.evidence_id.startswith("live-news:") for source in validated.sources
     )
+    strategy_text = _event_strategy_text(validated)
+    assert "기존 장기 코어 배분과 규칙 엔진 목표비중을 먼저 유지" in strategy_text
+    assert "5%p" not in strategy_text
+    assert "10%" not in strategy_text
+    assert "15%" not in strategy_text
 
 
-def test_event_strategy_question_without_stored_news_is_unavailable() -> None:
+def test_event_strategy_keeps_conservative_profile_outside_tactical_guidance() -> None:
     response = _service().ask(
         ChatRequest(
             message="실시간 뉴스 기반 이벤트 드리븐 운용전략을 알려줘",
@@ -236,8 +247,11 @@ def test_event_strategy_question_without_stored_news_is_unavailable() -> None:
         )
     )
 
-    assert response.data_mode == "unavailable"
-    assert not response.news_items
+    assert response.data_mode == "live_news_event_strategy"
+    assert response.news_items
+    assert "현재 설문 성향보다 공격적인 이벤트 전술은 제안하지 않아요" in (
+        _event_strategy_text(response)
+    )
 
 
 def test_event_strategy_question_uses_recent_stored_news() -> None:
@@ -256,10 +270,48 @@ def test_event_strategy_question_uses_recent_stored_news() -> None:
         )
     )
 
-    assert response.data_mode == "news_summary"
+    assert response.data_mode == "stored_news_event_strategy"
     assert response.news_items
     assert not any(
         source.evidence_id.startswith("live-news:") for source in response.sources
+    )
+    strategy_text = _event_strategy_text(response)
+    assert "기존 장기 코어 배분과 규칙 엔진 목표비중을 먼저 유지" in strategy_text
+    assert "5%p" not in strategy_text
+    assert "10%" not in strategy_text
+    assert "15%" not in strategy_text
+
+
+def test_event_strategy_does_not_personalize_etf_candidates_from_news() -> None:
+    universe_calls: list[AccountType] = []
+
+    def load_universe(account_type: AccountType):
+        universe_calls.append(account_type)
+        raise AssertionError("news event guidance must not load a product universe")
+
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        live_news=FakeLiveNewsSearch(),
+        theme_repository=get_default_etf_theme_repository(),
+        portfolio_universe_loader=load_universe,
+    )
+
+    response = service.ask(
+        ChatRequest(
+            message="실시간 뉴스 기반 이벤트 드리븐 운용전략을 알려줘",
+            survey_profile=_survey(EducationalRiskProfile.ACTIVE),
+        )
+    )
+
+    assert universe_calls == []
+    assert not any(
+        section.title == "이벤트 드리븐 포트폴리오 가이드"
+        for section in response.sections
+    )
+    assert not any(
+        source.evidence_id == "engine:event_tactical_candidates"
+        for source in response.sources
     )
 
 

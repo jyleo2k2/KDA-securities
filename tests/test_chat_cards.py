@@ -24,7 +24,7 @@ def test_catalog_cards_route_to_their_declared_intent() -> None:
         assert plan.blocked_reason is None, card.card_id
 
 
-def test_catalog_contains_only_the_five_product_questions_in_order() -> None:
+def test_catalog_contains_only_the_three_home_questions_in_order() -> None:
     assert [
         (
             card.card_id,
@@ -51,22 +51,6 @@ def test_catalog_contains_only_the_five_product_questions_in_order() -> None:
             ChatIntent.PENSION_TAX,
             [],
             20,
-        ),
-        (
-            "withdrawal_tax",
-            "중도해지 세금",
-            "연금계좌를 중도에 해지하면 어떻게 돼?",
-            ChatIntent.ACCOUNT_RULE,
-            [],
-            30,
-        ),
-        (
-            "account_diff",
-            "연금계좌별 차이",
-            "DC형, IRP, 연금저축은 뭐가 달라?",
-            ChatIntent.ACCOUNT_RULE,
-            [],
-            40,
         ),
         (
             "edu_portfolio",
@@ -122,7 +106,7 @@ def test_cards_endpoint_returns_static_catalog() -> None:
     ]
     assert all(card["preview"] is None for card in payload["cards"])
     assert all(isinstance(card["conditions"], list) for card in payload["cards"])
-    assert len(payload["cards"]) == 5
+    assert len(payload["cards"]) == 3
 
 
 def test_follow_up_cards_are_bounded_and_route_safely() -> None:

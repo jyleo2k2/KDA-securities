@@ -22,7 +22,7 @@ from .planning_return import (
 from .strategy_presentation import get_strategy_presentation
 
 ENGINE_NAME = "educational_pension_portfolio"
-ENGINE_VERSION = "2026-07-23.1"
+ENGINE_VERSION = "2026-07-23.2"
 POLICY_VERSION = "2026-07-22.2"
 PERCENT_QUANTUM = Decimal("0.0001")
 DRIFT_THRESHOLD_PERCENT = Decimal("5")
@@ -202,6 +202,11 @@ class PortfolioPlanningCostEvidence(BaseModel):
     effective_total_cost_percent: Decimal
     brokerage_commission_percent: Decimal | None
     brokerage_commission_included: bool
+    tracking_error_diagnostic_percent: Decimal | None
+    tracking_error_diagnostic_source: str | None
+    tracking_cost_percent: Decimal | None
+    tracking_cost_status: str
+    tracking_cost_included: bool
 
 
 class PortfolioPlanningComponent(BaseModel):
@@ -629,6 +634,7 @@ def calculate_portfolio_planning_return(
         classification = product.get("classification") or {}
         code, proxy, component_warnings = _cma_mapping(classification)
         cost_data = product.get("cost") or {}
+        implementation_metrics = product.get("implementation_metrics") or {}
         cost = _numeric(cost_data.get("effective_total_cost_percent"))
         cost_source_status = str(
             cost_data.get("effective_total_cost_status")
@@ -696,6 +702,24 @@ def calculate_portfolio_planning_return(
                         )
                     ),
                     brokerage_commission_included=False,
+                    tracking_error_diagnostic_percent=_numeric(
+                        implementation_metrics.get(
+                            "tracking_error_diagnostic_percent"
+                        )
+                    ),
+                    tracking_error_diagnostic_source=(
+                        implementation_metrics.get(
+                            "tracking_error_diagnostic_source"
+                        )
+                    ),
+                    tracking_cost_percent=_numeric(
+                        cost_data.get("tracking_cost_percent")
+                    ),
+                    tracking_cost_status=str(
+                        cost_data.get("tracking_cost_status")
+                        or "not_quantified_overlap_not_verified"
+                    ),
+                    tracking_cost_included=False,
                 ),
                 proxy_used=proxy,
                 warnings=component_warnings,

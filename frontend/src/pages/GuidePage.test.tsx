@@ -82,24 +82,6 @@ const RECOMMENDED_CHAT_CARDS: ChatCard[] = [
     preview: null,
   },
   {
-    card_id: "withdrawal_tax",
-    title: "중도해지 세금",
-    message: "연금계좌를 중도에 해지하면 어떻게 돼?",
-    intent: "account_rule",
-    conditions: [],
-    priority: 30,
-    preview: null,
-  },
-  {
-    card_id: "account_diff",
-    title: "연금계좌별 차이",
-    message: "DC형, IRP, 연금저축은 뭐가 달라?",
-    intent: "account_rule",
-    conditions: [],
-    priority: 40,
-    preview: null,
-  },
-  {
     card_id: "edu_portfolio",
     title: "맞춤형 포트폴리오",
     message: "내 상황에 맞는 연금저축전략을 알려줘.",
@@ -368,13 +350,14 @@ describe("GuidePage chat history deletion", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders the attached pension-helper conversation shell", async () => {
+  it("renders the attached Canvas-2 conversation shell", async () => {
     renderGuide();
 
-    expect(await screen.findByText("막막한 노후 준비,", { exact: false })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "새 대화 시작" })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("연금에 대해 무엇이든 물어보세요.")).toBeInTheDocument();
-    expect(screen.getAllByText(/실제 투자·가입 결정은 본인의 판단과 전문가 상담/)).toHaveLength(2);
+    expect(await screen.findByText("고객님 ! 막막한 노후 준비,", { exact: false })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "대화 기록 열기" })).toBeInTheDocument();
+    expect(screen.getByAltText("프로필")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("연금에 대해 무엇이든 물어보세요")).toBeInTheDocument();
+    expect(screen.getByText(/AI 답변은 투자 판단을 돕는 정보이며, 미래 수익을 보장하지 않습니다/)).toBeInTheDocument();
   });
 
   it("confirms deletion, disables controls, removes the row, and clears the active chat", async () => {
@@ -409,13 +392,26 @@ describe("GuidePage chat history deletion", () => {
   it("does not retry server readiness after an authentication failure", async () => {
     const setTimeoutSpy = vi.spyOn(window, "setTimeout");
     vi.mocked(getScenarios).mockRejectedValue(new ApiError(401, "Unauthorized"));
+    vi.mocked(getChatCards).mockResolvedValue({ cards: RECOMMENDED_CHAT_CARDS });
     renderGuide();
 
     expect(await screen.findByText("API 연결 필요")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("챗봇 추천 질문")).getAllByRole("button")).toHaveLength(3);
     expect(getScenarios).toHaveBeenCalledOnce();
     expect(setTimeoutSpy).not.toHaveBeenCalledWith(expect.any(Function), 3000);
     expect(setTimeoutSpy).not.toHaveBeenCalledWith(expect.any(Function), 6000);
     expect(setTimeoutSpy).not.toHaveBeenCalledWith(expect.any(Function), 12000);
+  });
+
+  it("shows a retry action when the recommendation catalog fails", async () => {
+    vi.mocked(getChatCards)
+      .mockRejectedValueOnce(new Error("catalog unavailable"))
+      .mockResolvedValueOnce({ cards: RECOMMENDED_CHAT_CARDS });
+    renderGuide();
+
+    expect(await screen.findByText("추천 질문을 불러오지 못했어요.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
+    expect(within(await screen.findByLabelText("챗봇 추천 질문")).getAllByRole("button")).toHaveLength(3);
   });
 
   it("does not load protected endpoints without a session", async () => {
@@ -814,20 +810,21 @@ describe("GuidePage chat history deletion", () => {
     });
   });
 
-  it("renders only the five requested recommendation cards without spark icons", async () => {
+  it("renders the three home recommendation cards without a carousel", async () => {
     vi.mocked(getChatCards).mockResolvedValue({ cards: RECOMMENDED_CHAT_CARDS });
     renderGuide();
 
-    const carousel = await screen.findByLabelText("챗봇 추천 질문");
-    const buttons = within(carousel).getAllByRole("button");
+    const recommendationGrid = await screen.findByLabelText("챗봇 추천 질문");
+    const buttons = within(recommendationGrid).getAllByRole("button");
 
-    expect(buttons).toHaveLength(5);
+    expect(buttons).toHaveLength(3);
     expect(buttons.map((button) => button.textContent)).toEqual(
       RECOMMENDED_CHAT_CARDS.map(
         (card) => `추천 질문${card.title}${card.message}`,
       ),
     );
-    expect(carousel.querySelector(".design-prompt-icon")).toBeNull();
+    expect(recommendationGrid).toHaveClass("chat-question-grid");
+    expect(recommendationGrid.querySelector(".design-prompt-icon")).toBeNull();
   });
 
   it.each(RECOMMENDED_CHAT_CARDS)(

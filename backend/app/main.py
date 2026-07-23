@@ -81,7 +81,10 @@ async def lifespan(app: FastAPI):
     if settings.database_url is not None:
         database_url = settings.database_url.get_secret_value().strip()
         if database_url:
-            pool = get_database_pool(database_url)
+            pool = get_database_pool(
+                database_url,
+                max_size=settings.database_pool_max_size,
+            )
             pool.open(wait=False)
     precompute_task = None
     if "PYTEST_CURRENT_TEST" not in os.environ:

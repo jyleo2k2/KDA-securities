@@ -36,6 +36,7 @@ from ._shared import (
     DisclosureSearch,
     LiveNewsSearch,
     NewsSearch,
+    PortfolioUniverseLoader,
     _decimal_text,
     _news_comparison_block,
     _news_metadata_line,
@@ -540,6 +541,7 @@ def event_strategy_response(
     live_news: LiveNewsSearch | None,
     news: NewsSearch | None,
     theme_repository: EtfThemeRepository | None,
+    portfolio_universe_loader: PortfolioUniverseLoader | None,
 ) -> ChatResponse:
     region = search_query.partition(":")[2] or None
     live_snapshot: LiveMarketNewsSnapshot | None = None
@@ -580,6 +582,7 @@ def event_strategy_response(
             request=request,
             topics_by_evidence=topics_by_evidence,
             theme_repository=theme_repository,
+            portfolio_universe_loader=portfolio_universe_loader,
         )
 
     stored = news_response(
@@ -621,6 +624,7 @@ def event_strategy_response(
         request=request,
         topics_by_evidence=topics_by_evidence,
         theme_repository=theme_repository,
+        portfolio_universe_loader=portfolio_universe_loader,
     )
 
 
@@ -630,6 +634,7 @@ def attach_event_strategy(
     request: ChatRequest,
     topics_by_evidence: dict[str, tuple[str, ...]],
     theme_repository: EtfThemeRepository | None,
+    portfolio_universe_loader: PortfolioUniverseLoader | None,
 ) -> ChatResponse:
     policy_source_id = "policy:live_news_event_strategy"
     catalog = (
@@ -679,12 +684,13 @@ def attach_event_strategy(
     if tactical_allowed:
         strategy_intro = (
             "현재 설문 성향 범위에서 전술 관찰 가이드를 제공해요. "
-            "뉴스만으로 비중이나 주문을 결정하지 않아요."
+            "뉴스만으로 상품이나 비중을 결정하지 않아요."
         )
         strategy_items = [
-            "기존 장기 코어 배분을 먼저 유지하고 테마는 전술 슬리브에서만 검토",
+            "기존 장기 코어 배분과 규칙 엔진 목표비중을 먼저 유지",
             "공식 발표·가격·거래대금·ETF 구성종목을 함께 확인",
-            "계좌별 위험자산 한도와 규칙 엔진 목표비중을 먼저 적용",
+            "상품 비교는 별도 ETF 테마 정보에서 확인하고 뉴스와 연결해 개인화하지 않기",
+            "계좌별 위험자산 한도와 사용자 투자성향을 먼저 적용",
             "리밸런싱은 목표비중 이탈과 신규 납입금 기준으로 별도 계산",
         ]
     elif survey is None:
@@ -752,7 +758,10 @@ def attach_event_strategy(
             "sources": [*response.sources, policy_source],
             "limitations": [
                 *response.limitations,
-                "이벤트 분류는 방향성·수익률 예측이나 자동운용 신호가 아닙니다.",
+                (
+                    "이벤트 분류는 상품 추천·목표비중·방향성·수익률 예측이나 "
+                    "자동운용 신호가 아닙니다."
+                ),
             ],
             "conversation_context": ConversationContext(
                 account_type=(survey.account_type if survey is not None else None),

@@ -526,13 +526,16 @@ def plan_question(
         )
     if intent == ChatIntent.NEWS:
         news_query = _news_query(normalized)
+        requests_event_strategy = (
+            _NEWS_EVENT_STRATEGY_TERMS.search(normalized) is not None
+        )
         return QueryPlan(
             normalized_message=normalized,
             intent=ChatIntent.NEWS,
             account_types=account_types,
             news_query=news_query,
-            requests_event_strategy=False,
-            requests_live_news=False,
+            requests_event_strategy=requests_event_strategy,
+            requests_live_news=requests_event_strategy,
             news_scope_notice=_news_scope_notice(normalized),
             max_results=max_results,
         )

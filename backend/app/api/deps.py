@@ -22,6 +22,7 @@ from ..chat.repository import ChatRepository
 from ..chat.scenarios import LocalScenarioRepository, PostgresScenarioRepository
 from ..chat.service import ChatService
 from ..chat.suggested_prompts import SUGGESTED_CHAT_PROMPTS
+from ..chat.topic_guard import ClaudeTopicGuard
 from ..chat.user_context import DemoUserContextRepository
 from ..database import get_database_pool
 from ..engine.audit import EngineAuditRepository
@@ -73,13 +74,23 @@ def _database_url_or_503(settings: Settings, *, detail: str) -> str:
     return database_url
 
 
+def _database_pool(settings: Settings, database_url: str) -> ConnectionPool:
+    return get_database_pool(
+        database_url,
+        max_size=settings.database_pool_max_size,
+    )
+
+
 def get_engine_audit_repository(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> EngineAuditRepository:
     database_url = _database_url_or_503(
         settings, detail="Engine audit database is not configured"
     )
-    return EngineAuditRepository(database_url, pool=get_database_pool(database_url))
+    return EngineAuditRepository(
+        database_url,
+        pool=_database_pool(settings, database_url),
+    )
 
 
 def get_krx_market_evidence_repository() -> KrxMarketEvidenceRepository:
@@ -97,11 +108,12 @@ def get_krx_market_evidence_repository() -> KrxMarketEvidenceRepository:
 def get_portfolio_universe_repository(
     account_type: AccountType,
     database_url: str = "",
+    database_pool_max_size: int = 5,
 ) -> PortfolioUniverseRepository:
     if database_url:
         return PostgresPortfolioUniverseRepository(
             database_url,
-            pool=get_database_pool(database_url),
+            pool=get_database_pool(database_url, max_size=database_pool_max_size),
         ).latest(account_type)
     return PortfolioUniverseRepository.from_latest_cache(account_type)
 
@@ -110,10 +122,11 @@ def get_portfolio_universe_repository(
 def get_etf_theme_product_universe(
     isu_codes: tuple[str, ...] | None,
     database_url: str,
+    database_pool_max_size: int = 5,
 ) -> EtfThemeProductUniverse:
     return PostgresPortfolioUniverseRepository(
         database_url,
-        pool=get_database_pool(database_url),
+        pool=get_database_pool(database_url, max_size=database_pool_max_size),
     ).latest_theme_products(isu_codes)
 
 
@@ -135,7 +148,7 @@ def get_retrieval_repository(
     return RetrievalRepository(
         database_url,
         embedder=get_query_embedder(),
-        pool=get_database_pool(database_url),
+        pool=_database_pool(settings, database_url),
     )
 
 
@@ -143,7 +156,10 @@ def get_disclosures_repository(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> DisclosureReadRepository:
     database_url = _database_url_or_503(settings, detail="Database is not configured")
-    return DisclosureReadRepository(database_url, pool=get_database_pool(database_url))
+    return DisclosureReadRepository(
+        database_url,
+        pool=_database_pool(settings, database_url),
+    )
 
 
 def get_benchmark_repository(
@@ -152,7 +168,10 @@ def get_benchmark_repository(
     database_url = _database_url_or_503(
         settings, detail="Benchmark database is not configured"
     )
-    return BenchmarkRepository(database_url, pool=get_database_pool(database_url))
+    return BenchmarkRepository(
+        database_url,
+        pool=_database_pool(settings, database_url),
+    )
 
 
 def get_etf_market_repository(
@@ -163,7 +182,7 @@ def get_etf_market_repository(
     )
     return EtfMarketRepository(
         database_url,
-        pool=get_database_pool(database_url),
+        pool=_database_pool(settings, database_url),
     )
 
 
@@ -173,7 +192,7 @@ def get_chat_repository(
     database_url = _database_url_or_503(
         settings, detail="Chat database is not configured"
     )
-    return ChatRepository(database_url, pool=get_database_pool(database_url))
+    return ChatRepository(database_url, pool=_database_pool(settings, database_url))
 
 
 def get_optional_chat_repository(
@@ -183,7 +202,7 @@ def get_optional_chat_repository(
         return None
     database_url = settings.database_url.get_secret_value().strip()
     return (
-        ChatRepository(database_url, pool=get_database_pool(database_url))
+        ChatRepository(database_url, pool=_database_pool(settings, database_url))
         if database_url
         else None
     )
@@ -197,7 +216,7 @@ def get_demo_user_context_repository(
     )
     return DemoUserContextRepository(
         database_url,
-        pool=get_database_pool(database_url),
+        pool=_database_pool(settings, database_url),
     )
 
 
@@ -209,7 +228,7 @@ def get_pension_account_repository(
     )
     return PensionAccountRepository(
         database_url,
-        pool=get_database_pool(database_url),
+        pool=_database_pool(settings, database_url),
     )
 
 
@@ -221,7 +240,7 @@ def get_investment_profile_repository(
     )
     return InvestmentProfileRepository(
         database_url,
-        pool=get_database_pool(database_url),
+        pool=_database_pool(settings, database_url),
     )
 
 
@@ -234,7 +253,7 @@ def get_optional_investment_profile_repository(
     return (
         InvestmentProfileRepository(
             database_url,
-            pool=get_database_pool(database_url),
+            pool=_database_pool(settings, database_url),
         )
         if database_url
         else None
@@ -250,7 +269,7 @@ def get_optional_demo_user_context_repository(
     return (
         DemoUserContextRepository(
             database_url,
-            pool=get_database_pool(database_url),
+            pool=_database_pool(settings, database_url),
         )
         if database_url
         else None
@@ -267,13 +286,16 @@ def get_macro_evidence_repository(
 def _chat_service(
     database_url: str,
     macro_evidence_report_path: str,
+    database_pool_max_size: int,
     naver_client_id: str = "",
     naver_client_secret: str = "",
     anthropic_api_key: str = "",
     anthropic_model: str = "",
 ) -> ChatService:
     pool: ConnectionPool | None = (
-        get_database_pool(database_url) if database_url else None
+        get_database_pool(database_url, max_size=database_pool_max_size)
+        if database_url
+        else None
     )
     retrieval = (
         RetrievalRepository(
@@ -313,9 +335,14 @@ def _chat_service(
         portfolio_universe_loader=partial(
             get_portfolio_universe_repository,
             database_url=database_url,
+            database_pool_max_size=database_pool_max_size,
         ),
         theme_product_universe_loader=(
-            partial(get_etf_theme_product_universe, database_url=database_url)
+            partial(
+                get_etf_theme_product_universe,
+                database_url=database_url,
+                database_pool_max_size=database_pool_max_size,
+            )
             if database_url
             else None
         ),
@@ -371,6 +398,7 @@ def get_chat_service(
     return _chat_service(
         database_url,
         str(settings.macro_evidence_report_path),
+        settings.database_pool_max_size,
         naver_client_id,
         naver_client_secret,
         anthropic_api_key,
@@ -406,6 +434,24 @@ def get_chat_narrator(
         settings.anthropic_model,
         settings.narration_cache_path,
     )
+
+
+@lru_cache(maxsize=1)
+def _chat_topic_guard(api_key: str, model: str) -> ClaudeTopicGuard:
+    return ClaudeTopicGuard(api_key=api_key, model=model)
+
+
+def get_chat_topic_guard(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ClaudeTopicGuard | None:
+    if not settings.enable_claude_topic_guard:
+        return None
+    if settings.anthropic_api_key is None:
+        return None
+    api_key = settings.anthropic_api_key.get_secret_value().strip()
+    if not api_key:
+        return None
+    return _chat_topic_guard(api_key, settings.anthropic_topic_guard_model)
 
 
 def precompute_chat_narrations(settings: Settings) -> None:

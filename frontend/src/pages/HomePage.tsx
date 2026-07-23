@@ -1,10 +1,11 @@
+import { useEffect, useState } from "react";
 import type {
   AssetClass,
   DemoHeroPortfolio,
   DemoUserFinancialContext,
   InvestmentProfileResponse,
 } from "../api/types";
-import { conicGradient } from "../charts";
+import { donutArcPaths } from "../charts";
 
 const ASSET_LABELS: Record<AssetClass, string> = {
   cash: "현금성", deposit: "원리금보장", bond: "채권",
@@ -33,6 +34,10 @@ interface HomePageProps {
 }
 
 export function HomePage({ error, hero, investmentProfile, loading, onAnalyzeHero, userContext }: HomePageProps) {
+  const [selectedAssetClass, setSelectedAssetClass] = useState<string | null>(null);
+  useEffect(() => {
+    setSelectedAssetClass(null);
+  }, [hero?.scenario_code]);
   if (loading) return <section className="home-dashboard"><p className="home-loading">내 연금 데이터를 불러오는 중입니다…</p></section>;
   if (!userContext) return <section className="home-dashboard"><p className="home-error">{error ?? "로그인한 사용자의 연금 데이터를 찾지 못했습니다."}</p></section>;
   const savedRiskProfile = investmentProfile?.assessment && !investmentProfile.assessment.is_expired
@@ -59,9 +64,10 @@ export function HomePage({ error, hero, investmentProfile, loading, onAnalyzeHer
           <div><span>연금저축</span><strong>{formatKrw(userContext.pension_savings_balance_krw)}</strong></div>
         </div>
         <div className="allocation-layout">
-          <div aria-label={hero.asset_allocations.map((item) => `${ASSET_LABELS[item.asset_class_code as AssetClass] ?? "기타 자산군"} ${item.allocation_percent}%`).join(", ")} className="home-allocation-donut" role="img" style={{ background: `conic-gradient(${conicGradient(hero.asset_allocations.map((item) => Number(item.allocation_percent)), COLORS)})` }}><span>총자산<br /><strong>100%</strong></span></div>
-          <ul className="home-allocation-list">{hero.asset_allocations.map((item, index) => <li key={item.asset_class_code}><i style={{ backgroundColor: COLORS[index % COLORS.length] }} /><span>{ASSET_LABELS[item.asset_class_code as AssetClass] ?? "기타 자산군"}</span><strong>{item.allocation_percent}%</strong></li>)}</ul>
+          <svg className="home-allocation-donut" viewBox="0 0 100 100" aria-label="자산군 비중을 탭해 상세 보기">{donutArcPaths(hero.asset_allocations.map((item) => Number(item.allocation_percent))).map((d, index) => { const item = hero.asset_allocations[index]; const selected = selectedAssetClass === item.asset_class_code; return <path key={item.asset_class_code} d={d} fill={COLORS[index % COLORS.length]} className={selectedAssetClass && !selected ? "is-dim" : ""} transform={selected ? "translate(2 0)" : undefined} role="button" tabIndex={0} aria-label={`${ASSET_LABELS[item.asset_class_code as AssetClass] ?? "기타 자산군"} ${item.allocation_percent}%`} onClick={() => setSelectedAssetClass(selected ? null : item.asset_class_code)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedAssetClass(selected ? null : item.asset_class_code); } }} />; })}<text x="50" y="48" textAnchor="middle">총자산</text><text x="50" y="60" textAnchor="middle" className="home-donut-total">100%</text></svg>
+          <ul className="home-allocation-list">{hero.asset_allocations.map((item, index) => <li key={item.asset_class_code}><button type="button" className={selectedAssetClass === item.asset_class_code ? "is-selected" : ""} onClick={() => setSelectedAssetClass(selectedAssetClass === item.asset_class_code ? null : item.asset_class_code)}><i style={{ backgroundColor: COLORS[index % COLORS.length] }} /><span>{ASSET_LABELS[item.asset_class_code as AssetClass] ?? "기타 자산군"}</span><strong>{item.allocation_percent}%</strong></button></li>)}</ul>
         </div>
+        {selectedAssetClass && (() => { const allocation = hero.asset_allocations.find((item) => item.asset_class_code === selectedAssetClass); if (!allocation) return null; const holdings = hero.accounts.flatMap((account) => account.holdings.filter((holding) => holding.asset_class_code === selectedAssetClass).map((holding) => ({ account, holding }))); return <section className="home-allocation-detail" aria-live="polite"><strong>{ASSET_LABELS[allocation.asset_class_code as AssetClass] ?? "기타 자산군"} 상세</strong><p>비중 {allocation.allocation_percent}% · 평가 금액 {formatKrw(allocation.amount_krw)} · {allocation.account_count}개 계좌</p><ul>{holdings.map(({ account, holding }) => <li key={holding.holding_id}>{account.label} ({ACCOUNT_LABELS[account.account_type]}) · {holding.instrument_name}{holding.etf_isu_code ? ` · ${holding.etf_isu_code}` : ""}</li>)}</ul><small>목데이터 · {hero.past_performance.source_label} · {hero.past_performance.period_end}</small></section>; })()}
       </article>
       <article className="risk-review-card">
         <div className="section-heading-row"><div><span>규칙 엔진 점검</span><h2>위험·스트레스 확인</h2></div><b className={hero.risk_summary.requires_rebalancing_review ? "review-needed" : "review-ok"}>{hero.risk_summary.requires_rebalancing_review ? "리밸런싱 점검 필요" : "현재 기준 내"}</b></div>
