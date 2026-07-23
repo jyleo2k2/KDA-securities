@@ -86,6 +86,22 @@ export default function App(): JSX.Element {
   return <HashRouter><AppRoutes /></HashRouter>;
 }
 
+function DesktopPreviewStatus(): JSX.Element | null {
+  const { pathname } = useLocation();
+  if (["/", "/login", "/main-home", "/strategy-explore", "/strategy-detail"].includes(pathname)) return null;
+
+  return (
+    <div className="desktop-preview-status" aria-hidden="true">
+      <span>9:41</span>
+      <span className="desktop-preview-status-icons">
+        <i className="desktop-preview-signal" />
+        <i className="desktop-preview-wifi" />
+        <i className="desktop-preview-battery" />
+      </span>
+    </div>
+  );
+}
+
 function AppRoutes(): JSX.Element {
   const auth = useSupabaseAuth();
   const location = useLocation();
@@ -242,7 +258,9 @@ function AppRoutes(): JSX.Element {
   );
 
   return (
-    <Routes>
+    <>
+      <DesktopPreviewStatus />
+      <Routes>
       <Route path="/" element={<Navigate replace to="/main-home" />} />
       <Route path="/login" element={<Navigate replace to="/main-home" />} />
       <Route
@@ -318,7 +336,8 @@ function AppRoutes(): JSX.Element {
         path="/user-pick-benchmark"
         element={<UserPickBenchmarkScreen onBack={goToMainHome} />}
       />
-      <Route path="*" element={<Navigate replace to="/main-home" />} />
-    </Routes>
+        <Route path="*" element={<Navigate replace to="/main-home" />} />
+      </Routes>
+    </>
   );
 }
