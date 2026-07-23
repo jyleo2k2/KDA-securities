@@ -664,6 +664,7 @@ export type ChatIntent =
   | "news"
   | "pension_tax"
   | "etf_theme"
+  | "etf_distribution"
   | "educational_portfolio"
   | "macro_evidence"
   | "out_of_scope";

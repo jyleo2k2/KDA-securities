@@ -56,19 +56,19 @@ SOURCE_LOCATION_ROWS = (
         "고객·소득·세액공제",
         "data/mock/users.csv",
         "user_id = benchmark_user_id",
-        "public.benchmark_mock_users · public.demo_user_financial_context",
+        "benchmark.benchmark_mock_users · public.demo_user_financial_context",
     ),
     (
         "계좌 요약·연간 납입",
         "data/mock/accounts.csv",
         "user_id = benchmark_user_id",
-        "public.benchmark_mock_accounts · public.mock_accounts",
+        "benchmark.benchmark_mock_accounts · public.mock_accounts",
     ),
     (
         "1만 명 기준 보유자산",
         "data/mock/holdings.csv",
         "account_id = accounts.csv의 account_id",
-        "public.benchmark_mock_holdings",
+        "benchmark.benchmark_mock_holdings",
     ),
     (
         "투자성향·배점·이유·후기",

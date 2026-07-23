@@ -64,6 +64,7 @@ const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   news: "증시 뉴스",
   pension_tax: "세액공제·중도해지",
   etf_theme: "ETF 테마",
+  etf_distribution: "ETF 분배금",
   educational_portfolio: "연금 운용전략",
   macro_evidence: "거시지표 근거",
   out_of_scope: "지원 범위 안내",

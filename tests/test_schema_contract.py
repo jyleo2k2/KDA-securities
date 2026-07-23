@@ -89,6 +89,48 @@ SCHEMA_ADDITIVE_MIGRATION = next(
         "*_add_updated_at_triggers_and_holding_constraints.sql"
     )
 )
+BENCHMARK_SCHEMA_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob("*_move_benchmark_tables_to_schema.sql")
+)
+BENCHMARK_SCHEMA_CLEANUP_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob(
+        "*_drop_benchmark_public_compatibility_views.sql"
+    )
+)
+
+
+def test_benchmark_schema_move_is_additive_and_service_role_only() -> None:
+    sql = BENCHMARK_SCHEMA_MIGRATION.read_text(encoding="utf-8").lower()
+    tables = (
+        "benchmark_mock_users",
+        "benchmark_mock_accounts",
+        "benchmark_mock_holdings",
+    )
+    assert "create schema if not exists benchmark" in sql
+    assert "grant usage on schema benchmark to service_role" in sql
+    for table in tables:
+        assert f"alter table public.{table} set schema benchmark" in sql
+        assert f"create view public.{table}" in sql
+        assert f"select * from benchmark.{table}" in sql
+    assert sql.count("security_invoker = true") == 3
+    assert "grant select on public.benchmark_mock_users" in sql
+    assert "to service_role" in sql
+    assert "drop table" not in sql
+    assert "delete from" not in sql
+    assert "truncate" not in sql
+
+
+def test_benchmark_schema_cleanup_drops_only_compatibility_views() -> None:
+    sql = BENCHMARK_SCHEMA_CLEANUP_MIGRATION.read_text(encoding="utf-8").lower()
+    for table in (
+        "benchmark_mock_users",
+        "benchmark_mock_accounts",
+        "benchmark_mock_holdings",
+    ):
+        assert f"drop view public.{table}" in sql
+    assert "drop table" not in sql
+    assert "delete from" not in sql
+    assert "truncate" not in sql
 
 
 def test_schema_has_required_data_foundation_groups() -> None:
@@ -725,3 +767,76 @@ def test_updated_at_tables_have_moddatetime_triggers_and_holding_constraints() -
     assert "mock_holdings_etf_isu_code_format_check" in sql
     assert "^[0-9a-z]{6}$" in sql
     assert "drop table" not in sql
+
+
+ANNOTATE_DOMAINS_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob("*_annotate_table_domains.sql")
+)
+
+
+def test_table_domain_annotations_are_additive_and_complete() -> None:
+    import re
+
+    sql = ANNOTATE_DOMAINS_MIGRATION.read_text(encoding="utf-8")
+    normalized = sql.lower()
+
+    # 순수 주석·조회 뷰만 추가한다. 스키마·데이터·권한 테이블은 바꾸지 않는다.
+    for forbidden in ("alter table", "create table", "drop ", "insert into"):
+        assert forbidden not in normalized
+
+    # 코멘트가 없던 41개 테이블에만 도메인 태그를 단다.
+    table_comments = re.findall(
+        r"comment on table public\.(\w+) is\s*'(\[[^]]+\][^']*)'", sql
+    )
+    tagged = {name for name, _ in table_comments}
+    assert len(tagged) == 41
+    assert len(table_comments) == 41
+
+    allowed_domains = {
+        "source",
+        "institution",
+        "asset",
+        "mock_scenario",
+        "mock_public",
+        "benchmark",
+        "demo_customer",
+        "engine_audit",
+        "rag_news",
+        "chat",
+        "user_pension",
+    }
+    allowed_lifecycles = {"live", "retained", "reserved", "dead"}
+    for _, comment in table_comments:
+        match = re.match(r"\[([^/]+)/([^]]+)\]", comment)
+        assert match is not None
+        assert match.group(1) in allowed_domains
+        assert match.group(2) in allowed_lifecycles
+
+    # 이미 코멘트가 있던 15개 테이블은 이 마이그레이션에서 재정의하지 않는다.
+    already_commented = {
+        "demo_investor_profile_answers",
+        "demo_investor_profiles",
+        "demo_public_portfolio_metrics",
+        "etf_component_snapshot_items",
+        "etf_component_snapshots",
+        "etf_component_source_bindings",
+        "etf_daily_market_snapshots",
+        "etf_dataset_versions",
+        "etf_distribution_event_versions",
+        "etf_distribution_events",
+        "etf_product_descriptions",
+        "etf_return_histories",
+        "etf_theme_content_evidence",
+        "etf_theme_content_reviews",
+        "etf_universe_products",
+    }
+    assert tagged.isdisjoint(already_commented)
+
+    # 관리자 식별용 카탈로그 뷰는 security_invoker로 만들고 브라우저 권한을 회수한다.
+    assert "create view public.table_domain_catalog" in normalized
+    assert "security_invoker = true" in normalized
+    assert (
+        "revoke all privileges on public.table_domain_catalog\n"
+        "from public, anon, authenticated;" in normalized
+    )
+    assert "grant select on public.table_domain_catalog to service_role;" in normalized

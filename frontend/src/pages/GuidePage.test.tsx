@@ -354,7 +354,16 @@ describe("GuidePage chat history deletion", () => {
     renderGuide();
 
     expect(await screen.findByText("고객님 ! 막막한 노후 준비,", { exact: false })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "대화 기록 열기" })).toBeInTheDocument();
+    const historyButton = screen.getByRole("button", { name: "대화 기록 열기" });
+    const historySidebar = screen.getByRole("complementary");
+    expect(historyButton).toBeInTheDocument();
+    expect(historySidebar).not.toHaveClass("sidebar-open");
+
+    fireEvent.click(historyButton);
+    expect(historySidebar).toHaveClass("sidebar-open");
+
+    fireEvent.click(screen.getByRole("button", { name: "대화 기록 닫기" }));
+    expect(historySidebar).not.toHaveClass("sidebar-open");
     expect(screen.getByAltText("프로필")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("연금에 대해 무엇이든 물어보세요")).toBeInTheDocument();
     expect(screen.getByText(/AI 답변은 투자 판단을 돕는 정보이며, 미래 수익을 보장하지 않습니다/)).toBeInTheDocument();

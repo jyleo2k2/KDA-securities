@@ -8,6 +8,8 @@ interface StrategyExploreScreenProps {
   onBack: () => void;
 }
 
+const STRATEGY_DETAIL_URL = "/strategy-detail";
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -33,6 +35,9 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
   }
   function move(direction: number): void {
     select(active + direction);
+  }
+  function openStrategyDetail(strategy: StrategyExploreItem): void {
+    if (strategy.id === "theme") window.location.hash = STRATEGY_DETAIL_URL;
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>): void {
@@ -103,7 +108,7 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
                         pointerEvents: isVisible ? "auto" : "none",
                       } as React.CSSProperties}
                     >
-                      <button type="button" className="se-fan-frame" aria-label={`${i + 1}번째 전략: ${strategy.name}`} tabIndex={isVisible ? 0 : -1} onClick={() => select(i)}>
+                      <button type="button" className="se-fan-frame" aria-label={`${i + 1}번째 전략: ${strategy.name}`} tabIndex={isVisible ? 0 : -1} onClick={() => select(i)} onDoubleClick={() => openStrategyDetail(strategy)}>
                         <img src={strategy.img} alt={strategy.name} draggable="false" />
                       </button>
                     </li>
@@ -141,7 +146,7 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
               <span className="se-intro-title"><em>전략</em> 소개</span>
               <div className="se-intro-body">
                 <div className="se-intro-avatar">
-                  <img src={current.img} alt={current.name} />
+                  <img src={current.img} alt={current.name} onDoubleClick={() => openStrategyDetail(current)} />
                 </div>
                 <div className="se-intro-summary">
                   <span className="se-intro-label">전략 요약</span>
