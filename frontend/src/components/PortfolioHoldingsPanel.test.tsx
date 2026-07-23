@@ -269,6 +269,14 @@ describe("EducationalPortfolioReview", () => {
 
     expect(screen.getByText("70.0%")).toBeInTheDocument();
     expect(screen.getByText("분산 주식")).toBeInTheDocument();
+    expect(screen.getByText("위험중립형 섹터 가이드")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /채권 25%, 반도체 17%, 바이오·헬스케어 14%/ })).toBeInTheDocument();
+    expect(screen.getByText(/실제 엔진 목표비중·후보 ETF·계좌 한도는 바꾸지 않습니다/)).toBeInTheDocument();
+    expect(screen.queryByText("AI소프트웨어")).not.toBeInTheDocument();
+    expect(screen.queryByText("코리아밸류업")).not.toBeInTheDocument();
+    expect(screen.queryByText("ESG")).not.toBeInTheDocument();
+    expect(screen.queryByText("운송 및 물류")).not.toBeInTheDocument();
+    expect(screen.queryByText("여행 및 레저")).not.toBeInTheDocument();
     expect(screen.getByText(/최대 과거 가격 동행성은 82.0%/)).toBeInTheDocument();
     expect(screen.getByText(/구성종목 중복률이 아니라/)).toBeInTheDocument();
     expect(screen.getByText(/매도 주문을 만들지 않으며/)).toBeInTheDocument();
@@ -318,6 +326,10 @@ describe("EducationalPortfolioReview", () => {
 
     rerender(<EducationalPortfolioReview evaluation={{
       ...evaluation,
+      evaluated_input: {
+        ...evaluation.evaluated_input,
+        risk_profile: "aggressive",
+      },
       strategy_label: "balanced_core_satellite",
       portfolio_risk: {
         ...evaluation.portfolio_risk,
@@ -336,6 +348,8 @@ describe("EducationalPortfolioReview", () => {
       },
     }} />);
     expect(screen.getByText(/코어·위성 전략/)).toBeInTheDocument();
+    expect(screen.getByText("공격투자형 섹터 가이드")).toBeInTheDocument();
+    expect(screen.getByText("양자컴퓨팅")).toBeInTheDocument();
     expect(screen.getByText("기타 시장 충격")).toBeInTheDocument();
     expect(screen.getByText("기타 자산군")).toBeInTheDocument();
     expect(screen.getByText("추가 점검 필요")).toBeInTheDocument();

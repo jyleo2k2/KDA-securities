@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 
 import { calculatePortfolioCmaPension } from "../api/client";
+import { conicGradient } from "../charts";
 import type {
   AccountType,
   CompletedSurveyProfile,
@@ -9,6 +10,7 @@ import type {
   PensionCalculatorPortfolioCmaEvaluation,
   PortfolioPlanningEvaluation,
   PortfolioRiskEvaluation,
+  RiskProfile,
 } from "../api/types";
 
 const ACCOUNT_LABELS: Record<AccountType, string> = {
@@ -49,6 +51,68 @@ const STRATEGY_LABELS: Record<string, string> = {
   balanced_core_satellite: "코어·위성 전략",
   growth_core_satellite: "성장 코어·위성 전략",
   barbell_growth_tactical: "바벨형 성장·전술 전략",
+};
+
+const RISK_PROFILE_LABELS: Record<RiskProfile, string> = {
+  stable: "안정형",
+  stable_seeking: "안정추구형",
+  risk_neutral: "위험중립형",
+  active: "적극투자형",
+  aggressive: "공격투자형",
+};
+
+const SECTOR_GUIDE_COLORS = ["#4f8a70", "#84ad67", "#d8a45e", "#7183b1", "#bf7d70", "#8b76ad", "#5f9c9c"];
+
+type SectorGuideItem = {
+  label: string;
+  weight: number;
+};
+
+// Display-only examples using the approved ETF theme catalog. They are not ETF
+// selection weights and do not change the rules-engine portfolio result.
+const SECTOR_GUIDES: Record<RiskProfile, readonly SectorGuideItem[]> = {
+  stable: [
+    { label: "채권", weight: 48 },
+    { label: "소비재·음식료", weight: 16 },
+    { label: "바이오·헬스케어", weight: 15 },
+    { label: "은행·금융", weight: 11 },
+    { label: "리츠·부동산", weight: 10 },
+  ],
+  stable_seeking: [
+    { label: "채권", weight: 35 },
+    { label: "소비재·음식료", weight: 14 },
+    { label: "바이오·헬스케어", weight: 14 },
+    { label: "은행·금융", weight: 12 },
+    { label: "리츠·부동산", weight: 10 },
+    { label: "신재생·친환경", weight: 15 },
+  ],
+  risk_neutral: [
+    { label: "채권", weight: 25 },
+    { label: "반도체", weight: 17 },
+    { label: "바이오·헬스케어", weight: 14 },
+    { label: "소비재·음식료", weight: 12 },
+    { label: "은행·금융", weight: 12 },
+    { label: "원자력·전력", weight: 10 },
+    { label: "리츠·부동산", weight: 10 },
+  ],
+  active: [
+    { label: "채권", weight: 15 },
+    { label: "반도체", weight: 22 },
+    { label: "2차전지·배터리", weight: 16 },
+    { label: "원자력·전력", weight: 14 },
+    { label: "로봇", weight: 13 },
+    { label: "바이오·헬스케어", weight: 10 },
+    { label: "방산·우주", weight: 10 },
+  ],
+  aggressive: [
+    { label: "채권", weight: 5 },
+    { label: "반도체", weight: 25 },
+    { label: "2차전지·배터리", weight: 18 },
+    { label: "로봇", weight: 17 },
+    { label: "방산·우주", weight: 15 },
+    { label: "원자력·전력", weight: 10 },
+    { label: "양자컴퓨팅", weight: 10 },
+  ],
 };
 
 interface HoldingDraft {
@@ -96,6 +160,45 @@ function strategyLabel(value: string): string {
   if (!value) return "연금 자산배분 전략";
   return STRATEGY_LABELS[value] ?? (
     /^[a-z]+(?:_[a-z]+)+$/.test(value) ? "연금 자산배분 전략" : value
+  );
+}
+
+function PortfolioSectorGuide({ riskProfile }: { riskProfile: RiskProfile }) {
+  const items = SECTOR_GUIDES[riskProfile];
+  const guideLabel = RISK_PROFILE_LABELS[riskProfile];
+  const gradientStops = conicGradient(
+    items.map((item) => item.weight),
+    SECTOR_GUIDE_COLORS,
+  );
+
+  return (
+    <section className="portfolio-sector-guide" aria-labelledby="portfolio-sector-guide-title">
+      <header>
+        <span>교육용 섹터 분산 예시</span>
+        <h4 id="portfolio-sector-guide-title">{guideLabel} 섹터 가이드</h4>
+        <p>투자성향에 따라 살펴볼 테마의 비중 예시입니다. 실제 엔진 목표비중·후보 ETF·계좌 한도는 바꾸지 않습니다.</p>
+      </header>
+      <div className="portfolio-sector-guide-layout">
+        <div
+          aria-label={items.map((item) => `${item.label} ${item.weight}%`).join(", ")}
+          className="portfolio-sector-donut"
+          role="img"
+          style={{ background: `conic-gradient(${gradientStops})` }}
+        >
+          <span>전체<br /><strong>100%</strong></span>
+        </div>
+        <ul className="portfolio-sector-legend">
+          {items.map((item, index) => (
+            <li key={item.label}>
+              <i style={{ backgroundColor: SECTOR_GUIDE_COLORS[index % SECTOR_GUIDE_COLORS.length] }} />
+              <span>{item.label}</span>
+              <strong>{item.weight.toFixed(1)}%</strong>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <p className="portfolio-sector-guide-note">테마는 챗봇에서 설명하는 승인된 ETF 테마 카탈로그 중에서만 표시하며, 매수·수익률 예측 안내가 아닙니다.</p>
+    </section>
   );
 }
 
@@ -595,6 +698,8 @@ export function EducationalPortfolioReview({
         </div>
         <div><span>리밸런싱 기준</span><strong>±{percent(rebalancing.drift_threshold_percent_points)}</strong></div>
       </div>
+
+      <PortfolioSectorGuide riskProfile={evaluation.evaluated_input.risk_profile} />
 
       <div className="overlap-check">
         <strong>중복도·편중 점검</strong>
