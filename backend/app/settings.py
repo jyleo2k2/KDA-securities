@@ -16,7 +16,9 @@ class Settings(BaseSettings):
     pension_portal_api_key: SecretStr | None = None
     anthropic_api_key: SecretStr | None = None
     anthropic_model: str = "claude-haiku-4-5"
+    anthropic_topic_guard_model: str = "claude-haiku-4-5"
     enable_claude_narration: bool = False
+    enable_claude_topic_guard: bool = False
     enable_etf_product_feature_generation: bool = True
     narration_cache_path: Path = Path("data/cache/narration_cache.json")
     news_summary_model: str = "claude-sonnet-5"
