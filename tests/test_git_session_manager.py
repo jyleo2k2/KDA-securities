@@ -25,8 +25,8 @@ def test_new_branch_policy_accepts_only_tool_worker_task() -> None:
     assert LOCAL_SESSION_RULES["allowed_tools"] == ["codex", "claude"]
     assert LOCAL_SESSION_RULES["allowed_workers"] == [
         "이재용",
-        "이태호",
-        "최호성",
+        "이호연",
+        "최호택",
         "진재현",
         "김태형",
         "정인성",
@@ -40,7 +40,7 @@ def test_new_branch_policy_accepts_only_tool_worker_task() -> None:
 
     invalid = [
         "front/이재용/task",
-        "codex/이호연/task",
+        "codex/이태호/task",
         "codex/이재용/Task",
         "codex/이재용/~task",
         "codex/이재용/task/name",
@@ -194,13 +194,13 @@ def test_session_start_allows_matching_new_session(
     monkeypatch.setattr("scripts.git_session_manager._git", lambda *args, **kwargs: "")
     monkeypatch.setattr(
         "scripts.git_session_manager.current_branch",
-        lambda root: "claude/최호성/pension-ui",
+        lambda root: "claude/최호택/pension-ui",
     )
     monkeypatch.setattr(
         "scripts.git_session_manager._claim_for_worktree",
         lambda root: {
             "tool": "claude",
-            "worker": "최호성",
+            "worker": "최호택",
             "task": "pension-ui",
             "paths": ["frontend/src"],
         },
