@@ -47,6 +47,16 @@ export type RiskProfile =
   | "risk_neutral"
   | "active"
   | "aggressive";
+
+export interface RebalancingReminderState {
+  profile_required: boolean;
+  enabled: boolean;
+  risk_profile: RiskProfile | null;
+  cadence: { review_interval_months: number; drift_threshold_percent_points: string; rationale: string } | null;
+  last_reviewed_at: string | null;
+  next_review_at: string | null;
+  is_due: boolean;
+}
 export type AgeBand =
   | "age_20s"
   | "age_30s"
@@ -875,6 +885,11 @@ export interface RebalancingSleeveGuidance {
 export interface RebalancingGuidance {
   status: string;
   drift_threshold_percent_points: string;
+  cadence: {
+    review_interval_months: number;
+    drift_threshold_percent_points: string;
+    rationale: string;
+  };
   current_total_krw: string;
   new_contribution_krw: string;
   projected_total_krw: string;

@@ -22,7 +22,11 @@ import {
   getChatSessions,
   getScenarios,
   getStoredChatMessages,
+  getRebalancingReminder,
+  updateRebalancingReminder,
+  completeRebalancingReview,
 } from "../api/client";
+import { RebalancingReminderCard } from "../components/RebalancingReminderCard";
 import { ChatVisualization } from "../components/ChatVisualization";
 import { ChatIcon as Icon } from "../components/ChatIcon";
 import {
@@ -52,6 +56,7 @@ import type {
   PensionTaxScenarioInput,
   ScenarioSummary,
   StoredChatMessage,
+  RebalancingReminderState,
   WithdrawalReason,
 } from "../api/types";
 import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
@@ -778,6 +783,8 @@ export function GuidePage({
   const accessToken = auth.session?.access_token;
   const authenticatedUserId = auth.session?.user.id ?? null;
   const [input, setInput] = useState("");
+  const [rebalancingReminder, setRebalancingReminder] = useState<RebalancingReminderState | null>(null);
+  const [reminderBusy, setReminderBusy] = useState(false);
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
   const [chatCards, setChatCards] = useState<ChatCard[]>([]);
   const [chatCardsLoading, setChatCardsLoading] = useState(true);
@@ -841,6 +848,14 @@ export function GuidePage({
     userId: authenticatedUserId,
     accessToken: accessToken ?? null,
   };
+
+  useEffect(() => {
+    if (!accessToken) { setRebalancingReminder(null); return; }
+    void getRebalancingReminder(accessToken).then(setRebalancingReminder).catch(() => setRebalancingReminder(null));
+  }, [accessToken]);
+
+  async function enableReminder() { if (!accessToken) return; setReminderBusy(true); try { setRebalancingReminder(await updateRebalancingReminder(true, accessToken)); } finally { setReminderBusy(false); } }
+  async function completeReminder() { if (!accessToken) return; setReminderBusy(true); try { setRebalancingReminder(await completeRebalancingReview(accessToken)); } finally { setReminderBusy(false); } }
 
   function isCurrentOperation(
     authGeneration: number,
@@ -1596,6 +1611,7 @@ export function GuidePage({
                   </span>
                 </div>
               )}
+              {rebalancingReminder && <RebalancingReminderCard reminder={rebalancingReminder} busy={reminderBusy} onEnable={() => void enableReminder()} onComplete={() => void completeReminder()} onAsk={() => void submitPrompt("현재 보유 ETF의 중복도와 계좌 한도, 리밸런싱 가이드를 보여줘")} />}
 
               <ChatQuestionRecommendations
                 cards={visibleChatCards.filter((card) => card.intent !== "etf_theme")}

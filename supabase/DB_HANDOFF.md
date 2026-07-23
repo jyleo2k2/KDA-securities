@@ -2,10 +2,10 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-23 11:48 KST
-> 확인 기준: ETF 비용 마스터 861개 재검증·원격 데이터셋 version 4 적재·비용 API E2E·Advisor 재검증
+> 최종 확인: 2026-07-23 16:16 KST
+> 확인 기준: 리밸런싱 알림 설정 원격 migration·RLS·권한 재검증
 > 원격 프로젝트: `KDA-securities`
-> 담당자: `TODO: 확인 필요`
+> 담당자: 김태형
 > 머지 승인: 이재용(총괄)
 
 ## 1. 문서 운영 규칙
@@ -320,6 +320,7 @@ uv run ruff check .
 | DB-13A | 로그인 투자자정보 확인서 통합 설문 | `REMOTE-APPLIED` | `20260722020126`, 활성 세트 1개·17문항·76선택지, 기존 세트 retire, 0~7점 제약·복수선택 답변 제약·RLS/클라이언트 권한 재검증 | 원격 적용 MCP 버전에 맞춰 로컬 파일명을 `20260722020126`으로 유지; 적용 파일 수정 금지 |
 | DB-14 | KIS ETF 구성종목 신뢰성 보강 | `LOCAL-VERIFIED` | 국내주식형 장중 수집·임시 빈 응답 최대 3회 재개, 마지막 정상 스냅샷 보존, 단일 연결 풀, 해외 KIS 부분 스냅샷 비노출, 선택 종목 재수집 및 첫 질문 TOP3 조회까지 로컬·원격 데이터 검증 | 코드 배포·국내 335개 장중 백필 전; KIS 미지원 614개는 KRX PDF·운용사 보조 소스 계약 필요 |
 | DB-15 | 레거시 목계좌 테이블 퇴역 백업·쓰기 전환 | `LOCAL-VERIFIED` | 읽기 전용 JSON·SHA-256 백업, 공통 계좌 동등성 확인, seed·데모 적재·생성기의 공통 계좌 직접 쓰기 | 복구 절차와 로컬 reset·원격 E2E를 재검증한 뒤 별도 파괴적 migration 검토 |
+| DB-16 | 사용자 리밸런싱 점검 알림 설정·API | `REMOTE-APPLIED` | `20260723071528`, additive 테이블·RLS 활성화·브라우저 권한 회수·service_role 권한 재검증 | PR 병합·백엔드 배포 후 인증 API E2E, 이후 프론트 알림 카드 연결 |
 
 ## 13. 미결정 사항
 
@@ -332,6 +333,16 @@ uv run ruff check .
 - 커뮤니티 리뷰의 실제 사용자 대상 공개 시점과 보존·신고 정책: 후속 결정.
 
 ## 14. 작업 로그
+
+### 2026-07-23 16:16 KST — 리밸런싱 점검 알림 저장·API (REMOTE-APPLIED)
+
+- 작업자/브랜치/커밋: Codex(김태형) / `codex/김태형/rebalancing-reminder-notifications` / 현재 `HEAD`.
+- 변경 내용: 신규 migration `20260723071528_add_rebalancing_reminder_preferences.sql`은 사용자별 동의 상태·동의 시각·마지막 점검 완료 시각만 보관한다. RLS를 활성화하고 브라우저 역할 권한을 회수해 FastAPI의 인증 소유자 경로만 사용한다.
+- 결정 및 근거: 점검 주기와 허용 이탈폭은 DB에 복제하지 않고 기존 순수 엔진 `rebalancing_cadence()`에서 조회한다. 화면 열람은 점검 완료로 기록하지 않으며, 사용자가 `POST /me/rebalancing-reminder/complete`를 호출할 때만 다음 점검일이 갱신된다.
+- 로컬 검증과 실제 결과: 관련 테스트 `uv run pytest tests/test_rebalancing_reminder_repository.py tests/test_rebalancing_reminder_api.py tests/test_schema_contract.py` 43 passed, 전체 `uv run pytest` 1118 passed·1 skipped, 전체 `uv run ruff check .`, `git diff --check` 통과. 브라우저 `PUT` 사전요청 CORS 회귀도 포함했다.
+- 원격 적용 여부와 migration version: 이재용 승인 후 첫 적용은 원격 `extensions.moddatetime()` 부재로 원자적 실패했고 테이블·migration history 모두 미생성임을 재조회했다. 트리거 의존을 제거한 동일 additive SQL을 재적용해 `20260723071528_add_rebalancing_reminder_preferences`가 원격에 기록됐다.
+- 원격 재검증: 테이블 RLS 활성화, 정책 0개(서버 전용 deny-by-default), `anon`·`authenticated` 권한 0개, `service_role` 권한만 존재함을 확인했다. Security Advisor의 새 테이블 INFO는 이 의도된 서버 전용 구성과 일치한다.
+- 다음 작업: PR 병합·백엔드 배포 뒤 실제 Bearer-token API E2E를 확인한다. 프론트 알림 카드는 병합된 계약을 기준으로 별도 화면 연결 작업으로 진행한다.
 
 ### 2026-07-23 KST — benchmark schema pilot phase 1 (REMOTE-APPLIED)
 
@@ -873,6 +884,17 @@ uv run ruff check .
 - Database size decreased from 544 MB to 285 MB; `etf_return_histories` total relation size decreased from 440 MB to 182 MB.
 - Post-maintenance verification: only ready v4 remains, with 2,507 product rows and 1,207,952 history rows. Direct IRP repository E2E returned v4 (`2026-07-23`), 823 products, and 823 history codes.
 - No schema or API response contract changed. Storage + Parquet migration remains pending its separate direct-read credential and parallel-read gates.
+
+### 2026-07-23 KST — 죽은 mock_public·curated_contents 테이블 드롭 (LOCAL-DRAFT)
+
+- 작업자/브랜치/커밋: 이재용 / `claude/이재용/drop-dead-mock-public-tables`
+- 시작 상태: 원격 DB 306MB/500MB, 테이블 91개. `20260723043507_annotate_table_domains`가 대상 4종을 `[dead] … 별도 승인 후 드롭 예정`으로 표기해 둔 상태.
+- 변경 내용: `20260723061500_drop_dead_mock_public_and_curated_tables` 추가. `mock_public_portfolio_holdings` → `mock_public_portfolios` → `mock_public_profiles` → `curated_contents` 순으로 드롭한다. `seed.sql`에서 mock_public 3종 seed 블록을 제거했다.
+- 결정 및 근거: 사전 참조 조사에서 backend/app·scripts·tests 참조 0건을 확인했다. FK 자식→부모 순으로 제거하고 cascade는 쓰지 않아, 예상 밖 의존 객체가 있으면 조용히 지우지 않고 실패하도록 했다. 같은 조사에서 `engine_runs`·`engine_run_evidence`(EngineAuditRepository가 사용), `financial_products`(pension_accounts_repository가 조인), `account_cash_flows`(테스트 참조 + 실계좌 연동 예정 자리)는 살아 있어 드롭 대상에서 제외했다.
+- 로컬 검증과 실제 결과: `uv run pytest tests/test_schema_contract.py tests/test_embedded_sql.py` 37 passed. `seed.sql` 잔여 mock_public 참조 0건.
+- 원격 적용 여부와 migration version: 미적용(LOCAL-DRAFT). 원격 적용은 백업과 이재용 승인 후 별도로 수행한다.
+- 남은 위험 또는 blocker: 삭제 직전 행 수는 profiles 3 / portfolios 3 / holdings 9 / curated_contents 0이라 용량 효과는 약 230KB에 불과하다. 이 작업의 목적은 용량 확보가 아니라 스키마 정리다.
+- 다음 작업: 원격 적용 승인 후 적용, 적용 직후 테이블 수·행 수·GRANT 재검증.
 
 ## 15. 작업 로그 템플릿
 

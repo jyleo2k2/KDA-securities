@@ -97,6 +97,35 @@ BENCHMARK_SCHEMA_CLEANUP_MIGRATION = next(
         "*_drop_benchmark_public_compatibility_views.sql"
     )
 )
+REBALANCING_REMINDER_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob(
+        "*_add_rebalancing_reminder_preferences.sql"
+    )
+)
+
+
+def test_rebalancing_reminder_preferences_are_owner_scoped_and_server_only() -> None:
+    sql = REBALANCING_REMINDER_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "create table public.user_rebalancing_reminder_preferences" in sql
+    assert (
+        "owner_id uuid primary key references auth.users(id) on delete cascade" in sql
+    )
+    assert "enabled boolean not null default false" in sql
+    assert "last_reviewed_at timestamptz" in sql
+    assert "moddatetime" not in sql
+    assert (
+        "alter table public.user_rebalancing_reminder_preferences "
+        "enable row level security"
+        in sql
+    )
+    assert "from public, anon, authenticated" in sql
+    assert (
+        "grant all on table public.user_rebalancing_reminder_preferences "
+        "to service_role" in sql
+    )
+    assert "to authenticated" not in sql
+    assert "drop table" not in sql
 
 
 def test_benchmark_schema_move_is_additive_and_service_role_only() -> None:

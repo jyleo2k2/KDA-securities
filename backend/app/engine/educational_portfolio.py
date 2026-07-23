@@ -22,8 +22,8 @@ from .planning_return import (
 from .strategy_presentation import get_strategy_presentation
 
 ENGINE_NAME = "educational_pension_portfolio"
-ENGINE_VERSION = "2026-07-23.2"
-POLICY_VERSION = "2026-07-22.2"
+ENGINE_VERSION = "2026-07-23.3"
+POLICY_VERSION = "2026-07-23.1"
 PERCENT_QUANTUM = Decimal("0.0001")
 DRIFT_THRESHOLD_PERCENT = Decimal("5")
 RETIREMENT_RISK_CAP_PERCENT = Decimal("70")
@@ -149,9 +149,16 @@ class RebalancingSleeveGuidance(BaseModel):
     status: str
 
 
+class RebalancingCadenceGuidance(BaseModel):
+    review_interval_months: int
+    drift_threshold_percent_points: Decimal
+    rationale: str
+
+
 class RebalancingGuidance(BaseModel):
     status: str
     drift_threshold_percent_points: Decimal
+    cadence: RebalancingCadenceGuidance
     current_total_krw: Decimal
     new_contribution_krw: Decimal
     projected_total_krw: Decimal
@@ -322,6 +329,46 @@ PROFILE_POLICY = {
         "strategy": "barbell_growth_tactical",
     },
 }
+
+
+# 점검 주기는 자동 주문 주기가 아니다. 변동성·전술자산 비중이 커질수록
+# 점검 간격과 허용 이탈폭을 줄이고, 실제 조정은 납입금 우선 원칙을 유지한다.
+REBALANCING_CADENCE_POLICY = {
+    RiskProfile.STABLE: (
+        12,
+        Decimal("5"),
+        "방어자산 비중이 높아 연 1회 정기 점검으로 큰 비중 이탈을 확인해요.",
+    ),
+    RiskProfile.STABLE_SEEKING: (
+        6,
+        Decimal("5"),
+        "주식·실물자산 비중이 늘어 반기마다 목표비중 이탈을 점검해요.",
+    ),
+    RiskProfile.RISK_NEUTRAL: (
+        3,
+        Decimal("5"),
+        "성장·방어 자산을 함께 쓰므로 분기마다 균형이 흐트러졌는지 확인해요.",
+    ),
+    RiskProfile.ACTIVE: (
+        2,
+        Decimal("3"),
+        "성장·전술자산 비중이 높아 두 달마다 이탈폭을 더 촘촘히 점검해요.",
+    ),
+    RiskProfile.AGGRESSIVE: (
+        1,
+        Decimal("3"),
+        "전술자산과 주식 비중 변동이 커 매월 점검하되 자동 매매는 하지 않아요.",
+    ),
+}
+
+
+def rebalancing_cadence(profile: RiskProfile) -> RebalancingCadenceGuidance:
+    months, threshold, rationale = REBALANCING_CADENCE_POLICY[profile]
+    return RebalancingCadenceGuidance(
+        review_interval_months=months,
+        drift_threshold_percent_points=threshold,
+        rationale=rationale,
+    )
 
 
 def _percent(value: Decimal) -> Decimal:
@@ -1379,10 +1426,12 @@ def calculate_rebalancing_guidance(
     products: dict[str, dict[str, Any]],
     sleeves: dict[str, Decimal],
 ) -> RebalancingGuidance:
+    cadence = rebalancing_cadence(request.risk_profile)
     if not request.current_holdings:
         return RebalancingGuidance(
             status="not_requested",
-            drift_threshold_percent_points=DRIFT_THRESHOLD_PERCENT,
+            drift_threshold_percent_points=cadence.drift_threshold_percent_points,
+            cadence=cadence,
             current_total_krw=Decimal("0"),
             new_contribution_krw=request.new_contribution_krw,
             projected_total_krw=request.new_contribution_krw,
@@ -1434,7 +1483,7 @@ def calculate_rebalancing_guidance(
         projected_percent = projected_amount / projected_total * Decimal("100")
         drift_before = current_percent - target_percent
         drift_after = projected_percent - target_percent
-        if drift_after.copy_abs() <= DRIFT_THRESHOLD_PERCENT:
+        if drift_after.copy_abs() <= cadence.drift_threshold_percent_points:
             status = "within_drift_band"
         elif drift_after < 0:
             status = "underweight_after_contribution"
@@ -1459,7 +1508,8 @@ def calculate_rebalancing_guidance(
         warnings.append("unclassified_existing_holdings_require_review")
     return RebalancingGuidance(
         status=("partial_unclassified_holdings" if unclassified else "calculated"),
-        drift_threshold_percent_points=DRIFT_THRESHOLD_PERCENT,
+        drift_threshold_percent_points=cadence.drift_threshold_percent_points,
+        cadence=cadence,
         current_total_krw=current_total,
         new_contribution_krw=request.new_contribution_krw,
         projected_total_krw=projected_total,

@@ -1,10 +1,14 @@
-import type { JSX } from "react";
+import type { JSX, MouseEvent } from "react";
+
+interface StrategyDetailScreenProps {
+  onBack: () => void;
+}
 
 const DETAIL_HTML = `
 <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #E8E8DD; font-family: 'Cafe24SsurroundAir', 'Noto Sans KR', sans-serif; padding: 40px;">
   <div style="width: 390px; height: 844px; background: #ffffff; border-radius: 44px; box-shadow: 0 24px 70px rgba(0,0,0,0.16); display: flex; flex-direction: column; overflow: hidden;">
     <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 26px 0; font-size: 15px; font-weight: 700; color: #111;"><span>9:41</span><div style="display: flex; align-items: center; gap: 6px;"><span style="letter-spacing: 1px;">▪▪▪</span><span>📶</span><span style="width: 22px; height: 11px; border: 1.5px solid #111; border-radius: 3px; display: inline-block; position: relative;"><span style="position: absolute; inset: 1.5px; right: 5px; background: #18A860; border-radius: 1px;"></span></span></div></div>
-    <div style="display: flex; align-items: center; gap: 12px; padding: 16px 22px 0;"><span style="font-size: 24px; color: #111; cursor: pointer; line-height: 1;">‹</span><div style="display: flex; align-items: center; gap: 8px;"><span style="width: 22px; height: 22px; border-radius: 50%; background: #18A860; display: inline-block;"></span><span style="font-size: 18px; font-weight: 900; color: #111;">연금 <span style="color: #18A860;">도우미</span></span></div></div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 16px 22px 0;"><button type="button" data-strategy-detail-back aria-label="뒤로 가기" style="font-size: 24px; color: #111; cursor: pointer; line-height: 1; border: 0; padding: 0; background: none;">‹</button><div style="display: flex; align-items: center; gap: 8px;"><span style="width: 22px; height: 22px; border-radius: 50%; background: #18A860; display: inline-block;"></span><span style="font-size: 18px; font-weight: 900; color: #111;">연금 <span style="color: #18A860;">도우미</span></span></div></div>
     <div style="flex: 1; overflow-y: auto; padding: 20px 22px 26px; display: flex; flex-direction: column; gap: 18px;">
       <div style="border: 1.5px solid #ECEEE9; border-radius: 22px; padding: 18px; display: flex; gap: 16px; align-items: flex-start; box-shadow: 0 6px 18px rgba(0,0,0,0.04); width: 339px; height: 147px"><div style="width: 88px; height: 88px; border-radius: 20px; background: #FFF3D1; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; border: 2px solid #FFE49A;"><img src="/strategy-detail-html/assets/char-theme.png" alt="전략 캐릭터" style="width: 82px; height: auto; object-fit: contain;"></div><div style="flex: 1; min-width: 0;"><div style="display: inline-block; background: #E5F6ED; color: #18A860; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 8px;">성장형</div><h2 style="font-size: 19px; font-weight: 900; color: #111; margin: 8px 0 4px; letter-spacing: -0.4px;">테마 <span style="color: #18A860;">전략</span></h2><p style="font-size: 13px; font-weight: 500; color: #8A9691; margin: 0; line-height: 1.5;">유망 산업·테마에 비중을 실어 성장을 추구하는 전략</p></div></div>
       <div style="border: 1.5px solid #ECEEE9; border-radius: 22px; padding: 20px 18px; box-shadow: 0 6px 18px rgba(0,0,0,0.04); display: flex; flex-direction: column; gap: 22px;">
@@ -23,6 +27,10 @@ const DETAIL_HTML = `
   </div>
 </div>`;
 
-export function StrategyDetailScreen(): JSX.Element {
-  return <main dangerouslySetInnerHTML={{ __html: DETAIL_HTML }} />;
+export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX.Element {
+  function handleClick(event: MouseEvent<HTMLElement>): void {
+    if (event.target instanceof Element && event.target.closest("[data-strategy-detail-back]")) onBack();
+  }
+
+  return <main onClick={handleClick} dangerouslySetInnerHTML={{ __html: DETAIL_HTML }} />;
 }
