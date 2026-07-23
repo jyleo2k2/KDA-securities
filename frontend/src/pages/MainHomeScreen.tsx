@@ -1,6 +1,6 @@
 import { useState, type JSX } from "react";
 
-import moneyBag from "../assets/main-home/money-bag.png";
+import taxCreditMissed from "../assets/main-home/tax-credit-missed.png";
 import piggy from "../assets/main-home/piggy.png";
 import profileIcon from "../assets/main-home/profile-icon.png";
 import userPickPreview from "../assets/main-home/user-pick-preview.png";
@@ -252,11 +252,11 @@ export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpen
         <h2 className="mhs-section-title">세액공제</h2>
         <div className="mhs-tax-card">
           <span className="mhs-tax-icon-wrap">
-            <img src={moneyBag} alt="돈 주머니" className="mhs-tax-icon" />
+            <img src={taxCreditMissed} alt="놓친 세액공제액 찾기" className="mhs-tax-icon" />
           </span>
           <div className="mhs-tax-copy">
             <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
-            <p className="mhs-tax-sub">연금저축·IRP 납입 현황과 남은 여력을 확인해 보세요.</p>
+            <p className="mhs-tax-sub">지금 놓치고 있는 세액공제액이 얼마인지 확인해 보세요.</p>
             <button type="button" className="mhs-tax-button" onClick={onOpenPlanner}>완료율 확인하기 <span>→</span></button>
           </div>
         </div>
