@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>챗 디버그 로그 뷰어 (로컬 전용)</title>
+<style>
+  :root {
+    --bg: #f4f6f3; --card: #fff; --ink: #1f2d26; --muted: #6d7c74;
+    --line: #e2e9df; --accent: #12372a; --warn: #b5462f; --ok: #2f7d55;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif; }
+  header { padding: 18px 22px; background: var(--accent); color: #fff; }
+  header h1 { margin: 0 0 3px; font-size: 17px; }
+  header p { margin: 0; font-size: 12px; opacity: .85; }
+  .warn-bar { background: #fbe9e3; color: var(--warn); font-size: 12px;
+    padding: 8px 22px; border-bottom: 1px solid #f3cabe; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 18px 22px 60px; }
+  .drop { border: 2px dashed var(--line); border-radius: 10px; background: var(--card);
+    padding: 26px; text-align: center; color: var(--muted); font-size: 13px; cursor: pointer; }
+  .drop.hover { border-color: var(--ok); background: #eef6f0; }
+  .drop input { display: none; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px; margin: 16px 0; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .stat .k { font-size: 11px; color: var(--muted); }
+  .stat .v { font-size: 22px; font-weight: 800; letter-spacing: 0; }
+  .stat.warn .v { color: var(--warn); }
+  .reasons { background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px 14px; margin-bottom: 16px; }
+  .reasons h3 { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+  .reason-row { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 3px 0; }
+  .reason-row .bar { height: 8px; background: var(--warn); border-radius: 4px; }
+  .reason-row .lbl { min-width: 180px; }
+  .reason-row .cnt { color: var(--muted); }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .controls input, .controls select { padding: 8px 10px; border: 1px solid var(--line);
+    border-radius: 7px; font-size: 13px; background: #fff; }
+  .controls input[type=search] { flex: 1; min-width: 200px; }
+  .controls label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+    border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  th, td { text-align: left; padding: 9px 11px; font-size: 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #eef2ec; color: var(--muted); font-weight: 600; position: sticky; top: 0; cursor: pointer; }
+  tr.row { cursor: pointer; }
+  tr.row:hover { background: #f6f9f4; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .pill.det { background: #eef2ec; color: #55665d; }
+  .pill.claude { background: #e3f0e8; color: var(--ok); }
+  .pill.fb { background: #fbe4dc; color: var(--warn); }
+  .detail { background: #fbfdfa; }
+  .detail pre { margin: 6px 0; white-space: pre-wrap; word-break: break-word;
+    font-size: 12px; background: #f1f5ef; padding: 10px; border-radius: 6px; }
+  .detail .field { font-size: 11px; color: var(--muted); margin-top: 8px; text-transform: uppercase; letter-spacing: .04em; }
+  .empty { color: var(--muted); font-size: 13px; padding: 20px; text-align: center; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+</style>
+</head>
+<body>
+<header>
+  <h1>챗 디버그 로그 뷰어</h1>
+  <p>data/cache/chat_debug.jsonl 을 열어 폴백 사유·질문·답변을 확인합니다 · 외부 의존성 없음 · 로컬 전용</p>
+</header>
+<div class="warn-bar">⚠ 이 로그에는 질문·답변 전문이 담깁니다. 로컬 개발 디버깅 전용이며 로그 파일을 외부로 공유하지 마세요.</div>
+<div class="wrap">
+  <label class="drop" id="drop">
+    <input type="file" id="file" accept=".jsonl,.json,.log,.txt" />
+    <div><strong>chat_debug.jsonl</strong> 을 여기로 끌어다 놓거나 클릭해서 선택하세요.</div>
+    <div style="margin-top:6px" class="mono">기본 위치: data/cache/chat_debug.jsonl</div>
+  </label>
+
+  <div id="report" hidden>
+    <div class="stats" id="stats"></div>
+    <div class="reasons" id="reasons"></div>
+    <div class="controls">
+      <input type="search" id="q" placeholder="질문·답변·모델 검색…" />
+      <select id="intentFilter"><option value="">모든 인텐트</option></select>
+      <label><input type="checkbox" id="onlyFb" /> 폴백만</label>
+    </div>
+    <table>
+      <thead><tr>
+        <th data-sort="ts">시각</th>
+        <th data-sort="intent">인텐트</th>
+        <th data-sort="narration_mode">내레이션</th>
+        <th data-sort="latency_ms">지연(ms)</th>
+        <th>질문</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="empty" hidden>표시할 행이 없습니다.</div>
+  </div>
+</div>
+
+<script>
+  let RECORDS = [];
+  let sortKey = "ts", sortDir = -1;
+
+  const FALLBACK_MARKERS = [
+    ["unverified_content", "새로운 숫자"],
+    ["agent_error", "호출 실패"],
+    ["required_tool_not_called", "Tool을 호출하지 않아"],
+    ["tax_input_unresolved", "재구성하지 못해"],
+  ];
+
+  function fallbackReason(rec) {
+    // narration_mode가 claude_verified가 아니면서 limitations에 폴백 문구가 있으면 폴백.
+    const lims = (rec.limitations || []).join("\n");
+    for (const [code, marker] of FALLBACK_MARKERS) {
+      if (lims.includes(marker)) return code;
+    }
+    return null;
+  }
+
+  function parseJsonl(text) {
+    const out = [];
+    for (const line of text.split(/\r?\n/)) {
+      const t = line.trim();
+      if (!t) continue;
+      try { out.push(JSON.parse(t)); } catch (e) { /* skip malformed */ }
+    }
+    return out;
+  }
+
+  function load(text) {
+    RECORDS = parseJsonl(text).map((r) => ({ ...r, _fb: fallbackReason(r) }));
+    document.getElementById("report").hidden = RECORDS.length === 0;
+    buildIntentFilter();
+    renderStats();
+    render();
+  }
+
+  function buildIntentFilter() {
+    const sel = document.getElementById("intentFilter");
+    const intents = [...new Set(RECORDS.map((r) => r.intent).filter(Boolean))].sort();
+    sel.innerHTML = '<option value="">모든 인텐트</option>'
+      + intents.map((i) => `<option value="${i}">${i}</option>`).join("");
+  }
+
+  function renderStats() {
+    const total = RECORDS.length;
+    const fb = RECORDS.filter((r) => r._fb).length;
+    const claude = RECORDS.filter((r) => r.narration_mode === "claude_verified").length;
+    const lat = RECORDS.map((r) => r.latency_ms).filter((x) => typeof x === "number");
+    const avg = lat.length ? Math.round(lat.reduce((a, b) => a + b, 0) / lat.length) : 0;
+    const passRate = total ? Math.round(((total - fb) / total) * 100) : 0;
+    document.getElementById("stats").innerHTML = `
+      <div class="stat"><div class="k">총 교환</div><div class="v">${total}</div></div>
+      <div class="stat"><div class="k">통과율</div><div class="v">${passRate}%</div></div>
+      <div class="stat warn"><div class="k">폴백</div><div class="v">${fb}</div></div>
+      <div class="stat"><div class="k">Claude 재서술</div><div class="v">${claude}</div></div>
+      <div class="stat"><div class="k">평균 지연</div><div class="v">${avg}<span style="font-size:12px">ms</span></div></div>`;
+
+    const counts = {};
+    RECORDS.forEach((r) => { if (r._fb) counts[r._fb] = (counts[r._fb] || 0) + 1; });
+    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const max = entries.length ? entries[0][1] : 1;
+    const rDiv = document.getElementById("reasons");
+    if (!entries.length) {
+      rDiv.innerHTML = "<h3>폴백 사유별</h3><div class='reason-row'>폴백 없음</div>";
+    } else {
+      rDiv.innerHTML = "<h3>폴백 사유별</h3>" + entries.map(([code, n]) =>
+        `<div class="reason-row"><span class="lbl mono">${code}</span>`
+        + `<span class="bar" style="width:${Math.max(12, (n / max) * 220)}px"></span>`
+        + `<span class="cnt">${n}</span></div>`).join("");
+    }
+  }
+
+  function filtered() {
+    const q = document.getElementById("q").value.trim().toLowerCase();
+    const intent = document.getElementById("intentFilter").value;
+    const onlyFb = document.getElementById("onlyFb").checked;
+    let rows = RECORDS.filter((r) => {
+      if (intent && r.intent !== intent) return false;
+      if (onlyFb && !r._fb) return false;
+      if (q) {
+        const hay = `${r.message || ""} ${r.answer || ""} ${r.model_name || ""} ${(r.limitations||[]).join(" ")}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+    rows.sort((a, b) => {
+      const x = a[sortKey], y = b[sortKey];
+      if (x == null) return 1; if (y == null) return -1;
+      return (x > y ? 1 : x < y ? -1 : 0) * sortDir;
+    });
+    return rows;
+  }
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  }
+
+  function render() {
+    const rows = filtered();
+    const tbody = document.getElementById("rows");
+    document.getElementById("empty").hidden = rows.length !== 0;
+    tbody.innerHTML = "";
+    rows.forEach((r, i) => {
+      const tr = document.createElement("tr");
+      tr.className = "row";
+      const mode = r.narration_mode === "claude_verified"
+        ? '<span class="pill claude">claude</span>'
+        : '<span class="pill det">det</span>';
+      const fb = r._fb ? `<span class="pill fb">${r._fb}</span>` : "";
+      const ts = (r.ts || "").replace("T", " ").slice(0, 19);
+      tr.innerHTML = `<td class="mono">${esc(ts)}</td><td>${esc(r.intent)}</td>`
+        + `<td>${mode} ${fb}</td><td class="mono">${r.latency_ms ?? ""}</td>`
+        + `<td>${esc((r.message || "").slice(0, 60))}</td>`;
+      const detail = document.createElement("tr");
+      detail.className = "detail";
+      detail.hidden = true;
+      detail.innerHTML = `<td colspan="5">
+        <div class="field">질문</div><pre>${esc(r.message)}</pre>
+        <div class="field">답변</div><pre>${esc(r.answer)}</pre>
+        <div class="field">limitations</div><pre>${esc((r.limitations||[]).join("\n") || "-")}</pre>
+        <div class="field">meta</div><pre>model=${esc(r.model_name)} · data_mode=${esc(r.data_mode)} · persisted=${esc(r.persisted)}</pre>
+      </td>`;
+      tr.addEventListener("click", () => { detail.hidden = !detail.hidden; });
+      tbody.appendChild(tr);
+      tbody.appendChild(detail);
+    });
+  }
+
+  // 파일 로드 (드래그&드롭 + 클릭)
+  const drop = document.getElementById("drop");
+  const file = document.getElementById("file");
+  file.addEventListener("change", (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    f.text().then(load);
+  });
+  ["dragover", "dragenter"].forEach((ev) => drop.addEventListener(ev, (e) => {
+    e.preventDefault(); drop.classList.add("hover");
+  }));
+  ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => {
+    e.preventDefault(); drop.classList.remove("hover");
+  }));
+  drop.addEventListener("drop", (e) => {
+    const f = e.dataTransfer.files[0]; if (f) f.text().then(load);
+  });
+
+  document.getElementById("q").addEventListener("input", render);
+  document.getElementById("intentFilter").addEventListener("change", render);
+  document.getElementById("onlyFb").addEventListener("change", render);
+  document.querySelectorAll("th[data-sort]").forEach((th) => th.addEventListener("click", () => {
+    const k = th.getAttribute("data-sort");
+    if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = 1; }
+    render();
+  }));
+</script>
+</body>
+</html>
