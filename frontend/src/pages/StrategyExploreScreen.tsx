@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type JSX, type KeyboardEvent, type Pointer
 
 import { cardStyle, normalizeIndex, shortestOffset, SWIPE_THRESHOLD_PX } from "./strategyExplore/fanMath";
 import { STRATEGIES, type StrategyExploreItem } from "./strategyExplore/strategies";
+import { StatusBar } from "../components/StatusBar";
 import "./StrategyExploreScreen.css";
 
 interface StrategyExploreScreenProps {
@@ -70,10 +71,7 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
     <main className="se-stage">
       <section className="se-phone" aria-label="추천 전략 둘러보기">
         <div className="se-page">
-          <div className="se-statusbar">
-            <span className="se-statusbar-time">9:41</span>
-            <span className="se-statusbar-icons" aria-hidden="true">● ● ▰</span>
-          </div>
+          <StatusBar />
 
           <div className="se-back" onClick={onBack} role="button" tabIndex={0} aria-label="뒤로 가기" onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onBack(); }}>
             <span>‹</span>
