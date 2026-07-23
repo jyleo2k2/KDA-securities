@@ -1,4 +1,4 @@
-import { useEffect, type JSX } from "react";
+import type { JSX } from "react";
 
 import type { DemoUserFinancialContext, RiskProfile } from "../api/types";
 
@@ -15,15 +15,6 @@ interface PensionPlannerPageProps {
 }
 
 export function PensionPlannerPage(_props: PensionPlannerPageProps): JSX.Element {
-  useEffect(() => {
-    function handleCalculatorNavigation(event: MessageEvent): void {
-      if (event.origin !== window.location.origin || event.data?.type !== "pension-copilot:navigate-home") return;
-      window.location.hash = "#/main-home";
-    }
-    window.addEventListener("message", handleCalculatorNavigation);
-    return () => window.removeEventListener("message", handleCalculatorNavigation);
-  }, []);
-
   return (
     <iframe
       src={`${import.meta.env.BASE_URL}pension-calculator-html/연금계산기.dc.html`}
