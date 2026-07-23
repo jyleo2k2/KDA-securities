@@ -66,7 +66,7 @@ create table public.demo_public_portfolio_metrics (
     scenario_id bigint primary key
         references public.mock_scenarios(id) on delete cascade,
     benchmark_user_id text not null unique
-        references public.benchmark_mock_users(user_id) on delete restrict,
+        references benchmark.benchmark_mock_users(user_id) on delete restrict,
     portfolio_trailing_12m_return_pct numeric(8, 4) not null,
     return_period_start date not null,
     return_period_end date not null,
