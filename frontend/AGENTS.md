@@ -2,7 +2,7 @@
 
 > 적용 범위: `frontend/` 하위 전체(React + TypeScript + Vite PWA).
 > 이 파일과 같은 폴더의 `AGENTS.md`·`CLAUDE.md`는 내용 동기화 대상이다. 한쪽을 바꾸면 같은 커밋에서 다른 쪽도 바꾼다.
-> 최종 갱신: 2026-07-22
+> 최종 갱신: 2026-07-23
 
 ## 임무
 
@@ -15,6 +15,7 @@
 - 다른 세션의 WIP를 수정·stash·reset·checkout하지 않는다.
 - 작업은 최신 `origin/main`에서 만든 `front/<owner>/<task>` 브랜치·전용 워크트리에서 하고 첫 커밋 후 Draft PR을 연다. 병합 브랜치 재사용과 `main` 직접 push는 금지한다.
 - `App.tsx`·`api/types.ts`·`GuidePage.tsx`·`MainHomeScreen.tsx`는 공유 핫스팟이다. 다른 active claim/PR과 겹치면 이재용이 단일 작성자를 지정하기 전까지 수정하지 않는다.
+- **라우트 지도 동기화**: 화면·라우팅 구조를 바꾸면(`App.tsx`의 `<Route>` 추가·삭제, `pages/*` 화면 신설·삭제·역할 변경, 진입 경로·데이터 출처 변경) [docs/30_스펙/프론트_라우트_화면_지도.html](../docs/30_스펙/프론트_라우트_화면_지도.html)를 같은 PR에서 갱신한다. CSS·문구 등 구조와 무관한 변경은 예외다. CI `route-map-sync`가 이를 강제하며(변경 diff 기준), 정당한 예외 PR에는 `route-map-exempt` 라벨을 붙인다.
 
 ## 소유·금지 경계
 
@@ -43,4 +44,4 @@ npm test         # vitest
 
 ## 핸드오프
 
-- PR 본문에: 변경 요약 / 계약 변경 여부 / build·test 결과 / 스크린샷(화면 변경 시) / 금지 경로 미수정 확인.
+- PR 본문에: 변경 요약 / 계약 변경 여부 / build·test 결과 / 스크린샷(화면 변경 시) / 라우트·화면 변경 시 라우트 지도 HTML 갱신 / 금지 경로 미수정 확인.

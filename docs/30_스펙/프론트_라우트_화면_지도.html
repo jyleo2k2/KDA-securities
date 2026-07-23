@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>연금 코파일럿 — 라우트 × 화면 지도</title>
+<style>
+  :root {
+    --bg: #f4f6fb; --surface: #ffffff; --surface-2: #eceff7; --ink: #171c2b; --ink-2: #3d465c;
+    --muted: #656d82; --line: #e2e6f0; --accent: #4657ec;
+    --shadow: 0 1px 2px rgba(20,26,45,.05), 0 8px 24px -12px rgba(20,26,45,.18);
+    --c-gate: #c77a1a; --c-gate-bg: #fbf1e0; --c-tab: #3a57d8; --c-tab-bg: #e7ecfc;
+    --c-hub: #0d9488; --c-hub-bg: #dcf3f0; --c-react: #7c47e6; --c-react-bg: #efe7fc;
+    --c-embed: #5a6678; --c-embed-bg: #e8ebf1;
+    --maxw: 1120px; --fs-display: clamp(1.9rem, 1.2rem + 2.4vw, 3rem);
+    --font-sans: "Pretendard", system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    --font-mono: ui-monospace, "Cascadia Code", "Cascadia Mono", Consolas, "D2Coding", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c0f16; --surface: #151a24; --surface-2: #1d2431; --ink: #eef1f8; --ink-2: #c3cad9;
+      --muted: #929bad; --line: #28303e; --accent: #7382ff;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px -14px rgba(0,0,0,.6);
+      --c-gate: #e6a84a; --c-gate-bg: #2e2517; --c-tab: #7f93ff; --c-tab-bg: #1b2340;
+      --c-hub: #34c9ba; --c-hub-bg: #102b28; --c-react: #a883ff; --c-react-bg: #241a3b;
+      --c-embed: #97a3b6; --c-embed-bg: #1e2530;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0c0f16; --surface: #151a24; --surface-2: #1d2431; --ink: #eef1f8; --ink-2: #c3cad9;
+    --muted: #929bad; --line: #28303e; --accent: #7382ff;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px -14px rgba(0,0,0,.6);
+    --c-gate: #e6a84a; --c-gate-bg: #2e2517; --c-tab: #7f93ff; --c-tab-bg: #1b2340;
+    --c-hub: #34c9ba; --c-hub-bg: #102b28; --c-react: #a883ff; --c-react-bg: #241a3b;
+    --c-embed: #97a3b6; --c-embed-bg: #1e2530;
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f6fb; --surface: #ffffff; --surface-2: #eceff7; --ink: #171c2b; --ink-2: #3d465c;
+    --muted: #656d82; --line: #e2e6f0; --accent: #4657ec;
+    --shadow: 0 1px 2px rgba(20,26,45,.05), 0 8px 24px -12px rgba(20,26,45,.18);
+    --c-gate: #c77a1a; --c-gate-bg: #fbf1e0; --c-tab: #3a57d8; --c-tab-bg: #e7ecfc;
+    --c-hub: #0d9488; --c-hub-bg: #dcf3f0; --c-react: #7c47e6; --c-react-bg: #efe7fc;
+    --c-embed: #5a6678; --c-embed-bg: #e8ebf1;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: clamp(1.5rem, 4vw, 3.5rem) clamp(1rem, 3vw, 2rem) 5rem; }
+  code { font-family: var(--font-mono); font-variant-ligatures: none; }
+  header.masthead { margin-bottom: 2.5rem; }
+  .eyebrow { font-size: .72rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); margin: 0 0 .9rem; }
+  h1 { font-size: var(--fs-display); line-height: 1.04; letter-spacing: -.02em; font-weight: 800; margin: 0 0 .9rem; text-wrap: balance; }
+  .lede { font-size: 1.06rem; color: var(--ink-2); max-width: 62ch; margin: 0; }
+  .lede code { background: var(--surface-2); padding: .08em .4em; border-radius: 6px; font-size: .9em; color: var(--ink); }
+  .legend { display: flex; flex-wrap: wrap; gap: .5rem .55rem; margin-top: 1.6rem; }
+  .tag { display: inline-flex; align-items: center; gap: .5em; font-size: .8rem; font-weight: 650; color: var(--cat, var(--ink-2)); background: var(--cat-bg, var(--surface-2)); border: 1px solid color-mix(in srgb, var(--cat, var(--line)) 30%, transparent); padding: .34em .7em; border-radius: 999px; line-height: 1.2; }
+  .tag .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cat, var(--muted)); flex: none; }
+  .g-gate { --cat: var(--c-gate); --cat-bg: var(--c-gate-bg); }
+  .g-tab { --cat: var(--c-tab); --cat-bg: var(--c-tab-bg); }
+  .g-hub { --cat: var(--c-hub); --cat-bg: var(--c-hub-bg); }
+  .g-react { --cat: var(--c-react); --cat-bg: var(--c-react-bg); }
+  .g-embed { --cat: var(--c-embed); --cat-bg: var(--c-embed-bg); }
+  section { margin-top: 3.25rem; }
+  .sec-head { display: flex; align-items: baseline; gap: .75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .sec-head h2 { font-size: 1.28rem; font-weight: 750; letter-spacing: -.01em; margin: 0; }
+  .sec-head .num { font-family: var(--font-mono); font-size: .78rem; font-weight: 700; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 6px; padding: .1em .5em; }
+  .sec-head p { margin: 0; color: var(--muted); font-size: .9rem; }
+  .mapflow { display: flex; flex-direction: column; align-items: stretch; gap: .5rem; }
+  .tier { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+  .tier .tier-label { font-size: .68rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 .7rem; }
+  .conn { text-align: center; color: var(--muted); font-size: .82rem; padding: .1rem 0; user-select: none; }
+  .conn b { color: var(--ink-2); font-weight: 650; }
+  .node { display: inline-flex; flex-direction: column; gap: .2rem; background: var(--surface-2); border: 1px solid var(--line); border-left: 3px solid var(--cat, var(--line)); border-radius: 10px; padding: .55rem .7rem; min-width: 0; }
+  .node .path { font-family: var(--font-mono); font-size: .82rem; font-weight: 650; color: var(--cat, var(--ink)); }
+  .node .name { font-size: .82rem; color: var(--ink-2); }
+  .noderow { display: flex; flex-wrap: wrap; gap: .55rem; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
+  @media (max-width: 640px) { .split { grid-template-columns: 1fr; } }
+  .branch .tier-label { margin-bottom: .55rem; }
+  .steps { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .1rem; }
+  .step { font-size: .76rem; font-weight: 600; color: var(--c-gate); background: var(--c-gate-bg); border: 1px solid color-mix(in srgb, var(--c-gate) 28%, transparent); border-radius: 8px; padding: .28em .55em; white-space: nowrap; }
+  .step small { display: block; font-weight: 500; color: var(--muted); font-size: .88em; }
+  .step-arrow { color: var(--muted); font-size: .8rem; padding: 0 .18rem; }
+  .gate-cond { margin-top: .8rem; font-size: .8rem; color: var(--ink-2); background: var(--surface-2); border-radius: 8px; padding: .5rem .65rem; }
+  .gate-cond code { color: var(--c-gate); font-family: var(--font-mono); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 1rem; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column; }
+  .card .rail { height: 4px; background: var(--cat, var(--accent)); }
+  .card .body { padding: 1.05rem 1.1rem 1.15rem; display: flex; flex-direction: column; gap: .7rem; }
+  .card .top { display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
+  .route-chip { font-family: var(--font-mono); font-size: .85rem; font-weight: 700; color: var(--cat, var(--ink)); background: var(--cat-bg, var(--surface-2)); border-radius: 8px; padding: .28em .6em; letter-spacing: -.01em; }
+  .type-badge { font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--cat); border: 1px solid color-mix(in srgb, var(--cat) 35%, transparent); border-radius: 999px; padding: .2em .6em; }
+  .card h3 { font-size: 1.05rem; font-weight: 720; margin: 0; letter-spacing: -.01em; }
+  .card h3 span { font-family: var(--font-sans); }
+  .card .file { font-family: var(--font-mono); font-size: .74rem; color: var(--muted); word-break: break-all; margin: -.35rem 0 0; }
+  .card .purpose { font-size: .9rem; color: var(--ink-2); margin: 0; }
+  .card .purpose code { font-family: var(--font-mono); }
+  .meta { display: flex; flex-direction: column; gap: .45rem; margin-top: .1rem; }
+  .meta .row { display: grid; grid-template-columns: 4.2rem 1fr; gap: .5rem; font-size: .82rem; }
+  .meta .row .k { color: var(--muted); font-weight: 650; }
+  .meta .row .v { color: var(--ink-2); }
+  .meta .row .v code { background: var(--surface-2); border-radius: 5px; padding: .05em .35em; font-size: .92em; font-family: var(--font-mono); }
+  .chips { display: flex; flex-wrap: wrap; gap: .3rem; }
+  .chips span { font-size: .74rem; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: .16em .5em; line-height: 1.35; }
+  .c-gate { --cat: var(--c-gate); --cat-bg: var(--c-gate-bg); }
+  .c-tab { --cat: var(--c-tab); --cat-bg: var(--c-tab-bg); }
+  .c-hub { --cat: var(--c-hub); --cat-bg: var(--c-hub-bg); }
+  .c-react { --cat: var(--c-react); --cat-bg: var(--c-react-bg); }
+  .c-embed { --cat: var(--c-embed); --cat-bg: var(--c-embed-bg); }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: .9rem; }
+  .note { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+  .note .h { display: flex; align-items: center; gap: .5rem; font-weight: 700; font-size: .95rem; margin-bottom: .45rem; }
+  .note .h .pin { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+  .note p { margin: 0; font-size: .87rem; color: var(--ink-2); }
+  .note code { font-family: var(--font-mono); font-size: .82em; background: var(--surface-2); padding: .05em .35em; border-radius: 5px; }
+  footer { margin-top: 3.5rem; padding-top: 1.4rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .8rem; }
+  footer code { font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <p class="eyebrow">연금 코파일럿 · Frontend</p>
+    <h1>라우트 × 화면 지도</h1>
+    <p class="lede">
+      React + Vite PWA. <code>HashRouter</code> 방식이라 주소는 전부 <code>#/경로</code> 형태예요
+      (예: <code>http://127.0.0.1:5173/#/guide</code>). 아래는 <code>App.tsx</code>의
+      라우트가 실제로 어떤 화면을 렌더하는지 — 색은 <b>렌더 방식</b>으로 구분했어요.
+    </p>
+    <div class="legend">
+      <span class="tag g-gate"><span class="dot"></span>인증 게이트</span>
+      <span class="tag g-tab"><span class="dot"></span>탭 셸 (하단 TabBar)</span>
+      <span class="tag g-hub"><span class="dot"></span>메인 허브</span>
+      <span class="tag g-react"><span class="dot"></span>React 상세</span>
+      <span class="tag g-embed"><span class="dot"></span>정적 임베드 (iframe · HTML)</span>
+    </div>
+  </header>
+  <section>
+    <div class="sec-head"><span class="num">MAP</span><h2>앱 구조 한눈에</h2><p>진입 → 게이트 → 셸/허브 → 상세</p></div>
+    <div class="mapflow">
+      <div class="tier">
+        <p class="tier-label">진입 · 리다이렉트</p>
+        <div class="noderow">
+          <span class="node c-tab"><span class="path">#/</span><span class="name">→ /home 으로 이동</span></span>
+          <span class="node c-tab"><span class="path">#/* (그 외)</span><span class="name">→ /home 으로 이동</span></span>
+        </div>
+      </div>
+      <div class="conn">↓ 미로그인이면 게이트가 먼저 뜸</div>
+      <div class="tier" style="border-left:3px solid var(--c-gate)">
+        <p class="tier-label" style="color:var(--c-gate)">인증 게이트 · LoginFlowPage (단일 컴포넌트, step 상태로 전환)</p>
+        <div class="steps">
+          <span class="step">intro<small>인트로</small></span><span class="step-arrow">›</span>
+          <span class="step">form<small>로그인</small></span><span class="step-arrow">›</span>
+          <span class="step">success<small>로그인 성공</small></span><span class="step-arrow">›</span>
+          <span class="step">consent<small>계좌연동 동의</small></span><span class="step-arrow">›</span>
+          <span class="step">linking<small>연결 중…</small></span><span class="step-arrow">›</span>
+          <span class="step">risk-assessment<small>진단 안내</small></span><span class="step-arrow">›</span>
+          <span class="step">investor-info<small>설문 17문항</small></span><span class="step-arrow">›</span>
+          <span class="step">investor-result<small>성향 결과</small></span>
+        </div>
+        <div class="gate-cond">노출 조건: <code>auth.configured &amp;&amp; (!accessToken || loginSuccessPending || resurveyPending)</code> — 즉 미로그인 · 로그인 직후 · 성향 재진단 시. 재진단이면 <code>investor-info</code>부터 시작.</div>
+      </div>
+      <div class="conn">↓ <b>“서비스 시작하기 / 나중에 할게요”</b> (onStart)</div>
+      <div class="tier">
+        <div class="split">
+          <div class="branch">
+            <p class="tier-label" style="color:var(--c-tab)">탭 셸 · 하단 TabBar 3개 (guide에선 탭바 숨김)</p>
+            <div class="noderow">
+              <span class="node c-tab"><span class="path">#/home</span><span class="name">홈 · 연금 현황</span></span>
+              <span class="node c-tab"><span class="path">#/guide</span><span class="name">연금가이드 · 챗봇</span></span>
+              <span class="node c-tab"><span class="path">#/profile</span><span class="name">프로필</span></span>
+            </div>
+          </div>
+          <div class="branch">
+            <p class="tier-label" style="color:var(--c-hub)">메인 허브 (탭 밖, 라우트 직행)</p>
+            <div class="noderow"><span class="node c-hub"><span class="path">#/main-home</span><span class="name">MainHomeScreen · 기능 허브</span></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="conn">↓ 허브 카드/버튼에서 이동 (뒤로가기는 전부 /main-home 복귀)</div>
+      <div class="tier">
+        <p class="tier-label">허브에서 뻗는 상세 화면</p>
+        <div class="noderow">
+          <span class="node c-embed"><span class="path">#/planner</span><span class="name">연금계산기 (iframe)</span></span>
+          <span class="node c-embed"><span class="path">#/profile-html</span><span class="name">내 프로필 (iframe)</span></span>
+          <span class="node c-react"><span class="path">#/strategy-explore</span><span class="name">전략 탐색 캐러셀</span></span>
+          <span class="node c-embed"><span class="path">#/strategy-detail</span><span class="name">전략 상세 (HTML)</span></span>
+          <span class="node c-embed"><span class="path">#/user-pick-benchmark</span><span class="name">이용자 Pick 벤치마킹 (iframe)</span></span>
+        </div>
+        <div class="conn" style="text-align:left; margin-top:.5rem">전략 탐색 카드 클릭 → <b>#/strategy-detail</b></div>
+      </div>
+    </div>
+  </section>
+  <section>
+    <div class="sec-head"><span class="num">01</span><h2>인증 · 온보딩</h2><p>라우트 이전에 조건부로 뜨는 게이트</p></div>
+    <div class="grid">
+      <article class="card c-gate"><div class="rail"></div><div class="body">
+        <div class="top"><span class="route-chip">(라우트 없음 · 게이트)</span><span class="type-badge">인증 게이트</span></div>
+        <h3>LoginFlowPage</h3>
+        <p class="file">pages/LoginFlowPage.tsx</p>
+        <p class="purpose">로그인 → 계좌연동 동의 → 투자자정보 설문 → 성향 결과를 한 컴포넌트의 <code>step</code>으로 순차 진행하는 온보딩 흐름.</p>
+        <div class="chips"><span>“차곡차곡 모아 든든한 미래로”</span><span>로그인하기</span><span>연금계좌 연동 동의</span><span>투자자정보 확인서(17문항)</span><span>투자성향 결과</span></div>
+        <div class="meta">
+          <div class="row"><span class="k">진입</span><span class="v">미로그인 · 로그인 직후 · 재진단</span></div>
+          <div class="row"><span class="k">데이터</span><span class="v"><code>getAccountLinkOptions</code> · <code>saveInvestmentProfile</code> · Supabase Auth</span></div>
+          <div class="row"><span class="k">하위</span><span class="v">InvestorInfoForm · InvestorResultScreen</span></div>
+        </div>
+      </div></article>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="num">02</span><h2>탭 화면 · 하단 TabBar</h2><p>“홈 / 연금가이드 / 프로필” — 단, guide 탭에선 TabBar 숨김</p></div>
+    <div class="grid">
+      <article class="card c-tab"><div class="rail"></div><div class="body">
+        <div class="top"><span class="route-chip">#/home</span><span class="type-badge">탭 · 홈</span></div>
+        <h3>HomePage <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 연금 현황 대시보드</span></h3>
+        <p class="file">pages/HomePage.tsx</p>
+        <p class="purpose">계좌별 자산·위험·스트레스를 <b>실데이터 중심</b>으로 점검하는 현황 대시보드.</p>
+        <div class="chips"><span>포트폴리오 요약 · 도넛</span><span>DC/IRP/연금저축 잔액</span><span>규칙엔진 점검(위험자산%·최대자산군%)</span><span>주식급락 스트레스</span><span>계좌별 보유 ETF</span></div>
+        <div class="meta">
+          <div class="row"><span class="k">진입</span><span class="v">TabBar “홈” · “내 연금 분석하기”→guide</span></div>
+          <div class="row"><span class="k">데이터</span><span class="v"><code>hero</code> · <code>userContext</code> · <code>investmentProfile</code></span></div>
+        </div>
+      </div></article>
+      <article class="card c-tab"><div class="rail"></div><div class="body">
+        <div class="top"><span class="route-chip">#/guide</span><span class="type-badge">탭 · 챗봇</span></div>
+        <h3>GuidePage <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 챗봇 “연그미”</span></h3>
+        <p class="file">pages/GuidePage.tsx</p>
+        <p class="purpose">규칙 엔진·검증 지식 기반 답변을 <b>SSE 스트리밍</b>으로 보여주는 대화 화면. 이력 저장·관리.</p>
+        <div class="chips"><span>대화 사이드바 · 세션</span><span>추천 질문 카드</span><span>ETF 테마 21종</span><span>뉴스 3줄 요약</span><span>수치 근거 · 출처 칩</span><span>이어묻기 카드</span></div>
+        <div class="meta">
+          <div class="row"><span class="k">진입</span><span class="v">TabBar “연금가이드” · 허브 “자세히 진단받기/챗봇”</span></div>
+          <div class="row"><span class="k">데이터</span><span class="v">SSE 스트림 · <code>getScenarios</code> · <code>getChatCards</code> · 세션 API</span></div>
+          <div class="row"><span class="k">특이</span><span class="v">이 탭에선 하단 TabBar 숨김 (자체 UI 사용)</span></div>
+        </div>
+      </div></article>
+      <article class="card c-tab"><div class="rail"></div><div class="body">
+        <div class="top"><span class="route-chip">#/profile</span><span class="type-badge">탭 · 프로필</span></div>
+        <h3>ProfilePage <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 내 페이지</span></h3>
+        <p class="file">pages/ProfilePage.tsx</p>
+        <p class="purpose">저장된 투자자정보와 연금 데이터 범위를 요약하고 재진단으로 진입.</p>
+        <div class="chips"><span>저장 투자성향</span><span>진단일·유효기한</span><span>만료 안내</span><span>“진단 다시하기”</span><span>데모 목데이터 고지</span></div>
+        <div class="meta">
+          <div class="row"><span class="k">진입</span><span class="v">TabBar “프로필”</span></div>
+          <div class="row"><span class="k">데이터</span><span class="v"><code>investmentProfile.assessment</code> · <code>userContext</code></span></div>
+        </div>
+      </div></article>
+    </div>
+  </section>
+  <section>
+    <div class="sec-head"><span class="num">03</span><h2>허브 · 상세 화면</h2><p>탭 밖, 라우트로만 진입 — 회색은 정적 임베드</p></div>
+    <div class="grid">
+      <article class="card c-hub"><div class="rail"></div><div class="body">
+        <div class="top"><span class="route-chip">#/main-home</span><span class="type-badge">메인 허브</span></div>
+        <h3>MainHomeScreen <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 기능 허브</span></h3>
+        <p class="file">pages/MainHomeScreen.tsx</p>
+        <p class="purpose">연금 자산 요약 + 세액공제 + 전략 카드 + 이용자 Pick으로 각 기능에 진입시키는 디자인 허브.</p>
+        <div class="chips"><span>내 연금 자산 · 도넛</span><span>세액공제 “완료율 확인하기”</span><span>전략 카드 10종 · 계획수익률</span><span>이용자 Pick</span><span>프로필 버튼</span></div>
+        <div class="meta">
+          <div class="row"><span class="k">진입</span><span class="v">LoginFlow <code>onStart</code> · 하위 화면 뒤로가기</span></div>
+          <div class="row"><span class="k">데이터</span><span class="v"><code>hero</code> · <code>userContext</code> · <code>investmentProfile</code> (+ 하드코딩 전략)</span></div>
+          <div class="row"><span class="k">연결</span><span class="v">planner · profile-html · strategy-explore · user-pick-benchmark · guide</span></div>
+        </div>
+      </div></article>
+      <article class="card c-react"><div class="rail"></div><div class="body">
+        <div class="top"><span class="route-chip">#/strategy-explore</span><span class="type-badge">React 상세</span></div>
+        <h3>StrategyExploreScreen</h3>
+        <p class="file">pages/StrategyExploreScreen.tsx</p>
+        <p class="purpose">추천 전략 10종을 부채꼴(fan) 카드 캐러셀로 좌우로 넘기며 둘러보는 화면.</p>
+        <div class="chips"><span>“추천 전략들을 확인해보세요!”</span><span>스와이프·화살표·도트</span><span>전략 소개 카드</span><span>카드 클릭→상세</span></div>
+        <div class="meta">
+          <div class="row"><span class="k">진입</span><span class="v">허브 “시나리오·더보기 +”</span></div>
+          <div class="row"><span class="k">데이터</span><span class="v">없음 — <code>strategyExplore/strategies.ts</code> 상수</span></div>
+        </div>
+      </div></article>
+      <article class="card c-embed"><div class="rail"></div><div class="body">
+        <div class="top"><span class="route-chip">#/planner</span><span class="type-badge">정적 임베드</span></div>
+        <h3>PensionPlannerPage <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 연금계산기</span></h3>
+        <p class="file">pages/PensionPlannerPage.tsx → iframe</p>
+        <p class="purpose">“예상 연금 계산 및 세액공제 확인” 계산기를 정적 HTML iframe으로 임베드하는 래퍼.</p>
+        <div class="chips"><span>연금계산기.dc.html</span><span>계산은 iframe 내부</span><span>뒤로가기 감지</span></div>
+        <div class="meta">
+          <div class="row"><span class="k">진입</span><span class="v">허브 “완료율 확인하기 →” · 챗봇 이어묻기</span></div>
+          <div class="row"><span class="k">데이터</span><span class="v">React 측 없음 (iframe 내부 처리)</span></div>
+        </div>
+      </div></article>
+      <article class="card c-embed"><div class="rail"></div><div class="body">
+        <div class="top"><span class="route-chip">#/profile-html</span><span class="type-badge">정적 임베드</span></div>
+        <h3>ProfileHtmlPage <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 내 프로필</span></h3>
+        <p class="file">pages/ProfileHtmlPage.tsx → iframe</p>
+        <p class="purpose">정적 HTML로 만든 “내 프로필” 화면을 iframe으로 임베드하는 래퍼.</p>
+        <div class="chips"><span>profile-html/index.html</span><span>전체화면 iframe</span><span>뒤로가기 감지</span></div>
+        <div class="meta">
+          <div class="row"><span class="k">진입</span><span class="v">허브 헤더 프로필 버튼</span></div>
+          <div class="row"><span class="k">데이터</span><span class="v">없음</span></div>
+        </div>
+      </div></article>
+      <article class="card c-embed"><div class="rail"></div><div class="body">
+        <div class="top"><span class="route-chip">#/strategy-detail</span><span class="type-badge">정적 HTML</span></div>
+        <h3>StrategyDetailScreen <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 전략 상세</span></h3>
+        <p class="file">pages/StrategyDetailScreen.tsx (dangerouslySetInnerHTML)</p>
+        <p class="purpose">전략 상세(현재 “테마 전략” 고정)를 하드코딩 HTML로 렌더.</p>
+        <div class="chips"><span>자산배분 도넛</span><span>운용 타임라인(2023~2025)</span><span>FAQ</span><span>월 수령액 이벤트 카드</span></div>
+        <div class="meta">
+          <div class="row"><span class="k">진입</span><span class="v">전략 탐색 카드/아바타 클릭</span></div>
+          <div class="row"><span class="k">데이터</span><span class="v">없음 — 전부 정적 하드코딩</span></div>
+        </div>
+      </div></article>
+      <article class="card c-embed"><div class="rail"></div><div class="body">
+        <div class="top"><span class="route-chip">#/user-pick-benchmark</span><span class="type-badge">정적 임베드</span></div>
+        <h3>UserPickBenchmarkScreen <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 이용자 Pick</span></h3>
+        <p class="file">pages/UserPickBenchmarkScreen.tsx → iframe</p>
+        <p class="purpose">다른 이용자 포트폴리오 “투자 벤치마킹하기”를 iframe으로 임베드하는 래퍼.</p>
+        <div class="chips"><span>투자 벤치마킹.dc.html</span><span>오버레이 뒤로가기</span><span>props heroes 미사용</span></div>
+        <div class="meta">
+          <div class="row"><span class="k">진입</span><span class="v">허브 “이용자 Pick · 지금 둘러보기 ›”</span></div>
+          <div class="row"><span class="k">데이터</span><span class="v">React 측 없음 (iframe 내부)</span></div>
+        </div>
+      </div></article>
+    </div>
+  </section>
+  <section>
+    <div class="sec-head"><span class="num">!</span><h2>헷갈리기 쉬운 구조</h2><p>이름은 비슷한데 다른 화면들</p></div>
+    <div class="notes">
+      <div class="note">
+        <div class="h"><span class="pin" style="background:var(--c-tab)"></span>홈이 둘</div>
+        <p><code>HomePage</code>(<code>#/home</code>, 탭·실데이터 대시보드)와 <code>MainHomeScreen</code>(<code>#/main-home</code>, 디자인 허브)은 <b>다른 화면</b>. 허브는 탭바에 없고 라우트로만 노출돼요.</p>
+      </div>
+      <div class="note">
+        <div class="h"><span class="pin" style="background:var(--c-hub)"></span>프로필도 둘</div>
+        <p>탭 <code>ProfilePage</code>(<code>#/profile</code>, React)와 허브 헤더가 여는 <code>ProfileHtmlPage</code>(<code>#/profile-html</code>, iframe)는 별개예요.</p>
+      </div>
+      <div class="note">
+        <div class="h"><span class="pin" style="background:var(--c-embed)"></span>정적 임베드 4개</div>
+        <p><code>planner</code> · <code>profile-html</code> · <code>strategy-detail</code> · <code>user-pick-benchmark</code>는 iframe/HTML 임베드라 React 측 데이터 바인딩이 거의 없어요. 실제 콘텐츠는 <code>public/</code>의 정적 HTML.</p>
+      </div>
+    </div>
+  </section>
+  <footer>출처: <code>frontend/src/App.tsx</code> (AppRoutes) 및 각 <code>pages/*.tsx</code> · 기준일 2026-07-23 · HashRouter 기준 <code>#/경로</code></footer>
+</div>
+</body>
+</html>
