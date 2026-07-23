@@ -64,6 +64,7 @@ class QueryPlan(BaseModel):
     theme_content_topic: ThemeContentTopic | None = None
     requests_theme_candidates: bool = False
     requests_theme_holdings: bool = False
+    distribution_isu_code: str | None = None
     blocked_reason: BlockedReason | None = None
 
     @model_validator(mode="after")
@@ -105,6 +106,8 @@ class QueryPlan(BaseModel):
             or self.requests_theme_holdings
         ):
             raise ValueError("theme fields require etf_theme intent")
+        if self.intent != ChatIntent.ETF_DISTRIBUTION and self.distribution_isu_code:
+            raise ValueError("distribution_isu_code requires etf_distribution intent")
         return self
 
 
@@ -294,6 +297,12 @@ _PENSION_PLANNER_TERMS = re.compile(
     r"(?:55|60|65)\s*세.{0,16}(?:얼마|수령|계산)|"
     r"(?:수령액|연금\s*계산|시뮬레이션).{0,16}(?:얼마|계산|알려)"
 )
+_DISTRIBUTION_TERMS = re.compile(
+    r"분배\s*(?:금|락|기준일|지급일|일정)|배당\s*(?:금|락|기준일|지급일|일정)|"
+    r"지급\s*일|재\s*투자",
+    re.I,
+)
+_ETF_ISU_CODE = re.compile(r"(?<![0-9A-Z])([0-9A-Z]{6})(?![0-9A-Z])", re.I)
 _COUNT = re.compile(r"(?<!\d)([1-5])\s*(?:개|건)(?:만)?(?!\d)")
 _KOREAN_COUNT = (
     (re.compile(r"(?:한\s*(?:개|건)|하나)(?:만)?"), 1),
@@ -305,6 +314,7 @@ _KOREAN_COUNT = (
 _INTENT_PRIORITY = (
     ChatIntent.MOCK_PORTFOLIO,
     ChatIntent.PENSION_TAX,
+    ChatIntent.ETF_DISTRIBUTION,
     ChatIntent.NEWS,
     ChatIntent.MACRO_EVIDENCE,
     ChatIntent.ETF_THEME,
@@ -354,6 +364,11 @@ def _news_query(message: str) -> str:
     if re.search(r"한국|국내|코스피|코스닥", message, re.I):
         return "market:kr"
     return "market"
+
+
+def _distribution_isu_code(message: str) -> str | None:
+    match = _ETF_ISU_CODE.search(message)
+    return match.group(1).upper() if match is not None else None
 
 
 def _news_scope_notice(message: str) -> NewsScopeNotice | None:
@@ -464,6 +479,8 @@ def plan_question(
     intent_matches = {
         ChatIntent.MOCK_PORTFOLIO: _SCENARIO_TERMS.search(normalized) is not None,
         ChatIntent.PENSION_TAX: requests_tax_credit or requests_withdrawal_tax,
+        ChatIntent.ETF_DISTRIBUTION: _DISTRIBUTION_TERMS.search(normalized)
+        is not None,
         ChatIntent.NEWS: (
             _NEWS_TERMS.search(normalized) is not None
             or _NEWS_EVENT_STRATEGY_TERMS.search(normalized) is not None
@@ -523,6 +540,14 @@ def plan_question(
             max_results=max_results,
             requests_tax_credit=requests_tax_credit,
             requests_withdrawal_tax=requests_withdrawal_tax,
+        )
+    if intent == ChatIntent.ETF_DISTRIBUTION:
+        return QueryPlan(
+            normalized_message=normalized,
+            intent=ChatIntent.ETF_DISTRIBUTION,
+            account_types=account_types,
+            max_results=max_results,
+            distribution_isu_code=_distribution_isu_code(normalized),
         )
     if intent == ChatIntent.NEWS:
         news_query = _news_query(normalized)

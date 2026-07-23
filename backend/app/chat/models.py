@@ -90,6 +90,7 @@ class ChatIntent(StrEnum):
     PENSION_TAX = "pension_tax"
     EDUCATIONAL_PORTFOLIO = "educational_portfolio"
     ETF_THEME = "etf_theme"
+    ETF_DISTRIBUTION = "etf_distribution"
     MACRO_EVIDENCE = "macro_evidence"
     OUT_OF_SCOPE = "out_of_scope"
 

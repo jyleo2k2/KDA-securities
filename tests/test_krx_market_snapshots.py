@@ -6,7 +6,11 @@ from uuid import UUID
 
 from fastapi.testclient import TestClient
 
-from backend.app.api.deps import get_etf_market_repository
+from backend.app.api.deps import (
+    get_etf_distribution_event_repository,
+    get_etf_market_repository,
+)
+from backend.app.etf_distribution_event_repository import EtfDistributionEventDataset
 from backend.app.etf_market_repository import (
     EtfMarketObservation,
     EtfMarketRepository,
@@ -185,6 +189,33 @@ class FakeEtfMarketRepository:
         return [_observation(date(2026, 7, 15)), _observation()]
 
 
+class FakeDistributionEventRepository:
+    def latest_for_etf(self, isu_code: str) -> EtfDistributionEventDataset:
+        assert isu_code == "069500"
+        return EtfDistributionEventDataset(
+            as_of=BASE_DATE,
+            events=[
+                {
+                    "event_type": "cash_distribution",
+                    "effective_date": "2026-07-15",
+                    "record_date": None,
+                    "payment_date": "2026-07-18",
+                    "cash_per_share_krw": "125",
+                    "ratio": None,
+                    "timing_basis": "kind",
+                    "confidence": "high",
+                    "status": "confirmed_cash_flow",
+                    "source_evidence": [
+                        {
+                            "source_type": "kind_cash_distribution",
+                            "source_url": "https://example.test/kind/069500",
+                        }
+                    ],
+                }
+            ],
+        )
+
+
 def test_etf_market_api_exposes_official_volume_with_source_boundary() -> None:
     app.dependency_overrides[get_etf_market_repository] = FakeEtfMarketRepository
     try:
@@ -226,6 +257,29 @@ def test_etf_volume_history_hides_repository_key_error(caplog) -> None:
         }
     }
     assert "etf_volume_history_not_found isu_code=069500" in caplog.messages
+
+
+def test_etf_distribution_events_api_exposes_official_event_source_chips() -> None:
+    app.dependency_overrides[
+        get_etf_distribution_event_repository
+    ] = FakeDistributionEventRepository
+    try:
+        with TestClient(app) as client:
+            response = client.get("/market/etfs/069500/distribution-events")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["data_boundary"] == "official_distribution_event_data"
+    assert payload["as_of"] == "2026-07-16"
+    assert payload["results"][0]["cash_per_share_krw"] == "125"
+    assert payload["results"][0]["source_chips"] == [
+        {
+            "source_type": "kind_cash_distribution",
+            "reference": "https://example.test/kind/069500",
+        }
+    ]
 
 
 class _Connection:

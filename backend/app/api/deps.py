@@ -379,6 +379,11 @@ def _chat_service(
             else None
         ),
         macro_evidence=MacroEvidenceRepository(Path(macro_evidence_report_path)),
+        distribution_events=(
+            PostgresEtfDistributionEventRepository(database_url, pool=pool)
+            if database_url
+            else None
+        ),
     )
 
 
