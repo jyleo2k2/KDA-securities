@@ -1,12 +1,21 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ProfileHtmlPage } from "./ProfileHtmlPage";
 
-afterEach(cleanup);
+const { signOutMock } = vi.hoisted(() => ({ signOutMock: vi.fn() }));
+
+vi.mock("../auth/supabase", () => ({
+  supabase: { auth: { signOut: signOutMock } },
+}));
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 describe("ProfileHtmlPage", () => {
   const props = {
@@ -15,6 +24,7 @@ describe("ProfileHtmlPage", () => {
     investmentProfile: null,
     portfolio: null,
     onBack: vi.fn(),
+    onSignOut: vi.fn().mockResolvedValue(undefined),
   };
 
   it("loads the supplied profile html from its explicit public file path", () => {
@@ -43,6 +53,45 @@ describe("ProfileHtmlPage", () => {
     fireEvent.click(frameDocument.querySelector("[data-profile-html-back]") as HTMLButtonElement);
 
     expect(onBack).toHaveBeenCalledOnce();
+  });
+
+  it("forwards the profile logout button to the supplied callback", () => {
+    const onSignOut = vi.fn().mockResolvedValue(undefined);
+
+    render(<ProfileHtmlPage {...props} onSignOut={onSignOut} />);
+
+    const iframe = screen.getByTitle("내 프로필") as HTMLIFrameElement;
+    const frameDocument = iframe.contentDocument;
+    expect(frameDocument).not.toBeNull();
+    if (!frameDocument) return;
+
+    frameDocument.open();
+    frameDocument.write('<!doctype html><body><button type="button" data-profile-html-sign-out>로그아웃</button></body>');
+    frameDocument.close();
+    fireEvent.load(iframe);
+    fireEvent.click(frameDocument.querySelector("[data-profile-html-sign-out]") as HTMLButtonElement);
+
+    expect(onSignOut).toHaveBeenCalledOnce();
+  });
+
+  it("signs out the Supabase session when no callback is supplied", async () => {
+    signOutMock.mockResolvedValue({ error: null });
+    const { onSignOut: _onSignOut, ...propsWithoutSignOut } = props;
+
+    render(<ProfileHtmlPage {...propsWithoutSignOut} />);
+
+    const iframe = screen.getByTitle("내 프로필") as HTMLIFrameElement;
+    const frameDocument = iframe.contentDocument;
+    expect(frameDocument).not.toBeNull();
+    if (!frameDocument) return;
+
+    frameDocument.open();
+    frameDocument.write('<!doctype html><body><button type="button" data-profile-html-sign-out>로그아웃</button></body>');
+    frameDocument.close();
+    fireEvent.load(iframe);
+    fireEvent.click(frameDocument.querySelector("[data-profile-html-sign-out]") as HTMLButtonElement);
+
+    await waitFor(() => expect(signOutMock).toHaveBeenCalledOnce());
   });
 
   it("writes the authenticated owner data into the supplied profile screen", () => {

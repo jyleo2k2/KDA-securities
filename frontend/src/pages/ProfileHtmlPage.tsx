@@ -5,6 +5,7 @@ import type {
   RiskProfile,
   UserPensionPortfolio,
 } from "../api/types";
+import { supabase } from "../auth/supabase";
 import {
   latestPortfolioDate,
   portfolioBoundaryLabel,
@@ -16,6 +17,7 @@ interface ProfileHtmlPageProps {
   investmentProfile: InvestmentProfileResponse | null;
   portfolio: UserPensionPortfolio | null;
   onBack: () => void;
+  onSignOut?: () => Promise<void>;
 }
 
 const PROFILE_LABELS: Record<RiskProfile, string> = {
@@ -32,13 +34,16 @@ export function ProfileHtmlPage({
   investmentProfile,
   portfolio,
   onBack,
+  onSignOut,
 }: ProfileHtmlPageProps): JSX.Element {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const onBackRef = useRef(onBack);
+  const onSignOutRef = useRef(onSignOut ?? signOutFromProfile);
 
   useEffect(() => {
     onBackRef.current = onBack;
-  }, [onBack]);
+    onSignOutRef.current = onSignOut ?? signOutFromProfile;
+  }, [onBack, onSignOut]);
 
   useEffect(() => {
     const iframe = iframeRef.current;
@@ -50,6 +55,9 @@ export function ProfileHtmlPage({
         closest?: (selector: string) => Element | null;
       } | null;
       if (target?.closest?.("[data-profile-html-back]")) onBackRef.current();
+      if (target?.closest?.("[data-profile-html-sign-out]")) {
+        void onSignOutRef.current();
+      }
     };
     const setText = (selector: string, value: string): void => {
       const element = frameDocument?.querySelector(selector);
@@ -96,4 +104,10 @@ export function ProfileHtmlPage({
       title="내 프로필"
     />
   );
+}
+
+async function signOutFromProfile(): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase.auth.signOut();
+  if (error) throw new Error("로그아웃하지 못했습니다.");
 }
