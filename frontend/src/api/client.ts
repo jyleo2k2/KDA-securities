@@ -47,14 +47,14 @@ export class ApiError extends Error {
 const ERROR_MESSAGES: Record<string, string> = {
   RESOURCE_NOT_FOUND: "요청한 정보를 찾을 수 없습니다.",
   DATA_SOURCE_UNAVAILABLE: "데이터를 불러오는 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.",
-  SESSION_NOT_FOUND: "요청한 대화 기록을 찾을 수 없습니다.",
+  SESSION_NOT_FOUND: "요청한 지난 대화를 찾지 못했어요.",
   DATABASE_NOT_CONFIGURED: "현재 서비스를 이용할 수 없습니다. 잠시 후 다시 시도해 주세요.",
   INVALID_DATE_RANGE: "조회 시작일은 종료일보다 늦을 수 없습니다.",
 };
 
 export function apiErrorMessage(
   error: ApiError,
-  fallback = "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+  fallback = "답변을 준비하지 못했어요. 잠시 후 다시 시도해 주세요.",
 ): string {
   if (error.code !== null) return ERROR_MESSAGES[error.code] ?? fallback;
   if (error.status === 401) return "로그인이 만료되었습니다. 다시 로그인해 주세요.";

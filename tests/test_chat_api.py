@@ -301,7 +301,8 @@ def test_authenticated_chat_stream_persists_final_response() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert "대화 기록을 저장하고 있습니다." in response.text
+    assert "대화 기록을 저장하고 있습니다." not in response.text
+    assert "답변을 정리했어요." in response.text
     assert '"persisted": true' in response.text
     assert len(repository.saved) == 1
 
@@ -701,7 +702,7 @@ def test_existing_session_without_repository_errors_before_answer_delta() -> Non
 
     events = parse_sse(response.text)
     assert events == [
-        ("phase", {"message": "요청을 확인하고 있습니다."}),
+        ("phase", {"message": "질문을 살펴보고 있어요."}),
         (
             "error",
             {

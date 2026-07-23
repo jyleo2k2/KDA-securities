@@ -444,7 +444,7 @@ async def chat_authenticated_stream(
     """
 
     async def events() -> AsyncIterator[str]:
-        yield _sse("phase", {"message": "요청을 확인하고 있습니다."})
+        yield _sse("phase", {"message": "질문을 살펴보고 있어요."})
         if request.session_id is not None and repository is None:
             yield _sse_error(
                 ApiErrorCode.DATABASE_NOT_CONFIGURED,
@@ -572,13 +572,13 @@ async def chat_authenticated_stream(
         )
         plan = service.plan(planning_request)
         if topic_guard is not None and plan.blocked_reason is BlockedReason.UNSUPPORTED:
-            yield _sse("phase", {"message": "질문 범위를 추가로 확인하고 있습니다."})
+            yield _sse("phase", {"message": "알맞은 안내를 준비하고 있어요."})
             plan = await asyncio.to_thread(
                 topic_guard.refine_plan,
                 planning_request.message,
                 plan,
             )
-        yield _sse("phase", {"message": "근거를 검색하고 있습니다."})
+        yield _sse("phase", {"message": "필요한 정보를 확인하고 있어요."})
         answer_started_at = perf_counter()
         try:
             response, allow_narration = await asyncio.to_thread(
@@ -614,7 +614,7 @@ async def chat_authenticated_stream(
             for event in _answer_delta_events(response.answer):
                 yield event
         if narrator is not None and allow_narration:
-            yield _sse("phase", {"message": "검증된 설명을 생성하고 있습니다."})
+            yield _sse("phase", {"message": "이해하기 쉽게 정리하고 있어요."})
             narration_started_at = perf_counter()
             response = await asyncio.to_thread(
                 narrator.narrate,
@@ -627,7 +627,7 @@ async def chat_authenticated_stream(
         else:
             narration_started_at = None
         if response.intent == ChatIntent.OUT_OF_SCOPE:
-            yield _sse("phase", {"message": "답변 검증을 완료했습니다."})
+            yield _sse("phase", {"message": "답변을 정리했어요."})
             first_delta_at = perf_counter()
             for event in _answer_delta_events(response.answer):
                 yield event
@@ -663,7 +663,6 @@ async def chat_authenticated_stream(
             )
             return
 
-        yield _sse("phase", {"message": "대화 기록을 저장하고 있습니다."})
         try:
             saved = await asyncio.to_thread(
                 repository.save_exchange,
@@ -690,7 +689,7 @@ async def chat_authenticated_stream(
             )
             return
         final_response = saved.response or response
-        yield _sse("phase", {"message": "답변 검증을 완료했습니다."})
+        yield _sse("phase", {"message": "답변을 정리했어요."})
         if not stream_before_narration:
             first_delta_at = perf_counter()
             for event in _answer_delta_events(final_response.answer):

@@ -780,9 +780,9 @@ function authenticatedErrorMessage(error: unknown): string {
     return "로그인이 만료되었습니다. 다시 로그인해 주세요.";
   }
   if (error instanceof ApiError && error.status === 503) {
-    return "대화 저장소에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.";
+    return "대화를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.";
   }
-  return "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+  return "답변을 준비하지 못했어요. 잠시 후 다시 시도해 주세요.";
 }
 
 export function GuidePage({
@@ -1087,7 +1087,7 @@ export function GuidePage({
         auth.loading
           ? null
           : auth.configured
-            ? "로그인 세션이 없습니다. 로그인하면 저장된 대화를 다시 불러옵니다."
+            ? "로그인하면 지난 대화를 이어서 볼 수 있어요."
             : null,
       );
       setHistoryLoading(false);
@@ -1332,7 +1332,7 @@ export function GuidePage({
       || deletingAllSessions
       || chatSessions.length === 0
     ) return;
-    if (!window.confirm("저장된 모든 대화를 삭제할까요?\n삭제한 대화는 복구할 수 없습니다.")) {
+    if (!window.confirm("지난 대화를 모두 지울까요?\n삭제 후에는 되돌릴 수 없어요.")) {
       return;
     }
 
@@ -1370,7 +1370,7 @@ export function GuidePage({
       setMessages([]);
       setActiveSessionId(null);
       setConversationContext(null);
-      setDeleteStatus("저장된 모든 대화를 삭제했습니다.");
+      setDeleteStatus("지난 대화를 모두 지웠어요.");
       window.setTimeout(() => textareaRef.current?.focus(), 0);
     } catch (error) {
       if (!isCurrentOperation(authGeneration, requestUserId, requestToken)) return;
@@ -1398,8 +1398,8 @@ export function GuidePage({
     <div className="app-shell">
       <aside className={`sidebar ${isSidebarOpen ? "sidebar-open" : ""}`}>
         <div className="brand design-drawer-heading">
-          <strong>대화 기록</strong>
-          <button type="button" aria-label="대화 기록 닫기" onClick={() => setIsSidebarOpen(false)}>×</button>
+          <strong>지난 대화</strong>
+          <button type="button" aria-label="지난 대화 닫기" onClick={() => setIsSidebarOpen(false)}>×</button>
         </div>
 
         <button className="new-chat" type="button" onClick={startNewChat}>
@@ -1412,7 +1412,7 @@ export function GuidePage({
           ) : auth.session ? (
             <>
               <div className="auth-user">
-                <span><strong>대화 저장 중</strong><small>{auth.session.user.email ?? "인증 사용자"}</small></span>
+                <span><strong>내 대화</strong><small>{auth.session.user.email ?? "인증 사용자"}</small></span>
                 <button type="button" onClick={() => void handleLogout()} disabled={authSubmitting}>로그아웃</button>
               </div>
               <ChatSessionList
@@ -1431,7 +1431,7 @@ export function GuidePage({
           ) : auth.configured ? (
             <>
               <button className="login-toggle" type="button" onClick={() => setLoginPanelOpen((open) => !open)}>
-                로그인하고 대화 저장
+                로그인하고 대화 이어가기
               </button>
               {loginPanelOpen && (
                 <form className="login-form" onSubmit={handleLogin}>
@@ -1450,7 +1450,7 @@ export function GuidePage({
               )}
             </>
           ) : (
-            <p className="auth-note">Supabase 공개 키를 설정하면 로그인과 대화 저장을 사용할 수 있습니다.</p>
+            <p className="auth-note">로그인 설정을 완료하면 지난 대화를 이어서 볼 수 있어요.</p>
           )}
           {(historyError || auth.error) && <p className="auth-error">{historyError || auth.error}</p>}
         </div>
@@ -1599,9 +1599,9 @@ export function GuidePage({
             className="design-history-button"
             type="button"
             onClick={() => setIsSidebarOpen(true)}
-            aria-label="대화 기록 열기"
+            aria-label="지난 대화 열기"
           >
-            대화 기록
+            지난 대화
           </button>
           <div className="design-topbar-actions">
             {auth.session && <button type="button" className="design-logout" onClick={() => void handleLogout()} disabled={authSubmitting}>로그아웃</button>}
