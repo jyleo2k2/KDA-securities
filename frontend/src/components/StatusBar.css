@@ -38,10 +38,14 @@
 
 .ios-statusbar.desktop-preview-status {
   position: fixed;
+  z-index: 100;
   top: calc((100dvh - min(844px, calc(100dvh - 80px))) / 2);
+  left: 50%;
   width: 390px;
+  transform: translateX(-50%);
   background: rgba(247, 248, 249, .92);
   backdrop-filter: blur(18px);
+  pointer-events: none;
 }
 
 @media (max-width: 480px) {

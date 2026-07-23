@@ -10,8 +10,9 @@ import type {
   RiskProfile,
   UserPensionPortfolio,
 } from "../api/types";
-import { latestPortfolioDate } from "../ownerPensionPortfolio";
+import { StatusBar } from "../components/StatusBar";
 import { YeongeumiMascot } from "../components/YeongeumiMascot";
+import { latestPortfolioDate } from "../ownerPensionPortfolio";
 import "./MainHomeScreen.css";
 
 interface MainHomeScreenProps {
@@ -218,10 +219,7 @@ export function MainHomeScreen({ aggregation, displayName, error, investmentProf
     <main className="mhs-stage">
     <section className="mhs-phone" aria-label="연금 도우미 메인 홈">
     <div className="mhs-page">
-      <div className="mhs-statusbar">
-        <span className="mhs-statusbar-time">9:41</span>
-        <span className="mhs-statusbar-icons" aria-hidden="true">● ● ▰</span>
-      </div>
+      <StatusBar />
 
       <div className="mhs-header">
         <span className="mhs-header-dot" />

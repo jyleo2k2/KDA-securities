@@ -19,13 +19,6 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; min-height: 100vh; }
-.desktop-preview-status { position: fixed; z-index: 100; top: max(18px, calc((100dvh - min(844px, calc(100dvh - 80px))) / 2 + 18px)); left: 50%; display: flex; width: 338px; align-items: center; justify-content: space-between; transform: translateX(-50%); color: #111; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; font-weight: 700; pointer-events: none; }
-.desktop-preview-status-icons { display: flex; align-items: center; gap: 6px; }
-.desktop-preview-signal { width: 14px; height: 10px; background: linear-gradient(to top, currentColor 0 100%) left bottom / 3px 4px no-repeat, linear-gradient(to top, currentColor 0 100%) center bottom / 3px 7px no-repeat, linear-gradient(to top, currentColor 0 100%) right bottom / 3px 10px no-repeat; }
-.desktop-preview-wifi { width: 13px; height: 9px; border: 2px solid currentColor; border-bottom: 0; border-radius: 13px 13px 0 0; transform: scaleX(.8); }
-.desktop-preview-battery { position: relative; width: 20px; height: 10px; border: 1.5px solid currentColor; border-radius: 3px; }
-.desktop-preview-battery::before { position: absolute; inset: 2px; border-radius: 1px; background: currentColor; content: ""; }
-.desktop-preview-battery::after { position: absolute; top: 2px; right: -3px; width: 2px; height: 4px; border-radius: 0 1px 1px 0; background: currentColor; content: ""; }
 .pension-planner-stage { min-height: 100dvh; display: grid; place-items: center; padding: 40px; background: #e8e8dd; }
 .pension-planner-frame { width: min(100%, 390px); height: min(844px, calc(100dvh - 80px)); overflow: hidden; border-radius: 44px; background: #fff; box-shadow: 0 24px 70px rgba(0, 0, 0, .16); }
 .pension-planner-frame iframe { display: block; width: 100%; height: 100%; border: 0; }
