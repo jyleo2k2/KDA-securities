@@ -17,6 +17,7 @@ from .api import (
     macro,
     market,
     pension_accounts,
+    rebalancing_reminders,
     retrieval,
     system,
 )
@@ -121,7 +122,7 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "Authorization", "Idempotency-Key"],
     )
     _include_eagerly(app, system.router)
@@ -131,6 +132,7 @@ def create_app() -> FastAPI:
     _include_eagerly(app, benchmark.router)
     _include_eagerly(app, pension_accounts.router)
     _include_eagerly(app, investment_profile.router)
+    _include_eagerly(app, rebalancing_reminders.router)
     _include_eagerly(app, market.router)
     _include_eagerly(app, macro.router)
     _include_eagerly(app, chat.router)
