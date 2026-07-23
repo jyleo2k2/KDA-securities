@@ -1,10 +1,8 @@
 import type { JSX } from "react";
 
-import type { DemoHeroPortfolio } from "../api/types";
 import "./UserPickBenchmarkScreen.css";
 
 interface UserPickBenchmarkScreenProps {
-  heroes: DemoHeroPortfolio[];
   onBack: () => void;
 }
 

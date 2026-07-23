@@ -10,7 +10,7 @@ describe("UserPickBenchmarkScreen", () => {
   it("renders the supplied benchmark HTML and preserves the home back action", () => {
     const onBack = vi.fn();
 
-    render(<UserPickBenchmarkScreen heroes={[]} onBack={onBack} />);
+    render(<UserPickBenchmarkScreen onBack={onBack} />);
 
     expect(screen.getByTitle("투자 벤치마킹하기")).toHaveAttribute("src", "/benchmark-html/투자 벤치마킹.dc.html");
 
