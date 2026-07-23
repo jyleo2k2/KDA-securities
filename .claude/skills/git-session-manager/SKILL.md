@@ -27,8 +27,8 @@ Git ref와 worktree 메타데이터는 저장소 전체가 공유한다. 여러 
 
 ```powershell
 uv run python scripts/git_session_manager.py start \
-  --owner <github-id> \
-  --area <front|back|chat|db|engine|rag|integration|codex> \
+  --tool <codex|claude> \
+  --worker <팀원-실명> \
   --task <ascii-task-slug> \
   --path <예상-수정-경로>
 ```
@@ -39,11 +39,19 @@ uv run python scripts/git_session_manager.py start \
 
 ```powershell
 uv run python scripts/git_session_manager.py claim \
-  --owner <github-id> \
+  --tool <codex|claude> \
+  --worker <팀원-실명> \
   --path <예상-수정-경로>
 ```
 
-브랜치는 `<area>/<owner>/<task>` 형식을 사용한다. 병합된 브랜치를 후속 PR에 재사용하지 않는다.
+브랜치는 `<도구>/<작업자>/<작업명>` 형식을 사용한다.
+
+- 도구: `codex`, `claude`만 허용한다.
+- 작업자: `이재용`, `이태호`, `최호성`, `진재현`, `김태형`, `정인성`만 허용한다.
+- 작업명: 영문 소문자 또는 숫자로 시작하고 영문 소문자·숫자·`-_.`만 사용한다. `~`는 예시 표기에도 실제 브랜치에는 넣지 않는다.
+- 브랜치에서 파싱한 도구·작업자와 세션 등록 정보가 다르면 세션 시작과 파일 편집을 모두 차단한다.
+- 구형 브랜치는 `status`·`release` 등 정리 작업만 허용한다. 추가 작업은 최신 `main`에서 새 규칙 브랜치로 옮긴다.
+- 병합된 브랜치를 후속 PR에 재사용하지 않는다.
 
 ## Phase 2: 충돌 예방
 
@@ -81,7 +89,8 @@ release는 파일·브랜치·워크트리를 삭제하지 않는다. 병합 완
 ## 에러 핸들링
 
 - `main` 수정 차단: 새 작업 워크트리를 생성한다.
-- 브랜치 이름 거부: 재사용하지 않은 `<area>/<owner>/<task>` 이름으로 다시 만든다.
+- 브랜치 이름 거부: 재사용하지 않은 `<도구>/<작업자>/<작업명>` 이름으로 다시 만든다.
+- 구형 브랜치 또는 세션 신원 불일치: 작업을 중단하고 최신 `main`에서 새 규칙 브랜치를 만든다.
 - 로컬 claim 겹침: 기존 세션 소유자와 범위를 분할한다.
 - 열린 PR 겹침: 신규 모듈과 공용 연결 PR을 분리한다.
 - GitHub 조회 실패: 로컬 claim만 유지하고 PR 생성 전 CI 정책 검사를 반드시 통과한다.
@@ -92,7 +101,7 @@ release는 파일·브랜치·워크트리를 삭제하지 않는다. 병합 완
 ### 정상 흐름
 
 1. 프론트 신규 화면 작업 요청을 받는다.
-2. `front/jaehyun/strategy-screen`과 전용 워크트리를 생성한다.
+2. `codex/진재현/strategy-screen`과 전용 워크트리를 생성한다.
 3. 신규 화면 경로만 claim하고 Draft PR을 연다.
 4. 통합 오너가 별도 브랜치에서 `App.tsx` 연결을 수행한다.
 5. 두 PR 병합 후 release하고 `git-pr-cleanup`으로 정리한다.
