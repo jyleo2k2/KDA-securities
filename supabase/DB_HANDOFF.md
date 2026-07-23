@@ -797,6 +797,13 @@ uv run ruff check .
 - The direct repository E2E retry was blocked by the Supabase session-mode pool limit (`pool_size: 15`); this is recorded separately from the data migration. MCP verification confirmed the single ready v4 state.
 - Next: decide the maintenance window and safe physical-space recovery method; do not run `VACUUM FULL` opportunistically. Storage + Parquet work remains a separate gate.
 
+### 2026-07-23 KST — ETF return-history space recovery (REMOTE-APPLIED)
+
+- After explicit maintenance approval, ran `VACUUM FULL ANALYZE public.etf_return_histories` through an autocommit administrative connection.
+- Database size decreased from 544 MB to 285 MB; `etf_return_histories` total relation size decreased from 440 MB to 182 MB.
+- Post-maintenance verification: only ready v4 remains, with 2,507 product rows and 1,207,952 history rows. Direct IRP repository E2E returned v4 (`2026-07-23`), 823 products, and 823 history codes.
+- No schema or API response contract changed. Storage + Parquet migration remains pending its separate direct-read credential and parallel-read gates.
+
 ## 15. 작업 로그 템플릿
 
 ```markdown
