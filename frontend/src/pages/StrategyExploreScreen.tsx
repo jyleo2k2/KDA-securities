@@ -37,7 +37,7 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
     select(active + direction);
   }
   function openStrategyDetail(strategy: StrategyExploreItem): void {
-    if (strategy.id === "theme") window.location.assign(STRATEGY_DETAIL_URL);
+    if (strategy.id === "theme") window.location.hash = STRATEGY_DETAIL_URL;
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>): void {
