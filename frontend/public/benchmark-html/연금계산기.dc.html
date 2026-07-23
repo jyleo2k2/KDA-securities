@@ -31,8 +31,8 @@
   </div>
 
   <div style="flex:none; background:#fff; display:flex; align-items:center; justify-content:space-between; height:52px; padding:0 20px;">
-    <svg width="11" height="20" viewBox="0 0 11 20" fill="none" style="cursor:pointer;" onClick="{{ goToMainHome }}"><path d="M9.5 1L1.5 10L9.5 19" stroke="#1E2124" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-    <span style="width:21px; height:21px;"></span>
+    <svg width="11" height="20" viewBox="0 0 11 20" fill="none" style="cursor:pointer;"><path d="M9.5 1L1.5 10L9.5 19" stroke="#1E2124" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" style="cursor:pointer;"><path d="M5 5L19 19M19 5L5 19" stroke="#1E2124" stroke-width="2.2" stroke-linecap="round"></path></svg>
   </div>
 
   <div class="scrolly" style="flex:1; overflow-y:auto;">
@@ -270,8 +270,6 @@
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844},&quot;taxRateLow&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:16.5,&quot;min&quot;:0,&quot;max&quot;:20,&quot;step&quot;:0.1,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;세액공제율&quot;},&quot;taxRateHigh&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:13.2,&quot;min&quot;:0,&quot;max&quot;:20,&quot;step&quot;:0.1,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;세액공제율&quot;}}">
 class Component extends DCLogic {
   state = { age:35, endAge:55, monthly:50, tab:'pension', salaryLow:true, paidP:0, paidI:0, isa:0, strategyId:'beta' };
-
-  goToMainHome = () => window.parent.postMessage({ type:'pension-copilot:navigate-home' }, window.location.origin);
 
   STRATS = [
     { id:'beta', name:'시장 베타', etf:'국내·미국·글로벌 광범위지수 ETF', cma:'글로벌주식 7.0%', discount:'0.25%p', rateText:'6.75%', rateNum:6.75 },

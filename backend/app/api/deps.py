@@ -28,6 +28,7 @@ from ..database import get_database_pool
 from ..engine.audit import EngineAuditRepository
 from ..engine.models import AccountType
 from ..etf_component_repository import EtfComponentSnapshotRepository
+from ..etf_distribution_event_repository import PostgresEtfDistributionEventRepository
 from ..etf_market_repository import EtfMarketRepository
 from ..etf_product_description_repository import (
     get_default_etf_product_description_repository,
@@ -183,6 +184,17 @@ def get_etf_market_repository(
     return EtfMarketRepository(
         database_url,
         pool=_database_pool(settings, database_url),
+    )
+
+
+def get_etf_distribution_event_repository(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> PostgresEtfDistributionEventRepository:
+    database_url = _database_url_or_503(
+        settings, detail="ETF distribution event database is not configured"
+    )
+    return PostgresEtfDistributionEventRepository(
+        database_url, pool=get_database_pool(database_url)
     )
 
 
@@ -367,6 +379,11 @@ def _chat_service(
             else None
         ),
         macro_evidence=MacroEvidenceRepository(Path(macro_evidence_report_path)),
+        distribution_events=(
+            PostgresEtfDistributionEventRepository(database_url, pool=pool)
+            if database_url
+            else None
+        ),
     )
 
 
