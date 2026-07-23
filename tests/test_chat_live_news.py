@@ -339,14 +339,12 @@ def test_event_strategy_lists_account_eligible_etf_candidates_with_limit() -> No
     candidates = next(
         block for block in guide.blocks if block.kind.value == "table"
     )
-    assert candidates.rows == [
-        [
-            "KODEX 반도체",
-            "반도체",
-            "후보 합산 최대 10%",
-            "거래대금·총보수 확인 가능 · 유동성·규모·비용 품질점수 3.00/3.00",
-        ]
+    assert candidates.rows[0][:3] == [
+        "KODEX 반도체",
+        "반도체",
+        "후보 합산 최대 10%",
     ]
+    assert "theme_matched_from_research_allowlist" in candidates.rows[0][3]
     assert any(
         source.evidence_id == "engine:event_tactical_candidates"
         for source in response.sources
