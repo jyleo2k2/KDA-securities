@@ -893,6 +893,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   line-height: normal;
 }
 .guide-tab .sidebar {
+  display: none;
   position: absolute;
   inset: 0 auto 0 0;
   width: 300px;
@@ -907,6 +908,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   transition: none;
 }
 .guide-tab .sidebar.sidebar-open {
+  display: flex;
   visibility: visible;
   pointer-events: auto;
   transform: translateX(0);
