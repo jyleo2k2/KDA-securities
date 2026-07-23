@@ -19,16 +19,6 @@
   overflow: hidden;
 }
 
-.sd-statusbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 26px 0;
-  font-size: 15px;
-  font-weight: 700;
-  color: #111;
-}
-
 .sd-header {
   display: flex;
   align-items: center;

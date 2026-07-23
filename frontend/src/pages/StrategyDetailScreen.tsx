@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 
 import { STRATEGIES, type StrategyExploreItem } from "./strategyExplore/strategies";
+import { StatusBar } from "../components/StatusBar";
 import "./StrategyDetailScreen.css";
 
 interface StrategyDetailScreenProps {
@@ -20,10 +21,7 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
   return (
     <main className="sd-stage" style={{ "--sd-accent": strategy.accent } as React.CSSProperties}>
       <section className="sd-phone" aria-label={`${strategy.name} 상세`}>
-        <div className="sd-statusbar">
-          <span>9:41</span>
-          <span aria-hidden="true">● ● ▰</span>
-        </div>
+        <StatusBar />
 
         <header className="sd-header">
           <button type="button" className="sd-back" data-strategy-detail-back onClick={onBack} aria-label="뒤로 가기">‹</button>
