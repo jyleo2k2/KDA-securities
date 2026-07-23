@@ -40,6 +40,7 @@ from .handlers._shared import (  # noqa: F401
 from .handlers.account_rules import blocked_response, handle_account_rule
 from .handlers.disclosures_news import (
     disclosure_response,
+    event_strategy_response,
     news_follow_up_response,
     news_response,
 )
@@ -367,14 +368,27 @@ class ChatService:
                         and original_request.conversation_context.news is not None
                         else ()
                     )
-                    response = news_response(
-                        request,
-                        search_query=resolved_plan.news_query,
-                        max_results=resolved_plan.max_results,
-                        exclude_item_ids=exclude_item_ids,
-                        preferred_topics=preferred_news_topics,
-                        scope_notice=resolved_plan.news_scope_notice,
-                        news=self._news,
+                    response = (
+                        event_strategy_response(
+                            original_request,
+                            search_query=resolved_plan.news_query,
+                            max_results=resolved_plan.max_results,
+                            preferred_topics=preferred_news_topics,
+                            scope_notice=resolved_plan.news_scope_notice,
+                            live_news=self._live_news,
+                            news=self._news,
+                            theme_repository=self._theme_repository,
+                        )
+                        if resolved_plan.requests_event_strategy
+                        else news_response(
+                            request,
+                            search_query=resolved_plan.news_query,
+                            max_results=resolved_plan.max_results,
+                            exclude_item_ids=exclude_item_ids,
+                            preferred_topics=preferred_news_topics,
+                            scope_notice=resolved_plan.news_scope_notice,
+                            news=self._news,
+                        )
                     )
             elif resolved_plan.intent == ChatIntent.MACRO_EVIDENCE:
                 response = macro_evidence_response(

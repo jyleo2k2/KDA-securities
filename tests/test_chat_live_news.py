@@ -208,11 +208,17 @@ def _event_strategy_text(response: ChatResponse) -> str:
                 for row in block.rows
                 for cell in row
             ],
+            *[
+                item
+                for section in response.sections
+                for block in section.blocks
+                for item in block.items
+            ],
         ]
     )
 
 
-def test_event_strategy_question_does_not_fetch_live_news() -> None:
+def test_event_strategy_question_uses_live_news_for_tactical_guidance() -> None:
     response = _service().ask(
         ChatRequest(
             message="실시간 뉴스 기반 이벤트 드리븐 운용전략을 알려줘",
@@ -221,14 +227,15 @@ def test_event_strategy_question_does_not_fetch_live_news() -> None:
     )
 
     validated = ChatResponse.model_validate(response.model_dump())
-    assert validated.data_mode == "unavailable"
-    assert not validated.news_items
-    assert not any(
+    assert validated.data_mode == "live_news_event_strategy"
+    assert validated.news_items
+    assert any(
         source.evidence_id.startswith("live-news:") for source in validated.sources
     )
+    assert "전술 슬리브에서만 검토" in _event_strategy_text(validated)
 
 
-def test_event_strategy_question_without_stored_news_is_unavailable() -> None:
+def test_event_strategy_keeps_conservative_profile_outside_tactical_guidance() -> None:
     response = _service().ask(
         ChatRequest(
             message="실시간 뉴스 기반 이벤트 드리븐 운용전략을 알려줘",
@@ -236,8 +243,11 @@ def test_event_strategy_question_without_stored_news_is_unavailable() -> None:
         )
     )
 
-    assert response.data_mode == "unavailable"
-    assert not response.news_items
+    assert response.data_mode == "live_news_event_strategy"
+    assert response.news_items
+    assert "현재 설문 성향보다 공격적인 이벤트 전술은 제안하지 않아요" in (
+        _event_strategy_text(response)
+    )
 
 
 def test_event_strategy_question_uses_recent_stored_news() -> None:
@@ -256,11 +266,12 @@ def test_event_strategy_question_uses_recent_stored_news() -> None:
         )
     )
 
-    assert response.data_mode == "news_summary"
+    assert response.data_mode == "stored_news_event_strategy"
     assert response.news_items
     assert not any(
         source.evidence_id.startswith("live-news:") for source in response.sources
     )
+    assert "전술 슬리브에서만 검토" in _event_strategy_text(response)
 
 
 def test_empty_stored_news_does_not_offer_live_news_exit() -> None:
