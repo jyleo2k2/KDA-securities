@@ -89,6 +89,11 @@ function AppRoutes(): JSX.Element {
 
   useEffect(() => { if (auth.session === null) setLoginSuccessPending(false); }, [auth.session]);
   useEffect(() => {
+    if (!loginSuccessPending || resurveyPending || currentUserData.loading) return;
+    const assessment = currentUserData.investmentProfile?.assessment;
+    if (assessment && !assessment.is_expired) { setLoginSuccessPending(false); navigate("/main-home"); }
+  }, [loginSuccessPending, resurveyPending, currentUserData.loading, currentUserData.investmentProfile, navigate]);
+  useEffect(() => {
     if (auth.loading) return;
     const previous = previousAuthRef.current;
     const userChanged = previous?.userId !== authenticatedUserId;

@@ -36,7 +36,7 @@ function StatusBar(): JSX.Element {
 }
 
 export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSaved, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
-  const [step, setStep] = useState<LoginStep>(resurvey ? "investor-info" : "intro");
+  const [step, setStep] = useState<LoginStep>(resurvey ? "risk-assessment" : "intro");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -241,7 +241,7 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
         )}
 
         {step === "investor-info" && (
-          <InvestorInfoForm onBack={resurvey ? onStart : () => setStep("risk-assessment")} onSubmit={saveInvestorInformation} />
+          <InvestorInfoForm onBack={() => setStep("risk-assessment")} onSubmit={saveInvestorInformation} />
         )}
 
         {step === "investor-result" && (

@@ -28,7 +28,7 @@ def test_start_launcher_is_local_main_only_and_hides_server_windows() -> None:
     assert "0.0.0.0" not in script
     assert "WindowStyle Hidden" in script
     assert "DATABASE_URL" in script
-    assert 'ChatUrl = "$FrontendUrl/#guide"' in script
+    assert 'StartUrl = "$FrontendUrl/#/login"' in script
     assert 'LauncherErrorLog = Join-Path $LogRoot "launcher-error.log"' in script
 
 
@@ -59,7 +59,7 @@ def test_dev_launcher_uses_one_origin_and_requires_database_configuration() -> N
     script = _DEV_SCRIPT.read_text(encoding="utf-8")
 
     assert 'WEB_ORIGIN = f"http://127.0.0.1:{WEB_PORT}"' in script
-    assert 'CHAT_URL = f"{WEB_ORIGIN}/#guide"' in script
+    assert 'START_URL = f"{WEB_ORIGIN}/#/login"' in script
     assert "http://localhost" not in script
     assert "DATABASE_URL" in script
     assert "return None" in script

@@ -23,7 +23,7 @@ FRONTEND = ROOT / "frontend"
 API_PORT = 8000
 WEB_PORT = 5173
 WEB_ORIGIN = f"http://127.0.0.1:{WEB_PORT}"
-CHAT_URL = f"{WEB_ORIGIN}/#guide"
+START_URL = f"{WEB_ORIGIN}/#/login"
 # 브라우저를 열기 전에 인증 없이 확인 가능한 API 상태까지 기다린다.
 API_READY_URL = f"http://127.0.0.1:{API_PORT}/health"
 READY_TIMEOUT_SECONDS = 120
@@ -166,8 +166,8 @@ def main() -> int:
     try:
         _say("서버 준비를 기다립니다 (임베더 로딩에 10초 남짓 걸립니다)...")
         if _wait_until_ready(API_READY_URL) and _wait_until_ready(WEB_ORIGIN):
-            _say(f"챗봇 화면을 엽니다 → {CHAT_URL}")
-            webbrowser.open(CHAT_URL)
+            _say(f"로그인 화면을 엽니다 → {START_URL}")
+            webbrowser.open(START_URL)
         else:
             _say("서버가 시간 안에 준비되지 않았습니다. 위 로그를 확인해 주세요.")
         while all(process.poll() is None for process, _ in servers):
