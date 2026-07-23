@@ -18,7 +18,7 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2,webmanifest}"],
         // The supplied standalone benchmark bundle includes large source HTML
         // files that must remain available but are not suitable for precaching.
-        globIgnores: ["benchmark-html/**"],
+        globIgnores: ["benchmark-html/**", "pension-calculator-html/**"],
         runtimeCaching: [],
       },
       manifest: {
