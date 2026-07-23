@@ -108,7 +108,7 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
                         pointerEvents: isVisible ? "auto" : "none",
                       } as React.CSSProperties}
                     >
-                      <button type="button" className="se-fan-frame" aria-label={`${i + 1}번째 전략: ${strategy.name}`} tabIndex={isVisible ? 0 : -1} onClick={() => isActive ? openStrategyDetail() : select(i)}>
+                      <button type="button" className="se-fan-frame" aria-label={`${i + 1}번째 전략: ${strategy.name}`} tabIndex={isVisible ? 0 : -1} onClick={openStrategyDetail}>
                         <img src={strategy.img} alt={strategy.name} draggable="false" />
                       </button>
                     </li>
