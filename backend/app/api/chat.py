@@ -35,6 +35,7 @@ from ..chat.repository import (
     StoredMessageEvidence,
 )
 from ..chat.scenarios import LocalScenarioRepository
+from ..chat.topic_guard import ClaudeTopicGuard
 from ..chat.user_context import (
     DemoUserContextRepository,
     DemoUserFinancialContext,
@@ -50,6 +51,7 @@ from .deps import (
     get_chat_narrator,
     get_chat_repository,
     get_chat_service,
+    get_chat_topic_guard,
     get_demo_user_context_repository,
     get_optional_chat_repository,
     get_optional_demo_user_context_repository,
@@ -388,6 +390,7 @@ async def chat_authenticated_stream(
     repository: Annotated[ChatRepository | None, Depends(get_optional_chat_repository)],
     service: Annotated[ChatService, Depends(get_chat_service)],
     narrator: Annotated[ClaudeNarrator | None, Depends(get_chat_narrator)],
+    topic_guard: Annotated[ClaudeTopicGuard | None, Depends(get_chat_topic_guard)],
     context_repository: Annotated[
         DemoUserContextRepository | None,
         Depends(get_optional_demo_user_context_repository),
@@ -492,24 +495,34 @@ async def chat_authenticated_stream(
                 )
             except _DATABASE_ERRORS:
                 context = None
-        try:
-            nickname = await asyncio.to_thread(
+        # Context 이후 독립적인 사용자 정보를 병렬로 읽습니다.
+        nickname_result, survey_result = await asyncio.gather(
+            asyncio.to_thread(
                 _load_authenticated_nickname,
                 context_repository,
                 owner_id,
                 context,
-            )
-        except _DATABASE_ERRORS:
-            nickname = None
-        try:
-            saved_survey_profile = await asyncio.to_thread(
+            ),
+            asyncio.to_thread(
                 _load_saved_survey_profile,
                 investment_profile_repository,
                 owner_id,
                 context,
-            )
-        except _DATABASE_ERRORS:
+            ),
+            return_exceptions=True,
+        )
+        if isinstance(nickname_result, _DATABASE_ERRORS):
+            nickname = None
+        elif isinstance(nickname_result, BaseException):
+            raise nickname_result
+        else:
+            nickname = nickname_result
+        if isinstance(survey_result, _DATABASE_ERRORS):
             saved_survey_profile = None
+        elif isinstance(survey_result, BaseException):
+            raise survey_result
+        else:
+            saved_survey_profile = survey_result
         chat_request = _authenticated_request(
             request_with_context,
             context,
@@ -517,9 +530,21 @@ async def chat_authenticated_stream(
             use_saved_survey_profile=investment_profile_repository is not None,
         )
         started_at = perf_counter()
-        plan = service.plan(
-            _authenticated_planning_request(request_with_context, chat_request)
+        planning_request = _authenticated_planning_request(
+            request_with_context,
+            chat_request,
         )
+        plan = service.plan(planning_request)
+        if (
+            topic_guard is not None
+            and plan.blocked_reason is BlockedReason.UNSUPPORTED
+        ):
+            yield _sse("phase", {"message": "질문 범위를 추가로 확인하고 있습니다."})
+            plan = await asyncio.to_thread(
+                topic_guard.refine_plan,
+                planning_request.message,
+                plan,
+            )
         yield _sse("phase", {"message": "근거를 검색하고 있습니다."})
         answer_started_at = perf_counter()
         try:

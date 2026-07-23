@@ -48,20 +48,6 @@ CHAT_CARDS = (
         priority=20,
     ),
     ChatCard(
-        card_id="withdrawal_tax",
-        title="중도해지 세금",
-        message="연금계좌를 중도에 해지하면 어떻게 돼?",
-        intent=ChatIntent.ACCOUNT_RULE,
-        priority=30,
-    ),
-    ChatCard(
-        card_id="account_diff",
-        title="연금계좌별 차이",
-        message="DC형, IRP, 연금저축은 뭐가 달라?",
-        intent=ChatIntent.ACCOUNT_RULE,
-        priority=40,
-    ),
-    ChatCard(
         card_id="edu_portfolio",
         title="맞춤형 포트폴리오",
         message="내 상황에 맞는 연금저축전략을 알려줘.",
