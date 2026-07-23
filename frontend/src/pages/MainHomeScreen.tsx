@@ -44,7 +44,7 @@ const PROFILE_LABELS: Record<RiskProfile, string> = {
 };
 const HOLDING_PIE_COLORS = ["#2f8f6b", "#3f7bc4", "#c98a2e", "#d9743f", "#7b5fc0", "#2fa3a3", "#8f9aa6"];
 const HOLDING_PIE_MAX_SLICES = 6;
-const HOLDING_PIE_LABEL_MIN_PERCENT = 5;
+const HOLDING_PIE_LABEL_MIN_PERCENT = 10;
 const PIE_SIZE = 174;
 const PIE_CENTER = PIE_SIZE / 2;
 const PIE_RADIUS = 78;
@@ -129,7 +129,7 @@ function HoldingPie({ slices, selectedIndex, onSelect }: {
           >
             {shape}
             {slice.percent >= HOLDING_PIE_LABEL_MIN_PERCENT && (
-              <text x={labelPoint.x} y={labelPoint.y} textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={800} fill="#fff" pointerEvents="none">
+              <text x={labelPoint.x} y={labelPoint.y} textAnchor="middle" dominantBaseline="central" fontSize={12} pointerEvents="none" style={{ fill: "#fff", stroke: "none" }}>
                 {Math.round(slice.percent)}%
               </text>
             )}
