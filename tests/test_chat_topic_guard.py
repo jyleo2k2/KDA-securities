@@ -81,6 +81,7 @@ def test_topic_guard_uses_small_structured_output_and_reuses_cache() -> None:
     "message",
     [
         "오늘 밥 뭐 먹었어?",
+        "배고프다 밥은 먹었니",
         "너 이름이 뭐야?",
         "비트코인 지금 사도 돼?",
         "신용대출 금리 낮은 곳 알려줘",

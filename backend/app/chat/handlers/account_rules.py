@@ -32,7 +32,19 @@ from .graceful_decline import GracefulDeclineKind, graceful_decline_response
 
 _NUMBERED_SECTION_HEADING = re.compile(r"^\d+(?:-\d+)?\.\s+")
 _SENTENCE_END = re.compile(r"[.!?](?=\s|$)")
+_MEAL_SMALLTALK = re.compile(
+    r"배\s*고프|밥.{0,10}(?:먹|뭐)|(?:밥|식사)\s*(?:은|는|도)?\s*(?:했|하셨)",
+    re.I,
+)
 _MAX_VISIBLE_ANSWER_CHARS = 320
+_DEFAULT_UNSUPPORTED_ANSWER = (
+    "그 질문은 제가 잘 아는 분야는 아니에요. 대신 연금 이야기는 쉽고 "
+    "편하게 풀어드릴게요. 아래에서 궁금한 걸 골라봐요."
+)
+_MEAL_SMALLTALK_ANSWER = (
+    "저는 밥을 먹지는 못하지만, 고객님은 식사하셨어요? "
+    "연금 이야기도 편하게 물어봐 주세요."
+)
 
 
 def _concise_knowledge_answer(excerpt: str) -> str:
@@ -54,6 +66,12 @@ def _concise_knowledge_answer(excerpt: str) -> str:
             break
         selected.append(line)
     return "\n".join(selected) or excerpt
+
+
+def _unsupported_answer(user_message: str) -> str:
+    if _MEAL_SMALLTALK.search(user_message) is not None:
+        return _MEAL_SMALLTALK_ANSWER
+    return _DEFAULT_UNSUPPORTED_ANSWER
 
 
 def blocked_response(reason: BlockedReason, *, user_message: str = "") -> ChatResponse:
@@ -102,10 +120,7 @@ def blocked_response(reason: BlockedReason, *, user_message: str = "") -> ChatRe
         )
     return ChatResponse(
         intent=ChatIntent.OUT_OF_SCOPE,
-        answer=(
-            "그 질문은 제가 잘 아는 분야는 아니에요. 대신 연금 이야기는 쉽고 "
-            "편하게 풀어드릴게요. 아래에서 궁금한 걸 골라봐요."
-        ),
+        answer=_unsupported_answer(user_message),
         data_mode="safe_fallback",
         suggested_follow_ups=[
             SuggestedFollowUp(

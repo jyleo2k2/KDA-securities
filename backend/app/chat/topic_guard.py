@@ -22,7 +22,8 @@ TOPIC_GUARD_CACHE_MAX_ENTRIES = 512
 TOPIC_GUARD_MAX_OUTPUT_TOKENS = 64
 
 _OBVIOUS_OFF_TOPIC = re.compile(
-    r"오늘\s*밥|밥\s*뭐|너\s*(?:이름|몇\s*살)|농담|오늘\s*날씨"
+    r"오늘\s*밥|밥.{0,6}먹|밥\s*뭐|배\s*고프|식사.{0,6}(?:했|먹)"
+    r"|너\s*(?:이름|몇\s*살)|농담|오늘\s*날씨"
     r"|비트코인|가상\s*자산|신용\s*대출|대출.{0,8}금리|청약\s*통장|환전"
     r"|파이썬|for\s*문|김치찌개|레시피|KTX",
     re.I,

@@ -637,10 +637,16 @@ def test_unsupported_questions_offer_friendly_safe_routes() -> None:
         assert plan.blocked_reason is BlockedReason.UNSUPPORTED
         assert response.intent is ChatIntent.OUT_OF_SCOPE
         assert response.data_mode == "safe_fallback"
-        assert response.answer == (
-            "그 질문은 제가 잘 아는 분야는 아니에요. 대신 연금 이야기는 쉽고 "
-            "편하게 풀어드릴게요. 아래에서 궁금한 걸 골라봐요."
-        )
+        if message == "오늘 밥 뭐 먹었어?":
+            assert response.answer == (
+                "저는 밥을 먹지는 못하지만, 고객님은 식사하셨어요? "
+                "연금 이야기도 편하게 물어봐 주세요."
+            )
+        else:
+            assert response.answer == (
+                "그 질문은 제가 잘 아는 분야는 아니에요. 대신 연금 이야기는 "
+                "쉽고 편하게 풀어드릴게요. 아래에서 궁금한 걸 골라봐요."
+            )
         assert response.limitations == [
             "범용 투자·세무·법률 상담은 지원하지 않습니다."
         ]
@@ -672,6 +678,23 @@ def test_unsupported_questions_offer_friendly_safe_routes() -> None:
             follow_up_plan = plan_question(follow_up.message)
             assert follow_up_plan.intent is expected_intent
             assert follow_up_plan.blocked_reason is None
+
+
+def test_meal_smalltalk_answers_without_pretending_the_bot_eats() -> None:
+    chatbot = service(knowledge=EmptyKnowledgeRepository())
+    request = ChatRequest(message="배고프다 밥은 먹었니")
+
+    plan = chatbot.plan(request)
+    response = chatbot.ask(request)
+
+    assert plan.intent is ChatIntent.OUT_OF_SCOPE
+    assert plan.blocked_reason is BlockedReason.UNSUPPORTED
+    assert response.data_mode == "safe_fallback"
+    assert response.answer == (
+        "저는 밥을 먹지는 못하지만, 고객님은 식사하셨어요? "
+        "연금 이야기도 편하게 물어봐 주세요."
+    )
+    assert len(response.suggested_follow_ups) == 3
 
 
 def test_narrator_prompt_requires_conclusion_first_heyoche() -> None:
