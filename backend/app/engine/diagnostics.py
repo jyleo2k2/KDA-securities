@@ -2,8 +2,8 @@
 
 Risk-cap judgement is delegated to ``evaluate_risk_cap`` so DC/IRP limits and
 pension-savings eligibility stay in one place; this module never re-implements
-account rules. Thresholds below are provisional.
-TODO: 확인 필요 — 현금성 방치·자산군 편중 임계값은 팀 승인 후 확정한다.
+account rules. Cash-idle and concentration thresholds are approved operational
+parameters; account-specific statutory limits remain delegated.
 """
 
 from datetime import date
@@ -24,14 +24,14 @@ from .models import (
 from .portfolio import MONEY_QUANTUM, PERCENT_QUANTUM, evaluate_risk_cap
 
 ENGINE_NAME = "account_diagnostics"
-ENGINE_VERSION = "2026-07-15.1"
+ENGINE_VERSION = "2026-07-23.1"
 CASH_IDLE_THRESHOLD_PERCENT = Decimal("80.00")
 CONCENTRATION_THRESHOLD_PERCENT = Decimal("50.00")
 CASH_LIKE_CLASSES = frozenset({AssetClass.CASH, AssetClass.DEPOSIT})
 DIAGNOSTICS_SOURCE = SourceChip(
-    label="아키텍처 §2 모듈 3 (잠정 임계값)",
+    label="계좌별 진단 운영 기준 (현금성 80%·단일 자산군 50%)",
     reference="docs/30_스펙/아키텍처.md#2-규칙-엔진-6모듈--계산판단의-단일-소스",
-    as_of=date(2026, 7, 15),
+    as_of=date(2026, 7, 23),
 )
 
 CHECK_CASH_IDLE = "CASH_IDLE"
