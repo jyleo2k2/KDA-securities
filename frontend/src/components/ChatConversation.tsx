@@ -32,7 +32,7 @@ export function ChatMessageList({
           key={message.id}
           ref={message.id === messages[messages.length - 1]?.id ? latestMessageRef : undefined}
         >
-          {message.role === "assistant" && <div className="assistant-avatar"><ChatIcon name="spark" size={16} /></div>}
+          {message.role === "assistant" && <div className="assistant-avatar"><span>연금</span></div>}
           <div className="message-group">
             <div className="message-bubble">{renderMessage(message)}</div>
             {message.failedPrompt && (
@@ -45,7 +45,7 @@ export function ChatMessageList({
       ))}
       {isSending && (
         <div className="message-row assistant">
-          <div className="assistant-avatar"><ChatIcon name="spark" size={16} /></div>
+          <div className="assistant-avatar"><span>연금</span></div>
           {renderStreamingAnswer() ?? (
             <div className="message-bubble typing" aria-label={sendingStage}>
               <span /><span /><span /><small>{sendingStage}</small>
@@ -83,14 +83,14 @@ export function ChatComposer({
           value={input}
           onChange={(event) => onChange(event.target.value.slice(0, 1000))}
           onKeyDown={onKeyDown}
-          placeholder="연금에 대해 무엇이든 물어보세요"
+          placeholder="연금에 대해 무엇이든 물어보세요."
           rows={1}
           aria-label="질문 입력"
           disabled={isSending || deletingSessionId !== null}
         />
         <button type="submit" disabled={input.trim().length < 2 || isSending || deletingSessionId !== null} aria-label="질문 보내기"><ChatIcon name="send" size={20} /></button>
       </form>
-      <p>AI 답변은 투자 판단을 돕는 정보이며, 미래 수익을 보장하지 않습니다.</p>
+      <p>연금 도우미는 참고용 정보를 제공하며, 실제 투자·가입 결정은 본인의 판단과 전문가 상담을 거쳐 주세요.</p>
     </div>
   );
 }

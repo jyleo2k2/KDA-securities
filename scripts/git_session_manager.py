@@ -27,8 +27,8 @@ LOCAL_SESSION_RULES: dict[str, Any] = {
     "allowed_tools": ["codex", "claude"],
     "allowed_workers": [
         "이재용",
-        "이태호",
-        "최호성",
+        "이호연",
+        "최호택",
         "진재현",
         "김태형",
         "정인성",
