@@ -3,7 +3,10 @@ import { ChatIcon } from "./ChatIcon";
 
 const ETF_THEME_RAIL_CSS = `
 .etf-theme-rail {
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(3, auto);
+  grid-auto-columns: calc(40% - 8px);
   gap: 10px;
   margin: 16px -16px 0;
   padding: 2px 16px 10px;
@@ -14,7 +17,6 @@ const ETF_THEME_RAIL_CSS = `
 }
 .etf-theme-rail::-webkit-scrollbar { display: none; }
 .etf-theme-rail-card {
-  flex: 0 0 40%;
   scroll-snap-align: start;
   display: grid;
   grid-template-columns: auto 1fr;
@@ -34,7 +36,7 @@ const ETF_THEME_RAIL_CSS = `
 .etf-theme-rail-card small { color: #9aa0a6; font-size: 11.5px; font-weight: 700; }
 .etf-theme-rail-card strong { color: #0f1113; font-size: 14px; font-weight: 800; }
 @media (max-width: 400px) {
-  .etf-theme-rail-card { flex-basis: 44%; }
+  .etf-theme-rail { grid-auto-columns: calc(44% - 8px); }
 }
 `;
 
