@@ -27,9 +27,9 @@ export function ChatSessionList({
     <>
       <div className="history-list">
         {historyLoading && chatSessions.length === 0 ? (
-          <p className="auth-note">대화 이력을 불러오는 중...</p>
+          <p className="auth-note">지난 대화를 불러오고 있어요.</p>
         ) : chatSessions.length === 0 ? (
-          <p className="auth-note">아직 저장된 대화가 없습니다.</p>
+          <p className="auth-note">아직 나눈 대화가 없어요. 궁금한 점을 편하게 물어보세요.</p>
         ) : chatSessions.map((session) => {
           const title = session.title || "새 대화";
           const deleting = deletingSessionId === session.session_id;
@@ -84,7 +84,7 @@ export function ChatSessionList({
             <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none">
               <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
             </svg>
-            <span>{deletingAllSessions ? "삭제 중" : "전체 대화 기록 삭제"}</span>
+            <span>{deletingAllSessions ? "정리 중" : "지난 대화 모두 삭제"}</span>
           </button>
         </div>
       )}

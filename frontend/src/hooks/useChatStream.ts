@@ -68,7 +68,7 @@ export function useChatStream({
 }: UseChatStreamOptions) {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [isSending, setIsSending] = useState(false);
-  const [sendingStage, setSendingStage] = useState("답변을 준비하고 있습니다.");
+  const [sendingStage, setSendingStage] = useState("질문을 살펴보고 있어요.");
   const [streamingAnswer, setStreamingAnswer] = useState("");
   const [streamingAnswerIsNarration, setStreamingAnswerIsNarration] = useState(false);
   const sendingRef = useRef(false);
@@ -192,7 +192,7 @@ export function useChatStream({
       )) return;
       const message = requestToken
         ? authenticatedErrorMessage(error)
-        : "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+        : "답변을 준비하지 못했어요. 잠시 후 다시 시도해 주세요.";
       if (requestToken) onAuthenticatedError(message);
       setMessages((current) => [...current, {
         id: crypto.randomUUID(),
@@ -234,7 +234,7 @@ function authenticatedErrorMessage(error: unknown): string {
     return "로그인이 만료되었습니다. 다시 로그인해 주세요.";
   }
   if (error instanceof ApiError && error.status === 503) {
-    return "대화 저장소에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.";
+    return "대화를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.";
   }
-  return "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+  return "답변을 준비하지 못했어요. 잠시 후 다시 시도해 주세요.";
 }

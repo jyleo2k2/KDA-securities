@@ -357,7 +357,7 @@ describe("GuidePage chat history deletion", () => {
     renderGuide();
 
     expect(await screen.findByText("고객님 ! 막막한 노후 준비,", { exact: false })).toBeInTheDocument();
-    const historyButton = screen.getByRole("button", { name: "대화 기록 열기" });
+    const historyButton = screen.getByRole("button", { name: "지난 대화 열기" });
     const historySidebar = screen.getByRole("complementary");
     expect(historyButton).toBeInTheDocument();
     expect(historySidebar).not.toHaveClass("sidebar-open");
@@ -365,7 +365,7 @@ describe("GuidePage chat history deletion", () => {
     fireEvent.click(historyButton);
     expect(historySidebar).toHaveClass("sidebar-open");
 
-    fireEvent.click(screen.getByRole("button", { name: "대화 기록 닫기" }));
+    fireEvent.click(screen.getByRole("button", { name: "지난 대화 닫기" }));
     expect(historySidebar).not.toHaveClass("sidebar-open");
     expect(screen.getByAltText("프로필")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("연금에 대해 무엇이든 물어보세요")).toBeInTheDocument();
@@ -463,7 +463,7 @@ describe("GuidePage chat history deletion", () => {
       expect(deleteAllChatSessions).toHaveBeenCalledWith("access-token");
       expect(deleteChatSession).toHaveBeenCalledWith(SESSION_ID, "access-token");
     });
-    expect(await screen.findByRole("status")).toHaveTextContent("모든 대화");
+    expect(await screen.findByRole("status")).toHaveTextContent("지난 대화를 모두 지웠어요.");
   });
 
   it("labels an unsummarized live headline without implying a three-line summary", async () => {
@@ -522,7 +522,7 @@ describe("GuidePage chat history deletion", () => {
     const composer = screen.getByLabelText("질문 입력");
     fireEvent.change(composer, { target: { value: "첫 질문" } });
     fireEvent.submit(composer.closest("form")!);
-    await screen.findAllByText("요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    await screen.findAllByText("답변을 준비하지 못했어요. 잠시 후 다시 시도해 주세요.");
     const retryButton = screen.getByRole("button", { name: /다시 시도/ });
 
     fireEvent.click(screen.getByRole("button", { name: "대화 삭제: IRP 규칙" }));
