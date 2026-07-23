@@ -378,6 +378,7 @@ class ChatService:
                             live_news=self._live_news,
                             news=self._news,
                             theme_repository=self._theme_repository,
+                            portfolio_universe_loader=self._portfolio_universe_loader,
                         )
                         if resolved_plan.requests_event_strategy
                         else news_response(
