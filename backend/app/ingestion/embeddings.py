@@ -91,7 +91,10 @@ def get_query_embedder() -> BgeM3Embedder | None:
     """
     try:
         import sentence_transformers  # noqa: F401
-    except ImportError:
+    except (ImportError, OSError):
+        # Optional native dependencies can be blocked by local application
+        # control. Treat that the same as an unavailable optional group so the
+        # retrieval layer keeps its full-text fallback.
         return None
     return BgeM3Embedder()
 

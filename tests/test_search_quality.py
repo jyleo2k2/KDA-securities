@@ -121,7 +121,7 @@ def _hybrid_repository_or_skip() -> RetrievalRepository:
         pytest.skip("set RUN_HYBRID_RAG_BENCHMARK=1 to run the hybrid RAG gate")
     embedder = get_query_embedder()
     if embedder is None:
-        pytest.skip("embeddings group not installed (uv sync --group embeddings)")
+        pytest.skip("BGE-M3 embedder unavailable; full-text fallback remains active")
     settings = get_settings()
     if settings.database_url is None:
         pytest.skip("DATABASE_URL not configured")
