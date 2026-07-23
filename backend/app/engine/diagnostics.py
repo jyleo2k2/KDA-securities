@@ -29,7 +29,7 @@ CASH_IDLE_THRESHOLD_PERCENT = Decimal("80.00")
 CONCENTRATION_THRESHOLD_PERCENT = Decimal("50.00")
 CASH_LIKE_CLASSES = frozenset({AssetClass.CASH, AssetClass.DEPOSIT})
 DIAGNOSTICS_SOURCE = SourceChip(
-    label="계좌별 진단 운영 기준 (현금성 80%·단일 자산군 50%)",
+    label="계좌별 진단 운영 기준 (현금성 80%·비현금 단일 자산군 50%)",
     reference="docs/30_스펙/아키텍처.md#2-규칙-엔진-6모듈--계산판단의-단일-소스",
     as_of=date(2026, 7, 23),
 )
