@@ -75,7 +75,7 @@ _SALUTATION_CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 def _format_salutation(nickname: str | None) -> str:
     if nickname is None or _SALUTATION_CONTROL.search(nickname):
         return "고객님"
-    normalized = " ".join(nickname.split()).strip()
+    normalized = re.sub(r"\(가상\)", "", " ".join(nickname.split())).strip()
     if not normalized or len(normalized) > 50:
         return "고객님"
     normalized = re.sub(r"\s+님$", "님", normalized)
