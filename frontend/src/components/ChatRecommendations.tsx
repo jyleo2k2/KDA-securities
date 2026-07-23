@@ -6,7 +6,7 @@ const ETF_THEME_RAIL_CSS = `
   display: grid;
   grid-auto-flow: column;
   grid-template-rows: repeat(3, auto);
-  grid-auto-columns: calc(40% - 8px);
+  grid-auto-columns: calc(45% - 8px);
   gap: 10px;
   margin: 16px -16px 0;
   padding: 2px 16px 10px;
@@ -34,10 +34,7 @@ const ETF_THEME_RAIL_CSS = `
 .etf-theme-rail-card:hover { border-color: #a9d8ba; background: #f4fbf4; }
 .etf-theme-rail-card > span:last-of-type { display: grid; gap: 3px; min-width: 0; }
 .etf-theme-rail-card small { color: #9aa0a6; font-size: 11.5px; font-weight: 700; }
-.etf-theme-rail-card strong { color: #0f1113; font-size: 14px; font-weight: 800; }
-@media (max-width: 400px) {
-  .etf-theme-rail { grid-auto-columns: calc(44% - 8px); }
-}
+.etf-theme-rail-card strong { color: #0f1113; font-size: 14px; font-weight: 800; word-break: keep-all; line-height: 1.3; }
 `;
 
 interface ThemeCard {
