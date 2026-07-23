@@ -31,17 +31,45 @@ export function ChatVisualization({ visualization, sources }: {
         {visualization.description && (
           <p className="visualization-description">{visualization.description}</p>
         )}
-        <div className="tax-summary-grid">
+        <div
+          className="tax-summary-grid"
+          style={{
+            gridTemplateColumns: "minmax(0, 1fr)",
+            overflowX: "hidden",
+          }}
+        >
           {visualization.items.map((item) => (
-            <div key={item.label} style={{ minWidth: 0, padding: 12 }}>
-              <span style={{ fontSize: 10, lineHeight: 1.4 }}>{item.label}</span>
+            <div
+              key={item.label}
+              style={{
+                alignItems: "center",
+                columnGap: 12,
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+                minWidth: 0,
+                padding: 12,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 10,
+                  lineHeight: 1.4,
+                  minWidth: 0,
+                  textAlign: "left",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {item.label}
+              </span>
               <strong
                 style={{
                   fontSize: "clamp(13px, 3.4vw, 16px)",
                   lineHeight: 1.2,
                   letterSpacing: "-0.02em",
-                  marginTop: 5,
+                  marginTop: 0,
+                  minWidth: 0,
                   overflowWrap: "normal",
+                  textAlign: "right",
                   whiteSpace: "nowrap",
                 }}
               >

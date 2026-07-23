@@ -104,21 +104,15 @@ def attach_visualizations(response: ChatResponse) -> ChatResponse:
                     role=VisualizationDatumRole.VALUE,
                 ),
                 VisualizationDatum(
-                    label="법정 세액공제액",
-                    value=rate.income_tax_credit_krw,
-                    unit="KRW",
-                    role=VisualizationDatumRole.VALUE,
-                ),
-                VisualizationDatum(
-                    label="지방세 포함 예상 절세효과",
-                    value=rate.estimated_total_tax_reduction_effect_krw,
-                    unit="KRW",
-                    role=VisualizationDatumRole.VALUE,
-                ),
-                VisualizationDatum(
-                    label="적용 세액공제율 (지방소득세 포함)",
+                    label="세액공제율",
                     value=rate.local_inclusive_display_rate_percent,
                     unit="%",
+                    role=VisualizationDatumRole.VALUE,
+                ),
+                VisualizationDatum(
+                    label="세액공제액",
+                    value=rate.estimated_total_tax_reduction_effect_krw,
+                    unit="KRW",
                     role=VisualizationDatumRole.VALUE,
                 ),
                 ],

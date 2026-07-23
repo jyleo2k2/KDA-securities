@@ -16,6 +16,7 @@ from backend.app.api import deps
 from backend.app.chat.disclosures import ProviderDisclosure
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
 from backend.app.chat.models import (
+    AnswerBlockKind,
     AnswerSection,
     ChatIntent,
     ChatNewsItem,
@@ -238,17 +239,25 @@ def test_general_account_overview_uses_deterministic_verified_response() -> None
         ChatRequest(message="DC형·IRP·연금저축은 각각 어떤 계좌야? 차이를 비교해줘")
     )
 
-    evidence_text = "\n".join(section.content for section in response.sections)
     assert response.intent == ChatIntent.ACCOUNT_RULE
-    assert response.data_mode == "verified_pension_account_overview"
+    assert response.data_mode == "verified_pension_account_brief"
     assert response.narration_mode == "deterministic"
-    assert "연금저축·IRP·DC형의 차이" in {
-        section.title for section in response.sections
-    }
-    assert "IRP" in evidence_text
-    assert "원칙적으로 적립금의 70%까지" in evidence_text
+    assert response.answer == "연금계좌별 특징을 정리했어요."
+    assert len(response.sections) == 1
+    section = response.sections[0]
+    assert section.title == "연금계좌별 차이"
+    assert section.content == "각 계좌의 역할과 특징을 비교해 보세요."
+    assert [block.title for block in section.blocks] == [
+        "연금저축펀드",
+        "개인형 퇴직연금(IRP)",
+        "DC형 퇴직연금",
+    ]
+    assert all(block.kind == AnswerBlockKind.CALLOUT for block in section.blocks)
+    assert all("한눈에 보면:" in (block.text or "") for block in section.blocks)
+    assert all("핵심 특징:" in (block.text or "") for block in section.blocks)
+    assert "ISA 만기자금" not in response.answer
     assert response.sources
-    assert all(section.evidence_ids for section in response.sections)
+    assert response.numeric_evidence
 
 
 def test_explicit_pension_basics_question_returns_verified_overview() -> None:
@@ -293,7 +302,6 @@ def test_account_guidance_uses_topic_specific_verified_evidence(
         ("연금계좌 수령 개시 요건을 알려줘", ("55세", "가입기간 5년")),
         ("연금외수령 과세 구조를 알려줘", ("15%", "기타소득")),
         ("연금수령 과세를 알려줘", ("5%", "4%", "3%", "70%", "60%", "15%")),
-        ("IRP란 뭐야?", ("개인형퇴직연금", "개인 계좌")),
     ),
 )
 def test_pension_topics_return_complete_plain_verified_sections(
@@ -311,6 +319,128 @@ def test_pension_topics_return_complete_plain_verified_sections(
     assert "](" not in response.answer
     assert response.sources
     assert response.sections[0].content
+
+
+@pytest.mark.parametrize(
+    ("message", "included_title", "excluded_titles"),
+    (
+        (
+            "IRP란 뭐야?",
+            "개인형 퇴직연금(IRP)",
+            ("연금저축펀드", "DC형 퇴직연금"),
+        ),
+        (
+            "DC형은 어떤 계좌야?",
+            "DC형 퇴직연금",
+            ("연금저축펀드", "개인형 퇴직연금(IRP)"),
+        ),
+        (
+            "연금저축펀드 특징 알려줘",
+            "연금저축펀드",
+            ("개인형 퇴직연금(IRP)", "DC형 퇴직연금"),
+        ),
+    ),
+)
+def test_general_single_account_question_uses_only_matching_brief(
+    message: str,
+    included_title: str,
+    excluded_titles: tuple[str, ...],
+) -> None:
+    response = service().ask(ChatRequest(message=message))
+
+    assert response.intent == ChatIntent.ACCOUNT_RULE
+    assert response.data_mode == "verified_pension_account_brief"
+    assert len(response.sections) == 1
+    blocks = response.sections[0].blocks
+    assert [block.title for block in blocks] == [included_title]
+    section_text = response.sections[0].plain_text()
+    assert all(title not in section_text for title in excluded_titles)
+    assert "한눈에 보면:" in (blocks[0].text or "")
+    assert "핵심 특징:" in (blocks[0].text or "")
+    assert response.sources
+
+
+def test_general_two_account_comparison_uses_two_matching_cards() -> None:
+    response = service().ask(ChatRequest(message="DC형과 IRP 차이를 알려줘"))
+
+    assert response.answer == "개인형 퇴직연금(IRP)·DC형 퇴직연금의 차이를 정리했어요."
+    assert [block.title for block in response.sections[0].blocks] == [
+        "개인형 퇴직연금(IRP)",
+        "DC형 퇴직연금",
+    ]
+    assert "연금저축펀드" not in response.sections[0].plain_text()
+
+
+def test_dc_account_card_uses_approved_copy() -> None:
+    response = service().ask(ChatRequest(message="DC형은 어떤 계좌야?"))
+
+    assert response.sections[0].blocks[0].text == (
+        "한눈에 보면: 회사가 납입하는 퇴직급여를 근로자가 직접 투자하는 "
+        "퇴직연금\n\n"
+        "핵심 특징: 근로자는 회사가 납입한 적립금을 직접 운용하고, 퇴직할 때 "
+        "회사가 납입한 원금과 운용손익을 합쳐 퇴직급여로 받습니다. 따라서 "
+        "운용을 잘하면 퇴직급여가 증가하지만, 반대로 손실이 나면 받을 금액도 "
+        "줄어들 수 있습니다. 근로자가 DC계좌에 자기 돈을 추가로 넣을 수도 "
+        "있으며, 이 추가납입액은 연금저축·IRP와 합산해 연 900만 원까지 "
+        "세액공제 대상이 됩니다. 그러나 회사가 의무적으로 낸 부담금은 본인의 "
+        "세액공제 대상이 아닙니다."
+    )
+    assert "12분의 1" not in response.sections[0].plain_text()
+
+
+@pytest.mark.parametrize(
+    "message",
+    (
+        "연금계좌의 세액공제혜택이 뭐야?",
+        "연금계좌 규칙 알려줘",
+        "연금계좌 납입규칙 알려줘",
+    ),
+)
+def test_general_pension_tax_rule_questions_use_verified_cards(
+    message: str,
+) -> None:
+    response = service().ask(ChatRequest(message=message))
+
+    assert response.intent == ChatIntent.ACCOUNT_RULE
+    assert response.data_mode == "verified_pension_tax_rule_brief"
+    assert response.answer == (
+        "매년 연금계좌에 납입한 금액의 일정 비율만큼 소득세를 "
+        "줄여주는 제도예요."
+    )
+    assert len(response.sections) == 1
+    section = response.sections[0]
+    assert section.title == "연금계좌 세액공제 혜택"
+    assert [block.title for block in section.blocks] == [
+        "기본 세액공제 대상 한도",
+        "ISA 만기자금 이전 특례",
+        "소득구간별 세액공제율",
+        "정리하면",
+    ]
+    evidence_text = section.plain_text()
+    for expected in (
+        "연금저축은 1년에 600만 원까지",
+        "IRP 또는 DC형 본인 추가납입만으로도 합산 한도 900만 원",
+        "ISA 계약기간 만료일부터 60일 이내",
+        "옮긴 금액의 10%와 300만 원 중 작은 금액",
+        "법정 공제율 15%, 지방소득세 효과 포함 16.5%",
+        "법정 공제율 12%, 지방소득세 효과 포함 13.2%",
+        "최대 1,200만 원",
+    ):
+        assert expected in evidence_text
+    assert "IPR" not in evidence_text
+    assert "DC형 퇴직연금계좌에 넣은 돈은 1년에 600만 원" not in evidence_text
+    assert len(response.sources) == 3
+    assert response.numeric_evidence
+
+
+def test_narrow_account_question_keeps_topic_specific_verified_answer() -> None:
+    response = service().ask(
+        ChatRequest(message="IRP 위험자산 한도를 알려줘")
+    )
+
+    assert response.data_mode == "verified_knowledge"
+    assert response.sections
+    assert "70%" in response.answer
 
 
 def test_tax_rate_guidance_does_not_card_compound_refund_examples() -> None:
@@ -377,9 +507,11 @@ def test_runtime_rag_guard_rejects_unsafe_approved_chunk(
     )
 
     assert malicious_content not in response.answer
-    assert response.numeric_evidence == []
-    assert response.sections == []
-    assert "안전" in response.answer
+    assert response.data_mode == "verified_pension_account_brief"
+    assert [block.title for block in response.sections[0].blocks] == [
+        "개인형 퇴직연금(IRP)"
+    ]
+    assert response.sources
 
 
 def test_designated_pension_document_exposes_official_source_link() -> None:

@@ -512,7 +512,7 @@ def test_authenticated_news_prioritizes_topics_from_server_owned_assets() -> Non
     )
 
 
-def test_authenticated_overview_addresses_server_nickname_once() -> None:
+def test_authenticated_tax_rule_uses_verified_brief_without_salutation() -> None:
     _override_chat()
     try:
         with TestClient(app) as client:
@@ -529,8 +529,8 @@ def test_authenticated_overview_addresses_server_nickname_once() -> None:
 
     assert response.status_code == 200
     payload = final_sse_response(response.text)["response"]
-    assert payload["data_mode"] == "verified_pension_account_overview"
-    assert payload["salutation"] == "박준호(가상)님"
+    assert payload["data_mode"] == "verified_pension_tax_rule_brief"
+    assert payload["salutation"] is None
 
 
 def test_authenticated_deferred_topic_addresses_server_nickname_once() -> None:

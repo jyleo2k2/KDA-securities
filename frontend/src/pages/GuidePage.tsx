@@ -90,6 +90,8 @@ const BOUNDARY_LABELS: Record<DataBoundary, string> = {
 
 const DEFAULT_TYPING_INTERVAL_MS = 50;
 const SERVER_READY_RETRY_DELAYS_MS = [3000, 6000, 12000] as const;
+const PENSION_TAX_LOCAL_INCOME_TAX_NOTICE =
+  "세액공제율과 세액공제액은 지방소득세를 고려해서 계산했어요.";
 
 export const ETF_THEME_CARDS = [
   { number: 1, title: "반도체", message: "반도체 테마가 뭐야?" },
@@ -268,15 +270,22 @@ const REPRESENTATIVE_COMPANY_LABELS = [
   "테마에서의 역할:",
   "쉽게 말하면:",
 ] as const;
+const PENSION_ACCOUNT_LABELS = [
+  "한눈에 보면:",
+  "핵심 특징:",
+] as const;
 const THEME_PARAGRAPH_GAP = "10pt";
 
 function CalloutCopy({ text }: { text: string }) {
   const paragraphs = text.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean);
-  const isRepresentativeCompany =
-    paragraphs.length === REPRESENTATIVE_COMPANY_LABELS.length &&
-    paragraphs.every((paragraph, index) =>
-      paragraph.startsWith(REPRESENTATIVE_COMPANY_LABELS[index]),
-    );
+  const labels = [REPRESENTATIVE_COMPANY_LABELS, PENSION_ACCOUNT_LABELS].find(
+    (candidate) => (
+      paragraphs.length === candidate.length
+      && paragraphs.every((paragraph, index) =>
+        paragraph.startsWith(candidate[index]),
+      )
+    ),
+  );
 
   if (paragraphs.length <= 1) {
     return <p>{displayText(text)}</p>;
@@ -285,10 +294,10 @@ function CalloutCopy({ text }: { text: string }) {
   return (
     <div className="answer-callout-copy">
       {paragraphs.map((paragraph, index) => {
-        if (!isRepresentativeCompany) {
+        if (!labels) {
           return <p key={`${paragraph}-${index}`}>{displayText(paragraph)}</p>;
         }
-        const label = REPRESENTATIVE_COMPANY_LABELS[index];
+        const label = labels[index];
         const body = paragraph.slice(label.length).trim();
         return (
           <p key={label}>
@@ -497,6 +506,39 @@ function AssistantMessage({
   const remainingVisualizations = taxSummaryVisualization
     ? response.visualizations.filter((item) => item !== taxSummaryVisualization)
     : response.visualizations;
+  const visibleNumericEvidence = isPensionTaxCredit
+    ? response.numeric_evidence.filter(
+      (item) => !item.label.endsWith("법정 세액공제액"),
+    )
+    : response.numeric_evidence;
+  const visibleSections = isPensionTaxCredit
+    ? response.sections.filter(
+      (section) => section.title !== "당해연도 세액공제 간이 계산",
+    )
+    : response.sections;
+  const visibleLimitations = isPensionTaxCredit
+    ? Array.from(new Set([
+      ...response.limitations,
+      PENSION_TAX_LOCAL_INCOME_TAX_NOTICE,
+    ]))
+    : response.limitations;
+  const legacyIncomeLabel = taxSummaryVisualization?.items.find(
+    (item) => item.label === "총급여액" || item.label === "종합소득금액",
+  )?.label;
+  const numericEvidenceLabel = (label: string): string => {
+    if (label === "소득금액" && legacyIncomeLabel) return legacyIncomeLabel;
+    if (label === "확인된 소득구간 표시율") return "세액공제율";
+    if (label === "연금저축 당해연도 납입액") return "올해 연금저축 납입액";
+    if (label === "IRP 당해연도 납입액") return "올해 IRP 납입액";
+    if (label === "합산 세액공제 대상 납입액") return "세액공제대상 납입액";
+    if (label === "확인된 소득구간 지방세 포함 예상 절세효과") {
+      return "세액공제액";
+    }
+    if (label.endsWith("법정 세액공제율")) {
+      return "지방세 제외 세액공제율";
+    }
+    return label;
+  };
   const shouldShowHoldingsPanel = (
     response.intent === "educational_portfolio"
     || response.data_mode === "etf_selection_required"
@@ -507,14 +549,16 @@ function AssistantMessage({
     && !isEducationalPortfolio
     && response.data_mode !== "theme_candidates"
     && response.data_mode !== "theme_component_holdings"
-    && response.numeric_evidence.length > 0
+    && response.data_mode !== "verified_pension_account_brief"
+    && response.data_mode !== "verified_pension_tax_rule_brief"
+    && visibleNumericEvidence.length > 0
   );
   const hasHiddenNumericEvidence = (
-    response.numeric_evidence.length > NUMBER_EVIDENCE_DEFAULT_LIMIT
+    visibleNumericEvidence.length > NUMBER_EVIDENCE_DEFAULT_LIMIT
   );
   const displayedNumericEvidence = allNumericEvidenceOpen
-    ? response.numeric_evidence
-    : response.numeric_evidence.slice(0, NUMBER_EVIDENCE_DEFAULT_LIMIT);
+    ? visibleNumericEvidence
+    : visibleNumericEvidence.slice(0, NUMBER_EVIDENCE_DEFAULT_LIMIT);
   const numericEvidenceCards = shouldShowNumericEvidence ? (
     <>
       <div
@@ -530,13 +574,19 @@ function AssistantMessage({
             key={`${item.evidence_id}-${index}`}
             style={{ minWidth: 0, padding: 12 }}
           >
-            <span style={{ fontSize: 10, lineHeight: 1.4 }}>{item.label}</span>
+            <span style={{ fontSize: 10, lineHeight: 1.4 }}>
+              {numericEvidenceLabel(item.label)}
+            </span>
             <strong
               style={{
-                fontSize: "clamp(16px, 4.5vw, 19px)",
+                fontSize: isPensionTaxCredit
+                  ? "clamp(13px, 3.4vw, 16px)"
+                  : "clamp(16px, 4.5vw, 19px)",
                 lineHeight: 1.2,
+                letterSpacing: isPensionTaxCredit ? "-0.02em" : undefined,
                 margin: "5px 0 0",
-                overflowWrap: "anywhere",
+                overflowWrap: isPensionTaxCredit ? "normal" : "anywhere",
+                whiteSpace: isPensionTaxCredit ? "nowrap" : undefined,
               }}
             >
               {numericText(item.value, item.unit)}
@@ -554,7 +604,9 @@ function AssistantMessage({
           <span>
             {allNumericEvidenceOpen
               ? "숫자 근거 접기"
-              : `숫자 근거 전체 ${response.numeric_evidence.length}개 보기`}
+              : isPensionTaxCredit
+                ? "숫자 근거 더보기"
+                : `숫자 근거 전체 ${visibleNumericEvidence.length}개 보기`}
           </span>
           <Icon name="chevron" size={16} />
         </button>
@@ -602,7 +654,9 @@ function AssistantMessage({
         />
       )}
       {isPensionTaxCredit && (
-        <p className="message-copy">세액공제액은 이렇게 계산했어요.</p>
+        <p className="message-copy" style={{ marginTop: 20 }}>
+          세액공제액은 이렇게 계산했어요.
+        </p>
       )}
       {isPensionTaxCredit && numericEvidenceCards}
 
@@ -636,9 +690,9 @@ function AssistantMessage({
       {/* narration_reasoning은 thinking 요약이라 대부분 영어로 나와 화면에 노출하지 않는다.
           응답 필드는 그대로 유지해 디버깅·로그에서 확인한다. */}
 
-      {response.data_mode !== "news_summary" && response.sections.map((section, index) => (
+      {response.data_mode !== "news_summary" && visibleSections.map((section, index) => (
         <Fragment key={`${section.title}-${index}`}>
-          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
+          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "verified_pension_account_brief" || response.data_mode === "verified_pension_tax_rule_brief" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
             <summary>
               <span>{section.title}{sectionPreview(section.content) && ` — ${sectionPreview(section.content)}`}</span>
               <small>내용 보기</small>
@@ -656,14 +710,14 @@ function AssistantMessage({
         </Fragment>
       ))}
 
-      {response.limitations.length > 0 && (
+      {visibleLimitations.length > 0 && (
         <details className="limitation-box">
           <summary>
-            <span><Icon name="shield" size={18} /> 확인할 점 {response.limitations.length}가지 보기</span>
+            <span><Icon name="shield" size={18} /> 확인할 점 {visibleLimitations.length}가지 보기</span>
             <Icon name="chevron" size={16} />
           </summary>
           <div>
-            {response.limitations.map((item, index) => <p key={index}>{item}</p>)}
+            {visibleLimitations.map((item, index) => <p key={index}>{item}</p>)}
           </div>
         </details>
       )}

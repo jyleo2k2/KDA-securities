@@ -6,6 +6,8 @@ import re
 from ...engine import AccountType
 from ...retrieval.repository import KnowledgeSearch
 from ..models import (
+    AnswerBlock,
+    AnswerBlockKind,
     AnswerSection,
     ChatIntent,
     ChatRequest,
@@ -33,6 +35,68 @@ from .graceful_decline import GracefulDeclineKind, graceful_decline_response
 _NUMBERED_SECTION_HEADING = re.compile(r"^\d+(?:-\d+)?\.\s+")
 _SENTENCE_END = re.compile(r"[.!?](?=\s|$)")
 _MAX_VISIBLE_ANSWER_CHARS = 320
+_ACCOUNT_BRIEF_QUESTION = re.compile(
+    r"차이|비교|특징|"
+    r"(?:란|은|는|이|가)\s*(?:뭐|무엇)|"
+    r"어떤\s*(?:계좌|연금)|설명|알려",
+    re.I,
+)
+_ACCOUNT_BRIEF_NARROW_TOPIC = re.compile(
+    r"위험\s*자산|한도|세액\s*공제|공제율|중도\s*인출|해지|"
+    r"수령|세금|과세|편입|상품|수익률|납입",
+    re.I,
+)
+_PENSION_TAX_RULE_BRIEF_QUESTION = re.compile(
+    r"연금\s*계좌.{0,16}(?:세액\s*공제\s*(?:혜택|제도)|납입\s*규칙|규칙)",
+    re.I,
+)
+_ACCOUNT_BRIEF_ORDER = (
+    AccountType.PENSION_SAVINGS,
+    AccountType.IRP,
+    AccountType.DC,
+)
+_ACCOUNT_BRIEF_COPY = {
+    AccountType.PENSION_SAVINGS: (
+        "연금저축펀드: 절세하면서 비교적 자유롭게 투자하는 개인 연금",
+        (
+            "펀드와 국내 상장 ETF 등을 활용할 수 있고, 퇴직연금처럼 "
+            "위험자산 비중을 70%로 제한하지 않습니다. 따라서 장기 투자기간이 "
+            "긴 20~30대가 주식형 ETF 중심으로 적극 운용하기에 상대적으로 "
+            "유리합니다."
+        ),
+    ),
+    AccountType.IRP: (
+        (
+            "개인형 퇴직연금(IRP): 세액공제 한도를 확대하고 퇴직금을 모아 "
+            "관리하는 개인 퇴직연금"
+        ),
+        (
+            "IRP의 장점은 연금저축만으로는 채우지 못하는 세액공제 한도를 "
+            "600만 원에서 900만 원까지 확대할 수 있다는 점입니다. IRP에는 "
+            "예금과 같은 원리금보장상품도 편입할 수 있어 안정적인 운용이 "
+            "가능하고, 이직하거나 퇴직할 때 받은 여러 직장의 퇴직금을 한 "
+            "계좌에 모아 관리할 수 있습니다."
+        ),
+    ),
+    AccountType.DC: (
+        (
+            "DC형 퇴직연금: 회사가 납입하는 퇴직급여를 근로자가 직접 "
+            "투자하는 퇴직연금"
+        ),
+        (
+            "근로자는 회사가 납입한 적립금을 직접 운용하고, 퇴직할 때 회사가 "
+            "납입한 원금과 운용손익을 합쳐 퇴직급여로 받습니다. 따라서 운용을 "
+            "잘하면 퇴직급여가 증가하지만, 반대로 손실이 나면 받을 금액도 "
+            "줄어들 수 있습니다."
+        ),
+        (
+            "근로자가 DC계좌에 자기 돈을 추가로 넣을 수도 있으며, 이 "
+            "추가납입액은 연금저축·IRP와 합산해 연 900만 원까지 세액공제 "
+            "대상이 됩니다. 그러나 회사가 의무적으로 낸 부담금은 본인의 "
+            "세액공제 대상이 아닙니다."
+        ),
+    ),
+}
 _DEFAULT_UNSUPPORTED_ANSWER = (
     "그 질문은 제가 잘 아는 분야는 아니에요. 대신 연금 이야기는 쉽고 "
     "편하게 풀어드릴게요. 아래에서 궁금한 걸 골라봐요."
@@ -317,6 +381,178 @@ def is_eligibility_question(message: str) -> bool:
     return any(term in message for term in ("편입", "적격", "가능한 상품"))
 
 
+def _requests_account_brief(request: ChatRequest, plan: QueryPlan) -> bool:
+    if not plan.account_types:
+        return False
+    if _ACCOUNT_BRIEF_NARROW_TOPIC.search(request.message):
+        return False
+    return (
+        plan.account_rule_topic == AccountRuleTopic.PENSION_ACCOUNT_OVERVIEW
+        or _ACCOUNT_BRIEF_QUESTION.search(request.message) is not None
+    )
+
+
+def _account_brief_response(account_types: tuple[AccountType, ...]) -> ChatResponse:
+    selected = tuple(
+        account_type
+        for account_type in _ACCOUNT_BRIEF_ORDER
+        if account_type in account_types
+    )
+    account_cards: list[AnswerBlock] = []
+    account_titles: list[str] = []
+    for account_type in selected:
+        title, summary = _ACCOUNT_BRIEF_COPY[account_type][0].split(": ", 1)
+        account_titles.append(title)
+        account_cards.append(
+            AnswerBlock(
+                kind=AnswerBlockKind.CALLOUT,
+                title=title,
+                text=(
+                    f"한눈에 보면: {summary}\n\n"
+                    f"핵심 특징: {' '.join(_ACCOUNT_BRIEF_COPY[account_type][1:])}"
+                ),
+            )
+        )
+
+    if selected == _ACCOUNT_BRIEF_ORDER:
+        answer = "연금계좌별 특징을 정리했어요."
+        section_title = "연금계좌별 차이"
+        section_content = "각 계좌의 역할과 특징을 비교해 보세요."
+    elif len(selected) == 1:
+        answer = f"{account_titles[0]}의 핵심 특징을 정리했어요."
+        section_title = f"{account_titles[0]} 특징"
+        section_content = "이 계좌의 역할과 핵심 특징을 확인해 보세요."
+    else:
+        answer = f"{'·'.join(account_titles)}의 차이를 정리했어요."
+        section_title = f"{'·'.join(account_titles)} 차이"
+        section_content = "두 계좌의 역할과 특징을 비교해 보세요."
+
+    evidence_id = "rule:pension_overview:law"
+    section = AnswerSection(
+        kind=SectionKind.SERVICE_EXPLANATION,
+        title=section_title,
+        content=section_content,
+        evidence_ids=[evidence_id],
+        blocks=account_cards,
+    )
+    evidence_text = "\n".join(
+        (
+            answer,
+            section.plain_text(),
+        )
+    )
+    overview = build_pension_account_overview_response()
+    numeric_evidence = [
+        NumericEvidence(
+            label=f"연금계좌 특징 수치 근거 {index}",
+            value=value,
+            unit=unit,
+            evidence_id=evidence_id,
+            basis="검증된 연금계좌 제도 근거",
+        )
+        for index, (value, unit) in enumerate(
+            sorted(extract_numeric_claims(evidence_text)),
+            start=1,
+        )
+    ]
+    return ChatResponse(
+        intent=ChatIntent.ACCOUNT_RULE,
+        answer=answer,
+        data_mode="verified_pension_account_brief",
+        sections=[section],
+        sources=overview.sources,
+        numeric_evidence=numeric_evidence,
+        limitations=overview.limitations,
+    )
+
+
+def _pension_tax_rule_brief_response() -> ChatResponse:
+    tax_credit_source = "rule:pension_overview:tax_credit"
+    receipt_source = "rule:pension_overview:receipt"
+    law_source = "rule:pension_overview:law"
+    section = AnswerSection(
+        kind=SectionKind.SERVICE_EXPLANATION,
+        title="연금계좌 세액공제 혜택",
+        content="납입 한도와 ISA 만기 특례, 소득구간별 공제율을 확인해 보세요.",
+        evidence_ids=[tax_credit_source, receipt_source, law_source],
+        blocks=[
+            AnswerBlock(
+                kind=AnswerBlockKind.CALLOUT,
+                title="기본 세액공제 대상 한도",
+                text=(
+                    "연금저축은 1년에 600만 원까지 세액공제 대상이 됩니다.\n\n"
+                    "연금저축·IRP·DC형 근로자 본인 추가납입액은 합산해 연간 "
+                    "900만 원까지 세액공제 대상이 됩니다. IRP 또는 DC형 본인 "
+                    "추가납입만으로도 합산 한도 900만 원을 채울 수 있습니다.\n\n"
+                    "DC형 회사 부담금과 퇴직급여 이전액은 개인의 세액공제 대상 "
+                    "납입액에서 제외됩니다."
+                ),
+            ),
+            AnswerBlock(
+                kind=AnswerBlockKind.CALLOUT,
+                title="ISA 만기자금 이전 특례",
+                text=(
+                    "ISA 계약기간 만료일부터 60일 이내에 만기자금의 전부 또는 "
+                    "일부를 연금저축이나 IRP로 옮겨야 합니다.\n\n"
+                    "옮긴 금액의 10%와 300만 원 중 작은 금액만큼 세액공제 대상 "
+                    "한도가 추가됩니다."
+                ),
+            ),
+            AnswerBlock(
+                kind=AnswerBlockKind.CALLOUT,
+                title="소득구간별 세액공제율",
+                text=(
+                    "총급여액 5,500만 원 이하 또는 종합소득금액 4,500만 원 "
+                    "이하: 법정 공제율 15%, 지방소득세 효과 포함 16.5%\n\n"
+                    "위 기준 초과: 법정 공제율 12%, 지방소득세 효과 포함 13.2%"
+                ),
+            ),
+            AnswerBlock(
+                kind=AnswerBlockKind.CALLOUT,
+                title="정리하면",
+                text=(
+                    "연금저축은 연 600만 원까지, 연금저축·IRP·DC형 근로자 본인 "
+                    "추가납입액은 합산해 연 900만 원까지 세액공제 대상이 됩니다. "
+                    "ISA 만기자금 이전 특례가 적용되면 최대 1,200만 원까지 "
+                    "늘어날 수 있습니다."
+                ),
+            ),
+        ],
+    )
+    answer = (
+        "매년 연금계좌에 납입한 금액의 일정 비율만큼 소득세를 "
+        "줄여주는 제도예요."
+    )
+    evidence_text = "\n".join((answer, section.plain_text()))
+    overview = build_pension_account_overview_response()
+    source_ids = {tax_credit_source, receipt_source, law_source}
+    sources = [
+        source for source in overview.sources if source.evidence_id in source_ids
+    ]
+    numeric_evidence = [
+        NumericEvidence(
+            label=f"연금계좌 세액공제 규칙 수치 근거 {index}",
+            value=value,
+            unit=unit,
+            evidence_id=tax_credit_source,
+            basis="국세청·소득세법 연금계좌 세액공제 규칙",
+        )
+        for index, (value, unit) in enumerate(
+            sorted(extract_numeric_claims(evidence_text)),
+            start=1,
+        )
+    ]
+    return ChatResponse(
+        intent=ChatIntent.ACCOUNT_RULE,
+        answer=answer,
+        data_mode="verified_pension_tax_rule_brief",
+        sections=[section],
+        sources=sources,
+        numeric_evidence=numeric_evidence,
+        limitations=overview.limitations,
+    )
+
+
 def handle_account_rule(
     request: ChatRequest,
     plan: QueryPlan,
@@ -340,6 +576,10 @@ def handle_account_rule(
             ],
             limitations=["미래 수익이나 수령액을 확정하거나 보장하지 않습니다."],
         )
+    if _PENSION_TAX_RULE_BRIEF_QUESTION.search(request.message):
+        return _pension_tax_rule_brief_response()
+    if _requests_account_brief(request, plan):
+        return _account_brief_response(plan.account_types)
     if plan.account_rule_topic == AccountRuleTopic.PENSION_ACCOUNT_OVERVIEW:
         return build_pension_account_overview_response()
     if plan.account_rule_topic is not None:
