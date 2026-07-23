@@ -44,9 +44,10 @@ export function YeongeumiMascot({ className }: YeongeumiMascotProps): JSX.Elemen
         <path d="M42 90 L42 100 M54 92 L54 101 M66 92 L66 101 M78 90 L78 100" />
         <path d="M56 40 L64 40" strokeWidth={4} />
         <path d="M90 64 Q100 60 98 70 Q96 78 104 76" />
-        <circle cx={60} cy={20} r={7} stroke="#18A860" />
-        <path d="M57 20 L63 20 M60 16 L60 24" stroke="#18A860" strokeWidth={2.4} />
       </g>
+      {/* 동전은 자글자글 효과에서 제외해 선을 또렷하게 유지한다. */}
+      <circle cx={60} cy={20} r={7} stroke="#18A860" />
+      <path d="M57 20 L63 20 M60 16 L60 24" stroke="#18A860" strokeWidth={2.4} />
     </svg>
   );
 }
