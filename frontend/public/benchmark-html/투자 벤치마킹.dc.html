@@ -16,10 +16,11 @@
   a { color: #22A94D; text-decoration: none; }
   a:hover { color: #148A3C; }
   .scrolly::-webkit-scrollbar { width: 0; }
+  @media (max-width:480px) { #benchmark-phone { width:100vw !important; height:100dvh !important; } }
 </style>
 </helmet>
 <template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#22A94D"></rect><text x="50" y="60" font-size="30" font-weight="800" text-anchor="middle" fill="#fff" font-family="sans-serif">벤치</text></svg></template>
-<div style="width:390px; height:844px; background:#F5F6F8; margin:0 auto; font-family:'Cafe24SsurroundAir', Pretendard, -apple-system, sans-serif; color:#1E2124; display:flex; flex-direction:column; position:relative; overflow:hidden;">
+<div id="benchmark-phone" style="width:390px; height:844px; background:#F5F6F8; margin:0 auto; font-family:'Cafe24SsurroundAir', Pretendard, -apple-system, sans-serif; color:#1E2124; display:flex; flex-direction:column; position:relative; overflow:hidden;">
 
   <div style="flex:none; background:#fff; height:44px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; font-weight:600; font-size:15px;">
     <span>9:41</span>
