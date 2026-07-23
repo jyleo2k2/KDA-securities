@@ -32,18 +32,69 @@ from .graceful_decline import GracefulDeclineKind, graceful_decline_response
 
 _NUMBERED_SECTION_HEADING = re.compile(r"^\d+(?:-\d+)?\.\s+")
 _SENTENCE_END = re.compile(r"[.!?](?=\s|$)")
-_MEAL_SMALLTALK = re.compile(
-    r"배\s*고프|밥.{0,10}(?:먹|뭐)|(?:밥|식사)\s*(?:은|는|도)?\s*(?:했|하셨)",
-    re.I,
-)
 _MAX_VISIBLE_ANSWER_CHARS = 320
 _DEFAULT_UNSUPPORTED_ANSWER = (
     "그 질문은 제가 잘 아는 분야는 아니에요. 대신 연금 이야기는 쉽고 "
     "편하게 풀어드릴게요. 아래에서 궁금한 걸 골라봐요."
 )
-_MEAL_SMALLTALK_ANSWER = (
-    "저는 밥을 먹지는 못하지만, 고객님은 식사하셨어요? "
-    "연금 이야기도 편하게 물어봐 주세요."
+_SMALLTALK_RULES = (
+    (
+        re.compile(
+            r"배\s*고프|밥.{0,10}(?:먹|뭐)"
+            r"|(?:밥|식사)\s*(?:은|는|도)?\s*(?:했|하셨)",
+            re.I,
+        ),
+        "저는 밥을 먹지는 못하지만, 고객님은 식사하셨어요? "
+        "연금 이야기도 편하게 물어봐 주세요.",
+    ),
+    (
+        re.compile(r"잘\s*가|다음에\s*봐|또\s*보자|안녕히", re.I),
+        "다음에 또 만나요, 고객님. 연금이 궁금할 때 언제든 편하게 찾아와 주세요.",
+    ),
+    (
+        re.compile(r"안녕|하이|헬로|반가워", re.I),
+        "안녕하세요, 고객님! 만나서 반가워요. 오늘은 어떤 이야기를 나눠볼까요?",
+    ),
+    (
+        re.compile(r"(?:너|네|니|챗봇).{0,6}(?:이름|누구)|정체가\s*뭐", re.I),
+        "제 이름은 연그미예요. 어렵게 느껴지는 연금 이야기를 "
+        "편하게 풀어드리는 친구예요.",
+    ),
+    (
+        re.compile(r"(?:너|네|니).{0,6}(?:몇\s*살|나이)", re.I),
+        "저는 나이를 먹지는 않지만, 고객님의 든든한 노후 준비는 "
+        "오래 함께 도와드릴 수 있어요.",
+    ),
+    (
+        re.compile(r"뭐\s*해|뭐하니|잘\s*지내|기분\s*어때", re.I),
+        "저는 여기서 고객님의 질문을 기다리고 있어요. "
+        "고객님은 오늘 어떻게 지내고 계세요?",
+    ),
+    (
+        re.compile(r"피곤|졸려|잠\s*와|쉬고\s*싶", re.I),
+        "오늘 조금 지치셨나 봐요. 잠깐 쉬어가도 괜찮아요. "
+        "연금 이야기는 준비되실 때 편하게 이어가요.",
+    ),
+    (
+        re.compile(r"고마워|감사(?:해|합니다)?|너\s*최고|잘했어", re.I),
+        "고마워요, 고객님! 도움이 됐다니 저도 기뻐요. "
+        "다른 궁금한 것도 편하게 물어봐 주세요.",
+    ),
+    (
+        re.compile(r"농담|웃겨\s*줘|재밌는\s*말", re.I),
+        "연금이 급하게 뛰지 않는 이유는 뭘까요? 오래오래 가는 게 더 중요해서래요. "
+        "연금 이야기도 이렇게 편하게 물어봐 주세요.",
+    ),
+    (
+        re.compile(r"날씨|비\s*(?:와|오)|눈\s*(?:와|오)|더워|추워", re.I),
+        "실시간 날씨는 확인할 수 없지만, 외출 전 날씨 앱을 한 번 확인해 보세요. "
+        "저는 연금 궁금증을 편하게 풀어드릴게요.",
+    ),
+    (
+        re.compile(r"심심", re.I),
+        "심심하셨군요. 저와 가볍게 이야기 나눠도 좋아요. "
+        "연금이 궁금한 것도 편하게 꺼내 주세요.",
+    ),
 )
 
 
@@ -69,8 +120,9 @@ def _concise_knowledge_answer(excerpt: str) -> str:
 
 
 def _unsupported_answer(user_message: str) -> str:
-    if _MEAL_SMALLTALK.search(user_message) is not None:
-        return _MEAL_SMALLTALK_ANSWER
+    for pattern, answer in _SMALLTALK_RULES:
+        if pattern.search(user_message) is not None:
+            return answer
     return _DEFAULT_UNSUPPORTED_ANSWER
 
 
