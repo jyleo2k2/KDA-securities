@@ -848,6 +848,7 @@ export function GuidePage({
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const conversationEndRef = useRef<HTMLDivElement>(null);
+  const conversationRef = useRef<HTMLDivElement>(null);
   const latestMessageRef = useRef<HTMLDivElement>(null);
   const previousAuthRef = useRef<{
     userId: string | null;
@@ -1616,7 +1617,7 @@ export function GuidePage({
           </div>
         </header>
 
-        <div className="conversation" aria-live="polite">
+        <div className="conversation" aria-live="polite" ref={conversationRef}>
           {messages.length === 0 ? (
             <div className="welcome design-welcome">
               <div className="design-brand">
@@ -1678,10 +1679,13 @@ export function GuidePage({
                   <ChatTypingAnswer
                     animate={!streamingAnswerIsNarration}
                     intervalMs={typingIntervalMs}
-                    onProgress={() => conversationEndRef.current?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "end",
-                    })}
+                    onProgress={() => {
+                      const el = conversationRef.current;
+                      // 사용자가 위로 올려 읽는 중이면 따라가지 않는다. 바닥 근처일 때만, smooth 관성 없이 즉시 붙인다.
+                      if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 120) {
+                        el.scrollTop = el.scrollHeight;
+                      }
+                    }}
                     text={streamingAnswer}
                   />
                 </div>
