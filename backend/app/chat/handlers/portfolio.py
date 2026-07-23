@@ -13,6 +13,7 @@ from ...engine import (
     evaluate_risk_cap,
     select_theme_etf_candidates,
 )
+from ...engine.educational_portfolio import rebalancing_cadence
 from ...etf_component_repository import EtfComponentSnapshotRepository
 from ...etf_product_description_repository import (
     EtfProductDescriptionRepository,
@@ -84,6 +85,14 @@ _HOLDING_SCOPE_BASES = {
     "index_exposure": "공식 기초지수 편입비중",
     "look_through": "공식 자료를 연결한 룩스루 비중",
 }
+
+
+def _risk_profile_rebalancing_text(profile: EducationalRiskProfile) -> str:
+    cadence = rebalancing_cadence(profile)
+    return (
+        f"점검 주기: {cadence.review_interval_months}개월. "
+        f"{cadence.rationale}"
+    )
 
 
 def _product_fee_text(value: Decimal | None) -> str:
@@ -1102,6 +1111,21 @@ def risk_profile_selection_guide() -> ChatResponse:
 
 
 def risk_profile_portfolio_guide() -> ChatResponse:
+    stable_rebalancing = _risk_profile_rebalancing_text(
+        EducationalRiskProfile.STABLE
+    )
+    stable_seeking_rebalancing = _risk_profile_rebalancing_text(
+        EducationalRiskProfile.STABLE_SEEKING
+    )
+    neutral_rebalancing = _risk_profile_rebalancing_text(
+        EducationalRiskProfile.RISK_NEUTRAL
+    )
+    active_rebalancing = _risk_profile_rebalancing_text(
+        EducationalRiskProfile.ACTIVE
+    )
+    aggressive_rebalancing = _risk_profile_rebalancing_text(
+        EducationalRiskProfile.AGGRESSIVE
+    )
     return ChatResponse(
         intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
         answer=(
@@ -1122,7 +1146,8 @@ def risk_profile_portfolio_guide() -> ChatResponse:
                     "설문에서 확인된 손실 감내 범위 안에서 보조로만 활용해요. "
                     "전술자산은 편입하지 않는 것을 기본으로 해요.\n"
                     "운용: 정기 납입은 방어자산을 중심으로 이어가고, 단기 "
-                    "수익을 좇아 자산 구성을 자주 바꾸지 않아요."
+                    "수익을 좇아 자산 구성을 자주 바꾸지 않아요.\n"
+                    + stable_rebalancing
                 ),
             ),
             AnswerSection(
@@ -1134,7 +1159,8 @@ def risk_profile_portfolio_guide() -> ChatResponse:
                     "설계: 채권을 핵심으로 두고 넓게 분산한 주식과 실물자산을 "
                     "보조로 더하며, 현금은 리밸런싱 여유자금으로 유지해요.\n"
                     "운용: 위험자산이 목표보다 커지면 추가 매수를 멈추고, 새 "
-                    "납입금을 채권·현금 등 부족한 방어자산에 먼저 배분해요."
+                    "납입금을 채권·현금 등 부족한 방어자산에 먼저 배분해요.\n"
+                    + stable_seeking_rebalancing
                 ),
             ),
             AnswerSection(
@@ -1146,7 +1172,8 @@ def risk_profile_portfolio_guide() -> ChatResponse:
                     "설계: 넓게 분산한 주식과 채권을 두 핵심축으로 두고, "
                     "실물자산은 물가 대응과 분산을 위한 위성자산으로 활용해요.\n"
                     "운용: 시장 전망에 따라 한쪽으로 몰기보다 정기 납입과 "
-                    "리밸런싱으로 목표 구성을 꾸준히 유지해요."
+                    "리밸런싱으로 목표 구성을 꾸준히 유지해요.\n"
+                    + neutral_rebalancing
                 ),
             ),
             AnswerSection(
@@ -1158,7 +1185,8 @@ def risk_profile_portfolio_guide() -> ChatResponse:
                     "설계: 넓게 분산한 주식 ETF를 핵심으로 두고 채권을 완충재로, "
                     "실물자산과 전술자산은 상한이 있는 보조자산으로 활용해요.\n"
                     "운용: 하락기에도 정기 납입 원칙을 유지하되, 전술자산을 "
-                    "추격 매수하지 않고 부족한 핵심자산부터 채워요."
+                    "추격 매수하지 않고 부족한 핵심자산부터 채워요.\n"
+                    + active_rebalancing
                 ),
             ),
             AnswerSection(
@@ -1171,7 +1199,8 @@ def risk_profile_portfolio_guide() -> ChatResponse:
                     "완충재를 없애지 않으며, 전술자산은 별도 상한을 둬 집중을 "
                     "막아요.\n"
                     "운용: 테마를 수익률 순으로 쫓지 않고 분산 성장 코어를 먼저 "
-                    "채운 뒤, 허용 범위 안에서만 전술자산을 운용해요."
+                    "채운 뒤, 허용 범위 안에서만 전술자산을 운용해요.\n"
+                    + aggressive_rebalancing
                 ),
             ),
             AnswerSection(
@@ -1179,10 +1208,10 @@ def risk_profile_portfolio_guide() -> ChatResponse:
                 title="공통 실행 원칙",
                 content=(
                     "ETF 후보는 과거 수익률 순위가 아니라 비용, 거래대금, "
-                    "순자산, 괴리율, 추적오차, 관측기간으로 비교해요. 분기마다 "
-                    "목표비중 이탈을 점검하고 새 납입금은 부족한 자산군에 먼저 "
-                    "배분해요. 매년 나이, 설문 투자성향, 손실 감내 수준, 연금 "
-                    "수령 시점을 다시 확인해 목표 구성을 갱신해요."
+                    "순자산, 괴리율, 추적오차, 관측기간으로 비교해요. 성향별 "
+                    "점검 주기에 맞춰 목표비중 이탈을 확인해요. 새 납입금은 "
+                    "부족한 자산군에 먼저 배분해요. 매년 나이와 설문 투자성향, "
+                    "손실 감내 수준, 연금 수령 시점을 다시 확인해 목표 구성을 갱신해요."
                 ),
             ),
         ],
