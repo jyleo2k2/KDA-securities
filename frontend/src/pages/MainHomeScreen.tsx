@@ -1,4 +1,4 @@
-import { useState, type JSX } from "react";
+import { useEffect, useState, type JSX } from "react";
 
 import taxCreditMissed from "../assets/main-home/tax-credit-missed.png";
 import piggy from "../assets/main-home/piggy.webp";
@@ -113,7 +113,7 @@ function HoldingPie({ slices, selectedIndex, onSelect }: {
             tabIndex={0}
             aria-label={`${slice.label} ${slice.percent.toFixed(1)}%`}
             aria-pressed={selected}
-            onClick={() => onSelect(index)}
+            onClick={(event) => { event.stopPropagation(); onSelect(index); }}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
@@ -204,6 +204,12 @@ export function MainHomeScreen({ aggregation, displayName, error, investmentProf
     })) ?? [];
   const holdingSlices = buildHoldingPieSlices(aggregation);
   const toggleHolding = (index: number) => setSelectedHolding((current) => (current === index ? null : index));
+  useEffect(() => {
+    if (selectedHolding === null) return;
+    const clear = () => setSelectedHolding(null);
+    document.addEventListener("click", clear);
+    return () => document.removeEventListener("click", clear);
+  }, [selectedHolding]);
   const totalBalance = aggregation ? formatKrw(aggregation.total_amount_krw) : "-";
   const asOfDate = portfolio ? latestPortfolioDate(portfolio) : null;
 
@@ -262,10 +268,11 @@ export function MainHomeScreen({ aggregation, displayName, error, investmentProf
                   key={slice.label}
                   role={selectable ? "button" : undefined}
                   tabIndex={selectable ? 0 : undefined}
-                  onClick={selectable ? () => toggleHolding(slice.index as number) : undefined}
+                  onClick={selectable ? (event) => { event.stopPropagation(); toggleHolding(slice.index as number); } : undefined}
                   onKeyDown={selectable ? (event) => {
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
+                      event.stopPropagation();
                       toggleHolding(slice.index as number);
                     }
                   } : undefined}

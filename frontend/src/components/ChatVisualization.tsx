@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { donutArcPaths } from "../charts";
 import type { ChatVisualization as ChatVisualizationData, SourceEvidence } from "../api/types";
 
@@ -161,6 +161,12 @@ export function ChatVisualization({ visualization, sources }: {
     .map((evidenceId) => sourceById.get(evidenceId))
     .filter((source): source is SourceEvidence => Boolean(source));
   const toggle = (index: number) => setSelectedIndex((current) => (current === index ? null : index));
+  useEffect(() => {
+    if (selectedIndex === null) return;
+    const clear = () => setSelectedIndex(null);
+    document.addEventListener("click", clear);
+    return () => document.removeEventListener("click", clear);
+  }, [selectedIndex]);
 
   return (
     <section className="allocation-chart" aria-label={visualization.title}>
@@ -181,10 +187,11 @@ export function ChatVisualization({ visualization, sources }: {
                 role="button"
                 tabIndex={0}
                 aria-label={`${item.label} ${item.value}%`}
-                onClick={() => toggle(index)}
+                onClick={(event) => { event.stopPropagation(); toggle(index); }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
+                    event.stopPropagation();
                     toggle(index);
                   }
                 }}
@@ -200,7 +207,7 @@ export function ChatVisualization({ visualization, sources }: {
               <button
                 type="button"
                 className={selectedIndex === index ? "is-selected" : ""}
-                onClick={() => toggle(index)}
+                onClick={(event) => { event.stopPropagation(); toggle(index); }}
               >
                 <i style={{ backgroundColor: colors[index % colors.length] }} />
                 <span>{item.label}</span>
