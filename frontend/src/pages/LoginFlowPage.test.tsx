@@ -194,6 +194,7 @@ describe("LoginFlowPage", () => {
     } as SupabaseAuthState;
     render(<LoginFlowPage auth={auth} onAuthenticated={onAuthenticated} onProfileSaved={onProfileSaved} onStart={onStart} resurvey />);
 
+    fireEvent.click(screen.getByRole("button", { name: "투자 성향 진단받기" }));
     fireEvent.click(screen.getByRole("button", { name: "테스트 설문 저장" }));
 
     await waitFor(() => expect(saveInvestmentProfile).toHaveBeenCalledWith(expect.any(Object), "access-token"));

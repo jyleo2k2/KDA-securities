@@ -13,7 +13,7 @@ if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
 
 $BackendUrl = "http://127.0.0.1:8000"
 $FrontendUrl = "http://127.0.0.1:5173"
-$ChatUrl = "$FrontendUrl/#guide"
+$StartUrl = "$FrontendUrl/#/login"
 $StateRoot = Join-Path $env:LOCALAPPDATA "PensionCopilot"
 $LogRoot = Join-Path $StateRoot "logs"
 $PidFile = Join-Path $StateRoot "server-processes.json"
@@ -130,7 +130,7 @@ try {
     $backendReady = Test-HttpEndpoint -Uri "$BackendUrl/health"
     $frontendReady = Test-HttpEndpoint -Uri $FrontendUrl
     if ($backendReady -and $frontendReady) {
-        Start-Process $ChatUrl
+        Start-Process $StartUrl
         exit 0
     }
 
@@ -183,7 +183,7 @@ try {
         throw "The frontend did not start before the timeout.`n$FrontendErrorLog"
     }
 
-    Start-Process $ChatUrl
+    Start-Process $StartUrl
 }
 catch {
     New-Item -ItemType Directory -Path $LogRoot -Force | Out-Null
