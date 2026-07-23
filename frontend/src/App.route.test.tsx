@@ -48,4 +48,13 @@ describe("initial hash routing", () => {
 
     expect(await screen.findByTestId("guide-page")).toBeTruthy();
   });
+
+  it("loads the supplied profile html from its explicit public file path", async () => {
+    window.history.replaceState(null, "", "#/profile-html");
+
+    render(<App />);
+
+    const profileFrame = await screen.findByTitle("내 프로필");
+    expect(profileFrame.getAttribute("src")).toBe("/profile-html/index.html");
+  });
 });
