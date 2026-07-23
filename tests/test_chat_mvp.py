@@ -619,7 +619,6 @@ def test_future_return_and_order_requests_are_blocked() -> None:
 def test_unsupported_questions_offer_friendly_safe_routes() -> None:
     chatbot = service(knowledge=EmptyKnowledgeRepository())
     messages = (
-        "오늘 밥 뭐 먹었어?",
         "비트코인 지금 사도 돼?",
         "김치찌개 레시피",
     )
@@ -638,8 +637,8 @@ def test_unsupported_questions_offer_friendly_safe_routes() -> None:
         assert response.intent is ChatIntent.OUT_OF_SCOPE
         assert response.data_mode == "safe_fallback"
         assert response.answer == (
-            "그 질문은 제가 잘 아는 분야는 아니에요. 대신 연금 이야기는 쉽고 "
-            "편하게 풀어드릴게요. 아래에서 궁금한 걸 골라봐요."
+            "그 질문은 제가 잘 아는 분야는 아니에요. 대신 연금 이야기는 "
+            "쉽고 편하게 풀어드릴게요. 아래에서 궁금한 걸 골라봐요."
         )
         assert response.limitations == [
             "범용 투자·세무·법률 상담은 지원하지 않습니다."
@@ -672,6 +671,81 @@ def test_unsupported_questions_offer_friendly_safe_routes() -> None:
             follow_up_plan = plan_question(follow_up.message)
             assert follow_up_plan.intent is expected_intent
             assert follow_up_plan.blocked_reason is None
+
+
+@pytest.mark.parametrize(
+    ("message", "expected_answer"),
+    [
+        (
+            "배고프다 밥은 먹었니",
+            "저는 밥을 먹지는 못하지만, 고객님은 식사하셨어요? "
+            "연금 이야기도 편하게 물어봐 주세요.",
+        ),
+        (
+            "안녕 반가워",
+            "안녕하세요, 고객님! 만나서 반가워요. 오늘은 어떤 이야기를 나눠볼까요?",
+        ),
+        (
+            "너 이름이 뭐야?",
+            "제 이름은 연그미예요. 어렵게 느껴지는 연금 이야기를 "
+            "편하게 풀어드리는 친구예요.",
+        ),
+        (
+            "너 몇 살이야?",
+            "저는 나이를 먹지는 않지만, 고객님의 든든한 노후 준비는 "
+            "오래 함께 도와드릴 수 있어요.",
+        ),
+        (
+            "오늘 뭐 해?",
+            "저는 여기서 고객님의 질문을 기다리고 있어요. "
+            "고객님은 오늘 어떻게 지내고 계세요?",
+        ),
+        (
+            "고마워 잘했어",
+            "고마워요, 고객님! 도움이 됐다니 저도 기뻐요. "
+            "다른 궁금한 것도 편하게 물어봐 주세요.",
+        ),
+        (
+            "오늘 너무 피곤해",
+            "오늘 조금 지치셨나 봐요. 잠깐 쉬어가도 괜찮아요. "
+            "연금 이야기는 준비되실 때 편하게 이어가요.",
+        ),
+        (
+            "농담 하나 해줘",
+            "연금이 급하게 뛰지 않는 이유는 뭘까요? 오래오래 가는 게 더 중요해서래요. "
+            "연금 이야기도 이렇게 편하게 물어봐 주세요.",
+        ),
+        (
+            "오늘 날씨 어때?",
+            "실시간 날씨는 확인할 수 없지만, 외출 전 날씨 앱을 한 번 확인해 보세요. "
+            "저는 연금 궁금증을 편하게 풀어드릴게요.",
+        ),
+        (
+            "심심해",
+            "심심하셨군요. 저와 가볍게 이야기 나눠도 좋아요. "
+            "연금이 궁금한 것도 편하게 꺼내 주세요.",
+        ),
+        (
+            "다음에 봐",
+            "다음에 또 만나요, 고객님. 연금이 궁금할 때 언제든 편하게 찾아와 주세요.",
+        ),
+    ],
+)
+def test_everyday_smalltalk_uses_friendly_deterministic_answers(
+    message: str,
+    expected_answer: str,
+) -> None:
+    chatbot = service(knowledge=EmptyKnowledgeRepository())
+    request = ChatRequest(message=message)
+
+    plan = chatbot.plan(request)
+    response = chatbot.ask(request)
+
+    assert plan.intent is ChatIntent.OUT_OF_SCOPE
+    assert plan.blocked_reason is BlockedReason.UNSUPPORTED
+    assert response.data_mode == "safe_fallback"
+    assert response.answer == expected_answer
+    assert len(response.suggested_follow_ups) == 3
 
 
 def test_narrator_prompt_requires_conclusion_first_heyoche() -> None:
