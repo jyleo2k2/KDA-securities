@@ -483,7 +483,7 @@ def select_theme_etf_candidates(
         limitations=tuple(
             item
             for item in (
-                "교육용 비교 후보이며 매수 순위나 주문 지시가 아닙니다.",
+            "비교 후보이며 매수 순위나 주문 지시가 아닙니다.",
                 (
                     "거래량 또는 운용보수가 없는 ETF는 순위에서 제외했습니다."
                     if ordered_candidate_groups is not None

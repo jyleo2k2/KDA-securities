@@ -37,7 +37,7 @@ SEPARATE_TAX_RATE_PERCENT = Decimal("16.5")
 WITHDRAWAL_LIMIT_MULTIPLIER = Decimal("1.2")
 
 ASSUMPTION_NOTICE = (
-    "미래 수익 예측이 아니라 사용자가 선택한 교육용 가정 시나리오입니다."
+    "미래 수익 예측이 아니라 사용자가 선택한 가정 시나리오입니다."
 )
 BASE_WARNINGS = (
     "assumes_pension_account_held_for_at_least_five_years",

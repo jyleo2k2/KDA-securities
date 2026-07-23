@@ -67,7 +67,7 @@ def pension_tax_response(
             data_mode="input_required",
             limitations=[
                 "계좌번호·주민등록번호·인증정보는 입력하지 마세요.",
-                "입력 금액은 세무자문이 아닌 교육용 간이 계산에만 사용합니다.",
+        "입력 금액은 세무자문이 아닌 간이 계산에만 사용합니다.",
             ],
         )
 

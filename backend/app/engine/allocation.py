@@ -32,7 +32,7 @@ from .portfolio import RULE_SOURCE
 ENGINE_NAME = "allocation_example"
 ENGINE_VERSION = "2026-07-15.1"
 EDUCATIONAL_NOTICE = (
-    "특정 상품 추천이 아니라 자산군 단위의 교육용 예시다. "
+    "특정 상품 추천이 아니라 자산군 단위의 예시다. "
     "실제 상품 선택과 주문은 이용자가 직접 결정한다."
 )
 

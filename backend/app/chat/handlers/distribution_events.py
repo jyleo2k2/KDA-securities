@@ -136,7 +136,7 @@ def distribution_reinvestment_response(
     if request is None:
         return ChatResponse(
             intent=ChatIntent.ETF_DISTRIBUTION,
-            answer="분배금 재투자 교육용 계산에 필요한 입력을 확인해 주세요.",
+        answer="분배금 재투자 계산에 필요한 입력을 확인해 주세요.",
             data_mode="distribution_reinvestment_input_required",
             sections=[
                 AnswerSection(
@@ -149,7 +149,7 @@ def distribution_reinvestment_response(
                 )
             ],
             limitations=[
-                "보유수량과 기준가는 사용자가 직접 입력한 교육용 값입니다.",
+        "보유수량과 기준가는 사용자가 직접 입력한 값입니다.",
                 "자동 재투자나 주문은 실행하지 않습니다.",
             ],
         )
@@ -255,7 +255,7 @@ def distribution_reinvestment_response(
                 basis="확정 현금분배 중 입력한 리밸런싱 기간에 지급되는 금액",
             ),
             NumericEvidence(
-                label="교육용 재투자 수량",
+        label="재투자 수량",
                 value=evaluation.reinvested_quantity,
                 unit="shares",
                 evidence_id=evidence_id,

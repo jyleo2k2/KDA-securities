@@ -90,8 +90,8 @@ def graceful_decline(
                 ),
                 SuggestedFollowUp(
                     follow_up_id="decline_educational_portfolio",
-                    label="교육용 포트폴리오 예시",
-                    message="연금저축 교육용 포트폴리오 예시를 보여줘",
+        label="포트폴리오 예시",
+        message="연금저축 포트폴리오 예시를 보여줘",
                 ),
                 SuggestedFollowUp(
                     follow_up_id="decline_etf_total_return",
