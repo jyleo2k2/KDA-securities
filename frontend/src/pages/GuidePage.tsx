@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from "react";
 
-import profileIcon from "../assets/chatbot/profile-icon.png";
+import profileIcon from "../assets/chatbot/profile-icon.webp";
 import {
   ApiError,
   apiErrorMessage,

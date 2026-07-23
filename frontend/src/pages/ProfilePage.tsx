@@ -1,4 +1,4 @@
-import profileIcon from "../assets/main-home/profile-icon.png";
+import profileIcon from "../assets/main-home/profile-icon.webp";
 import type { DemoUserFinancialContext, InvestmentProfileResponse, RiskProfile } from "../api/types";
 import "./ProfilePage.css";
 
