@@ -4,12 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal
 
-from ..engine import EducationalRiskProfile
 from ..engine.etf_theme import EtfThemeCatalog, classify_etf_themes
 
-NEWS_EVENT_POLICY_VERSION = "news-event-strategy-v2"
+NEWS_EVENT_POLICY_VERSION = "news-event-strategy-v3"
 NEWS_EVENT_POLICY_AS_OF = date(2026, 7, 23)
 
 _EVENT_LABELS = {
@@ -50,33 +48,6 @@ class NewsEventClassification:
     theme_ids: tuple[str, ...]
     etf_groups: tuple[str, ...]
     check: str
-
-
-@dataclass(frozen=True, slots=True)
-class TacticalSleevePolicy:
-    maximum_percent: Decimal
-    core_policy: str
-
-
-_TACTICAL_SLEEVE_POLICIES = {
-    EducationalRiskProfile.ACTIVE: TacticalSleevePolicy(
-        maximum_percent=Decimal("10"),
-        core_policy="기존 코어 비중은 유지하고 전술 슬리브만 후보 ETF로 교체",
-    ),
-    EducationalRiskProfile.AGGRESSIVE: TacticalSleevePolicy(
-        maximum_percent=Decimal("15"),
-        core_policy=(
-            "기존 코어에서 최대 5%p까지만 전술 슬리브로 옮기되 "
-            "전체 위험자산 목표와 계좌 한도는 유지"
-        ),
-    ),
-}
-
-
-def tactical_sleeve_policy(
-    risk_profile: EducationalRiskProfile,
-) -> TacticalSleevePolicy | None:
-    return _TACTICAL_SLEEVE_POLICIES.get(risk_profile)
 
 
 def classify_news_event(
