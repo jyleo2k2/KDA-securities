@@ -555,6 +555,7 @@ function AssistantMessage({
       {response.visualizations.map((visualization, index) => (
         <ChatVisualization
           visualization={visualization}
+          sources={response.sources}
           key={`${visualization.kind}-${index}`}
         />
       ))}
