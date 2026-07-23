@@ -129,11 +129,26 @@ def calculate_distribution_reinvestment(
             continue
 
         confirmed_cash += gross_cash
-        available = (
-            gross_cash
-            if input_data.as_of <= event.payment_date <= input_data.rebalance_on
-            else Decimal("0")
-        )
+        is_available = input_data.as_of <= event.payment_date <= input_data.rebalance_on
+        available = gross_cash if is_available else Decimal("0")
+        if not is_available:
+            lines.append(
+                DistributionReinvestmentLine(
+                    event_id=event.event_id,
+                    isu_code=event.isu_code,
+                    payment_date=event.payment_date,
+                    status=event.status,
+                    gross_cash_krw=gross_cash,
+                    available_for_rebalance_krw=Decimal("0"),
+                    reinvested_quantity=Decimal("0"),
+                    remaining_cash_krw=Decimal("0"),
+                    quantity_after_reinvestment=quantities[event.isu_code],
+                    limitation=(
+                        "Payment date is outside the requested rebalance window."
+                    ),
+                )
+            )
+            continue
         whole_units = (gross_cash / holding.reinvestment_price_krw).to_integral_value(
             rounding=ROUND_FLOOR
         )

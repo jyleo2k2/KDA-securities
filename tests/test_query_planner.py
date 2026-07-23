@@ -106,6 +106,25 @@ def test_distribution_question_without_code_stays_in_distribution_flow() -> None
     assert plan.distribution_isu_code is None
 
 
+def test_distribution_reinvestment_input_is_parsed_only_when_complete() -> None:
+    plan = plan_question(
+        "069500 재투자 수량=10 기준가=30,000 "
+        "기준일=2026-07-01 리밸런싱일=2026-07-31"
+    )
+
+    assert plan.intent == ChatIntent.ETF_DISTRIBUTION
+    assert plan.distribution_reinvestment is not None
+    assert plan.distribution_reinvestment.quantity == 10
+    assert plan.distribution_reinvestment.reinvestment_price_krw == 30000
+
+
+def test_incomplete_reinvestment_input_stays_in_distribution_flow() -> None:
+    plan = plan_question("069500 재투자 수량=10")
+
+    assert plan.intent == ChatIntent.ETF_DISTRIBUTION
+    assert plan.distribution_reinvestment is None
+
+
 @pytest.mark.parametrize(
     "message",
     (
