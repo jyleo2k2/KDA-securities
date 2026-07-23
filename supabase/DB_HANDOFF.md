@@ -2,7 +2,7 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-23 11:40 KST
+> 최종 확인: 2026-07-23 11:48 KST
 > 확인 기준: ETF 비용 마스터 861개 재검증·원격 데이터셋 version 4 적재·비용 API E2E·Advisor 재검증
 > 원격 프로젝트: `KDA-securities`
 > 담당자: `TODO: 확인 필요`
@@ -35,7 +35,7 @@
 | 항목 | 원격 상태 |
 |---|---|
 | public 기본 테이블 | 54개 |
-| 적용 마이그레이션 | 31개(`20260715005435` ~ `20260722133833`) |
+| 적용 마이그레이션 | 32개(`20260715005435` ~ `20260723024221`) |
 | RLS | 54/54 활성화 |
 | `anon` 테이블 권한 | 없음 |
 | `authenticated` 권한 | 사용자 소유 엔진 결과·채팅 관련 5개 테이블 |
@@ -354,7 +354,7 @@ uv run ruff check .
 - Advisor: 신규 DDL은 없다. 기존 서버 전용 테이블의 `rls_enabled_no_policy` INFO와
   [유출 비밀번호 보호 비활성화 WARN](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)은
   그대로이며 이번 데이터 적재로 새 보안 경고는 발생하지 않았다.
-- 검증: 관련 회귀 31 passed, 전체 `1043 passed, 1 skipped`, Ruff와
+- 검증: 관련 회귀 31 passed, 최신 main 병합 후 전체 `1068 passed, 1 skipped`, Ruff와
   `git diff --check`가 통과했다. GitHub CI는 PR 단계에서 최종 확인한다.
 
 ### 2026-07-22 KST KIS ETF 구성종목 P0 수집·표시 보강
