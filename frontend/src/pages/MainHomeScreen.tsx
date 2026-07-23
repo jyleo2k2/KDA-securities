@@ -44,10 +44,12 @@ const PROFILE_LABELS: Record<RiskProfile, string> = {
 };
 const HOLDING_PIE_COLORS = ["#2f8f6b", "#3f7bc4", "#c98a2e", "#d9743f", "#7b5fc0", "#2fa3a3", "#8f9aa6"];
 const HOLDING_PIE_MAX_SLICES = 6;
+const HOLDING_PIE_LABEL_MIN_PERCENT = 5;
 const PIE_SIZE = 174;
 const PIE_CENTER = PIE_SIZE / 2;
 const PIE_RADIUS = 78;
 const PIE_INNER_RADIUS = 48;
+const PIE_LABEL_RADIUS = 63;
 const PIE_SELECT_OFFSET = 7;
 
 function buildHoldingPieSlices(
@@ -90,8 +92,6 @@ function HoldingPie({ slices, selectedIndex, onSelect }: {
   onSelect: (index: number) => void;
 }): JSX.Element {
   let cumulativePercent = 0;
-  const centerLabel = selectedIndex === null ? "총자산" : slices[selectedIndex]?.label ?? "총자산";
-  const centerValue = selectedIndex === null ? "100%" : `${slices[selectedIndex]?.percent.toFixed(1)}%`;
   return (
     <svg width={PIE_SIZE} height={PIE_SIZE} viewBox={`0 0 ${PIE_SIZE} ${PIE_SIZE}`} role="img" aria-label="총 연금 자산 자산군 비중">
       {slices.map((slice, index) => {
@@ -102,6 +102,7 @@ function HoldingPie({ slices, selectedIndex, onSelect }: {
         const selected = selectedIndex === index;
         const dimmed = selectedIndex !== null && !selected;
         const shift = selected ? polarPoint(midDeg, PIE_SELECT_OFFSET) : { x: PIE_CENTER, y: PIE_CENTER };
+        const labelPoint = polarPoint(midDeg, PIE_LABEL_RADIUS);
         const shape = slice.percent >= 99.999
           ? <circle cx={PIE_CENTER} cy={PIE_CENTER} r={PIE_RADIUS} fill={slice.color} />
           : <path d={donutSlicePath(startDeg, endDeg)} fill={slice.color} stroke="#fff" strokeWidth={2} strokeLinejoin="round" />;
@@ -127,15 +128,14 @@ function HoldingPie({ slices, selectedIndex, onSelect }: {
             }}
           >
             {shape}
+            {slice.percent >= HOLDING_PIE_LABEL_MIN_PERCENT && (
+              <text x={labelPoint.x} y={labelPoint.y} textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={800} fill="#fff" pointerEvents="none">
+                {Math.round(slice.percent)}%
+              </text>
+            )}
           </g>
         );
       })}
-      <text x={PIE_CENTER} y={PIE_CENTER - 6} textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={600} fill="#8A9691">
-        {centerLabel}
-      </text>
-      <text x={PIE_CENTER} y={PIE_CENTER + 12} textAnchor="middle" dominantBaseline="central" fontSize={18} fontWeight={800} fill="#333">
-        {centerValue}
-      </text>
     </svg>
   );
 }
@@ -203,7 +203,6 @@ export function MainHomeScreen({ aggregation, displayName, error, investmentProf
       color: ALLOCATION_COLORS[index],
     })) ?? [];
   const holdingSlices = buildHoldingPieSlices(aggregation);
-  const activeHolding = selectedHolding !== null ? holdingSlices[selectedHolding] ?? null : null;
   const toggleHolding = (index: number) => setSelectedHolding((current) => (current === index ? null : index));
   const totalBalance = aggregation ? formatKrw(aggregation.total_amount_krw) : "-";
   const asOfDate = portfolio ? latestPortfolioDate(portfolio) : null;
@@ -279,14 +278,6 @@ export function MainHomeScreen({ aggregation, displayName, error, investmentProf
               );
             })}
           </div>
-
-          {holdingSlices.length > 0 && (
-            <p className="mhs-asset-gain" style={{ marginTop: 12, textAlign: "center" }} aria-live="polite">
-              {activeHolding
-                ? `${activeHolding.label} · 전체 자산의 ${activeHolding.percent.toFixed(1)}%예요.`
-                : "조각을 누르면 해당 자산군의 비중을 자세히 볼 수 있어요."}
-            </p>
-          )}
 
           <div className="mhs-portfolio-block">
             <span className="mhs-portfolio-heading">
