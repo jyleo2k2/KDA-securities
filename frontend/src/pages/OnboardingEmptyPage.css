@@ -1,0 +1,100 @@
+.obe-defs { position: absolute; width: 0; height: 0; }
+
+.obe-stage {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 24px 16px;
+  background: #e9eef0;
+  font-family: -apple-system, "Apple SD Gothic Neo", "Pretendard", "Malgun Gothic", system-ui, sans-serif;
+}
+
+.obe-phone {
+  position: relative;
+  width: 100%;
+  max-width: 390px;
+  height: 720px;
+  background: #eff3f1;
+  border-radius: 34px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+  color: #1e2124;
+}
+
+.obe-status { display: flex; justify-content: space-between; padding: 14px 22px 4px; font-size: 12px; font-weight: 700; }
+
+.obe-head { display: flex; align-items: center; gap: 8px; padding: 8px 20px 12px; }
+.obe-head-dot { width: 9px; height: 9px; border-radius: 50%; background: #18a860; }
+.obe-head-title { font-weight: 800; font-size: 17px; }
+.obe-head-title-accent { color: #f0c000; }
+
+.obe-body { padding: 4px 16px 96px; display: flex; flex-direction: column; gap: 16px; height: calc(100% - 60px); overflow-y: auto; }
+.obe-body::-webkit-scrollbar { display: none; }
+
+.obe-empty {
+  background: #fff;
+  border-radius: 20px;
+  padding: 22px 18px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  box-shadow: 0 6px 20px rgba(20, 40, 30, 0.06);
+}
+
+.obe-mascot { width: 104px; height: 104px; color: #12a86a; filter: url(#obe-squiggle); }
+.obe-mascot-body { fill: #fde4ee; }
+.obe-mascot-snout { fill: #fbd0e0; }
+
+.obe-empty-title { margin: 2px 0 0; font-size: 16px; font-weight: 800; }
+.obe-empty-sub { margin: -6px 0 0; font-size: 12px; color: #6b7680; }
+
+.obe-preview { position: relative; width: 100%; height: 104px; border-radius: 12px; overflow: hidden; background: #fff; border: 1px solid #e3ebe6; }
+.obe-preview-rows { position: absolute; top: 0; left: 0; width: 100%; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; filter: blur(2.5px); transform: scale(1.06); transform-origin: top; }
+.obe-preview-row { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+.obe-preview-dot { width: 9px; height: 9px; border-radius: 2px; }
+.obe-preview-name { flex: 1; text-align: left; font-weight: 700; color: #333; }
+.obe-preview-pct { font-weight: 800; color: #333; }
+.obe-preview-tint { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(38, 192, 125, 0.16)); }
+.obe-preview-label { position: absolute; top: 7px; right: 7px; font-size: 9px; font-family: ui-monospace, Menlo, Consolas, monospace; background: rgba(12, 22, 34, 0.62); color: #fff; padding: 1px 7px; border-radius: 10px; }
+
+.obe-connect { margin-top: 4px; background: #18a860; color: #fff; font-weight: 800; font-size: 14px; border: none; border-radius: 99px; padding: 13px 30px; cursor: pointer; box-shadow: 0 6px 16px rgba(24, 168, 96, 0.28); transition: transform 0.1s; }
+.obe-connect:active { transform: scale(0.97); }
+.obe-connect:focus-visible { outline: 2px solid #0c6b46; outline-offset: 2px; }
+
+.obe-sec { margin: 4px 2px -4px; font-size: 14px; font-weight: 800; }
+.obe-sec-accent { color: #18a860; }
+
+.obe-strats { display: flex; gap: 9px; overflow-x: auto; padding-bottom: 4px; }
+.obe-strats::-webkit-scrollbar { display: none; }
+.obe-strat { flex: 0 0 128px; border-radius: 14px; padding: 12px; }
+.obe-strat-title { font-size: 12px; font-weight: 800; }
+.obe-strat-value { display: block; font-size: 16px; font-weight: 800; margin: 3px 0; }
+.obe-strat-desc { margin: 0; font-size: 9.5px; color: #5a6b60; line-height: 1.4; }
+
+.obe-pick { border-radius: 16px; height: 96px; background: linear-gradient(135deg, #26c07d, #12a86a); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 13px; text-align: center; padding: 12px; line-height: 1.5; }
+
+.obe-nav {
+  position: absolute;
+  left: 0; right: 0; bottom: 16px;
+  width: max-content;
+  margin: 0 auto;
+  display: flex;
+  gap: 6px;
+  padding: 7px;
+  border-radius: 99px;
+  backdrop-filter: blur(13px) saturate(1.7);
+  -webkit-backdrop-filter: blur(13px) saturate(1.7);
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+.obe-nav-item { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #6b7680; padding: 9px 20px; border-radius: 99px; }
+.obe-nav-item-on { background: #18a860; color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  .obe-mascot { filter: none; }
+  .obe-defs animate { display: none; }
+}
