@@ -109,7 +109,7 @@ def test_at_or_above_55_returns_no_example() -> None:
 
 def test_educational_language_is_locked() -> None:
     evaluation = build(30, RiskProfile.ACTIVE, AccountType.IRP)
-    assert "교육용 예시" in evaluation.educational_notice
+    assert "자산군 단위의 예시" in evaluation.educational_notice
     assert "추천이 아니라" in evaluation.educational_notice
 
 

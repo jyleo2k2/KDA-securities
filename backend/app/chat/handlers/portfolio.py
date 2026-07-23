@@ -1373,7 +1373,7 @@ def educational_portfolio(
 
     engine_source = SourceEvidence(
         evidence_id="engine:educational_portfolio",
-        label="교육용 연금 포트폴리오 규칙 엔진",
+        label="연금 포트폴리오 규칙 엔진",
         locator=(
             f"engine://{evaluation.engine_name}/{evaluation.engine_version}"
         ),
@@ -1488,9 +1488,9 @@ def educational_portfolio(
         planning_text = (
             "CMA 기반 연간 계획수익률 범위는 보수 약 "
             f"{_decimal_text(conservative)}%에서 기준 약 "
-            f"{_decimal_text(base)}%예요. J.P. Morgan의 LTCMA 장기 "
-            "자본시장 가정과 ETF 운용비용을 반영해 산출한 교육용 "
-            "계획가정이며, 미래 예측값이 아니라 매년 다시 살펴봐요."
+        f"{_decimal_text(base)}%예요. J.P. Morgan의 LTCMA 장기 "
+        "자본시장 가정과 ETF 운용비용을 반영해 산출한 "
+        "계획가정이며, 미래 예측값이 아니라 매년 다시 살펴봐요."
         )
     profile_label = _RISK_PROFILE_LABELS[
         evaluation.evaluated_input.risk_profile.value

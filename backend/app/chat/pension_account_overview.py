@@ -251,8 +251,8 @@ def build_pension_account_overview_response() -> ChatResponse:
                     kind=AnswerBlockKind.PARAGRAPH,
                     text=(
                         "총급여 또는 종합소득금액과 올해 계좌별 본인 납입액을 "
-                        "알려주면 규칙 엔진으로 세액공제 대상액과 교육용 예상 "
-                        "공제 효과를 계산해 설명할 수 있습니다."
+            "알려주면 규칙 엔진으로 세액공제 대상액과 예상 "
+            "공제 효과를 계산해 설명할 수 있습니다."
                     ),
                 ),
             ],
