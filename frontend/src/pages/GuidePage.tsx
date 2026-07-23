@@ -1631,8 +1631,8 @@ export function GuidePage({
               </div>
               <h1>{(userContext?.nickname ?? selectedScenarioData?.name ?? "고객").replace(/\(가상\)/g, "")}님 ! 막막한 노후 준비, <em><br />연그미</em>와 대화하며 풀어보세요.</h1>
 
-              {/* 정민재/리밸런싱 카드는 비동기 로드된다. 로딩 중 자리를 예약해 아래 추천 질문이 밀리지 않게 한다. */}
-              <div className={`welcome-intro-cards${(chatCardsLoading || reminderLoading) ? " is-loading" : ""}`}>
+              {/* 정민재 박스는 로그인 컨텍스트로 즉시 채워진다. 리밸런싱 카드는 API 응답이 늦으므로 로딩 중 같은 골격의 스켈레톤으로 자리를 잡아 아래 추천 질문이 밀리지 않게 한다. */}
+              <div className="welcome-intro-cards">
                 {(userContext || selectedScenarioData) && (
                   <div className="selected-scenario-card">
                     <div><Icon name="database" size={19} /></div>
@@ -1642,7 +1642,16 @@ export function GuidePage({
                     </span>
                   </div>
                 )}
-                {rebalancingReminder && <RebalancingReminderCard reminder={rebalancingReminder} busy={reminderBusy} onEnable={() => void enableReminder()} onComplete={() => void completeReminder()} onAsk={() => void submitPrompt("현재 보유 ETF의 중복도와 계좌 한도, 리밸런싱 가이드를 보여줘")} />}
+                {reminderLoading ? (
+                  <div className="rebalancing-reminder-card is-skeleton" aria-hidden="true">
+                    <strong><span className="skeleton-line" style={{ width: "58%" }} /></strong>
+                    <p><span className="skeleton-line" /><span className="skeleton-line" style={{ width: "82%" }} /></p>
+                    <div><span className="skeleton-line skeleton-button" /></div>
+                    <small><span className="skeleton-line" style={{ width: "44%" }} /></small>
+                  </div>
+                ) : rebalancingReminder && (
+                  <RebalancingReminderCard reminder={rebalancingReminder} busy={reminderBusy} onEnable={() => void enableReminder()} onComplete={() => void completeReminder()} onAsk={() => void submitPrompt("현재 보유 ETF의 중복도와 계좌 한도, 리밸런싱 가이드를 보여줘")} />
+                )}
               </div>
 
               <ChatQuestionRecommendations
