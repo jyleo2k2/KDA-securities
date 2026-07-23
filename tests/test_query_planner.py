@@ -215,6 +215,41 @@ def test_structured_tax_input_without_topic_selects_both_calculations() -> None:
 
 
 @pytest.mark.parametrize(
+    "message",
+    (
+        "연금저축 400만원 IRP 300만원이면 공제 얼마야?",
+        "공제 얼마야?",
+        "공제액 계산해줘",
+    ),
+)
+def test_abbreviated_credit_wording_requests_only_tax_credit(message: str) -> None:
+    # "세액"을 생략한 "공제 얼마야?" 축약은 세액공제 계산만 요청해야 한다.
+    # 토픽 미인식 시 tax_credit·withdrawal을 모두 켜는 구조화 입력 폴백으로
+    # 넘어가면 내레이터가 인출 슬롯을 재구성하지 못해 폴백한다(실측 확인).
+    plan = plan_question(message, structured_pension_tax=True)
+
+    assert plan.intent == ChatIntent.PENSION_TAX
+    assert plan.requests_tax_credit is True
+    assert plan.requests_withdrawal_tax is False
+
+
+@pytest.mark.parametrize(
+    "message",
+    (
+        "연금저축 중도해지하면 공제 못 받아?",
+        "소득공제랑 세액공제 차이가 뭐야?",
+    ),
+)
+def test_bare_credit_word_without_calculation_signal_is_not_tax_credit(
+    message: str,
+) -> None:
+    # "공제"가 계산·금액 신호 없이 등장하면 세액공제 계산으로 오분류하지 않는다.
+    plan = plan_question(message)
+
+    assert plan.requests_tax_credit is False
+
+
+@pytest.mark.parametrize(
     ("message", "tax_credit", "withdrawal"),
     (
         ("연금계좌 세액공제 한도를 계산해줘", True, False),
