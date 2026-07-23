@@ -103,10 +103,27 @@ def blocked_response(reason: BlockedReason, *, user_message: str = "") -> ChatRe
     return ChatResponse(
         intent=ChatIntent.OUT_OF_SCOPE,
         answer=(
-            "연금계좌 규칙, 가상계좌 진단, 과거 공시와 뉴스 근거를 안내할 수 "
-            "있어요. 질문에 계좌 유형이나 진단할 가상 시나리오를 적어 주세요."
+            "그 질문은 제가 잘 아는 분야는 아니에요. 대신 연금 이야기는 쉽고 "
+            "편하게 풀어드릴게요. 아래에서 궁금한 걸 골라봐요."
         ),
         data_mode="safe_fallback",
+        suggested_follow_ups=[
+            SuggestedFollowUp(
+                follow_up_id="fallback_account_diff",
+                label="연금계좌별 차이",
+                message="DC형, IRP, 연금저축은 뭐가 달라?",
+            ),
+            SuggestedFollowUp(
+                follow_up_id="fallback_tax_credit",
+                label="연금 세액공제 계산",
+                message="올해 연금저축에 600만원 넣으면 세액공제 얼마야?",
+            ),
+            SuggestedFollowUp(
+                follow_up_id="fallback_educational_portfolio",
+                label="맞춤형 포트폴리오",
+                message="내 상황에 맞는 연금저축전략을 알려줘.",
+            ),
+        ],
         limitations=["범용 투자·세무·법률 상담은 지원하지 않습니다."],
     )
 

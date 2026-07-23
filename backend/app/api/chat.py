@@ -246,7 +246,7 @@ def _authenticated_response(
         response = response.model_copy(
             update={"salutation": _format_salutation(nickname)}
         )
-    return response, True
+    return response, response.intent is not ChatIntent.OUT_OF_SCOPE
 
 
 def _sse(event: str, payload: dict[str, object]) -> str:
