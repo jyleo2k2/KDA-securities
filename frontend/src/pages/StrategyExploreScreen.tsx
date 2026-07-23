@@ -56,13 +56,13 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
   }
   function handlePointerDown(event: PointerEvent<HTMLDivElement>): void {
     pointerStartX.current = event.clientX;
-    event.currentTarget.setPointerCapture?.(event.pointerId);
   }
   function handlePointerUp(event: PointerEvent<HTMLDivElement>): void {
     if (pointerStartX.current === null) return;
     const delta = event.clientX - pointerStartX.current;
     pointerStartX.current = null;
-    if (Math.abs(delta) < SWIPE_THRESHOLD_PX) { openStrategyDetail(current.id); return; }
+    // 탭(임계값 미만)은 카드 버튼의 onClick이 처리한다(활성=상세, 옆=선택).
+    if (Math.abs(delta) < SWIPE_THRESHOLD_PX) return;
     move(delta < 0 ? 1 : -1);
   }
 
@@ -118,7 +118,7 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
                         pointerEvents: isVisible ? "auto" : "none",
                       } as React.CSSProperties}
                     >
-                      <button type="button" className="se-fan-frame" aria-label={`${i + 1}번째 전략: ${strategy.name}`} tabIndex={isVisible ? 0 : -1} onClick={() => openStrategyDetail(strategy.id)}>
+                      <button type="button" className="se-fan-frame" aria-label={isActive ? `${i + 1}번째 전략 상세 보기: ${strategy.name}` : `${i + 1}번째 전략 선택: ${strategy.name}`} tabIndex={isVisible ? 0 : -1} onClick={() => (isActive ? openStrategyDetail(strategy.id) : select(i))}>
                         <img src={strategy.img} alt={strategy.name} draggable="false" />
                       </button>
                     </li>
