@@ -412,6 +412,12 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .portfolio-review { display: grid; gap: 14px; margin-top: 15px; padding: 16px; border: 1px solid #dce8dc; border-radius: 16px; background: #f8fcf7; }
 .portfolio-review > header { display: grid; gap: 3px; }.portfolio-review > header > span { color: #16864e; font-size: 9px; font-weight: 800; }.portfolio-review h3 { margin: 0; color: #1c3327; font-size: 15px; }.portfolio-review > header p { margin: 0; color: #748178; font-size: 10px; }
 .portfolio-review-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }.portfolio-review-summary div { display: grid; gap: 4px; padding: 10px; border-radius: 11px; background: #fff; }.portfolio-review-summary span { color: #7b887f; font-size: 9px; }.portfolio-review-summary strong { color: #214333; font-size: 11px; line-height: 1.4; }
+.portfolio-sector-guide { display: grid; gap: 11px; padding: 13px; border: 1px solid #d9e8dc; border-radius: 12px; background: #f7fbf6; }
+.portfolio-sector-guide > header { display: grid; gap: 3px; }.portfolio-sector-guide > header > span { color: #16864e; font-size: 9px; font-weight: 800; }.portfolio-sector-guide h4 { margin: 0; color: #203c2e; font-size: 12px; }.portfolio-sector-guide > header p, .portfolio-sector-guide-note { margin: 0; color: #748178; font-size: 9px; line-height: 1.5; }
+.portfolio-sector-guide-layout { display: flex; align-items: center; gap: 14px; }
+.portfolio-sector-donut { display: grid; width: 126px; height: 126px; flex: 0 0 auto; place-items: center; border-radius: 50%; }.portfolio-sector-donut::before { grid-area: 1 / 1; width: 76px; height: 76px; border-radius: 50%; background: #f7fbf6; content: ""; }.portfolio-sector-donut > span { z-index: 1; grid-area: 1 / 1; color: #718078; text-align: center; font-size: 9px; line-height: 1.35; }.portfolio-sector-donut strong { color: #12372a; font-size: 16px; }
+.portfolio-sector-legend { display: grid; min-width: 0; flex: 1; gap: 6px; margin: 0; padding: 0; list-style: none; }.portfolio-sector-legend li { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 6px; color: #586b60; font-size: 9px; }.portfolio-sector-legend i { width: 8px; height: 8px; border-radius: 50%; }.portfolio-sector-legend span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.portfolio-sector-legend strong { color: #234435; font-size: 9px; }
+.portfolio-sector-guide-note { padding-top: 9px; border-top: 1px solid #e4eee5; }
 .overlap-check { display: grid; gap: 6px; padding: 12px; border-radius: 11px; background: #eef6ec; }.overlap-check strong { color: #234634; font-size: 11px; }.overlap-check p, .overlap-check small { margin: 0; color: #607268; font-size: 9px; line-height: 1.55; }.overlap-check small { color: #7d8b83; }
 .portfolio-review-table-wrap { overflow-x: auto; border: 1px solid #e2e9df; border-radius: 11px; background: #fff; }
 .portfolio-review-table { width: 100%; min-width: 540px; border-collapse: collapse; color: #53655b; font-size: 9px; }.portfolio-review-table th, .portfolio-review-table td { padding: 9px 8px; border-bottom: 1px solid #edf1eb; text-align: right; white-space: nowrap; }.portfolio-review-table th:first-child { text-align: left; }.portfolio-review-table thead th { background: #f3f7f1; color: #617067; font-weight: 800; }.portfolio-review-table tbody tr:last-child th, .portfolio-review-table tbody tr:last-child td { border-bottom: 0; }
@@ -456,6 +462,9 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   .holding-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); }
   .holding-remove { grid-column: 1 / -1; justify-self: end; height: 30px; }
   .chat-question-grid { gap: 8px; }.chat-question-grid button { min-height: 96px; padding: 12px 8px; border-radius: 16px; }.chat-question-grid .design-prompt-copy { gap: 3px; }.chat-question-grid .design-prompt-copy small, .chat-question-grid .design-prompt-copy em { display: none; }.chat-question-grid .design-prompt-copy strong { font-size: 14px; line-height: 1.35; text-align: center; }
+  .portfolio-sector-guide-layout { align-items: flex-start; gap: 10px; }
+  .portfolio-sector-donut { width: 112px; height: 112px; }
+  .portfolio-sector-donut::before { width: 68px; height: 68px; }
   .prompt-carousel { margin-top: 32px; padding-right: 25%; }.prompt-carousel button { flex-basis: calc(50% - 6px); min-height: 106px; }
   .guide-tab .design-prompt-copy strong { font-size: 16px; }
 }
