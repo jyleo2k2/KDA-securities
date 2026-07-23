@@ -23,17 +23,6 @@
   border: 0;
 }
 
-.benchmark-html-back-button {
-  position: absolute;
-  top: 44px;
-  left: 0;
-  width: 52px;
-  height: 52px;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-
 @media (max-width: 480px) {
   .benchmark-html-stage {
     place-items: start center;
