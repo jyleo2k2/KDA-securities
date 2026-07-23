@@ -904,16 +904,13 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   box-shadow: 2px 0 24px rgba(15, 17, 19, .12);
   pointer-events: none;
   transform: translateX(-100%);
-  transition:
-    transform .28s cubic-bezier(.32, .72, .24, 1),
-    visibility 0s linear .28s;
+  transition: none;
 }
 .guide-tab .sidebar.sidebar-open {
   visibility: visible;
   pointer-events: auto;
   transform: translateX(0);
   animation: chat-drawer-enter .28s cubic-bezier(.32, .72, .24, 1) both;
-  transition-delay: 0s;
 }
 .guide-tab .design-drawer-heading {
   display: flex;
