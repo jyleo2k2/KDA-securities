@@ -20,7 +20,7 @@ export function ChatQuestionRecommendations({
         <p>추천 질문</p>
         <h2 id="chat-question-heading">챗봇에게 무엇이든 물어보세요</h2>
       </header>
-      <div className="prompt-carousel" aria-label="챗봇 추천 질문">
+      <div className="chat-question-grid" aria-label="챗봇 추천 질문">
         {cards.map((card) => (
           <button type="button" key={card.card_id} onClick={() => onSubmit(card.message)}>
             <span className="design-prompt-copy"><small>추천 질문</small><strong>{card.title}</strong><em>{card.message}</em></span>

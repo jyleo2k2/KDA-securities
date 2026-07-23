@@ -375,6 +375,10 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .chat-home-section-heading h2 { margin: 0; color: #17251f; font-size: 19px; letter-spacing: -.8px; }
 .chat-home-section-heading span { color: #79877f; font-size: 11px; line-height: 1.5; }
 .chat-home-card-section .prompt-carousel { margin-top: 16px; }
+.chat-question-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
+.chat-question-grid button { min-height: 118px; display: grid; align-items: center; padding: 17px; border: 1.5px solid #ecefe9; border-radius: 21px; background: #fff; color: #364940; text-align: left; box-shadow: none; cursor: pointer; }
+.chat-question-grid button:hover { border-color: #bde3cc; }
+.chat-question-grid .design-prompt-copy { display: grid; gap: 5px; }.chat-question-grid .design-prompt-copy em { color: #65736b; font-size: 11px; font-style: normal; line-height: 1.4; }
 .prompt-carousel { display: flex; gap: 12px; margin-top: 40px; overflow-x: auto; padding: 2px 20% 8px 0; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .prompt-carousel::-webkit-scrollbar { display: none; }
 .prompt-carousel button { flex: 0 0 calc(50% - 6px); min-height: 118px; display: grid; grid-template-columns: 1fr; align-items: center; padding: 17px; scroll-snap-align: start; border: 1.5px solid #ecefe9; border-radius: 21px; background: #fff; color: #364940; text-align: left; box-shadow: none; }
@@ -452,6 +456,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   .sector-card-grid button { min-height: 73px; padding: 10px; }
   .holding-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); }
   .holding-remove { grid-column: 1 / -1; justify-self: end; height: 30px; }
+  .chat-question-grid { gap: 8px; }.chat-question-grid button { min-height: 96px; padding: 12px 8px; border-radius: 16px; }.chat-question-grid .design-prompt-copy { gap: 3px; }.chat-question-grid .design-prompt-copy small, .chat-question-grid .design-prompt-copy em { display: none; }.chat-question-grid .design-prompt-copy strong { font-size: 14px; line-height: 1.35; text-align: center; }
   .prompt-carousel { margin-top: 32px; padding-right: 25%; }.prompt-carousel button { flex-basis: calc(50% - 6px); min-height: 106px; }
   .guide-tab .design-prompt-copy strong { font-size: 16px; }
 }
