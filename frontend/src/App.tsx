@@ -32,7 +32,7 @@ import {
 } from "./pwa/cachePolicy";
 
 const TAB_KEYS: readonly TabKey[] = ["home", "guide", "profile"];
-type AppRoute = TabKey | "login" | "main-home" | "planner" | "strategy-explore" | "user-pick-benchmark";
+type AppRoute = TabKey | "login" | "main-home" | "planner" | "profile-html" | "strategy-explore" | "user-pick-benchmark";
 const RISK_PROFILES = new Set(["stable", "stable_seeking", "risk_neutral", "active", "aggressive"]);
 
 interface CurrentUserData {
@@ -46,7 +46,7 @@ interface CurrentUserData {
 
 function routeFromHash(): AppRoute {
   const candidate = window.location.hash.slice(1) as AppRoute;
-  return candidate === "login" || candidate === "main-home" || candidate === "planner" || candidate === "strategy-explore" || candidate === "user-pick-benchmark" || TAB_KEYS.includes(candidate as TabKey) ? candidate : "login";
+  return candidate === "login" || candidate === "main-home" || candidate === "planner" || candidate === "profile-html" || candidate === "strategy-explore" || candidate === "user-pick-benchmark" || TAB_KEYS.includes(candidate as TabKey) ? candidate : "login";
 }
 
 function pensionContextErrorMessage(error: unknown): string {
@@ -121,6 +121,7 @@ export default function App(): JSX.Element {
   function changeTab(tab: TabKey): void { setActiveRoute(tab); window.history.replaceState(null, "", `#${tab}`); }
   function goToMainHome(): void { setLoginSuccessPending(false); setResurveyPending(false); setActiveRoute("main-home"); window.history.replaceState(null, "", "#main-home"); }
   function goToPlanner(): void { setActiveRoute("planner"); window.history.replaceState(null, "", "#planner"); }
+  function goToProfileHtml(): void { setActiveRoute("profile-html"); window.history.replaceState(null, "", "#profile-html"); }
   function goToStrategyExplore(): void { setActiveRoute("strategy-explore"); window.history.replaceState(null, "", "#strategy-explore"); }
   function goToUserPickBenchmark(): void { setActiveRoute("user-pick-benchmark"); window.history.replaceState(null, "", "#user-pick-benchmark"); }
   function beginResurvey(): void { setResurveyPending(true); }
@@ -135,13 +136,14 @@ export default function App(): JSX.Element {
   const loginDisplayName = typeof metadataName === "string" && metadataName.trim() ? metadataName.trim() : currentUserData.context?.nickname ?? auth.session?.user.email?.split("@")[0] ?? "고객";
   if (auth.configured && (!accessToken || loginSuccessPending || resurveyPending)) return <LoginFlowPage auth={auth} displayName={loginDisplayName} onAuthenticated={() => setLoginSuccessPending(true)} onProfileSaved={handleProfileSaved} onStart={goToMainHome} resurvey={resurveyPending} />;
   const resolvedRoute = !auth.configured && activeRoute === "login" ? "home" : activeRoute;
-  const activeTab: TabKey = resolvedRoute === "login" || resolvedRoute === "main-home" || resolvedRoute === "planner" || resolvedRoute === "strategy-explore" || resolvedRoute === "user-pick-benchmark" ? "home" : resolvedRoute;
+  const activeTab: TabKey = resolvedRoute === "login" || resolvedRoute === "main-home" || resolvedRoute === "planner" || resolvedRoute === "profile-html" || resolvedRoute === "strategy-explore" || resolvedRoute === "user-pick-benchmark" ? "home" : resolvedRoute;
   const displayName = currentUserData.context?.nickname ?? auth.session?.user.email?.replace("@kda-demo.invalid", "") ?? "인증 사용자";
   const plannerProfile = plannerProfileFromContext(currentUserData.context, currentUserData.investmentProfile);
 
   if (resolvedRoute === "strategy-explore") return <StrategyExploreScreen onBack={goToMainHome} />;
   if (resolvedRoute === "user-pick-benchmark") return <UserPickBenchmarkScreen heroes={currentUserData.heroes} onBack={goToMainHome} />;
-  if (resolvedRoute === "main-home") return <MainHomeScreen error={currentUserData.error} hero={currentUserData.hero} investmentProfile={currentUserData.investmentProfile} loading={currentUserData.loading} onOpenChat={() => changeTab("guide")} onOpenPlanner={goToPlanner} onOpenStrategyExplore={goToStrategyExplore} onOpenUserPick={goToUserPickBenchmark} onResurvey={beginResurvey} userContext={currentUserData.context} />;
+  if (resolvedRoute === "profile-html") return <iframe title="내 프로필" src={`${import.meta.env.BASE_URL}profile-html/`} style={{ width: "100%", height: "100vh", border: 0, display: "block" }} />;
+  if (resolvedRoute === "main-home") return <MainHomeScreen error={currentUserData.error} hero={currentUserData.hero} investmentProfile={currentUserData.investmentProfile} loading={currentUserData.loading} onOpenChat={() => changeTab("guide")} onOpenPlanner={goToPlanner} onOpenProfile={goToProfileHtml} onOpenStrategyExplore={goToStrategyExplore} onOpenUserPick={goToUserPickBenchmark} onResurvey={beginResurvey} userContext={currentUserData.context} />;
   if (resolvedRoute === "planner") return <PensionPlannerPage profile={plannerProfile} userContext={currentUserData.context} onBack={() => changeTab("guide")} onOpenProfile={beginResurvey} />;
   const content = activeTab === "guide" ? (
     <div className="guide-tab">

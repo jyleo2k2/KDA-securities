@@ -14,6 +14,7 @@ interface MainHomeScreenProps {
   loading: boolean;
   onOpenChat: () => void;
   onOpenPlanner: () => void;
+  onOpenProfile: () => void;
   onOpenStrategyExplore: () => void;
   onOpenUserPick: () => void;
   onResurvey: () => void;
@@ -160,7 +161,7 @@ function buildPortfolioOneLineSummary(hero: DemoHeroPortfolio | null): string {
   return `${dominantLabel} 비중이 가장 높고, 전체 주식 비중은 ${equityPercent.toFixed(1)}%예요.`;
 }
 
-export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpenChat, onOpenPlanner, onOpenStrategyExplore, onOpenUserPick, onResurvey, userContext }: MainHomeScreenProps): JSX.Element {
+export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpenChat, onOpenPlanner, onOpenProfile, onOpenStrategyExplore, onOpenUserPick, onResurvey, userContext }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
   const allocationSlices: AllocationSlice[] = hero?.asset_allocations.slice(0, 4).map((item, index) => ({ label: ASSET_LABELS[item.asset_class_code] ?? "기타 자산", percent: `${item.allocation_percent}%`, color: ALLOCATION_COLORS[index] })) ?? [];
   const holdingSlices = buildHoldingDonutSlices(hero);
@@ -178,7 +179,9 @@ export function MainHomeScreen({ error, hero, investmentProfile, loading, onOpen
       <div className="mhs-header">
         <span className="mhs-header-dot" />
         <span className="mhs-header-title">연금 <span className="mhs-header-title-accent">도우미</span></span>
-        <img src={profileIcon} alt="프로필" className="mhs-profile-icon" />
+        <button type="button" className="mhs-profile-button" onClick={onOpenProfile} aria-label="프로필 열기">
+          <img src={profileIcon} alt="" className="mhs-profile-icon" />
+        </button>
       </div>
 
       <div className="mhs-body">

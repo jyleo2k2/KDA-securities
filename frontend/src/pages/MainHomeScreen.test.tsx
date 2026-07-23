@@ -30,6 +30,7 @@ describe("MainHomeScreen", () => {
         loading={false}
         onOpenChat={vi.fn()}
         onOpenPlanner={vi.fn()}
+        onOpenProfile={vi.fn()}
         onOpenStrategyExplore={vi.fn()}
         onOpenUserPick={vi.fn()}
         onResurvey={vi.fn()}
@@ -60,6 +61,7 @@ describe("MainHomeScreen", () => {
         loading={false}
         onOpenChat={vi.fn()}
         onOpenPlanner={onOpenPlanner}
+        onOpenProfile={vi.fn()}
         onOpenStrategyExplore={vi.fn()}
         onOpenUserPick={vi.fn()}
         onResurvey={vi.fn()}
@@ -133,6 +135,7 @@ describe("MainHomeScreen", () => {
         loading={false}
         onOpenChat={vi.fn()}
         onOpenPlanner={vi.fn()}
+        onOpenProfile={vi.fn()}
         onOpenStrategyExplore={vi.fn()}
         onOpenUserPick={vi.fn()}
         onResurvey={vi.fn()}
@@ -143,5 +146,28 @@ describe("MainHomeScreen", () => {
     expect(screen.getByText("포트폴리오 구성")).toBeInTheDocument();
     expect(screen.getByText("글로벌주식 비중이 가장 높고, 전체 주식 비중은 70.4%예요.")).toBeInTheDocument();
     expect(screen.queryByText("시황")).not.toBeInTheDocument();
+  });
+
+  it("opens the supplied profile screen from the header icon", () => {
+    const onOpenProfile = vi.fn();
+
+    render(
+      <MainHomeScreen
+        error={null}
+        hero={null}
+        investmentProfile={null}
+        loading={false}
+        onOpenChat={vi.fn()}
+        onOpenPlanner={vi.fn()}
+        onOpenProfile={onOpenProfile}
+        onOpenStrategyExplore={vi.fn()}
+        onOpenUserPick={vi.fn()}
+        onResurvey={vi.fn()}
+        userContext={null}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "프로필 열기" }));
+    expect(onOpenProfile).toHaveBeenCalledOnce();
   });
 });

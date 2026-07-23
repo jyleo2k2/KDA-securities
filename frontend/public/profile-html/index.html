@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&amp;display=swap" rel="stylesheet">
+<style>
+  @font-face {
+    font-family: 'Cafe24SsurroundAir';
+    src: url('https://gcore.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/Cafe24SsurroundAir.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  a { color: #007848; text-decoration: none; }
+  a:hover { color: #18A860; }
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #E8E8DD; font-family: 'Cafe24SsurroundAir', 'Noto Sans KR', sans-serif; padding: 40px;">
+  <div style="width: 390px; height: 844px; background: #ffffff; border-radius: 44px; box-shadow: 0 24px 70px rgba(0,0,0,0.16); display: flex; flex-direction: column; overflow: hidden; position: relative;">
+
+    <!-- status bar -->
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 26px 0;">
+      <span style="font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-weight: 600; font-size: 16px; letter-spacing: -0.32px; color: #111;">9:41</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <img src="./assets/icon-signal.svg" alt="" style="width: 18px; height: 12px;">
+        <img src="./assets/icon-wifi.svg" alt="" style="width: 17px; height: 11.834px;">
+        <span style="width: 27.401px; height: 13px; position: relative; display: inline-block;">
+          <span style="position: absolute; inset: 0 1.5px 0 0; border-radius: 4.3px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35);"></span>
+          <span style="position: absolute; left: 1.5px; top: 1.5px; bottom: 1.5px; right: 3px; background: #111; border-radius: 1.3px;"></span>
+          <span style="position: absolute; right: -2px; top: 4px; width: 1.5px; height: 5px; background: rgba(0,0,0,0.4); border-radius: 0 1px 1px 0;"></span>
+        </span>
+      </div>
+    </div>
+
+    <!-- header -->
+    <div style="display: flex; align-items: center; gap: 12px; padding: 14px 22px 4px;">
+      <span style="font-size: 26px; font-weight: 900; color: #111; line-height: 1; cursor: pointer;">‹</span>
+      <span style="font-size: 21px; font-weight: 900; color: #111;">내 페이지</span>
+    </div>
+
+    <!-- body -->
+    <div style="flex: 1; overflow-y: auto; padding: 12px 22px 40px;">
+
+      <!-- profile row -->
+      <div style="padding: 14px 4px 22px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span style="width: 60px; height: 60px; border-radius: 50%; background: #fff; border: 1.5px solid #EAEDE7; flex-shrink: 0; overflow: hidden; display: block;">
+            <img src="./assets/profile-icon.png" alt="프로필" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+          </span>
+          <p style="font-size: 20px; font-weight: 900; color: #111; margin: 0; line-height: 1.3; flex: 1; min-width: 0;">김연금</p>
+          <button style="flex-shrink: 0; border: 1.5px solid #EAEDE7; background: #fff; color: #18A860; font-family: inherit; font-size: 13px; font-weight: 800; padding: 9px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap;">개인정보 변경</button>
+        </div>
+        <p style="font-size: 13px; font-weight: 500; color: #8A9691; margin: 12px 0 0 74px;">yeongeum@example.com</p>
+      </div>
+
+      <!-- stat cards -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px;">
+        <div style="border: 1.5px solid #EAEDE7; border-radius: 18px; padding: 16px 16px; background: #F5FAF6;">
+          <p style="font-size: 12px; font-weight: 700; color: #8A9691; margin: 0;">서비스 이용</p>
+          <p style="font-size: 24px; font-weight: 900; color: #18A860; margin: 8px 0 0; letter-spacing: -0.5px;">14<span style="font-size: 14px; font-weight: 800; margin-left: 2px;">개월째</span></p>
+        </div>
+        <div style="border: 1.5px solid #EAEDE7; border-radius: 18px; padding: 16px 16px; background: #FFF9E8; width: 173px; height: 83px">
+          <p style="font-size: 12px; font-weight: 700; color: #8A9691; margin: 0;">종사 업종</p>
+          <p style="font-size: 20px; font-weight: 900; color: #E8A600; margin: 8px 0 0; letter-spacing: -0.5px; width: 141px; height: 58px">제조업 · 반도체</p>
+        </div>
+      </div>
+
+      <!-- investor profile banner -->
+      <div style="border: 1.5px solid #EAEDE7; border-radius: 18px; padding: 16px 18px; background: #164A32; margin-bottom: 18px; display: flex; align-items: center; gap: 14px;">
+        <div style="flex: 1; min-width: 0;">
+          <p style="font-size: 12px; font-weight: 700; color: #9DC2AD; margin: 0;">투자자 성향</p>
+          <p style="font-size: 22px; font-weight: 900; color: #fff; margin: 6px 0 0; letter-spacing: -0.5px;">적극투자형</p>
+          <p style="font-size: 11px; font-weight: 500; color: #9DC2AD; margin: 6px 0 0;">일반금융소비자 투자성향 진단 기준</p>
+        </div>
+        <span style="flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 3px;"><span style="font-size: 13px; font-weight: 800; color: #164A32; background: #FFD860; padding: 8px 12px; border-radius: 999px; white-space: nowrap;">진단 다시하기</span><span style="font-size: 10px; font-weight: 500; color: #9DC2AD; white-space: nowrap;">하루 3회 가능</span></span>
+      </div>
+
+      <!-- menu list -->
+      <div style="border: 1.5px solid #EAEDE7; border-radius: 22px; overflow: hidden;">
+        <button style="width: 100%; border: none; background: #fff; font-family: inherit; text-align: left; display: flex; align-items: center; gap: 12px; padding: 18px 20px; cursor: pointer; border-bottom: 1px solid #F0F1EC;">
+          <span style="flex: 1; font-size: 16px; font-weight: 700; color: #333;">앱 설정</span>
+          <span style="font-size: 18px; color: #C4CBC6;">›</span>
+        </button>
+        <button style="width: 100%; border: none; background: #fff; font-family: inherit; text-align: left; display: flex; align-items: center; gap: 12px; padding: 18px 20px; cursor: pointer; border-bottom: 1px solid #F0F1EC;">
+          <span style="flex: 1; font-size: 16px; font-weight: 700; color: #333;">인증 / 보안</span>
+          <span style="font-size: 18px; color: #C4CBC6;">›</span>
+        </button>
+        <button style="width: 100%; border: none; background: #fff; font-family: inherit; text-align: left; display: flex; align-items: center; gap: 12px; padding: 18px 20px; cursor: pointer; border-bottom: 1px solid #F0F1EC;">
+          <span style="flex: 1; font-size: 16px; font-weight: 700; color: #333;">ID / 비밀번호 관리</span>
+          <span style="font-size: 18px; color: #C4CBC6;">›</span>
+        </button>
+        <button style="width: 100%; border: none; background: #fff; font-family: inherit; text-align: left; display: flex; align-items: center; gap: 12px; padding: 18px 20px; cursor: pointer; border-bottom: 1px solid #F0F1EC;">
+          <span style="flex: 1; font-size: 16px; font-weight: 700; color: #333;">채팅 기록</span>
+          <span style="font-size: 18px; color: #C4CBC6;">›</span>
+        </button>
+        
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
