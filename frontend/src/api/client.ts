@@ -10,6 +10,7 @@ import type {
   EducationalPortfolioInput,
   InvestmentProfileResponse,
   InvestmentProfileSubmission,
+  RebalancingReminderState,
   PensionCalculatorEvaluation,
   PensionCalculatorInput,
   PensionCalculatorPortfolioCmaEvaluation,
@@ -171,6 +172,18 @@ export async function apiPost<TBody, TResult>(
   }
   return parseOrThrow<TResult>(path, response);
 }
+
+export async function apiPut<TBody, TResult>(path: string, body: TBody, accessToken?: string): Promise<TResult> {
+  const token = await currentAccessToken(accessToken);
+  const request = (requestToken?: string) => fetch(`${API_BASE_URL}${path}`, { method: "PUT", ...noStoreApiRequest(), headers: { "Content-Type": "application/json", ...requestHeaders(requestToken) }, body: JSON.stringify(body) });
+  let response = await request(token);
+  if (response.status === 401 && accessToken) { const refreshedToken = await refreshedAccessToken(); if (refreshedToken) response = await request(refreshedToken); }
+  return parseOrThrow<TResult>(path, response);
+}
+
+export const getRebalancingReminder = (accessToken: string) => apiGet<RebalancingReminderState>("/me/rebalancing-reminder", accessToken);
+export const updateRebalancingReminder = (enabled: boolean, accessToken: string) => apiPut<{ enabled: boolean }, RebalancingReminderState>("/me/rebalancing-reminder", { enabled }, accessToken);
+export const completeRebalancingReview = (accessToken: string) => apiPost<Record<string, never>, RebalancingReminderState>("/me/rebalancing-reminder/complete", {}, accessToken);
 
 export async function apiDelete(
   path: string,
