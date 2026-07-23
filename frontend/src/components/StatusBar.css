@@ -1,10 +1,15 @@
 .ios-statusbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 44px;
-  padding: 0 24px;
+  width: 100%;
+  height: 47px;
+  padding: 0 26px 0 29px;
+  background: inherit;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard", system-ui, sans-serif;
 }
 
@@ -14,46 +19,34 @@
 .ios-statusbar-time {
   font-size: 15px;
   font-weight: 600;
-  letter-spacing: 0.2px;
+  line-height: 20px;
+  letter-spacing: -0.24px;
   font-variant-numeric: tabular-nums;
 }
 
 .ios-statusbar-icons {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
 }
 
 .ios-statusbar-cellular,
-.ios-statusbar-wifi {
+.ios-statusbar-wifi,
+.ios-statusbar-battery {
   display: block;
 }
 
-.ios-statusbar-battery {
-  position: relative;
-  width: 24px;
-  height: 12px;
-  border: 1px solid currentColor;
-  border-radius: 3px;
-  opacity: 0.9;
+.ios-statusbar.desktop-preview-status {
+  position: fixed;
+  top: calc((100dvh - min(844px, calc(100dvh - 80px))) / 2);
+  width: 390px;
+  background: rgba(247, 248, 249, .92);
+  backdrop-filter: blur(18px);
 }
 
-.ios-statusbar-battery::before {
-  content: "";
-  position: absolute;
-  inset: 2px;
-  border-radius: 1.5px;
-  background: currentColor;
-}
-
-.ios-statusbar-battery-cap {
-  position: absolute;
-  top: 50%;
-  right: -3px;
-  width: 2px;
-  height: 5px;
-  border-radius: 0 2px 2px 0;
-  background: currentColor;
-  transform: translateY(-50%);
-  opacity: 0.6;
+@media (max-width: 480px) {
+  .ios-statusbar.desktop-preview-status {
+    top: 0;
+    width: 100%;
+  }
 }

@@ -23,6 +23,7 @@ import type {
   UserPensionPortfolio,
 } from "./api/types";
 import { useSupabaseAuth } from "./auth/useSupabaseAuth";
+import { StatusBar } from "./components/StatusBar";
 import { GuidePage } from "./pages/GuidePage";
 import { LoginFlowPage } from "./pages/LoginFlowPage";
 import { MainHomeScreen } from "./pages/MainHomeScreen";
@@ -90,16 +91,7 @@ function DesktopPreviewStatus(): JSX.Element | null {
   const { pathname } = useLocation();
   if (["/", "/login", "/main-home", "/planner", "/profile-html", "/strategy-explore", "/strategy-detail", "/user-pick-benchmark"].includes(pathname)) return null;
 
-  return (
-    <div className="desktop-preview-status" aria-hidden="true">
-      <span>9:41</span>
-      <span className="desktop-preview-status-icons">
-        <i className="desktop-preview-signal" />
-        <i className="desktop-preview-wifi" />
-        <i className="desktop-preview-battery" />
-      </span>
-    </div>
-  );
+  return <StatusBar className="desktop-preview-status" />;
 }
 
 function AppRoutes(): JSX.Element {
