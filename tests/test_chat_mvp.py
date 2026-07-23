@@ -37,6 +37,7 @@ from backend.app.chat.narrator import (
     _adds_unverified_content,
     _unsafe_claims,
 )
+from backend.app.chat.query_planner import BlockedReason, plan_question
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService, _knowledge_sources
 from backend.app.chat.tools import PENSION_TAX_CLOSING_NOTICE
@@ -356,6 +357,11 @@ class StaticKnowledgeRepository:
         ]
 
 
+class EmptyKnowledgeRepository:
+    def search_knowledge(self, query: str, *, limit: int = 8):
+        return []
+
+
 @pytest.mark.parametrize(
     "malicious_content",
     (
@@ -608,6 +614,64 @@ def test_future_return_and_order_requests_are_blocked() -> None:
     assert order.intent == ChatIntent.OUT_OF_SCOPE
     assert order.data_mode == "blocked"
     assert "미래 수익 예측이나 매수·매도 추천" in order.answer
+
+
+def test_unsupported_questions_offer_friendly_safe_routes() -> None:
+    chatbot = service(knowledge=EmptyKnowledgeRepository())
+    messages = (
+        "오늘 밥 뭐 먹었어?",
+        "비트코인 지금 사도 돼?",
+        "김치찌개 레시피",
+    )
+    expected_intents = (
+        ChatIntent.ACCOUNT_RULE,
+        ChatIntent.PENSION_TAX,
+        ChatIntent.EDUCATIONAL_PORTFOLIO,
+    )
+    for message in messages:
+        request = ChatRequest(message=message)
+        plan = chatbot.plan(request)
+        response = chatbot.ask(request)
+
+        assert plan.intent is ChatIntent.OUT_OF_SCOPE
+        assert plan.blocked_reason is BlockedReason.UNSUPPORTED
+        assert response.intent is ChatIntent.OUT_OF_SCOPE
+        assert response.data_mode == "safe_fallback"
+        assert response.answer == (
+            "궁금한 마음은 이해해요. 저는 연금계좌 안내에 특화돼 있어서, "
+            "아래 주제라면 바로 도와드릴 수 있어요."
+        )
+        assert response.limitations == [
+            "범용 투자·세무·법률 상담은 지원하지 않습니다."
+        ]
+        assert [
+            (item.follow_up_id, item.label, item.message)
+            for item in response.suggested_follow_ups
+        ] == [
+            (
+                "fallback_account_diff",
+                "연금계좌별 차이",
+                "DC형, IRP, 연금저축은 뭐가 달라?",
+            ),
+            (
+                "fallback_tax_credit",
+                "연금 세액공제 계산",
+                "올해 연금저축에 600만원 넣으면 세액공제 얼마야?",
+            ),
+            (
+                "fallback_educational_portfolio",
+                "맞춤형 포트폴리오",
+                "내 상황에 맞는 연금저축전략을 알려줘.",
+            ),
+        ]
+        for follow_up, expected_intent in zip(
+            response.suggested_follow_ups,
+            expected_intents,
+            strict=True,
+        ):
+            follow_up_plan = plan_question(follow_up.message)
+            assert follow_up_plan.intent is expected_intent
+            assert follow_up_plan.blocked_reason is None
 
 
 def test_narrator_prompt_requires_conclusion_first_heyoche() -> None:
