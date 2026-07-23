@@ -805,6 +805,15 @@ uv run ruff check .
 - Remote ChatService E2E selected `453850`, `0046A0`, and `484790` by the current trading-value rule; the follow-up response rendered all three official creation-basket Top-3 sections.
 - Existing advisor INFO/WARN notices are unchanged and no new migration-specific security or performance finding was introduced.
 
+### 2026-07-23 KST — ETF dataset v1 removal (REMOTE-APPLIED)
+
+- Branch/commit: `codex/이재용/etf-storage-parquet` / `745ad54` (Draft PR #186).
+- Applied migration `20260723024048_delete_etf_dataset_v1`: deletes only dataset `id=1` with `as_of=2026-07-16`; existing cascade removed its child product and return-history rows.
+- Before: 3 dataset versions, 7,521 product rows, 2,633,766 return-history rows, database 544 MB.
+- After: v2 and v4 remain ready; 5,014 product rows and 2,415,904 return-history rows. The live IRP repository E2E returned 823 products and 823 history codes from v4.
+- Physical relation size remained 440 MB immediately after DELETE. Do not run `VACUUM FULL` without a separate maintenance-window decision because it rewrites and exclusively locks the large table.
+- Next: provision and verify the Storage S3 direct-read credentials, then run the v4 Parquet parallel-read migration. The return-history table must remain until that gate is complete.
+
 ## 15. 작업 로그 템플릿
 
 ```markdown

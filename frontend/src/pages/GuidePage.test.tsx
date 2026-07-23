@@ -82,24 +82,6 @@ const RECOMMENDED_CHAT_CARDS: ChatCard[] = [
     preview: null,
   },
   {
-    card_id: "withdrawal_tax",
-    title: "중도해지 세금",
-    message: "연금계좌를 중도에 해지하면 어떻게 돼?",
-    intent: "account_rule",
-    conditions: [],
-    priority: 30,
-    preview: null,
-  },
-  {
-    card_id: "account_diff",
-    title: "연금계좌별 차이",
-    message: "DC형, IRP, 연금저축은 뭐가 달라?",
-    intent: "account_rule",
-    conditions: [],
-    priority: 40,
-    preview: null,
-  },
-  {
     card_id: "edu_portfolio",
     title: "맞춤형 포트폴리오",
     message: "내 상황에 맞는 연금저축전략을 알려줘.",
@@ -366,6 +348,16 @@ describe("GuidePage chat history deletion", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+  });
+
+  it("renders the attached Canvas-2 conversation shell", async () => {
+    renderGuide();
+
+    expect(await screen.findByText("고객님 ! 막막한 노후 준비,", { exact: false })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "대화 기록 열기" })).toBeInTheDocument();
+    expect(screen.getByAltText("프로필")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("연금에 대해 무엇이든 물어보세요")).toBeInTheDocument();
+    expect(screen.getByText(/AI 답변은 투자 판단을 돕는 정보이며, 미래 수익을 보장하지 않습니다/)).toBeInTheDocument();
   });
 
   it("confirms deletion, disables controls, removes the row, and clears the active chat", async () => {
@@ -805,20 +797,21 @@ describe("GuidePage chat history deletion", () => {
     });
   });
 
-  it("renders only the five requested recommendation cards without spark icons", async () => {
+  it("renders the three home recommendation cards without a carousel", async () => {
     vi.mocked(getChatCards).mockResolvedValue({ cards: RECOMMENDED_CHAT_CARDS });
     renderGuide();
 
-    const carousel = await screen.findByLabelText("챗봇 추천 질문");
-    const buttons = within(carousel).getAllByRole("button");
+    const recommendationGrid = await screen.findByLabelText("챗봇 추천 질문");
+    const buttons = within(recommendationGrid).getAllByRole("button");
 
-    expect(buttons).toHaveLength(5);
+    expect(buttons).toHaveLength(3);
     expect(buttons.map((button) => button.textContent)).toEqual(
       RECOMMENDED_CHAT_CARDS.map(
         (card) => `추천 질문${card.title}${card.message}`,
       ),
     );
-    expect(carousel.querySelector(".design-prompt-icon")).toBeNull();
+    expect(recommendationGrid).toHaveClass("chat-question-grid");
+    expect(recommendationGrid.querySelector(".design-prompt-icon")).toBeNull();
   });
 
   it.each(RECOMMENDED_CHAT_CARDS)(

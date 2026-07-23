@@ -12,6 +12,7 @@ from backend.app.api.deps import (
     get_chat_narrator,
     get_chat_repository,
     get_chat_service,
+    get_chat_topic_guard,
     get_optional_chat_repository,
     get_optional_demo_user_context_repository,
 )
@@ -23,6 +24,7 @@ from backend.app.chat.models import (
     ConversationContext,
     NewsConversationContext,
 )
+from backend.app.chat.query_planner import BlockedReason, plan_question
 from backend.app.chat.repository import (
     ChatSessionAccessError,
     ChatSessionSummary,
@@ -245,6 +247,43 @@ def test_authenticated_stream_skips_narrator_for_unsupported_question() -> None:
     payload = final_sse_response(response.text)
     assert payload["response"]["intent"] == "out_of_scope"
     assert payload["response"]["narration_mode"] == "deterministic"
+
+
+def test_authenticated_stream_uses_topic_guard_only_after_unsupported_plan() -> None:
+    repository = FakeChatRepository()
+    _override_authenticated_dependencies(repository)
+    calls: list[tuple[str, BlockedReason | None]] = []
+
+    class RecoveringTopicGuard:
+        def refine_plan(self, message, plan):
+            calls.append((message, plan.blocked_reason))
+            routed = plan_question("DC형, IRP, 연금저축은 뭐가 달라?")
+            assert routed.intent is ChatIntent.ACCOUNT_RULE
+            return routed.model_copy(
+                update={"normalized_message": plan.normalized_message}
+            )
+
+    app.dependency_overrides[get_chat_topic_guard] = RecoveringTopicGuard
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={"message": "노후에 받는 돈은 언제부터 꺼내 써?"},
+                headers=CHAT_HEADERS,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = final_sse_response(response.text)
+    assert calls == [
+        (
+            "노후에 받는 돈은 언제부터 꺼내 써?",
+            BlockedReason.UNSUPPORTED,
+        )
+    ]
+    assert payload["response"]["intent"] == "account_rule"
+    assert payload["persisted"] is True
 
 
 def test_authenticated_chat_stream_persists_final_response() -> None:

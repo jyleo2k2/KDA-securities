@@ -32,7 +32,7 @@ export function ChatMessageList({
           key={message.id}
           ref={message.id === messages[messages.length - 1]?.id ? latestMessageRef : undefined}
         >
-          {message.role === "assistant" && <div className="assistant-avatar"><ChatIcon name="spark" size={16} /></div>}
+          {message.role === "assistant" && <div className="assistant-avatar"><span>연금</span></div>}
           <div className="message-group">
             <div className="message-bubble">{renderMessage(message)}</div>
             {message.failedPrompt && (
@@ -45,7 +45,7 @@ export function ChatMessageList({
       ))}
       {isSending && (
         <div className="message-row assistant">
-          <div className="assistant-avatar"><ChatIcon name="spark" size={16} /></div>
+          <div className="assistant-avatar"><span>연금</span></div>
           {renderStreamingAnswer() ?? (
             <div className="message-bubble typing" aria-label={sendingStage}>
               <span /><span /><span /><small>{sendingStage}</small>
