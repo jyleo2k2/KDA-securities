@@ -578,6 +578,7 @@ def test_all_login_candidates_complete_pension_tax_follow_up_flow(
         as_of_date=date(2026, 7, 23),
         data_kind="mock",
     )
+    expected_name = nickname.replace("(가상)", "")
     service = _service()
 
     def ask(message: str):
@@ -597,7 +598,7 @@ def test_all_login_candidates_complete_pension_tax_follow_up_flow(
 
     tax_response = ask("올해 받을 수 있는 연금세액공제가 궁금해.")
     assert tax_response.answer.startswith(
-        f"{nickname}님의 올해 연금세액공제 혜택을 정리했어요."
+        f"{expected_name}님의 올해 연금세액공제 혜택을 정리했어요."
     )
     assert [item.follow_up_id for item in tax_response.suggested_follow_ups] == [
         "tax_to_diff",
@@ -608,7 +609,7 @@ def test_all_login_candidates_complete_pension_tax_follow_up_flow(
     assert missed_response.data_mode == "missed_pension_tax_credit_engine"
     assert missed_response.answer.splitlines() == [
         (
-            f"{nickname}님은 올해 {Decimal(expected_missed):,.0f}원 만큼의 "
+                f"{expected_name}님은 올해 {Decimal(expected_missed):,.0f}원 만큼의 "
             "세금을 덜 돌려받고 있어요."
         ),
         "",
@@ -618,7 +619,7 @@ def test_all_login_candidates_complete_pension_tax_follow_up_flow(
         ),
         "",
         (
-            f"그러면 {nickname}님의 최대 세액공제혜택 "
+                f"그러면 {expected_name}님의 최대 세액공제혜택 "
             f"{Decimal(expected_maximum):,.0f}원을 온전히 받을 수 있어요."
         ),
     ]

@@ -551,7 +551,7 @@ def test_authenticated_deferred_topic_addresses_server_nickname_once() -> None:
     assert response.status_code == 200
     payload = final_sse_response(response.text)["response"]
     assert payload["data_mode"] == "verified_pension_account_deferred_topic"
-    assert payload["salutation"] == "박준호(가상)님"
+    assert payload["salutation"] == "박준호님"
 
 
 def test_authenticated_overview_uses_profile_without_financial_context() -> None:

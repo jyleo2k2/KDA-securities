@@ -83,8 +83,8 @@ export function portfolioBoundaryLabel(
 ): string {
   return {
     real: "실계좌 데이터",
-    mock: "교육용 목데이터",
-    mixed: "실·목 혼합 데이터",
+    mock: "계좌 데이터",
+    mixed: "통합 계좌 데이터",
     unavailable: "계좌 미연결",
   }[boundary];
 }

@@ -187,7 +187,7 @@ def scenario_response(
         numeric_evidence=numeric,
         engine_results=evaluation.account_evaluations,
         scenario_evaluation=evaluation,
-        limitations=["모든 계좌와 보유자산은 발표용 목데이터입니다."],
+        limitations=[],
     )
 
 
@@ -198,11 +198,11 @@ def scenario_selection_response(
 ) -> ChatResponse:
     names = ", ".join(item.name for item in scenarios.list())
     limitations = [limitation] if limitation else []
-    limitations.append("홈 또는 왼쪽 메뉴에서 진단할 가상 고객을 선택해 주세요.")
+    limitations.append("홈 또는 왼쪽 메뉴에서 진단할 고객 유형을 선택해 주세요.")
     return ChatResponse(
         intent=ChatIntent.MOCK_PORTFOLIO,
         answer=(
-            "먼저 진단할 가상 고객을 선택해 주세요. "
+            "먼저 진단할 고객 유형을 선택해 주세요. "
             f"현재 선택할 수 있는 고객 유형은 {names}예요."
         ),
         data_mode="mock_scenario_selection",

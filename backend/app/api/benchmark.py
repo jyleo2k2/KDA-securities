@@ -11,9 +11,9 @@ from .deps import get_benchmark_repository
 
 router = APIRouter(tags=["benchmark"])
 
-BENCHMARK_SOURCE_LABEL = "통계 모델 기반 익명 목데이터"
+BENCHMARK_SOURCE_LABEL = "통계 모델 기반 익명 계좌 데이터"
 BENCHMARK_NOTICE = (
-    "이 화면은 발표·학습용 통계 모델 목데이터의 집계입니다. "
+    "이 화면은 통계 모델 기반 계좌 데이터의 집계입니다. "
     "실제 고객이나 개인 계좌 정보를 뜻하지 않으며, 개인 식별 정보는 제공하지 않습니다."
 )
 
