@@ -649,13 +649,14 @@ def _target_portfolio_rows(
 
 def _rebalancing_items(evaluation: EducationalPortfolioEvaluation) -> list[str]:
     rebalancing = evaluation.rebalancing
-    threshold = _decimal_text(
-        _one_decimal(rebalancing.drift_threshold_percent_points)
-    )
     parts = [
-        f"목표비중에서 {threshold}%포인트를 초과해 벗어난 자산군은 "
-        "리밸런싱(자산 비중을 목표에 맞게 다시 조정하는 일) 점검 대상이에요."
+        f"{rebalancing.cadence.review_interval_months}개월마다 점검해요. "
+        f"{rebalancing.cadence.rationale}"
     ]
+    parts.append(
+        "목표비중에서 엔진이 정한 허용 이탈폭을 초과한 자산군은 "
+        "리밸런싱(자산 비중을 목표에 맞게 다시 조정하는 일) 점검 대상이에요."
+    )
     if rebalancing.contribution_first:
         parts.append("매도보다 새 납입금을 부족한 자산에 먼저 나눠요.")
     if not rebalancing.sell_instruction_produced:
@@ -676,7 +677,6 @@ def _rebalancing_items(evaluation: EducationalPortfolioEvaluation) -> list[str]:
             parts.append("분류되지 않은 보유자산은 따로 확인해야 해요.")
     parts.extend(
         [
-            "분기마다 목표비중 이탈을 점검해요.",
             "매년 나이·투자성향·연금 수령 시점과 계획가정을 다시 확인해요.",
         ]
     )

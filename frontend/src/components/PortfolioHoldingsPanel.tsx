@@ -284,6 +284,28 @@ function TargetAllocationGuide({
   );
 }
 
+function RebalancingCadenceGuide({
+  evaluation,
+}: {
+  evaluation: EducationalPortfolioEvaluation;
+}) {
+  const cadence = evaluation.rebalancing.cadence;
+  return (
+    <section className="portfolio-rebalance-cadence" aria-labelledby="portfolio-rebalance-cadence-title">
+      <header>
+        <span>규칙 엔진 리밸런싱 정책</span>
+        <h4 id="portfolio-rebalance-cadence-title">{cadence.review_interval_months}개월마다 비중 점검</h4>
+        <p>{cadence.rationale}</p>
+      </header>
+      <div className="portfolio-review-summary">
+        <div><span>정기 점검 주기</span><strong>{cadence.review_interval_months}개월</strong></div>
+        <div><span>목표비중 이탈 기준</span><strong>±{percent(cadence.drift_threshold_percent_points)}</strong></div>
+      </div>
+      <p className="portfolio-target-allocation-note">목표비중은 연령·수령 시점·투자성향·계좌 한도로 다시 계산할 때만 바뀌며, 정기 점검만으로 임의 변경하지 않습니다. 이탈 시에는 새 납입금으로 부족한 자산군을 먼저 보완해요.</p>
+    </section>
+  );
+}
+
 function EducationalStrategyGuide({
   evaluation,
 }: {
@@ -313,6 +335,7 @@ function EducationalStrategyGuide({
         이 전략에 따르면 {RISK_PROFILE_LABELS[profile]} 연금투자전략은 아래와 같습니다.
       </p>
       <TargetAllocationGuide evaluation={evaluation} />
+      <RebalancingCadenceGuide evaluation={evaluation} />
 
       <section className="portfolio-strategy-planning" aria-labelledby="portfolio-strategy-planning-title">
         <header>
@@ -858,6 +881,7 @@ export function EducationalPortfolioReview({
       </div>
 
       <PortfolioSectorGuide riskProfile={evaluation.evaluated_input.risk_profile} />
+      <RebalancingCadenceGuide evaluation={evaluation} />
 
       <div className="overlap-check">
         <strong>중복도·편중 점검</strong>

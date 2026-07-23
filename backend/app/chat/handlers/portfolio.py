@@ -1408,6 +1408,15 @@ def educational_portfolio(
             basis="규칙 엔진의 목표비중 이탈 허용 기준",
         )
     )
+    numeric.append(
+        NumericEvidence(
+            label="리밸런싱 정기 점검 주기",
+            value=Decimal(evaluation.rebalancing.cadence.review_interval_months),
+            unit="개월",
+            evidence_id=engine_source.evidence_id,
+            basis="투자성향별 변동성·전술자산 비중을 반영한 규칙 엔진 점검 정책",
+        )
+    )
     numeric.extend(
         NumericEvidence(
             label=(
