@@ -788,6 +788,15 @@ uv run ruff check .
 - Physical relation size remained 440 MB immediately after DELETE. Do not run `VACUUM FULL` without a separate maintenance-window decision because it rewrites and exclusively locks the large table.
 - Next: provision and verify the Storage S3 direct-read credentials, then run the v4 Parquet parallel-read migration. The return-history table must remain until that gate is complete.
 
+### 2026-07-23 KST — ETF dataset v2 removal (REMOTE-APPLIED)
+
+- Branch/commit: `codex/이재용/etf-storage-parquet` / `b139e7a` (Draft PR #186).
+- Applied migration `20260723024952_delete_etf_dataset_v2`: deletes only dataset `id=2` with `as_of=2026-07-20`; v4 was verified as the newest ready version before the deletion.
+- v2 and v4 return-history values were equal, while v4 product payload adds current KOFIA/FSC cost and identity evidence. v2 was not a production read target.
+- After: only v4 remains ready, with 2,507 product rows and 1,207,952 return-history rows. Database size remains 544 MB immediately after DELETE because dead space is not physically reclaimed.
+- The direct repository E2E retry was blocked by the Supabase session-mode pool limit (`pool_size: 15`); this is recorded separately from the data migration. MCP verification confirmed the single ready v4 state.
+- Next: decide the maintenance window and safe physical-space recovery method; do not run `VACUUM FULL` opportunistically. Storage + Parquet work remains a separate gate.
+
 ## 15. 작업 로그 템플릿
 
 ```markdown
