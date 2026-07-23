@@ -154,60 +154,6 @@ from contribution_seed as seed
 where context.auth_user_id = seed.auth_user_id;
 
 
-insert into public.mock_public_profiles (
-    code, nickname, age_band, risk_profile, investment_horizon_years
-)
-values
-    ('peer_conservative', '차분한거북이', '50대', 'conservative', 8),
-    ('peer_balanced', '균형잡힌나무', '40대', 'balanced', 18),
-    ('peer_growth', '긴호흡고래', '30대', 'growth', 28)
-on conflict (code) do update set
-    nickname = excluded.nickname,
-    age_band = excluded.age_band,
-    risk_profile = excluded.risk_profile,
-    investment_horizon_years = excluded.investment_horizon_years;
-
-with portfolio_seed (profile_code, snapshot_date, title, description, asset_range_label) as (
-    values
-        ('peer_conservative', date '2026-07-14', '은퇴 근접 안정형 구성', '원리금보장과 채권 비중을 높인 모형 포트폴리오', '5천만~1억원'),
-        ('peer_balanced', date '2026-07-14', '중기 균형형 구성', '주식과 방어자산을 비슷하게 나눈 모형 포트폴리오', '1억~2억원'),
-        ('peer_growth', date '2026-07-14', '장기 성장형 구성', '장기 투자기간을 전제로 성장자산 비중을 높인 모형 포트폴리오', '1억~2억원')
-)
-insert into public.mock_public_portfolios (
-    profile_id, snapshot_date, title, description, asset_range_label
-)
-select mpp.id, ps.snapshot_date, ps.title, ps.description, ps.asset_range_label
-from portfolio_seed as ps
-join public.mock_public_profiles as mpp on mpp.code = ps.profile_code
-on conflict (profile_id, snapshot_date) do update set
-    title = excluded.title,
-    description = excluded.description,
-    asset_range_label = excluded.asset_range_label,
-    is_published = true;
-
-with allocation_seed (profile_code, snapshot_date, asset_code, allocation_percent) as (
-    values
-        ('peer_conservative', date '2026-07-14', 'domestic_equity', 25.0::numeric),
-        ('peer_conservative', date '2026-07-14', 'bond', 35.0::numeric),
-        ('peer_conservative', date '2026-07-14', 'deposit', 40.0::numeric),
-        ('peer_balanced', date '2026-07-14', 'global_equity', 50.0::numeric),
-        ('peer_balanced', date '2026-07-14', 'bond', 30.0::numeric),
-        ('peer_balanced', date '2026-07-14', 'deposit', 20.0::numeric),
-        ('peer_growth', date '2026-07-14', 'global_equity', 65.0::numeric),
-        ('peer_growth', date '2026-07-14', 'eligible_tdf', 20.0::numeric),
-        ('peer_growth', date '2026-07-14', 'cash', 15.0::numeric)
-)
-insert into public.mock_public_portfolio_holdings (portfolio_id, asset_class_id, allocation_percent)
-select mpp.id, ac.id, als.allocation_percent
-from allocation_seed as als
-join public.mock_public_profiles as profile on profile.code = als.profile_code
-join public.mock_public_portfolios as mpp
-    on mpp.profile_id = profile.id
-   and mpp.snapshot_date = als.snapshot_date
-join public.asset_classes as ac on ac.code = als.asset_code
-on conflict (portfolio_id, asset_class_id) do update set
-    allocation_percent = excluded.allocation_percent;
-
 insert into public.rule_sets (
     code, version, name, status, effective_from, description
 )
