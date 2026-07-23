@@ -1,4 +1,7 @@
+import builtins
 import inspect
+
+import pytest
 
 from backend.app.ingestion.embeddings import (
     EMBEDDING_DIMENSIONS,
@@ -6,6 +9,7 @@ from backend.app.ingestion.embeddings import (
     QUERY_CACHE_MAX_ENTRIES,
     BgeM3Embedder,
     embed_pending_chunks,
+    get_query_embedder,
     vector_literal,
 )
 from backend.app.retrieval.repository import KnowledgeMatch, RetrievalRepository
@@ -61,6 +65,22 @@ def test_search_without_embedder_uses_fulltext(monkeypatch) -> None:
         repository, "_search_knowledge_fulltext", lambda query, limit: sentinel
     )
     assert repository.search_knowledge("irp") is sentinel
+
+
+def test_optional_embedder_returns_none_when_native_dependency_is_blocked(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_import = builtins.__import__
+
+    def blocked_import(name, *args, **kwargs):
+        if name == "sentence_transformers":
+            raise OSError("application control blocked native dependency")
+        return original_import(name, *args, **kwargs)
+
+    get_query_embedder.cache_clear()
+    monkeypatch.setattr(builtins, "__import__", blocked_import)
+    assert get_query_embedder() is None
+    get_query_embedder.cache_clear()
 
 
 def test_embedding_pipeline_excludes_inactive_and_unverified_chunks() -> None:
