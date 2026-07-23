@@ -74,8 +74,9 @@
 .mhs-strategy-heading-row { display: flex; align-items: baseline; justify-content: space-between; margin: 44px 0 14px; }
 .mhs-strategy-more { font-size: 13px; font-weight: 800; color: #18A860; white-space: nowrap; cursor: pointer; background: none; border: none; padding: 0; font-family: inherit; }
 
-.mhs-strategy-scroll { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; margin: 0 -22px; padding-left: 22px; padding-right: 22px; }
-.mhs-strategy-card { flex: 0 0 168px; border: 1.5px solid #EAEDE7; border-radius: 20px; padding: 18px 16px; }
+.mhs-strategy-scroll { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; margin: 0 -22px; padding-left: 22px; padding-right: 22px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.mhs-strategy-scroll::-webkit-scrollbar { display: none; }
+.mhs-strategy-card { flex: 0 0 168px; border: 1.5px solid #EAEDE7; border-radius: 20px; padding: 18px 16px; scroll-snap-align: start; }
 .mhs-strategy-card-button { color: inherit; cursor: pointer; font: inherit; text-align: left; }
 .mhs-strategy-card-button:focus-visible { outline: 3px solid #18A860; outline-offset: 2px; }
 .mhs-strategy-card-title { font-size: 16px; font-weight: 900; color: #111; }
@@ -95,8 +96,8 @@
 .mhs-userpick-cta-chevron { font-size: 15px; }
 
 .mhs-sheet-overlay { position: absolute; inset: 0; z-index: 20; }
-.mhs-sheet-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, .5); }
-.mhs-sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 78%; background: #fff; border-radius: 28px 28px 0 0; display: flex; flex-direction: column; }
+.mhs-sheet-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, .5); animation: mhs-backdrop-in .28s ease both; }
+.mhs-sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 78%; background: #fff; border-radius: 28px 28px 0 0; display: flex; flex-direction: column; animation: mhs-sheet-up .38s cubic-bezier(.32, .72, 0, 1) both; }
 .mhs-sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 24px 24px 14px; }
 .mhs-sheet-title { font-size: 23px; font-weight: 900; color: #111; }
 .mhs-sheet-close { font-size: 22px; color: #A0AAA4; cursor: pointer; line-height: 1; }
@@ -118,3 +119,19 @@
 .mhs-profile-button, .mhs-summary-cta-button, .mhs-strategy-more, .mhs-tax-button, .mhs-strategy-card-button, .mhs-userpick-card-button, .mhs-userpick-cta, .mhs-tab-toggle-item { transition: transform .16s ease, background .15s ease, color .15s ease; }
 .mhs-profile-button:active, .mhs-summary-cta-button:active, .mhs-strategy-more:active { transform: scale(.95); }
 .mhs-tax-button:active, .mhs-strategy-card-button:active, .mhs-userpick-card-button:active, .mhs-userpick-cta:active, .mhs-tab-toggle-item:active { transform: scale(.98); }
+
+/* 진입 시 카드가 순차로 떠오름(stagger) — 화면이 살아나는 느낌. transform/opacity만 사용 */
+.mhs-body > * { animation: mhs-card-up .42s cubic-bezier(.23, 1, .32, 1) both; }
+.mhs-body > *:nth-child(1) { animation-delay: 0ms; }
+.mhs-body > *:nth-child(2) { animation-delay: 40ms; }
+.mhs-body > *:nth-child(3) { animation-delay: 80ms; }
+.mhs-body > *:nth-child(4) { animation-delay: 120ms; }
+.mhs-body > *:nth-child(5) { animation-delay: 160ms; }
+.mhs-body > *:nth-child(6) { animation-delay: 200ms; }
+@keyframes mhs-card-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes mhs-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes mhs-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .mhs-body > *, .mhs-sheet, .mhs-sheet-backdrop { animation: none; opacity: 1; transform: none; }
+}
