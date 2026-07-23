@@ -92,6 +92,11 @@ SCHEMA_ADDITIVE_MIGRATION = next(
 BENCHMARK_SCHEMA_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob("*_move_benchmark_tables_to_schema.sql")
 )
+BENCHMARK_SCHEMA_CLEANUP_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob(
+        "*_drop_benchmark_public_compatibility_views.sql"
+    )
+)
 
 
 def test_benchmark_schema_move_is_additive_and_service_role_only() -> None:
@@ -110,6 +115,19 @@ def test_benchmark_schema_move_is_additive_and_service_role_only() -> None:
     assert sql.count("security_invoker = true") == 3
     assert "grant select on public.benchmark_mock_users" in sql
     assert "to service_role" in sql
+    assert "drop table" not in sql
+    assert "delete from" not in sql
+    assert "truncate" not in sql
+
+
+def test_benchmark_schema_cleanup_drops_only_compatibility_views() -> None:
+    sql = BENCHMARK_SCHEMA_CLEANUP_MIGRATION.read_text(encoding="utf-8").lower()
+    for table in (
+        "benchmark_mock_users",
+        "benchmark_mock_accounts",
+        "benchmark_mock_holdings",
+    ):
+        assert f"drop view public.{table}" in sql
     assert "drop table" not in sql
     assert "delete from" not in sql
     assert "truncate" not in sql
