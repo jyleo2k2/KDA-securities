@@ -276,8 +276,10 @@ def _optional_positive_decimal(value: object, *, field: str) -> Decimal | None:
         parsed = Decimal(str(value))
     except (InvalidOperation, ValueError) as error:
         raise EtfDistributionEventLoadError(f"{field} must be decimal") from error
-    if not parsed.is_finite() or parsed <= 0:
-        raise EtfDistributionEventLoadError(f"{field} must be positive")
+    if not parsed.is_finite() or parsed < 0:
+        raise EtfDistributionEventLoadError(f"{field} must be non-negative")
+    if parsed == 0:
+        return None
     return parsed
 
 

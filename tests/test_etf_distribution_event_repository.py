@@ -75,6 +75,27 @@ def test_rejects_event_master_without_source_evidence(tmp_path: Path) -> None:
         load_etf_distribution_event_master("postgresql://unused", event_path=event_path)
 
 
+def test_normalizes_zero_value_schedule_as_unannounced_amount(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    report = _report()
+    event = report["events"][0]
+    assert isinstance(event, dict)
+    event["cash_per_share_krw"] = "0"
+    event_path = tmp_path / "events.json"
+    event_path.write_text(json.dumps(report), encoding="utf-8")
+    connection = _Connection()
+    monkeypatch.setattr(
+        etf_distribution_event_repository.psycopg,
+        "connect",
+        lambda _url: connection,
+    )
+
+    load_etf_distribution_event_master("postgresql://unused", event_path=event_path)
+
+    assert connection.cursor_obj.executemany_calls[0][1][0][9] is None
+
+
 class _Cursor:
     def __init__(self) -> None:
         self.executed: list[tuple[str, object]] = []
