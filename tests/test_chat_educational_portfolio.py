@@ -445,8 +445,14 @@ def test_chat_explains_portfolio_strategy_for_all_five_risk_profiles() -> None:
     assert "비용" in common
     assert "추적오차" in common
     assert "새 납입금" in common
-    assert "분기" in common
+    assert "성향별 점검 주기" in common
     assert "매년" in common
+    months_by_profile = ("12개월", "6개월", "3개월", "2개월", "1개월")
+    for section, months in zip(
+        response.sections[:5], months_by_profile, strict=True
+    ):
+        assert months in section.content
+        assert "점검 주기:" in section.content
     assert "DC·IRP" in response.limitations[0]
     assert "70%" in response.limitations[0]
     assert "자동" in response.limitations[-1]
