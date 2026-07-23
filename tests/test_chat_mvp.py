@@ -638,8 +638,8 @@ def test_unsupported_questions_offer_friendly_safe_routes() -> None:
         assert response.intent is ChatIntent.OUT_OF_SCOPE
         assert response.data_mode == "safe_fallback"
         assert response.answer == (
-            "궁금한 마음은 이해해요. 저는 연금계좌 안내에 특화돼 있어서, "
-            "아래 주제라면 바로 도와드릴 수 있어요."
+            "그 질문은 제가 잘 아는 분야는 아니에요. 대신 연금 이야기는 쉽고 "
+            "편하게 풀어드릴게요. 아래에서 궁금한 걸 골라봐요."
         )
         assert response.limitations == [
             "범용 투자·세무·법률 상담은 지원하지 않습니다."
