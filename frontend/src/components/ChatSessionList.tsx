@@ -25,19 +25,6 @@ export function ChatSessionList({
 }) {
   return (
     <>
-      <div className="history-heading">
-        <p className="sidebar-label history-label">저장된 대화</p>
-        {chatSessions.length > 0 && (
-          <button
-            className="history-delete-all"
-            type="button"
-            onClick={onDeleteAll}
-            disabled={historyLoading || isSending || deletingSessionId !== null || deletingAllSessions}
-          >
-            {deletingAllSessions ? "삭제 중" : "전체 삭제"}
-          </button>
-        )}
-      </div>
       <div className="history-list">
         {historyLoading && chatSessions.length === 0 ? (
           <p className="auth-note">대화 이력을 불러오는 중...</p>
@@ -70,7 +57,11 @@ export function ChatSessionList({
                 onClick={() => onDelete(session)}
                 disabled={disabled}
               >
-                {deleting ? "…" : "삭제"}
+                {deleting ? <span>…</span> : (
+                  <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none">
+                    <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
+                  </svg>
+                )}
               </button>
             </div>
           );
@@ -80,6 +71,22 @@ export function ChatSessionList({
         <p className="auth-note" role="status" aria-live="polite">
           {deleteStatus}
         </p>
+      )}
+      {chatSessions.length > 0 && (
+        <div className="history-delete-all-wrap">
+          <button
+            aria-label="전체 삭제"
+            className="history-delete-all"
+            type="button"
+            onClick={onDeleteAll}
+            disabled={historyLoading || isSending || deletingSessionId !== null || deletingAllSessions}
+          >
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
+            </svg>
+            <span>{deletingAllSessions ? "삭제 중" : "전체 대화 기록 삭제"}</span>
+          </button>
+        </div>
       )}
     </>
   );

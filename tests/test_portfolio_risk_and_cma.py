@@ -118,6 +118,12 @@ def test_portfolio_planning_return_uses_cma_minus_verified_cost() -> None:
                 "kofia_reported_stated_fee_total_percent": "0.15",
                 "kofia_reported_other_cost_percent": "0.05",
                 "kofia_reported_brokerage_commission_percent": "0.03",
+                "tracking_cost_percent": None,
+                "tracking_cost_status": "not_quantified_overlap_not_verified",
+            },
+            "implementation_metrics": {
+                "tracking_error_diagnostic_percent": "0.42",
+                "tracking_error_diagnostic_source": "kis_current_tracking_error",
             },
         },
         "CASH": {
@@ -158,6 +164,15 @@ def test_portfolio_planning_return_uses_cma_minus_verified_cost() -> None:
     assert equity_cost.effective_total_cost_percent == Decimal("0.2000")
     assert equity_cost.brokerage_commission_percent == Decimal("0.03")
     assert equity_cost.brokerage_commission_included is False
+    assert equity_cost.tracking_error_diagnostic_percent == Decimal("0.42")
+    assert equity_cost.tracking_error_diagnostic_source == (
+        "kis_current_tracking_error"
+    )
+    assert equity_cost.tracking_cost_percent is None
+    assert equity_cost.tracking_cost_status == (
+        "not_quantified_overlap_not_verified"
+    )
+    assert equity_cost.tracking_cost_included is False
     assert "portfolio_horizon_outside_cma_source_horizon" in result.warnings
     assert "central_value_is_cma_minus_verified_annual_cost_only" in result.warnings
 

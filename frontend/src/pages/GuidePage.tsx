@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 
+import profileIcon from "../assets/chatbot/profile-icon.png";
 import {
   ApiError,
   apiErrorMessage,
@@ -554,6 +555,7 @@ function AssistantMessage({
       {response.visualizations.map((visualization, index) => (
         <ChatVisualization
           visualization={visualization}
+          sources={response.sources}
           key={`${visualization.kind}-${index}`}
         />
       ))}
@@ -714,13 +716,6 @@ export function GuidePage({
     : auth.session
       ? "로그인됨"
       : "로그인 필요";
-  const authAvatarText = auth.loading
-    ? "…"
-    : auth.session
-      ? (userContext?.nickname?.trim().charAt(0)
-        || auth.session.user.email?.trim().charAt(0).toUpperCase()
-        || "연")
-      : "연금";
 
   currentAuthRef.current = {
     userId: authenticatedUserId,
@@ -1243,13 +1238,13 @@ export function GuidePage({
   return (
     <div className="app-shell">
       <aside className={`sidebar ${isSidebarOpen ? "sidebar-open" : ""}`}>
-        <div className="brand">
-          <div className="brand-mark"><Icon name="spark" size={22} /></div>
-          <div><strong>연금 코파일럿</strong><span>Pension guide</span></div>
+        <div className="brand design-drawer-heading">
+          <strong>대화 기록</strong>
+          <button type="button" aria-label="대화 기록 닫기" onClick={() => setIsSidebarOpen(false)}>×</button>
         </div>
 
         <button className="new-chat" type="button" onClick={startNewChat}>
-          <span>＋</span> 새 대화
+          <span>＋</span> 새 대화 시작
         </button>
 
         <div className="auth-panel">
@@ -1438,22 +1433,18 @@ export function GuidePage({
 
       <main className="chat-main">
         <header className="topbar design-topbar">
-          <button className="menu-button design-menu-button" type="button" aria-label={onBack ? "뒤로 가기" : "메뉴 열기"} onClick={onBack ?? (() => setIsSidebarOpen(true))}>
-            <span aria-hidden="true"><i /><i /><i /></span>
+          <button className="menu-button design-back-button" type="button" aria-label="뒤로 가기" onClick={onBack ?? (() => setIsSidebarOpen(true))}>
+            <svg aria-hidden="true" width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M9.5 1L1.5 10L9.5 19" /></svg>
           </button>
           <button
             className="design-history-button"
             type="button"
-            onClick={startNewChat}
-            aria-label="새 대화 시작"
+            onClick={() => setIsSidebarOpen(true)}
+            aria-label="대화 기록 열기"
           >
-            <span aria-hidden="true">＋</span> 새 대화
+            대화 기록
           </button>
           <div className="design-topbar-actions">
-            <Icon name="database" size={25} />
-            <span className={`design-auth-state ${auth.session ? "authenticated" : "anonymous"}`}>
-              {authStatusLabel}
-            </span>
             {auth.session && <button type="button" className="design-logout" onClick={() => void handleLogout()} disabled={authSubmitting}>로그아웃</button>}
             <button
               className={`design-avatar ${auth.session ? "authenticated" : "anonymous"}`}
@@ -1462,7 +1453,7 @@ export function GuidePage({
               title={authStatusLabel}
               onClick={() => setIsSidebarOpen(true)}
             >
-              {authAvatarText}
+              <img src={profileIcon} alt="프로필" />
             </button>
           </div>
         </header>
@@ -1471,13 +1462,10 @@ export function GuidePage({
           {messages.length === 0 ? (
             <div className="welcome design-welcome">
               <div className="design-brand">
-                <span className="design-brand-mark">연금</span>
-                <strong>연금 <em>도우미</em></strong>
+                <span className="design-brand-mark">연</span>
+                <strong>연그미</strong>
               </div>
-              <div className="design-intro-row">
-                <span className="design-intro-avatar" aria-hidden="true">연금</span>
-                <p>막막한 노후 준비, <em>연금 도우미</em>와 대화하며 풀어보세요.</p>
-              </div>
+              <h1>{(userContext?.nickname ?? selectedScenarioData?.name ?? "고객").replace(/\(가상\)/g, "")}님 ! 막막한 노후 준비, <em><br />연그미</em>와 대화하며 풀어보세요.</h1>
 
               {(userContext || selectedScenarioData) && (
                 <div className="selected-scenario-card">

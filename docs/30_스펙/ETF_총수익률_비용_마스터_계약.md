@@ -1,6 +1,6 @@
 # ETF 총수익률·비용 마스터 계약
 
-> 기준일: 2026-07-22  
+> 기준일: 2026-07-23
 > 용도: 연금계좌 포트폴리오 추천 엔진의 과거 근거 데이터  
 > 금지: 미래수익률 예측값 또는 매수 지시로 해석
 
@@ -8,10 +8,10 @@
 
 | 파일 | 상품 수 | 엔진 사용 |
 |---|---:|---|
-| `data/cache/returns/pension_etf_cost_return_master_2026-07-22.json` | 861 | 계좌 간 감사 전용 |
-| `data/cache/returns/dc_etf_cost_return_2026-07-22.json` | 823 | DC형 추천 엔진 입력 |
-| `data/cache/returns/irp_etf_cost_return_2026-07-22.json` | 823 | IRP 추천 엔진 입력 |
-| `data/cache/returns/pension_savings_etf_cost_return_2026-07-22.json` | 861 | 연금저축펀드 추천 엔진 입력 |
+| `data/cache/returns/pension_etf_cost_return_master_2026-07-23.json` | 861 | 계좌 간 감사 전용 |
+| `data/cache/returns/dc_etf_cost_return_2026-07-23.json` | 823 | DC형 추천 엔진 입력 |
+| `data/cache/returns/irp_etf_cost_return_2026-07-23.json` | 823 | IRP 추천 엔진 입력 |
+| `data/cache/returns/pension_savings_etf_cost_return_2026-07-23.json` | 861 | 연금저축펀드 추천 엔진 입력 |
 
 포트폴리오 엔진은 통합본이 아니라 반드시 해당 계좌 파일만 읽는다.
 
@@ -68,6 +68,12 @@ KIND는 2020-01-01부터 2026-07-16까지 공시 407건을 조회했다. 정정 
 총보수 일치의 이중 검증이 포함된다. 이는 **공시된 반복 운용비용(TER)**이지 개인별
 전부담비용이 아니다.
 
+KOFIA 원문은 TER를 소수 둘째 자리 수준으로 표시하면서 보수합계·기타비용은 더 많은
+소수 자릿수를 제공할 수 있다. 마스터는 `TER - 보수합계 - 기타비용`의 절대차를
+`kofia_ter_reconciliation_difference_percent_points`로 보존하고 원문 파서와 동일하게
+0.01%p 이하만 허용한다. 2026-07-23 운영본의 최대 절대차는 0.008%p이며 허용범위
+초과는 0건이다.
+
 비용 마스터는 ETF마다 `asset_manager`와 `asset_manager_source`를 보존한다. 비용 적용
 우선순위는 KOFIA TER → KIS 공식 총보수이며, 실제 적용값·상태·기준일은 각각
 `effective_total_cost_percent`, `effective_total_cost_status`,
@@ -79,8 +85,13 @@ KIND는 2020-01-01부터 2026-07-16까지 공시 407건을 조회했다. 정정 
 보수합계·기타비용·TER가 다를 수 있으므로, 운용사 평균비용을 개별 ETF 계획가정에서
 추가 차감하지 않는다.
 
-`brokerage_commission_percent`는 TER와 분리된 펀드 내부 매매·중개수수료 공시다.
-TER에 더하지 않는다. 추적차이·환헤지 비용도 기준지수의 총수익/가격수익 정의,
+`kofia_reported_brokerage_commission_percent`는 TER와 분리된 펀드 내부
+매매·중개수수료 공시다. `brokerage_commission_included_in_planning_return=false`로
+보존하고 TER에 더하지 않는다. 현재 추적오차는
+`tracking_error_diagnostic_percent`와 원천을 별도 보존한다. 독립된 추적비용은
+`tracking_cost_status=not_quantified_overlap_not_verified`,
+`tracking_cost_included_in_planning_return=false`로 명시한다. 추적차이·환헤지 비용도
+기준지수의 총수익/가격수익 정의,
 TER 중복 여부, 세금·파생·환전 영향이 확인되기 전까지는 과거 구현품질 진단값으로만
 보존한다. 매수 호가 스프레드, 계좌 수수료, 세금, 주문 충격은 이 마스터에 포함하지
 않는다.
@@ -91,6 +102,9 @@ TER 중복 여부, 세금·파생·환전 영향이 확인되기 전까지는 �
 - 금융투자협회 TER 확인: 861 / 861
 - 한투 총보수 보조값만 있음: 0 / 861
 - KOFIA 기타비용·TER 미확인: 0 / 861
+- 운용사 식별·검증비용 적용: 861 / 861
+- 매매·중개수수료 진단값 보존: 861 / 861, 계획수익률 포함: 0 / 861
+- 추적오차 진단값 보존: 861 / 861, 추적비용 계획수익률 포함: 0 / 861
 - 운용사 식별·검증비용 적용·KOFIA TER 적용·KIS 대체·비용 미확인 건수는 결과 루트의
   `asset_manager_identified_product_count`, `verified_cost_product_count`,
   `kofia_ter_product_count`, `kis_cost_fallback_product_count`,
