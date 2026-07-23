@@ -34,13 +34,16 @@
   cursor: pointer;
 }
 
-@media (max-width: 390px) {
+@media (max-width: 480px) {
   .benchmark-html-stage {
     place-items: start center;
-    background: #f5f6f8;
+    background: #fff;
   }
 
   .benchmark-html-frame-wrap {
+    width: 100%;
     height: 100dvh;
   }
+
+  .benchmark-html-frame { width: 100%; height: 100dvh; }
 }
