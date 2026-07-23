@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type JSX } from "react";
+import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import {
   ApiError,
@@ -31,8 +32,6 @@ import {
   selectedScenarioFromStorage,
 } from "./pwa/cachePolicy";
 
-const TAB_KEYS: readonly TabKey[] = ["home", "guide", "profile"];
-type AppRoute = TabKey | "login" | "main-home" | "planner" | "profile-html" | "strategy-explore" | "user-pick-benchmark";
 const RISK_PROFILES = new Set(["stable", "stable_seeking", "risk_neutral", "active", "aggressive"]);
 
 interface CurrentUserData {
@@ -42,11 +41,6 @@ interface CurrentUserData {
   investmentProfile: InvestmentProfileResponse | null;
   loading: boolean;
   error: string | null;
-}
-
-function routeFromHash(): AppRoute {
-  const candidate = window.location.hash.slice(1) as AppRoute;
-  return candidate === "login" || candidate === "main-home" || candidate === "planner" || candidate === "profile-html" || candidate === "strategy-explore" || candidate === "user-pick-benchmark" || TAB_KEYS.includes(candidate as TabKey) ? candidate : "login";
 }
 
 function pensionContextErrorMessage(error: unknown): string {
@@ -73,8 +67,13 @@ function plannerProfileFromContext(
 }
 
 export default function App(): JSX.Element {
+  return <HashRouter><AppRoutes /></HashRouter>;
+}
+
+function AppRoutes(): JSX.Element {
   const auth = useSupabaseAuth();
-  const [activeRoute, setActiveRoute] = useState<AppRoute>(routeFromHash);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [loginSuccessPending, setLoginSuccessPending] = useState(false);
   const [resurveyPending, setResurveyPending] = useState(false);
   const [selectedScenarioCode, setSelectedScenarioCode] = useState(selectedScenarioFromStorage);
@@ -86,11 +85,6 @@ export default function App(): JSX.Element {
   const accessToken = hasExpiredSession ? null : auth.session?.access_token ?? null;
   const authenticatedUserId = accessToken ? auth.session?.user.id ?? null : null;
 
-  useEffect(() => {
-    const sync = () => setActiveRoute(routeFromHash());
-    window.addEventListener("hashchange", sync);
-    return () => window.removeEventListener("hashchange", sync);
-  }, []);
   useEffect(() => { if (auth.session === null) setLoginSuccessPending(false); }, [auth.session]);
   useEffect(() => {
     if (auth.loading) return;
@@ -118,33 +112,28 @@ export default function App(): JSX.Element {
       });
   }, [accessToken, auth.loading, authenticatedUserId]);
 
-  function changeTab(tab: TabKey): void { setActiveRoute(tab); window.history.replaceState(null, "", `#${tab}`); }
-  function goToMainHome(): void { setLoginSuccessPending(false); setResurveyPending(false); setActiveRoute("main-home"); window.history.replaceState(null, "", "#main-home"); }
-  function goToPlanner(): void { setActiveRoute("planner"); window.history.replaceState(null, "", "#planner"); }
-  function goToProfileHtml(): void { setActiveRoute("profile-html"); window.history.replaceState(null, "", "#profile-html"); }
-  function goToStrategyExplore(): void { setActiveRoute("strategy-explore"); window.history.replaceState(null, "", "#strategy-explore"); }
-  function goToUserPickBenchmark(): void { setActiveRoute("user-pick-benchmark"); window.history.replaceState(null, "", "#user-pick-benchmark"); }
+  function changeTab(tab: TabKey): void { navigate(`/${tab}`); }
+  function goToMainHome(): void { setLoginSuccessPending(false); setResurveyPending(false); navigate("/main-home"); }
+  function goToPlanner(): void { navigate("/planner"); }
+  function goToProfileHtml(): void { navigate("/profile-html"); }
+  function goToStrategyExplore(): void { navigate("/strategy-explore"); }
+  function goToUserPickBenchmark(): void { navigate("/user-pick-benchmark"); }
   function beginResurvey(): void { setResurveyPending(true); }
   function analyzeHero(scenarioCode: string): void { persistSelectedScenario(scenarioCode); setSelectedScenarioCode(scenarioCode); changeTab("guide"); }
   function handleProfileSaved(investmentProfile: InvestmentProfileResponse): void {
     setCurrentUserData((previous) => ({ ...previous, investmentProfile }));
   }
-  async function handleSignOut(): Promise<void> { userLoadGenerationRef.current += 1; clearPersistedUserState(); setSelectedScenarioCode(""); setCurrentUserData({ context: null, hero: null, heroes: [], investmentProfile: null, loading: false, error: null }); setLoginSuccessPending(false); setResurveyPending(false); setActiveRoute("login"); window.history.replaceState(null, "", "#login"); await auth.signOut(); }
+  async function handleSignOut(): Promise<void> { userLoadGenerationRef.current += 1; clearPersistedUserState(); setSelectedScenarioCode(""); setCurrentUserData({ context: null, hero: null, heroes: [], investmentProfile: null, loading: false, error: null }); setLoginSuccessPending(false); setResurveyPending(false); navigate("/login"); await auth.signOut(); }
 
   if (auth.loading) return <main className="app-auth-loading" aria-label="로그인 상태 확인 중" />;
   const metadataName = auth.session?.user.user_metadata?.name;
   const loginDisplayName = typeof metadataName === "string" && metadataName.trim() ? metadataName.trim() : currentUserData.context?.nickname ?? auth.session?.user.email?.split("@")[0] ?? "고객";
   if (auth.configured && (!accessToken || loginSuccessPending || resurveyPending)) return <LoginFlowPage auth={auth} displayName={loginDisplayName} onAuthenticated={() => setLoginSuccessPending(true)} onProfileSaved={handleProfileSaved} onStart={goToMainHome} resurvey={resurveyPending} />;
-  const resolvedRoute = !auth.configured && activeRoute === "login" ? "home" : activeRoute;
-  const activeTab: TabKey = resolvedRoute === "login" || resolvedRoute === "main-home" || resolvedRoute === "planner" || resolvedRoute === "profile-html" || resolvedRoute === "strategy-explore" || resolvedRoute === "user-pick-benchmark" ? "home" : resolvedRoute;
+  const activeTab: TabKey = location.pathname === "/guide" ? "guide" : location.pathname === "/profile" ? "profile" : "home";
   const displayName = currentUserData.context?.nickname ?? auth.session?.user.email?.replace("@kda-demo.invalid", "") ?? "인증 사용자";
   const plannerProfile = plannerProfileFromContext(currentUserData.context, currentUserData.investmentProfile);
 
-  if (resolvedRoute === "strategy-explore") return <StrategyExploreScreen onBack={goToMainHome} />;
-  if (resolvedRoute === "user-pick-benchmark") return <UserPickBenchmarkScreen heroes={currentUserData.heroes} onBack={goToMainHome} />;
-  if (resolvedRoute === "profile-html") return <iframe title="내 프로필" src={`${import.meta.env.BASE_URL}profile-html/`} style={{ width: "100%", height: "100vh", border: 0, display: "block" }} />;
-  if (resolvedRoute === "main-home") return <MainHomeScreen error={currentUserData.error} hero={currentUserData.hero} investmentProfile={currentUserData.investmentProfile} loading={currentUserData.loading} onOpenChat={() => changeTab("guide")} onOpenPlanner={goToPlanner} onOpenProfile={goToProfileHtml} onOpenStrategyExplore={goToStrategyExplore} onOpenUserPick={goToUserPickBenchmark} onResurvey={beginResurvey} userContext={currentUserData.context} />;
-  if (resolvedRoute === "planner") return <PensionPlannerPage profile={plannerProfile} userContext={currentUserData.context} onBack={() => changeTab("guide")} onOpenProfile={beginResurvey} />;
+  const mainHome = <MainHomeScreen error={currentUserData.error} hero={currentUserData.hero} investmentProfile={currentUserData.investmentProfile} loading={currentUserData.loading} onOpenChat={() => changeTab("guide")} onOpenPlanner={goToPlanner} onOpenProfile={goToProfileHtml} onOpenStrategyExplore={goToStrategyExplore} onOpenUserPick={goToUserPickBenchmark} onResurvey={beginResurvey} userContext={currentUserData.context} />;
   const content = activeTab === "guide" ? (
     <div className="guide-tab">
       <GuidePage auth={auth} initialScenarioCode={selectedScenarioCode} onBack={goToMainHome} onOpenPlanner={goToPlanner} onSignOut={handleSignOut} surveyProfile={null} userContext={currentUserData.context} />
@@ -160,5 +149,17 @@ export default function App(): JSX.Element {
       </main>
     </div>
   );
-  return <>{content}{activeTab !== "guide" && <TabBar activeTab={activeTab} onChange={changeTab} />}</>;
+  const tabPage = <>{content}{activeTab !== "guide" && <TabBar activeTab={activeTab} onChange={changeTab} />}</>;
+  return <Routes>
+    <Route path="/" element={<Navigate replace to="/home" />} />
+    <Route path="/home" element={tabPage} />
+    <Route path="/guide" element={tabPage} />
+    <Route path="/profile" element={tabPage} />
+    <Route path="/main-home" element={mainHome} />
+    <Route path="/planner" element={<PensionPlannerPage profile={plannerProfile} userContext={currentUserData.context} onBack={() => changeTab("guide")} onOpenProfile={beginResurvey} />} />
+    <Route path="/profile-html" element={<iframe title="내 프로필" src={`${import.meta.env.BASE_URL}profile-html/`} style={{ width: "100%", height: "100vh", border: 0, display: "block" }} />} />
+    <Route path="/strategy-explore" element={<StrategyExploreScreen onBack={goToMainHome} />} />
+    <Route path="/user-pick-benchmark" element={<UserPickBenchmarkScreen heroes={currentUserData.heroes} onBack={goToMainHome} />} />
+    <Route path="*" element={<Navigate replace to="/home" />} />
+  </Routes>;
 }
