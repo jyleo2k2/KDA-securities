@@ -1053,7 +1053,7 @@ def custom_portfolio(request: ChatRequest) -> ChatResponse:
         sources=[source],
         numeric_evidence=numeric,
         engine_results=[evaluation],
-        limitations=["입력 포트폴리오는 실제 계좌가 아닌 목데이터로 처리했습니다."],
+        limitations=["입력한 포트폴리오를 기준으로 계산했습니다."],
     )
 
 

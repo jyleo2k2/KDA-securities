@@ -161,7 +161,6 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
                     </div>
                   ))}
                 </div>
-                <small>현재 MVP는 목데이터 · 실제 계좌 연결 아님</small>
               </section>
               <section className="login-consent-card">
                 <strong>불러오면 확인하는 내용</strong>

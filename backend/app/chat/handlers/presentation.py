@@ -35,7 +35,7 @@ def build_capabilities(*, scenarios: ScenarioRepository) -> ChatCapabilities:
             "ETF 테마 1~20의 구조·기회·위험 설명",
             "연금저축·IRP 당해연도 납입액 세액공제 간이 계산",
             "연금저축·IRP 연금외수령 16.5% 간이 추정",
-            "근거·기준일·실데이터/목데이터 경계 표시",
+            "근거·기준일·데이터 출처 표시",
             "한국은행·KOSIS·FRED 공식 거시지표 근거 조회",
             "실시간 NAVER 뉴스 이벤트·ETF 테마 분류",
         ],

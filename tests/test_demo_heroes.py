@@ -71,12 +71,12 @@ def test_demo_heroes_endpoint_exposes_six_named_profiles_and_etf_links() -> None
     heroes = response.json()
     assert len(heroes) == 6
     assert {hero["nickname"] for hero in heroes} == {
-        "박준호(가상)",
-        "이서연(가상)",
-        "정민재(가상)",
-        "김하린(가상)",
-        "최지훈(가상)",
-        "윤정희(가상)",
+        "박준호",
+        "이서연",
+        "정민재",
+        "김하린",
+        "최지훈",
+        "윤정희",
     }
     assert sum(hero["is_demo_login_candidate"] for hero in heroes) == 5
     candidates = [hero for hero in heroes if hero["is_demo_login_candidate"]]
@@ -200,6 +200,6 @@ def test_portfolio_question_without_hero_uses_customer_facing_selection_copy() -
         ChatRequest(message="내 포트폴리오와 리밸런싱 필요 여부를 알려줘")
     )
 
-    assert "가상 고객" in response.answer
+    assert "고객 유형" in response.answer
     assert "scenario_code" not in response.answer
     assert all("scenario_code" not in item for item in response.limitations)

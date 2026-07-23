@@ -151,7 +151,7 @@ class DemoUserFinancialContext(BaseModel):
     def direct_response(self) -> ChatResponse:
         source = SourceEvidence(
             evidence_id="mock:user_context",
-            label="로그인 사용자 연금 목데이터",
+            label="내 연금 계좌 정보",
             locator="database://demo-user-financial-context/current",
             publisher="연금 코파일럿 데모 DB",
             as_of=self.as_of_date,
@@ -184,8 +184,9 @@ class DemoUserFinancialContext(BaseModel):
             if self.defaulted_fields
             else ""
         )
+        display_name = self.nickname.replace("(가상)", "").strip()
         answer = (
-            f"{self.nickname}님의 로그인 목데이터 기준 연금 현황입니다. "
+            f"{display_name}님의 연금 현황입니다. "
             f"DC {self._krw(self.dc_balance_krw)}, "
             f"IRP {self._krw(self.irp_balance_krw)}, "
             f"연금저축 {self._krw(self.pension_savings_balance_krw)}입니다. "
@@ -199,7 +200,7 @@ class DemoUserFinancialContext(BaseModel):
             data_mode="authenticated_mock_context",
             sources=[source],
             numeric_evidence=numeric,
-            limitations=["발표·테스트용 가상 목데이터이며 실제 고객 자산이 아닙니다."],
+            limitations=[],
             conversation_context=ConversationContext(
                 scenario_code=self.scenario_code,
                 last_intent=ChatIntent.MOCK_PORTFOLIO,
@@ -425,7 +426,7 @@ def apply_demo_context_evidence(
                 source.model_copy(
                     update={
                         "evidence_id": replacement_id,
-                        "label": "로그인 사용자 연금 목데이터",
+                        "label": "내 연금 계좌 정보",
                         "locator": ("database://demo-user-financial-context/current"),
                         "publisher": "연금 코파일럿 데모 DB",
                         "as_of": context.as_of_date,
@@ -450,7 +451,7 @@ def apply_demo_context_evidence(
         sources.append(
             SourceEvidence(
                 evidence_id=replacement_id,
-                label="로그인 사용자 연금 목데이터 자산군",
+                label="내 연금 계좌 자산군",
                 locator="database://demo-user-financial-context/current",
                 publisher="연금 코파일럿 데모 DB",
                 as_of=context.as_of_date,
@@ -467,7 +468,7 @@ def apply_demo_context_evidence(
                     else item.evidence_id
                 ),
                 "basis": (
-                    "로그인 사용자 DB 목데이터"
+                    "내 연금 계좌 정보"
                     if item.evidence_id == "user:pension_tax"
                     else item.basis
                 ),
@@ -515,7 +516,7 @@ def apply_demo_context_evidence(
         )
 
     limitations = list(response.limitations)
-    mock_notice = "로그인한 데모 사용자의 가상 목데이터를 사용했습니다."
+    mock_notice = "로그인한 사용자의 계좌 정보를 사용했습니다."
     if uses_demo_context and mock_notice not in limitations:
         limitations.append(mock_notice)
     if uses_financial_context and context.defaulted_fields:
