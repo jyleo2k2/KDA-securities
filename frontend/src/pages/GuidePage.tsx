@@ -809,6 +809,7 @@ export function GuidePage({
   const [input, setInput] = useState("");
   const [rebalancingReminder, setRebalancingReminder] = useState<RebalancingReminderState | null>(null);
   const [reminderBusy, setReminderBusy] = useState(false);
+  const [reminderLoading, setReminderLoading] = useState(true);
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
   const [chatCards, setChatCards] = useState<ChatCard[]>([]);
   const [chatCardsLoading, setChatCardsLoading] = useState(true);
@@ -874,8 +875,12 @@ export function GuidePage({
   };
 
   useEffect(() => {
-    if (!accessToken) { setRebalancingReminder(null); return; }
-    void getRebalancingReminder(accessToken).then(setRebalancingReminder).catch(() => setRebalancingReminder(null));
+    if (!accessToken) { setRebalancingReminder(null); setReminderLoading(false); return; }
+    setReminderLoading(true);
+    void getRebalancingReminder(accessToken)
+      .then(setRebalancingReminder)
+      .catch(() => setRebalancingReminder(null))
+      .finally(() => setReminderLoading(false));
   }, [accessToken]);
 
   async function enableReminder() { if (!accessToken) return; setReminderBusy(true); try { setRebalancingReminder(await updateRebalancingReminder(true, accessToken)); } finally { setReminderBusy(false); } }
@@ -1626,16 +1631,19 @@ export function GuidePage({
               </div>
               <h1>{(userContext?.nickname ?? selectedScenarioData?.name ?? "고객").replace(/\(가상\)/g, "")}님 ! 막막한 노후 준비, <em><br />연그미</em>와 대화하며 풀어보세요.</h1>
 
-              {(userContext || selectedScenarioData) && (
-                <div className="selected-scenario-card">
-                  <div><Icon name="database" size={19} /></div>
-                  <span>
-                    <strong>{userContext?.nickname ?? selectedScenarioData?.name}</strong>
-                    <small>{userContext?.customer_context ?? selectedScenarioData?.description}</small>
-                  </span>
-                </div>
-              )}
-              {rebalancingReminder && <RebalancingReminderCard reminder={rebalancingReminder} busy={reminderBusy} onEnable={() => void enableReminder()} onComplete={() => void completeReminder()} onAsk={() => void submitPrompt("현재 보유 ETF의 중복도와 계좌 한도, 리밸런싱 가이드를 보여줘")} />}
+              {/* 정민재/리밸런싱 카드는 비동기 로드된다. 로딩 중 자리를 예약해 아래 추천 질문이 밀리지 않게 한다. */}
+              <div className={`welcome-intro-cards${(chatCardsLoading || reminderLoading) ? " is-loading" : ""}`}>
+                {(userContext || selectedScenarioData) && (
+                  <div className="selected-scenario-card">
+                    <div><Icon name="database" size={19} /></div>
+                    <span>
+                      <strong>{userContext?.nickname ?? selectedScenarioData?.name}</strong>
+                      <small>{userContext?.customer_context ?? selectedScenarioData?.description}</small>
+                    </span>
+                  </div>
+                )}
+                {rebalancingReminder && <RebalancingReminderCard reminder={rebalancingReminder} busy={reminderBusy} onEnable={() => void enableReminder()} onComplete={() => void completeReminder()} onAsk={() => void submitPrompt("현재 보유 ETF의 중복도와 계좌 한도, 리밸런싱 가이드를 보여줘")} />}
+              </div>
 
               <ChatQuestionRecommendations
                 cards={visibleChatCards.filter((card) => card.intent !== "etf_theme")}
