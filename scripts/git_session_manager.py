@@ -15,32 +15,43 @@ import sys
 import tempfile
 import time
 from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 REGISTRY_NAME = "codex-sessions.json"
 LOCK_NAME = "codex-sessions.lock"
+REGISTRY_VERSION = 2
 LOCAL_SESSION_RULES: dict[str, Any] = {
     "default_branch": "main",
-    "branch_pattern": (
-        r"^(front|back|chat|db|engine|rag|integration|codex)/"
-        r"[a-z0-9._-]+/[a-z0-9][a-z0-9._-]*$"
-    ),
-    "branch_example": "front/jaehyun/strategy-screen",
-    "integration_owner": "jyleo2k2",
-    "owner_only_paths": ["AGENTS.md", "CLAUDE.md"],
-    "grandfathered_branches": [
-        "front/login-flow",
-        "codex/pr-138-conflict-resolution",
-        "chat/legacy-mock-account-read-cutover",
-        "chat/etf-and-calculator-intents",
+    "allowed_tools": ["codex", "claude"],
+    "allowed_workers": [
+        "이재용",
+        "이태호",
+        "최호성",
+        "진재현",
+        "김태형",
+        "정인성",
     ],
+    "task_pattern": r"[a-z0-9][a-z0-9._-]*",
+    "branch_example": "codex/이재용/pr-173-conflict",
+    "integration_worker": "이재용",
+    "owner_only_paths": ["AGENTS.md", "CLAUDE.md"],
     "hotspots": [],
 }
 
 
 class SessionError(RuntimeError):
     """Raised when a local session guard fails."""
+
+
+@dataclass(frozen=True)
+class BranchIdentity:
+    """Identity encoded in a managed work branch."""
+
+    tool: str
+    worker: str
+    task: str
 
 
 def _run(
@@ -125,14 +136,90 @@ def matching_hotspots(paths: Iterable[str], policy: dict[str, Any]) -> set[str]:
     return matches
 
 
-def validate_branch_name(branch: str, policy: dict[str, Any]) -> None:
-    if branch in policy.get("grandfathered_branches", []):
-        return
-    pattern = str(policy["branch_pattern"])
-    if not re.fullmatch(pattern, branch):
-        example = policy.get("branch_example", "front/owner/task")
+def parse_branch_identity(
+    branch: str, policy: dict[str, Any]
+) -> BranchIdentity:
+    parts = branch.split("/")
+    example = policy.get("branch_example", "codex/이재용/task-name")
+    if len(parts) != 3:
         raise SessionError(
-            f"브랜치 이름이 세션 규약과 맞지 않습니다: {branch}. 예: {example}"
+            "구형 또는 규약 위반 브랜치에서는 새 작업을 할 수 없습니다: "
+            f"{branch}. 최신 main에서 새 브랜치를 만드십시오. 예: {example}"
+        )
+    tool, worker, task = parts
+    if tool not in policy.get("allowed_tools", []):
+        raise SessionError(
+            "구형 또는 규약 위반 브랜치에서는 새 작업을 할 수 없습니다: "
+            f"{branch}. 허용 도구=codex, claude. 예: {example}"
+        )
+    if worker not in policy.get("allowed_workers", []):
+        allowed = ", ".join(policy.get("allowed_workers", []))
+        raise SessionError(
+            "구형 또는 규약 위반 브랜치에서는 새 작업을 할 수 없습니다: "
+            f"{branch}. 허용 작업자={allowed}. 예: {example}"
+        )
+    if not re.fullmatch(str(policy["task_pattern"]), task):
+        raise SessionError(
+            "구형 또는 규약 위반 브랜치에서는 새 작업을 할 수 없습니다: "
+            f"{branch}. 작업명은 영문 소문자 또는 숫자로 시작하고 "
+            "영문 소문자·숫자·-_.만 사용할 수 있습니다. "
+            f"예: {example}"
+        )
+    return BranchIdentity(tool=tool, worker=worker, task=task)
+
+
+def validate_branch_name(
+    branch: str, policy: dict[str, Any]
+) -> BranchIdentity:
+    return parse_branch_identity(branch, policy)
+
+
+def validate_session_identity(
+    branch: str,
+    *,
+    tool: str,
+    worker: str,
+    task: str | None,
+    policy: dict[str, Any],
+) -> BranchIdentity:
+    identity = parse_branch_identity(branch, policy)
+    expected = BranchIdentity(
+        tool=tool,
+        worker=worker,
+        task=identity.task if task is None else task,
+    )
+    if identity != expected:
+        raise SessionError(
+            "브랜치와 세션 등록 정보가 다릅니다: "
+            f"branch={identity.tool}/{identity.worker}/{identity.task}, "
+            f"session={expected.tool}/{expected.worker}/{expected.task}"
+        )
+    return identity
+
+
+def _claim_identity(claim: dict[str, Any]) -> BranchIdentity | None:
+    tool = claim.get("tool")
+    worker = claim.get("worker")
+    task = claim.get("task")
+    if not all(isinstance(value, str) and value for value in (tool, worker, task)):
+        return None
+    return BranchIdentity(tool=tool, worker=worker, task=task)
+
+
+def _ensure_claim_identity(
+    claim: dict[str, Any], identity: BranchIdentity
+) -> None:
+    registered = _claim_identity(claim)
+    if registered != identity:
+        rendered = (
+            f"{registered.tool}/{registered.worker}/{registered.task}"
+            if registered is not None
+            else "legacy-registration"
+        )
+        raise SessionError(
+            "브랜치와 세션 등록 정보가 다릅니다: "
+            f"branch={identity.tool}/{identity.worker}/{identity.task}, "
+            f"session={rendered}"
         )
 
 
@@ -143,7 +230,7 @@ def _registry_path(root: Path) -> Path:
 def _load_registry(root: Path) -> dict[str, Any]:
     path = _registry_path(root)
     if not path.exists():
-        return {"version": 1, "sessions": []}
+        return {"version": REGISTRY_VERSION, "sessions": []}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -247,8 +334,9 @@ def _local_conflicts(
             }
         )
         if collisions:
+            worker = claim.get("worker") or claim.get("owner") or "unknown"
             conflicts.append(
-                f"local {claim['branch']} ({claim['owner']}): {', '.join(collisions)}"
+                f"local {claim['branch']} ({worker}): {', '.join(collisions)}"
             )
     return conflicts
 
@@ -319,11 +407,12 @@ def _register_claim(
     *,
     worktree: Path,
     branch: str,
-    owner: str,
+    identity: BranchIdentity,
     paths: list[str],
 ) -> None:
     with _registry_lock(root):
         registry = _load_registry(root)
+        registry["version"] = REGISTRY_VERSION
         conflicts = _local_conflicts(registry, paths, branch)
         if conflicts:
             detail = "\n  - ".join(conflicts)
@@ -337,8 +426,11 @@ def _register_claim(
                 claim.get("branch") == branch
                 or Path(str(claim.get("worktree", ""))) == worktree
             ):
+                _ensure_claim_identity(claim, identity)
                 claim.update(
-                    owner=owner,
+                    tool=identity.tool,
+                    worker=identity.worker,
+                    task=identity.task,
                     paths=paths,
                     status="active",
                     updated_at=utc_now(),
@@ -348,7 +440,9 @@ def _register_claim(
         registry["sessions"].append(
             {
                 "id": branch.replace("/", "--"),
-                "owner": owner,
+                "tool": identity.tool,
+                "worker": identity.worker,
+                "task": identity.task,
                 "branch": branch,
                 "worktree": str(worktree),
                 "paths": paths,
@@ -365,11 +459,12 @@ def _reserve_starting_claim(
     *,
     worktree: Path,
     branch: str,
-    owner: str,
+    identity: BranchIdentity,
     paths: list[str],
 ) -> None:
     with _registry_lock(root):
         registry = _load_registry(root)
+        registry["version"] = REGISTRY_VERSION
         conflicts = _local_conflicts(registry, paths, branch)
         if conflicts:
             detail = "\n  - ".join(conflicts)
@@ -391,7 +486,9 @@ def _reserve_starting_claim(
         registry["sessions"].append(
             {
                 "id": branch.replace("/", "--"),
-                "owner": owner,
+                "tool": identity.tool,
+                "worker": identity.worker,
+                "task": identity.task,
                 "branch": branch,
                 "worktree": str(worktree),
                 "paths": paths,
@@ -446,13 +543,20 @@ def command_claim(args: argparse.Namespace) -> int:
         raise SessionError(
             "main은 관제 전용입니다. 별도 브랜치·워크트리를 사용하십시오."
         )
+    identity = validate_session_identity(
+        branch,
+        tool=args.tool,
+        worker=args.worker,
+        task=None,
+        policy=policy,
+    )
     scopes = [normalize_repo_path(root, value) for value in args.path]
     _preflight_claim(root, branch, scopes, policy, args.approved_by)
     _register_claim(
         root,
         worktree=root,
         branch=branch,
-        owner=args.owner,
+        identity=identity,
         paths=scopes,
     )
     print(f"[session] claimed {branch}: {', '.join(scopes)}")
@@ -466,7 +570,14 @@ def command_start(args: argparse.Namespace) -> int:
         raise SessionError("start는 깨끗한 main 관제 워크트리에서만 실행하십시오.")
     if _git("status", "--porcelain", cwd=root):
         raise SessionError("main 관제 워크트리가 더티합니다. 먼저 원인을 확인하십시오.")
-    branch = args.branch or f"{args.area}/{args.owner}/{args.task}"
+    branch = args.branch or f"{args.tool}/{args.worker}/{args.task}"
+    identity = validate_session_identity(
+        branch,
+        tool=args.tool,
+        worker=args.worker,
+        task=args.task,
+        policy=policy,
+    )
     scopes = [normalize_repo_path(root, value) for value in args.path]
     _preflight_claim(root, branch, scopes, policy, args.approved_by)
     _git("fetch", "origin", policy["default_branch"], cwd=root)
@@ -480,7 +591,7 @@ def command_start(args: argparse.Namespace) -> int:
     worktree = (
         Path(args.worktree).resolve()
         if args.worktree
-        else root.parent / f"{root.name}-{args.task}"
+        else root.parent / f"{root.name}-{args.tool}-{args.worker}-{args.task}"
     )
     if worktree.exists():
         raise SessionError(f"워크트리 경로가 이미 존재합니다: {worktree}")
@@ -488,7 +599,7 @@ def command_start(args: argparse.Namespace) -> int:
         root,
         worktree=worktree,
         branch=branch,
-        owner=args.owner,
+        identity=identity,
         paths=scopes,
     )
     try:
@@ -505,7 +616,7 @@ def command_start(args: argparse.Namespace) -> int:
             root,
             worktree=worktree,
             branch=branch,
-            owner=args.owner,
+            identity=identity,
             paths=scopes,
         )
     except Exception:
@@ -571,13 +682,14 @@ def command_guard(args: argparse.Namespace) -> int:
     raw_file = _hook_file_from_stdin() if args.hook_input else args.file
     if branch == policy["default_branch"]:
         raise SessionError("main 관제 워크트리에서는 파일을 수정할 수 없습니다.")
-    validate_branch_name(branch, policy)
+    identity = validate_branch_name(branch, policy)
     claim = _claim_for_worktree(root)
     if claim is None:
         raise SessionError(
             "등록되지 않은 작업 세션입니다. 수정 전에 "
             "git-session-manager claim을 실행하십시오."
         )
+    _ensure_claim_identity(claim, identity)
     outside = sorted(
         path
         for path in _changed_paths(root)
@@ -596,11 +708,11 @@ def command_guard(args: argparse.Namespace) -> int:
             )
         if (
             relative in policy.get("owner_only_paths", [])
-            and claim.get("owner") != policy.get("integration_owner")
+            and identity.worker != policy.get("integration_worker")
         ):
             raise SessionError(
                 "총괄 전용 파일은 "
-                f"{policy.get('integration_owner')} 세션만 수정합니다: "
+                f"{policy.get('integration_worker')} 세션만 수정합니다: "
                 f"{relative}"
             )
     last = dt.datetime.fromisoformat(claim["updated_at"])
@@ -623,25 +735,29 @@ def command_check_start(_: argparse.Namespace) -> int:
         state = "dirty" if dirty else "clean"
         print(f"[하네스] main 관제 워크트리({state})입니다. 파일 수정은 차단됩니다.")
         return 0
-    try:
-        validate_branch_name(branch, policy)
-    except SessionError as exc:
-        print(f"[하네스] 경고: {exc}")
+    identity = validate_branch_name(branch, policy)
     claim = _claim_for_worktree(root)
     if claim is None:
-        print("[하네스] 수정 전에 git-session-manager claim이 필요합니다.")
-    else:
-        print(
-            f"[하네스] active session: {claim['owner']} / {branch} / {claim['paths']}"
+        raise SessionError(
+            "등록되지 않은 작업 세션입니다. 작업 시작 전에 "
+            "git-session-manager claim을 실행하십시오."
         )
+    _ensure_claim_identity(claim, identity)
+    print(
+        f"[하네스] active session: {identity.tool} / {identity.worker} / "
+        f"{branch} / {claim['paths']}"
+    )
     return 0
 
 
 def command_heartbeat(_: argparse.Namespace) -> int:
     root = repo_root()
+    policy = local_session_rules()
+    identity = validate_branch_name(current_branch(root), policy)
     claim = _claim_for_worktree(root)
     if claim is None:
         raise SessionError("현재 워크트리에 활성 claim이 없습니다.")
+    _ensure_claim_identity(claim, identity)
     with _registry_lock(root):
         registry = _load_registry(root)
         for item in registry["sessions"]:
@@ -685,8 +801,10 @@ def command_status(args: argparse.Namespace) -> int:
         print("[session] 등록된 세션이 없습니다.")
         return 0
     for item in sessions:
+        tool = item.get("tool") or "legacy"
+        worker = item.get("worker") or item.get("owner") or "unknown"
         print(
-            f"[{item['status']}] live={item['live']} owner={item['owner']} "
+            f"[{item['status']}] live={item['live']} tool={tool} worker={worker} "
             f"branch={item['branch']} paths={','.join(item['paths'])} "
             f"updated={item['updated_at']}"
         )
@@ -698,8 +816,12 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     start = subparsers.add_parser("start", help="create an isolated branch/worktree")
-    start.add_argument("--owner", required=True)
-    start.add_argument("--area", required=True)
+    start.add_argument(
+        "--tool", choices=LOCAL_SESSION_RULES["allowed_tools"], required=True
+    )
+    start.add_argument(
+        "--worker", choices=LOCAL_SESSION_RULES["allowed_workers"], required=True
+    )
     start.add_argument("--task", required=True)
     start.add_argument("--path", action="append", required=True)
     start.add_argument("--branch")
@@ -708,7 +830,12 @@ def build_parser() -> argparse.ArgumentParser:
     start.set_defaults(func=command_start)
 
     claim = subparsers.add_parser("claim", help="claim paths in the current worktree")
-    claim.add_argument("--owner", required=True)
+    claim.add_argument(
+        "--tool", choices=LOCAL_SESSION_RULES["allowed_tools"], required=True
+    )
+    claim.add_argument(
+        "--worker", choices=LOCAL_SESSION_RULES["allowed_workers"], required=True
+    )
     claim.add_argument("--path", action="append", required=True)
     claim.add_argument("--approved-by")
     claim.set_defaults(func=command_claim)

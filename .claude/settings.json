@@ -8,7 +8,7 @@
             "type": "command",
             "command": "uv run python scripts/git_session_manager.py guard --hook-input",
             "timeout": 30,
-            "statusMessage": "Git 세션 claim 확인 중..."
+            "statusMessage": "Git 브랜치·세션 신원과 claim 확인 중..."
           }
         ]
       }
@@ -33,7 +33,7 @@
             "type": "command",
             "command": "uv run python scripts/git_session_manager.py check-start",
             "timeout": 30,
-            "statusMessage": "Git 세션 상태 확인 중..."
+            "statusMessage": "Git 작업 시작 규칙 확인 중..."
           }
         ]
       }
