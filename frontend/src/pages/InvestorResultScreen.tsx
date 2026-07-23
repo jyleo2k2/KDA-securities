@@ -121,7 +121,7 @@ export function InvestorResultScreen({ assessment, displayName, onBack, onStart 
           </div>
 
           <div className="irs-desc">
-            {profileDescription} 신한 개인 일반투자자정보 확인서의 배점 기준으로 산출한 결과이며, ETF 교육용 안내는 이 성향과 보유 연금계좌 규칙 안에서만 제공합니다.
+            {profileDescription} 신한 개인 일반투자자정보 확인서의 배점 기준으로 산출한 결과이며, ETF 안내는 이 성향과 보유 연금계좌 규칙 안에서만 제공합니다.
           </div>
         </div>
 

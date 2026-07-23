@@ -63,7 +63,7 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
           </section>
 
           <section className="sd-card sd-note">
-            <p>전략 설명은 교육용 안내예요. 미래 수익률을 예측하거나 특정 상품을 추천하지 않으며, 실제 운용·주문은 이용자가 직접 결정해요.</p>
+            <p>전략 설명 안내예요. 미래 수익률을 예측하거나 특정 상품을 추천하지 않으며, 실제 운용·주문은 이용자가 직접 결정해요.</p>
           </section>
         </div>
       </section>

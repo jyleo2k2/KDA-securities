@@ -39,7 +39,7 @@ const QDEFS: QuestionDef[] = [
   { id: "derivative_experience", num: "14", title: "고객님의 파생상품에 대한 투자경험은 얼마나 되시나요?", note: "파생상품 경험은 일반 투자성향 점수와 별도로 기록됩니다.", options: options(["none", "투자경험 없음"], ["under_1y", "1년 미만"], ["1_to_3y", "1년 ~ 3년 미만"], ["over_3y", "3년 이상"]) },
   { id: "vulnerable_investor", num: "15", title: "고객님께서는 취약투자자에 해당되십니까?", note: "취약투자자에게는 손실 가능성과 유의사항을 우선적으로 안내합니다.", options: options(["yes", "예"], ["no", "아니오"]) },
   { id: "validity_consent", num: "16", title: "투자자정보를 24개월간 유효하게 관리하는 데 동의하시나요?", options: options(["agree", "동의"], ["disagree", "미동의"]) },
-  { id: "retirement_start_age", num: "17", title: "연금 수령을 시작할 나이를 선택해주세요.", note: "연금 ETF 교육용 추천에만 사용하는 비배점 항목입니다.", options: options(["55", "만 55세"], ["56", "만 56세"], ["57", "만 57세"], ["58", "만 58세"], ["59", "만 59세"], ["60", "만 60세"]) },
+  { id: "retirement_start_age", num: "17", title: "연금 수령을 시작할 나이를 선택해주세요.", note: "연금 ETF 추천에만 사용하는 비배점 항목입니다.", options: options(["55", "만 55세"], ["56", "만 56세"], ["57", "만 57세"], ["58", "만 58세"], ["59", "만 59세"], ["60", "만 60세"]) },
 ];
 
 type Answers = Record<string, number | number[] | null>;

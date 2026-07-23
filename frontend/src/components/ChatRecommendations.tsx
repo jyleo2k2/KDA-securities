@@ -1,6 +1,43 @@
 import type { ChatCard } from "../api/types";
 import { ChatIcon } from "./ChatIcon";
 
+const ETF_THEME_RAIL_CSS = `
+.etf-theme-rail {
+  display: flex;
+  gap: 10px;
+  margin: 16px -16px 0;
+  padding: 2px 16px 10px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.etf-theme-rail::-webkit-scrollbar { display: none; }
+.etf-theme-rail-card {
+  flex: 0 0 40%;
+  scroll-snap-align: start;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 9px;
+  min-height: 78px;
+  padding: 13px 12px;
+  border: 1.5px solid #e6e8eb;
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.etf-theme-rail-card:hover { border-color: #a9d8ba; background: #f4fbf4; }
+.etf-theme-rail-card > span:last-of-type { display: grid; gap: 3px; min-width: 0; }
+.etf-theme-rail-card small { color: #9aa0a6; font-size: 11.5px; font-weight: 700; }
+.etf-theme-rail-card strong { color: #0f1113; font-size: 14px; font-weight: 800; }
+@media (max-width: 400px) {
+  .etf-theme-rail-card { flex-basis: 44%; }
+}
+`;
+
 interface ThemeCard {
   number: number;
   title: string;
@@ -55,55 +92,35 @@ export function ChatQuestionRecommendations({
 }
 
 export function ChatEtfThemeCards({
-  allVisible,
   onSubmit,
-  onToggle,
   themeCards,
 }: {
-  allVisible: boolean;
   onSubmit: (message: string) => void;
-  onToggle: () => void;
   themeCards: readonly ThemeCard[];
 }) {
-  const initialCount = 5;
-  const remainingCount = themeCards.length - initialCount;
   const renderCard = (card: ThemeCard) => (
     <button
       type="button"
       key={card.title}
+      className="etf-theme-rail-card"
       aria-label={`${card.title} ETF 테마 설명 보기`}
       onClick={() => onSubmit(card.message)}
     >
       <span className="sector-card-icon"><ChatIcon name="chart" size={19} /></span>
       <span><small>ETF 테마 {card.number}</small><strong>{card.title}</strong></span>
-      <ChatIcon name="chevron" size={16} />
     </button>
   );
 
   return (
     <section className="chat-home-card-section etf-theme-section" aria-labelledby="etf-theme-heading">
+      <style>{ETF_THEME_RAIL_CSS}</style>
       <header className="chat-home-section-heading">
         <p>ETF 테마</p>
         <h2 id="etf-theme-heading">ETF 섹터 알아보기</h2>
-        <span>테마의 구성과 유의점을 교육용으로 확인해 보세요.</span>
+        <span>테마의 구성과 유의점을 확인해 보세요.</span>
       </header>
-      <div className="sector-card-grid" aria-label="ETF 섹터 카드">
-        {themeCards.slice(0, initialCount).map(renderCard)}
-        <button
-          type="button"
-          className="sector-card-toggle"
-          aria-expanded={allVisible}
-          aria-label={allVisible ? "ETF 테마 목록 접기" : `나머지 ETF 테마 ${remainingCount}개 더보기`}
-          onClick={onToggle}
-        >
-          <span className="sector-card-icon"><ChatIcon name="chart" size={19} /></span>
-          <span>
-            <small>{allVisible ? "ETF 테마 목록" : `+${remainingCount}개`}</small>
-            <strong>{allVisible ? "접기" : "더보기"}</strong>
-          </span>
-          <ChatIcon name="chevron" size={16} />
-        </button>
-        {allVisible && themeCards.slice(initialCount).map(renderCard)}
+      <div className="etf-theme-rail" role="list" aria-label="ETF 섹터 카드 목록 (옆으로 넘겨 보기)">
+        {themeCards.map(renderCard)}
       </div>
     </section>
   );

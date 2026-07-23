@@ -207,7 +207,7 @@ function PortfolioSectorGuide({ riskProfile }: { riskProfile: RiskProfile }) {
   return (
     <section className="portfolio-sector-guide" aria-labelledby="portfolio-sector-guide-title">
       <header>
-        <span>교육용 섹터 분산 예시</span>
+        <span>섹터 분산 예시</span>
         <h4 id="portfolio-sector-guide-title">{guideLabel} 섹터 가이드</h4>
         <p>투자성향에 따라 살펴볼 테마의 비중 예시입니다. 실제 엔진 목표비중·후보 ETF·계좌 한도는 바꾸지 않습니다.</p>
       </header>
@@ -366,7 +366,7 @@ function EducationalStrategyGuide({
           ))}
         </div>
         <p className="portfolio-planning-note">
-          *이는 J.P. Morgan의 LTCMA 장기 자본시장 가정과 ETF 운용비용을 반영해 산출한 교육용 계획가정이며, 미래 수익률 예측이나 보장값이 아닙니다.
+          *이는 J.P. Morgan의 LTCMA 장기 자본시장 가정과 ETF 운용비용을 반영해 산출한 계획가정이며, 미래 수익률 예측이나 보장값이 아닙니다.
         </p>
       </section>
 
@@ -445,7 +445,7 @@ function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
         ))}
       </div>
       <p className="portfolio-risk-note">
-        위 과거 지표는 제안 목표비중을 고정해 측정한 위험 참고치이며 수익률 예측이 아닙니다. 스트레스 값도 발생확률이나 미래 손실 예측이 아닌 교육용 정책 시나리오입니다.
+        위 과거 지표는 제안 목표비중을 고정해 측정한 위험 참고치이며 수익률 예측이 아닙니다. 스트레스 값도 발생확률이나 미래 손실 예측이 아닌 정책 시나리오입니다.
       </p>
     </section>
   );
@@ -465,7 +465,7 @@ function PortfolioPlanningReview({
   return (
     <section className="portfolio-planning-review" aria-labelledby={titleId}>
       <header>
-        <span>승인된 교육용 계획가정</span>
+        <span>승인된 계획가정</span>
         <h4 id={titleId}>{title}</h4>
         <p>
           {description} · CMA {planning.cma_source_horizon_min_years}~{planning.cma_source_horizon_max_years}년 기준
@@ -534,7 +534,7 @@ function PensionPlanReview({
       <header>
         <span>현재 보유 ETF 기준</span>
         <h4 id="portfolio-pension-plan-title">장기 수령 계획 예시</h4>
-        <p>현재 평가금액 비중과 CMA·검증 비용을 반영한 교육용 계획가정입니다.</p>
+        <p>현재 평가금액 비중과 CMA·검증 비용을 반영한 계획가정입니다.</p>
       </header>
       <div className="portfolio-review-summary">
         <div><span>수령 시작 시점 계획 잔액</span><strong>{won(calculator.headline.total_krw)}</strong></div>
@@ -795,7 +795,7 @@ export function PortfolioHoldingsPanel({
           }}
           disabled={disabled}
         />
-        <small>새 납입금으로 비중 차이를 먼저 줄이는 교육용 예시를 계산합니다.</small>
+        <small>새 납입금으로 비중 차이를 먼저 줄이는 예시를 계산합니다.</small>
       </div>
       <fieldset>
         <legend>장기 수령 계획 입력</legend>
@@ -948,7 +948,7 @@ export function EducationalPortfolioReview({
         <p className="portfolio-review-warning">투자성향 목표보다 계좌 위험자산 한도가 먼저 적용되었습니다.</p>
       )}
       <p className="portfolio-review-disclaimer">
-        매도 주문을 만들지 않으며, 추가 납입금으로 목표 비중과의 차이를 먼저 줄이는 교육용 가이드입니다.
+        매도 주문을 만들지 않으며, 추가 납입금으로 목표 비중과의 차이를 먼저 줄이는 가이드입니다.
       </p>
     </section>
   );

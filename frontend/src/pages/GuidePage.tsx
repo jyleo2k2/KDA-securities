@@ -813,7 +813,6 @@ export function GuidePage({
   const [chatCards, setChatCards] = useState<ChatCard[]>([]);
   const [chatCardsLoading, setChatCardsLoading] = useState(true);
   const [chatCardsRequestVersion, setChatCardsRequestVersion] = useState(0);
-  const [allEtfThemesVisible, setAllEtfThemesVisible] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState(initialScenarioCode ?? "");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [serverReady, setServerReady] = useState<boolean | null>(null);
@@ -1645,9 +1644,7 @@ export function GuidePage({
               />
 
               <ChatEtfThemeCards
-                allVisible={allEtfThemesVisible}
                 onSubmit={(message) => void submitPrompt(message)}
-                onToggle={() => setAllEtfThemesVisible((visible) => !visible)}
                 themeCards={ETF_THEME_CARDS}
               />
 
