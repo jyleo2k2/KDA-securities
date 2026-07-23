@@ -56,4 +56,42 @@ describe("ChatVisualization allocation donut", () => {
     expect(screen.getByText("비중 55%")).toBeInTheDocument();
     expect(screen.queryByLabelText("출처")).not.toBeInTheDocument();
   });
+
+  it("renders the tax summary as three horizontal rows without overflow", () => {
+    const { container } = render(
+      <ChatVisualization
+        visualization={{
+          ...visualization,
+          kind: "tax_summary",
+          title: "세액공제 요약",
+          items: [
+            { label: "세액공제 대상 납입액", value: 8760000, unit: "KRW", role: "value" },
+            { label: "세액공제율", value: 13.2, unit: "%", role: "value" },
+            { label: "세액공제액", value: 1156320, unit: "KRW", role: "value" },
+          ],
+        }}
+        sources={sources}
+      />,
+    );
+
+    const grid = container.querySelector(".tax-summary-grid");
+    const rows = container.querySelectorAll(".tax-summary-grid > div");
+    expect(grid).toHaveStyle({
+      gridTemplateColumns: "minmax(0, 1fr)",
+      overflowX: "hidden",
+    });
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toHaveStyle({
+      display: "grid",
+      gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+    });
+    expect(rows[0].querySelector("span")).toHaveStyle({
+      textAlign: "left",
+      whiteSpace: "nowrap",
+    });
+    expect(rows[0].querySelector("strong")).toHaveStyle({
+      textAlign: "right",
+      whiteSpace: "nowrap",
+    });
+  });
 });

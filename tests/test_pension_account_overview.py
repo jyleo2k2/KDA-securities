@@ -43,13 +43,13 @@ def test_recommended_account_comparison_uses_deterministic_overview() -> None:
     message = "DC형, IRP, 연금저축은 뭐가 달라?"
     plan = plan_question(message)
     response = _service().ask(ChatRequest(message=message))
-    section_text = "\n".join(section.content for section in response.sections)
+    section_text = "\n".join(section.plain_text() for section in response.sections)
 
     assert plan.intent is ChatIntent.ACCOUNT_RULE
     assert plan.account_rule_topic is AccountRuleTopic.PENSION_ACCOUNT_OVERVIEW
-    assert response.data_mode == "verified_pension_account_overview"
+    assert response.data_mode == "verified_pension_account_brief"
     assert "IRP" in section_text
-    assert "원칙적으로 적립금의 70%까지" in section_text
+    assert "핵심 특징:" in section_text
     assert response.sources
 
 
@@ -89,7 +89,7 @@ def test_explicit_withdrawal_calculation_keeps_engine_route() -> None:
 
 
 def test_overview_response_is_structured_without_generic_number_cards() -> None:
-    response = _service().ask(ChatRequest(message="연금계좌 규칙 알려줘"))
+    response = _service().ask(ChatRequest(message="연금계좌 전체적으로 정리해줘"))
     section_text = "\n".join(section.content for section in response.sections)
 
     assert response.intent is ChatIntent.ACCOUNT_RULE
@@ -142,7 +142,7 @@ def test_overview_response_is_structured_without_generic_number_cards() -> None:
 
 
 def test_overview_keeps_plain_content_for_legacy_clients() -> None:
-    response = _service().ask(ChatRequest(message="연금계좌 규칙 알려줘"))
+    response = _service().ask(ChatRequest(message="연금계좌 전체적으로 정리해줘"))
 
     assert all(section.content.strip() for section in response.sections)
     assert "연금저축" in response.sections[1].content

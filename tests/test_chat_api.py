@@ -402,12 +402,12 @@ def test_authenticated_pension_tax_personalizes_any_user(nickname: str) -> None:
         f"{nickname}님의 올해 연금세액공제 혜택을 정리했어요."
     )
     assert [item["label"] for item in payload["response"]["numeric_evidence"][:6]] == [
-        "소득금액",
-        "확인된 소득구간 표시율",
-        "연금저축 당해연도 납입액",
-        "IRP 당해연도 납입액",
-        "합산 세액공제 대상 납입액",
-        "확인된 소득구간 지방세 포함 예상 절세효과",
+        "총급여액",
+        "세액공제율",
+        "올해 연금저축 납입액",
+        "올해 IRP 납입액",
+        "세액공제대상 납입액",
+        "세액공제액",
     ]
 
 

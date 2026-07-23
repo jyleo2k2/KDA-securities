@@ -32,6 +32,9 @@ PENSION_TAX_REFUND_NOTICE = (
     "실제 환급액은 소득세 결정세액 등에 따라 달라질 수 있으므로 자세한 "
     "내용은 금융기관에 확인하거나 세무전문가와 상담해야 해요."
 )
+PENSION_TAX_LOCAL_INCOME_TAX_NOTICE = (
+    "세액공제율과 세액공제액은 지방소득세를 고려해서 계산했어요."
+)
 
 
 def pension_tax_response(
@@ -91,18 +94,6 @@ def pension_tax_response(
     if tax_credit is not None:
         credit_text = tax_credit_text(tax_credit)
         answer_parts.append(credit_text)
-        sections.append(
-            AnswerSection(
-                kind=SectionKind.SERVICE_EXPLANATION,
-                title="당해연도 세액공제 간이 계산",
-                content=credit_text,
-                evidence_ids=[
-                    "user:pension_tax",
-                    "engine:pension_tax",
-                    "rule:pension_tax:credit",
-                ],
-            )
-        )
         tax_input = resolved_inputs.tax_credit
         tax_numeric = tax_credit_numeric(tax_credit)
         if (
@@ -121,42 +112,46 @@ def pension_tax_response(
             numeric.extend(
                 [
                     NumericEvidence(
-                        label="소득금액",
+                        label=(
+                            "총급여액"
+                            if tax_input.income_basis.value == "gross_salary"
+                            else "종합소득금액"
+                        ),
                         value=tax_input.income_amount_krw,
                         unit="KRW",
                         evidence_id="user:pension_tax",
                         basis="세액공제율 적용을 위한 사용자 소득정보",
                     ),
                     NumericEvidence(
-                        label="확인된 소득구간 표시율",
+                        label="세액공제율",
                         value=rate.local_inclusive_display_rate_percent,
                         unit="%",
                         evidence_id="rule:pension_tax:credit",
                         basis="소득세율과 개인지방소득세 효과 포함",
                     ),
                     NumericEvidence(
-                        label="연금저축 당해연도 납입액",
+                        label="올해 연금저축 납입액",
                         value=tax_credit.pension_savings_contribution_krw,
                         unit="KRW",
                         evidence_id="user:pension_tax",
                         basis="사용자 입력",
                     ),
                     NumericEvidence(
-                        label="IRP 당해연도 납입액",
+                        label="올해 IRP 납입액",
                         value=tax_credit.irp_contribution_krw,
                         unit="KRW",
                         evidence_id="user:pension_tax",
                         basis="사용자 입력",
                     ),
                     NumericEvidence(
-                        label="합산 세액공제 대상 납입액",
+                        label="세액공제대상 납입액",
                         value=tax_credit.total_eligible_contribution_krw,
                         unit="KRW",
                         evidence_id="engine:pension_tax",
                         basis="2026년 일반 합산 900만원 및 적격 ISA 추가 한도",
                     ),
                     NumericEvidence(
-                        label="확인된 소득구간 지방세 포함 예상 절세효과",
+                        label="세액공제액",
                         value=rate.estimated_total_tax_reduction_effect_krw,
                         unit="KRW",
                         evidence_id="engine:pension_tax",
@@ -170,6 +165,7 @@ def pension_tax_response(
         else:
             numeric.extend(tax_numeric)
         limitations.append(PENSION_TAX_REFUND_NOTICE)
+        limitations.append(PENSION_TAX_LOCAL_INCOME_TAX_NOTICE)
         limitations.append(
             "세액공제 계산과 같은 해 중도해지 추정은 별도 가정이에요."
         )
@@ -397,7 +393,11 @@ def tax_credit_numeric(
         numeric.extend(
             [
                 NumericEvidence(
-                    label=f"{scenario.label} 법정 세액공제율",
+                    label=(
+                        "지방세 제외 세액공제율"
+                        if result.rate_determined
+                        else f"{scenario.label} 지방세 제외 세액공제율"
+                    ),
                     value=scenario.income_tax_rate_percent,
                     unit="%",
                     evidence_id="rule:pension_tax:credit",
