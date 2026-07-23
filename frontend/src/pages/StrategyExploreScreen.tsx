@@ -9,6 +9,13 @@ interface StrategyExploreScreenProps {
 }
 
 const STRATEGY_DETAIL_URL = "/strategy-detail";
+const ACTIVE_STORE_KEY = "se-active-strategy";
+
+function initialActiveIndex(): number {
+  const id = typeof sessionStorage !== "undefined" ? sessionStorage.getItem(ACTIVE_STORE_KEY) : null;
+  const index = STRATEGIES.findIndex((strategy) => strategy.id === id);
+  return index >= 0 ? index : 0;
+}
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -21,7 +28,7 @@ function highlightDesc(desc: string, keywords: string[]): ReactNode[] {
 }
 
 export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): JSX.Element {
-  const [active, setActive] = useState(0);
+  const [active, setActive] = useState(initialActiveIndex);
   const current = STRATEGIES[active];
   const pointerStartX = useRef<number | null>(null);
 
@@ -29,6 +36,9 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
     document.documentElement.style.setProperty("--se-accent", current.accent);
     return () => { document.documentElement.style.removeProperty("--se-accent"); };
   }, [current.accent]);
+
+  // 뒤로 갔다 돌아오면 마지막으로 보던 전략을 중심에 복원한다.
+  useEffect(() => { sessionStorage.setItem(ACTIVE_STORE_KEY, current.id); }, [current.id]);
 
   function select(nextIndex: number): void {
     setActive(normalizeIndex(nextIndex, STRATEGIES.length));
@@ -52,7 +62,7 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
     if (pointerStartX.current === null) return;
     const delta = event.clientX - pointerStartX.current;
     pointerStartX.current = null;
-    if (Math.abs(delta) < SWIPE_THRESHOLD_PX) return;
+    if (Math.abs(delta) < SWIPE_THRESHOLD_PX) { openStrategyDetail(current.id); return; }
     move(delta < 0 ? 1 : -1);
   }
 
