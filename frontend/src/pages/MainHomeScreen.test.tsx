@@ -172,4 +172,33 @@ describe("MainHomeScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: "프로필 열기" }));
     expect(onOpenProfile).toHaveBeenCalledOnce();
   });
+
+  it("shows available strategy planning returns and concise reasons for unavailable returns", () => {
+    render(
+      <MainHomeScreen
+        error={null}
+        hero={null}
+        investmentProfile={null}
+        loading={false}
+        onOpenChat={vi.fn()}
+        onOpenPlanner={vi.fn()}
+        onOpenProfile={vi.fn()}
+        onOpenStrategyExplore={vi.fn()}
+        onOpenUserPick={vi.fn()}
+        onResurvey={vi.fn()}
+        userContext={null}
+      />,
+    );
+
+    expect(screen.getByText("전략별 계획수익률")).toBeInTheDocument();
+    expect(screen.getByText("6.75%")).toBeInTheDocument();
+    expect(screen.getByText("6.60%")).toBeInTheDocument();
+    expect(screen.getByText("6.00%")).toBeInTheDocument();
+    expect(screen.getByText("6.25%")).toBeInTheDocument();
+    expect(screen.getByText("5.65%")).toBeInTheDocument();
+    expect(screen.getAllByText("산정 전")).toHaveLength(5);
+    expect(screen.getByText("※ 지역·자산 비중 확정 후 계산해요.")).toBeInTheDocument();
+    expect(screen.getAllByText("※ 연금 적격 상품과 별도 CMA가 아직 확정되지 않았어요.")).toHaveLength(2);
+    expect(screen.queryByText("교육용 안내")).not.toBeInTheDocument();
+  });
 });
