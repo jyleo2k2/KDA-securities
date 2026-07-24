@@ -27,6 +27,7 @@ class RawArtifact:
     object_path: str
     sha256: str
     byte_count: int
+    original_filename: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,6 +108,7 @@ def _raw_artifact(
 ) -> RawArtifact:
     content = path.read_bytes()
     normalized_relative = relative_path.as_posix()
+    storage_relative = _storage_relative_path(relative_path, path=path)
     artifact_source = (
         source
         if normalized_relative == path.name
@@ -114,10 +116,20 @@ def _raw_artifact(
     )
     return RawArtifact(
         source=artifact_source,
-        object_path=f"runs/{run_id}/{source}/{normalized_relative}",
+        object_path=f"runs/{run_id}/{source}/{storage_relative.as_posix()}",
         sha256=hashlib.sha256(content).hexdigest(),
         byte_count=len(content),
+        original_filename=path.name,
     )
+
+
+def _storage_relative_path(relative_path: Path, *, path: Path) -> Path:
+    """Use an ASCII object key for a direct source file without losing its name."""
+
+    if relative_path.as_posix() != path.name or path.name.isascii():
+        return relative_path
+    digest = hashlib.sha256(path.name.encode("utf-8")).hexdigest()[:16]
+    return Path(f"source-{digest}{path.suffix.lower()}")
 
 
 class OfficialRawStorage:
@@ -312,7 +324,7 @@ def _source_path_for_artifact(
     directories: dict[str, Path],
 ) -> Path:
     _, _, source, relative_path = artifact.object_path.split("/", 3)
-    if source in files and relative_path == files[source].name:
+    if source in files:
         return files[source]
     directory = directories.get(source)
     if directory is None:
@@ -340,12 +352,17 @@ def _manifest_from_json(payload: dict[str, object]) -> RawRunManifest:
         object_path = raw_artifact.get("object_path")
         sha256 = raw_artifact.get("sha256")
         byte_count = raw_artifact.get("byte_count")
+        original_filename = raw_artifact.get("original_filename")
         if (
             not isinstance(source, str)
             or not isinstance(object_path, str)
             or not isinstance(sha256, str)
             or not isinstance(byte_count, int)
             or len(sha256) != 64
+            or (
+                original_filename is not None
+                and not isinstance(original_filename, str)
+            )
         ):
             raise OfficialRawStorageError("official raw manifest artifact is invalid")
         artifacts.append(
@@ -354,6 +371,7 @@ def _manifest_from_json(payload: dict[str, object]) -> RawRunManifest:
                 object_path=object_path,
                 sha256=sha256,
                 byte_count=byte_count,
+                original_filename=original_filename,
             )
         )
     return RawRunManifest(

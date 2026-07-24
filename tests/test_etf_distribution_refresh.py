@@ -180,6 +180,23 @@ def test_private_raw_manifest_preserves_nested_official_raw_paths(tmp_path) -> N
     )
 
 
+def test_private_raw_manifest_uses_ascii_key_for_non_ascii_direct_filename(
+    tmp_path,
+) -> None:
+    source = tmp_path / "펀드별 보수비용비교.xls"
+    source.write_bytes(b"official-workbook")
+
+    manifest = build_raw_run_manifest(
+        run_id="20260724T010203Z",
+        files={"kofia-fund-costs": source},
+        collected_at=datetime(2026, 7, 24, 1, 2, 3, tzinfo=UTC),
+    )
+
+    artifact = manifest.artifacts[0]
+    assert artifact.object_path.endswith("/source-1489103cb41960bb.xls")
+    assert artifact.original_filename == "펀드별 보수비용비교.xls"
+
+
 def test_private_raw_storage_uploads_artifacts_and_manifest_without_public_url(
     tmp_path,
 ) -> None:
