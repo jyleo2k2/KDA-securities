@@ -27,6 +27,10 @@ describe("StrategyDetailScreen", () => {
     render(<StrategyDetailScreen onBack={vi.fn()} />);
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("팩터 전략");
+    expect(screen.getByRole("heading", { name: "낯선 말 쉽게 보기" })).toBeInTheDocument();
+    expect(screen.getByText("팩터")).toBeInTheDocument();
+    expect(screen.getByText(/회사를 고를 때 보는 공통 특징/)).toBeInTheDocument();
+    expect(screen.getByText("최소변동성")).toBeInTheDocument();
   });
 
   it("falls back to the first strategy when the hash has no valid id", () => {

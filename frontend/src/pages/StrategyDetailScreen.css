@@ -170,6 +170,44 @@
   margin: 0;
 }
 
+.sd-words {
+  background: #fbfdf9;
+}
+
+.sd-words dl {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+}
+
+.sd-words dl div {
+  display: grid;
+  grid-template-columns: minmax(78px, 0.72fr) minmax(0, 1.28fr);
+  gap: 10px;
+  align-items: start;
+  padding-top: 9px;
+  border-top: 1px solid #e9eee8;
+}
+
+.sd-words dl div:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.sd-words dt {
+  color: var(--sd-accent, #18a860);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.sd-words dd {
+  margin: 0;
+  color: #4a544f;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
 .sd-note p {
   font-size: 11px;
   font-weight: 500;
