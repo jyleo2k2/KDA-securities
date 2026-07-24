@@ -24,9 +24,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* 중앙 다이나믹 아일랜드: Figma 122×36(R32) 축약. 항상 검정. */
+/* 중앙 다이나믹 아일랜드: Figma 122×36(R32) 축약. 항상 검정.
+   좌측 시각과 우측 아이콘의 폭이 달라도 화면 정중앙에 고정되도록
+   절대 위치로 배치한다(space-between 만으로는 좌측으로 치우친다). */
 .ios-statusbar-island {
-  position: relative;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   flex: none;
   width: 108px;
   height: 32px;
