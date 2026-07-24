@@ -63,6 +63,7 @@
   #ios-statusbar .isb-icons { display: flex; align-items: center; gap: 7px; }
   #appbar {
     flex: 0 0 auto;
+    position: relative;
     display: flex; align-items: center; justify-content: center;
     padding: 16px 20px 8px;
   }
@@ -70,6 +71,13 @@
     margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.03em;
     color: #4A3300;
   }
+  #btn-back {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    width: 36px; height: 36px; min-width: 36px; max-width: none; margin: 0; padding: 0;
+    border-radius: 50%; background: rgba(255,255,255,.72); color: #4A3300;
+    display: grid; place-items: center; font-size: 30px; font-weight: 500; line-height: 1;
+  }
+  #btn-back:focus-visible { outline: 3px solid #4A3300; outline-offset: 2px; }
   #main {
     flex: 1 1 auto; min-height: 0;
     display: flex; align-items: center; justify-content: center;
@@ -178,6 +186,11 @@
   button .ic { font-size: 19px; line-height: 1; }
   button:active { transform: scale(.94); background: rgba(255,255,255,1); }
   button.primary { background: #FFC916; color: #4A3300; box-shadow: 0 3px 12px rgba(230,170,0,.4); }
+  #btn-shake {
+    max-width: none; padding: 4px 8px;
+    background: transparent; box-shadow: none;
+  }
+  #btn-shake:active { background: transparent; }
   #hint {
     flex: 0 0 auto; text-align: center;
     font-size: 11.5px; color: rgba(107,74,0,.6);
@@ -201,6 +214,7 @@
 </div>
 
 <header id="appbar">
+<button id="btn-back" type="button" aria-label="메인 홈으로 돌아가기">‹</button>
 <h1>슬랑이</h1>
 </header>
 
@@ -560,6 +574,14 @@ document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preven
       if (i % 4 === 0) poke(0.008 * (i%2 ? 1 : -1));
       if (++i > 14){ clearInterval(iv); setTilt(0,0); }
     }, 45);
+  });
+
+  document.getElementById('btn-back').addEventListener('click', () => {
+    if (window.parent === window) {
+      window.history.back();
+      return;
+    }
+    window.parent.postMessage({ type: 'slangi-back' }, window.location.origin);
   });
 })();
 </script>
