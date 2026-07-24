@@ -1577,12 +1577,19 @@ def educational_portfolio(
             )
         }
     )
+    answer = (
+        f"설문 결과는 {profile_label}이에요. 그래서 {strategy_label} "
+        "방식으로 연금 돈을 나눠 보는 것이 맞아요."
+    )
+    if request.current_holdings:
+        answer = (
+            f"입력한 {account_label} 보유자산을 목표 비중과 비교했어요. "
+            "현재 비중·목표 비중·이탈폭을 확인하고, 이탈이 큰 자산군부터 점검해 보세요."
+        )
+
     return ChatResponse(
         intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
-        answer=(
-            f"설문 결과는 {profile_label}이에요. 그래서 {strategy_label} "
-            "방식으로 연금 돈을 나눠 보는 것이 맞아요."
-        ),
+        answer=answer,
         data_mode="engine_educational_planning",
         sources=sources,
         numeric_evidence=numeric,

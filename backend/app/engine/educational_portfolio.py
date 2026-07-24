@@ -22,7 +22,7 @@ from .planning_return import (
 from .strategy_presentation import get_strategy_presentation
 
 ENGINE_NAME = "educational_pension_portfolio"
-ENGINE_VERSION = "2026-07-23.3"
+ENGINE_VERSION = "2026-07-24.1"
 POLICY_VERSION = "2026-07-23.1"
 PERCENT_QUANTUM = Decimal("0.0001")
 DRIFT_THRESHOLD_PERCENT = Decimal("5")
@@ -67,6 +67,7 @@ class CurrentHolding(BaseModel):
 
     isu_code: str = Field(min_length=1)
     amount_krw: Decimal = Field(ge=0, allow_inf_nan=False)
+    asset_class: AssetClass | None = None
 
 
 class EducationalPortfolioInput(BaseModel):
@@ -861,20 +862,23 @@ def calculate_current_holdings_planning_return(
 ) -> PortfolioPlanningEvaluation:
     """Build a cost-verified CMA planning assumption for the supplied ETF weights."""
 
-    total_amount = sum((holding.amount_krw for holding in holdings), Decimal("0"))
-    if total_amount <= 0:
-        raise ValueError("current holdings must have a positive total")
-
     candidates: list[EducationalEtfCandidate] = []
+    total_amount = Decimal("0")
     for holding in holdings:
         if holding.amount_krw == 0:
             continue
         product = products.get(holding.isu_code)
         if product is None:
+            if holding.asset_class is not None:
+                # Cash, deposits, and non-ETF bonds are included in the
+                # allocation review, but have no ETF fee data for this
+                # ETF-only planning-return calculation.
+                continue
             raise ValueError(
                 "ETF is not in the account-specific universe: "
                 f"{holding.isu_code}"
             )
+        total_amount += holding.amount_krw
         cost = product.get("cost") or {}
         if (
             _numeric(cost.get("effective_total_cost_percent")) is None
@@ -906,6 +910,9 @@ def calculate_current_holdings_planning_return(
                 reasons=["current_holding_weight"],
             )
         )
+
+    if total_amount <= 0:
+        raise ValueError("current holdings do not include a priced ETF")
 
     return calculate_portfolio_planning_return(
         candidates=candidates,
@@ -940,6 +947,24 @@ def _allocation_for_risk(
         "fixed_income": fixed_income,
         "cash": cash,
     }
+
+
+def _asset_class_sleeve(asset_class: AssetClass | None) -> str | None:
+    """Map account snapshots to the same broad sleeves used for review.
+
+    An ETF product classification always takes precedence.  This fallback is
+    deliberately limited to asset classes whose role is unambiguous; blended
+    TDF/default-option products stay unclassified rather than being guessed.
+    """
+
+    return {
+        AssetClass.CASH: "cash",
+        AssetClass.DEPOSIT: "cash",
+        AssetClass.BOND: "fixed_income",
+        AssetClass.DOMESTIC_EQUITY: "core_equity",
+        AssetClass.GLOBAL_EQUITY: "core_equity",
+        AssetClass.ALTERNATIVE: "real_assets",
+    }.get(asset_class)
 
 
 def _stress_loss(sleeves: dict[str, Decimal]) -> Decimal:
@@ -1447,6 +1472,8 @@ def calculate_rebalancing_guidance(
     for holding in request.current_holdings:
         product = products.get(holding.isu_code)
         sleeve = _product_sleeve(product) if product is not None else None
+        if sleeve is None:
+            sleeve = _asset_class_sleeve(holding.asset_class)
         if sleeve is None:
             unclassified += holding.amount_krw
         else:
