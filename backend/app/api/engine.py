@@ -41,6 +41,7 @@ from ..engine import (
     ProfileSurveyInput,
     RiskCapEvaluation,
     ScenarioEvaluation,
+    StrategyPlanningReturnEvaluation,
     aggregate_accounts,
     assess_etf_with_krx_evidence,
     build_allocation_example,
@@ -49,6 +50,7 @@ from ..engine import (
     calculate_etf_planning_return,
     calculate_pension,
     calculate_pension_tax_credit,
+    calculate_strategy_planning_returns,
     estimate_non_pension_withdrawal_tax,
     evaluate_account_diagnostics,
     evaluate_mock_scenario,
@@ -86,6 +88,16 @@ class PensionCalculatorPortfolioCmaRequest(BaseModel):
 class PensionCalculatorPortfolioCmaEvaluation(BaseModel):
     calculator: PensionCalculatorEvaluation
     planning_return: PortfolioPlanningEvaluation
+
+
+@router.get(
+    "/engine/strategy-planning-returns",
+    response_model=list[StrategyPlanningReturnEvaluation],
+)
+def strategy_planning_returns() -> list[StrategyPlanningReturnEvaluation]:
+    """Return fixed CMA reference baskets for the ten home strategy cards."""
+
+    return calculate_strategy_planning_returns()
 
 
 @router.post("/engine/risk-cap", response_model=RiskCapEvaluation)

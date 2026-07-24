@@ -2,16 +2,49 @@
 
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getStrategyPlanningReturns } from "../api/client";
 import type {
   AggregationEvaluation,
   InvestmentProfileResponse,
+  StrategyPlanningReturnEvaluation,
   UserPensionPortfolio,
 } from "../api/types";
 import { MainHomeScreen } from "./MainHomeScreen";
 
+vi.mock("../api/client", () => ({ getStrategyPlanningReturns: vi.fn() }));
+
 afterEach(cleanup);
+
+const strategyPlanningReturns = [
+  ["market_beta", "7.0000", "0.2500", "6.7500"],
+  ["factor", "7.0000", "0.4000", "6.6000"],
+  ["thematic", "7.0000", "1.0000", "6.0000"],
+  ["top_down", "6.4000", "0.7500", "5.6500"],
+  ["bottom_up", "7.0000", "0.7500", "6.2500"],
+  ["barbell", "5.5000", "0.7500", "4.7500"],
+  ["volatility_managed", "5.3800", "0.7500", "4.6300"],
+  ["market_neutral", "4.1500", "0.7500", "3.4000"],
+  ["event_driven", "5.0500", "0.7500", "4.3000"],
+  ["trend_global_macro", "6.4000", "0.7500", "5.6500"],
+].map(([strategy_id, cma_weighted_return_percent, uncertainty_discount_percent, net_planning_return_percent]) => ({
+  strategy_id,
+  cma_weighted_return_percent,
+  uncertainty_discount_percent,
+  net_planning_return_percent,
+  components: [],
+  cma_policy_id: "jpm_2026_usd_educational_v2",
+  policy_version: "2026-07-24.1",
+  sources: [],
+  annual_review_required: true,
+  is_forecast: false,
+  warnings: [],
+})) as StrategyPlanningReturnEvaluation[];
+
+beforeEach(() => {
+  vi.mocked(getStrategyPlanningReturns).mockResolvedValue(strategyPlanningReturns);
+});
 
 const aggregation = {
   total_amount_krw: "60000000",
@@ -178,13 +211,17 @@ describe("MainHomeScreen", () => {
     expect(onOpenSlangi).toHaveBeenCalledOnce();
   });
 
-  it("keeps the approved strategy cards", () => {
+  it("shows calculated planning returns for every approved strategy card", async () => {
     renderHome();
 
     expect(screen.getByText("전략별 계획수익률")).toBeInTheDocument();
     expect(screen.getByText("회사 특징 고르기")).toBeInTheDocument();
     expect(screen.getByText(/좋은 회사·싼 가격·꾸준한 흐름/)).toBeInTheDocument();
-    expect(screen.getByText("6.75%")).toBeInTheDocument();
-    expect(screen.getAllByText("산정 전")).toHaveLength(5);
+    expect(await screen.findByText("6.75%")).toBeInTheDocument();
+    expect(screen.getByText("4.75%")).toBeInTheDocument();
+    expect(screen.getByText("4.63%")).toBeInTheDocument();
+    expect(screen.getByText("3.40%")).toBeInTheDocument();
+    expect(screen.getByText("4.30%")).toBeInTheDocument();
+    expect(screen.queryByText("산정 전")).not.toBeInTheDocument();
   });
 });

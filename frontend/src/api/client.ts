@@ -22,6 +22,7 @@ import type {
   ProfileEvaluation,
   ProfileSurveyInput,
   ScenarioSummary,
+  StrategyPlanningReturnEvaluation,
   StoredChatMessage,
   UserPensionPortfolio,
 } from "./types";
@@ -298,6 +299,10 @@ export function aggregatePensionAccounts(
   request: AggregationInput,
 ): Promise<AggregationEvaluation> {
   return apiPost("/engine/aggregation", request);
+}
+
+export function getStrategyPlanningReturns(): Promise<StrategyPlanningReturnEvaluation[]> {
+  return apiGet("/engine/strategy-planning-returns");
 }
 
 export function evaluateProfileSurvey(

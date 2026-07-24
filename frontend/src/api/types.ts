@@ -112,6 +112,26 @@ export interface SourceChip {
   as_of: string;
 }
 
+export interface StrategyPlanningReturnComponent {
+  cma_bucket: string;
+  target_percent: string;
+  cma_percent: string;
+}
+
+export interface StrategyPlanningReturnEvaluation {
+  strategy_id: string;
+  cma_weighted_return_percent: string;
+  uncertainty_discount_percent: string;
+  net_planning_return_percent: string;
+  components: StrategyPlanningReturnComponent[];
+  cma_policy_id: string;
+  policy_version: string;
+  sources: SourceChip[];
+  annual_review_required: boolean;
+  is_forecast: boolean;
+  warnings: string[];
+}
+
 export interface AllocationWeights {
   growth_percent: string;
   safe_percent: string;
