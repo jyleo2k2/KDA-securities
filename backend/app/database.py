@@ -17,10 +17,13 @@ def get_database_pool(database_url: str, *, max_size: int = 5) -> ConnectionPool
         max_size=max_size,
         timeout=5,
         check=ConnectionPool.check_connection,
-        # 현재 DATABASE_URL은 Supavisor session pooler(5432)라 prepared statement가
-        # 정상 동작한다. transaction pooler(6543)로 전환하면 반드시
-        # kwargs에 "prepare_threshold": None 을 추가해야 한다(psycopg 3.3 검증 완료).
-        kwargs={"connect_timeout": 5},
+        # DATABASE_URL은 Supabase transaction pooler(6543)를 기본 전제로 한다.
+        # 트랜잭션 풀러는 연결을 트랜잭션 단위로 재사용하므로 세션 풀러(5432)의
+        # 15개 상한(EMAXCONNSESSION)을 압박하지 않는다. 대신 서버측 prepared
+        # statement가 연결 간에 유지되지 않으므로 psycopg가 이를 만들지 않도록
+        # prepare_threshold=None 을 강제한다(psycopg 3.3 검증 완료). 이 값은
+        # 세션 풀러(5432)에서도 무해하므로 두 포트 모두에서 안전하다.
+        kwargs={"connect_timeout": 5, "prepare_threshold": None},
         open=False,
     )
 
