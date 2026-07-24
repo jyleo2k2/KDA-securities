@@ -315,3 +315,49 @@ def test_private_raw_storage_can_promote_a_complete_reference_run(tmp_path) -> N
     assert str(requests[-1].url).endswith(
         "/current/etf-universe-reference-inputs.json"
     )
+
+
+def test_private_raw_storage_materializes_only_a_hash_verified_current_run(
+    tmp_path,
+) -> None:
+    source = tmp_path / "retirement.xlsx"
+    source.write_bytes(b"verified-official-workbook")
+    manifest = build_raw_run_manifest(
+        run_id="20260724T010203Z",
+        files={"kis-retirement-list": source},
+        collected_at=datetime(2026, 7, 24, 1, 2, 3, tzinfo=UTC),
+    )
+    artifact = manifest.artifacts[0]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if path.endswith("/current/etf-universe-reference-inputs.json"):
+            return httpx.Response(
+                200,
+                json={
+                    "manifest_path": "runs/20260724T010203Z/manifest.json",
+                    "run_id": "20260724T010203Z",
+                },
+            )
+        if path.endswith("/runs/20260724T010203Z/manifest.json"):
+            return httpx.Response(200, content=manifest.as_json())
+        if path.endswith(artifact.object_path):
+            return httpx.Response(200, content=source.read_bytes())
+        return httpx.Response(404)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        storage = OfficialRawStorage(
+            supabase_url="https://example.test",
+            service_key="server-only-key",
+            bucket_name=OFFICIAL_ETF_UNIVERSE_REFERENCE_RAW_BUCKET,
+            client=client,
+        )
+        downloaded = storage.materialize_current_run(
+            dataset="etf-universe-reference-inputs",
+            destination=tmp_path / "materialized",
+        )
+
+    assert downloaded == manifest
+    assert (
+        tmp_path / "materialized" / "kis-retirement-list" / "retirement.xlsx"
+    ).read_bytes() == b"verified-official-workbook"
