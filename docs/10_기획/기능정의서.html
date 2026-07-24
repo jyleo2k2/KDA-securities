@@ -527,8 +527,8 @@
               <td><span class="id">OPS-01</span><br><span class="status pending">대기</span></td>
               <td>원격 배포 환경에서 로그인부터 주요 기능까지 골든패스가 끊김 없이 동작해야 한다.</td>
               <td>Vercel 프론트, Render API, Supabase 원격 DB/Auth와 실제 환경변수.</td>
-              <td>배포 설정 파일은 완료. 원격 전 화면 E2E와 Supabase 유출 비밀번호 보호 활성화·Security Advisor 확인은 대기.</td>
-              <td><code>vercel.json</code>, <code>render.yaml</code>, <a href="../../supabase/DB_HANDOFF.md">DB_HANDOFF</a></td>
+              <td>Render API 200은 확인. Vercel API URL 빈 값·Render CORS 미허용·중복 프로젝트·최신 배포 차단을 복구한 뒤 전 화면 E2E가 필요하다.</td>
+              <td><code>render.yaml</code>, <a href="../30_스펙/배포_운영_가이드.md">배포 운영 가이드</a>, <a href="../../supabase/DB_HANDOFF.md">DB_HANDOFF</a></td>
             </tr>
           </tbody>
         </table>
@@ -632,7 +632,7 @@
             <tr><td class="id">NFR-A11Y-01</td><td>키보드·의미 구조</td><td>전략 캐러셀·도넛 선택·뒤로가기의 키보드 조작과 aria 이름</td><td><span class="status partial">핵심 화면 적용</span></td></tr>
             <tr><td class="id">NFR-CACHE-01</td><td>개인 데이터 캐시 방지</td><td>API·SSE <code>no-store</code>, revision 정적 자산만 PWA 캐시</td><td><span class="status done">완료</span></td></tr>
             <tr><td class="id">NFR-CI-01</td><td>회귀 검증</td><td>PR마다 Ruff·RAG manifest·pytest·frontend build·route-map sync</td><td><span class="status done">완료</span></td></tr>
-            <tr><td class="id">NFR-DEP-01</td><td>원격 골든패스</td><td>Vercel→Render→Supabase에서 로그인·홈·챗·계산기·전략·User Pick E2E</td><td><span class="status pending">대기</span></td></tr>
+            <tr><td class="id">NFR-DEP-01</td><td>원격 골든패스</td><td>Vercel→Render→Supabase에서 로그인·홈·챗·계산기·전략·User Pick E2E. API URL·CORS·Deployment Protection을 먼저 복구</td><td><span class="status pending">복구 대기</span></td></tr>
           </tbody>
         </table>
       </div>
