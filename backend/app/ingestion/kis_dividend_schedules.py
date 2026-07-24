@@ -10,6 +10,7 @@ import httpx
 from backend.app.settings import Settings
 
 from ._files import atomic_write_bytes, atomic_write_json, sha256_hex
+from ._retry import retry_with_backoff
 from ._secrets import require_secret
 from .kis_adjusted_prices import load_pension_etf_universe
 from .kis_client import (
@@ -21,6 +22,8 @@ from .kis_client import (
     parse_ksd_dividend_payload,
 )
 
+MAX_RETRIES = 3
+
 
 def _iso_date(value: str) -> str | None:
     value = value.strip()
@@ -31,6 +34,15 @@ def _iso_date(value: str) -> str | None:
 
 def _raw_path(root: Path, start_date: date, end_date: date, code: str) -> Path:
     return root / f"{start_date:%Y%m%d}_{end_date:%Y%m%d}" / f"{code}.json"
+
+
+def _fetch_with_retry(fetch: Any):
+    return retry_with_backoff(
+        fetch,
+        exceptions=KisApiError,
+        is_retryable=lambda error: error.retryable,
+        max_retries=MAX_RETRIES,
+    )
 
 
 def collect_kis_dividend_schedules(
@@ -76,14 +88,17 @@ def collect_kis_dividend_schedules(
                     )
                     status = "skipped_existing"
                 else:
-                    response = fetch_ksd_dividend_schedule(
-                        client,
-                        app_key=app_key,
-                        app_secret=app_secret,
-                        access_token=token.value,
-                        start_date=start_date.strftime("%Y%m%d"),
-                        end_date=end_date.strftime("%Y%m%d"),
-                        isu_code=product["isu_code"],
+                    isu_code = product["isu_code"]
+                    response = _fetch_with_retry(
+                        lambda isu_code=isu_code: fetch_ksd_dividend_schedule(
+                            client,
+                            app_key=app_key,
+                            app_secret=app_secret,
+                            access_token=token.value,
+                            start_date=start_date.strftime("%Y%m%d"),
+                            end_date=end_date.strftime("%Y%m%d"),
+                            isu_code=isu_code,
+                        )
                     )
                     atomic_write_bytes(path, response.raw_content)
                     status = "fetched"

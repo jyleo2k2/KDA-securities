@@ -223,6 +223,55 @@ def test_kis_dividend_collector_preserves_raw_and_normalized_evidence(
     assert (tmp_path / report["evidence"][0]["raw_path"]).exists()
 
 
+def test_kis_dividend_collector_retries_a_transient_server_error(
+    tmp_path, monkeypatch
+) -> None:
+    universe = tmp_path / "universe.json"
+    universe.write_text(
+        '{"products":[{"isu_code":"069500","isu_name":"KODEX 200"}]}',
+        encoding="utf-8",
+    )
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        if request.url.path == "/oauth2/tokenP":
+            return httpx.Response(
+                200,
+                json={"access_token": "token", "token_type": "Bearer"},
+            )
+        request_count += 1
+        if request_count == 1:
+            return httpx.Response(500)
+        return httpx.Response(
+            200,
+            json={"rt_cd": "0", "msg_cd": "MCA00000", "output1": [_kis_row()]},
+        )
+
+    real_client = httpx.Client
+    monkeypatch.setattr(
+        kis_dividend_schedules.httpx,
+        "Client",
+        lambda **_: real_client(
+            base_url=KIS_BASE_URL,
+            transport=httpx.MockTransport(handler),
+        ),
+    )
+    report = kis_dividend_schedules.collect_kis_dividend_schedules(
+        app_key="app-key",
+        app_secret="app-secret",
+        universe_path=universe,
+        start_date=kis_dividend_schedules.date(2026, 7, 1),
+        end_date=kis_dividend_schedules.date(2026, 7, 31),
+        raw_root=tmp_path / "raw",
+        output_root=tmp_path / "cache",
+        delay_seconds=0,
+    )
+
+    assert request_count == 2
+    assert report["failure_count"] == 0
+
+
 def test_fsc_dividend_collector_paginates_and_preserves_raw(
     tmp_path, monkeypatch
 ) -> None:
