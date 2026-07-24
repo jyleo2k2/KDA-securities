@@ -29,19 +29,15 @@
 </style>
 </helmet>
 <div id="profile-phone-stage" style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #E8E8DD; font-family: 'Cafe24SsurroundAir', 'Noto Sans KR', sans-serif; padding: 40px;">
-  <div id="profile-phone" style="width: 390px; height: 844px; background: #ffffff; border-radius: 44px; box-shadow: 0 24px 70px rgba(0,0,0,0.16); display: flex; flex-direction: column; overflow: hidden; position: relative;">
+  <div id="profile-phone" style="width: min(100%, 390px); height: min(844px, calc(100dvh - 80px)); min-height: 640px; background: #ffffff; border-radius: 44px; box-shadow: 0 24px 70px rgba(0,0,0,0.16); display: flex; flex-direction: column; overflow: hidden; position: relative;">
 
-    <!-- status bar -->
-    <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 26px 0;">
-      <span style="font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-weight: 600; font-size: 16px; letter-spacing: -0.32px; color: #111;">9:41</span>
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <img src="./assets/icon-signal.svg" alt="" style="width: 18px; height: 12px;">
-        <img src="./assets/icon-wifi.svg" alt="" style="width: 17px; height: 11.834px;">
-        <span style="width: 27.401px; height: 13px; position: relative; display: inline-block;">
-          <span style="position: absolute; inset: 0 1.5px 0 0; border-radius: 4.3px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35);"></span>
-          <span style="position: absolute; left: 1.5px; top: 1.5px; bottom: 1.5px; right: 3px; background: #111; border-radius: 1.3px;"></span>
-          <span style="position: absolute; right: -2px; top: 4px; width: 1.5px; height: 5px; background: rgba(0,0,0,0.4); border-radius: 0 1px 1px 0;"></span>
-        </span>
+    <!-- status bar (Figma StatusBar: 다이나믹 아일랜드형) -->
+    <div style="flex: none; display: flex; align-items: center; justify-content: space-between; height: 54px; padding: 0 26px 0 29px; font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-weight: 600; font-size: 15px; color: #111;">
+      <span style="letter-spacing: -0.24px; font-variant-numeric: tabular-nums;">9:41</span>
+      <div style="position: relative; flex: none; width: 108px; height: 32px; border-radius: 999px; background: #000;"><div style="position: absolute; top: 50%; right: 11px; width: 10px; height: 10px; border-radius: 50%; background: #01031a; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06); transform: translateY(-50%);"></div></div>
+      <div style="display: flex; align-items: center; gap: 7px;">
+        <svg width="17" height="12" viewBox="0 0 17 12" fill="none"><path d="M8.5 2.4c2.6 0 5 1 6.8 2.7l1.4-1.5A11.6 11.6 0 0 0 8.5.4 11.6 11.6 0 0 0 .3 3.6l1.4 1.5A9.6 9.6 0 0 1 8.5 2.4Z" fill="#111"></path><path d="M8.5 6.1c1.6 0 3 .6 4.1 1.7l1.4-1.5a8 8 0 0 0-11 0l1.4 1.5A5.8 5.8 0 0 1 8.5 6.1Z" fill="#111"></path><path d="M8.5 9.7 10.7 7.4a4.2 4.2 0 0 0-4.4 0L8.5 9.7Z" fill="#111"></path></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x=".75" y=".75" width="21.5" height="10.5" rx="2.75" stroke="#111" stroke-opacity=".35" stroke-width="1.5"></rect><path d="M23.25 4v4c.8-.35 1.25-1.1 1.25-2s-.45-1.65-1.25-2Z" fill="#111" opacity=".4"></path><rect x="2.5" y="2.5" width="18.5" height="7" rx="1.5" fill="#111"></rect></svg>
       </div>
     </div>
 
