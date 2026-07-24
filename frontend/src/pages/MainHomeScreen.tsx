@@ -130,6 +130,7 @@ function HoldingPie({ slices, selectedIndex, onSelect }: {
           : <path d={donutSlicePath(startDeg, endDeg)} fill={slice.color} stroke="#fff" strokeWidth={2} strokeLinejoin="round" />;
         return (
           <g
+            className="mhs-pie-slice"
             key={slice.label}
             role="button"
             tabIndex={0}
@@ -329,7 +330,7 @@ export function MainHomeScreen({
               const dim = selectable && selectedHolding !== null && !active;
               return (
                 <span
-                  className="mhs-allocation-item"
+                  className={`mhs-allocation-item${selectable ? " is-selectable" : ""}`}
                   key={slice.label}
                   role={selectable ? "button" : undefined}
                   tabIndex={selectable ? 0 : undefined}
