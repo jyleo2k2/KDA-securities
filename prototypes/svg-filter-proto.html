@@ -32,7 +32,7 @@
   .proto .role{margin:0 0 16px;color:var(--muted);font-size:13.5px}
   .dev-wrap{display:flex;justify-content:center;margin-bottom:16px}
   .device{width:min(320px,100%);height:600px;background:#EFF3F1;border-radius:34px;border:8px solid #0c1622;box-shadow:0 22px 54px rgba(0,0,0,.4);overflow:hidden;position:relative;color:#1E2124}
-  .dev-status{display:flex;justify-content:space-between;padding:11px 20px 3px;font-size:12px;font-weight:700}
+  .dev-status{display:flex;justify-content:space-between;padding:11px 20px 3px;font-size:12px;font-weight:700;position:relative;z-index:2}
   .ctrls{display:flex;flex-direction:column;gap:12px}
   .ctrl-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .btn{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:99px;padding:8px 14px;cursor:pointer;transition:border-color .15s,background .15s}
@@ -78,21 +78,57 @@
   .device.no-glass .navpill{backdrop-filter:none;-webkit-backdrop-filter:none;background:#fff}
   .navpill b{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#5a6b60;padding:8px 16px;border-radius:99px}
   .navpill b.on{background:#18A860;color:#fff}
-  /* --- P2: onboarding tour guide --- */
-  .ob{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;padding:14px 20px 20px;background:linear-gradient(180deg,#f1faf5,#e4f2ea);text-align:center}
-  .ob-empty{margin-top:10px;font-size:12px;color:#6b7680;background:#fff;border:1px dashed #c3d4ca;border-radius:12px;padding:8px 14px;font-weight:600}
-  .ob-stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:100%}
-  .ob-bubble{position:relative;max-width:230px;background:#fff;border:2px solid #18A860;border-radius:16px;padding:12px 14px;font-size:12.5px;color:#1E2124;font-weight:600;line-height:1.5;box-shadow:0 6px 16px rgba(20,60,40,.1)}
-  .ob-bubble::after{content:"";position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);border:9px solid transparent;border-top-color:#18A860;border-bottom:0}
-  .mascot{width:150px;height:150px;cursor:pointer;color:#12a86a;filter:none}
-  .mascot.boil{filter:url(#squiggle)}
-  .mascot .fillbody{fill:#fde4ee}
-  .mascot .fillsnout{fill:#fbd0e0}
-  .ob-dots{display:flex;gap:7px;margin-top:2px}
-  .ob-dots i{width:7px;height:7px;border-radius:50%;background:#c3d4ca}
-  .ob-dots i.on{background:#18A860;width:18px;border-radius:4px}
-  .ob-cta{margin-top:12px;background:#18A860;color:#fff;font-weight:800;font-size:13px;border:none;border-radius:99px;padding:12px 26px;cursor:pointer;box-shadow:0 6px 16px rgba(24,168,96,.3)}
-  .ob-ghost{margin-top:8px;background:none;border:none;color:#8A938D;font-size:11.5px;cursor:pointer;text-decoration:underline}
+  /* --- P2: hybrid onboarding (계좌없음 부분홈 ↔ 연결후 투어) --- */
+  .ob2{position:absolute;inset:0;overflow-y:auto;background:#EFF3F1;scrollbar-width:none}
+  .ob2::-webkit-scrollbar{display:none}
+  .ob2-head{display:flex;align-items:center;gap:8px;padding:2px 16px 8px}
+  .ob2-head .ld{width:9px;height:9px;border-radius:50%;background:#18A860}
+  .ob2-head .logo{font-weight:800;font-size:15px}
+  .ob2-head .logo em{color:#F0C000;font-style:normal}
+  .ob2-body{padding:2px 14px 92px;display:flex;flex-direction:column;gap:13px}
+  .sec-t{font-size:13px;font-weight:800;margin:2px 2px -2px}
+  .sec-t .g{color:#18A860}
+  .asset-empty{background:#fff;border-radius:18px;padding:16px 16px 18px;display:flex;flex-direction:column;align-items:center;gap:11px;text-align:center;box-shadow:0 6px 18px rgba(20,40,30,.06)}
+  .device.state-tour .asset-empty{display:none}
+  .asset-empty .mascot{width:88px;height:88px;color:#12a86a;filter:none}
+  .asset-empty .mascot.boil{filter:url(#squiggle)}
+  .asset-empty .mascot .fillbody{fill:#fde4ee}
+  .asset-empty .mascot .fillsnout{fill:#fbd0e0}
+  .ae-t{font-weight:800;font-size:14px}
+  .ae-s{font-size:11px;color:#6b7680;margin-top:-7px}
+  .ae-preview{position:relative;width:100%;height:92px;border-radius:12px;overflow:hidden;background:#fff;border:1px solid #e3ebe6}
+  .ae-preview .pfmini{position:absolute;top:0;left:0;width:100%;filter:blur(2.5px);transform:scale(1.06);transform-origin:top;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+  .ae-preview .pfmini .r{display:flex;align-items:center;gap:6px;font-size:9.5px}
+  .ae-preview .pfmini .r i{width:8px;height:8px;border-radius:2px}
+  .ae-preview .pfmini .r b{flex:1;color:#333;font-weight:700;text-align:left}
+  .ae-preview .egtint{position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(38,192,125,.16))}
+  .ae-preview .eglabel{position:absolute;top:6px;right:6px;font-family:var(--mono);font-size:8px;background:rgba(12,22,34,.62);color:#fff;padding:1px 6px;border-radius:10px}
+  .ae-cta{background:#18A860;color:#fff;font-weight:800;font-size:13px;border:none;border-radius:99px;padding:11px 26px;cursor:pointer;box-shadow:0 6px 16px rgba(24,168,96,.28)}
+  .asset-filled{display:none;background:#fff;border-radius:18px;padding:16px;box-shadow:0 6px 18px rgba(20,40,30,.06)}
+  .device.state-tour .asset-filled{display:block}
+  .af-label{font-size:11px;color:#8A938D}
+  .af-total{font-size:22px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .af-row{display:flex;align-items:center;gap:14px;margin-top:10px}
+  .af-donut{width:62px;height:62px;flex:0 0 62px;border-radius:50%;background:conic-gradient(#18A860 0 46%,#3877E8 46% 72%,#F0C000 72% 88%,#F5871F 88% 100%);-webkit-mask:radial-gradient(circle 16px at 50% 50%,transparent 98%,#000 100%);mask:radial-gradient(circle 16px at 50% 50%,transparent 98%,#000 100%)}
+  .af-leg{display:flex;flex-direction:column;gap:4px;font-size:10.5px}
+  .af-leg span{display:flex;align-items:center;gap:5px}
+  .af-leg i{width:8px;height:8px;border-radius:2px}
+  .exp-strats{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+  .exp-strats::-webkit-scrollbar{display:none}
+  .exp-strat{flex:0 0 118px;border-radius:14px;padding:11px}
+  .exp-strat b{font-size:11.5px}
+  .exp-strat .v{font-size:15px;font-weight:800;margin:2px 0}
+  .exp-strat p{margin:0;font-size:9px;color:#5a6b60;line-height:1.4}
+  .exp-pick{border-radius:16px;height:88px;background:linear-gradient(135deg,#26c07d,#12a86a);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:12px;text-align:center;padding:12px;line-height:1.4}
+  .tour{display:none;position:absolute;inset:0;z-index:20;pointer-events:none}
+  .device.state-tour .tour{display:block}
+  .tour-ring{position:absolute;border-radius:16px;box-shadow:0 0 0 9999px rgba(6,14,10,.52);border:2px solid #fff;transition:top .32s,left .32s,width .32s,height .32s}
+  .tour-bubble{position:absolute;max-width:220px;background:#fff;border:2px solid #18A860;border-radius:14px;padding:11px 13px;font-size:12px;font-weight:600;color:#1E2124;pointer-events:auto;box-shadow:0 8px 20px rgba(0,0,0,.28);transition:top .32s}
+  .tour-foot{position:absolute;left:0;right:0;bottom:20px;display:flex;flex-direction:column;align-items:center;gap:9px;pointer-events:auto}
+  .tour-dots{display:flex;gap:6px}
+  .tour-dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.5)}
+  .tour-dots i.on{background:#fff;width:16px;border-radius:3px}
+  .tour-next{background:#18A860;color:#fff;border:none;border-radius:99px;padding:9px 24px;font-weight:800;font-size:12.5px;cursor:pointer}
   @media (prefers-reduced-motion: reduce){*{animation:none!important}}
 </style>
 <svg width="0" height="0" aria-hidden="true" style="position:absolute"><defs>
@@ -106,12 +142,12 @@
 <div class="wrap">
   <div class="head">
     <p class="eyebrow">SVG 필터 · 개정 프로토타입</p>
-    <h1>글래스 카드 &amp; 온보딩 투어 가이드</h1>
-    <p>① 글래스는 박스 안에 <b style="color:var(--ink)">실제 포트폴리오 화면을 가로 맞춰 top 정렬</b>로 넣고 세로 넘침은 크롭. 블러 3px·초록 박스색 유지. 네비바(홈 화면/챗봇)도 글래스. ④ 자글자글은 <b style="color:var(--ink)">계좌 없는 사용자 온보딩</b>에서 슬랑이가 투어 가이드처럼 안내.</p>
+    <h1>글래스 카드 &amp; 하이브리드 온보딩</h1>
+    <p>① 글래스는 확정(블러 3px·박스색 유지·박스 안 실제 포트폴리오). ④는 <b style="color:var(--ink)">하이브리드</b>: 계좌 없으면 계좌 카드만 빈 상태(예시 미리보기+슬랑이)로 두고 전략·이용자 Pick은 둘러보기 허용 → <b style="color:var(--ink)">연결 직후 실데이터 위 투어</b>. 상단 토글로 두 상태 전환.</p>
   </div>
   <div class="protos">
     <div class="proto">
-      <h2>① 글래스 — 이용자 Pick 카드 + 네비바</h2>
+      <h2>① 글래스 — 이용자 Pick 카드 + 네비바 <span style="font-size:11px;color:var(--accent);font-family:var(--mono)">확정</span></h2>
       <p class="role">박스 안에 실제 포트폴리오(가로 맞춤·top 정렬·세로 크롭). 블러 3px, 박스색 유지.</p>
       <div class="dev-wrap">
         <div class="device" id="glassDevice">
@@ -154,51 +190,86 @@
         <div class="slider"><label>박스색</label><input type="range" id="tint" min="40" max="100" step="2" value="80"><span class="val" id="tintV">0.80</span></div>
         <div class="ctrl-row"><button class="btn" id="glassToggle" aria-pressed="true">글래스: ON (끄면 현재 불투명)</button></div>
       </div>
-      <p class="note">가로 맞춤·top 정렬·세로 크롭 = <code>width:100%; top:0; overflow:hidden</code>. 실제 이식: <code>mhs-userpick-overlay</code>에 포트폴리오 미리보기 + <code>filter:blur(3px)</code> + 초록 틴트. 네비바 <code>TabBar.tsx</code>는 <code>backdrop-filter</code>.</p>
+      <p class="note">확정 스펙. 실제 이식은 <code>emil-mainhome-motion</code> 머지 후 front 브랜치로. <code>mhs-userpick-overlay</code>+<code>TabBar.tsx</code>.</p>
     </div>
     <div class="proto">
-      <h2>④ 온보딩 투어 가이드 — 슬랑이</h2>
-      <p class="role">계좌 없는 사용자에게 보여주는 빈 화면. 손그림 마스코트가 투어처럼 안내.</p>
+      <h2>④ 하이브리드 온보딩 — 부분 홈 → 연결 후 투어</h2>
+      <p class="role">계좌 없으면 계좌 카드만 빈 상태(예시+슬랑이), 나머지는 둘러보기 허용. 연결 후 실데이터 투어.</p>
       <div class="dev-wrap">
-        <div class="device" id="obDevice">
+        <div class="device state-empty" id="obDevice">
           <div class="dev-status"><span>9:41</span><span aria-hidden="true">● ● ▰</span></div>
-          <div class="ob">
-            <div class="ob-empty">아직 연동된 계좌가 없어요</div>
-            <div class="ob-stage">
-              <div class="ob-bubble" id="obBubble">안녕하세요! 저는 슬랑이예요.<br>연금 운용, 제가 차근차근 안내할게요 🐷</div>
-              <svg class="mascot boil" id="mascot" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="안내 마스코트 슬랑이" xmlns="http://www.w3.org/2000/svg">
-                <path class="fillbody" d="M30 70 Q26 44 46 40 Q60 37 74 40 Q94 44 90 70 Q88 92 60 92 Q32 92 30 70Z"/>
-                <path d="M38 44 L31 30 L50 39"/>
-                <path d="M82 44 L89 30 L70 39"/>
-                <ellipse class="fillsnout" cx="60" cy="70" rx="14" ry="10"/>
-                <circle cx="55" cy="70" r="1.9" fill="currentColor" stroke="none"/>
-                <circle cx="65" cy="70" r="1.9" fill="currentColor" stroke="none"/>
-                <circle cx="47" cy="58" r="2.4" fill="currentColor" stroke="none"/>
-                <circle cx="73" cy="58" r="2.4" fill="currentColor" stroke="none"/>
-                <path d="M42 90 L42 100 M54 92 L54 101 M66 92 L66 101 M78 90 L78 100"/>
-                <path d="M56 40 L64 40" stroke-width="4"/>
-                <path d="M90 64 Q100 60 98 70 Q96 78 104 76"/>
-                <circle cx="60" cy="20" r="7" stroke="#F0C000"/>
-                <path d="M57 20 L63 20 M60 16 L60 24" stroke="#F0C000" stroke-width="2.4"/>
-              </svg>
+          <div class="ob2">
+            <div class="ob2-head"><span class="ld"></span><span class="logo">연금 <em>도우미</em></span></div>
+            <div class="ob2-body">
+              <div class="asset-empty">
+                <svg class="mascot boil" id="mascot" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="안내 마스코트 슬랑이" xmlns="http://www.w3.org/2000/svg">
+                  <path class="fillbody" d="M30 70 Q26 44 46 40 Q60 37 74 40 Q94 44 90 70 Q88 92 60 92 Q32 92 30 70Z"/>
+                  <path d="M38 44 L31 30 L50 39"/><path d="M82 44 L89 30 L70 39"/>
+                  <ellipse class="fillsnout" cx="60" cy="70" rx="14" ry="10"/>
+                  <circle cx="55" cy="70" r="1.9" fill="currentColor" stroke="none"/><circle cx="65" cy="70" r="1.9" fill="currentColor" stroke="none"/>
+                  <circle cx="47" cy="58" r="2.4" fill="currentColor" stroke="none"/><circle cx="73" cy="58" r="2.4" fill="currentColor" stroke="none"/>
+                  <path d="M42 90 L42 100 M54 92 L54 101 M66 92 L66 101 M78 90 L78 100"/>
+                  <path d="M56 40 L64 40" stroke-width="4"/><path d="M90 64 Q100 60 98 70 Q96 78 104 76"/>
+                  <circle cx="60" cy="20" r="7" stroke="#F0C000"/><path d="M57 20 L63 20 M60 16 L60 24" stroke="#F0C000" stroke-width="2.4"/>
+                </svg>
+                <div class="ae-t">아직 연동된 계좌가 없어요</div>
+                <div class="ae-s">계좌를 연결하면 이렇게 한눈에 볼 수 있어요</div>
+                <div class="ae-preview">
+                  <div class="pfmini">
+                    <div class="r"><i style="background:#18A860"></i><b>KODEX 미국S&amp;P500</b><span>32%</span></div>
+                    <div class="r"><i style="background:#3877E8"></i><b>TIGER 나스닥100</b><span>18%</span></div>
+                    <div class="r"><i style="background:#F0C000"></i><b>KOSEF 국고채10년</b><span>12%</span></div>
+                  </div>
+                  <div class="egtint"></div><div class="eglabel">예시</div>
+                </div>
+                <button class="ae-cta" type="button">계좌 연결하기</button>
+              </div>
+              <div class="asset-filled">
+                <div class="af-label">총 연금 자산</div>
+                <div class="af-total">84,210,000원</div>
+                <div class="af-row">
+                  <div class="af-donut"></div>
+                  <div class="af-leg">
+                    <span><i style="background:#18A860"></i>국내주식 46%</span>
+                    <span><i style="background:#3877E8"></i>글로벌주식 26%</span>
+                    <span><i style="background:#F0C000"></i>채권 16%</span>
+                    <span><i style="background:#F5871F"></i>현금성 12%</span>
+                  </div>
+                </div>
+              </div>
+              <div class="sec-t">이런 것도 <span class="g">둘러보세요</span></div>
+              <div class="exp-strats">
+                <div class="exp-strat" style="background:#EAF7FC"><b>시장 베타</b><div class="v" style="color:#4FB6E6">6.75%</div><p>지수 ETF로 시장 전체 흐름</p></div>
+                <div class="exp-strat" style="background:#FFF3E6"><b>테마</b><div class="v" style="color:#F5871F">6.00%</div><p>AI·반도체·바이오 분산</p></div>
+                <div class="exp-strat" style="background:#E9F8EF"><b>바텀업</b><div class="v" style="color:#1E9E5D">6.25%</div><p>적격 액티브 ETF 선별</p></div>
+              </div>
+              <div class="exp-pick">동일 업종·다른 이용자<br>포트폴리오 둘러보기 ›</div>
             </div>
-            <div class="ob-dots" id="obDots"><i class="on"></i><i></i><i></i></div>
-            <button class="ob-cta" id="obNext" type="button">다음 ›</button>
-            <button class="ob-ghost" id="obSkip" type="button">건너뛰기</button>
+            <div class="navpill"><b class="on">⌂ 홈 화면</b><b>💬 챗봇</b></div>
+            <div class="tour" id="tour">
+              <div class="tour-ring" id="tourRing" style="top:60px;left:14px;width:290px;height:132px"></div>
+              <div class="tour-bubble" id="tourBubble" style="top:204px;left:24px">여기서 총 연금 자산과 자산 구성을 한눈에 봐요.</div>
+              <div class="tour-foot">
+                <div class="tour-dots" id="tourDots"><i class="on"></i><i></i><i></i></div>
+                <button class="tour-next" id="tourNext" type="button">다음 ›</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
       <div class="ctrls">
         <div class="ctrl-row">
-          <button class="btn" id="wobbleBtn" aria-pressed="true">자글자글 켜짐</button>
+          <button class="btn" id="stEmpty" aria-pressed="true">계좌 없음 (부분 홈)</button>
+          <button class="btn" id="stTour" aria-pressed="false">연결 직후 투어</button>
         </div>
         <div class="slider"><label>자글 강도</label><input type="range" id="amp" min="1" max="8" step="1" value="3"><span class="val" id="ampV">3</span></div>
       </div>
-      <p class="note">투어링 가이드의 씨앗: 마스코트 + 말풍선 스텝 + 진행 점 + CTA. 자글자글로 손그림처럼 살아있는 느낌. 실제 이식: 계좌 0건일 때 라우팅되는 빈 화면 컴포넌트 + 이 인라인 SVG(<code>.boil</code> 상시/부드럽게).</p>
+      <p class="note">부분 노출 = 계좌 카드만 빈 상태, 전략·이용자 Pick은 그대로 노출(둘러보기). 투어는 <b style="color:var(--ink)">연결 후 실데이터 위</b>에서만. 실제 이식: 계좌 0건 라우팅 빈 화면 + 코치마크 오버레이. (투어 스팟라이트는 3스텝 데모, 실제는 타깃 자동측정.)</p>
     </div>
   </div>
 </div>
 <script>
+  // P1 glass
   (function(){
     var dev=document.getElementById("glassDevice");
     var pf=dev.querySelector(".pf"), tint=dev.querySelector(".pick-tint");
@@ -209,25 +280,34 @@
     tintS.addEventListener("input",function(){var t=(tintS.value/100).toFixed(2);tint.style.setProperty("--tint",t);tintV.textContent=t;});
     tg.addEventListener("click",function(){var off=dev.classList.toggle("no-glass");tg.setAttribute("aria-pressed",String(!off));tg.textContent=off?"글래스: OFF (현재 불투명)":"글래스: ON (끄면 현재 불투명)";});
   })();
+  // P2 hybrid onboarding
   (function(){
-    var m=document.getElementById("mascot"), amp=document.getElementById("amp"), ampV=document.getElementById("ampV"), disp=document.getElementById("sqDisp");
-    var wob=document.getElementById("wobbleBtn");
-    var bubble=document.getElementById("obBubble"), dots=document.getElementById("obDots").children, next=document.getElementById("obNext"), skip=document.getElementById("obSkip");
+    var dev=document.getElementById("obDevice");
+    var stE=document.getElementById("stEmpty"), stT=document.getElementById("stTour");
+    var amp=document.getElementById("amp"), ampV=document.getElementById("ampV"), disp=document.getElementById("sqDisp");
+    var ring=document.getElementById("tourRing"), bubble=document.getElementById("tourBubble");
+    var dots=document.getElementById("tourDots").children, next=document.getElementById("tourNext");
     var steps=[
-      "안녕하세요! 저는 슬랑이예요.<br>연금 운용, 제가 차근차근 안내할게요 🐷",
-      "먼저 퇴직연금·IRP·연금저축 계좌를<br>연결해요. 안전하게 조회만 해요.",
-      "연결하면 전체 자산을 한눈에 보고<br>계좌별 역할도 쉽게 알려드려요!"
+      {r:{top:60,left:14,width:290,height:132}, bt:204, bl:24, t:"여기서 총 연금 자산과 자산 구성을 한눈에 봐요."},
+      {r:{top:218,left:14,width:290,height:96}, bt:326, bl:24, t:"전략별 계획수익률로 운용 방향을 비교해요."},
+      {r:{top:528,left:86,width:152,height:48}, bt:432, bl:64, t:"궁금한 건 언제든 챗봇으로 물어보세요!"}
     ];
     var i=0;
-    function render(){
-      bubble.innerHTML=steps[i];
+    function paint(){
+      var s=steps[i];
+      ring.style.top=s.r.top+"px"; ring.style.left=s.r.left+"px"; ring.style.width=s.r.width+"px"; ring.style.height=s.r.height+"px";
+      bubble.style.top=s.bt+"px"; bubble.style.left=s.bl+"px"; bubble.textContent=s.t;
       for(var d=0;d<dots.length;d++) dots[d].className = d===i ? "on" : "";
-      var last = i===steps.length-1;
-      next.textContent = last ? "계좌 연결하기" : "다음 ›";
+      next.textContent = i===steps.length-1 ? "완료" : "다음 ›";
     }
-    next.addEventListener("click",function(){ i = (i+1) % steps.length; render(); });
-    skip.addEventListener("click",function(){ i=0; render(); });
+    function setState(tour){
+      dev.classList.toggle("state-tour",tour);
+      stE.setAttribute("aria-pressed",String(!tour)); stT.setAttribute("aria-pressed",String(tour));
+      if(tour){ i=0; paint(); dev.querySelector(".ob2").scrollTop=0; }
+    }
+    stE.addEventListener("click",function(){setState(false);});
+    stT.addEventListener("click",function(){setState(true);});
+    next.addEventListener("click",function(){ i=(i+1)%steps.length; paint(); });
     amp.addEventListener("input",function(){disp.setAttribute("scale",amp.value);ampV.textContent=amp.value;});
-    wob.addEventListener("click",function(){var on=!(wob.getAttribute("aria-pressed")==="true");wob.setAttribute("aria-pressed",String(on));m.classList.toggle("boil",on);wob.textContent=on?"자글자글 켜짐":"자글자글 꺼짐";});
   })();
 </script>
