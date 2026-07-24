@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 
 import { calculatePortfolioCmaPension } from "../api/client";
-import { conicGradient } from "../charts";
+import { conicGradient, TARGET_ALLOCATION_COLORS } from "../charts";
 import type {
   AccountType,
   CompletedSurveyProfile,
@@ -93,7 +93,6 @@ const STRATEGY_GUIDES: Record<RiskProfile, {
   },
 };
 
-const TARGET_ALLOCATION_COLORS = ["#4f8a70", "#84ad67", "#d8a45e", "#7183b1", "#bf7d70"];
 const SECTOR_GUIDE_COLORS = ["#4f8a70", "#84ad67", "#d8a45e", "#7183b1", "#bf7d70", "#8b76ad", "#5f9c9c"];
 
 type SectorGuideItem = {
@@ -175,6 +174,11 @@ function won(value: string): string {
 function percent(value: string): string {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? `${numeric.toFixed(1)}%` : `${value}%`;
+}
+
+function lossPercent(value: string): string {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? `-${Math.abs(numeric).toFixed(1)}%` : `-${value}%`;
 }
 
 function optionalPercent(value: string | null): string {
@@ -418,7 +422,7 @@ function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
         {risk.stress_scenarios.map((scenario) => (
           <div key={scenario.scenario_code}>
             <span title={scenario.scenario_code}>{STRESS_SCENARIO_LABELS[scenario.scenario_code] ?? "기타 시장 충격"}</span>
-            <strong>{percent(scenario.estimated_loss_percent)}</strong>
+            <strong>{lossPercent(scenario.estimated_loss_percent)}</strong>
             <small>정책 충격 가정</small>
           </div>
         ))}
@@ -591,13 +595,7 @@ export function PortfolioHoldingsPanel({
     : availableAccounts[0];
 
   if (!surveyProfile) {
-    return (
-      <div className="holdings-required-panel">
-        <strong>먼저 투자 프로필을 완성해 주세요.</strong>
-        <p>연령, 연금 수령 시작 나이, 계좌 유형과 투자성향을 엔진 입력으로 사용합니다.</p>
-        <a href="#profile">프로필 입력하러 가기</a>
-      </div>
-    );
+    return null;
   }
 
   const updateHolding = (

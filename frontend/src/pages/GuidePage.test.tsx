@@ -550,6 +550,11 @@ describe("GuidePage chat history deletion", () => {
           { label: "equity_drawdown 스트레스 손실 추정치", value: "20", unit: "%", evidence_id: "engine:portfolio", basis: "엔진 시나리오" },
         ],
         news_items: [],
+        suggested_follow_ups: [{
+          follow_up_id: "risk_cap",
+          label: "위험자산 한도 적용",
+          message: "위험자산 한도 적용을 알려줘",
+        }],
         sections: [{
           kind: "service_explanation",
           title: "위험중립형 투자전략",
@@ -575,6 +580,7 @@ describe("GuidePage chat history deletion", () => {
     expect(screen.queryByLabelText("수치 근거")).not.toBeInTheDocument();
     expect(screen.queryByText("검증 답변")).not.toBeInTheDocument();
     expect(screen.queryByText("equity_drawdown 스트레스 손실 추정치")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("이어서 물어보기")).not.toBeInTheDocument();
   });
 
   it("does not restore a deleted row from an older session refresh", async () => {
@@ -1528,7 +1534,7 @@ describe("GuidePage chat history deletion", () => {
     fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
     await screen.findByText(STRUCTURED_PORTFOLIO_RESPONSE.answer);
     expect(screen.queryByText("위험중립형 투자전략", { exact: true })).not.toBeInTheDocument();
-    expect(document.querySelector(".holdings-required-panel")).not.toBeNull();
+    expect(document.querySelector(".holdings-required-panel")).toBeNull();
   });
 });
 

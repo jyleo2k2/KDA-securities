@@ -528,7 +528,7 @@ function AssistantMessage({
   const isPensionAccountBrief = (
     response.data_mode === "verified_pension_account_brief"
   );
-  const visibleFollowUps = (response.suggested_follow_ups ?? []).filter(
+  const visibleFollowUps = (isEducationalPortfolio ? [] : response.suggested_follow_ups ?? []).filter(
     (followUp) => (
       !isPensionAccountBrief
       && (

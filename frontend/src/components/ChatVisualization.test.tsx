@@ -97,4 +97,44 @@ describe("ChatVisualization allocation donut", () => {
       whiteSpace: "nowrap",
     });
   });
+
+  it("uses the target-allocation donut style for sleeve allocations", () => {
+    const { container } = render(
+      <ChatVisualization
+        visualization={{
+          ...visualization,
+          kind: "sleeve_allocation",
+          items: [
+            { label: "주식", value: 48, unit: "%", role: "segment" },
+            { label: "금/원자재", value: 7, unit: "%", role: "segment" },
+            { label: "현금", value: 19.5, unit: "%", role: "segment" },
+            { label: "채권", value: 25.5, unit: "%", role: "segment" },
+          ],
+        }}
+        sources={sources}
+      />,
+    );
+
+    expect(container.querySelector(".sleeve-allocation-donut")).toBeInTheDocument();
+    expect(container.querySelector(".sleeve-allocation-legend")).toBeInTheDocument();
+    expect(screen.getByText("금/원자재")).toBeInTheDocument();
+    expect(container.querySelector("path")).toHaveAttribute("stroke", "none");
+    expect(screen.getByText("전체")).toHaveClass("allocation-donut-label");
+    expect(screen.getByText("100%")).toHaveClass("allocation-donut-total");
+  });
+
+  it("prefixes stress-scenario losses with a minus sign", () => {
+    render(
+      <ChatVisualization
+        visualization={{
+          ...visualization,
+          kind: "stress_scenarios",
+          items: [{ label: "주식시장 급락", value: 27.3, unit: "%", role: "value" }],
+        }}
+        sources={sources}
+      />,
+    );
+
+    expect(screen.getByText("-27.3%")).toBeInTheDocument();
+  });
 });
