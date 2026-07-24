@@ -75,6 +75,7 @@ function renderHome(
       onOpenChat={vi.fn()}
       onOpenPlanner={vi.fn()}
       onOpenProfile={vi.fn()}
+      onOpenSlangi={vi.fn()}
       onOpenStrategyExplore={vi.fn()}
       onOpenUserPick={vi.fn()}
       portfolio={portfolio}
@@ -164,6 +165,14 @@ describe("MainHomeScreen", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "프로필 열기" }));
     expect(onOpenProfile).toHaveBeenCalledOnce();
+  });
+
+  it("opens the slangi touch screen from the yeongeumi card", () => {
+    const onOpenSlangi = vi.fn();
+    renderHome({ onOpenSlangi });
+
+    fireEvent.click(screen.getByRole("button", { name: "연그미와 놀기 열기" }));
+    expect(onOpenSlangi).toHaveBeenCalledOnce();
   });
 
   it("keeps the approved strategy cards", () => {

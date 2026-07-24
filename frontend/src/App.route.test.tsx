@@ -58,4 +58,13 @@ describe("initial hash routing", () => {
     const profileFrame = await screen.findByTitle("내 프로필");
     expect(profileFrame.getAttribute("src")).toBe("/profile-html/index.html");
   });
+
+  it("loads the supplied slangi html from its explicit public file path", async () => {
+    window.history.replaceState(null, "", "#/slangi");
+
+    render(<App />);
+
+    const slangiFrame = await screen.findByTitle("연그미를 만져 보세요");
+    expect(slangiFrame.getAttribute("src")).toBe("/slangi/index.html");
+  });
 });

@@ -173,6 +173,7 @@
         <div class="noderow">
           <span class="node c-embed"><span class="path">#/planner</span><span class="name">연금계산기 (iframe)</span></span>
           <span class="node c-embed"><span class="path">#/profile-html</span><span class="name">내 프로필 (iframe)</span></span>
+          <span class="node c-embed"><span class="path">#/slangi</span><span class="name">연그미 터치 놀이 (iframe)</span></span>
           <span class="node c-react"><span class="path">#/strategy-explore</span><span class="name">전략 탐색 캐러셀</span></span>
           <span class="node c-embed"><span class="path">#/strategy-detail</span><span class="name">전략 상세 (HTML)</span></span>
           <span class="node c-embed"><span class="path">#/user-pick-benchmark</span><span class="name">이용자 Pick 벤치마킹 (iframe)</span></span>
@@ -227,7 +228,7 @@
         <div class="meta">
           <div class="row"><span class="k">진입</span><span class="v">LoginFlow <code>onStart</code> · 하위 화면 뒤로가기</span></div>
           <div class="row"><span class="k">데이터</span><span class="v"><code>GET /me/pension-accounts</code> · 자산 집계 엔진 · <code>investmentProfile</code></span></div>
-          <div class="row"><span class="k">연결</span><span class="v">planner · profile-html · strategy-explore · user-pick-benchmark · guide</span></div>
+          <div class="row"><span class="k">연결</span><span class="v">planner · profile-html · slangi · strategy-explore · user-pick-benchmark · guide</span></div>
         </div>
       </div></article>
       <article class="card c-react"><div class="rail"></div><div class="body">
@@ -261,6 +262,17 @@
         <div class="meta">
           <div class="row"><span class="k">진입</span><span class="v">허브 헤더 프로필 버튼</span></div>
           <div class="row"><span class="k">데이터</span><span class="v">Supabase Auth · <code>/me/pension-accounts</code> · <code>/me/investment-profile</code></span></div>
+        </div>
+      </div></article>
+      <article class="card c-embed"><div class="rail"></div><div class="body">
+        <div class="top"><span class="route-chip">#/slangi</span><span class="type-badge">정적 임베드</span></div>
+        <h3>SlangiTouchPage <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 연그미 터치 놀이</span></h3>
+        <p class="file">pages/SlangiTouchPage.tsx → iframe</p>
+        <p class="purpose">메인 홈의 “연그미를 만져 보세요!” 카드를 통해 제공 HTML을 원형 그대로 보여주는 전체화면 iframe 셸.</p>
+        <div class="chips"><span>slangi/index.html</span><span>사용자 제공 HTML</span><span>원본 테마·상호작용 유지</span></div>
+        <div class="meta">
+          <div class="row"><span class="k">진입</span><span class="v">메인 홈 연그미 카드</span></div>
+          <div class="row"><span class="k">데이터</span><span class="v">없음 · 정적 단일 HTML</span></div>
         </div>
       </div></article>
       <article class="card c-embed"><div class="rail"></div><div class="body">
