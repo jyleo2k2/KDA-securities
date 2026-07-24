@@ -7,10 +7,7 @@ import piggyIntro from "../assets/login/piggy-intro.webp";
 import piggySuccess from "../assets/login/piggy-success.png";
 import { getAccountLinkOptions, saveInvestmentProfile } from "../api/client";
 import type { AccountLinkOptionsResponse, InvestmentProfileAssessment, InvestmentProfileResponse, InvestmentProfileSubmission } from "../api/types";
-import {
-  normalizeLoginId,
-  type SupabaseAuthState,
-} from "../auth/useSupabaseAuth";
+import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
 import { StatusBar } from "../components/StatusBar";
 import { InvestorInfoForm } from "./InvestorInfoForm";
 import { InvestorResultScreen } from "./InvestorResultScreen";
@@ -29,7 +26,6 @@ interface LoginFlowPageProps {
 
 const REQUIRED_CONSENT_ID = "account-link";
 const LINKING_DURATION_MS = 1500;
-const FIRST_USE_GUIDE_LOGIN_EMAIL = "jeongsu33@kda-demo.invalid";
 
 export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSaved, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
   const [step, setStep] = useState<LoginStep>(resurvey ? "risk-assessment" : "intro");
@@ -48,16 +44,7 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
     if (!auth.configured) { setNotice("로그인 환경이 설정되지 않았습니다."); return; }
     if (!loginId.trim() || !password || submitting) return;
     setSubmitting(true); setNotice(null);
-    try {
-      await auth.signIn(loginId, password);
-      setPassword("");
-      if (normalizeLoginId(loginId).toLowerCase() === FIRST_USE_GUIDE_LOGIN_EMAIL) {
-        onStart();
-        return;
-      }
-      onAuthenticated();
-      setStep("success");
-    }
+    try { await auth.signIn(loginId, password); setPassword(""); onAuthenticated(); setStep("success"); }
     catch { /* shared hook exposes a safe error message */ }
     finally { setSubmitting(false); }
   }

@@ -12,9 +12,8 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../auth/supabase";
 import "./FirstUseGuide.css";
 
-const GUIDE_VERSION = "v1";
+const GUIDE_VERSION = "v2";
 const COMPLETE_KEY = `pension-first-use-guide:${GUIDE_VERSION}:complete`;
-const SESSION_DISMISS_KEY = `pension-first-use-guide:${GUIDE_VERSION}:dismissed`;
 const PREVIEW_QUERY = "tour-preview";
 const TARGET_GUIDE_EMAIL = "jeongsu33@kda-demo.invalid";
 
@@ -99,10 +98,9 @@ function guideStorageKey(baseKey: string, userId: string | null): string {
 function guideShouldOpen(userId: string | null): boolean {
   if (previewRequested()) return true;
   if (!userId) return false;
-  return window.localStorage.getItem(guideStorageKey(COMPLETE_KEY, userId)) !== "true"
-    && window.sessionStorage.getItem(
-      guideStorageKey(SESSION_DISMISS_KEY, userId),
-    ) !== "true";
+  return window.sessionStorage.getItem(
+    guideStorageKey(COMPLETE_KEY, userId),
+  ) !== "true";
 }
 
 function eligibleGuideUserId(session: Session | null): string | null {
@@ -134,13 +132,43 @@ export function FirstUseGuide(): JSX.Element | null {
   useEffect(() => {
     if (previewRequested() || !supabase) return;
     let active = true;
+    let currentAuthUserId: string | null = null;
+    let currentEligibleUserId: string | null = null;
+    let initialized = false;
     const updateEligibility = (session: Session | null) => {
-      if (active) setEligibleUserId(eligibleGuideUserId(session));
+      currentAuthUserId = session?.user.id ?? null;
+      currentEligibleUserId = eligibleGuideUserId(session);
+      if (active) setEligibleUserId(currentEligibleUserId);
     };
     void supabase.auth.getSession()
-      .then(({ data }) => updateEligibility(data.session))
+      .then(({ data }) => {
+        initialized = true;
+        updateEligibility(data.session);
+      })
       .catch(() => updateEligibility(null));
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        if (currentEligibleUserId) {
+          window.sessionStorage.removeItem(
+            guideStorageKey(COMPLETE_KEY, currentEligibleUserId),
+          );
+        }
+        initialized = true;
+        updateEligibility(null);
+        return;
+      }
+      const nextEligibleUserId = eligibleGuideUserId(session);
+      if (
+        event === "SIGNED_IN"
+        && initialized
+        && currentAuthUserId === null
+        && nextEligibleUserId
+      ) {
+        window.sessionStorage.removeItem(
+          guideStorageKey(COMPLETE_KEY, nextEligibleUserId),
+        );
+      }
+      initialized = true;
       updateEligibility(session);
     });
     return () => {
@@ -249,14 +277,14 @@ export function FirstUseGuide(): JSX.Element | null {
 
   function dismissForNow(): void {
     window.sessionStorage.setItem(
-      guideStorageKey(SESSION_DISMISS_KEY, eligibleUserId),
+      guideStorageKey(COMPLETE_KEY, eligibleUserId),
       "true",
     );
     setMode("closed");
   }
 
   function completeGuide(): void {
-    window.localStorage.setItem(
+    window.sessionStorage.setItem(
       guideStorageKey(COMPLETE_KEY, eligibleUserId),
       "true",
     );
