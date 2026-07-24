@@ -895,10 +895,11 @@ def test_everyday_smalltalk_uses_friendly_deterministic_answers(
     assert len(response.suggested_follow_ups) == 3
 
 
-def test_narrator_prompt_requires_conclusion_first_heyoche() -> None:
-    assert "쉬운 한국어 해요체 한 문단" in SYSTEM_PROMPT
+def test_narrator_prompt_targets_adult_beginners_with_defined_terms() -> None:
+    assert "투자 입문 성인을 위한 명확하고 자연스러운 해요체 한 문단" in SYSTEM_PROMPT
     assert "핵심 결론을 첫 문장에" in SYSTEM_PROMPT
-    assert "어려운 금융 용어" in SYSTEM_PROMPT
+    assert "금융 용어를 처음 언급할 때" in SYSTEM_PROMPT
+    assert "유아적인 비유나 과도한 단순화는 피하고" in SYSTEM_PROMPT
     assert "반말" not in SYSTEM_PROMPT
     assert "같은 내용을 반복하지 않는다" in SYSTEM_PROMPT
     assert "본문은 두세 문장, 350자 이내" in SYSTEM_PROMPT
