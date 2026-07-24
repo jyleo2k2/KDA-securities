@@ -861,6 +861,15 @@ export function EducationalPortfolioReview({
     if (!Number.isFinite(current)) return highest;
     return highest === null ? current : Math.max(highest, current);
   }, null);
+  const reviewSleeveCount = rebalancing.sleeves.filter(
+    (sleeve) => sleeve.status !== "within_drift_band",
+  ).length;
+  const reviewHeadline = reviewSleeveCount > 0
+    ? `${reviewSleeveCount}개 자산군의 비중을 확인해 보세요`
+    : "현재 자산 비중은 점검 범위 안에 있어요";
+  const reviewGuidance = reviewSleeveCount > 0
+    ? "먼저 비중이 벗어난 자산군을 확인하고, 새 납입금으로 차이를 줄이는 순서로 보면 돼요."
+    : "지금 구성을 유지하면서 정기 점검 시점에 다시 확인하면 돼요.";
 
   return (
     <section className="portfolio-review" aria-labelledby="portfolio-review-title">
@@ -870,74 +879,95 @@ export function EducationalPortfolioReview({
         <p title={evaluation.strategy_label}>{ACCOUNT_LABELS[evaluation.evaluated_input.account_type]} · {strategyLabel(evaluation.strategy_label)}</p>
       </header>
 
+      <div className="portfolio-review-lead">
+        <span>먼저 볼 내용</span>
+        <strong>{reviewHeadline}</strong>
+        <p>{reviewGuidance}</p>
+      </div>
+
       <div className="portfolio-review-summary">
         <div><span>현재 평가금액</span><strong>{won(rebalancing.current_total_krw)}</strong></div>
-        <div><span>일반 위험자산 목표</span><strong>{percent(evaluation.final_general_risk_target_percent)}</strong></div>
         <div>
           <span>계좌 위험자산 한도</span>
           <strong>{evaluation.account_risk_cap_percent == null ? "법정 총량한도 없음" : percent(evaluation.account_risk_cap_percent)}</strong>
         </div>
-        <div><span>리밸런싱 기준</span><strong>±{percent(rebalancing.drift_threshold_percent_points)}</strong></div>
+        <div><span>일반 위험자산 목표</span><strong>{percent(evaluation.final_general_risk_target_percent)}</strong></div>
       </div>
 
-      <PortfolioSectorGuide riskProfile={evaluation.evaluated_input.risk_profile} />
-      <RebalancingCadenceGuide evaluation={evaluation} />
+      <details className="portfolio-review-details">
+        <summary>
+          <span><small>1단계</small><strong>자산 구성과 조정 기준</strong></span>
+          <em>펼쳐보기</em>
+        </summary>
+        <div className="portfolio-review-details-body">
+          <PortfolioSectorGuide riskProfile={evaluation.evaluated_input.risk_profile} />
+          <RebalancingCadenceGuide evaluation={evaluation} />
 
-      <div className="overlap-check">
-        <strong>중복도·편중 점검</strong>
-        <p>현재 보유 비중을 자산군별로 묶어 엔진 목표와 비교했습니다. 같은 역할의 ETF가 몰린 구간은 아래 비중 차이에서 확인할 수 있습니다.</p>
-        {highestCorrelation !== null && (
-          <p>신규 후보들 사이의 최대 과거 가격 동행성은 {highestCorrelation.toFixed(1)}%입니다. 이는 구성종목 중복률이 아니라 가격 수익률 상관관계입니다.</p>
-        )}
-        <small>ETF별 실제 구성종목 중복률은 구성종목 원천 데이터가 완전한 상품에 한해서만 계산할 수 있어 현재 결과에서 임의 추정하지 않습니다.</small>
-      </div>
+          <div className="overlap-check">
+            <strong>중복도·편중 점검</strong>
+            <p>현재 보유 비중을 자산군별로 묶어 엔진 목표와 비교했습니다. 같은 역할의 ETF가 몰린 구간은 아래 비중 차이에서 확인할 수 있습니다.</p>
+            {highestCorrelation !== null && (
+              <p>신규 후보들 사이의 최대 과거 가격 동행성은 {highestCorrelation.toFixed(1)}%입니다. 이는 구성종목 중복률이 아니라 가격 수익률 상관관계입니다.</p>
+            )}
+            <small>ETF별 실제 구성종목 중복률은 구성종목 원천 데이터가 완전한 상품에 한해서만 계산할 수 있어 현재 결과에서 임의 추정하지 않습니다.</small>
+          </div>
 
-      <div className="portfolio-review-table-wrap">
-        <table className="portfolio-review-table">
-          <thead>
-            <tr>
-              <th>자산군</th>
-              <th>현재</th>
-              <th>목표</th>
-              <th>납입 후</th>
-              <th>추가 납입 예시</th>
-              <th>상태</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rebalancing.sleeves.map((sleeve) => (
-              <tr key={sleeve.sleeve}>
-                <th title={sleeve.sleeve}>{sleeveLabel(sleeve.sleeve)}</th>
-                <td>{percent(sleeve.current_percent)}</td>
-                <td>{percent(sleeve.target_percent)}</td>
-                <td>{percent(sleeve.projected_percent_after_contribution)}</td>
-                <td>{won(sleeve.contribution_example_krw)}</td>
-                <td><span className={`rebalance-status status-${sleeve.status}`} title={sleeve.status}>{REBALANCE_STATUS_LABELS[sleeve.status] ?? "추가 점검 필요"}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          <div className="portfolio-review-table-wrap">
+            <table className="portfolio-review-table">
+              <thead>
+                <tr>
+                  <th>자산군</th>
+                  <th>현재</th>
+                  <th>목표</th>
+                  <th>납입 후</th>
+                  <th>추가 납입 예시</th>
+                  <th>상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rebalancing.sleeves.map((sleeve) => (
+                  <tr key={sleeve.sleeve}>
+                    <th title={sleeve.sleeve}>{sleeveLabel(sleeve.sleeve)}</th>
+                    <td>{percent(sleeve.current_percent)}</td>
+                    <td>{percent(sleeve.target_percent)}</td>
+                    <td>{percent(sleeve.projected_percent_after_contribution)}</td>
+                    <td>{won(sleeve.contribution_example_krw)}</td>
+                    <td><span className={`rebalance-status status-${sleeve.status}`} title={sleeve.status}>{REBALANCE_STATUS_LABELS[sleeve.status] ?? "추가 점검 필요"}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </details>
 
-      <PortfolioRiskReview risk={evaluation.portfolio_risk} />
-      {evaluation.current_holdings_planning_return ? (
-        <PortfolioPlanningReview
-          planning={evaluation.current_holdings_planning_return}
-          titleId="current-holdings-planning-title"
-          title="현재 보유 ETF CMA·비용 계획가정"
-          description="현재 평가금액 비중으로 가중한 보유 ETF 기준"
-        />
-      ) : evaluation.warnings.some((warning) => warning.startsWith("current_holdings_planning_return_unavailable:")) ? (
-        <p className="portfolio-review-warning">
-          현재 보유 ETF 중 검증된 비용 또는 계좌별 적격성 데이터가 없는 항목이 있어 CMA·비용 계획가정을 표시하지 못했습니다. 종목코드와 데이터 기준일을 확인해 주세요.
-        </p>
-      ) : null}
-      <PortfolioPlanningReview
-        planning={evaluation.planning_return}
-        titleId="target-portfolio-planning-title"
-        title="제안 포트폴리오 CMA·비용 계획가정"
-        description="목표 비중으로 가중한 제안 포트폴리오 기준"
-      />
+      <details className="portfolio-review-details">
+        <summary>
+          <span><small>2단계</small><strong>위험과 수익률 계산 근거</strong></span>
+          <em>펼쳐보기</em>
+        </summary>
+        <div className="portfolio-review-details-body">
+          <PortfolioRiskReview risk={evaluation.portfolio_risk} />
+          {evaluation.current_holdings_planning_return ? (
+            <PortfolioPlanningReview
+              planning={evaluation.current_holdings_planning_return}
+              titleId="current-holdings-planning-title"
+              title="현재 보유 ETF CMA·비용 계획가정"
+              description="현재 평가금액 비중으로 가중한 보유 ETF 기준"
+            />
+          ) : evaluation.warnings.some((warning) => warning.startsWith("current_holdings_planning_return_unavailable:")) ? (
+            <p className="portfolio-review-warning">
+              현재 보유 ETF 중 검증된 비용 또는 계좌별 적격성 데이터가 없는 항목이 있어 CMA·비용 계획가정을 표시하지 못했습니다. 종목코드와 데이터 기준일을 확인해 주세요.
+            </p>
+          ) : null}
+          <PortfolioPlanningReview
+            planning={evaluation.planning_return}
+            titleId="target-portfolio-planning-title"
+            title="제안 포트폴리오 CMA·비용 계획가정"
+            description="목표 비중으로 가중한 제안 포트폴리오 기준"
+          />
+        </div>
+      </details>
 
       {Number(rebalancing.unclassified_holding_amount_krw) > 0 && (
         <p className="portfolio-review-warning">
