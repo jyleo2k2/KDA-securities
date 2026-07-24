@@ -6,7 +6,7 @@ const ETF_THEME_RAIL_CSS = `
   display: grid;
   grid-auto-flow: column;
   grid-template-rows: repeat(3, auto);
-  grid-auto-columns: calc(49% - 5px);
+  grid-auto-columns: calc(42% - 4px);
   gap: 10px;
   margin: 16px 0 0;
   padding: 2px 0 10px;

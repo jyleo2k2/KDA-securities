@@ -713,7 +713,14 @@ describe("GuidePage chat history deletion", () => {
     expect(within(card).getByText("4.57%")).toBeInTheDocument();
     expect(within(card).getAllByText(/공식 출처/)).toHaveLength(3);
     const outcomeCard = screen.getByLabelText("과거 유사국면 ETF 근거 카드");
-    expect(within(outcomeCard).getByText("2024년 1월 유사국면")).toBeInTheDocument();
+    const outcomeDisclosure = within(outcomeCard).getByText("과거 실적은 필요할 때 확인").closest("details");
+    expect(outcomeDisclosure).not.toHaveAttribute("open");
+    fireEvent.click(within(outcomeCard).getByText("과거 실적은 필요할 때 확인").closest("summary")!);
+    expect(outcomeDisclosure).toHaveAttribute("open");
+    const regimeDisclosure = within(outcomeCard).getByText("2024년 1월 유사국면").closest("details");
+    expect(regimeDisclosure).not.toHaveAttribute("open");
+    fireEvent.click(within(outcomeCard).getByText("2024년 1월 유사국면").closest("summary")!);
+    expect(regimeDisclosure).toHaveAttribute("open");
     expect(within(outcomeCard).getByText("KODEX 200")).toBeInTheDocument();
     expect(within(outcomeCard).getByText("10.0000%")).toBeInTheDocument();
     expect(within(outcomeCard).getByText("최대낙폭 -25%")).toBeInTheDocument();

@@ -1086,13 +1086,12 @@ def risk_profile_selection_guide() -> ChatResponse:
                 kind=SectionKind.SERVICE_EXPLANATION,
                 title="투자성향 선택",
                 content=(
-                    "안정형: 원금 보전과 낮은 가격 변동을 우선해요.\n"
-                    "안정추구형: 채권 중심으로 운용하되 제한적으로 "
-                    "위험자산을 활용해요.\n"
-                    "위험중립형: 성장성과 안정성의 균형을 추구해요.\n"
-                    "적극투자형: 주식 비중을 높여 장기 성장을 추구해요.\n"
-                    "공격투자형: 높은 변동성을 감수하고 성장·전술자산을 "
-                    "적극적으로 활용해요.\n\n"
+                    "안정형: 돈을 크게 잃지 않는 것을 먼저 생각해요.\n"
+                    "안정추구형: 안전한 돈을 더 많이 두고, 주식도 조금 담아요.\n"
+                    "위험중립형: 주식과 채권을 고르게 나눠 담아요.\n"
+                    "적극투자형: 주식 비중을 늘려 오래 기다리는 성장을 노려요.\n"
+                    "공격투자형: 주식과 작은 기회 투자를 더 많이 담아요. 가격이 "
+                    "크게 오르내릴 수 있어요.\n\n"
                     "예: 위험중립형으로 ETF 포트폴리오를 보여줘"
                 ),
             )
@@ -1124,10 +1123,9 @@ def risk_profile_portfolio_guide() -> ChatResponse:
     return ChatResponse(
         intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
         answer=(
-            "다섯 투자성향은 같은 ETF를 단순히 비중만 바꾸는 방식이 아니라, "
-            "성장자산의 역할과 방어자산의 수준, 전술자산의 허용 범위를 "
-            "다르게 설계해요. 실제 비중과 후보 ETF는 완료된 설문과 계좌 "
-            "규칙을 반영해 기존 규칙 엔진이 계산해요."
+            "다섯 투자성향은 내가 얼마나 가격 흔들림을 견딜 수 있는지에 따라 "
+            "주식·채권·현금의 비율을 다르게 정한 계획이에요. 실제 비율과 "
+            "ETF 후보는 설문과 계좌 규칙에 맞춰 계산해요."
         ),
         data_mode="risk_profile_portfolio_guide",
         sections=[
@@ -1135,13 +1133,10 @@ def risk_profile_portfolio_guide() -> ChatResponse:
                 kind=SectionKind.SERVICE_EXPLANATION,
                 title="안정형 연금운용 전략",
                 content=(
-                    "전략: 자본보전 중심 전략으로 큰 손실을 피하고 유동성을 "
-                    "확보하는 데 우선순위를 둬요.\n"
-                    "설계: 채권과 현금을 핵심으로 두고, 분산 주식·실물자산은 "
-                    "설문에서 확인된 손실 감내 범위 안에서 보조로만 활용해요. "
-                    "전술자산은 편입하지 않는 것을 기본으로 해요.\n"
-                    "운용: 정기 납입은 방어자산을 중심으로 이어가고, 단기 "
-                    "수익을 좇아 자산 구성을 자주 바꾸지 않아요.\n"
+                    "무엇을 먼저? 큰 손실을 줄이는 것이에요.\n"
+                    "어떻게 담나? 채권과 현금을 많이, 주식과 금·부동산 ETF는 "
+                    "조금만 담아요.\n"
+                    "어떻게 지키나? 수익이 빨리 날 것 같은 곳으로 자주 옮기지 않아요.\n"
                     + stable_rebalancing
                 ),
             ),
@@ -1149,12 +1144,10 @@ def risk_profile_portfolio_guide() -> ChatResponse:
                 kind=SectionKind.SERVICE_EXPLANATION,
                 title="안정추구형 연금운용 전략",
                 content=(
-                    "전략: 방어적 분산 전략으로 안정성을 중심에 두면서 제한된 "
-                    "성장 기회를 함께 활용해요.\n"
-                    "설계: 채권을 핵심으로 두고 넓게 분산한 주식과 실물자산을 "
-                    "보조로 더하며, 현금은 리밸런싱 여유자금으로 유지해요.\n"
-                    "운용: 위험자산이 목표보다 커지면 추가 매수를 멈추고, 새 "
-                    "납입금을 채권·현금 등 부족한 방어자산에 먼저 배분해요.\n"
+                    "무엇을 먼저? 안전하게 가면서도 오래 기다릴 성장을 조금 챙겨요.\n"
+                    "어떻게 담나? 채권을 많이, 주식과 금·부동산 ETF를 조금 더해요.\n"
+                    "어떻게 지키나? 새로 넣는 돈은 비율이 부족한 채권·현금에 "
+                    "먼저 넣어요.\n"
                     + stable_seeking_rebalancing
                 ),
             ),
@@ -1162,12 +1155,10 @@ def risk_profile_portfolio_guide() -> ChatResponse:
                 kind=SectionKind.SERVICE_EXPLANATION,
                 title="위험중립형 연금운용 전략",
                 content=(
-                    "전략: 코어·위성 전략으로 장기 성장과 하락 방어의 균형을 "
-                    "추구해요.\n"
-                    "설계: 넓게 분산한 주식과 채권을 두 핵심축으로 두고, "
-                    "실물자산은 물가 대응과 분산을 위한 위성자산으로 활용해요.\n"
-                    "운용: 시장 전망에 따라 한쪽으로 몰기보다 정기 납입과 "
-                    "리밸런싱으로 목표 구성을 꾸준히 유지해요.\n"
+                    "무엇을 먼저? 주식의 성장과 채권의 안정 사이 균형이에요.\n"
+                    "어떻게 담나? 여러 곳에 나눈 주식과 채권을 기본으로 두고, "
+                    "금·부동산 ETF는 작은 보조로 더해요.\n"
+                    "어떻게 지키나? 한쪽으로 몰리지 않게 정기적으로 비율을 살펴봐요.\n"
                     + neutral_rebalancing
                 ),
             ),
@@ -1175,12 +1166,10 @@ def risk_profile_portfolio_guide() -> ChatResponse:
                 kind=SectionKind.SERVICE_EXPLANATION,
                 title="적극투자형 연금운용 전략",
                 content=(
-                    "전략: 성장 코어·위성 전략으로 장기 성장자산을 중심에 "
-                    "두되 하락 충격을 흡수할 장치를 남겨요.\n"
-                    "설계: 넓게 분산한 주식 ETF를 핵심으로 두고 채권을 완충재로, "
-                    "실물자산과 전술자산은 상한이 있는 보조자산으로 활용해요.\n"
-                    "운용: 하락기에도 정기 납입 원칙을 유지하되, 전술자산을 "
-                    "추격 매수하지 않고 부족한 핵심자산부터 채워요.\n"
+                    "무엇을 먼저? 오래 기다릴 주식 성장을 더 크게 봐요.\n"
+                    "어떻게 담나? 여러 곳에 나눈 주식 ETF를 많이, 채권과 현금은 "
+                    "안전벨트처럼 남겨요.\n"
+                    "어떻게 지키나? 새로 넣는 돈은 먼저 부족한 기본 투자에 넣어요.\n"
                     + active_rebalancing
                 ),
             ),
@@ -1188,13 +1177,11 @@ def risk_profile_portfolio_guide() -> ChatResponse:
                 kind=SectionKind.SERVICE_EXPLANATION,
                 title="공격투자형 연금운용 전략",
                 content=(
-                    "전략: 바벨형 성장·전술 전략으로 분산 성장자산과 최소 "
-                    "방어자산을 양쪽 축에 두고 높은 변동성을 감수해요.\n"
-                    "설계: 주식 성장 코어를 가장 중요하게 두되 채권·현금 "
-                    "완충재를 없애지 않으며, 전술자산은 별도 상한을 둬 집중을 "
-                    "막아요.\n"
-                    "운용: 테마를 수익률 순으로 쫓지 않고 분산 성장 코어를 먼저 "
-                    "채운 뒤, 허용 범위 안에서만 전술자산을 운용해요.\n"
+                    "무엇을 먼저? 큰 가격 흔들림을 견디며 오래 기다릴 성장이에요.\n"
+                    "어떻게 담나? 주식과 작은 기회 투자를 많이 두되, 채권과 "
+                    "현금도 조금 남겨요.\n"
+                    "어떻게 지키나? 인기 테마를 뒤늦게 따라가기보다 기본 주식을 "
+                    "먼저 채워요.\n"
                     + aggressive_rebalancing
                 ),
             ),
@@ -1202,11 +1189,13 @@ def risk_profile_portfolio_guide() -> ChatResponse:
                 kind=SectionKind.SERVICE_EXPLANATION,
                 title="공통 실행 원칙",
                 content=(
-                    "ETF 후보는 과거 수익률 순위가 아니라 비용, 거래대금, "
-                    "순자산, 괴리율, 추적오차, 관측기간으로 비교해요. 성향별 "
-                    "점검 주기에 맞춰 목표비중 이탈을 확인해요. 새 납입금은 "
-                    "부족한 자산군에 먼저 배분해요. 매년 나이와 설문 투자성향, "
-                    "손실 감내 수준, 연금 수령 시점을 다시 확인해 목표 구성을 갱신해요."
+                    "낯선 말 쉽게 보기: 위험자산은 주식처럼 가격이 크게 움직일 수 "
+                    "있는 자산이에요. 방어자산은 채권·현금처럼 흔들림을 줄여줘요. "
+                    "리밸런싱은 달라진 비율을 원래 계획에 가깝게 맞추는 점검이에요.\n\n"
+                    "ETF는 지난 수익률 1위만 보지 않아요. 비용이 너무 크지 않은지, "
+                    "사고팔기 쉬운지, 비슷한 상품과 가격 차이가 너무 크지 않은지를 "
+                    "함께 살펴봐요. 새로 넣는 돈은 부족한 자산에 먼저 넣고, 매년 "
+                    "나이·투자성향·연금 받는 시점을 다시 확인해요."
                 ),
             ),
         ],
@@ -1458,7 +1447,7 @@ def educational_portfolio(
         for stress in evaluation.portfolio_risk.stress_scenarios
     )
     planning = evaluation.planning_return
-    planning_text = "검증된 계획수익률 범위를 계산하지 못했어요."
+    planning_text = "장기 계산에 쓸 수익률 가정을 만들지 못했어요."
     if (
         planning.conservative_planning_return_percent is not None
         and planning.base_planning_return_percent is not None
@@ -1470,27 +1459,27 @@ def educational_portfolio(
         numeric.extend(
             [
                 NumericEvidence(
-                    label="보수 계획수익률",
+                    label="조심해서 계산한 수익률 가정",
                     value=conservative,
                     unit="%",
                     evidence_id=engine_source.evidence_id,
-                    basis="CMA·비용·불확실성 할인을 반영한 엔진 계산",
+                    basis="장기 전망·ETF 비용·여유 폭을 넣은 계산",
                 ),
                 NumericEvidence(
-                    label="기준 계획수익률",
+                    label="기본으로 계산한 수익률 가정",
                     value=base,
                     unit="%",
                     evidence_id=engine_source.evidence_id,
-                    basis="CMA와 비용을 반영한 엔진 계산",
+                    basis="장기 전망과 ETF 비용을 넣은 계산",
                 ),
             ]
         )
         planning_text = (
-            "CMA 기반 연간 계획수익률 범위는 보수 약 "
-            f"{_decimal_text(conservative)}%에서 기준 약 "
-        f"{_decimal_text(base)}%예요. J.P. Morgan의 LTCMA 장기 "
-        "자본시장 가정과 ETF 운용비용을 반영해 산출한 "
-        "계획가정이며, 미래 예측값이 아니라 매년 다시 살펴봐요."
+            "장기 계산에 쓰는 연간 수익률 가정은 조심해서 본 경우 약 "
+            f"{_decimal_text(conservative)}%, 기본으로 본 경우 약 "
+            f"{_decimal_text(base)}%예요. 여러 자산의 장기 전망(CMA)과 "
+            "ETF 비용을 넣어 계산한 연습용 숫자라서, 미래 수익을 맞히거나 "
+            "약속하는 값은 아니에요. 매년 다시 살펴봐요."
         )
     profile_label = _RISK_PROFILE_LABELS[
         evaluation.evaluated_input.risk_profile.value
@@ -1505,29 +1494,29 @@ def educational_portfolio(
         ),
         AnswerSection(
             kind=SectionKind.SERVICE_EXPLANATION,
-            title="목표 자산배분",
+            title="연금 돈 나누기",
             content=(
-                f"이 전략에 따르면 {profile_label} 연금투자전략의 목표 "
-                "자산배분은 아래와 같아요."
+                f"{profile_label}이라면 연금 돈을 어디에 얼마나 나눠 둘지 "
+                "아래처럼 정해요."
             ),
             evidence_ids=[engine_source.evidence_id],
             blocks=[
                 AnswerBlock(
                     kind=AnswerBlockKind.TABLE,
-                    title="목표 포트폴리오",
-                    headers=["자산군", "목표비중", "엔진 편입 후보"],
+                    title="목표 비율",
+                    headers=["무엇에 둘까", "얼마나 둘까", "ETF 예시"],
                     rows=_target_portfolio_rows(evaluation),
                 ),
                 AnswerBlock(
                     kind=AnswerBlockKind.BULLETS,
-                    title="운용 원칙",
+                    title="비율을 지키는 방법",
                     items=_rebalancing_items(evaluation),
                 ),
             ],
         ),
         AnswerSection(
             kind=SectionKind.FACT,
-            title="장기 계획수익률",
+            title="장기 계산에 쓰는 수익률 가정",
             content=planning_text,
             evidence_ids=[
                 engine_source.evidence_id,
@@ -1536,11 +1525,11 @@ def educational_portfolio(
         ),
         AnswerSection(
             kind=SectionKind.SERVICE_EXPLANATION,
-            title="ETF 섹터 알아보기",
+            title="ETF 분야 살펴보기",
             content=(
-                "전체적인 자산배분의 틀은 이렇게 가져가고, 각 자산 분류를 "
-                "어떤 테마 ETF로 채울지는 ETF 섹터 알아보기에서 탐색해 "
-                "보세요. 구체 종목의 매수 추천은 하지 않아요."
+                "큰 비율을 먼저 정한 뒤, ETF 섹터 알아보기에서 어떤 분야가 "
+                "있는지와 그 분야의 위험을 살펴보세요. 이 서비스는 특정 ETF를 "
+                "사라고 정해 주지 않아요."
             ),
             evidence_ids=[engine_source.evidence_id],
         ),
@@ -1565,8 +1554,8 @@ def educational_portfolio(
             )
     numeric_priority = {
         "일반 위험자산 목표비중": 0,
-        "보수 계획수익률": 1,
-        "기준 계획수익률": 2,
+        "조심해서 계산한 수익률 가정": 1,
+        "기본으로 계산한 수익률 가정": 2,
         "수령 개시까지 운용기간": 3,
         "리밸런싱 이탈 기준": 4,
     }
@@ -1591,8 +1580,8 @@ def educational_portfolio(
     return ChatResponse(
         intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
         answer=(
-            f"설문 결과는 {profile_label}이며, 가장 적합한 연금투자전략은 "
-            f"{strategy_label}입니다."
+            f"설문 결과는 {profile_label}이에요. 그래서 {strategy_label} "
+            "방식으로 연금 돈을 나눠 보는 것이 맞아요."
         ),
         data_mode="engine_educational_planning",
         sources=sources,
@@ -1603,7 +1592,8 @@ def educational_portfolio(
         macro_regime_etf_outcomes=macro_outcomes,
         limitations=[
             "설명은 규칙 엔진 결과 코드와 수치만 정해진 문장으로 변환합니다.",
-            "CMA는 10~15년 전략배분 기준이며 매년 재검토합니다.",
+            "CMA는 여러 자산의 10~15년 장기 전망을 정리한 계산용 가정이며 "
+            "매년 다시 확인합니다.",
             "상품 선택·주문·자동 리밸런싱은 수행하지 않습니다.",
             *macro_outcome_limitations,
         ],

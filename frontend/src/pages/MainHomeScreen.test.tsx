@@ -102,11 +102,14 @@ describe("MainHomeScreen", () => {
   });
 
   it("shows the real holdings for the selected donut asset class", () => {
-    renderHome();
+    const { container } = renderHome();
 
     expect(screen.getByText(/위 원그래프나 자산 비중을 누르면/))
       .toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "글로벌주식 70.0%" }));
+    const donutSlice = screen.getByRole("button", { name: "글로벌주식 70.0%" });
+    expect(donutSlice).toHaveClass("mhs-pie-slice");
+    expect(container.querySelectorAll(".mhs-allocation-item.is-selectable")).toHaveLength(2);
+    fireEvent.click(donutSlice);
 
     expect(screen.getByText("SOL 미국S&P500")).toBeInTheDocument();
     expect(screen.getByText("ACE 미국나스닥100")).toBeInTheDocument();
@@ -179,6 +182,8 @@ describe("MainHomeScreen", () => {
     renderHome();
 
     expect(screen.getByText("전략별 계획수익률")).toBeInTheDocument();
+    expect(screen.getByText("회사 특징 고르기")).toBeInTheDocument();
+    expect(screen.getByText(/좋은 회사·싼 가격·꾸준한 흐름/)).toBeInTheDocument();
     expect(screen.getByText("6.75%")).toBeInTheDocument();
     expect(screen.getAllByText("산정 전")).toHaveLength(5);
   });

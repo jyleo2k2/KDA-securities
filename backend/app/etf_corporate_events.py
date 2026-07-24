@@ -481,6 +481,7 @@ def build_etf_corporate_event_master(
     as_of: date,
     kis_dividend_report: dict[str, Any] | None = None,
     fsc_dividend_report: dict[str, Any] | None = None,
+    eligible_isu_codes: set[str] | None = None,
 ) -> dict[str, Any]:
     cash_events, used_ex_dates = _cash_distribution_events(
         distribution_report, ex_date_report
@@ -494,7 +495,11 @@ def build_etf_corporate_event_master(
         kis_references=kis_dividend_references,
         fsc_references=fsc_dividend_references,
     )
-    eligible_codes = {path.stem for path in adjusted_price_root.glob("*.json")}
+    eligible_codes = (
+        eligible_isu_codes
+        if eligible_isu_codes is not None
+        else {path.stem for path in adjusted_price_root.glob("*.json")}
+    )
     scheduled_kis_events = _scheduled_kis_dividend_events(
         kis_dividend_references,
         matched_keys=matched_kis_keys,
