@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, date, datetime
 
 import httpx
@@ -239,3 +240,42 @@ def test_private_raw_storage_uploads_nested_raw_artifacts(tmp_path) -> None:
 
     assert len(requests) == 2
     assert any("/kis/response.json" in str(request.url) for request in requests)
+
+
+def test_private_raw_storage_deletes_only_concrete_run_paths() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={"message": "success"})
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        storage = OfficialRawStorage(
+            supabase_url="https://example.test",
+            service_key="server-only-key",
+            client=client,
+        )
+        deleted = storage.delete_paths(
+            ["runs/20240101T000000Z/manifest.json", "runs/20240101T000000Z/a.json"]
+        )
+
+    assert deleted == 2
+    assert requests[0].method == "DELETE"
+    assert json.loads(requests[0].content) == {
+        "prefixes": [
+            "runs/20240101T000000Z/a.json",
+            "runs/20240101T000000Z/manifest.json",
+        ]
+    }
+
+
+def test_private_raw_storage_rejects_directory_deletion() -> None:
+    transport = httpx.MockTransport(lambda request: httpx.Response(200))
+    with httpx.Client(transport=transport) as client:
+        storage = OfficialRawStorage(
+            supabase_url="https://example.test",
+            service_key="server-only-key",
+            client=client,
+        )
+        with pytest.raises(ValueError, match="concrete raw run"):
+            storage.delete_paths(["runs/20240101T000000Z/"])
