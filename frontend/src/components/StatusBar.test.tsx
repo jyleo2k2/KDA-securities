@@ -16,6 +16,7 @@ describe("StatusBar", () => {
     expect(container.querySelector(".desktop-preview-status")).not.toBeNull();
     expect(container.querySelector(".ios-statusbar-island")).not.toBeNull();
     expect(container.querySelector(".ios-statusbar-lens")).not.toBeNull();
+    expect(container.querySelector(".ios-statusbar-cellular")).not.toBeNull();
     expect(container.querySelector(".ios-statusbar-wifi")).not.toBeNull();
     expect(container.querySelector(".ios-statusbar-battery")).not.toBeNull();
   });
