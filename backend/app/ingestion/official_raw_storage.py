@@ -189,6 +189,45 @@ class OfficialRawStorage:
             content_type="application/json",
         )
 
+    def materialize_current_run(
+        self, *, dataset: str, destination: Path
+    ) -> RawRunManifest:
+        """Download one promoted immutable run after validating every artifact hash."""
+
+        _validate_source(dataset)
+        pointer = self._load_json(f"current/{dataset}.json")
+        manifest_path = pointer.get("manifest_path")
+        run_id = pointer.get("run_id")
+        if (
+            not isinstance(manifest_path, str)
+            or not isinstance(run_id, str)
+            or manifest_path != f"runs/{run_id}/manifest.json"
+        ):
+            raise OfficialRawStorageError("official raw current pointer is invalid")
+        manifest = _manifest_from_json(self._load_json(manifest_path))
+        if manifest.run_id != run_id:
+            raise OfficialRawStorageError("official raw current pointer run is invalid")
+        for artifact in manifest.artifacts:
+            relative_path = _destination_path(
+                artifact=artifact,
+                run_id=manifest.run_id,
+            )
+            content = self._download(artifact.object_path)
+            if len(content) != artifact.byte_count:
+                raise OfficialRawStorageError(
+                    f"official raw artifact byte count mismatch: {artifact.source}"
+                )
+            if hashlib.sha256(content).hexdigest() != artifact.sha256:
+                raise OfficialRawStorageError(
+                    f"official raw artifact hash mismatch: {artifact.source}"
+                )
+            target = destination / relative_path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            temporary = target.with_suffix(target.suffix + ".tmp")
+            temporary.write_bytes(content)
+            temporary.replace(target)
+        return manifest
+
     def delete_paths(self, paths: list[str]) -> int:
         """Permanently remove server-owned raw paths through the Storage API."""
 
@@ -237,6 +276,34 @@ class OfficialRawStorage:
                 f"official raw upload failed with HTTP {response.status_code}"
             )
 
+    def _download(self, object_path: str) -> bytes:
+        response = self._client.get(
+            f"{self._base_url}/storage/v1/object/"
+            f"{self._bucket_name}/{quote(object_path, safe='/')}",
+            headers={
+                "apikey": self._service_key,
+                "authorization": f"Bearer {self._service_key}",
+            },
+        )
+        if response.is_error:
+            raise OfficialRawStorageError(
+                f"official raw download failed with HTTP {response.status_code}"
+            )
+        return response.content
+
+    def _load_json(self, object_path: str) -> dict[str, object]:
+        try:
+            payload = json.loads(self._download(object_path))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise OfficialRawStorageError(
+                f"official raw JSON is invalid: {object_path}"
+            ) from error
+        if not isinstance(payload, dict):
+            raise OfficialRawStorageError(
+                f"official raw JSON is invalid: {object_path}"
+            )
+        return payload
+
 
 def _source_path_for_artifact(
     *,
@@ -251,3 +318,57 @@ def _source_path_for_artifact(
     if directory is None:
         raise ValueError(f"no local source for raw artifact: {artifact.object_path}")
     return directory / Path(relative_path)
+
+
+def _manifest_from_json(payload: dict[str, object]) -> RawRunManifest:
+    run_id = payload.get("run_id")
+    collected_at = payload.get("collected_at")
+    retention_until = payload.get("retention_until")
+    raw_artifacts = payload.get("artifacts")
+    if (
+        not isinstance(run_id, str)
+        or not isinstance(collected_at, str)
+        or not isinstance(retention_until, str)
+        or not isinstance(raw_artifacts, list)
+    ):
+        raise OfficialRawStorageError("official raw manifest is invalid")
+    artifacts = []
+    for raw_artifact in raw_artifacts:
+        if not isinstance(raw_artifact, dict):
+            raise OfficialRawStorageError("official raw manifest artifact is invalid")
+        source = raw_artifact.get("source")
+        object_path = raw_artifact.get("object_path")
+        sha256 = raw_artifact.get("sha256")
+        byte_count = raw_artifact.get("byte_count")
+        if (
+            not isinstance(source, str)
+            or not isinstance(object_path, str)
+            or not isinstance(sha256, str)
+            or not isinstance(byte_count, int)
+            or len(sha256) != 64
+        ):
+            raise OfficialRawStorageError("official raw manifest artifact is invalid")
+        artifacts.append(
+            RawArtifact(
+                source=source,
+                object_path=object_path,
+                sha256=sha256,
+                byte_count=byte_count,
+            )
+        )
+    return RawRunManifest(
+        run_id=run_id,
+        collected_at=collected_at,
+        retention_until=retention_until,
+        artifacts=tuple(artifacts),
+    )
+
+
+def _destination_path(*, artifact: RawArtifact, run_id: str) -> Path:
+    prefix = f"runs/{run_id}/"
+    if not artifact.object_path.startswith(prefix):
+        raise OfficialRawStorageError("official raw artifact path is invalid")
+    relative = Path(artifact.object_path.removeprefix(prefix))
+    if relative.is_absolute() or ".." in relative.parts:
+        raise OfficialRawStorageError("official raw artifact path is unsafe")
+    return relative
