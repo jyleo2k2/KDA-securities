@@ -23,6 +23,7 @@ import {
   getScenarios,
   getStoredChatMessages,
   getRebalancingReminder,
+  getMyPensionAccounts,
   updateRebalancingReminder,
   completeRebalancingReview,
 } from "../api/client";
@@ -61,6 +62,7 @@ import type {
 } from "../api/types";
 import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
 import { useChatStream, type ConversationMessage } from "../hooks/useChatStream";
+import { buildActualRebalancingReviewRequest } from "../rebalancingReviewRequest";
 
 const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   account_rule: "계좌 규칙",
@@ -1011,6 +1013,47 @@ export function GuidePage({
     [messages],
   );
 
+  function appendRebalancingReviewNotice(message: string) {
+    setMessages((current) => [
+      ...current,
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        text: message,
+        createdAt: new Date(),
+      },
+    ]);
+  }
+
+  async function requestActualRebalancingReview() {
+    if (!accessToken || !surveyProfile) {
+      appendRebalancingReviewNotice("저장된 투자성향과 로그인된 계좌가 있어야 실제 보유 비중을 점검할 수 있어요.");
+      return;
+    }
+
+    setReminderBusy(true);
+    try {
+      const portfolio = await getMyPensionAccounts(accessToken);
+      const review = buildActualRebalancingReviewRequest(surveyProfile, portfolio);
+      if (review.status !== "ready") {
+        appendRebalancingReviewNotice(
+          review.status === "account_not_found"
+            ? "저장한 투자성향의 계좌와 연결된 보유내역을 찾지 못했어요. 계좌 연동 상태를 확인한 뒤 다시 요청해 주세요."
+            : "점검할 보유자산 금액이 아직 없어요. 계좌 보유내역을 확인한 뒤 다시 요청해 주세요.",
+        );
+        return;
+      }
+      await submitPrompt(
+        `${review.accountName}의 실제 보유 비중을 목표 비중과 비교하고 이탈폭을 점검해줘.`,
+        review.input,
+      );
+    } catch {
+      appendRebalancingReviewNotice("계좌 보유내역을 불러오지 못해 실제 비중 점검을 시작하지 못했어요. 잠시 후 다시 요청해 주세요.");
+    } finally {
+      setReminderBusy(false);
+    }
+  }
+
   useEffect(() => {
     // 백엔드는 임베더 로딩 때문에 프론트보다 늦게 뜨고, --reload로 잠깐 끊기기도
     // 한다. 한 번 실패하고 포기하면 서버가 살아나도 "API 연결 필요"로 굳으므로
@@ -1658,7 +1701,7 @@ export function GuidePage({
                     <small><span className="skeleton-line" style={{ width: "44%" }} /></small>
                   </div>
                 ) : rebalancingReminder && (
-                  <RebalancingReminderCard reminder={rebalancingReminder} busy={reminderBusy} onEnable={() => void enableReminder()} onComplete={() => void completeReminder()} onAsk={() => void submitPrompt("현재 보유 ETF의 중복도와 계좌 한도, 리밸런싱 가이드를 보여줘")} />
+                  <RebalancingReminderCard reminder={rebalancingReminder} busy={reminderBusy || isSending} onEnable={() => void enableReminder()} onComplete={() => void completeReminder()} onAsk={() => void requestActualRebalancingReview()} />
                 )}
               </div>
 
