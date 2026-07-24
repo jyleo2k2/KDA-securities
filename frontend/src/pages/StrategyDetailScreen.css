@@ -9,8 +9,9 @@
 }
 
 .sd-phone {
-  width: 390px;
-  height: 844px;
+  width: min(100%, 390px);
+  height: min(844px, calc(100dvh - 80px));
+  min-height: 640px;
   background: #fff;
   border-radius: 44px;
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.16);
@@ -179,5 +180,5 @@
 
 @media (max-width: 480px) {
   .sd-stage { min-height: 100dvh; padding: 0; background: #fff; }
-  .sd-phone { width: 100%; height: 100dvh; border-radius: 0; box-shadow: none; }
+  .sd-phone { width: 100%; height: 100dvh; min-height: 0; border-radius: 0; box-shadow: none; }
 }
