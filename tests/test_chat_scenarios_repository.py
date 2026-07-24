@@ -80,3 +80,5 @@ def test_postgres_scenario_reads_linked_etf_code_and_verified_name() -> None:
     assert "mock_holdings" not in cursor.query
     assert "etf_universe_products" in cursor.query
     assert "holding.etf_isu_code" in cursor.query
+    assert "holding.raw_instrument_name" in cursor.query
+    assert "holding.instrument_name" not in cursor.query

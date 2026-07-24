@@ -92,7 +92,7 @@ class PostgresScenarioRepository:
                     holding.id,
                     coalesce(
                         product.payload ->> 'isu_name',
-                        holding.instrument_name
+                        holding.raw_instrument_name
                     ),
                     asset.code,
                     holding.market_value_krw,
