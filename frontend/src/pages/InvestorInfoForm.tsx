@@ -53,18 +53,20 @@ export function InvestorInfoForm({ onBack, onSubmit }: InvestorInfoFormProps): J
   const [answers, setAnswers] = useState<Answers>(() => Object.fromEntries(QDEFS.map((question) => [question.id, question.multi ? [] : null])));
   const [recommend, setRecommend] = useState<Recommendation | null>(null);
   const [provide, setProvide] = useState<InformationProvision | null>(null);
-  const [questionIndex, setQuestionIndex] = useState(-1);
+  const [questionIndex, setQuestionIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const question = questionIndex >= 0 ? QDEFS[questionIndex] : null;
+  const question = QDEFS[questionIndex];
   const isLastQuestion = questionIndex === QDEFS.length - 1;
+  const isFirstQuestion = questionIndex === 0;
+  const step = questionIndex < 6 ? 0 : questionIndex < 12 ? 1 : 2;
 
   function isCurrentQuestionAnswered(): boolean {
-    if (!question) return recommend !== null && provide !== null;
     const answer = answers[question.id];
-    return question.multi ? Array.isArray(answer) && answer.length > 0 : answer !== null;
+    const hasQuestionAnswer = question.multi ? Array.isArray(answer) && answer.length > 0 : answer !== null;
+    return hasQuestionAnswer && (!isFirstQuestion || (recommend !== null && provide !== null));
   }
 
   function selectAnswer(index: number): void {
@@ -80,7 +82,7 @@ export function InvestorInfoForm({ onBack, onSubmit }: InvestorInfoFormProps): J
   async function submit(): Promise<void> {
     if (recommend === "희망" && provide !== "제공") {
       setSubmitError("투자자정보 제공에 동의해야 투자권유를 받을 수 있어요.");
-      setQuestionIndex(-1);
+      setQuestionIndex(0);
       return;
     }
     if (submitting) return;
@@ -108,12 +110,7 @@ export function InvestorInfoForm({ onBack, onSubmit }: InvestorInfoFormProps): J
 
   function goNext(): void {
     if (!isCurrentQuestionAnswered()) {
-      setError(question ? "답변을 하나 이상 선택해 주세요." : "투자권유와 투자자정보 제공 여부를 선택해 주세요.");
-      return;
-    }
-    if (!question) {
-      setError(null);
-      setQuestionIndex(0);
+      setError(isFirstQuestion ? "투자권유·투자자정보 제공 여부와 답변을 모두 선택해 주세요." : "답변을 하나 이상 선택해 주세요.");
       return;
     }
     if (isLastQuestion) {
@@ -127,7 +124,7 @@ export function InvestorInfoForm({ onBack, onSubmit }: InvestorInfoFormProps): J
   function goPrevious(): void {
     setError(null);
     setSubmitError(null);
-    if (questionIndex === -1) onBack();
+    if (isFirstQuestion) onBack();
     else setQuestionIndex((previous) => previous - 1);
   }
 
@@ -138,49 +135,35 @@ export function InvestorInfoForm({ onBack, onSubmit }: InvestorInfoFormProps): J
     </header>
     <div className="iif-banner">일반금융소비자 투자성향진단</div>
 
-    {question && <div className="iif-progress" aria-label={`진행 상황 ${questionIndex + 1} / ${QDEFS.length}`}>
-      <div className="iif-progress-track"><span style={{ width: `${((questionIndex + 1) / QDEFS.length) * 100}%` }} /></div>
-      <strong>{questionIndex + 1} / {QDEFS.length}</strong>
-    </div>}
+    <div className="iif-progress" aria-label={`진행 상황 ${questionIndex + 1} / ${QDEFS.length}`}>
+      {[0, 1, 2].map((index) => <span key={index} className={index <= step ? "iif-progress-active" : ""} />)}
+      <strong>{step + 1} / 3</strong>
+    </div>
 
     <main className="iif-content">
-      {!question ? <section className="iif-intro" aria-labelledby="iif-intro-title">
-        <p className="iif-eyebrow">투자 성향을 확인하기 전</p>
-        <h2 id="iif-intro-title">투자권유와 정보 제공 여부를 알려주세요.</h2>
-        <p>선택한 내용은 투자성향 진단과 안내에 반영됩니다.</p>
-        <div className="iif-choice-card">
-          <h3>투자권유</h3>
-          <div className="iif-segmented" aria-label="투자권유 여부">
-            {(["희망", "미희망"] as const).map((value) => <button type="button" key={value} aria-pressed={recommend === value} className={recommend === value ? "iif-segmented-active" : ""} onClick={() => { setRecommend(value); setError(null); }}>{value}</button>)}
-          </div>
-        </div>
-        <div className="iif-choice-card">
-          <h3>투자자정보 제공</h3>
-          <div className="iif-segmented" aria-label="투자자정보 제공 여부">
-            {(["제공", "미제공"] as const).map((value) => <button type="button" key={value} aria-pressed={provide === value} className={provide === value ? "iif-segmented-active" : ""} onClick={() => { setProvide(value); setError(null); }}>{value}</button>)}
-          </div>
-        </div>
-      </section> : <section className="iif-question-stage" aria-labelledby="iif-question-title">
-        <p className="iif-question-number">QUESTION {question.num}</p>
-        <h2 id="iif-question-title">{question.title}</h2>
-        {question.multi && <p className="iif-question-hint">여러 항목을 선택할 수 있어요.</p>}
-        <div className="iif-options" aria-label={question.title}>
+      {isFirstQuestion && <section className="iif-toggles" aria-label="투자자정보 선택">
+        <div className="iif-toggle-row"><span>투자권유</span><div className="iif-segmented" aria-label="투자권유 여부">{(["희망", "미희망"] as const).map((value) => <button type="button" key={value} aria-pressed={recommend === value} className={recommend === value ? `iif-segmented-active ${value === "미희망" ? "iif-segmented-negative" : ""}` : ""} onClick={() => { setRecommend(value); setError(null); }}>{value}</button>)}</div></div>
+        <div className="iif-toggle-row"><span>투자자정보 <i aria-hidden="true">?</i></span><div className="iif-segmented" aria-label="투자자정보 제공 여부">{(["제공", "미제공"] as const).map((value) => <button type="button" key={value} aria-pressed={provide === value} className={provide === value ? "iif-segmented-active" : ""} onClick={() => { setProvide(value); setError(null); }}>{value}</button>)}</div></div>
+      </section>}
+      <section className="iif-question-card" aria-labelledby="iif-question-title">
+        <h2 id="iif-question-title"><em>{question.num}.</em> {question.title}</h2>
+        <div className={question.id === "age_band" ? "iif-options iif-options-grid" : "iif-options"} aria-label={question.title}>
           {question.options.map((option, index) => {
             const selected = question.multi ? ((answers[question.id] as number[]) ?? []).includes(index) : answers[question.id] === index;
             return <button type="button" key={option.value} className={selected ? "iif-option iif-option-selected" : "iif-option"} aria-pressed={selected} onClick={() => selectAnswer(index)}>
-              <span aria-hidden="true" className={question.multi ? "iif-check" : "iif-radio"}>{selected && "✓"}</span>
+              <span aria-hidden="true" className={question.multi ? "iif-check" : "iif-radio"}>{selected && (question.multi ? "✓" : "")}</span>
               <span>{option.label}</span>
             </button>;
           })}
         </div>
         {question.note && <p className="iif-note">{question.note}</p>}
-      </section>}
+      </section>
       {(error || submitError) && <p className="iif-error" role="alert">{error ?? submitError}</p>}
     </main>
 
     <footer className="iif-footer">
-      <button type="button" className="iif-secondary" onClick={goPrevious}>{questionIndex === -1 ? "취소" : "이전"}</button>
-      <button type="button" className="iif-primary" disabled={submitting} onClick={goNext}>{submitting ? "저장 중..." : isLastQuestion ? "진단 완료" : "다음"}</button>
+      <button type="button" className="iif-secondary" onClick={goPrevious}>{isFirstQuestion ? "취소" : "이전"}</button>
+      <button type="button" className="iif-primary" disabled={submitting} onClick={goNext}>{submitting ? "저장 중..." : isLastQuestion ? "투자자정보확인서 제출" : "다음"}</button>
     </footer>
   </div>;
 }

@@ -13,19 +13,16 @@ describe("InvestorInfoForm", () => {
     render(<InvestorInfoForm onBack={vi.fn()} onSubmit={vi.fn()} />);
 
     fireEvent.click(screen.getByRole("button", { name: "다음" }));
-    expect(screen.getByRole("alert")).toHaveTextContent("투자권유와 투자자정보 제공 여부를 선택해 주세요.");
+    expect(screen.getByRole("alert")).toHaveTextContent("투자권유·투자자정보 제공 여부와 답변을 모두 선택해 주세요.");
 
     fireEvent.click(screen.getByRole("button", { name: "희망" }));
     fireEvent.click(screen.getByRole("button", { name: "제공" }));
-    fireEvent.click(screen.getByRole("button", { name: "다음" }));
-
-    expect(screen.getByText("고객님의 연령대는 어떻게 되시나요?")).toBeInTheDocument();
-    expect(screen.getByLabelText("진행 상황 1 / 17")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "만 19세~만 40세" }));
     fireEvent.click(screen.getByRole("button", { name: "다음" }));
 
     expect(screen.getByText("고객님의 총 자산규모(순자산)는 어느 정도 되시나요?")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "이전" }));
+    expect(screen.getByLabelText("진행 상황 1 / 17")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "만 19세~만 40세" })).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -33,9 +30,10 @@ describe("InvestorInfoForm", () => {
     render(<InvestorInfoForm onBack={vi.fn()} onSubmit={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "미희망" }));
     fireEvent.click(screen.getByRole("button", { name: "제공" }));
+    fireEvent.click(screen.getByRole("button", { name: "만 19세 미만" }));
     fireEvent.click(screen.getByRole("button", { name: "다음" }));
 
-    const firstOptions = ["만 19세 미만", "1억 원 미만", "2천만 원 미만", "10% 미만", "0~9%", "0~9%"];
+    const firstOptions = ["1억 원 미만", "2천만 원 미만", "10% 미만", "0~9%", "0~9%"];
     for (const option of firstOptions) {
       fireEvent.click(screen.getByRole("button", { name: option }));
       fireEvent.click(screen.getByRole("button", { name: "다음" }));
@@ -55,7 +53,6 @@ describe("InvestorInfoForm", () => {
     render(<InvestorInfoForm onBack={vi.fn()} onSubmit={onSubmit} />);
     fireEvent.click(screen.getByRole("button", { name: "미희망" }));
     fireEvent.click(screen.getByRole("button", { name: "제공" }));
-    fireEvent.click(screen.getByRole("button", { name: "다음" }));
 
     const firstOptions = [
       "만 19세 미만", "1억 원 미만", "2천만 원 미만", "10% 미만", "0~9%", "0~9%",
@@ -65,7 +62,7 @@ describe("InvestorInfoForm", () => {
     ];
     for (const [index, option] of firstOptions.entries()) {
       fireEvent.click(screen.getByRole("button", { name: option }));
-      fireEvent.click(screen.getByRole("button", { name: index === firstOptions.length - 1 ? "진단 완료" : "다음" }));
+      fireEvent.click(screen.getByRole("button", { name: index === firstOptions.length - 1 ? "투자자정보확인서 제출" : "다음" }));
     }
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
