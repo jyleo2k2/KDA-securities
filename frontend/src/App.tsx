@@ -113,6 +113,7 @@ function AppRoutes(): JSX.Element {
   } | null>(null);
   const userLoadGenerationRef = useRef(0);
   const guideLoadGenerationRef = useRef(0);
+  const mainHomeScrollTopRef = useRef(0);
   const sessionExpiresAt = auth.session?.expires_at;
   const hasExpiredSession = sessionExpiresAt !== undefined
     && sessionExpiresAt <= Math.floor(Date.now() / 1000);
@@ -144,6 +145,7 @@ function AppRoutes(): JSX.Element {
     const generation = ++userLoadGenerationRef.current;
     if (userChanged) {
       clearPersistedUserState();
+      mainHomeScrollTopRef.current = 0;
       setSelectedScenarioCode("");
       setGuideContext(null);
     }
@@ -214,6 +216,7 @@ function AppRoutes(): JSX.Element {
     setSelectedScenarioCode("");
     setGuideContext(null);
     setCurrentUserData(EMPTY_USER_DATA);
+    mainHomeScrollTopRef.current = 0;
     setLoginSuccessPending(false);
     setResurveyPending(false);
     navigate("/login");
@@ -279,10 +282,14 @@ function AppRoutes(): JSX.Element {
             displayName={displayName}
             error={currentUserData.error}
             investmentProfile={currentUserData.investmentProfile}
+            initialScrollTop={mainHomeScrollTopRef.current}
             loading={currentUserData.loading}
             onOpenChat={() => navigate("/guide")}
             onOpenPlanner={() => navigate("/planner")}
             onOpenProfile={() => navigate("/profile-html")}
+            onScrollPositionChange={(scrollTop) => {
+              mainHomeScrollTopRef.current = scrollTop;
+            }}
             onOpenStrategyExplore={() => navigate("/strategy-explore")}
             onOpenUserPick={() => navigate("/user-pick-benchmark")}
             portfolio={currentUserData.portfolio}
