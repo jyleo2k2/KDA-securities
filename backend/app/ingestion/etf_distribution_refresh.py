@@ -119,11 +119,21 @@ def _ensure_confirmed_history_not_eroded(
 def _deduplicate_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     unique = {
         json.dumps(
-            event, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            event,
+            default=_json_default,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
         ): event
         for event in events
     }
-    return [unique[key] for key in sorted(unique)]
+    return [json.loads(key) for key in sorted(unique)]
+
+
+def _json_default(value: object) -> str:
+    if isinstance(value, date):
+        return value.isoformat()
+    raise TypeError(f"unsupported event value: {type(value).__name__}")
 
 
 def build_refreshed_event_master(
