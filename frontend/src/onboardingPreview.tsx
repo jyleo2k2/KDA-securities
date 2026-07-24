@@ -23,6 +23,7 @@ createRoot(container).render(
       loading={false}
       portfolio={null}
       onOpenChat={noop}
+      onOpenSlangi={noop}
       onOpenPlanner={noop}
       onOpenProfile={noop}
       onOpenStrategyExplore={noop}

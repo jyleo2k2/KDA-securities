@@ -32,6 +32,7 @@ import {
   type PensionPlannerProfile,
 } from "./pages/PensionPlannerPage";
 import { ProfileHtmlPage } from "./pages/ProfileHtmlPage";
+import { SlangiTouchPage } from "./pages/SlangiTouchPage";
 import { StrategyDetailScreen } from "./pages/StrategyDetailScreen";
 import { StrategyExploreScreen } from "./pages/StrategyExploreScreen";
 import { UserPickBenchmarkScreen } from "./pages/UserPickBenchmarkScreen";
@@ -89,7 +90,7 @@ export default function App(): JSX.Element {
 
 function DesktopPreviewStatus(): JSX.Element | null {
   const { pathname } = useLocation();
-  if (["/", "/login", "/main-home", "/planner", "/profile-html", "/strategy-explore", "/strategy-detail", "/user-pick-benchmark"].includes(pathname)) return null;
+  if (["/", "/login", "/main-home", "/planner", "/profile-html", "/slangi", "/strategy-explore", "/strategy-detail", "/user-pick-benchmark"].includes(pathname)) return null;
 
   return <StatusBar className="desktop-preview-status" />;
 }
@@ -283,6 +284,7 @@ function AppRoutes(): JSX.Element {
             onOpenChat={() => navigate("/guide")}
             onOpenPlanner={() => navigate("/planner")}
             onOpenProfile={() => navigate("/profile-html")}
+            onOpenSlangi={() => navigate("/slangi")}
             onOpenStrategyExplore={() => navigate("/strategy-explore")}
             onOpenUserPick={() => navigate("/user-pick-benchmark")}
             portfolio={currentUserData.portfolio}
@@ -312,6 +314,7 @@ function AppRoutes(): JSX.Element {
           />
         )}
       />
+      <Route path="/slangi" element={<SlangiTouchPage />} />
       <Route
         path="/strategy-explore"
         element={<StrategyExploreScreen onBack={goToMainHome} />}

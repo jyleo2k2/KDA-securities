@@ -14,6 +14,8 @@
 .mhs-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 22px 70px; }
 
 .mhs-greeting-card { background: #F1F3EE; border-radius: 22px; padding: 20px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; overflow: hidden; }
+.mhs-greeting-card-button { width: 100%; border: 0; font: inherit; text-align: left; cursor: pointer; }
+.mhs-greeting-card-button:focus-visible { outline: 3px solid #18A860; outline-offset: 3px; }
 .mhs-greeting-title { font-size: 18px; font-weight: 900; color: #333; margin: 0; line-height: 1.4; }
 .mhs-greeting-title-accent { color: #18A860; }
 .mhs-greeting-sub { font-size: 13px; font-weight: 600; color: #8A9691; margin: 8px 0 0; line-height: 1.5; }
