@@ -2,9 +2,9 @@
 
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import psycopg
 from psycopg_pool import ConnectionPool
@@ -71,11 +71,13 @@ class InvestmentProfileRepository:
         database_url: str,
         *,
         pool: ConnectionPool | None = None,
+        ephemeral_owner_ids: frozenset[UUID] = frozenset(),
     ) -> None:
         if not database_url:
             raise ValueError("database_url is required")
         self._database_url = database_url
         self._pool = pool
+        self._ephemeral_owner_ids = ephemeral_owner_ids
 
     @contextmanager
     def _connection(self) -> Iterator[psycopg.Connection]:
@@ -94,6 +96,8 @@ class InvestmentProfileRepository:
         evaluation: ProfileEvaluation,
         preferences: InvestmentProfilePreferencesInput,
     ) -> StoredInvestmentProfile:
+        if owner_id in self._ephemeral_owner_ids:
+            return self._unsaved_profile(owner_id, evaluation, preferences)
         with self._connection() as connection, connection.cursor() as cursor:
             cursor.execute(
                 """
@@ -175,6 +179,51 @@ class InvestmentProfileRepository:
         if stored is None:
             raise RuntimeError("stored investment profile is missing")
         return stored
+
+    @staticmethod
+    def _unsaved_profile(
+        owner_id: UUID,
+        evaluation: ProfileEvaluation,
+        preferences: InvestmentProfilePreferencesInput,
+    ) -> StoredInvestmentProfile:
+        """시연·테스트 계정용. 저장하지 않고 평가 결과만 조립해 돌려준다.
+
+        DB에 아무것도 쓰지 않으므로 이후 get_latest는 계속 None을 반환한다.
+        """
+        now = datetime.now(UTC)
+        return StoredInvestmentProfile(
+            assessment=InvestmentProfileAssessment(
+                assessment_id=uuid4(),
+                owner_id=owner_id,
+                assessed_at=now,
+                total_score=evaluation.total_score,
+                min_score=evaluation.min_score,
+                max_score=evaluation.max_score,
+                score_percent=evaluation.score_percent,
+                risk_profile=evaluation.risk_profile,
+                engine_name=evaluation.engine_name,
+                engine_version=evaluation.engine_version,
+                rule_version=evaluation.rule_version,
+                provisional=evaluation.provisional,
+                answers=[
+                    InvestmentProfileAnswer(
+                        question_code=answer.question_code,
+                        selected_value=answer.selected_value,
+                        selected_label=answer.selected_label,
+                        selected_score=answer.selected_score,
+                    )
+                    for answer in evaluation.answers
+                ],
+            ),
+            preferences=InvestmentProfilePreferences(
+                investment_advice_desired=preferences.investment_advice_desired,
+                investor_information_provided=(
+                    preferences.investor_information_provided
+                ),
+                confirmed_at=now,
+                policy_version=PROFILE_VALIDITY_POLICY_VERSION,
+            ),
+        )
 
     def get_latest(self, owner_id: UUID) -> StoredInvestmentProfile | None:
         with self._connection() as connection, connection.cursor() as cursor:

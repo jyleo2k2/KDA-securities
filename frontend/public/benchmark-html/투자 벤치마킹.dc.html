@@ -28,7 +28,7 @@
   </div>
 
   <div style="flex:none; background:#fff; display:flex; align-items:center; justify-content:space-between; height:52px; padding:0 20px;">
-    <svg width="11" height="20" viewBox="0 0 11 20" fill="none" style="cursor:pointer;"><path d="M9.5 1L1.5 10L9.5 19" stroke="#1E2124" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+    <svg onClick="{{ goHome }}" width="11" height="20" viewBox="0 0 11 20" fill="none" style="cursor:pointer;"><path d="M9.5 1L1.5 10L9.5 19" stroke="#1E2124" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
     <span style="font-size:18px; font-weight:800;">투자 <span style="color:#22A94D;">벤치마킹</span>하기</span>
     <div style="width:11px;"></div>
   </div>
@@ -447,6 +447,7 @@ class Component extends DCLogic {
       detailOpen: !!detailSel,
       detail: detailSel ? this.detailData(detailSel) : {},
       closeDetail: () => this.setState({ detailId:null }),
+      goHome: () => { try { parent.postMessage({ type: 'benchmark-html-back' }, '*'); } catch (e) {} },
       filterLabel: labels[f],
       toggleFilter: () => this.setState(s => ({ filterOpen: !s.filterOpen })),
       setFilterRate: () => this.setState({ filter:'rate', filterOpen:false }),

@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from uuid import UUID
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -43,6 +44,9 @@ class Settings(BaseSettings):
     supabase_url: str | None = None
     supabase_publishable_key: SecretStr | None = None
     supabase_secret_key: SecretStr | None = None
+    # 시연·테스트 전용 계정: 설문(투자성향) 결과를 저장하지 않고 응답만 돌려준다.
+    # 쉼표로 구분한 Supabase auth user id 목록.
+    ephemeral_investment_profile_owner_ids: str = ""
     cors_origins: list[str] = Field(
         default_factory=lambda: [
             "http://127.0.0.1:5173",
@@ -51,6 +55,15 @@ class Settings(BaseSettings):
             "http://localhost:5174",
         ]
     )
+
+
+    def ephemeral_investment_profile_owner_id_set(self) -> frozenset[UUID]:
+        """설문 결과를 저장하지 않을 소유자 id 집합."""
+        return frozenset(
+            UUID(token.strip())
+            for token in self.ephemeral_investment_profile_owner_ids.split(",")
+            if token.strip()
+        )
 
 
 @lru_cache

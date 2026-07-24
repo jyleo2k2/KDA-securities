@@ -8,6 +8,7 @@ import piggySuccess from "../assets/login/piggy-success.png";
 import { getAccountLinkOptions, saveInvestmentProfile } from "../api/client";
 import type { AccountLinkOptionsResponse, InvestmentProfileAssessment, InvestmentProfileResponse, InvestmentProfileSubmission } from "../api/types";
 import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
+import { StatusBar } from "../components/StatusBar";
 import { InvestorInfoForm } from "./InvestorInfoForm";
 import { InvestorResultScreen } from "./InvestorResultScreen";
 import "./LoginFlowPage.css";
@@ -25,15 +26,6 @@ interface LoginFlowPageProps {
 
 const REQUIRED_CONSENT_ID = "account-link";
 const LINKING_DURATION_MS = 1500;
-
-function StatusBar(): JSX.Element {
-  return (
-    <div className="login-status-bar" aria-hidden="true">
-      <span>9:41</span>
-      <span className="login-status-icons">● ● ● ▰</span>
-    </div>
-  );
-}
 
 export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSaved, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
   const [step, setStep] = useState<LoginStep>(resurvey ? "risk-assessment" : "intro");
