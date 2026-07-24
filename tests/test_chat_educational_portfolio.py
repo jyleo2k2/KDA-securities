@@ -199,15 +199,15 @@ def test_chatbot_only_explains_structured_portfolio_engine_result() -> None:
     strategy_section = sections["위험중립형의 코어·위성 전략"]
     assert list(sections) == [
         "위험중립형의 코어·위성 전략",
-        "연금 돈 나누기",
+        "목표 자산배분",
         "장기 계산에 쓰는 수익률 가정",
         "ETF 분야 살펴보기",
     ]
-    assert "여러 나라·기업에 나눠 담는 주식 ETF" in strategy_section.content
-    assert "큰 기본 식사에 작은 반찬" in strategy_section.content
-    assert "연금 돈을 나눠" in response.answer
-    allocation_section = sections["연금 돈 나누기"]
-    assert "어디에 얼마나 나눠 둘지" in allocation_section.content
+    assert "분산 주식 ETF를 코어" in strategy_section.content
+    assert "코어는 장기 분산투자" in strategy_section.content
+    assert "연금계좌 자산은" in response.answer
+    allocation_section = sections["목표 자산배분"]
+    assert "자산군별로 배분하는 기준" in allocation_section.content
     assert [block.kind.value for block in allocation_section.blocks] == [
         "table",
         "bullets",
@@ -430,15 +430,15 @@ def test_chat_explains_portfolio_strategy_for_all_five_risk_profiles() -> None:
         "공통 실행 원칙",
     ]
     for section in response.sections[:5]:
-        assert "무엇을 먼저?" in section.content
-        assert "어떻게 담나?" in section.content
-        assert "어떻게 지키나?" in section.content
+        assert "목표:" in section.content
+        assert "구성:" in section.content
+        assert "점검:" in section.content
     common = response.sections[-1].content
     assert "비용" in common
     assert "위험자산은 주식처럼" in common
-    assert "새로 넣는 돈" in common
+    assert "새 납입금" in common
     assert "리밸런싱" in common
-    assert "매년" in common
+    assert "연 1회" in common
     months_by_profile = ("12개월", "6개월", "3개월", "2개월", "1개월")
     for section, months in zip(
         response.sections[:5], months_by_profile, strict=True
@@ -555,35 +555,35 @@ def test_each_allowed_chat_style_builds_its_own_etf_portfolio() -> None:
             EducationalRiskProfile.STABLE,
             "안정형의 자본보전 중심 전략",
             "자본보전 중심 전략",
-            "비 오는 날 우산과 우비",
+            "수익률 확대보다 손실과 가격 변동을 낮추는",
         ),
         (
             "안정 추구형으로 보여줘",
             EducationalRiskProfile.STABLE_SEEKING,
             "안정추구형의 방어적 분산 전략",
             "방어적 분산 전략",
-            "우산을 챙기되 날씨가 좋으면",
+            "방어 자산을 중심으로 유지하면서 성장 자산을",
         ),
         (
             "위험중립형으로 보여줘",
             EducationalRiskProfile.RISK_NEUTRAL,
             "위험중립형의 코어·위성 전략",
             "코어·위성 전략",
-            "큰 기본 식사에 작은 반찬",
+            "코어는 장기 분산투자",
         ),
         (
             "적극투자형으로 보여줘",
             EducationalRiskProfile.ACTIVE,
             "적극투자형의 성장 코어·위성 전략",
             "성장 코어·위성 전략",
-            "작은 도전도 조금 늘리는 것",
+            "성장 자산 비중이 높은 만큼 정기 점검",
         ),
         (
             "공격 투자형으로 보여줘",
             EducationalRiskProfile.AGGRESSIVE,
             "공격투자형의 바벨형 성장·전술 전략",
             "바벨형 성장·전술 전략",
-            "바벨처럼 양쪽 끝에 무게",
+            "성장 자산과 방어 자산의 역할을 분리해",
         ),
     )
     allocations: set[tuple[tuple[str, Decimal], ...]] = set()
@@ -709,11 +709,11 @@ def test_mvp_demo_profile_builds_separate_irp_and_pension_savings_plans() -> Non
     assert section_titles == [
         "적용한 MVP 설문 조건",
         "IRP · 위험중립형의 코어·위성 전략",
-        "IRP · 연금 돈 나누기",
+        "IRP · 목표 자산배분",
         "IRP · 장기 계산에 쓰는 수익률 가정",
         "IRP · ETF 분야 살펴보기",
         "연금저축펀드 · 위험중립형의 코어·위성 전략",
-        "연금저축펀드 · 연금 돈 나누기",
+        "연금저축펀드 · 목표 자산배분",
         "연금저축펀드 · 장기 계산에 쓰는 수익률 가정",
         "연금저축펀드 · ETF 분야 살펴보기",
     ]
@@ -728,7 +728,7 @@ def test_mvp_demo_profile_builds_separate_irp_and_pension_savings_plans() -> Non
     assert all(
         [block.kind.value for block in section.blocks] == ["table", "bullets"]
         for section in response.sections
-        if section.title.endswith("연금 돈 나누기")
+        if section.title.endswith("목표 자산배분")
     )
     assert response.conversation_context is not None
     assert response.conversation_context.survey_profile == survey

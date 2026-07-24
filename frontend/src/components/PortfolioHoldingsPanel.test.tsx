@@ -313,12 +313,12 @@ describe("EducationalPortfolioReview", () => {
     } satisfies EducationalPortfolioEvaluation;
     const { rerender } = render(<EducationalPortfolioReview evaluation={noHoldingsEvaluation} />);
 
-    expect(screen.getByText("위험중립형의 기본·작은 기회 전략 (코어·위성)")).toBeInTheDocument();
-    expect(screen.getByText(/여러 곳에 나눈 주식 ETF를 오래 가져갈 기본 투자로 두고/)).toBeInTheDocument();
+    expect(screen.getByText("위험중립형의 코어·위성 전략")).toBeInTheDocument();
+    expect(screen.getByText(/분산 주식 ETF를 코어\(장기 기본 비중\)로 두고/)).toBeInTheDocument();
     expect(
-      screen.getByText(/큰 기본 식사에 작은 반찬을 더하는 것과 같아요/),
+      screen.getByText(/코어는 장기 분산투자, 위성은 제한된 비중의 보조 전략/),
     ).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /기본 주식 45.0%, 금·부동산 5.0%, 채권 43.0%, 바로 쓸 돈 7.0%/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /핵심 주식 45.0%, 실물자산\(금·리츠 등\) 5.0%, 채권 43.0%, 현금성 자산 7.0%/ })).toBeInTheDocument();
     expect(screen.getByText("조심해서 계산한 경우")).toBeInTheDocument();
     expect(screen.getByText("기본으로 계산한 경우")).toBeInTheDocument();
     expect(screen.getByText(/CMA는 여러 자산의 10년 이상 장기 전망/)).toBeInTheDocument();
@@ -327,11 +327,11 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.queryByText("스태그플레이션")).not.toBeInTheDocument();
 
     const strategyCases = [
-      ["stable", "안정형의 돈 지키기 전략 (자본보전 중심)", "비 오는 날 우산과 우비"],
-      ["stable_seeking", "안정추구형의 안전하게 나누기 전략 (방어적 분산)", "우산을 챙기되 날씨가 좋으면"],
-      ["risk_neutral", "위험중립형의 기본·작은 기회 전략 (코어·위성)", "큰 기본 식사에 작은 반찬"],
-      ["active", "적극투자형의 성장 비중 늘리기 전략 (성장 코어·위성)", "작은 도전도 조금 늘리는 것"],
-      ["aggressive", "공격투자형의 성장·안전 나누기 전략 (바벨형 성장·전술)", "바벨처럼 양쪽 끝에 무게"],
+      ["stable", "안정형의 자본보전 중심 전략", "수익률 확대보다 손실과 가격 변동을 낮추는"],
+      ["stable_seeking", "안정추구형의 방어적 분산 전략", "방어 자산을 중심으로 유지하면서 성장 자산을"],
+      ["risk_neutral", "위험중립형의 코어·위성 전략", "코어는 장기 분산투자"],
+      ["active", "적극투자형의 성장 코어·위성 전략", "성장 자산 비중이 높은 만큼 정기 점검"],
+      ["aggressive", "공격투자형의 바벨형 성장·전술 전략", "성장 자산과 방어 자산의 역할을 분리해"],
     ] as const;
     for (const [riskProfile, title, analogy] of strategyCases) {
       rerender(<EducationalPortfolioReview evaluation={{
@@ -357,10 +357,10 @@ describe("EducationalPortfolioReview", () => {
     expect(allocationDetails).toHaveAttribute("open");
 
     expect(screen.getByText("70.0%")).toBeInTheDocument();
-    expect(screen.getByText("기본 주식")).toBeInTheDocument();
+    expect(screen.getByText("핵심 주식")).toBeInTheDocument();
     expect(screen.getByText("위험중립형 ETF 분야 예시")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /채권 25%, 반도체 17%, 바이오·헬스케어 14%/ })).toBeInTheDocument();
-    expect(screen.getByText(/실제 계산 결과나 계좌 한도는 바꾸지 않아요/)).toBeInTheDocument();
+    expect(screen.getByText(/실제 계산 결과나 계좌별 한도는 변경하지 않습니다/)).toBeInTheDocument();
     expect(screen.queryByText("AI소프트웨어")).not.toBeInTheDocument();
     expect(screen.queryByText("코리아밸류업")).not.toBeInTheDocument();
     expect(screen.queryByText("ESG")).not.toBeInTheDocument();
@@ -368,9 +368,9 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.queryByText("여행 및 레저")).not.toBeInTheDocument();
     expect(screen.getByText(/과거에 같이 오르내린 정도는 최대 82.0%/)).toBeInTheDocument();
     expect(screen.getByText(/같은 회사가 몇 개 겹쳤는지를 뜻하는 숫자는 아니에요/)).toBeInTheDocument();
-    expect(screen.getByText(/자동으로 팔지는 않아요/)).toBeInTheDocument();
-    expect(screen.getByText("3개월마다 비율 점검")).toBeInTheDocument();
-    expect(screen.getByText(/리밸런싱은 달라진 비율을 처음 계획에 가깝게 맞추는 점검/)).toBeInTheDocument();
+    expect(screen.getByText(/자동 매도하지 않습니다/)).toBeInTheDocument();
+    expect(screen.getByText("3개월마다 목표 비중 점검")).toBeInTheDocument();
+    expect(screen.getByText(/리밸런싱은 달라진 비중을 목표 비중에 가깝게 조정하는 점검/)).toBeInTheDocument();
     expect(screen.getByText("12.3%")).toBeInTheDocument();
     expect(screen.getByText("주식이 크게 떨어질 때")).toBeInTheDocument();
     expect(screen.getByText("-18.5%")).toBeInTheDocument();
@@ -399,7 +399,7 @@ describe("EducationalPortfolioReview", () => {
       },
     }} />);
     expect(screen.getByText("내가 고른 손실 범위를 다시 확인할 때")).toBeInTheDocument();
-    expect(screen.getAllByText(/자동으로 팔지는 않아요/)).toHaveLength(2);
+    expect(screen.getAllByText(/자동 매도/)).toHaveLength(2);
 
     rerender(<EducationalPortfolioReview evaluation={{
       ...evaluation,

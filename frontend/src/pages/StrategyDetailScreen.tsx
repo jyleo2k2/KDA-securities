@@ -55,11 +55,11 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
           </div>
 
           <section className="sd-allocation-example" aria-labelledby="strategy-allocation-example-title">
-            <span className="sd-allocation-kicker">교육용 예시 바</span>
-            <h2 className="sd-card-title" id="strategy-allocation-example-title">연금 돈을 <span>나눠 담는 모습</span></h2>
-            <p className="sd-card-body">주식·채권·현금을 함께 두고, 주식 안에서도 ETF 분야를 나눠 보는 예시예요.</p>
+            <span className="sd-allocation-kicker">자산배분 예시</span>
+            <h2 className="sd-card-title" id="strategy-allocation-example-title">연금계좌 <span>자산배분 예시</span></h2>
+            <p className="sd-card-body">주식·채권·현금성 자산을 함께 두고, 주식 안에서도 ETF 섹터를 분산하는 예시입니다.</p>
 
-            <div className="sd-bar" role="img" aria-label="주식 ETF, 채권 ETF, 현금성 자산으로 나눈 교육용 예시 바">
+            <div className="sd-bar" role="img" aria-label="주식 ETF, 채권 ETF, 현금성 자산의 자산배분 예시 바">
               {EXAMPLE_ASSET_BARS.map((item) => (
                 <span key={item.label} style={{ flexGrow: item.weight, backgroundColor: item.color }} />
               ))}
@@ -94,7 +94,7 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
           </section>
 
           <section className="sd-card">
-            <h2 className="sd-card-title">쉽게 말하면 <span>이렇게 해요</span></h2>
+            <h2 className="sd-card-title">전략의 <span>운용 방식</span></h2>
             <p className="sd-card-body">{strategy.howItWorks}</p>
           </section>
 
@@ -103,7 +103,7 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
             <p className="sd-card-body">{strategy.accountApplication}</p>
             <dl className="sd-facts">
               <div className="sd-fact">
-                <dt>이 전략의 자리</dt>
+                <dt>포트폴리오 내 역할</dt>
                 <dd>{strategy.bucket}</dd>
               </div>
               <div className="sd-fact">
@@ -114,7 +114,7 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
           </section>
 
           <section className="sd-card sd-words" aria-labelledby="strategy-easy-words-title">
-            <h2 className="sd-card-title" id="strategy-easy-words-title">낯선 말 <span>쉽게 보기</span></h2>
+            <h2 className="sd-card-title" id="strategy-easy-words-title">핵심 <span>용어 풀이</span></h2>
             <dl>
               {strategy.easyWords.map((item) => (
                 <div key={item.word}>
@@ -126,7 +126,7 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
           </section>
 
           <section className="sd-card sd-note">
-            <p>전략 설명 안내예요. 미래 수익률을 예측하거나 특정 상품을 추천하지 않으며, 실제 운용·주문은 이용자가 직접 결정해요.</p>
+            <p>전략 설명입니다. 미래 수익률을 예측하거나 특정 상품을 추천하지 않으며, 실제 운용·주문은 이용자가 직접 결정합니다.</p>
           </section>
         </div>
       </section>
