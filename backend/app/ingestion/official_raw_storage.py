@@ -12,6 +12,7 @@ from urllib.parse import quote
 import httpx
 
 OFFICIAL_ETF_DISTRIBUTION_RAW_BUCKET = "official-etf-distribution-raw"
+OFFICIAL_ETF_UNIVERSE_REFERENCE_RAW_BUCKET = "official-etf-universe-reference-raw"
 RAW_RETENTION_DAYS = 365
 MAX_DELETE_PATHS_PER_REQUEST = 1000
 
@@ -127,12 +128,15 @@ class OfficialRawStorage:
         *,
         supabase_url: str,
         service_key: str,
+        bucket_name: str = OFFICIAL_ETF_DISTRIBUTION_RAW_BUCKET,
         client: httpx.Client | None = None,
     ) -> None:
         if not supabase_url.strip() or not service_key.strip():
             raise ValueError("Supabase URL and server secret are required")
+        _validate_source(bucket_name)
         self._base_url = supabase_url.rstrip("/")
         self._service_key = service_key
+        self._bucket_name = bucket_name
         self._client = client or httpx.Client(timeout=httpx.Timeout(30.0))
 
     def upload_run(
@@ -167,6 +171,24 @@ class OfficialRawStorage:
         )
         return manifest
 
+    def promote_current_run(self, *, dataset: str, manifest: RawRunManifest) -> None:
+        """Point a server-only dataset alias at one complete immutable run."""
+
+        _validate_source(dataset)
+        self._upload(
+            f"current/{dataset}.json",
+            json.dumps(
+                {
+                    "manifest_path": f"runs/{manifest.run_id}/manifest.json",
+                    "run_id": manifest.run_id,
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8"),
+            content_type="application/json",
+        )
+
     def delete_paths(self, paths: list[str]) -> int:
         """Permanently remove server-owned raw paths through the Storage API."""
 
@@ -185,7 +207,7 @@ class OfficialRawStorage:
             response = self._client.request(
                 "DELETE",
                 f"{self._base_url}/storage/v1/object/"
-                f"{OFFICIAL_ETF_DISTRIBUTION_RAW_BUCKET}",
+                f"{self._bucket_name}",
                 json={"prefixes": batch},
                 headers={
                     "apikey": self._service_key,
@@ -201,7 +223,7 @@ class OfficialRawStorage:
     def _upload(self, object_path: str, content: bytes, *, content_type: str) -> None:
         response = self._client.put(
             f"{self._base_url}/storage/v1/object/"
-            f"{OFFICIAL_ETF_DISTRIBUTION_RAW_BUCKET}/{quote(object_path, safe='/')}",
+            f"{self._bucket_name}/{quote(object_path, safe='/')}",
             content=content,
             headers={
                 "apikey": self._service_key,

@@ -12,6 +12,7 @@ from backend.app.ingestion.etf_distribution_refresh import (
 )
 from backend.app.ingestion.official_raw_storage import (
     OFFICIAL_ETF_DISTRIBUTION_RAW_BUCKET,
+    OFFICIAL_ETF_UNIVERSE_REFERENCE_RAW_BUCKET,
     OfficialRawStorage,
     build_raw_run_manifest,
 )
@@ -279,3 +280,38 @@ def test_private_raw_storage_rejects_directory_deletion() -> None:
         )
         with pytest.raises(ValueError, match="concrete raw run"):
             storage.delete_paths(["runs/20240101T000000Z/"])
+
+
+def test_private_raw_storage_can_promote_a_complete_reference_run(tmp_path) -> None:
+    source = tmp_path / "reference.xls"
+    source.write_bytes(b"official-workbook")
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={"Key": "stored"})
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        storage = OfficialRawStorage(
+            supabase_url="https://example.test",
+            service_key="server-only-key",
+            bucket_name=OFFICIAL_ETF_UNIVERSE_REFERENCE_RAW_BUCKET,
+            client=client,
+        )
+        manifest = storage.upload_run(
+            run_id="20260724T010203Z",
+            files={"kofia-fund-costs": source},
+            collected_at=datetime(2026, 7, 24, 1, 2, 3, tzinfo=UTC),
+        )
+        storage.promote_current_run(
+            dataset="etf-universe-reference-inputs", manifest=manifest
+        )
+
+    assert len(requests) == 3
+    assert all(
+        OFFICIAL_ETF_UNIVERSE_REFERENCE_RAW_BUCKET in str(request.url)
+        for request in requests
+    )
+    assert str(requests[-1].url).endswith(
+        "/current/etf-universe-reference-inputs.json"
+    )
