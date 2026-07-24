@@ -244,9 +244,38 @@ def test_post_regime_etf_outcomes_keep_missing_periods_explicit() -> None:
     etf = result.groups[0].etfs[0]
     assert etf.horizons == []
     assert [gap.reason for gap in etf.gaps] == [
-        "start_observation_unavailable",
-        "start_observation_unavailable",
-        "start_observation_unavailable",
+        "outcome_precedes_history_coverage",
+        "outcome_precedes_history_coverage",
+        "outcome_precedes_history_coverage",
+    ]
+
+
+def test_post_regime_etf_outcomes_identify_future_coverage_gaps() -> None:
+    history = {
+        date(2024, 2, 1): Decimal("100"),
+        date(2024, 3, 1): Decimal("101"),
+    }
+    result = calculate_post_regime_etf_outcomes(
+        matches=[_regime_match(date(2024, 1, 1))],
+        isu_codes=["069500"],
+        names_by_code={"069500": "KODEX 200"},
+        histories={"069500": history},
+        history_sources={"069500": "kis_adjusted_close_plus_kind_cash_distribution"},
+        source_chips={
+            "069500": SourceChip(
+                label="총수익지수",
+                reference="https://openapi.koreainvestment.com/",
+                as_of=date(2024, 3, 1),
+            )
+        },
+    )
+
+    etf = result.groups[0].etfs[0]
+    assert etf.horizons == []
+    assert [gap.reason for gap in etf.gaps] == [
+        "outcome_exceeds_history_coverage",
+        "outcome_exceeds_history_coverage",
+        "outcome_exceeds_history_coverage",
     ]
 
 

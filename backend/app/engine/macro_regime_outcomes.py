@@ -12,8 +12,8 @@ from .macro_regime import MacroRegimeMatch
 from .models import SourceChip
 
 ENGINE_NAME = "historical_macro_regime_etf_outcomes"
-ENGINE_VERSION = "2026-07-20.2"
-POLICY_VERSION = "macro-analog-etf-outcomes-2026-07-20.2"
+ENGINE_VERSION = "2026-07-24.1"
+POLICY_VERSION = "macro-analog-etf-outcomes-2026-07-24.1"
 OUTCOME_HORIZON_MONTHS = (3, 6, 12)
 _MAX_BOUNDARY_LAG_DAYS = 14
 _QUANTUM = Decimal("0.0001")
@@ -157,7 +157,11 @@ def _etf_outcome(
                 gaps.append(
                     RegimeOutcomeGap(
                         horizon_months=months,
-                        reason="start_observation_unavailable",
+                        reason=(
+                            "outcome_precedes_history_coverage"
+                            if start_target < dates[0]
+                            else "start_observation_unavailable"
+                        ),
                     )
                 )
                 continue
@@ -168,7 +172,11 @@ def _etf_outcome(
                 gaps.append(
                     RegimeOutcomeGap(
                         horizon_months=months,
-                        reason="end_observation_unavailable",
+                        reason=(
+                            "outcome_exceeds_history_coverage"
+                            if end_target > dates[-1]
+                            else "end_observation_unavailable"
+                        ),
                     )
                 )
                 continue
@@ -257,6 +265,6 @@ def calculate_post_regime_etf_outcomes(
             "historical_similarity_does_not_imply_future_return",
             "only_verified_total_return_histories_are_calculated",
             "missing_boundaries_are_not_interpolated",
-            "older_regimes_may_precede_etf_listing_or_data_coverage",
+            "outcome_gaps_distinguish_history_coverage_from_missing_boundaries",
         ],
     )
