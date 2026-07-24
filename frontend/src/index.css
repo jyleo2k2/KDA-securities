@@ -1068,9 +1068,19 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 }
 .rebalancing-reminder-card { margin: 16px 0; padding: 14px; border: 1px solid #c6d7bc; border-radius: 14px; background: #f5f9f1; color: #2f513b; }
 .rebalancing-reminder-card p { margin: 8px 0; font-size: 13px; }
-.rebalancing-reminder-card button { margin: 4px 6px 4px 0; }
+.rebalancing-reminder-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.rebalancing-reminder-button { min-height: 36px; display: inline-flex; align-items: center; justify-content: center; padding: 0 14px; border: 1px solid #18a860; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 800; line-height: 1; cursor: pointer; transition: transform .16s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease; }
+.rebalancing-reminder-button.is-primary { background: #18a860; box-shadow: 0 6px 14px rgba(24, 168, 96, .16); }
+.rebalancing-reminder-button.is-secondary { background: #fff; color: #16824b; }
+@media (hover: hover) and (pointer: fine) {
+  .rebalancing-reminder-button.is-primary:hover:not(:disabled) { border-color: #007848; background: #007848; box-shadow: 0 8px 18px rgba(0, 120, 72, .2); }
+  .rebalancing-reminder-button.is-secondary:hover:not(:disabled) { background: #edf8f0; }
+}
+.rebalancing-reminder-button:active:not(:disabled) { transform: scale(.97); }
+.rebalancing-reminder-button:focus-visible { outline: 3px solid rgba(24, 168, 96, .24); outline-offset: 2px; }
+.rebalancing-reminder-button:disabled { opacity: .55; cursor: default; box-shadow: none; }
 .rebalancing-reminder-card small { display: block; margin-top: 8px; color: #607161; }
-/* 리밸런싱 카드 로딩 스켈레톤 — 실제 카드와 동일 골격(strong 23·p 2줄 38·버튼 28·small 19)으로 높이를 맞춰 응답 도착 시 밀림이 없다. */
+/* 리밸런싱 카드 로딩 스켈레톤 — 실제 카드와 동일 골격(strong 23·p 2줄 38·버튼 36·small 19)으로 높이를 맞춰 응답 도착 시 밀림이 없다. */
 .rebalancing-reminder-card.is-skeleton strong,
 .rebalancing-reminder-card.is-skeleton small { display: block; }
 .rebalancing-reminder-card.is-skeleton .skeleton-line { display: block; height: 11px; border-radius: 99px; background: #e4ece0; animation: chat-skeleton-pulse 1.1s ease-in-out infinite alternate; }
@@ -1078,7 +1088,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .rebalancing-reminder-card.is-skeleton p { display: flex; flex-direction: column; justify-content: center; gap: 8px; height: 38px; }
 .rebalancing-reminder-card.is-skeleton small { height: 19px; display: flex; align-items: center; }
 .rebalancing-reminder-card.is-skeleton > div { height: 36px; display: flex; align-items: center; }
-.rebalancing-reminder-card.is-skeleton .skeleton-button { width: 127px; height: 28px; border-radius: 8px; }
+.rebalancing-reminder-card.is-skeleton .skeleton-button { width: 127px; height: 36px; border-radius: 999px; }
 
 @media (max-width: 480px) {
   .pension-planner-stage { padding: 0; background: #fff; }
