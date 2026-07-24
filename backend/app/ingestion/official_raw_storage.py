@@ -13,6 +13,7 @@ import httpx
 
 OFFICIAL_ETF_DISTRIBUTION_RAW_BUCKET = "official-etf-distribution-raw"
 RAW_RETENTION_DAYS = 365
+MAX_DELETE_PATHS_PER_REQUEST = 1000
 
 
 class OfficialRawStorageError(RuntimeError):
@@ -165,6 +166,37 @@ class OfficialRawStorage:
             content_type="application/json",
         )
         return manifest
+
+    def delete_paths(self, paths: list[str]) -> int:
+        """Permanently remove server-owned raw paths through the Storage API."""
+
+        normalized = sorted(set(paths))
+        if not normalized:
+            return 0
+        if any(
+            not path.startswith("runs/") or path.endswith("/")
+            for path in normalized
+        ):
+            raise ValueError("only concrete raw run object paths may be deleted")
+        for batch_start in range(0, len(normalized), MAX_DELETE_PATHS_PER_REQUEST):
+            batch = normalized[
+                batch_start : batch_start + MAX_DELETE_PATHS_PER_REQUEST
+            ]
+            response = self._client.request(
+                "DELETE",
+                f"{self._base_url}/storage/v1/object/"
+                f"{OFFICIAL_ETF_DISTRIBUTION_RAW_BUCKET}",
+                json={"prefixes": batch},
+                headers={
+                    "apikey": self._service_key,
+                    "authorization": f"Bearer {self._service_key}",
+                },
+            )
+            if response.is_error:
+                raise OfficialRawStorageError(
+                    f"official raw deletion failed with HTTP {response.status_code}"
+                )
+        return len(normalized)
 
     def _upload(self, object_path: str, content: bytes, *, content_type: str) -> None:
         response = self._client.put(
