@@ -919,6 +919,7 @@ export function EducationalPortfolioReview({
                   <th>자산군</th>
                   <th>현재</th>
                   <th>목표</th>
+                  <th>이탈폭</th>
                   <th>납입 후</th>
                   <th>추가 납입 예시</th>
                   <th>상태</th>
@@ -930,6 +931,7 @@ export function EducationalPortfolioReview({
                     <th title={sleeve.sleeve}>{sleeveLabel(sleeve.sleeve)}</th>
                     <td>{percent(sleeve.current_percent)}</td>
                     <td>{percent(sleeve.target_percent)}</td>
+                    <td>{Number(sleeve.drift_before_percent_points) > 0 ? "+" : ""}{percent(sleeve.drift_before_percent_points)}p</td>
                     <td>{percent(sleeve.projected_percent_after_contribution)}</td>
                     <td>{won(sleeve.contribution_example_krw)}</td>
                     <td><span className={`rebalance-status status-${sleeve.status}`} title={sleeve.status}>{REBALANCE_STATUS_LABELS[sleeve.status] ?? "추가 점검 필요"}</span></td>
@@ -971,7 +973,7 @@ export function EducationalPortfolioReview({
 
       {Number(rebalancing.unclassified_holding_amount_krw) > 0 && (
         <p className="portfolio-review-warning">
-          분류하지 못한 보유 ETF {won(rebalancing.unclassified_holding_amount_krw)}은 비중 계산에 별도로 남겼습니다. 종목코드와 유니버스 기준일을 확인해 주세요.
+          분류하지 못한 보유자산 {won(rebalancing.unclassified_holding_amount_krw)}은 비중 계산에 별도로 남겼습니다. 상품 분류와 자료 기준일을 확인해 주세요.
         </p>
       )}
       {evaluation.account_cap_binding && (

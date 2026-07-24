@@ -17,6 +17,7 @@ from backend.app.engine.educational_portfolio import (
     _display_asset_class,
     _percentile,
     build_educational_portfolio,
+    calculate_rebalancing_guidance,
     calculate_return_correlation,
     calculate_target_allocation,
     rebalancing_cadence,
@@ -365,6 +366,61 @@ def test_rebalancing_cadence_follows_risk_profile(
     assert cadence.review_interval_months == months
     assert cadence.drift_threshold_percent_points == threshold
     assert cadence.rationale
+
+
+def test_rebalancing_uses_snapshot_cash_and_bond_in_actual_weights() -> None:
+    request = _request(
+        holdings=[
+            CurrentHolding(
+                isu_code="CORE01",
+                amount_krw=Decimal("6000000"),
+                asset_class=AssetClass.DOMESTIC_EQUITY,
+            ),
+            CurrentHolding(
+                isu_code="snapshot:cash-1",
+                amount_krw=Decimal("2000000"),
+                asset_class=AssetClass.CASH,
+            ),
+            CurrentHolding(
+                isu_code="snapshot:bond-1",
+                amount_krw=Decimal("2000000"),
+                asset_class=AssetClass.BOND,
+            ),
+        ]
+    )
+    products = {
+        "CORE01": _product(
+            "CORE01", asset_class="equity", strategy="broad_market"
+        )
+    }
+
+    guidance = calculate_rebalancing_guidance(
+        request=request,
+        products=products,
+        sleeves={
+            "core_equity": Decimal("60"),
+            "real_assets": Decimal("0"),
+            "tactical": Decimal("0"),
+            "fixed_income": Decimal("20"),
+            "cash": Decimal("20"),
+        },
+    )
+
+    current = {item.sleeve: item.current_percent for item in guidance.sleeves}
+    drift = {
+        item.sleeve: item.drift_before_percent_points
+        for item in guidance.sleeves
+    }
+    assert guidance.current_total_krw == Decimal("10000000")
+    assert guidance.unclassified_holding_amount_krw == Decimal("0")
+    assert current == {
+        "core_equity": Decimal("60"),
+        "real_assets": Decimal("0"),
+        "tactical": Decimal("0"),
+        "fixed_income": Decimal("20"),
+        "cash": Decimal("20"),
+    }
+    assert drift["core_equity"] == Decimal("0")
 
 
 def test_asset_class_allocation_includes_all_display_buckets_and_corrects_rounding(

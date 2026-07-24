@@ -909,6 +909,7 @@ export interface CompletedSurveyProfile {
 export interface CurrentHoldingInput {
   isu_code: string;
   amount_krw: string;
+  asset_class?: AssetClass | null;
 }
 
 export interface EducationalPortfolioInput {
