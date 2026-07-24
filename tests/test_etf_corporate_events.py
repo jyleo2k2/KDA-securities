@@ -208,3 +208,34 @@ def test_event_master_cross_validates_dividends_without_overwriting_kind(
     assert report["scheduled_kis_dividend_count"] == 1
     assert scheduled["status"] == "excluded_from_historical_total_return"
     assert scheduled["timing_basis"] == "record_date_schedule_not_ex_date"
+
+
+def test_event_master_accepts_eligible_codes_without_adjusted_price_cache(
+    tmp_path,
+) -> None:
+    adjusted_root = tmp_path / "empty-adjusted"
+    adjusted_root.mkdir()
+    kis_report = {
+        "events": [
+            {
+                "isu_code": "069500",
+                "isu_name": "KODEX 200",
+                "record_date": "2026-08-15",
+                "payment_date": "2026-08-20",
+                "cash_per_share_krw": "110",
+                "dividend_kind": "분기배당",
+            }
+        ]
+    }
+
+    report = build_etf_corporate_event_master(
+        distribution_report={"events": []},
+        ex_date_report=None,
+        adjusted_price_root=adjusted_root,
+        source_files={},
+        as_of=date(2026, 7, 24),
+        kis_dividend_report=kis_report,
+        eligible_isu_codes={"069500"},
+    )
+
+    assert report["scheduled_kis_dividend_count"] == 1
