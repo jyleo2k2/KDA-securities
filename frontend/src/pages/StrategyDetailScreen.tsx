@@ -41,22 +41,34 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
           </div>
 
           <section className="sd-card">
-            <h2 className="sd-card-title">어떻게 <span>운용되나요?</span></h2>
+            <h2 className="sd-card-title">쉽게 말하면 <span>이렇게 해요</span></h2>
             <p className="sd-card-body">{strategy.howItWorks}</p>
           </section>
 
           <section className="sd-card">
-            <h2 className="sd-card-title">연금계좌에 <span>이렇게 담아요</span></h2>
+            <h2 className="sd-card-title">연금계좌에는 <span>이렇게 나눠요</span></h2>
             <p className="sd-card-body">{strategy.accountApplication}</p>
             <dl className="sd-facts">
               <div className="sd-fact">
-                <dt>포트폴리오 버킷</dt>
+                <dt>이 전략의 자리</dt>
                 <dd>{strategy.bucket}</dd>
               </div>
               <div className="sd-fact">
                 <dt>구현 난이도</dt>
                 <dd>{strategy.directness}</dd>
               </div>
+            </dl>
+          </section>
+
+          <section className="sd-card sd-words" aria-labelledby="strategy-easy-words-title">
+            <h2 className="sd-card-title" id="strategy-easy-words-title">낯선 말 <span>쉽게 보기</span></h2>
+            <dl>
+              {strategy.easyWords.map((item) => (
+                <div key={item.word}>
+                  <dt>{item.word}</dt>
+                  <dd>{item.meaning}</dd>
+                </div>
+              ))}
             </dl>
           </section>
 

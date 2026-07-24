@@ -20,29 +20,29 @@ const ACCOUNT_LABELS: Record<AccountType, string> = {
 };
 
 const SLEEVE_LABELS: Record<string, string> = {
-  core_equity: "분산 주식",
-  real_assets: "금·리츠",
-  tactical: "전술 자산",
+  core_equity: "기본 주식",
+  real_assets: "금·부동산",
+  tactical: "작은 기회 투자",
   fixed_income: "채권",
-  cash: "현금성",
+  cash: "바로 쓸 돈",
 };
 
 const REBALANCE_STATUS_LABELS: Record<string, string> = {
-  within_drift_band: "허용 범위",
-  underweight_after_contribution: "비중 부족",
-  overweight_review_only: "비중 초과 점검",
+  within_drift_band: "계획 안",
+  underweight_after_contribution: "조금 더 채우기",
+  overweight_review_only: "비율 줄이기 점검",
 };
 
 const STRESS_SCENARIO_LABELS: Record<string, string> = {
-  equity_drawdown: "주식시장 급락",
-  rate_inflation_shock: "금리·물가 충격",
-  stagflation: "스태그플레이션",
+  equity_drawdown: "주식이 크게 떨어질 때",
+  rate_inflation_shock: "금리와 물가가 함께 오를 때",
+  stagflation: "물가는 오르는데 경기는 나쁠 때",
 };
 
 const STRESS_POLICY_STATUS_LABELS = {
-  not_evaluated: "손실감내도 미비교",
-  within_user_limit: "손실감내도 기준 이내",
-  review_required: "손실감내도 재점검 필요",
+  not_evaluated: "견딜 수 있는 손실과 아직 비교하지 않음",
+  within_user_limit: "내가 견딜 수 있다고 고른 범위 안",
+  review_required: "내가 고른 손실 범위를 다시 확인할 때",
 } as const;
 
 const STRATEGY_LABELS: Record<string, string> = {
@@ -67,29 +67,29 @@ const STRATEGY_GUIDES: Record<RiskProfile, {
   analogy: string;
 }> = {
   stable: {
-    title: "자본보전 중심 전략",
-    description: "높은 수익을 추구하기보다 연금자산의 큰 손실을 줄이고 안정적으로 유지하는 데 목적이 있습니다.",
-    analogy: "학교 가는 길에 비가 올까 봐 우산, 우비, 여벌 옷까지 챙기는 사람과 비슷해요. 많이 빨리 가는 것보다 비를 맞지 않고 안전하게 가는 것이 더 중요합니다.",
+    title: "돈 지키기 전략 (자본보전 중심)",
+    description: "연금 돈을 크게 잃지 않는 것을 먼저 생각해요. 채권과 현금을 많이, 주식은 조금만 담아요.",
+    analogy: "비 오는 날 우산과 우비를 챙기는 것과 같아요. 빨리 가는 것보다 안전하게 가는 것이 더 중요해요.",
   },
   stable_seeking: {
-    title: "방어적 분산 전략",
-    description: "방어자산을 중심에 두되 장기 성장과 물가상승에 대응하기 위해 주식과 실물자산을 조금 더 적극적으로 편입합니다.",
-    analogy: "안정형이 우산과 우비를 모두 챙기는 사람이라면, 안정추구형은 우산을 챙기되 날씨가 좋으면 조금 더 멀리 걸어가 보는 사람에 가깝습니다.",
+    title: "안전하게 나누기 전략 (방어적 분산)",
+    description: "채권과 현금을 중심에 두면서, 주식과 금·부동산 ETF도 조금 담아요.",
+    analogy: "우산을 챙기되 날씨가 좋으면 조금 더 멀리 걸어가 보는 것과 같아요.",
   },
   risk_neutral: {
-    title: "코어·위성 전략",
-    description: "광범위한 주식 ETF를 장기 성장의 코어로 두고 특정 테마 ETF는 5% 이내의 위성자산으로 제한하는 구조입니다.",
-    analogy: "큰 기본 식사에 작은 반찬을 더하는 전략입니다. 코어는 주식시장의 기본 뼈대이고, 위성은 조금만 담는 특별 반찬입니다.",
+    title: "기본·작은 기회 전략 (코어·위성)",
+    description: "여러 곳에 나눈 주식 ETF를 오래 가져갈 기본 투자로 두고, 특정 분야 ETF는 아주 조금만 더해요.",
+    analogy: "큰 기본 식사에 작은 반찬을 더하는 것과 같아요. 기본 투자는 많이, 새로운 기회 투자는 조금만 담아요.",
   },
   active: {
-    title: "성장 코어·위성 전략",
-    description: "장기 성장자산의 비중을 확대하면서도 채권과 현금을 완전히 없애지 않는 구조입니다.",
-    analogy: "기본 주식 투자를 크게 하고 작은 도전도 조금 늘리는 전략입니다. 위험중립형보다 성장 가능성을 더 중요하게 생각하는 대신, 시장이 떨어질 때 손실도 더 클 수 있습니다.",
+    title: "성장 비중 늘리기 전략 (성장 코어·위성)",
+    description: "주식 기본 투자를 더 크게 두되, 채권과 현금도 남겨 두는 계획이에요.",
+    analogy: "기본 주식 투자를 크게 하고 작은 도전도 조금 늘리는 것과 같아요. 시장이 떨어질 때 손실도 더 클 수 있어요.",
   },
   aggressive: {
-    title: "바벨형 성장·전술 전략",
-    description: "주식과 전술자산의 성장축을 크게 두면서 반대편에 최소한의 채권과 현금 방어축을 별도로 유지합니다.",
-    analogy: "바벨은 양쪽 끝에 무게가 달린 긴 막대예요. 중간 성격의 자산을 많이 두기보다 성장 쪽과 안전 쪽의 역할을 분명히 나눠 두는 방식입니다.",
+    title: "성장·안전 나누기 전략 (바벨형 성장·전술)",
+    description: "주식과 작은 기회 투자를 많이 두면서도, 채권과 현금을 조금 남겨 한쪽에만 몰리지 않게 해요.",
+    analogy: "바벨처럼 양쪽 끝에 무게를 나눠 다는 것과 같아요. 성장 쪽과 안전 쪽의 역할을 나눠 둬요.",
   },
 };
 
@@ -207,9 +207,9 @@ function PortfolioSectorGuide({ riskProfile }: { riskProfile: RiskProfile }) {
   return (
     <section className="portfolio-sector-guide" aria-labelledby="portfolio-sector-guide-title">
       <header>
-        <span>섹터 분산 예시</span>
-        <h4 id="portfolio-sector-guide-title">{guideLabel} 섹터 가이드</h4>
-        <p>투자성향에 따라 살펴볼 테마의 비중 예시입니다. 실제 엔진 목표비중·후보 ETF·계좌 한도는 바꾸지 않습니다.</p>
+        <span>여러 분야로 나눠 보기</span>
+        <h4 id="portfolio-sector-guide-title">{guideLabel} ETF 분야 예시</h4>
+        <p>투자성향에 따라 살펴볼 분야의 비율 예시예요. 실제 계산 결과나 계좌 한도는 바꾸지 않아요.</p>
       </header>
       <div className="portfolio-sector-guide-layout">
         <div
@@ -230,7 +230,7 @@ function PortfolioSectorGuide({ riskProfile }: { riskProfile: RiskProfile }) {
           ))}
         </ul>
       </div>
-      <p className="portfolio-sector-guide-note">테마는 챗봇에서 설명하는 승인된 ETF 테마 카탈로그 중에서만 표시하며, 매수·수익률 예측 안내가 아닙니다.</p>
+      <p className="portfolio-sector-guide-note">여기서는 ETF가 다루는 분야만 보여드려요. “사세요”라는 추천이나 미래 수익 예측은 아니에요.</p>
     </section>
   );
 }
@@ -254,9 +254,9 @@ function TargetAllocationGuide({
   return (
     <section className="portfolio-target-allocation" aria-labelledby="portfolio-target-allocation-title">
       <header>
-        <span>규칙 엔진 목표비중</span>
-        <h4 id="portfolio-target-allocation-title">목표 자산배분</h4>
-        <p>이 전략에 따른 자산군별 목표비중입니다.</p>
+        <span>계산으로 정한 비율</span>
+        <h4 id="portfolio-target-allocation-title">연금 돈 나누기</h4>
+        <p>연금 돈을 어디에 얼마나 나눠 둘지 정한 비율이에요.</p>
       </header>
       <div className="portfolio-target-allocation-layout">
         <div
@@ -278,7 +278,7 @@ function TargetAllocationGuide({
         </ul>
       </div>
       <p className="portfolio-target-allocation-note">
-        전체적인 자산배분의 틀은 이렇게 가져가고, 각 자산 분류를 어떤 테마 ETF로 채울지는 ETF 섹터 알아보기에서 탐색할 수 있습니다.
+        큰 비율을 먼저 정한 뒤, ETF 분야 살펴보기에서 각 분야의 위험을 확인할 수 있어요.
       </p>
     </section>
   );
@@ -293,15 +293,15 @@ function RebalancingCadenceGuide({
   return (
     <section className="portfolio-rebalance-cadence" aria-labelledby="portfolio-rebalance-cadence-title">
       <header>
-        <span>규칙 엔진 리밸런싱 정책</span>
-        <h4 id="portfolio-rebalance-cadence-title">{cadence.review_interval_months}개월마다 비중 점검</h4>
+        <span>비율 다시 맞춰 보기</span>
+        <h4 id="portfolio-rebalance-cadence-title">{cadence.review_interval_months}개월마다 비율 점검</h4>
         <p>{cadence.rationale}</p>
       </header>
       <div className="portfolio-review-summary">
-        <div><span>정기 점검 주기</span><strong>{cadence.review_interval_months}개월</strong></div>
-        <div><span>목표비중 이탈 기준</span><strong>±{percent(cadence.drift_threshold_percent_points)}</strong></div>
+        <div><span>얼마마다 볼까</span><strong>{cadence.review_interval_months}개월</strong></div>
+        <div><span>비율 차이 기준</span><strong>±{percent(cadence.drift_threshold_percent_points)}</strong></div>
       </div>
-      <p className="portfolio-target-allocation-note">목표비중은 연령·수령 시점·투자성향·계좌 한도로 다시 계산할 때만 바뀌며, 정기 점검만으로 임의 변경하지 않습니다. 이탈 시에는 새 납입금으로 부족한 자산군을 먼저 보완해요.</p>
+      <p className="portfolio-target-allocation-note">리밸런싱은 달라진 비율을 처음 계획에 가깝게 맞추는 점검이에요. 새로 넣는 돈은 부족한 쪽에 먼저 넣어요.</p>
     </section>
   );
 }
@@ -321,7 +321,7 @@ function EducationalStrategyGuide({
         <span>투자성향 기반 연금투자전략</span>
         <h3 id="portfolio-strategy-guide-title">{RISK_PROFILE_LABELS[profile]}의 {guide.title}</h3>
         <p>
-          {ACCOUNT_LABELS[evaluation.evaluated_input.account_type]} · 연금 수령 개시까지 {evaluation.planning_horizon_years}년
+          {ACCOUNT_LABELS[evaluation.evaluated_input.account_type]} · 연금을 받기 시작할 때까지 {evaluation.planning_horizon_years}년
         </p>
       </header>
 
@@ -332,29 +332,29 @@ function EducationalStrategyGuide({
       </article>
 
       <p className="portfolio-strategy-transition">
-        이 전략에 따르면 {RISK_PROFILE_LABELS[profile]} 연금투자전략은 아래와 같습니다.
+        이 성향이라면 연금 돈을 아래처럼 나눠 볼 수 있어요.
       </p>
       <TargetAllocationGuide evaluation={evaluation} />
       <RebalancingCadenceGuide evaluation={evaluation} />
 
       <section className="portfolio-strategy-planning" aria-labelledby="portfolio-strategy-planning-title">
         <header>
-          <span>장기 계획가정</span>
-          <h4 id="portfolio-strategy-planning-title">보수·기준 계획수익률</h4>
+          <span>장기 계산에 쓰는 숫자</span>
+          <h4 id="portfolio-strategy-planning-title">두 가지 수익률 가정</h4>
         </header>
         <div className="portfolio-planning-metrics">
           <div>
-            <span>보수 계획수익률</span>
+            <span>조심해서 계산한 경우</span>
             <strong>{optionalPercent(planning.conservative_planning_return_percent)}</strong>
-            <small>CMA·비용·불확실성 할인</small>
+            <small>장기 전망·비용·여유 폭 반영</small>
           </div>
           <div>
-            <span>기준 계획수익률</span>
+            <span>기본으로 계산한 경우</span>
             <strong>{optionalPercent(planning.base_planning_return_percent)}</strong>
-            <small>CMA·ETF 운용비용 반영</small>
+            <small>장기 전망·ETF 비용 반영</small>
           </div>
         </div>
-        <div className="planning-source-chips" aria-label="장기 계획수익률 출처">
+        <div className="planning-source-chips" aria-label="장기 수익률 가정 출처">
           {planning.sources.map((source) => (
             /^https?:\/\//.test(source.reference) ? (
               <a href={source.reference} target="_blank" rel="noreferrer" key={`${source.label}-${source.reference}`}>
@@ -366,14 +366,14 @@ function EducationalStrategyGuide({
           ))}
         </div>
         <p className="portfolio-planning-note">
-          *이는 J.P. Morgan의 LTCMA 장기 자본시장 가정과 ETF 운용비용을 반영해 산출한 계획가정이며, 미래 수익률 예측이나 보장값이 아닙니다.
+          *CMA는 여러 자산의 10년 이상 장기 전망을 정리한 계산용 가정이에요. ETF 비용도 넣어 계산하지만, 미래 수익을 맞히거나 약속하는 숫자는 아니에요.
         </p>
       </section>
 
       <section className="portfolio-theme-next-step" aria-labelledby="portfolio-theme-next-step-title">
-        <strong id="portfolio-theme-next-step-title">그러면 어떤 종목을 살까?</strong>
+        <strong id="portfolio-theme-next-step-title">어떤 ETF 분야를 살펴볼까?</strong>
         <p>
-          구체 종목의 매수 추천은 하지 않습니다. ETF 섹터 알아보기에서 각 자산 분류를 채울 ETF 테마의 구조와 위험을 확인해 보세요.
+          이 서비스는 “이 ETF를 사세요”라고 정해 주지 않아요. ETF 분야 살펴보기에서 각 분야가 어떤 위험이 있는지 확인해 보세요.
         </p>
       </section>
     </section>
@@ -392,8 +392,8 @@ function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
   return (
     <section className="portfolio-risk-review" aria-labelledby="portfolio-risk-title">
       <header>
-        <span>과거 관측 기반</span>
-        <h4 id="portfolio-risk-title">목표 포트폴리오 위험·스트레스</h4>
+        <span>지나간 자료로 본 모습</span>
+        <h4 id="portfolio-risk-title">얼마나 흔들릴 수 있는지 보기</h4>
         <p>
           {dateText(risk.observation_start)}~{dateText(risk.observation_end)} · 공통 일간 관측 {risk.observation_count.toLocaleString("ko-KR")}개
         </p>
@@ -401,10 +401,10 @@ function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
 
       {complete ? (
         <div className="portfolio-risk-metrics">
-          <div><span>연환산 변동성</span><strong>{optionalPercent(risk.annualized_volatility_percent)}</strong></div>
-          <div><span>연환산 하방편차</span><strong>{optionalPercent(risk.annualized_downside_deviation_percent)}</strong></div>
-          <div><span>과거 최대낙폭</span><strong>{optionalPercent(risk.maximum_drawdown_percent)}</strong></div>
-          <div><span>과거 95% 1일 손실</span><strong>{optionalPercent(risk.historical_95pct_one_day_loss_percent)}</strong></div>
+          <div><span>1년 동안의 흔들림 크기</span><strong>{optionalPercent(risk.annualized_volatility_percent)}</strong></div>
+          <div><span>떨어질 때의 흔들림</span><strong>{optionalPercent(risk.annualized_downside_deviation_percent)}</strong></div>
+          <div><span>과거 가장 크게 떨어진 폭</span><strong>{optionalPercent(risk.maximum_drawdown_percent)}</strong></div>
+          <div><span>나쁜 날 하루 손실 기준</span><strong>{optionalPercent(risk.historical_95pct_one_day_loss_percent)}</strong></div>
         </div>
       ) : (
         <p className="portfolio-risk-unavailable">
@@ -424,13 +424,13 @@ function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
       {hasStressPolicy && (
         <section
           className={`portfolio-risk-policy ${reviewRequired ? "review-required" : "within-limit"}`}
-          aria-label="손실감내도 정책 점검"
+          aria-label="견딜 수 있는 손실 범위 점검"
         >
           <strong>{STRESS_POLICY_STATUS_LABELS[risk.stress_loss_policy_status]}</strong>
           <p>
-            사용자 손실감내도 {percent(risk.stress_loss_limit_percent!)} · 최악 정책 스트레스 손실 {percent(risk.worst_stress_loss_percent)}
+            내가 고른 손실 범위 {percent(risk.stress_loss_limit_percent!)} · 가장 큰 충격 가정 {percent(risk.worst_stress_loss_percent)}
           </p>
-          {reviewRequired && <small>목표비중과 추가 납입 계획을 다시 확인해 주세요. 자동 매도 지시는 만들지 않습니다.</small>}
+          {reviewRequired && <small>연금 돈을 나눈 비율과 새 납입 계획을 다시 확인해 주세요. 자동으로 팔지는 않아요.</small>}
         </section>
       )}
       <div className="planning-source-chips" aria-label="위험·스트레스 출처">
@@ -445,7 +445,7 @@ function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
         ))}
       </div>
       <p className="portfolio-risk-note">
-        위 과거 지표는 제안 목표비중을 고정해 측정한 위험 참고치이며 수익률 예측이 아닙니다. 스트레스 값도 발생확률이나 미래 손실 예측이 아닌 정책 시나리오입니다.
+        위 숫자는 지나간 자료로 본 참고값이에요. 앞으로의 수익이나 손실을 맞히는 숫자는 아니에요.
       </p>
     </section>
   );
@@ -465,19 +465,19 @@ function PortfolioPlanningReview({
   return (
     <section className="portfolio-planning-review" aria-labelledby={titleId}>
       <header>
-        <span>승인된 계획가정</span>
+        <span>장기 계산에 쓰는 숫자</span>
         <h4 id={titleId}>{title}</h4>
         <p>
-          {description} · CMA {planning.cma_source_horizon_min_years}~{planning.cma_source_horizon_max_years}년 기준
+          {description} · 장기 전망(CMA) {planning.cma_source_horizon_min_years}~{planning.cma_source_horizon_max_years}년 기준
           {planning.annual_review_required ? " · 매년 재검토" : ""}
         </p>
       </header>
 
       <div className="portfolio-planning-metrics">
-        <div><span>기준 계획가정</span><strong>{optionalPercent(planning.base_planning_return_percent)}</strong><small>CMA·비용 반영</small></div>
-        <div><span>보수 계획가정</span><strong>{optionalPercent(planning.conservative_planning_return_percent)}</strong><small>불확실성 추가 할인</small></div>
-        <div><span>비용 차감 전</span><strong>{optionalPercent(planning.gross_planning_return_percent)}</strong><small>불확실성 반영</small></div>
-        <div><span>비용 차감 후</span><strong>{optionalPercent(planning.net_planning_return_percent)}</strong><small>연간 비용까지 차감</small></div>
+        <div><span>기본으로 계산한 경우</span><strong>{optionalPercent(planning.base_planning_return_percent)}</strong><small>장기 전망·비용 반영</small></div>
+        <div><span>조심해서 계산한 경우</span><strong>{optionalPercent(planning.conservative_planning_return_percent)}</strong><small>여유 폭을 더 뺌</small></div>
+        <div><span>ETF 비용 빼기 전</span><strong>{optionalPercent(planning.gross_planning_return_percent)}</strong><small>불확실성 반영</small></div>
+        <div><span>ETF 비용 뺀 뒤</span><strong>{optionalPercent(planning.net_planning_return_percent)}</strong><small>1년 비용까지 뺌</small></div>
       </div>
 
       <div className="portfolio-planning-table-wrap">
@@ -485,16 +485,16 @@ function PortfolioPlanningReview({
           <thead>
             <tr>
               <th>ETF</th>
-              <th>목표비중</th>
-              <th>CMA</th>
-              <th>불확실성</th>
+              <th>목표 비율</th>
+              <th>장기 전망</th>
+              <th>여유 폭</th>
               <th>연간 비용</th>
             </tr>
           </thead>
           <tbody>
             {planning.components.map((component) => (
               <tr key={component.isu_code}>
-                <th>{component.isu_name}<small>{component.isu_code}{component.proxy_used ? " · 대체 CMA" : ""}</small></th>
+                <th>{component.isu_name}<small>{component.isu_code}{component.proxy_used ? " · 비슷한 자산의 장기 전망 사용" : ""}</small></th>
                 <td>{percent(component.target_percent)}</td>
                 <td>{percent(component.cma_percent)}</td>
                 <td>-{percent(component.uncertainty_discount_percent)}</td>
@@ -505,7 +505,7 @@ function PortfolioPlanningReview({
         </table>
       </div>
 
-      <div className="planning-source-chips" aria-label="장기 계획가정 출처">
+      <div className="planning-source-chips" aria-label="장기 수익률 가정 출처">
         {planning.sources.map((source) => (
           /^https?:\/\//.test(source.reference) ? (
             <a href={source.reference} target="_blank" rel="noreferrer" key={`${source.label}-${source.reference}`}>
@@ -517,7 +517,7 @@ function PortfolioPlanningReview({
         ))}
       </div>
       <p className="portfolio-planning-note">
-        엔진 산출 커버리지 {percent(planning.coverage_weight_percent)} · {planning.historical_performance_used ? "과거 수익률 사용" : "과거 수익률 미사용"} · {planning.is_forecast ? "예측값" : "미래 수익률 예측이 아닙니다"}. 위험·스트레스는 위 카드에서 별도로 확인하세요.
+        계산에 쓴 ETF 비중 {percent(planning.coverage_weight_percent)} · {planning.historical_performance_used ? "과거 수익률 사용" : "과거 수익률 미사용"} · {planning.is_forecast ? "예측값" : "미래 수익을 맞히는 값이 아닙니다"}.
       </p>
     </section>
   );
@@ -865,29 +865,29 @@ export function EducationalPortfolioReview({
   return (
     <section className="portfolio-review" aria-labelledby="portfolio-review-title">
       <header>
-        <span>규칙 엔진 결과</span>
-        <h3 id="portfolio-review-title">보유 ETF 리밸런싱 점검</h3>
+        <span>계산으로 비교한 결과</span>
+        <h3 id="portfolio-review-title">보유 ETF 비율 점검</h3>
         <p title={evaluation.strategy_label}>{ACCOUNT_LABELS[evaluation.evaluated_input.account_type]} · {strategyLabel(evaluation.strategy_label)}</p>
       </header>
 
       <div className="portfolio-review-summary">
         <div><span>현재 평가금액</span><strong>{won(rebalancing.current_total_krw)}</strong></div>
-        <div><span>일반 위험자산 목표</span><strong>{percent(evaluation.final_general_risk_target_percent)}</strong></div>
+        <div><span>가격이 크게 움직일 수 있는 자산</span><strong>{percent(evaluation.final_general_risk_target_percent)}</strong></div>
         <div>
-          <span>계좌 위험자산 한도</span>
+          <span>계좌에서 허용하는 최대 비율</span>
           <strong>{evaluation.account_risk_cap_percent == null ? "법정 총량한도 없음" : percent(evaluation.account_risk_cap_percent)}</strong>
         </div>
-        <div><span>리밸런싱 기준</span><strong>±{percent(rebalancing.drift_threshold_percent_points)}</strong></div>
+        <div><span>비율을 다시 볼 기준</span><strong>±{percent(rebalancing.drift_threshold_percent_points)}</strong></div>
       </div>
 
       <PortfolioSectorGuide riskProfile={evaluation.evaluated_input.risk_profile} />
       <RebalancingCadenceGuide evaluation={evaluation} />
 
       <div className="overlap-check">
-        <strong>중복도·편중 점검</strong>
-        <p>현재 보유 비중을 자산군별로 묶어 엔진 목표와 비교했습니다. 같은 역할의 ETF가 몰린 구간은 아래 비중 차이에서 확인할 수 있습니다.</p>
+        <strong>한곳에 너무 몰렸는지 보기</strong>
+        <p>지금 가진 ETF 비율을 목표와 비교했어요. 비슷한 역할의 ETF가 한곳에 몰렸는지는 아래 비율 차이에서 볼 수 있어요.</p>
         {highestCorrelation !== null && (
-          <p>신규 후보들 사이의 최대 과거 가격 동행성은 {highestCorrelation.toFixed(1)}%입니다. 이는 구성종목 중복률이 아니라 가격 수익률 상관관계입니다.</p>
+          <p>새 후보 ETF끼리 과거에 같이 오르내린 정도는 최대 {highestCorrelation.toFixed(1)}%예요. 같은 회사가 몇 개 겹쳤는지를 뜻하는 숫자는 아니에요.</p>
         )}
         <small>ETF별 실제 구성종목 중복률은 구성종목 원천 데이터가 완전한 상품에 한해서만 계산할 수 있어 현재 결과에서 임의 추정하지 않습니다.</small>
       </div>
@@ -924,19 +924,19 @@ export function EducationalPortfolioReview({
         <PortfolioPlanningReview
           planning={evaluation.current_holdings_planning_return}
           titleId="current-holdings-planning-title"
-          title="현재 보유 ETF CMA·비용 계획가정"
-          description="현재 평가금액 비중으로 가중한 보유 ETF 기준"
+          title="현재 보유 ETF 장기 계산용 숫자"
+          description="지금 가진 ETF 비율을 넣어 계산"
         />
       ) : evaluation.warnings.some((warning) => warning.startsWith("current_holdings_planning_return_unavailable:")) ? (
         <p className="portfolio-review-warning">
-          현재 보유 ETF 중 검증된 비용 또는 계좌별 적격성 데이터가 없는 항목이 있어 CMA·비용 계획가정을 표시하지 못했습니다. 종목코드와 데이터 기준일을 확인해 주세요.
+          현재 보유 ETF 중 확인할 자료가 부족한 항목이 있어 장기 계산용 숫자를 보여드리지 못했어요. 종목코드와 자료 기준일을 확인해 주세요.
         </p>
       ) : null}
       <PortfolioPlanningReview
         planning={evaluation.planning_return}
         titleId="target-portfolio-planning-title"
-        title="제안 포트폴리오 CMA·비용 계획가정"
-        description="목표 비중으로 가중한 제안 포트폴리오 기준"
+        title="목표 포트폴리오 장기 계산용 숫자"
+        description="목표로 정한 ETF 비율을 넣어 계산"
       />
 
       {Number(rebalancing.unclassified_holding_amount_krw) > 0 && (
@@ -945,10 +945,10 @@ export function EducationalPortfolioReview({
         </p>
       )}
       {evaluation.account_cap_binding && (
-        <p className="portfolio-review-warning">투자성향 목표보다 계좌 위험자산 한도가 먼저 적용되었습니다.</p>
+        <p className="portfolio-review-warning">투자성향보다 계좌 규칙이 먼저 적용되어, 가격이 크게 움직일 수 있는 자산 비율을 낮췄어요.</p>
       )}
       <p className="portfolio-review-disclaimer">
-        매도 주문을 만들지 않으며, 추가 납입금으로 목표 비중과의 차이를 먼저 줄이는 가이드입니다.
+        이 서비스가 자동으로 팔지는 않아요. 새로 넣는 돈으로 부족한 쪽을 먼저 채워 보는 안내예요.
       </p>
     </section>
   );

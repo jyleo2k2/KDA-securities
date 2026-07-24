@@ -199,30 +199,31 @@ def test_chatbot_only_explains_structured_portfolio_engine_result() -> None:
     strategy_section = sections["위험중립형의 코어·위성 전략"]
     assert list(sections) == [
         "위험중립형의 코어·위성 전략",
-        "목표 자산배분",
-        "장기 계획수익률",
-        "ETF 섹터 알아보기",
+        "연금 돈 나누기",
+        "장기 계산에 쓰는 수익률 가정",
+        "ETF 분야 살펴보기",
     ]
-    assert "광범위한 주식 ETF" in strategy_section.content
+    assert "여러 나라·기업에 나눠 담는 주식 ETF" in strategy_section.content
     assert "큰 기본 식사에 작은 반찬" in strategy_section.content
-    assert "가장 적합한 연금투자전략" in response.answer
-    allocation_section = sections["목표 자산배분"]
-    assert "이 전략에 따르면" in allocation_section.content
+    assert "연금 돈을 나눠" in response.answer
+    allocation_section = sections["연금 돈 나누기"]
+    assert "어디에 얼마나 나눠 둘지" in allocation_section.content
     assert [block.kind.value for block in allocation_section.blocks] == [
         "table",
         "bullets",
     ]
     target_table, rebalancing = allocation_section.blocks
-    assert target_table.title == "목표 포트폴리오"
-    assert target_table.headers == ["자산군", "목표비중", "엔진 편입 후보"]
+    assert target_table.title == "목표 비율"
+    assert target_table.headers == ["무엇에 둘까", "얼마나 둘까", "ETF 예시"]
     assert all(row[1].endswith("%") for row in target_table.rows)
-    assert rebalancing.title == "운용 원칙"
-    assert any("새 납입금" in item for item in rebalancing.items)
-    assert "J.P. Morgan" in sections["장기 계획수익률"].content
-    assert "LTCMA" in sections["장기 계획수익률"].content
-    assert "미래 예측값이 아니라" in sections["장기 계획수익률"].content
-    assert "구체 종목의 매수 추천은 하지 않아요" in sections[
-        "ETF 섹터 알아보기"
+    assert rebalancing.title == "비율을 지키는 방법"
+    assert any("새로 넣는 돈" in item for item in rebalancing.items)
+    assert "장기 전망(CMA)" in sections["장기 계산에 쓰는 수익률 가정"].content
+    assert "미래 수익을 맞히거나 약속하는 값은 아니에요" in sections[
+        "장기 계산에 쓰는 수익률 가정"
+    ].content
+    assert "특정 ETF를 사라고 정해 주지 않아요" in sections[
+        "ETF 분야 살펴보기"
     ].content
 
 
@@ -294,21 +295,21 @@ def test_completed_survey_profile_calls_portfolio_engine() -> None:
     risk_section = next(
         section.content
         for section in response.sections
-        if section.title == "장기 계획수익률"
+        if section.title == "장기 계산에 쓰는 수익률 가정"
     )
-    assert "보수 약" in risk_section
-    assert "기준 약" in risk_section
+    assert "조심해서 본 경우 약" in risk_section
+    assert "기본으로 본 경우 약" in risk_section
     displayed_returns = [
         item.value
         for item in response.numeric_evidence
-        if item.label in {"보수 계획수익률", "기준 계획수익률"}
+        if item.label in {"조심해서 계산한 수익률 가정", "기본으로 계산한 수익률 가정"}
     ]
     assert len(displayed_returns) == 2
     assert all(value.as_tuple().exponent == -1 for value in displayed_returns)
     assert [item.label for item in response.numeric_evidence[:5]] == [
         "일반 위험자산 목표비중",
-        "보수 계획수익률",
-        "기준 계획수익률",
+        "조심해서 계산한 수익률 가정",
+        "기본으로 계산한 수익률 가정",
         "수령 개시까지 운용기간",
         "리밸런싱 이탈 기준",
     ]
@@ -428,24 +429,15 @@ def test_chat_explains_portfolio_strategy_for_all_five_risk_profiles() -> None:
         "공격투자형 연금운용 전략",
         "공통 실행 원칙",
     ]
-    expected_strategies = (
-        "자본보전 중심 전략",
-        "방어적 분산 전략",
-        "코어·위성 전략",
-        "성장 코어·위성 전략",
-        "바벨형 성장·전술 전략",
-    )
-    for section, strategy in zip(
-        response.sections[:5], expected_strategies, strict=True
-    ):
-        assert strategy in section.content
-        assert "설계:" in section.content
-        assert "운용:" in section.content
+    for section in response.sections[:5]:
+        assert "무엇을 먼저?" in section.content
+        assert "어떻게 담나?" in section.content
+        assert "어떻게 지키나?" in section.content
     common = response.sections[-1].content
     assert "비용" in common
-    assert "추적오차" in common
-    assert "새 납입금" in common
-    assert "성향별 점검 주기" in common
+    assert "위험자산은 주식처럼" in common
+    assert "새로 넣는 돈" in common
+    assert "리밸런싱" in common
     assert "매년" in common
     months_by_profile = ("12개월", "6개월", "3개월", "2개월", "1개월")
     for section, months in zip(
@@ -563,14 +555,14 @@ def test_each_allowed_chat_style_builds_its_own_etf_portfolio() -> None:
             EducationalRiskProfile.STABLE,
             "안정형의 자본보전 중심 전략",
             "자본보전 중심 전략",
-            "우산, 우비, 여벌 옷",
+            "비 오는 날 우산과 우비",
         ),
         (
             "안정 추구형으로 보여줘",
             EducationalRiskProfile.STABLE_SEEKING,
             "안정추구형의 방어적 분산 전략",
             "방어적 분산 전략",
-            "날씨가 좋으면 조금 더 멀리",
+            "우산을 챙기되 날씨가 좋으면",
         ),
         (
             "위험중립형으로 보여줘",
@@ -584,14 +576,14 @@ def test_each_allowed_chat_style_builds_its_own_etf_portfolio() -> None:
             EducationalRiskProfile.ACTIVE,
             "적극투자형의 성장 코어·위성 전략",
             "성장 코어·위성 전략",
-            "작은 도전도 조금 늘리는",
+            "작은 도전도 조금 늘리는 것",
         ),
         (
             "공격 투자형으로 보여줘",
             EducationalRiskProfile.AGGRESSIVE,
             "공격투자형의 바벨형 성장·전술 전략",
             "바벨형 성장·전술 전략",
-            "양쪽 끝에 무게가 달린",
+            "바벨처럼 양쪽 끝에 무게",
         ),
     )
     allocations: set[tuple[tuple[str, Decimal], ...]] = set()
@@ -625,8 +617,8 @@ def test_each_allowed_chat_style_builds_its_own_etf_portfolio() -> None:
         )
         assert response.sections[0].title == expected_title
         assert expected_analogy in response.sections[0].content
-        assert response.sections[1].blocks[0].title == "목표 포트폴리오"
-        assert response.sections[1].blocks[0].headers[-1] == "엔진 편입 후보"
+        assert response.sections[1].blocks[0].title == "목표 비율"
+        assert response.sections[1].blocks[0].headers[-1] == "ETF 예시"
         assert response.conversation_context is not None
         assert response.conversation_context.selected_risk_profile == expected_profile
 
@@ -717,26 +709,26 @@ def test_mvp_demo_profile_builds_separate_irp_and_pension_savings_plans() -> Non
     assert section_titles == [
         "적용한 MVP 설문 조건",
         "IRP · 위험중립형의 코어·위성 전략",
-        "IRP · 목표 자산배분",
-        "IRP · 장기 계획수익률",
-        "IRP · ETF 섹터 알아보기",
+        "IRP · 연금 돈 나누기",
+        "IRP · 장기 계산에 쓰는 수익률 가정",
+        "IRP · ETF 분야 살펴보기",
         "연금저축펀드 · 위험중립형의 코어·위성 전략",
-        "연금저축펀드 · 목표 자산배분",
-        "연금저축펀드 · 장기 계획수익률",
-        "연금저축펀드 · ETF 섹터 알아보기",
+        "연금저축펀드 · 연금 돈 나누기",
+        "연금저축펀드 · 장기 계산에 쓰는 수익률 가정",
+        "연금저축펀드 · ETF 분야 살펴보기",
     ]
     assert "현재 나이 30세" in response.sections[0].content
     assert "연금수령 개시 55세" in response.sections[0].content
     assert "손실감내율 약 10%" in response.sections[0].content
     assert all(
-        "미래 예측값이 아니라" in section.content
+        "미래 수익을 맞히거나 약속하는 값은 아니에요" in section.content
         for section in response.sections
-        if section.title.endswith("장기 계획수익률")
+        if section.title.endswith("장기 계산에 쓰는 수익률 가정")
     )
     assert all(
         [block.kind.value for block in section.blocks] == ["table", "bullets"]
         for section in response.sections
-        if section.title.endswith("목표 자산배분")
+        if section.title.endswith("연금 돈 나누기")
     )
     assert response.conversation_context is not None
     assert response.conversation_context.survey_profile == survey
