@@ -119,6 +119,27 @@ def test_build_refreshed_master_keeps_loadable_metadata_and_records_policy() -> 
     assert refreshed["event_count"] == 2
     assert refreshed["cash_distribution_count"] == 2
     assert refreshed["event_type_counts"] == {"cash_distribution": 2}
+
+
+def test_refresh_normalizes_date_values_from_database_payloads() -> None:
+    refreshed = build_refreshed_event_master(
+        previous_master={
+            "events": [
+                {
+                    **_confirmed("2026-05-01"),
+                    "effective_date": date(2026, 5, 1),
+                }
+            ]
+        },
+        refreshed_master={
+            "report_type": "pension_eligible_etf_corporate_event_master",
+            "as_of": "2026-07-24",
+            "events": [_confirmed("2026-06-11")],
+        },
+        kind_from=date(2026, 6, 1),
+    )
+
+    assert refreshed["events"][0]["effective_date"] == "2026-05-01"
     assert refreshed["refresh_policy"]["kind_correction_from"] == "2026-06-01"
 
 
