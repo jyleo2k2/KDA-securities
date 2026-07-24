@@ -179,6 +179,8 @@ describe("MainHomeScreen", () => {
     renderHome();
 
     expect(screen.getByText("전략별 계획수익률")).toBeInTheDocument();
+    expect(screen.getByText("회사 특징 고르기")).toBeInTheDocument();
+    expect(screen.getByText(/좋은 회사·싼 가격·꾸준한 흐름/)).toBeInTheDocument();
     expect(screen.getByText("6.75%")).toBeInTheDocument();
     expect(screen.getAllByText("산정 전")).toHaveLength(5);
   });

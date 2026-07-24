@@ -313,23 +313,25 @@ describe("EducationalPortfolioReview", () => {
     } satisfies EducationalPortfolioEvaluation;
     const { rerender } = render(<EducationalPortfolioReview evaluation={noHoldingsEvaluation} />);
 
-    expect(screen.getByText("위험중립형의 코어·위성 전략")).toBeInTheDocument();
-    expect(screen.getByText(/광범위한 주식 ETF를 장기 성장의 코어로 두고/)).toBeInTheDocument();
-    expect(screen.getByText(/큰 기본 식사에 작은 반찬을 더하는 전략/)).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /분산 주식 45.0%, 금·리츠 5.0%, 채권 43.0%, 현금성 7.0%/ })).toBeInTheDocument();
-    expect(screen.getByText("보수 계획수익률")).toBeInTheDocument();
-    expect(screen.getByText("기준 계획수익률")).toBeInTheDocument();
-    expect(screen.getByText(/J.P. Morgan의 LTCMA 장기 자본시장 가정/)).toBeInTheDocument();
-    expect(screen.getByText("그러면 어떤 종목을 살까?")).toBeInTheDocument();
-    expect(screen.getByText(/ETF 섹터 알아보기에서 각 자산 분류를 채울 ETF 테마/)).toBeInTheDocument();
+    expect(screen.getByText("위험중립형의 기본·작은 기회 전략 (코어·위성)")).toBeInTheDocument();
+    expect(screen.getByText(/여러 곳에 나눈 주식 ETF를 오래 가져갈 기본 투자로 두고/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/큰 기본 식사에 작은 반찬을 더하는 것과 같아요/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /기본 주식 45.0%, 금·부동산 5.0%, 채권 43.0%, 바로 쓸 돈 7.0%/ })).toBeInTheDocument();
+    expect(screen.getByText("조심해서 계산한 경우")).toBeInTheDocument();
+    expect(screen.getByText("기본으로 계산한 경우")).toBeInTheDocument();
+    expect(screen.getByText(/CMA는 여러 자산의 10년 이상 장기 전망/)).toBeInTheDocument();
+    expect(screen.getByText("어떤 ETF 분야를 살펴볼까?")).toBeInTheDocument();
+    expect(screen.getByText(/이 서비스는 “이 ETF를 사세요”라고 정해 주지 않아요/)).toBeInTheDocument();
     expect(screen.queryByText("스태그플레이션")).not.toBeInTheDocument();
 
     const strategyCases = [
-      ["stable", "안정형의 자본보전 중심 전략", "우산, 우비, 여벌 옷"],
-      ["stable_seeking", "안정추구형의 방어적 분산 전략", "날씨가 좋으면 조금 더 멀리"],
-      ["risk_neutral", "위험중립형의 코어·위성 전략", "큰 기본 식사에 작은 반찬"],
-      ["active", "적극투자형의 성장 코어·위성 전략", "작은 도전도 조금 늘리는 전략"],
-      ["aggressive", "공격투자형의 바벨형 성장·전술 전략", "양쪽 끝에 무게가 달린 긴 막대"],
+      ["stable", "안정형의 돈 지키기 전략 (자본보전 중심)", "비 오는 날 우산과 우비"],
+      ["stable_seeking", "안정추구형의 안전하게 나누기 전략 (방어적 분산)", "우산을 챙기되 날씨가 좋으면"],
+      ["risk_neutral", "위험중립형의 기본·작은 기회 전략 (코어·위성)", "큰 기본 식사에 작은 반찬"],
+      ["active", "적극투자형의 성장 비중 늘리기 전략 (성장 코어·위성)", "작은 도전도 조금 늘리는 것"],
+      ["aggressive", "공격투자형의 성장·안전 나누기 전략 (바벨형 성장·전술)", "바벨처럼 양쪽 끝에 무게"],
     ] as const;
     for (const [riskProfile, title, analogy] of strategyCases) {
       rerender(<EducationalPortfolioReview evaluation={{
@@ -346,33 +348,34 @@ describe("EducationalPortfolioReview", () => {
     rerender(<EducationalPortfolioReview evaluation={evaluationWithCurrentHoldingsPlanning} />);
 
     expect(screen.getByText("70.0%")).toBeInTheDocument();
-    expect(screen.getByText("분산 주식")).toBeInTheDocument();
-    expect(screen.getByText("위험중립형 섹터 가이드")).toBeInTheDocument();
+    expect(screen.getByText("기본 주식")).toBeInTheDocument();
+    expect(screen.getByText("위험중립형 ETF 분야 예시")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /채권 25%, 반도체 17%, 바이오·헬스케어 14%/ })).toBeInTheDocument();
-    expect(screen.getByText(/실제 엔진 목표비중·후보 ETF·계좌 한도는 바꾸지 않습니다/)).toBeInTheDocument();
+    expect(screen.getByText(/실제 계산 결과나 계좌 한도는 바꾸지 않아요/)).toBeInTheDocument();
     expect(screen.queryByText("AI소프트웨어")).not.toBeInTheDocument();
     expect(screen.queryByText("코리아밸류업")).not.toBeInTheDocument();
     expect(screen.queryByText("ESG")).not.toBeInTheDocument();
     expect(screen.queryByText("운송 및 물류")).not.toBeInTheDocument();
     expect(screen.queryByText("여행 및 레저")).not.toBeInTheDocument();
-    expect(screen.getByText(/최대 과거 가격 동행성은 82.0%/)).toBeInTheDocument();
-    expect(screen.getByText(/구성종목 중복률이 아니라/)).toBeInTheDocument();
-    expect(screen.getByText(/매도 주문을 만들지 않으며/)).toBeInTheDocument();
-    expect(screen.getByText("3개월마다 비중 점검")).toBeInTheDocument();
-    expect(screen.getByText(/목표비중은 연령·수령 시점·투자성향·계좌 한도로/)).toBeInTheDocument();
+    expect(screen.getByText(/과거에 같이 오르내린 정도는 최대 82.0%/)).toBeInTheDocument();
+    expect(screen.getByText(/같은 회사가 몇 개 겹쳤는지를 뜻하는 숫자는 아니에요/)).toBeInTheDocument();
+    expect(screen.getByText(/자동으로 팔지는 않아요/)).toBeInTheDocument();
+    expect(screen.getByText("3개월마다 비율 점검")).toBeInTheDocument();
+    expect(screen.getByText(/리밸런싱은 달라진 비율을 처음 계획에 가깝게 맞추는 점검/)).toBeInTheDocument();
     expect(screen.getByText("12.3%")).toBeInTheDocument();
-    expect(screen.getByText("주식시장 급락")).toBeInTheDocument();
+    expect(screen.getByText("주식이 크게 떨어질 때")).toBeInTheDocument();
     expect(screen.getByText("-18.5%")).toBeInTheDocument();
-    expect(screen.getByText("손실감내도 기준 이내")).toBeInTheDocument();
-    expect(screen.getByText(/사용자 손실감내도 20.0%/)).toBeInTheDocument();
-    expect(screen.getByText(/최악 정책 스트레스 손실 18.5%/)).toBeInTheDocument();
+    expect(screen.getByText("내가 견딜 수 있다고 고른 범위 안")).toBeInTheDocument();
+    expect(screen.getByText(/내가 고른 손실 범위 20.0%/)).toBeInTheDocument();
+    expect(screen.getByText(/가장 큰 충격 가정 18.5%/)).toBeInTheDocument();
     expect(screen.getByText(/포트폴리오 위험정책/)).toBeInTheDocument();
-    expect(screen.getAllByText(/수익률 예측이 아닙니다/)).toHaveLength(3);
-    expect(screen.getByText("현재 보유 ETF CMA·비용 계획가정")).toBeInTheDocument();
-    expect(screen.getByText("제안 포트폴리오 CMA·비용 계획가정")).toBeInTheDocument();
+    expect(screen.getByText(/미래 수익 예측은 아니에요/)).toBeInTheDocument();
+    expect(screen.getAllByText(/미래 수익을 맞히는 값이 아닙니다/)).toHaveLength(2);
+    expect(screen.getByText("현재 보유 ETF 장기 계산용 숫자")).toBeInTheDocument();
+    expect(screen.getByText("목표 포트폴리오 장기 계산용 숫자")).toBeInTheDocument();
     expect(screen.getAllByText("6.7%")).toHaveLength(2);
     expect(screen.getAllByText("6.2%")).toHaveLength(4);
-    expect(screen.getAllByText(/대체 CMA/)).toHaveLength(2);
+    expect(screen.getAllByText(/비슷한 자산의 장기 전망 사용/)).toHaveLength(2);
     expect(screen.getAllByText("-0.5%")).toHaveLength(2);
     expect(screen.getAllByText("-0.1%")).toHaveLength(2);
     expect(screen.getAllByText(/과거 수익률 미사용/)).toHaveLength(2);
@@ -386,8 +389,8 @@ describe("EducationalPortfolioReview", () => {
         stress_loss_policy_status: "review_required",
       },
     }} />);
-    expect(screen.getByText("손실감내도 재점검 필요")).toBeInTheDocument();
-    expect(screen.getByText(/자동 매도 지시는 만들지 않습니다/)).toBeInTheDocument();
+    expect(screen.getByText("내가 고른 손실 범위를 다시 확인할 때")).toBeInTheDocument();
+    expect(screen.getAllByText(/자동으로 팔지는 않아요/)).toHaveLength(2);
 
     rerender(<EducationalPortfolioReview evaluation={{
       ...evaluation,
@@ -428,7 +431,7 @@ describe("EducationalPortfolioReview", () => {
       },
     }} />);
     expect(screen.getByText(/코어·위성 전략/)).toBeInTheDocument();
-    expect(screen.getByText("공격투자형 섹터 가이드")).toBeInTheDocument();
+    expect(screen.getByText("공격투자형 ETF 분야 예시")).toBeInTheDocument();
     expect(screen.getByText("양자컴퓨팅")).toBeInTheDocument();
     expect(screen.getByText("기타 시장 충격")).toBeInTheDocument();
     expect(screen.getByText("기타 자산군")).toBeInTheDocument();
