@@ -108,6 +108,25 @@ REBALANCING_REMINDER_MIGRATION = next(
         "*_add_rebalancing_reminder_preferences.sql"
     )
 )
+NEWS_EVENT_OUTCOME_LEDGER_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob(
+        "*_add_news_event_outcome_ledger.sql"
+    )
+)
+
+
+def test_news_event_outcome_ledger_is_server_only_and_descriptive() -> None:
+    sql = NEWS_EVENT_OUTCOME_LEDGER_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "create table public.news_event_outcomes" in sql
+    assert "horizon_months in (1, 3, 6)" in sql
+    assert "peer_median_total_return_percent" in sql
+    assert "peer_sample_count" in sql
+    assert "alter table public.news_event_outcomes enable row level security" in sql
+    assert "from public, anon, authenticated" in sql
+    assert "to service_role" in sql
+    assert "to authenticated" not in sql
+    assert "drop table" not in sql
 
 
 def test_rebalancing_reminder_preferences_are_owner_scoped_and_server_only() -> None:

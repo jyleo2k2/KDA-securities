@@ -15,6 +15,7 @@ from ..etf_theme_verification_repository import (
 from ..macro_evidence import (
     MacroEvidenceRepository,
 )
+from ..news_event_outcome_repository import NewsEventOutcomeReader
 from ..retrieval.repository import KnowledgeSearch
 from .etf_product_features import EtfProductFeatureGenerator
 from .handlers._shared import (
@@ -105,6 +106,7 @@ class ChatService:
         theme_verification: EtfThemeVerificationReader | None = None,
         macro_evidence: MacroEvidenceRepository | None = None,
         distribution_events: PostgresEtfDistributionEventRepository | None = None,
+        news_event_outcomes: NewsEventOutcomeReader | None = None,
         router: IntentRouter | None = None,
     ) -> None:
         self._knowledge = knowledge
@@ -121,6 +123,7 @@ class ChatService:
         self._theme_verification = theme_verification
         self._macro_evidence = macro_evidence
         self._distribution_events = distribution_events
+        self._news_event_outcomes = news_event_outcomes
         self._router = router or IntentRouter()
         self.capabilities = build_capabilities(scenarios=scenarios)
 
@@ -225,13 +228,10 @@ class ChatService:
                     macro_evidence=self._macro_evidence,
                 )
             elif resolved_plan.intent == ChatIntent.EDUCATIONAL_PORTFOLIO:
-                survey_profile = (
-                    original_request.survey_profile
-                    or (
-                        original_request.conversation_context.survey_profile
-                        if original_request.conversation_context is not None
-                        else None
-                    )
+                survey_profile = original_request.survey_profile or (
+                    original_request.conversation_context.survey_profile
+                    if original_request.conversation_context is not None
+                    else None
                 )
                 retirement_start_age = _mentioned_retirement_start_age(
                     original_request.message
@@ -303,9 +303,7 @@ class ChatService:
                                     survey_profile.portfolio_account_types()
                                 )
                             ],
-                            portfolio_universe_loader=(
-                                self._portfolio_universe_loader
-                            ),
+                            portfolio_universe_loader=(self._portfolio_universe_loader),
                             macro_evidence=self._macro_evidence,
                         )
                     response = response.model_copy(
@@ -323,9 +321,7 @@ class ChatService:
                     original_request,
                     resolved_plan,
                     portfolio_universe_loader=self._portfolio_universe_loader,
-                    theme_product_universe_loader=(
-                        self._theme_product_universe_loader
-                    ),
+                    theme_product_universe_loader=(self._theme_product_universe_loader),
                     theme_repository=self._theme_repository,
                     product_descriptions=self._product_descriptions,
                     product_feature_generator=self._product_feature_generator,
@@ -378,9 +374,7 @@ class ChatService:
                     )
                 else:
                     exclude_item_ids = (
-                        tuple(
-                            original_request.conversation_context.news.news_item_ids
-                        )
+                        tuple(original_request.conversation_context.news.news_item_ids)
                         if news_follow_up is not None
                         and news_follow_up.action == NewsFollowUpAction.REFRESH
                         and original_request.conversation_context is not None
@@ -398,6 +392,7 @@ class ChatService:
                             news=self._news,
                             theme_repository=self._theme_repository,
                             portfolio_universe_loader=self._portfolio_universe_loader,
+                            news_event_outcomes=self._news_event_outcomes,
                         )
                         if resolved_plan.requests_event_strategy
                         else news_response(

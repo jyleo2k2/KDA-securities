@@ -5,6 +5,10 @@ from datetime import UTC, datetime
 
 from ...engine import AccountType, EducationalRiskProfile
 from ...etf_theme_repository import EtfThemeRepository
+from ...news_event_outcome_repository import (
+    NewsEventOutcomeReader,
+    NewsEventOutcomeRecord,
+)
 from ...retrieval.repository import NewsMatch
 from ..live_news import LiveMarketNewsSnapshot, LiveNewsUnavailable
 from ..models import (
@@ -49,8 +53,7 @@ logger = logging.getLogger(__name__)
 
 _NEWS_SCOPE_MESSAGES = {
     NewsScopeNotice.UNSUPPORTED_MARKET: (
-        "해당 국가 증시 뉴스는 제공하지 않아요. "
-        "대신 한국·미국 증시 뉴스를 보여드려요."
+        "해당 국가 증시 뉴스는 제공하지 않아요. 대신 한국·미국 증시 뉴스를 보여드려요."
     ),
     NewsScopeNotice.PENSION: (
         "연금 제도 뉴스는 제공하지 않아요. 대신 한국·미국 증시 뉴스를 보여드려요."
@@ -61,9 +64,7 @@ _NEWS_SCOPE_MESSAGES = {
 def _scope_message(scope_notice: NewsScopeNotice | None) -> str | None:
     if scope_notice is NewsScopeNotice.COMPANY:
         return graceful_decline(GracefulDeclineKind.STOCK_NEWS, "").answer
-    return (
-        _NEWS_SCOPE_MESSAGES[scope_notice] if scope_notice is not None else None
-    )
+    return _NEWS_SCOPE_MESSAGES[scope_notice] if scope_notice is not None else None
 
 
 def _freshness_limitation(matches) -> str:
@@ -272,22 +273,14 @@ def disclosure_response(
         current_clause = (
             "당기 과거 수익률은 확인되지 않았고"
             if row.earn_rate_current_pct is None
-            else (
-                "당기 과거 수익률은 "
-                f"{_decimal_text(row.earn_rate_current_pct)}%이고"
-            )
+            else (f"당기 과거 수익률은 {_decimal_text(row.earn_rate_current_pct)}%이고")
         )
         three_year_clause = (
             "3년 연환산 수익률도 확인되지 않았어요"
             if row.avg_earn_rate_3y_pct is None
-            else (
-                "3년 연환산 수익률은 "
-                f"{_decimal_text(row.avg_earn_rate_3y_pct)}%예요"
-            )
+            else (f"3년 연환산 수익률은 {_decimal_text(row.avg_earn_rate_3y_pct)}%예요")
         )
-        lines.append(
-            f"{row.company_name}의 {current_clause}, {three_year_clause}."
-        )
+        lines.append(f"{row.company_name}의 {current_clause}, {three_year_clause}.")
         for label, value in (
             ("당기 과거 수익률", row.earn_rate_current_pct),
             ("3년 연환산 수익률", row.avg_earn_rate_3y_pct),
@@ -337,15 +330,11 @@ def news_response(
     if news is None:
         return ChatResponse(
             intent=ChatIntent.NEWS,
-            answer=(
-                "저장된 뉴스 정보가 없어 최신 뉴스 답변을 만들지 않았어요."
-            ),
+            answer=("저장된 뉴스 정보가 없어 최신 뉴스 답변을 만들지 않았어요."),
             data_mode="unavailable",
             limitations=["NAVER 뉴스 수집과 DATABASE_URL이 필요합니다."],
         )
-    is_market_news = search_query == "market" or search_query.startswith(
-        "market:"
-    )
+    is_market_news = search_query == "market" or search_query.startswith("market:")
     region = search_query.partition(":")[2] or None
     market_limit = min(max_results, 3)
     matches = (
@@ -398,9 +387,7 @@ def news_response(
         else [_news_metadata_line(item) for item in matches]
     )
     answer_intro = (
-        "최근 증시 뉴스를 찾았어요."
-        if is_market_news
-        else "관련 뉴스를 찾았어요."
+        "최근 증시 뉴스를 찾았어요." if is_market_news else "관련 뉴스를 찾았어요."
     )
     scope_message = _scope_message(scope_notice)
     if scope_message is not None:
@@ -420,15 +407,13 @@ def news_response(
         limitations.append(_freshness_limitation(matches))
     if is_market_news and len(matches) < market_limit:
         limitations.append(
-            "최근 닷새간 저장된 증시 기사가 세 건 미만이라 "
-            "조회된 기사만 제공합니다."
+            "최근 닷새간 저장된 증시 기사가 세 건 미만이라 조회된 기사만 제공합니다."
         )
     if is_market_news and max_results > 3:
         limitations.append("증시 뉴스는 한 번에 최대 세 건까지 제공해요.")
     if is_market_news and preferred_topics:
         limitations.append(
-            "로그인 사용자의 가상 목계좌 자산군과 연관된 뉴스 주제를 "
-            "우선 정렬했습니다."
+            "로그인 사용자의 가상 목계좌 자산군과 연관된 뉴스 주제를 우선 정렬했습니다."
         )
     if scope_message is not None:
         limitations.append(scope_message)
@@ -466,9 +451,7 @@ def news_response(
                 news=NewsConversationContext(
                     news_item_ids=[item.item_id for item in matches],
                     market_region=(
-                        MarketRegion(region)
-                        if region is not None
-                        else MarketRegion.ALL
+                        MarketRegion(region) if region is not None else MarketRegion.ALL
                     ),
                     shown_at=datetime.now(UTC),
                 )
@@ -542,6 +525,7 @@ def event_strategy_response(
     news: NewsSearch | None,
     theme_repository: EtfThemeRepository | None,
     portfolio_universe_loader: PortfolioUniverseLoader | None,
+    news_event_outcomes: NewsEventOutcomeReader | None,
 ) -> ChatResponse:
     region = search_query.partition(":")[2] or None
     live_snapshot: LiveMarketNewsSnapshot | None = None
@@ -559,9 +543,7 @@ def event_strategy_response(
         base, topics_by_evidence = _live_metadata_response(
             live_snapshot,
             scope_notice=scope_notice,
-            summaries_by_canonical_url=_stored_summaries_for_live(
-                live_snapshot, news
-            ),
+            summaries_by_canonical_url=_stored_summaries_for_live(live_snapshot, news),
         )
         base = base.model_copy(
             update={
@@ -583,6 +565,7 @@ def event_strategy_response(
             topics_by_evidence=topics_by_evidence,
             theme_repository=theme_repository,
             portfolio_universe_loader=portfolio_universe_loader,
+            news_event_outcomes=news_event_outcomes,
         )
 
     stored = news_response(
@@ -625,6 +608,7 @@ def event_strategy_response(
         topics_by_evidence=topics_by_evidence,
         theme_repository=theme_repository,
         portfolio_universe_loader=portfolio_universe_loader,
+        news_event_outcomes=news_event_outcomes,
     )
 
 
@@ -635,21 +619,17 @@ def attach_event_strategy(
     topics_by_evidence: dict[str, tuple[str, ...]],
     theme_repository: EtfThemeRepository | None,
     portfolio_universe_loader: PortfolioUniverseLoader | None,
+    news_event_outcomes: NewsEventOutcomeReader | None,
 ) -> ChatResponse:
     policy_source_id = "policy:live_news_event_strategy"
-    catalog = (
-        theme_repository.catalog
-        if theme_repository is not None
-        else None
-    )
+    catalog = theme_repository.catalog if theme_repository is not None else None
     rows: list[list[str]] = []
     news_source_ids: list[str] = []
+    theme_ids: list[str] = []
     for item in response.news_items:
         classification = classify_news_event(
             title=item.title,
-            description=(
-                item.description or " ".join(item.summary_lines)
-            ),
+            description=(item.description or " ".join(item.summary_lines)),
             topics=topics_by_evidence.get(item.evidence_id, ()),
             theme_catalog=catalog,
         )
@@ -661,6 +641,7 @@ def attach_event_strategy(
                 if (theme := theme_repository.get(theme_id)) is not None
             ]
         etf_labels = theme_names or list(classification.etf_groups)
+        theme_ids.extend(classification.theme_ids)
         rows.append(
             [
                 item.title,
@@ -720,6 +701,12 @@ def attach_event_strategy(
         as_of=NEWS_EVENT_POLICY_AS_OF,
         data_boundary=DataBoundary.ENGINE,
     )
+    outcome_rows = (
+        news_event_outcomes.list_for_theme_ids(tuple(dict.fromkeys(theme_ids)))
+        if news_event_outcomes is not None and theme_ids
+        else []
+    )
+    outcome_section, outcome_sources = _historical_outcome_section(outcome_rows)
     sections = [
         *response.sections,
         AnswerSection(
@@ -738,6 +725,7 @@ def attach_event_strategy(
                 )
             ],
         ),
+        outcome_section,
         AnswerSection(
             kind=SectionKind.SERVICE_EXPLANATION,
             title="이벤트 드리븐 운용 가이드",
@@ -755,7 +743,7 @@ def attach_event_strategy(
     return response.model_copy(
         update={
             "sections": sections,
-            "sources": [*response.sources, policy_source],
+            "sources": [*response.sources, policy_source, *outcome_sources],
             "limitations": [
                 *response.limitations,
                 (
@@ -769,6 +757,87 @@ def attach_event_strategy(
                 survey_profile=survey,
             ),
         }
+    )
+
+
+def _historical_outcome_section(
+    rows: list[NewsEventOutcomeRecord],
+) -> tuple[AnswerSection, list[SourceEvidence]]:
+    if not rows:
+        return (
+            AnswerSection(
+                kind=SectionKind.SERVICE_EXPLANATION,
+                title="과거 뉴스 이벤트 성과 검증",
+                content=(
+                    "현재 테마와 일치하는 검증 완료 과거 이벤트 표본이 아직 없어 "
+                    "수익률 수치를 표시하지 않습니다."
+                ),
+                blocks=[
+                    AnswerBlock(
+                        kind=AnswerBlockKind.CALLOUT,
+                        text=(
+                            "표본이 적거나 원본·총수익률 근거가 없으면 "
+                            "결과를 만들지 않습니다."
+                        ),
+                    )
+                ],
+            ),
+            [],
+        )
+    sources: list[SourceEvidence] = []
+    table_rows: list[list[str]] = []
+    for row in rows:
+        evidence_id = (
+            f"news-event-outcome:{row.event_key}:{row.isu_code}:{row.horizon_months}"
+        )
+        sources.append(
+            SourceEvidence(
+                evidence_id=evidence_id,
+                label=f"과거 뉴스 이벤트 성과 · {row.event_source_label}",
+                locator=row.event_source_url,
+                publisher="공식 기사·검증 총수익률 원장",
+                as_of=row.history_source_as_of or row.event_source_as_of,
+                data_boundary=DataBoundary.ENGINE,
+            )
+        )
+        table_rows.append(
+            [
+                row.occurred_on.isoformat(),
+                row.isu_name,
+                f"{row.horizon_months}개월",
+                f"{row.total_return_percent:.2f}%",
+                f"{row.maximum_drawdown_percent:.2f}%",
+                f"{row.peer_median_total_return_percent:.2f}%",
+                str(row.peer_sample_count),
+            ]
+        )
+    evidence_ids = [source.evidence_id for source in sources]
+    return (
+        AnswerSection(
+            kind=SectionKind.SERVICE_EXPLANATION,
+            title="과거 뉴스 이벤트 성과 검증",
+            content=(
+                "아래는 과거 이벤트 뒤의 실현 총수익률과 최대낙폭입니다. "
+                "미래 수익 예측이나 자동 비중 변경에는 사용하지 않습니다."
+            ),
+            evidence_ids=evidence_ids,
+            blocks=[
+                AnswerBlock(
+                    kind=AnswerBlockKind.TABLE,
+                    headers=[
+                        "이벤트일",
+                        "ETF",
+                        "기간",
+                        "총수익률",
+                        "최대낙폭",
+                        "비교군 중앙값",
+                        "표본",
+                    ],
+                    rows=table_rows,
+                )
+            ],
+        ),
+        sources,
     )
 
 
@@ -808,8 +877,7 @@ def news_follow_up_response(
         )
 
     selected = [
-        (index, news_context.news_item_ids[index])
-        for index in follow_up.item_indexes
+        (index, news_context.news_item_ids[index]) for index in follow_up.item_indexes
     ]
     matches = news.news_by_ids(tuple(item_id for _, item_id in selected))
     matches_by_id = {item.item_id: item for item in matches}
@@ -865,13 +933,10 @@ def news_follow_up_response(
         ]
         title = "뉴스 출처와 발행일"
     elif follow_up.action == NewsFollowUpAction.COMPARE:
-        lines = [
-            _news_comparison_block(item, index) for index, item in ordered
-        ]
+        lines = [_news_comparison_block(item, index) for index, item in ordered]
         lines.insert(
             0,
-            "기사별 검증된 메타데이터와 요약을 같은 항목으로 "
-            "나란히 비교해요.",
+            "기사별 검증된 메타데이터와 요약을 같은 항목으로 나란히 비교해요.",
         )
         title = "세션 뉴스 비교"
     else:
