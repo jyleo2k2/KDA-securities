@@ -33,8 +33,8 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
   const strategy = selectedStrategy();
 
   return (
-    <main className="sd-stage" style={{ "--sd-accent": strategy.accent } as React.CSSProperties}>
-      <section className="sd-phone" aria-label={`${strategy.name} 상세`}>
+    <main className="app-phone-stage sd-stage" style={{ "--sd-accent": strategy.accent } as React.CSSProperties}>
+      <section className="app-phone-frame sd-phone" aria-label={`${strategy.name} 상세`}>
         <StatusBar />
 
         <header className="sd-header">

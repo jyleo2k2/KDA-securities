@@ -1,20 +1,9 @@
+/* 프레임 치수는 index.css 폰 프레임 SSOT(.app-phone-stage/.app-phone-frame)를 재사용한다. */
 .sd-stage {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #e8e8dd;
-  padding: 40px;
   font-family: "Cafe24SsurroundAir", "Noto Sans KR", sans-serif;
 }
 
 .sd-phone {
-  width: min(100%, 390px);
-  height: min(844px, calc(100dvh - 80px));
-  min-height: 640px;
-  background: #fff;
-  border-radius: 44px;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.16);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -303,7 +292,4 @@
   line-height: 1.55;
 }
 
-@media (max-width: 480px) {
-  .sd-stage { min-height: 100dvh; padding: 0; background: #fff; }
-  .sd-phone { width: 100%; height: 100dvh; min-height: 0; border-radius: 0; box-shadow: none; }
-}
+/* 모바일(≤480px) 프레임 해제는 공용 .app-phone-* 규칙에서 처리한다. */

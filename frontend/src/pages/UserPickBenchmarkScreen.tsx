@@ -23,8 +23,8 @@ export function UserPickBenchmarkScreen({ onBack }: UserPickBenchmarkScreenProps
   }, []);
 
   return (
-    <main className="benchmark-html-stage">
-      <section className="benchmark-html-frame-wrap" aria-label="투자 벤치마킹하기">
+    <main className="app-phone-stage benchmark-html-stage">
+      <section className="app-phone-frame benchmark-html-frame-wrap" aria-label="투자 벤치마킹하기">
         <iframe
           ref={iframeRef}
           className="benchmark-html-frame"

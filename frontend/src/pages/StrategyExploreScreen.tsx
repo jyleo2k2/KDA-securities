@@ -68,8 +68,8 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
   }
 
   return (
-    <main className="se-stage">
-      <section className="se-phone" aria-label="추천 전략 둘러보기">
+    <main className="app-phone-stage se-stage">
+      <section className="app-phone-frame se-phone" aria-label="추천 전략 둘러보기">
         <div className="se-page">
           <StatusBar />
 
