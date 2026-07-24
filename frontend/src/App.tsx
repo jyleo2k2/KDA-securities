@@ -63,7 +63,7 @@ function pensionAccountErrorMessage(error: unknown): string {
     return apiErrorMessage(error);
   }
   if (error instanceof ApiError && error.status === 404) {
-    return "이 계정에는 연동된 연금 데이터가 없습니다.";
+    return "아직 연결된 연금 계좌가 없어요. 계좌를 연결하면 자산을 한눈에 정리해서 보여드릴게요!";
   }
   return "연금 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";
 }
@@ -171,7 +171,7 @@ function AppRoutes(): JSX.Element {
           loading: false,
           error: portfolio.accounts.length > 0
             ? null
-            : "이 계정에는 연동된 연금 데이터가 없습니다.",
+            : "아직 연결된 연금 계좌가 없어요. 계좌를 연결하면 자산을 한눈에 정리해서 보여드릴게요!",
         });
       })
       .catch((error: unknown) => {
