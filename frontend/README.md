@@ -23,6 +23,16 @@ uv run uvicorn backend.app.main:app --reload
 프론트 전용 `.env`는 두지 않으며, 브라우저에 노출되는 값은 `VITE_` 접두사만 사용한다
 (`VITE_API_BASE_URL`·`VITE_SUPABASE_URL`·`VITE_SUPABASE_PUBLISHABLE_KEY`). 템플릿: 루트 `.env.example`.
 
+## 원격 배포
+
+Vercel 운영 프로젝트는 `kda-securities-lzix`, Root Directory는 `frontend`다. Production·Preview의 API 주소는 비어 있지 않은 다음 값이어야 하며, 변경 뒤에는 Vite 번들을 다시 만들어야 한다.
+
+```text
+VITE_API_BASE_URL=https://pension-copilot-api.onrender.com
+```
+
+사용자 공유 주소는 `https://kda-securities-lzix-zeta.vercel.app`을 사용한다. 빌드·환경변수·Render CORS·검증 절차는 [배포 운영 가이드](../docs/30_스펙/배포_운영_가이드.md)를 따른다. 별도 Vercel 프로젝트 `kda-securities`는 저장소 루트를 빌드해 실패한 중복 설정이므로 운영 대상으로 사용하지 않는다.
+
 ## 구조·의도
 
 - `src/api/types.ts` — FastAPI REST 계약 타입. **백엔드 Decimal 필드는 JSON

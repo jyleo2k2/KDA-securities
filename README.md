@@ -1,6 +1,6 @@
 # 연금 코파일럿
 
-> 키움 디지털 아카데미 1차 프로젝트 · `main` PR #251 기준 / 엔진·챗봇·ETF·RAG·인증·연금계산기·전략·User Pick 화면 통합 완료 / 원격 배포 골든패스 E2E 대기 (2026-07-24)
+> 키움 디지털 아카데미 1차 프로젝트 · 최신 `main` 기준 / 엔진·챗봇·ETF·RAG·인증·연금계산기·전략·User Pick 화면 통합 완료 / 원격 배포 환경 복구·재배포·골든패스 E2E 대기 (2026-07-24)
 
 **세 연금계좌의 통합 포트폴리오를 보여주고, 출처 기반 시장·상품 정보와 익명 벤치마킹으로 이용자의 연금 투자 판단을 돕는 AI 연금가이드.**
 
@@ -109,7 +109,18 @@ npm run dev
 프론트엔드는 기본적으로 `http://127.0.0.1:8000`의 API에 연결한다. 다른 주소를
 쓰려면 루트 `.env`의 `VITE_API_BASE_URL`과 서버 `CORS_ORIGINS`를 함께 바꾼다.
 
-### 4. API 확인
+### 4. 원격 배포 운영
+
+원격 운영 주소와 환경변수·재배포·검증 절차는 [배포 운영 가이드](./docs/30_스펙/배포_운영_가이드.md)를 정본으로 사용한다.
+
+- 프론트: `https://kda-securities-lzix-zeta.vercel.app`
+- API: `https://pension-copilot-api.onrender.com`
+- Vercel Production: `VITE_API_BASE_URL=https://pension-copilot-api.onrender.com`
+- Render: `CORS_ORIGINS`에 실제 사용하는 Vercel Production alias를 JSON 배열로 설정
+
+2026-07-24 실측에서 Render health·계좌 정보 API는 HTTP 200이었지만, Vercel의 API URL은 빈 값이었고 Render CORS는 Production alias 요청을 거부했다. 최신 배포도 일부 `blocked` 상태라서 **환경변수 복구 → Render 재배포 → Vercel 재배포 → 원격 골든패스 E2E**가 필요하다. 아직 복구 완료로 표시하지 않는다.
+
+### 5. API 확인
 
 서버 실행 후 `http://127.0.0.1:8000/docs`에서 다음 API를 바로 시험할 수 있다.
 
@@ -149,10 +160,11 @@ npm run dev
 ## 현재 상태와 다음 단계
 
 - **검증 기준**: 2026-07-24 `main`(`8aadd15`, PR #251)에서 백엔드 `1151 passed, 1 skipped`, 프론트 `104 passed`, TypeScript 검사와 Vite production build를 통과했다.
-- **통합 완료**: Supabase Auth 세션 게이트, 소유자 연금계좌 조회·집계, 저장 투자성향, 메인 홈, SSE 챗봇·RAG·뉴스·ETF 테마, 연금계산기, 전략 탐색·상세, User Pick 화면, 리밸런싱 알림, 과거 위험·스트레스 정책, Vercel/Render 설정이 `main`에 있다.
+- **통합 완료**: Supabase Auth 세션 게이트, 소유자 연금계좌 조회·집계, 저장 투자성향, 메인 홈, SSE 챗봇·RAG·뉴스·ETF 테마, 연금계산기, 전략 탐색·상세, User Pick 화면, 리밸런싱 알림, 과거 위험·스트레스 정책, Vercel/Render 설정 파일이 `main`에 있다.
 - **최근 완료**: PR #239~#251에서 챗봇 웰컴 카드 CLS 스켈레톤, 벤치마킹 상세→목록 뒤로가기, ETF 3행 캐러셀·좌측 정렬, 계좌가 없을 때 연그미 마스코트·동전 선명도, 로그인·홈·전략·데스크톱 프리뷰 공통 `StatusBar`, 시연 계정 투자성향 무기록 허용목록을 반영했다.
 - **부분 구현**: 계좌 연동은 동의·표시용이며 실제 금융사/MyData 연결이 아니다. User Pick은 현재 정적 benchmark iframe이라 로그인 사용자를 제외한 대표고객 5명 동적 조립은 화면에 연결되지 않았다. 전략 화면은 탐색·설명까지이며 실제 주문이나 적용 초안 저장은 없다.
 - **시각 수용 미완료**: PR #250은 `main`에 병합됐지만 Wi-Fi·배터리 아이콘이 사용자 검수를 통과하지 못했다. 코드 병합과 기능 수용을 분리해 상태바는 후속 수정 대상으로 유지한다. PR #249~#251은 모두 `main`에 병합됐다.
-- **다음**: 원격 배포 골든패스 E2E, Supabase Auth 유출 비밀번호 보호 활성화·Security Advisor 확인. RAG 재청킹·재임베딩은 측정된 품질 저하가 있을 때만 검토한다.
+- **원격 배포 복구 대기**: Render API는 정상이나 Vercel `VITE_API_BASE_URL` 빈 값, Render CORS 미허용, 중복 Vercel 프로젝트와 최신 배포 차단을 실측했다. [배포 운영 가이드](./docs/30_스펙/배포_운영_가이드.md)의 순서로 복구·재배포한 뒤 골든패스 E2E를 수행한다.
+- **다음**: 원격 배포 복구·골든패스 E2E, Supabase Auth 유출 비밀번호 보호 활성화·Security Advisor 확인. RAG 재청킹·재임베딩은 측정된 품질 저하가 있을 때만 검토한다.
 
 기능별 상태·수용 기준·코드와 테스트 근거는 [기능정의서](./docs/10_기획/기능정의서.html), 기술 상세는 [아키텍처 §9~10](./docs/30_스펙/아키텍처.md#9-구현검증-상태)을 따른다.
