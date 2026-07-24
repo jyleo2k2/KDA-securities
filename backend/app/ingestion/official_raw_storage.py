@@ -53,25 +53,15 @@ def build_raw_run_manifest(
     run_id: str,
     files: dict[str, Path],
     collected_at: datetime,
+    directories: dict[str, Path] | None = None,
 ) -> RawRunManifest:
     if not run_id or "/" in run_id or "\\" in run_id:
         raise ValueError("run_id must be a single path segment")
-    if not files:
-        raise ValueError("official raw manifest requires at least one file")
-
-    artifacts = []
-    for source, path in sorted(files.items()):
-        if not source or "/" in source or "\\" in source:
-            raise ValueError("source must be a single path segment")
-        content = path.read_bytes()
-        artifacts.append(
-            RawArtifact(
-                source=source,
-                object_path=f"runs/{run_id}/{source}/{path.name}",
-                sha256=hashlib.sha256(content).hexdigest(),
-                byte_count=len(content),
-            )
-        )
+    artifact_paths = _artifact_paths(files=files, directories=directories or {})
+    artifacts = [
+        _raw_artifact(run_id=run_id, source=source, relative_path=relative, path=path)
+        for source, relative, path in artifact_paths
+    ]
 
     collected = collected_at.astimezone(UTC)
     return RawRunManifest(
@@ -81,6 +71,50 @@ def build_raw_run_manifest(
             collected.date() + timedelta(days=RAW_RETENTION_DAYS)
         ).isoformat(),
         artifacts=tuple(artifacts),
+    )
+
+
+def _artifact_paths(
+    *, files: dict[str, Path], directories: dict[str, Path]
+) -> list[tuple[str, Path, Path]]:
+    entries: list[tuple[str, Path, Path]] = []
+    for source, path in files.items():
+        _validate_source(source)
+        entries.append((source, Path(path.name), path))
+    for source, directory in directories.items():
+        _validate_source(source)
+        if not directory.is_dir():
+            raise ValueError(f"official raw directory does not exist: {directory}")
+        entries.extend(
+            (source, path.relative_to(directory), path)
+            for path in directory.rglob("*")
+            if path.is_file()
+        )
+    if not entries:
+        raise ValueError("official raw manifest requires at least one file")
+    return sorted(entries, key=lambda item: (item[0], item[1].as_posix()))
+
+
+def _validate_source(source: str) -> None:
+    if not source or "/" in source or "\\" in source:
+        raise ValueError("source must be a single path segment")
+
+
+def _raw_artifact(
+    *, run_id: str, source: str, relative_path: Path, path: Path
+) -> RawArtifact:
+    content = path.read_bytes()
+    normalized_relative = relative_path.as_posix()
+    artifact_source = (
+        source
+        if normalized_relative == path.name
+        else f"{source}/{normalized_relative}"
+    )
+    return RawArtifact(
+        source=artifact_source,
+        object_path=f"runs/{run_id}/{source}/{normalized_relative}",
+        sha256=hashlib.sha256(content).hexdigest(),
+        byte_count=len(content),
     )
 
 
@@ -106,14 +140,20 @@ class OfficialRawStorage:
         files: dict[str, Path],
         run_id: str,
         collected_at: datetime | None = None,
+        directories: dict[str, Path] | None = None,
     ) -> RawRunManifest:
         manifest = build_raw_run_manifest(
             run_id=run_id,
             files=files,
             collected_at=collected_at or datetime.now(UTC),
+            directories=directories,
         )
         for artifact in manifest.artifacts:
-            source_path = files[artifact.source]
+            source_path = _source_path_for_artifact(
+                artifact=artifact,
+                files=files,
+                directories=directories or {},
+            )
             self._upload(
                 artifact.object_path,
                 source_path.read_bytes(),
@@ -142,3 +182,18 @@ class OfficialRawStorage:
             raise OfficialRawStorageError(
                 f"official raw upload failed with HTTP {response.status_code}"
             )
+
+
+def _source_path_for_artifact(
+    *,
+    artifact: RawArtifact,
+    files: dict[str, Path],
+    directories: dict[str, Path],
+) -> Path:
+    _, _, source, relative_path = artifact.object_path.split("/", 3)
+    if source in files and relative_path == files[source].name:
+        return files[source]
+    directory = directories.get(source)
+    if directory is None:
+        raise ValueError(f"no local source for raw artifact: {artifact.object_path}")
+    return directory / Path(relative_path)
