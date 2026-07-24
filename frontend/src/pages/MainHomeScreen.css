@@ -1,6 +1,6 @@
-.mhs-stage { min-height: 100dvh; display: grid; place-items: center; padding: 40px; background: #E8E8DD; font-family: Pretendard, "Cafe24SsurroundAir", -apple-system, sans-serif; }
-.mhs-phone { width: min(100%, 390px); height: min(844px, calc(100dvh - 80px)); min-height: 640px; border-radius: 44px; background: #fff; box-shadow: 0 24px 70px rgba(0, 0, 0, .16); overflow: hidden; }
-@media (max-width: 480px) { .mhs-stage { padding: 0; background: #fff; } .mhs-phone { width: 100%; height: 100dvh; min-height: 0; border-radius: 0; box-shadow: none; } }
+/* 프레임 치수는 index.css 폰 프레임 SSOT(.app-phone-stage/.app-phone-frame)를 재사용한다. */
+.mhs-stage { font-family: Pretendard, "Cafe24SsurroundAir", -apple-system, sans-serif; }
+.mhs-phone { overflow: hidden; }
 
 .mhs-page { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; position: relative; font-family: Pretendard, "Cafe24SsurroundAir", -apple-system, sans-serif; background: #fff; }
 

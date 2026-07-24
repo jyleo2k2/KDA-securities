@@ -1,20 +1,7 @@
-.benchmark-html-stage {
-  min-height: 100dvh;
-  display: grid;
-  place-items: center;
-  padding: 40px;
-  background: #e8e8dd;
-}
-
+/* 프레임 치수는 폰 프레임 SSOT(.app-phone-stage/.app-phone-frame)를 재사용한다. */
 .benchmark-html-frame-wrap {
   position: relative;
-  width: min(100%, 390px);
-  height: min(844px, calc(100dvh - 80px));
-  min-height: 640px;
   overflow: hidden;
-  border-radius: 44px;
-  background: #fff;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, .16);
   overscroll-behavior: contain;
   scrollbar-width: none;
 }
@@ -31,16 +18,6 @@
 @media (max-width: 480px) {
   .benchmark-html-stage {
     place-items: start center;
-    padding: 0;
-    background: #fff;
-  }
-
-  .benchmark-html-frame-wrap {
-    width: 100%;
-    height: 100dvh;
-    min-height: 0;
-    border-radius: 0;
-    box-shadow: none;
   }
 
   .benchmark-html-frame { width: 100%; height: 100dvh; }

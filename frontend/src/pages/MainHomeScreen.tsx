@@ -303,8 +303,8 @@ export function MainHomeScreen({
   const asOfDate = portfolio ? latestPortfolioDate(portfolio) : null;
 
   return (
-    <main className="mhs-stage">
-    <section className="mhs-phone" aria-label="연금 도우미 메인 홈">
+    <main className="app-phone-stage mhs-stage">
+    <section className="app-phone-frame mhs-phone" aria-label="연금 도우미 메인 홈">
     <div className="mhs-page">
       <StatusBar />
 

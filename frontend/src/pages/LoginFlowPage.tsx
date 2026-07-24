@@ -85,8 +85,8 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
   }, [step]);
 
   return (
-    <main className="login-flow-stage">
-      <section className="login-flow-phone" aria-label="연금 도우미 로그인">
+    <main className="app-phone-stage login-flow-stage">
+      <section className="app-phone-frame login-flow-phone" aria-label="연금 도우미 로그인">
         <StatusBar />
 
         {step === "intro" && (

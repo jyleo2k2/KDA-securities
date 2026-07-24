@@ -31,6 +31,15 @@
 - **백엔드 API 전반**: 엔드포인트 추가·응답 필드 변경이 필요하면 임의로 백엔드를 고치지 말고 계약 변경으로 요청한다.
 - 화면 설계 근거: [docs/10_기획/기획서.md](../docs/10_기획/기획서.md).
 
+## 화면 프레임·상단바 규칙 (신규·수정 화면 강제)
+
+라우트로 노출되는 **모든 화면은 main-home 프레임 규격에 픽셀 단위로 고정**하고 **Figma 상단바를 갖는다**. 예외 없이 아래를 지킨다.
+
+- **프레임(크기)**: 화면 최상위를 `app-phone-stage`(무대) + `app-phone-frame`(폰 프레임)으로 감싼다. 치수·라운드·그림자는 `src/index.css`의 `--phone-frame-*` 변수(SSOT)만 값의 출처다. `width`/`height`/`border-radius`를 개별 화면 CSS에 하드코딩하지 않는다(특히 `min(844px, …)` 리터럴 금지). 화면 고유 레이아웃(예: `display:flex` 내부 컬럼)은 별도 클래스로 덧붙이되 치수는 건드리지 않는다.
+- **상단바**: 화면 프레임 최상단에 `<StatusBar />`(`src/components/StatusBar.tsx`)를 렌더한다. 상단바는 Figma StatusBar(다이나믹 아일랜드 + 셀룰러·Wi‑Fi·배터리)를 재현하며 임의로 아이콘을 빼거나 크기를 바꾸지 않는다.
+- **iframe 화면(profile-html·slangi 등 100vh iframe)**: 프레임과 상단바를 iframe 내부 HTML이 소유한다. 이때도 내부 HTML은 같은 프레임 규격(`min(844px, calc(100dvh - 80px))`, radius 44, 상단바 54px)을 따른다. 이 목록은 `src/phoneFrameContract.test.ts`의 허용 목록과 일치시킨다.
+- **강제(게이트)**: `src/phoneFrameContract.test.ts`가 위 규칙을 검사한다. 새 화면이 공용 프레임을 쓰지 않거나 치수를 하드코딩하면 `npm test`가 실패한다. 새 라우트 화면을 추가하면 이 테스트를 통과시키거나(권장) iframe 위임 화면이면 허용 목록에 등록한다.
+
 ## 검증 명령
 
 ```powershell

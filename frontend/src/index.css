@@ -15,12 +15,53 @@
   background: #f7f8f4;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+
+  /* ── 폰 프레임 SSOT ─────────────────────────────────────────────
+     모든 라우트 화면은 main-home 프레임 규격에 픽셀 단위로 고정된다.
+     신규·수정 화면은 이 변수(또는 .app-phone-stage/.app-phone-frame)를
+     반드시 재사용하고, 프레임 치수를 개별 값으로 하드코딩하지 않는다.
+     강제 규칙: frontend/AGENTS.md·CLAUDE.md, 검증: PhoneFrameContract 테스트. */
+  --phone-frame-width: min(100%, 390px);
+  --phone-frame-height: min(844px, calc(100dvh - 80px));
+  --phone-frame-min-height: 640px;
+  --phone-frame-radius: 44px;
+  --phone-stage-pad: 40px;
+  --phone-stage-bg: #e8e8dd;
+  --phone-frame-shadow: 0 24px 70px rgba(0, 0, 0, .16);
+}
+
+/* 공용 폰 프레임: main-home 기준 픽셀 고정. 새 화면은 이 두 클래스를 쓴다. */
+.app-phone-stage {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--phone-stage-pad);
+  background: var(--phone-stage-bg);
+}
+.app-phone-frame {
+  width: var(--phone-frame-width);
+  height: var(--phone-frame-height);
+  min-height: var(--phone-frame-min-height);
+  border-radius: var(--phone-frame-radius);
+  background: #fff;
+  box-shadow: var(--phone-frame-shadow);
+  overflow: hidden;
+}
+@media (max-width: 480px) {
+  .app-phone-stage { padding: 0; background: #fff; }
+  .app-phone-frame {
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
 }
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; min-height: 100vh; }
-.pension-planner-stage { min-height: 100dvh; display: grid; place-items: center; padding: 40px; background: #e8e8dd; }
-.pension-planner-frame { width: min(100%, 390px); height: min(844px, calc(100dvh - 80px)); overflow: hidden; border-radius: 44px; background: #fff; box-shadow: 0 24px 70px rgba(0, 0, 0, .16); }
+/* 프레임 치수는 폰 프레임 SSOT(.app-phone-stage/.app-phone-frame)를 재사용한다. */
+.pension-planner-frame { overflow: hidden; }
 .pension-planner-frame iframe { display: block; width: 100%; height: 100%; border: 0; }
 button, input, textarea, select { font: inherit; }
 button { color: inherit; }
@@ -697,12 +738,12 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 /* Canvas-2.dc.html 원본을 GuidePage 기능에 그대로 매핑한 최종 화면. */
 .guide-tab { min-height: 100dvh; display: grid; place-items: center; background: #e8e8dd; }
 .guide-tab .app-shell {
-  width: min(100%, 390px);
-  height: min(844px, calc(100dvh - 80px));
+  width: var(--phone-frame-width);
+  height: var(--phone-frame-height);
   max-height: calc(100dvh - 80px);
   padding-top: 38px;
   overflow: hidden;
-  border-radius: 44px;
+  border-radius: var(--phone-frame-radius);
   background: #fff;
   color: #0f1113;
   font-family: Pretendard, "Cafe24SsurroundAir", -apple-system, sans-serif;
@@ -1120,8 +1161,6 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .rebalancing-reminder-card.is-skeleton .skeleton-button { width: 127px; height: 36px; border-radius: 999px; }
 
 @media (max-width: 480px) {
-  .pension-planner-stage { padding: 0; background: #fff; }
-  .pension-planner-frame { width: 100%; height: 100dvh; border-radius: 0; box-shadow: none; }
   .guide-tab { display: block; background: #fff; }
   .guide-tab .app-shell,
   .guide-tab .chat-main {
