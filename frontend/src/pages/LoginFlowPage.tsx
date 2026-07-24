@@ -136,7 +136,7 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
         {step === "consent" && (
           <div className="login-consent-page">
             <div className="login-consent-header">
-              <button type="button" className="login-back" onClick={() => setStep("success")} aria-label="로그인 성공 화면으로 돌아가기">←</button>
+              <button type="button" className="login-back" onClick={() => setStep("success")} aria-label="로그인 성공 화면으로 돌아가기">‹</button>
               <h1>연금계좌 연동</h1>
             </div>
             <div className="login-consent-content">
