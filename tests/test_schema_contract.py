@@ -55,6 +55,12 @@ ETF_PRODUCT_DESCRIPTION_MIGRATION = next(
 ETF_COMPONENT_SNAPSHOT_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob("*_add_etf_component_snapshots.sql")
 )
+ETF_DISTRIBUTION_RAW_STORAGE_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob(
+        "*_create_official_etf_distribution_raw_storage.sql"
+    ),
+    None,
+)
 OFFICIAL_ETF_COMPONENT_SOURCE_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob(
         "*_add_official_etf_component_sources.sql"
@@ -574,6 +580,20 @@ def test_etf_component_snapshots_are_server_only_and_ranked_top3() -> None:
     assert "to service_role" in sql
     assert "to authenticated" not in sql
     assert "drop table" not in sql
+
+
+def test_official_etf_distribution_raw_storage_is_private_and_service_only() -> None:
+    assert ETF_DISTRIBUTION_RAW_STORAGE_MIGRATION is not None
+    sql = ETF_DISTRIBUTION_RAW_STORAGE_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "insert into storage.buckets" in sql
+    assert "official-etf-distribution-raw" in sql
+    assert "false" in sql
+    assert "on storage.objects" in sql
+    assert "for all" in sql
+    assert "to service_role" in sql
+    assert "to authenticated" not in sql
+    assert "to anon" not in sql
 
 
 def test_official_etf_component_sources_are_scoped_and_server_only() -> None:
