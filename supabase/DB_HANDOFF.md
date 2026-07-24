@@ -896,17 +896,18 @@ uv run ruff check .
 - 남은 위험 또는 blocker: 삭제 직전 행 수는 profiles 3 / portfolios 3 / holdings 9 / curated_contents 0이라 용량 효과는 약 230KB에 불과하다. 이 작업의 목적은 용량 확보가 아니라 스키마 정리다.
 - 다음 작업: 원격 적용 승인 후 적용, 적용 직후 테이블 수·행 수·GRANT 재검증.
 
-## 공식 ETF 분배금 원본 보관·증분 갱신 (REMOTE-APPLIED / RUNNER LOCAL-VERIFIED)
+## 공식 ETF 분배금 원본 보관·증분 갱신 (REMOTE-E2E-VERIFIED)
 
 ### 2026-07-24 KST
 
 - 작업자/브랜치/시작 기준: 김태형 / `codex/김태형/etf-distribution-refresh-implementation` / `origin/main` `3a4e4fb`.
 - 변경 내용: private Storage 버킷 `official-etf-distribution-raw`를 만드는 additive migration을 추가하고 적용했다. 원본 SHA-256·파일 크기·1년 보존 종료일을 manifest로 보관하는 서버 전용 어댑터, KIND 45일 정정 창·KIS 120일 예정 창·확정 현금분배금 30% 초과 감소 격리 규칙을 추가했다. 후속 runner는 최신 ready 원본 payload를 읽어 비분배 이벤트를 보존하고, KIND·KIS 보고서와 실제 원본 디렉터리를 private Storage에 업로드한 뒤에만 새 ready 버전을 적재한다.
 - 결정 및 근거: 기존 `etf_distribution_event_versions`의 `loading → ready` 전환과 KIND 계산 권위를 변경하지 않는다. `service_role`은 Storage RLS를 우회하므로 별도 `storage.objects` 허용 정책을 만들지 않아 anon/authenticated deny-by-default를 유지한다. Storage는 공개 URL·브라우저 credential을 만들지 않는다.
-- 로컬 검증과 실제 결과: runner 관련 `uv run python -m pytest tests/test_etf_distribution_refresh.py tests/test_etf_distribution_event_repository.py tests/test_etf_corporate_events.py` 17 passed, 관련 `ruff check`, `git diff --check`, `uv run python scripts/refresh_etf_distribution_events.py` dry run을 통과했다. 이 시점에 공식 KIND/KIS 수집·새 이벤트 버전 적재는 아직 실행하지 않았다.
+- 로컬 검증과 실제 결과: runner 관련 `uv run python -m pytest tests/test_etf_distribution_refresh.py tests/test_etf_distribution_event_repository.py tests/test_etf_corporate_events.py` 17 passed, 관련 `ruff check`, `git diff --check`, `uv run python scripts/refresh_etf_distribution_events.py` dry run을 통과했다. 실제 첫 실행에서 DB raw payload의 `date` 직렬화 오류를 재현해 회귀 테스트를 추가했고, 수정 PR #276을 병합했다. 수정 후 전체 `1165 passed, 1 skipped`와 `ruff check .`을 통과했다.
 - 원격 적용 여부와 migration version: 이재용 승인 후 MCP가 부여한 원격 migration `20260724022829_create_official_etf_distribution_raw_storage`를 적용했다. 버킷은 `public=false`, `storage.objects` 커스텀 정책은 0건으로 확인했다. 최초 정책 생성 시도는 managed `storage.objects` 소유권 제약으로 실패했고, 원격 객체가 남지 않은 것을 확인한 뒤 정책 없는 deny-by-default migration으로 교정했다.
-- 남은 위험 또는 blocker: 1년 만료 삭제는 Supabase Storage lifecycle 기능이 아닌 Storage API 삭제 작업으로 별도 구현·E2E가 필요하다. GitHub Actions 정기 스케줄은 최초 `workflow_dispatch` E2E가 성공하고 필요한 server-side secrets가 확인된 뒤에만 활성화한다.
-- 다음 작업: runner PR 병합 후 `workflow_dispatch`로 KIND/KIS 수집·private Storage 업로드·새 ready 이벤트 버전을 최초 검증하고, 성공 결과를 기준으로 만료 삭제와 정기 스케줄을 추가한다.
+- 원격 E2E: GitHub Actions `Official ETF distribution refresh` run `30065654222`가 성공했다. private bucket에는 run `20260724T040046Z`의 `manifest.json`을 포함해 원본·보고서 객체 1,396개가 보관됐고, `etf_distribution_event_versions`에는 `id=2`, `as_of=2026-07-24`, `status=ready`, `event_rows=9,861`이 적재됐다. 이전 ready 버전은 `id=1`, 9,615행으로 보존된다.
+- 남은 위험 또는 blocker: 1년 만료 삭제는 Supabase Storage lifecycle 기능이 아닌 Storage API 삭제 작업으로 별도 구현·E2E가 필요하다. GitHub Actions 정기 스케줄은 첫 수동 E2E가 통과했으므로, 만료 삭제와 함께 평일 06:30 KST 운영 일정으로 별도 활성화할 수 있다.
+- 다음 작업: Storage API로 만료 run을 안전하게 삭제하는 runner·테스트를 추가하고, 운영 승인 후 평일 정기 스케줄을 활성화한다.
 
 ## 15. 작업 로그 템플릿
 
