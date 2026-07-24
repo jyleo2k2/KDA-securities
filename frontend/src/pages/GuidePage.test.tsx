@@ -569,7 +569,8 @@ describe("GuidePage chat history deletion", () => {
     fireEvent.change(composer, { target: { value: "내 성향에 맞는 포트폴리오를 보여줘" } });
     fireEvent.submit(composer.closest("form")!);
 
-    expect(await screen.findByText(/위험중립형 투자전략/)).toBeInTheDocument();
+    expect(await screen.findByText("설문 결과에 맞는 투자전략을 정리했어요.")).toBeInTheDocument();
+    expect(screen.queryByText("위험중립형 투자전략", { exact: true })).not.toBeInTheDocument();
     expect(screen.getByText("연금 운용전략")).toBeInTheDocument();
     expect(screen.queryByLabelText("수치 근거")).not.toBeInTheDocument();
     expect(screen.queryByText("검증 답변")).not.toBeInTheDocument();
@@ -1499,7 +1500,7 @@ describe("GuidePage chat history deletion", () => {
     expect(limitations).toHaveLength(2);
   });
 
-  it("keeps educational portfolio sections and limitations collapsed until opened", async () => {
+  it("hides educational portfolio detail sections while retaining the review panel", async () => {
     vi.mocked(getStoredChatMessages).mockResolvedValue([
       {
         message_id: "portfolio-question",
@@ -1525,25 +1526,9 @@ describe("GuidePage chat history deletion", () => {
     renderGuide();
 
     fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
-    const sectionTitle = await screen.findByText("위험중립형 투자전략", { exact: true });
-    const section = sectionTitle.closest("details");
-    expect(within(section as HTMLElement).getByText(
-      "35년의 장기 운용기간을 고려한 전략이에요. 목표비중을 확인해 보세요.",
-      { exact: true },
-    )).toBeInTheDocument();
-    const limitations = screen.getByText("확인할 점 1가지 보기").closest("details");
-
-    expect(section).not.toHaveAttribute("open");
-    expect(section?.querySelector(".answer-table-wrap")).not.toBeNull();
-    expect(section?.querySelectorAll(".answer-bullets li")).toHaveLength(1);
-    expect(limitations).not.toHaveAttribute("open");
+    await screen.findByText(STRUCTURED_PORTFOLIO_RESPONSE.answer);
+    expect(screen.queryByText("위험중립형 투자전략", { exact: true })).not.toBeInTheDocument();
     expect(document.querySelector(".holdings-required-panel")).not.toBeNull();
-
-    fireEvent.click(sectionTitle.closest("summary")!);
-    fireEvent.click(screen.getByText("확인할 점 1가지 보기").closest("summary")!);
-
-    expect(section).toHaveAttribute("open");
-    expect(limitations).toHaveAttribute("open");
   });
 });
 

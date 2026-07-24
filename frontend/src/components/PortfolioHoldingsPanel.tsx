@@ -240,12 +240,24 @@ function TargetAllocationGuide({
 }: {
   evaluation: EducationalPortfolioEvaluation;
 }) {
-  const items = evaluation.target_sleeves
-    .map((item) => ({
-      label: sleeveLabel(item.sleeve),
-      weight: Number(item.target_percent),
-    }))
-    .filter((item) => Number.isFinite(item.weight) && item.weight > 0);
+  const items = evaluation.target_sleeves.reduce<Array<{ label: string; weight: number }>>(
+    (current, item) => {
+      const weight = Number(item.target_percent);
+      if (!Number.isFinite(weight) || weight <= 0) return current;
+      const label = item.sleeve === "core_equity"
+        ? "주식"
+        : item.sleeve === "real_assets"
+          ? "금/원자재"
+          : item.sleeve === "tactical" || item.sleeve === "cash"
+            ? "현금"
+            : sleeveLabel(item.sleeve);
+      const existing = current.find((entry) => entry.label === label);
+      if (existing) existing.weight += weight;
+      else current.push({ label, weight });
+      return current;
+    },
+    [],
+  );
   const gradientStops = conicGradient(
     items.map((item) => item.weight),
     TARGET_ALLOCATION_COLORS,
@@ -293,15 +305,11 @@ function RebalancingCadenceGuide({
   return (
     <section className="portfolio-rebalance-cadence" aria-labelledby="portfolio-rebalance-cadence-title">
       <header>
-        <span>리밸런싱 점검</span>
-        <h4 id="portfolio-rebalance-cadence-title">{cadence.review_interval_months}개월마다 목표 비중 점검</h4>
-        <p>{cadence.rationale}</p>
+        <h4 id="portfolio-rebalance-cadence-title">리밸런싱 주기: {cadence.review_interval_months}개월마다</h4>
       </header>
-      <div className="portfolio-review-summary">
-        <div><span>점검 주기</span><strong>{cadence.review_interval_months}개월</strong></div>
-        <div><span>허용 이탈폭</span><strong>±{percent(cadence.drift_threshold_percent_points)}</strong></div>
-      </div>
-      <p className="portfolio-target-allocation-note">리밸런싱은 달라진 비중을 목표 비중에 가깝게 조정하는 점검입니다. 새 납입금은 목표보다 부족한 자산군에 우선 배분합니다.</p>
+      <p className="portfolio-target-allocation-note">
+        각 자산 유형별로 ±{Number(cadence.drift_threshold_percent_points).toFixed(1)}%p만큼의 차이가 날 수 있어요.
+      </p>
     </section>
   );
 }
@@ -332,7 +340,7 @@ function EducationalStrategyGuide({
       </article>
 
       <p className="portfolio-strategy-transition">
-        이 성향의 연금계좌 자산은 아래 기준으로 배분을 검토할 수 있습니다.
+        이 성향이라면 연금자산을 아래처럼 나눠 볼 수 있어요.
       </p>
       <TargetAllocationGuide evaluation={evaluation} />
       <RebalancingCadenceGuide evaluation={evaluation} />
@@ -370,12 +378,6 @@ function EducationalStrategyGuide({
         </p>
       </section>
 
-      <section className="portfolio-theme-next-step" aria-labelledby="portfolio-theme-next-step-title">
-        <strong id="portfolio-theme-next-step-title">어떤 ETF 분야를 살펴볼까?</strong>
-        <p>
-          이 서비스는 “이 ETF를 사세요”라고 정해 주지 않아요. ETF 분야 살펴보기에서 각 분야가 어떤 위험이 있는지 확인해 보세요.
-        </p>
-      </section>
     </section>
   );
 }

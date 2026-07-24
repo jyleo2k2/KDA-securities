@@ -153,7 +153,7 @@ def test_portfolio_planning_return_uses_cma_minus_verified_cost() -> None:
     assert result.gross_planning_return_percent == Decimal("5.2600")
     assert result.net_planning_return_percent == Decimal("5.1000")
     assert result.weighted_annual_cost_drag_percent == Decimal("0.1600")
-    assert result.conservative_planning_return_percent == Decimal("5.1000")
+    assert result.conservative_planning_return_percent == Decimal("4.9100")
     assert result.base_planning_return_percent == Decimal("5.1000")
     assert result.historical_performance_used is False
     assert result.is_forecast is False

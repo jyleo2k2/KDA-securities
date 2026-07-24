@@ -195,6 +195,18 @@ def test_chatbot_only_explains_structured_portfolio_engine_result() -> None:
     assert evaluation.planning_return.historical_performance_used is False
     assert evaluation.portfolio_risk.historical_return_used_for_risk_only is True
     assert response.narration_mode == "deterministic"
+    allocation = next(
+        item
+        for item in response.visualizations
+        if item.kind.value == "sleeve_allocation"
+    )
+    assert [item.label for item in allocation.items] == [
+        "주식",
+        "금/원자재",
+        "현금",
+        "채권",
+    ]
+    assert sum(item.value for item in allocation.items) == Decimal("100.0")
     sections = {section.title: section for section in response.sections}
     strategy_section = sections["위험중립형의 코어·위성 전략"]
     assert list(sections) == [
