@@ -2,6 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -32,6 +33,9 @@ import {
 } from "./FirstUseGuide";
 
 const TARGET_USER_ID = "81294832-0880-45c9-8b9e-6ae4de58ac42";
+let authStateChangeListener:
+  | ((event: string, session: ReturnType<typeof authSession> | null) => void)
+  | null = null;
 
 function authSession(email: string, id = TARGET_USER_ID) {
   return {
@@ -113,6 +117,12 @@ describe("FirstUseGuide", () => {
     authMocks.onAuthStateChange.mockReturnValue({
       data: { subscription: { unsubscribe: authMocks.unsubscribe } },
     });
+    authMocks.onAuthStateChange.mockImplementation((listener) => {
+      authStateChangeListener = listener;
+      return {
+        data: { subscription: { unsubscribe: authMocks.unsubscribe } },
+      };
+    });
   });
 
   afterEach(() => {
@@ -168,18 +178,41 @@ describe("FirstUseGuide", () => {
     fireEvent.click(screen.getByRole("button", { name: "이용자 Pick 둘러보기" }));
     await waitFor(() => expect(onUserPick).toHaveBeenCalledOnce());
     expect(
-      window.localStorage.getItem(firstUseGuideStorageKey(TARGET_USER_ID)),
+      window.sessionStorage.getItem(firstUseGuideStorageKey(TARGET_USER_ID)),
     ).toBe("true");
   });
 
-  it("does not reopen after completion", async () => {
-    window.localStorage.setItem(firstUseGuideStorageKey(TARGET_USER_ID), "true");
+  it("does not reopen again during the same login session", async () => {
+    window.sessionStorage.setItem(firstUseGuideStorageKey(TARGET_USER_ID), "true");
     addHomeFixture(vi.fn());
     render(<FirstUseGuide />);
 
     await waitFor(() => {
       expect(screen.queryByText("처음이신가요?")).not.toBeInTheDocument();
     });
+  });
+
+  it("opens again after the target user logs out and signs in", async () => {
+    window.sessionStorage.setItem(firstUseGuideStorageKey(TARGET_USER_ID), "true");
+    addHomeFixture(vi.fn());
+    render(<FirstUseGuide />);
+
+    await waitFor(() => expect(authStateChangeListener).not.toBeNull());
+    await act(async () => {
+      authStateChangeListener?.("SIGNED_OUT", null);
+      await Promise.resolve();
+    });
+    act(() => {
+      authStateChangeListener?.(
+        "SIGNED_IN",
+        authSession("jeongsu33@kda-demo.invalid"),
+      );
+    });
+
+    expect(await screen.findByText("처음이신가요?")).toBeInTheDocument();
+    expect(
+      window.sessionStorage.getItem(firstUseGuideStorageKey(TARGET_USER_ID)),
+    ).toBeNull();
   });
 
   it("does not open for any other authenticated user", async () => {

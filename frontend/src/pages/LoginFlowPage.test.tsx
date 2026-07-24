@@ -100,25 +100,6 @@ describe("LoginFlowPage", () => {
     expect(screen.getByText("로그인 성공!")).toBeInTheDocument();
   });
 
-  it("opens the main home immediately for the first-use guide account only", async () => {
-    renderLogin();
-    openForm();
-    fireEvent.change(screen.getByLabelText("아이디"), {
-      target: { value: "jeongsu33" },
-    });
-    fireEvent.change(screen.getByLabelText("비밀번호"), {
-      target: { value: "test-password" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "로그인하기" }));
-
-    await waitFor(() => {
-      expect(auth.signIn).toHaveBeenCalledWith("jeongsu33", "test-password");
-    });
-    expect(onStart).toHaveBeenCalledOnce();
-    expect(onAuthenticated).not.toHaveBeenCalled();
-    expect(screen.queryByText("로그인 성공!")).not.toBeInTheDocument();
-  });
-
   it("keeps the form visible and shows the auth error when sign-in fails", async () => {
     auth = {
       session: null,
