@@ -41,19 +41,26 @@
 .mhs-allocation-percent { margin-left: auto; color: #8A9691; flex-shrink: 0; }
 
 .mhs-portfolio-block { border-top: 1px solid #F0F1EC; margin-top: 16px; padding-top: 18px; }
-.mhs-portfolio-heading { font-size: 16px; font-weight: 900; color: #111; }
-.mhs-portfolio-info-icon { font-size: 14px; color: #B8C0BA; cursor: pointer; }
-.mhs-portfolio-bar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; margin: 12px 0; }
-.mhs-portfolio-bar-equity { width: 60%; background: #18A860; }
-.mhs-portfolio-bar-bond { width: 40%; background: #F0C000; }
-.mhs-portfolio-legend { display: flex; align-items: center; gap: 18px; }
-.mhs-portfolio-legend-item { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 800; color: #333; }
-.mhs-portfolio-legend-swatch { width: 11px; height: 11px; border-radius: 3px; }
-.mhs-swatch-equity { background: #18A860; }
-.mhs-swatch-bond { background: #F0C000; }
-.mhs-portfolio-legend-percent { color: #8A9691; }
+.mhs-portfolio-heading-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mhs-portfolio-heading { margin: 0; font-size: 16px; font-weight: 900; color: #111; }
+.mhs-portfolio-info-icon { border: 0; padding: 2px; background: transparent; font: inherit; font-size: 14px; color: #B8C0BA; cursor: pointer; }
+.mhs-portfolio-guide { margin: 7px 0 12px; color: #8A9691; font-size: 13px; font-weight: 600; line-height: 1.5; }
+.mhs-portfolio-select-prompt { width: 100%; border: 1px dashed #BBDDC9; border-radius: 12px; padding: 12px 14px; background: #F5FAF6; color: #168A51; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+.mhs-portfolio-select-prompt:disabled { color: #9BA6A0; cursor: default; }
+.mhs-holding-detail { border-radius: 14px; padding: 13px 14px; background: #F5FAF6; }
+.mhs-holding-detail-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mhs-holding-detail-heading > span { display: flex; align-items: center; gap: 7px; color: #263C31; font-size: 14px; font-weight: 900; }
+.mhs-holding-detail-heading i { width: 10px; height: 10px; border-radius: 50%; }
+.mhs-holding-detail-heading > strong { color: #168A51; font-size: 14px; }
+.mhs-holding-list { display: grid; gap: 9px; margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid #DFECE2; list-style: none; }
+.mhs-holding-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mhs-holding-list li > span { display: grid; min-width: 0; gap: 3px; }
+.mhs-holding-list strong { overflow: hidden; color: #263C31; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.mhs-holding-list small { color: #8A9691; font-size: 11px; }
+.mhs-holding-list b { flex: none; color: #53645B; font-size: 12px; }
+.mhs-holding-empty { margin: 10px 0 0; color: #8A9691; font-size: 12px; line-height: 1.5; }
 
-.mhs-summary-subcard { background: #F5FAF6; border-radius: 16px; padding: 18px 18px; margin-top: 18px; }
+.mhs-summary-subcard { border: 1px solid #DDEDE2; border-radius: 16px; padding: 18px 18px; margin-top: 18px; background: #F5FAF6; }
 .mhs-summary-label { font-size: 15px; font-weight: 800; color: #18A860; }
 .mhs-summary-sub-label { font-size: 14px; font-weight: 600; color: #8A9691; line-height: 1.5; margin: 10px 0 4px; }
 .mhs-summary-text { font-size: 16px; font-weight: 600; color: #333; line-height: 1.55; margin: 0 0 14px; }
@@ -73,7 +80,7 @@
 .mhs-strategy-heading-row { display: flex; align-items: baseline; justify-content: space-between; margin: 44px 0 14px; }
 .mhs-strategy-more { font-size: 13px; font-weight: 800; color: #18A860; white-space: nowrap; cursor: pointer; background: none; border: none; padding: 0; font-family: inherit; }
 
-.mhs-strategy-scroll { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; margin: 0 -22px; padding-left: 22px; padding-right: 22px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.mhs-strategy-scroll { display: flex; gap: 12px; overflow-x: auto; margin: 0; padding: 0 0 6px; scroll-padding-inline: 0; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .mhs-strategy-scroll::-webkit-scrollbar { display: none; }
 .mhs-strategy-card { flex: 0 0 168px; border: 1.5px solid #EAEDE7; border-radius: 20px; padding: 18px 16px; scroll-snap-align: start; }
 .mhs-strategy-card-button { color: inherit; cursor: pointer; font: inherit; text-align: left; }

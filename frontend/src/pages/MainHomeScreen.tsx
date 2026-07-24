@@ -1,4 +1,11 @@
-import { useEffect, useState, type JSX } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type JSX,
+  type UIEvent,
+} from "react";
 
 import taxCreditMissed from "../assets/main-home/tax-credit-missed.png";
 import piggy from "../assets/main-home/piggy.webp";
@@ -6,6 +13,7 @@ import profileIcon from "../assets/main-home/profile-icon.webp";
 import userPickPreview from "../assets/main-home/user-pick-preview.png";
 import type {
   AggregationEvaluation,
+  AssetClass,
   InvestmentProfileResponse,
   RiskProfile,
   UserPensionPortfolio,
@@ -20,11 +28,13 @@ interface MainHomeScreenProps {
   displayName: string;
   error: string | null;
   investmentProfile: InvestmentProfileResponse | null;
+  initialScrollTop?: number;
   loading: boolean;
   onOpenChat: () => void;
   onOpenPlanner: () => void;
   onOpenProfile: () => void;
   onOpenSlangi: () => void;
+  onScrollPositionChange?: (scrollTop: number) => void;
   onOpenStrategyExplore: () => void;
   onOpenUserPick: () => void;
   portfolio: UserPensionPortfolio | null;
@@ -37,9 +47,17 @@ interface AllocationSlice {
 }
 
 interface HoldingSlice {
+  assetClass: AssetClass;
   label: string;
   percent: number;
   color: string;
+}
+
+interface HoldingDetail {
+  accountName: string;
+  amountKrw: string;
+  holdingId: string;
+  instrumentName: string;
 }
 
 const PROFILE_LABELS: Record<RiskProfile, string> = {
@@ -63,6 +81,7 @@ function buildHoldingPieSlices(
     .sort((left, right) => Number(right.weight_percent) - Number(left.weight_percent))
     .slice(0, HOLDING_PIE_MAX_SLICES)
     .map((item, index) => ({
+      assetClass: item.asset_class,
       label: ASSET_LABELS[item.asset_class] ?? "기타 자산",
       percent: Number(item.weight_percent),
       color: HOLDING_PIE_COLORS[index % HOLDING_PIE_COLORS.length],
@@ -180,6 +199,23 @@ const ASSET_LABELS: Record<string, string> = { cash: "현금성", deposit: "원�
 const ALLOCATION_COLORS = ["#18A860", "#35B877", "#6ECFA0", "#2E8B57"];
 const formatKrw = (amount: string) => `${Math.round(Number(amount)).toLocaleString("ko-KR")}원`;
 
+function buildHoldingDetails(
+  portfolio: UserPensionPortfolio | null,
+  assetClass: AssetClass | null,
+): HoldingDetail[] {
+  if (!portfolio || !assetClass) return [];
+  return portfolio.accounts
+    .flatMap((account) => account.holdings
+      .filter((holding) => holding.asset_class === assetClass)
+      .map((holding) => ({
+        accountName: account.account_name,
+        amountKrw: holding.amount_krw,
+        holdingId: `${account.account_id}:${holding.holding_id}`,
+        instrumentName: holding.instrument_name,
+      })))
+    .sort((left, right) => Number(right.amountKrw) - Number(left.amountKrw));
+}
+
 function buildPortfolioOneLineSummary(
   aggregation: AggregationEvaluation | null,
 ): string {
@@ -195,9 +231,25 @@ function buildPortfolioOneLineSummary(
   return `${dominantLabel} 비중이 ${dominant.weight_percent}%로 가장 높아요.`;
 }
 
-export function MainHomeScreen({ aggregation, displayName, error, investmentProfile, loading, onOpenChat, onOpenPlanner, onOpenProfile, onOpenSlangi, onOpenStrategyExplore, onOpenUserPick, portfolio }: MainHomeScreenProps): JSX.Element {
+export function MainHomeScreen({
+  aggregation,
+  displayName,
+  error,
+  investmentProfile,
+  initialScrollTop = 0,
+  loading,
+  onOpenChat,
+  onOpenPlanner,
+  onOpenProfile,
+  onOpenSlangi,
+  onScrollPositionChange,
+  onOpenStrategyExplore,
+  onOpenUserPick,
+  portfolio,
+}: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
   const [selectedHolding, setSelectedHolding] = useState<number | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const allocationSlices: AllocationSlice[] = aggregation?.asset_class_totals
     .slice(0, 4)
     .map((item, index) => ({
@@ -206,7 +258,20 @@ export function MainHomeScreen({ aggregation, displayName, error, investmentProf
       color: ALLOCATION_COLORS[index],
     })) ?? [];
   const holdingSlices = buildHoldingPieSlices(aggregation);
+  const selectedHoldingSlice = selectedHolding === null
+    ? null
+    : holdingSlices[selectedHolding] ?? null;
+  const selectedHoldingDetails = buildHoldingDetails(
+    portfolio,
+    selectedHoldingSlice?.assetClass ?? null,
+  );
   const toggleHolding = (index: number) => setSelectedHolding((current) => (current === index ? null : index));
+  const handleBodyScroll = (event: UIEvent<HTMLDivElement>) => {
+    onScrollPositionChange?.(event.currentTarget.scrollTop);
+  };
+  useLayoutEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = initialScrollTop;
+  }, [initialScrollTop]);
   useEffect(() => {
     if (selectedHolding === null) return;
     const clear = () => setSelectedHolding(null);
@@ -230,13 +295,13 @@ export function MainHomeScreen({ aggregation, displayName, error, investmentProf
         </button>
       </div>
 
-      <div className="mhs-body">
+      <div className="mhs-body" ref={bodyRef} onScroll={handleBodyScroll}>
         <button type="button" className="mhs-greeting-card mhs-greeting-card-button" onClick={onOpenSlangi} aria-label="연그미와 놀기 열기">
           <div className="mhs-greeting-copy">
-            <p className="mhs-greeting-title">연그미를 <span className="mhs-greeting-title-accent">만져 보세요!</span></p>
+            <p className="mhs-greeting-title">슬랑이를 <span className="mhs-greeting-title-accent">만져 보세요!</span></p>
             <p className="mhs-greeting-sub">톡톡 두드리면 오늘의 저축 팁을 알려드려요</p>
           </div>
-          <img src={piggy} alt="연그미" className="mhs-greeting-img" />
+          <img src={piggy} alt="슬랑이" className="mhs-greeting-img" />
         </button>
         {investmentProfile?.assessment && <p className="mhs-greeting-sub">저장 투자성향 · {PROFILE_LABELS[investmentProfile.assessment.risk_profile]} · {investmentProfile.assessment.assessed_on} 진단{investmentProfile.assessment.is_expired ? " · 만료" : ""}</p>}
         <h2 className="mhs-section-title">내 연금 <span className="mhs-section-title-gold">자산</span></h2>
@@ -286,35 +351,66 @@ export function MainHomeScreen({ aggregation, displayName, error, investmentProf
             })}
           </div>
 
-          <div className="mhs-portfolio-block">
-            <span className="mhs-portfolio-heading">
-              포트폴리오{" "}
-              <span className="mhs-portfolio-info-icon" onClick={() => setInfoOpen(true)}>
+          <section className="mhs-portfolio-block" aria-labelledby="mhs-portfolio-heading">
+            <div className="mhs-portfolio-heading-row">
+              <h3 className="mhs-portfolio-heading" id="mhs-portfolio-heading">자산별 투자 종목</h3>
+              <button
+                type="button"
+                className="mhs-portfolio-info-icon"
+                onClick={() => setInfoOpen(true)}
+                aria-label="포트폴리오 분류 기준 보기"
+              >
                 ⓘ
-              </span>
-            </span>
-            <div className="mhs-portfolio-bar">
-              <span className="mhs-portfolio-bar-equity" />
-              <span className="mhs-portfolio-bar-bond" />
+              </button>
             </div>
-            <div className="mhs-portfolio-legend">
-              <span className="mhs-portfolio-legend-item">
-                <span className="mhs-portfolio-legend-swatch mhs-swatch-equity" />
-                {allocationSlices[0]?.label ?? "-"} <span className="mhs-portfolio-legend-percent">{allocationSlices[0]?.percent ?? "-"}</span>
-              </span>
-              <span className="mhs-portfolio-legend-item">
-                <span className="mhs-portfolio-legend-swatch mhs-swatch-bond" />
-                {allocationSlices[1]?.label ?? "-"} <span className="mhs-portfolio-legend-percent">{allocationSlices[1]?.percent ?? "-"}</span>
-              </span>
-            </div>
-          </div>
+            <p className="mhs-portfolio-guide">
+              위 원그래프나 자산 비중을 누르면 실제 보유 종목을 확인할 수 있어요.
+            </p>
+            {selectedHoldingSlice ? (
+              <div className="mhs-holding-detail" aria-live="polite">
+                <div className="mhs-holding-detail-heading">
+                  <span>
+                    <i style={{ background: selectedHoldingSlice.color }} />
+                    {selectedHoldingSlice.label}
+                  </span>
+                  <strong>{selectedHoldingSlice.percent.toFixed(1)}%</strong>
+                </div>
+                {selectedHoldingDetails.length > 0 ? (
+                  <ul className="mhs-holding-list">
+                    {selectedHoldingDetails.map((holding) => (
+                      <li key={holding.holdingId}>
+                        <span>
+                          <strong>{holding.instrumentName}</strong>
+                          <small>{holding.accountName}</small>
+                        </span>
+                        <b>{formatKrw(holding.amountKrw)}</b>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mhs-holding-empty">이 자산군의 상세 종목 정보가 아직 연결되지 않았어요.</p>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="mhs-portfolio-select-prompt"
+                onClick={() => {
+                  if (holdingSlices.length > 0) setSelectedHolding(0);
+                }}
+                disabled={holdingSlices.length === 0}
+              >
+                {holdingSlices.length > 0 ? "가장 큰 자산의 보유 종목 먼저 보기" : "연금계좌를 연결하면 보유 종목을 보여드려요"}
+              </button>
+            )}
+          </section>
 
           <div className="mhs-summary-subcard">
-            <span className="mhs-summary-label">한 줄 요약</span>
-            <p className="mhs-summary-sub-label">포트폴리오 구성</p>
+            <span className="mhs-summary-label">내 포트폴리오 한 줄 진단</span>
+            <p className="mhs-summary-sub-label">현재 자산 비중 기준</p>
             <p className="mhs-summary-text">{buildPortfolioOneLineSummary(aggregation)}</p>
             <div className="mhs-summary-cta-row">
-              <button type="button" className="mhs-summary-cta mhs-summary-cta-button" onClick={onOpenChat}>자세히 진단받기 <span className="mhs-summary-cta-chevron">›</span></button>
+              <button type="button" className="mhs-summary-cta mhs-summary-cta-button" onClick={onOpenChat}>내 포트폴리오 자세히 진단받기 <span className="mhs-summary-cta-chevron">›</span></button>
             </div>
           </div>
         </div>
