@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -36,14 +36,20 @@ vi.mock("./pages/MainHomeScreen", () => ({
   MainHomeScreen: ({
     aggregation,
     error,
+    initialScrollTop,
     investmentProfile,
     loading,
+    onOpenPlanner,
+    onScrollPositionChange,
     portfolio,
   }: {
     aggregation: { total_amount_krw: string } | null;
     error: string | null;
+    initialScrollTop: number;
     investmentProfile: InvestmentProfileResponse | null;
     loading: boolean;
+    onOpenPlanner: () => void;
+    onScrollPositionChange: (scrollTop: number) => void;
     portfolio: UserPensionPortfolio | null;
   }) => (
     <main>
@@ -53,6 +59,16 @@ vi.mock("./pages/MainHomeScreen", () => ({
       <span data-testid="saved-profile">
         {investmentProfile?.assessment?.risk_profile ?? "none"}
       </span>
+      <span data-testid="home-scroll-top">{initialScrollTop}</span>
+      <button
+        type="button"
+        onClick={() => {
+          onScrollPositionChange(384);
+          onOpenPlanner();
+        }}
+      >
+        계산기 열기
+      </button>
     </main>
   ),
 }));
@@ -62,6 +78,11 @@ vi.mock("./pages/LoginFlowPage", () => ({
   ),
 }));
 vi.mock("./pages/GuidePage", () => ({ GuidePage: () => <main>챗</main> }));
+vi.mock("./pages/PensionPlannerPage", () => ({
+  PensionPlannerPage: ({ onBack }: { onBack: () => void }) => (
+    <button type="button" onClick={onBack}>계산기 뒤로 가기</button>
+  ),
+}));
 
 const savedProfile = {
   assessment: { risk_profile: "active", is_expired: false },
@@ -168,5 +189,17 @@ describe("App owned pension data", () => {
     expect(await screen.findByText(
       "이 계정에는 연동된 연금 데이터가 없습니다.",
     )).toBeInTheDocument();
+  });
+
+  it("restores the home position after returning from a feature screen", async () => {
+    vi.mocked(getMyPensionAccounts).mockResolvedValue(portfolioA);
+    render(<App />);
+
+    expect(await screen.findByText("user-a:60000000")).toBeInTheDocument();
+    expect(screen.getByTestId("home-scroll-top")).toHaveTextContent("0");
+    fireEvent.click(screen.getByRole("button", { name: "계산기 열기" }));
+    fireEvent.click(await screen.findByRole("button", { name: "계산기 뒤로 가기" }));
+
+    expect(await screen.findByTestId("home-scroll-top")).toHaveTextContent("384");
   });
 });
