@@ -206,6 +206,6 @@ describe("LoginFlowPage", () => {
 
     await waitFor(() => expect(saveInvestmentProfile).toHaveBeenCalledWith(expect.any(Object), "access-token"));
     expect(onProfileSaved).toHaveBeenCalledWith(savedProfile);
-    expect(screen.getAllByText("공격투자형", { exact: false }).length).toBeGreaterThan(0);
+    expect(onStart).toHaveBeenCalledOnce();
   });
 });

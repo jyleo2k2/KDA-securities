@@ -37,7 +37,7 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
   const [linkOptions, setLinkOptions] = useState<AccountLinkOptionsResponse | null>(null);
   const [linkOptionsLoading, setLinkOptionsLoading] = useState(false);
   const [linkOptionsError, setLinkOptionsError] = useState<string | null>(null);
-  const [assessment, setAssessment] = useState<InvestmentProfileAssessment | null>(null);
+  const [assessment] = useState<InvestmentProfileAssessment | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -62,8 +62,7 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
     const response = await saveInvestmentProfile(submission, accessToken);
     if (response.assessment === null) throw new Error("saved assessment is missing");
     onProfileSaved(response);
-    setAssessment(response.assessment);
-    setStep("investor-result");
+    onStart();
   }
 
   function openConsent(): void {
