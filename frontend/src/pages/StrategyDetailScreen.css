@@ -143,6 +143,93 @@
   line-height: 1.6;
 }
 
+.sd-allocation-example {
+  border: 1.5px solid #dfe9df;
+  border-radius: 22px;
+  padding: 18px;
+  background: #fbfdf9;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+}
+
+.sd-allocation-kicker {
+  display: inline-block;
+  margin-bottom: 7px;
+  color: var(--sd-accent, #18a860);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.sd-bar {
+  display: flex;
+  min-height: 18px;
+  overflow: hidden;
+  margin-top: 14px;
+  border-radius: 999px;
+  background: #edf2ec;
+}
+
+.sd-bar span {
+  min-width: 8px;
+}
+
+.sd-bar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 10px;
+  padding: 0;
+  margin: 10px 0 0;
+  list-style: none;
+}
+
+.sd-bar-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #56625c;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sd-bar-legend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+}
+
+.sd-sector-example {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e5ece4;
+}
+
+.sd-sector-example strong {
+  color: #24352d;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.sd-sector-bar {
+  min-height: 14px;
+  margin-top: 9px;
+}
+
+.sd-sector-legend {
+  gap: 6px 9px;
+  margin-top: 8px;
+}
+
+.sd-sector-legend li {
+  font-size: 10px;
+}
+
+.sd-allocation-note {
+  margin: 13px 0 0;
+  color: #8a9691;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
 .sd-facts {
   display: flex;
   gap: 10px;
