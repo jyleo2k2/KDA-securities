@@ -61,6 +61,12 @@ ETF_DISTRIBUTION_RAW_STORAGE_MIGRATION = next(
     ),
     None,
 )
+ETF_UNIVERSE_CACHE_STORAGE_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob(
+        "*_create_official_etf_universe_cache_storage.sql"
+    ),
+    None,
+)
 OFFICIAL_ETF_COMPONENT_SOURCE_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob(
         "*_add_official_etf_component_sources.sql"
@@ -607,6 +613,18 @@ def test_official_etf_distribution_raw_storage_is_private_and_service_only() -> 
 
     assert "insert into storage.buckets" in sql
     assert "official-etf-distribution-raw" in sql
+    assert "public = false" in sql
+    assert "on storage.objects" not in sql
+    assert "to authenticated" not in sql
+    assert "to anon" not in sql
+
+
+def test_official_etf_universe_cache_storage_is_private_and_service_only() -> None:
+    assert ETF_UNIVERSE_CACHE_STORAGE_MIGRATION is not None
+    sql = ETF_UNIVERSE_CACHE_STORAGE_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "insert into storage.buckets" in sql
+    assert "official-etf-universe-cache" in sql
     assert "public = false" in sql
     assert "on storage.objects" not in sql
     assert "to authenticated" not in sql
