@@ -260,12 +260,6 @@ function AnswerBlocks({ blocks }: { blocks: AnswerBlock[] }) {
   );
 }
 
-function sectionPreview(content: string): string {
-  const normalized = displayText(content).replace(/\s+/g, " ").trim();
-  const sentence = normalized.match(/^.*?[.!?](?:\s|$)/);
-  return (sentence?.[0] ?? normalized).trim();
-}
-
 const REPRESENTATIVE_COMPANY_LABELS = [
   "테마에서의 역할:",
   "쉽게 말하면:",
@@ -718,7 +712,7 @@ function AssistantMessage({
         <Fragment key={`${section.title}-${index}`}>
           <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "verified_pension_account_brief" || response.data_mode === "verified_pension_tax_rule_brief" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
             <summary>
-              <span>{section.title}{response.data_mode !== "verified_pension_account_brief" && sectionPreview(section.content) && ` — ${sectionPreview(section.content)}`}</span>
+              <span>{section.title}</span>
               <small>내용 보기</small>
             </summary>
             {section.blocks?.length ? (

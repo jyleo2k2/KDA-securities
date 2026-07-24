@@ -70,6 +70,25 @@ logger = logging.getLogger("uvicorn.error")
 
 _DATABASE_ERRORS = (psycopg.Error, ConnectionError)
 _SALUTATION_CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+_LEGACY_ETF_THEME_DRAFT_NOTICE = (
+    "테마 설명은 사용자가 제공한 조사 내용을 서비스 분류체계로 정리한 것으로 "
+    "공식 문서 검증 전 초안입니다."
+)
+
+
+def _without_legacy_etf_theme_draft_notice(response: ChatResponse) -> ChatResponse:
+    """Keep a retired draft notice out of live and stored ETF-theme replies."""
+
+    if response.intent != ChatIntent.ETF_THEME:
+        return response
+    limitations = [
+        limitation
+        for limitation in response.limitations
+        if limitation != _LEGACY_ETF_THEME_DRAFT_NOTICE
+    ]
+    if len(limitations) == len(response.limitations):
+        return response
+    return response.model_copy(update={"limitations": limitations})
 
 
 def _format_salutation(nickname: str | None) -> str:
@@ -281,6 +300,7 @@ def _authenticated_response(
         response = response.model_copy(
             update={"salutation": _format_salutation(nickname)}
         )
+    response = _without_legacy_etf_theme_draft_notice(response)
     return response, response.intent not in {
         ChatIntent.OUT_OF_SCOPE,
         ChatIntent.PENSION_TAX,
@@ -823,6 +843,7 @@ def _message_out(message: StoredChatMessage) -> StoredChatMessageOut:
                 raise TypeError("assistant payload must be a JSON object")
             if payload.get("schema_version") == 1:
                 response = ChatResponse.model_validate(payload["response"])
+                response = _without_legacy_etf_theme_draft_notice(response)
                 question_message_id = UUID(payload["question_message_id"])
                 content = response.answer
         except (json.JSONDecodeError, KeyError, TypeError, ValueError):

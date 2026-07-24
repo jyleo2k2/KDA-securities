@@ -1518,10 +1518,12 @@ describe("GuidePage chat history deletion", () => {
     renderGuide();
 
     fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
-    const preview = await screen.findByText(
-      "위험중립형 투자전략 — 35년의 장기 운용기간을 고려한 전략이에요.",
-    );
-    const section = preview.closest("details");
+    const sectionTitle = await screen.findByText("위험중립형 투자전략", { exact: true });
+    const section = sectionTitle.closest("details");
+    expect(within(section as HTMLElement).getByText(
+      "35년의 장기 운용기간을 고려한 전략이에요. 목표비중을 확인해 보세요.",
+      { exact: true },
+    )).toBeInTheDocument();
     const limitations = screen.getByText("확인할 점 1가지 보기").closest("details");
 
     expect(section).not.toHaveAttribute("open");
@@ -1530,7 +1532,7 @@ describe("GuidePage chat history deletion", () => {
     expect(limitations).not.toHaveAttribute("open");
     expect(document.querySelector(".holdings-required-panel")).not.toBeNull();
 
-    fireEvent.click(preview.closest("summary")!);
+    fireEvent.click(sectionTitle.closest("summary")!);
     fireEvent.click(screen.getByText("확인할 점 1가지 보기").closest("summary")!);
 
     expect(section).toHaveAttribute("open");
