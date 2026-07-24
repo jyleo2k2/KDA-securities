@@ -16,8 +16,10 @@ import type {
   AssetClass,
   InvestmentProfileResponse,
   RiskProfile,
+  StrategyPlanningReturnEvaluation,
   UserPensionPortfolio,
 } from "../api/types";
+import { getStrategyPlanningReturns } from "../api/client";
 import { StatusBar } from "../components/StatusBar";
 import { YeongeumiMascot } from "../components/YeongeumiMascot";
 import { latestPortfolioDate } from "../ownerPensionPortfolio";
@@ -164,27 +166,37 @@ function HoldingPie({ slices, selectedIndex, onSelect }: {
 }
 
 interface StrategyCard {
+  strategyId: string;
   title: string;
-  value: string;
   valueColor: string;
   desc: string;
-  warning?: string;
-  footnote: string;
   bg: string;
 }
 
 const STRATEGY_CARDS: StrategyCard[] = [
-  { title: "시장 전체 따라가기", value: "6.75%", valueColor: "#4FB6E6", desc: "많은 회사가 든 ETF로 주식시장 전체를 넓게 따라가요.", footnote: "장기 계산용 가정 · 세계 주식 전망 7.0% · 여유 폭 0.25%p", bg: "#EAF7FC" },
-  { title: "회사 특징 고르기", value: "6.60%", valueColor: "#24386E", desc: "좋은 회사·싼 가격·꾸준한 흐름 같은 특징을 살펴봐요.", footnote: "장기 계산용 가정 · 세계 주식 전망 7.0% · 여유 폭 0.40%p", bg: "#EAEDF3" },
-  { title: "성장 분야 살펴보기", value: "6.00%", valueColor: "#F5871F", desc: "AI·반도체·바이오처럼 한 분야의 기회를 조금씩 살펴봐요.", footnote: "장기 계산용 가정 · 세계 주식 전망 7.0% · 여유 폭 1.00%p", bg: "#FFF3E6" },
-  { title: "큰 경제 흐름 보기", value: "산정 전", valueColor: "#3B4148", desc: "금리·물가·경기를 보고 나라와 산업 비율을 살펴봐요.", warning: "※ 어디에 얼마나 둘지 정한 뒤 계산해요.", footnote: "실제 구성의 장기 전망 · 여유 폭 0.75%p", bg: "#EEF0F1" },
-  { title: "회사 하나씩 살펴보기", value: "6.25%", valueColor: "#1E9E5D", desc: "전문가가 회사를 골라 담는 펀드를 작은 비중으로 살펴봐요.", footnote: "장기 계산용 가정 · 지역별 주식 전망 · 여유 폭 0.75%p", bg: "#E9F8EF" },
-  { title: "성장·안전 나누기", value: "산정 전", valueColor: "#1E2124", desc: "성장할 돈과 채권·현금 같은 안전한 돈을 나눠 둬요.", warning: "※ 성장·안전 비율을 정한 뒤 계산해요.", footnote: "실제 구성의 장기 전망 · 자산별 여유 폭", bg: "#F5F5F5" },
-  { title: "가격 흔들림 줄이기", value: "산정 전", valueColor: "#9CA7AE", desc: "가격이 너무 크게 출렁이면 채권·현금 비율을 늘려요.", warning: "※ 어느 정도 흔들림을 허용할지 정한 뒤 계산해요.", footnote: "실제 구성의 장기 전망 · 자산별 여유 폭", bg: "#F1F2F3" },
-  { title: "시장 흔들림 줄이기", value: "산정 전", valueColor: "#7B4FC0", desc: "시장이 오르내려도 덜 흔들리게 만든 상품을 살펴봐요.", warning: "※ 연금계좌에서 살 수 있는 상품이 확인돼야 해요.", footnote: "별도 장기 전망 필요 · 여유 폭 0.75%p", bg: "#F3EEFB" },
-  { title: "회사 큰 소식 보기", value: "산정 전", valueColor: "#B8860B", desc: "합병·분할처럼 회사에 큰 일이 생긴 뒤를 살펴봐요.", warning: "※ 연금계좌에서 살 수 있는 상품이 확인돼야 해요.", footnote: "별도 장기 전망 필요 · 여유 폭 0.75%p", bg: "#FFF8DE" },
-  { title: "세계 시장 흐름 보기", value: "5.65%", valueColor: "#2F6FE0", desc: "주식·채권 등 세계 시장의 큰 흐름을 함께 살펴봐요.", footnote: "장기 계산용 가정 · 세계 혼합자산 전망 6.4% · 여유 폭 0.75%p", bg: "#EAF1FE" },
+  { strategyId: "market_beta", title: "시장 전체 따라가기", valueColor: "#4FB6E6", desc: "많은 회사가 든 ETF로 주식시장 전체를 넓게 따라가요.", bg: "#EAF7FC" },
+  { strategyId: "factor", title: "회사 특징 고르기", valueColor: "#24386E", desc: "좋은 회사·싼 가격·꾸준한 흐름 같은 특징을 살펴봐요.", bg: "#EAEDF3" },
+  { strategyId: "thematic", title: "성장 분야 살펴보기", valueColor: "#F5871F", desc: "AI·반도체·바이오처럼 한 분야의 기회를 조금씩 살펴봐요.", bg: "#FFF3E6" },
+  { strategyId: "top_down", title: "큰 경제 흐름 보기", valueColor: "#3B4148", desc: "금리·물가·경기를 보고 나라와 산업 비율을 살펴봐요.", bg: "#EEF0F1" },
+  { strategyId: "bottom_up", title: "회사 하나씩 살펴보기", valueColor: "#1E9E5D", desc: "전문가가 회사를 골라 담는 펀드를 작은 비중으로 살펴봐요.", bg: "#E9F8EF" },
+  { strategyId: "barbell", title: "성장·안전 나누기", valueColor: "#1E2124", desc: "성장할 돈과 채권·현금 같은 안전한 돈을 나눠 둬요.", bg: "#F5F5F5" },
+  { strategyId: "volatility_managed", title: "가격 흔들림 줄이기", valueColor: "#9CA7AE", desc: "가격이 너무 크게 출렁이면 채권·현금 비율을 늘려요.", bg: "#F1F2F3" },
+  { strategyId: "market_neutral", title: "시장 흔들림 줄이기", valueColor: "#7B4FC0", desc: "시장이 오르내려도 덜 흔들리게 만든 상품을 살펴봐요.", bg: "#F3EEFB" },
+  { strategyId: "event_driven", title: "회사 큰 소식 보기", valueColor: "#B8860B", desc: "합병·분할처럼 회사에 큰 일이 생긴 뒤를 살펴봐요.", bg: "#FFF8DE" },
+  { strategyId: "trend_global_macro", title: "세계 시장 흐름 보기", valueColor: "#2F6FE0", desc: "주식·채권 등 세계 시장의 큰 흐름을 함께 살펴봐요.", bg: "#EAF1FE" },
 ];
+
+function strategyPlanningFootnote(
+  planningReturn: StrategyPlanningReturnEvaluation | undefined,
+): string {
+  if (!planningReturn) return "장기 계산용 가정을 불러오는 중이에요.";
+  return `장기 계산용 가정 · 대표 구성 전망 ${formatPlanningPercent(planningReturn.cma_weighted_return_percent)} · 여유 폭 ${formatPlanningPercent(planningReturn.uncertainty_discount_percent)}p`;
+}
+
+function formatPlanningPercent(value: string): string {
+  const [whole, decimal = ""] = value.split(".");
+  return `${whole}.${decimal.padEnd(2, "0").slice(0, 2)}%`;
+}
 
 const PORTFOLIO_INFO_CATEGORIES: Array<{ title: string; desc: string }> = [
   { title: "주식형", desc: "ETF 중 주식을 투자하는 상품" },
@@ -250,6 +262,7 @@ export function MainHomeScreen({
 }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
   const [selectedHolding, setSelectedHolding] = useState<number | null>(null);
+  const [strategyPlanningReturns, setStrategyPlanningReturns] = useState<StrategyPlanningReturnEvaluation[] | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const allocationSlices: AllocationSlice[] = aggregation?.asset_class_totals
     .slice(0, 4)
@@ -279,6 +292,13 @@ export function MainHomeScreen({
     document.addEventListener("click", clear);
     return () => document.removeEventListener("click", clear);
   }, [selectedHolding]);
+  useEffect(() => {
+    let active = true;
+    getStrategyPlanningReturns()
+      .then((returns) => { if (active) setStrategyPlanningReturns(returns); })
+      .catch(() => { if (active) setStrategyPlanningReturns([]); });
+    return () => { active = false; };
+  }, []);
   const totalBalance = aggregation ? formatKrw(aggregation.total_amount_krw) : "-";
   const asOfDate = portfolio ? latestPortfolioDate(portfolio) : null;
 
@@ -437,7 +457,14 @@ export function MainHomeScreen({
         </div>
 
         <div className="mhs-strategy-scroll">
-          {STRATEGY_CARDS.map((card) => (
+          {STRATEGY_CARDS.map((card) => {
+            const planningReturn = strategyPlanningReturns?.find(
+              (item) => item.strategy_id === card.strategyId,
+            );
+            const value = planningReturn
+              ? formatPlanningPercent(planningReturn.net_planning_return_percent)
+              : strategyPlanningReturns === null ? "계산 중…" : "확인 필요";
+            return (
             <button
               type="button"
               className="mhs-strategy-card mhs-strategy-card-button"
@@ -447,12 +474,12 @@ export function MainHomeScreen({
               aria-label={`${card.title} 전략 상세 보기`}
             >
               <span className="mhs-strategy-card-title">{card.title}</span>
-              <p className="mhs-strategy-card-value" style={{ color: card.valueColor }}>{card.value}</p>
+              <p className="mhs-strategy-card-value" style={{ color: card.valueColor }}>{value}</p>
               <p className="mhs-strategy-card-desc">{card.desc}</p>
-              {card.warning && <p className="mhs-strategy-card-warning">{card.warning}</p>}
-              <p className="mhs-strategy-card-footnote">{card.footnote}</p>
+              <p className="mhs-strategy-card-footnote">{strategyPlanningFootnote(planningReturn)}</p>
             </button>
-          ))}
+            );
+          })}
         </div>
         <p className="mhs-strategy-disclaimer">계획수익률은 운용 가정이며 미래 수익을 보장하지 않아요.</p>
 

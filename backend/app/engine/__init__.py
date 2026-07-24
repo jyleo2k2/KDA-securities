@@ -144,6 +144,11 @@ from .strategy import (
     evaluate_profit_lock,
     evaluate_risk_budget,
 )
+from .strategy_planning_return import (
+    StrategyPlanningReturnComponent,
+    StrategyPlanningReturnEvaluation,
+    calculate_strategy_planning_returns,
+)
 from .strategy_presentation import get_strategy_presentation
 
 __all__ = [
@@ -225,6 +230,8 @@ __all__ = [
     "ScenarioPortfolioInput",
     "StatutoryException",
     "StrategyPresentation",
+    "StrategyPlanningReturnComponent",
+    "StrategyPlanningReturnEvaluation",
     "SleeveTarget",
     "SurveyAnswer",
     "ThemeCandidateEvaluation",
@@ -242,6 +249,7 @@ __all__ = [
     "calculate_macro_analog_regimes",
     "calculate_post_regime_etf_outcomes",
     "calculate_pension",
+    "calculate_strategy_planning_returns",
     "calculate_current_holdings_planning_return",
     "calculate_pension_tax_credit",
     "calculate_portfolio_planning_return",

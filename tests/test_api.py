@@ -24,6 +24,7 @@ def test_route_paths_cover_engine_tools_and_data_reads() -> None:
         "/health",
         "/engine/risk-cap",
         "/engine/risk-cap/audited",
+        "/engine/strategy-planning-returns",
         "/engine/profile",
         "/engine/diagnostics",
         "/engine/aggregation",
@@ -40,6 +41,20 @@ def test_route_paths_cover_engine_tools_and_data_reads() -> None:
         "/macro/analog-regimes/etf-outcomes",
         "/accounts/link-options",
     }
+
+
+def test_strategy_planning_returns_endpoint_calculates_all_home_cards() -> None:
+    response = client.get("/engine/strategy-planning-returns")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 10
+    outcomes = {item["strategy_id"]: item for item in body}
+    assert outcomes["barbell"]["net_planning_return_percent"] == "4.7500"
+    assert outcomes["volatility_managed"]["net_planning_return_percent"] == "4.6300"
+    assert outcomes["market_neutral"]["net_planning_return_percent"] == "3.4000"
+    assert outcomes["event_driven"]["net_planning_return_percent"] == "4.3000"
+    assert all(item["is_forecast"] is False for item in body)
 
 
 def test_health_reports_loaded_etf_theme_catalog() -> None:
