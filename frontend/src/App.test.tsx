@@ -187,7 +187,7 @@ describe("App owned pension data", () => {
     render(<App />);
 
     expect(await screen.findByText(
-      "이 계정에는 연동된 연금 데이터가 없습니다.",
+      "아직 연결된 연금 계좌가 없어요. 계좌를 연결하면 자산을 한눈에 정리해서 보여드릴게요!",
     )).toBeInTheDocument();
   });
 
