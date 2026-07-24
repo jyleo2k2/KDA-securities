@@ -317,6 +317,7 @@ function AppRoutes(): JSX.Element {
             email={email}
             investmentProfile={currentUserData.investmentProfile}
             onBack={goToMainHome}
+            onResurvey={() => setResurveyPending(true)}
             portfolio={currentUserData.portfolio}
           />
         )}

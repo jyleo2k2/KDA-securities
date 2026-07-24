@@ -55,6 +55,25 @@ describe("ProfileHtmlPage", () => {
     expect(onBack).toHaveBeenCalledOnce();
   });
 
+  it("forwards the profile resurvey button to the supplied callback", () => {
+    const onResurvey = vi.fn();
+
+    render(<ProfileHtmlPage {...props} onResurvey={onResurvey} />);
+
+    const iframe = screen.getByTitle("내 프로필") as HTMLIFrameElement;
+    const frameDocument = iframe.contentDocument;
+    expect(frameDocument).not.toBeNull();
+    if (!frameDocument) return;
+
+    frameDocument.open();
+    frameDocument.write('<!doctype html><body><button type="button" data-profile-html-resurvey>진단 다시하기</button></body>');
+    frameDocument.close();
+    fireEvent.load(iframe);
+    fireEvent.click(frameDocument.querySelector("[data-profile-html-resurvey]") as HTMLButtonElement);
+
+    expect(onResurvey).toHaveBeenCalledOnce();
+  });
+
   it("forwards the profile logout button to the supplied callback", () => {
     const onSignOut = vi.fn().mockResolvedValue(undefined);
 

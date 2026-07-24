@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 import App from "./App";
 import {
@@ -27,6 +27,10 @@ vi.mock("./auth/useSupabaseAuth", () => ({
 vi.mock("./pages/GuidePage", () => ({
   GuidePage: () => <main data-testid="guide-page">가이드</main>,
 }));
+
+afterEach(() => {
+  cleanup();
+});
 
 describe("initial hash routing", () => {
   beforeEach(() => {
@@ -57,6 +61,25 @@ describe("initial hash routing", () => {
 
     const profileFrame = await screen.findByTitle("내 프로필");
     expect(profileFrame.getAttribute("src")).toBe("/profile-html/index.html");
+  });
+
+  it("opens the resurvey flow from the profile screen", async () => {
+    window.history.replaceState(null, "", "#/profile-html");
+
+    render(<App />);
+
+    const profileFrame = await screen.findByTitle("내 프로필") as HTMLIFrameElement;
+    const frameDocument = profileFrame.contentDocument;
+    expect(frameDocument).not.toBeNull();
+    if (!frameDocument) return;
+
+    frameDocument.open();
+    frameDocument.write('<!doctype html><body><button type="button" data-profile-html-resurvey>진단 다시하기</button></body>');
+    frameDocument.close();
+    fireEvent.load(profileFrame);
+    fireEvent.click(frameDocument.querySelector("[data-profile-html-resurvey]") as HTMLButtonElement);
+
+    expect(await screen.findByRole("button", { name: "투자 성향 진단받기" })).toBeTruthy();
   });
 
   it("loads the supplied slangi html from its explicit public file path", async () => {
