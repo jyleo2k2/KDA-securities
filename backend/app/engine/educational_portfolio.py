@@ -862,8 +862,11 @@ def calculate_current_holdings_planning_return(
 ) -> PortfolioPlanningEvaluation:
     """Build a cost-verified CMA planning assumption for the supplied ETF weights."""
 
+    total_amount = sum((holding.amount_krw for holding in holdings), Decimal("0"))
+    if total_amount <= 0:
+        raise ValueError("current holdings must have a positive total")
+
     candidates: list[EducationalEtfCandidate] = []
-    total_amount = Decimal("0")
     for holding in holdings:
         if holding.amount_krw == 0:
             continue
@@ -878,7 +881,6 @@ def calculate_current_holdings_planning_return(
                 "ETF is not in the account-specific universe: "
                 f"{holding.isu_code}"
             )
-        total_amount += holding.amount_krw
         cost = product.get("cost") or {}
         if (
             _numeric(cost.get("effective_total_cost_percent")) is None
@@ -911,7 +913,7 @@ def calculate_current_holdings_planning_return(
             )
         )
 
-    if total_amount <= 0:
+    if not candidates:
         raise ValueError("current holdings do not include a priced ETF")
 
     return calculate_portfolio_planning_return(
