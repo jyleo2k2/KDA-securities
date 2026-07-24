@@ -22,6 +22,14 @@ afterEach(() => {
 });
 
 describe("PortfolioHoldingsPanel", () => {
+  it("omits the profile-completion card when no profile is available", () => {
+    const { container } = render(
+      <PortfolioHoldingsPanel surveyProfile={null} disabled={false} onAnalyze={vi.fn()} />,
+    );
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it("validates and submits current holdings with the completed profile", () => {
     const onAnalyze = vi.fn();
     render(<PortfolioHoldingsPanel surveyProfile={PROFILE} disabled={false} onAnalyze={onAnalyze} />);

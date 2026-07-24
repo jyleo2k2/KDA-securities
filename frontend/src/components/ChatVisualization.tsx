@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { donutArcPaths } from "../charts";
+import { donutArcPaths, TARGET_ALLOCATION_COLORS } from "../charts";
 import type { ChatVisualization as ChatVisualizationData, SourceEvidence } from "../api/types";
 
 const BOUNDARY_LABELS: Record<SourceEvidence["data_boundary"], string> = {
@@ -18,6 +18,13 @@ function numericText(value: string | number, unit: string): string {
     return `${Number(value).toLocaleString("ko-KR")}원`;
   }
   return `${value}${unit}`;
+}
+
+function lossText(value: string | number, unit: string): string {
+  const numeric = Number(value);
+  return Number.isFinite(numeric)
+    ? `-${numericText(Math.abs(numeric), unit)}`
+    : `-${numericText(value, unit)}`;
 }
 
 export function ChatVisualization({ visualization, sources }: {
@@ -121,7 +128,9 @@ export function ChatVisualization({ visualization, sources }: {
                   overflowWrap: "anywhere",
                 }}
               >
-                {numericText(item.value, item.unit)}
+                {visualization.kind === "stress_scenarios"
+                  ? lossText(item.value, item.unit)
+                  : numericText(item.value, item.unit)}
               </strong>
             </div>
           ))}
@@ -154,7 +163,10 @@ export function ChatVisualization({ visualization, sources }: {
   }
 
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const colors = ["#2f8f6b", "#3f7bc4", "#c98a2e", "#d9743f", "#7b5fc0", "#2fa3a3", "#8f9aa6"];
+  const isSleeveAllocation = visualization.kind === "sleeve_allocation";
+  const colors = isSleeveAllocation
+    ? TARGET_ALLOCATION_COLORS
+    : ["#2f8f6b", "#3f7bc4", "#c98a2e", "#d9743f", "#7b5fc0", "#2fa3a3", "#8f9aa6"];
   const selectedItem = selectedIndex === null ? null : visualization.items[selectedIndex];
   const sourceById = new Map(sources.map((source) => [source.evidence_id, source]));
   const evidenceSources = (visualization.evidence_ids ?? [])
@@ -172,9 +184,13 @@ export function ChatVisualization({ visualization, sources }: {
     <section className="allocation-chart" aria-label={visualization.title}>
       <h3>{visualization.title}</h3>
       <p className="visualization-description">{visualization.description}</p>
-      <div className="allocation-pie-layout">
-        <svg className="allocation-donut" viewBox="0 0 100 100" aria-label="자산군 비중을 탭해 상세 보기">
-          {donutArcPaths(visualization.items.map((item) => Number(item.value))).map((d, index) => {
+      <div className={`allocation-pie-layout${isSleeveAllocation ? " sleeve-allocation-layout" : ""}`}>
+        <svg className={`allocation-donut${isSleeveAllocation ? " sleeve-allocation-donut" : ""}`} viewBox="0 0 100 100" aria-label="자산군 비중을 탭해 상세 보기">
+          {donutArcPaths(
+            visualization.items.map((item) => Number(item.value)),
+            48,
+            isSleeveAllocation ? 29 : 28,
+          ).map((d, index) => {
             const item = visualization.items[index];
             const selected = selectedIndex === index;
             return (
@@ -182,6 +198,7 @@ export function ChatVisualization({ visualization, sources }: {
                 key={`${item.label}-${index}`}
                 d={d}
                 fill={colors[index % colors.length]}
+                stroke={isSleeveAllocation ? "none" : undefined}
                 className={selectedIndex !== null && !selected ? "is-dim" : ""}
                 transform={selected ? "translate(2 0)" : undefined}
                 role="button"
@@ -201,7 +218,7 @@ export function ChatVisualization({ visualization, sources }: {
           <text x="50" y="43" textAnchor="middle" className="allocation-donut-label">전체</text>
           <text x="50" y="64" textAnchor="middle" className="allocation-donut-total">100%</text>
         </svg>
-        <ul className="allocation-legend">
+        <ul className={`allocation-legend${isSleeveAllocation ? " sleeve-allocation-legend" : ""}`}>
           {visualization.items.map((item, index) => (
             <li key={item.label}>
               <button

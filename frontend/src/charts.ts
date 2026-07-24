@@ -10,6 +10,8 @@ export function conicGradient(percentages: number[], colors: string[]): string {
     .join(", ");
 }
 
+export const TARGET_ALLOCATION_COLORS = ["#4f8a70", "#84ad67", "#d8a45e", "#7183b1"];
+
 export function donutArcPaths(percentages: number[], outer = 48, inner = 28): string[] {
   let angle = -Math.PI / 2;
   return percentages.map((percent) => {
