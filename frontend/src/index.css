@@ -258,6 +258,14 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .macro-regime-card > header > span { color: #dff06c; font-size: 9px; font-weight: 800; letter-spacing: 1.2px; }
 .macro-regime-card h3 { margin: 5px 0 6px; font-size: 15px; letter-spacing: -.3px; }
 .macro-regime-card > header p { margin: 0; color: #d7e4dd; font-size: 9px; line-height: 1.55; }
+.macro-regime-disclosure > summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px; color: #294838; cursor: pointer; list-style: none; }
+.macro-regime-disclosure > summary::-webkit-details-marker { display: none; }
+.macro-regime-disclosure > summary > span { display: grid; min-width: 0; gap: 2px; }
+.macro-regime-disclosure > summary strong { font-size: 10px; }
+.macro-regime-disclosure > summary small { color: #7b887f; font-size: 8px; }
+.macro-regime-disclosure > summary em { flex: 0 0 auto; color: #16864e; font-size: 9px; font-style: normal; font-weight: 800; }
+.macro-regime-disclosure[open] > summary em { font-size: 0; }
+.macro-regime-disclosure[open] > summary em::after { content: "접기"; font-size: 9px; }
 .macro-regime-list { display: grid; gap: 8px; padding: 10px; }
 .macro-regime-list > details { overflow: hidden; border: 1px solid #e0e8e2; border-radius: 11px; background: #fff; }
 .macro-regime-list > details > summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 11px; cursor: pointer; list-style: none; }
@@ -436,7 +444,19 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .portfolio-theme-next-step { display: grid; gap: 5px; padding: 12px; border: 1px solid #d9e8dc; border-radius: 11px; background: #edf7ee; }.portfolio-theme-next-step strong { color: #1f5137; font-size: 11px; }.portfolio-theme-next-step p { margin: 0; color: #607268; font-size: 9px; line-height: 1.55; }
 .portfolio-review { display: grid; width: 100%; min-width: 0; max-width: 100%; gap: 14px; margin-top: 15px; padding: 16px; border: 1px solid #dce8dc; border-radius: 16px; background: #f8fcf7; }
 .portfolio-review > header { display: grid; gap: 3px; }.portfolio-review > header > span { color: #16864e; font-size: 9px; font-weight: 800; }.portfolio-review h3 { margin: 0; color: #1c3327; font-size: 15px; }.portfolio-review > header p { margin: 0; color: #748178; font-size: 10px; }
-.portfolio-review-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }.portfolio-review-summary div { display: grid; gap: 4px; padding: 10px; border-radius: 11px; background: #fff; }.portfolio-review-summary span { color: #7b887f; font-size: 9px; }.portfolio-review-summary strong { color: #214333; font-size: 11px; line-height: 1.4; }
+.portfolio-review-lead { display: grid; gap: 5px; padding: 13px; border-radius: 12px; background: #e8f5ea; }.portfolio-review-lead > span { color: #16864e; font-size: 9px; font-weight: 800; }.portfolio-review-lead > strong { color: #1f5137; font-size: 13px; line-height: 1.4; }.portfolio-review-lead > p { margin: 0; color: #56695e; font-size: 10px; line-height: 1.6; }
+.portfolio-review-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }.portfolio-review-summary div { display: grid; min-width: 0; gap: 4px; padding: 9px; border-radius: 10px; background: #fff; }.portfolio-review-summary span { color: #7b887f; font-size: 8px; line-height: 1.35; }.portfolio-review-summary strong { color: #214333; font-size: 10px; line-height: 1.4; overflow-wrap: anywhere; }
+.portfolio-review-details { min-width: 0; overflow: hidden; border: 1px solid #dbe8dc; border-radius: 12px; background: #fff; }
+.portfolio-review-details > summary { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 10px; padding: 12px; color: #294838; cursor: pointer; list-style: none; }
+.portfolio-review-details > summary::-webkit-details-marker { display: none; }
+.portfolio-review-details > summary > span { display: grid; min-width: 0; gap: 2px; }
+.portfolio-review-details > summary small { color: #16864e; font-size: 8px; font-weight: 800; }
+.portfolio-review-details > summary strong { font-size: 11px; }
+.portfolio-review-details > summary em { flex: 0 0 auto; color: #16864e; font-size: 9px; font-style: normal; font-weight: 800; }
+.portfolio-review-details[open] > summary { border-bottom: 1px solid #e6eee7; }
+.portfolio-review-details[open] > summary em { font-size: 0; }
+.portfolio-review-details[open] > summary em::after { content: "접기"; font-size: 9px; }
+.portfolio-review-details-body { display: grid; min-width: 0; gap: 12px; padding: 12px; }
 .portfolio-sector-guide { display: grid; gap: 11px; padding: 13px; border: 1px solid #d9e8dc; border-radius: 12px; background: #f7fbf6; }
 .portfolio-sector-guide > header { display: grid; gap: 3px; }.portfolio-sector-guide > header > span { color: #16864e; font-size: 9px; font-weight: 800; }.portfolio-sector-guide h4 { margin: 0; color: #203c2e; font-size: 12px; }.portfolio-sector-guide > header p, .portfolio-sector-guide-note { margin: 0; color: #748178; font-size: 9px; line-height: 1.5; }
 .portfolio-sector-guide-layout { display: flex; min-width: 0; align-items: center; gap: 14px; }

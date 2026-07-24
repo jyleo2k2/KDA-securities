@@ -347,6 +347,15 @@ describe("EducationalPortfolioReview", () => {
 
     rerender(<EducationalPortfolioReview evaluation={evaluationWithCurrentHoldingsPlanning} />);
 
+    expect(screen.getByText("먼저 볼 내용")).toBeInTheDocument();
+    expect(screen.getByText("1개 자산군의 비중을 확인해 보세요")).toBeInTheDocument();
+    const allocationDetails = screen.getByText("자산 구성과 조정 기준").closest("details");
+    const evidenceDetails = screen.getByText("위험과 수익률 계산 근거").closest("details");
+    expect(allocationDetails).not.toHaveAttribute("open");
+    expect(evidenceDetails).not.toHaveAttribute("open");
+    fireEvent.click(screen.getByText("자산 구성과 조정 기준").closest("summary")!);
+    expect(allocationDetails).toHaveAttribute("open");
+
     expect(screen.getByText("70.0%")).toBeInTheDocument();
     expect(screen.getByText("기본 주식")).toBeInTheDocument();
     expect(screen.getByText("위험중립형 ETF 분야 예시")).toBeInTheDocument();
