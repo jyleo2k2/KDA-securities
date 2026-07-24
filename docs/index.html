@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="연금 코파일럿 프로젝트 문서를 한곳에서 찾는 반응형 문서 허브">
+  <title>연금 코파일럿 · 프로젝트 문서 허브</title>
+  <style>
+    :root {
+      --bg: #f3f7f4;
+      --surface: #ffffff;
+      --surface-soft: #eaf4ee;
+      --ink: #17231d;
+      --ink-soft: #53635b;
+      --line: #d9e4dc;
+      --brand: #087a4f;
+      --brand-dark: #075437;
+      --brand-pale: #dff2e7;
+      --accent: #c8f36a;
+      --shadow: 0 16px 42px rgba(28, 65, 45, .09);
+      --radius: 20px;
+      --max-width: 1180px;
+      --font: Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0e1511;
+        --surface: #151f19;
+        --surface-soft: #1d2c23;
+        --ink: #eef6f1;
+        --ink-soft: #aabbb1;
+        --line: #2b3b32;
+        --brand: #65d5a2;
+        --brand-dark: #91e8bc;
+        --brand-pale: #1c3d2c;
+        --accent: #c8f36a;
+        --shadow: 0 18px 44px rgba(0, 0, 0, .26);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: var(--font);
+      line-height: 1.58;
+      word-break: keep-all;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input { font: inherit; }
+    a { color: inherit; }
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    .skip-link {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 100;
+      padding: 9px 12px;
+      border-radius: 9px;
+      color: white;
+      background: #111;
+      transform: translateY(-160%);
+    }
+    .skip-link:focus { transform: translateY(0); }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      color: white;
+      background:
+        radial-gradient(circle at 78% 5%, rgba(200, 243, 106, .24), transparent 26rem),
+        radial-gradient(circle at 12% 85%, rgba(124, 226, 175, .18), transparent 24rem),
+        linear-gradient(135deg, #06462e, #087a4f 62%, #0b9160);
+    }
+    .hero::after {
+      position: absolute;
+      right: -90px;
+      bottom: -150px;
+      width: 360px;
+      height: 360px;
+      border: 1px solid rgba(255, 255, 255, .14);
+      border-radius: 50%;
+      box-shadow: 0 0 0 55px rgba(255, 255, 255, .04), 0 0 0 110px rgba(255, 255, 255, .025);
+      content: "";
+    }
+    .hero-inner {
+      position: relative;
+      z-index: 1;
+      width: min(var(--max-width), calc(100% - 40px));
+      margin: 0 auto;
+      padding: 70px 0 64px;
+    }
+    .brand-row { display: flex; align-items: center; gap: 11px; margin-bottom: 38px; }
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid rgba(255, 255, 255, .3);
+      border-radius: 12px;
+      color: #083d29;
+      background: var(--accent);
+      font-weight: 900;
+    }
+    .brand-name { font-size: .84rem; font-weight: 800; letter-spacing: .03em; }
+    .eyebrow {
+      margin: 0 0 12px;
+      color: #d2f6df;
+      font-size: .76rem;
+      font-weight: 800;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 800px;
+      margin: 0;
+      font-size: clamp(2.25rem, 6vw, 4.7rem);
+      line-height: 1.04;
+      letter-spacing: -.055em;
+      text-wrap: balance;
+    }
+    .hero-copy {
+      max-width: 690px;
+      margin: 22px 0 0;
+      color: #ddf2e5;
+      font-size: clamp(.98rem, 2vw, 1.12rem);
+    }
+    .stats { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 30px; }
+    .stat {
+      min-width: 112px;
+      padding: 10px 13px;
+      border: 1px solid rgba(255, 255, 255, .23);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, .09);
+      backdrop-filter: blur(8px);
+    }
+    .stat strong { display: block; font-size: 1.08rem; line-height: 1.2; }
+    .stat span { color: #d8eee1; font-size: .73rem; }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(16px);
+    }
+    .toolbar-inner {
+      display: grid;
+      grid-template-columns: minmax(240px, 1fr) auto;
+      gap: 14px;
+      width: min(var(--max-width), calc(100% - 40px));
+      margin: 0 auto;
+      padding: 13px 0;
+    }
+    .search-wrap { position: relative; }
+    .search-icon {
+      position: absolute;
+      top: 50%;
+      left: 15px;
+      width: 18px;
+      height: 18px;
+      color: var(--ink-soft);
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+    #document-search {
+      width: 100%;
+      min-height: 46px;
+      padding: 10px 15px 10px 43px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      outline: none;
+      color: var(--ink);
+      background: var(--surface);
+    }
+    #document-search:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+    }
+    .result-count {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 114px;
+      min-height: 46px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      color: var(--ink-soft);
+      background: var(--surface);
+      font-size: .82rem;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    main {
+      width: min(var(--max-width), calc(100% - 40px));
+      margin: 0 auto;
+      padding: 48px 0 84px;
+    }
+    section + section { margin-top: 58px; }
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+    .section-kicker {
+      margin: 0 0 5px;
+      color: var(--brand);
+      font-size: .73rem;
+      font-weight: 850;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+    h2 { margin: 0; font-size: clamp(1.45rem, 3vw, 2rem); line-height: 1.22; letter-spacing: -.025em; }
+    .section-note { max-width: 580px; margin: 5px 0 0; color: var(--ink-soft); font-size: .9rem; }
+
+    .featured-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .featured-card {
+      display: flex;
+      min-width: 0;
+      min-height: 174px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      text-decoration: none;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+    }
+    .featured-card:hover, .featured-card:focus-visible {
+      border-color: var(--brand);
+      outline: none;
+      transform: translateY(-3px);
+      box-shadow: 0 20px 48px rgba(24, 71, 45, .14);
+    }
+    .featured-card .card-content { display: flex; flex: 1; flex-direction: column; }
+    .featured-card .arrow { align-self: flex-start; margin-left: 12px; color: var(--brand); font-size: 1.3rem; }
+
+    .filters {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      padding-bottom: 2px;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+    .filter-button {
+      flex: 0 0 auto;
+      min-height: 40px;
+      padding: 8px 13px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--ink-soft);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: .82rem;
+      font-weight: 750;
+    }
+    .filter-button:hover { border-color: var(--brand); color: var(--brand-dark); }
+    .filter-button.active {
+      border-color: var(--brand);
+      color: white;
+      background: var(--brand-dark);
+    }
+    @media (prefers-color-scheme: dark) {
+      .filter-button.active { color: #0d2016; background: var(--brand); }
+    }
+
+    .document-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 13px;
+    }
+    .doc-card {
+      display: flex;
+      min-width: 0;
+      min-height: 154px;
+      flex-direction: column;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      text-decoration: none;
+      background: var(--surface);
+      transition: border-color .16s ease, transform .16s ease, background .16s ease;
+    }
+    .doc-card:hover, .doc-card:focus-visible {
+      border-color: var(--brand);
+      outline: none;
+      background: var(--surface-soft);
+      transform: translateY(-2px);
+    }
+    .card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .badges { display: flex; flex-wrap: wrap; gap: 6px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 23px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: var(--brand-dark);
+      background: var(--brand-pale);
+      font-size: .67rem;
+      font-weight: 800;
+      letter-spacing: .025em;
+    }
+    .format-badge { color: var(--ink-soft); background: var(--surface-soft); }
+    .card-title { margin: 13px 0 6px; font-size: 1rem; line-height: 1.34; letter-spacing: -.012em; }
+    .card-summary {
+      display: -webkit-box;
+      margin: 0;
+      overflow: hidden;
+      color: var(--ink-soft);
+      font-size: .82rem;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+    .card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: auto;
+      padding-top: 13px;
+      color: var(--ink-soft);
+      font-size: .72rem;
+      font-weight: 700;
+    }
+    .open-label { color: var(--brand-dark); }
+    .empty-state {
+      padding: 42px 20px;
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      color: var(--ink-soft);
+      text-align: center;
+      background: var(--surface);
+    }
+    .empty-state[hidden] { display: none; }
+
+    footer {
+      padding: 28px 20px 38px;
+      border-top: 1px solid var(--line);
+      color: var(--ink-soft);
+      background: var(--surface);
+      text-align: center;
+      font-size: .78rem;
+    }
+
+    @media (max-width: 900px) {
+      .featured-grid, .document-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 640px) {
+      .hero-inner, .toolbar-inner, main { width: min(100% - 24px, var(--max-width)); }
+      .hero-inner { padding: 42px 0 40px; }
+      .brand-row { margin-bottom: 28px; }
+      .hero::after { right: -210px; }
+      .toolbar-inner { grid-template-columns: 1fr; gap: 8px; }
+      .result-count { min-height: 34px; }
+      main { padding: 34px 0 64px; }
+      section + section { margin-top: 46px; }
+      .featured-grid, .document-grid { grid-template-columns: 1fr; }
+      .featured-card { min-height: 152px; }
+      .doc-card { min-height: 145px; }
+      .section-head { align-items: start; flex-direction: column; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: .01ms !important; }
+    }
+
+    @media print {
+      :root { --bg: #fff; --surface: #fff; --ink: #111; --ink-soft: #444; --line: #bbb; --shadow: none; }
+      .hero { color: #111; background: white; border-bottom: 2px solid #111; }
+      .hero-copy, .eyebrow, .stat span { color: #333; }
+      .brand-mark { color: #111; background: white; border-color: #777; }
+      .stat { border-color: #aaa; background: white; }
+      .toolbar, .filters { display: none; }
+      .featured-card, .doc-card { break-inside: avoid; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">문서 목록으로 건너뛰기</a>
+
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="brand-row">
+        <span class="brand-mark" aria-hidden="true">P</span>
+        <span class="brand-name">PENSION COPILOT</span>
+      </div>
+      <p class="eyebrow">Project Documentation Hub</p>
+      <h1>필요한 프로젝트 문서를<br>한곳에서 찾으세요.</h1>
+      <p class="hero-copy">기획부터 기술 계약, 연금 리서치, 규제 근거, 발표 자료까지 원본 문서를 유지한 채 목적별로 연결합니다.</p>
+      <div class="stats" aria-label="문서 현황">
+        <div class="stat"><strong id="total-stat">-</strong><span>연결 문서</span></div>
+        <div class="stat"><strong id="category-stat">-</strong><span>업무 영역</span></div>
+        <div class="stat"><strong>반응형</strong><span>모바일·태블릿·PC</span></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="toolbar-inner">
+      <label class="search-wrap">
+        <span class="visually-hidden">문서 검색</span>
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2"></circle>
+          <path d="m16 16 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+        <input id="document-search" type="search" autocomplete="off" placeholder="제목, 설명, 담당 영역으로 검색">
+      </label>
+      <div id="result-count" class="result-count" role="status" aria-live="polite">문서 불러오는 중</div>
+    </div>
+  </div>
+
+  <main id="main-content">
+    <section aria-labelledby="featured-title">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Quick Start</p>
+          <h2 id="featured-title">먼저 볼 문서</h2>
+          <p class="section-note">프로젝트를 처음 보거나 현재 구현 상태를 확인할 때 사용하는 핵심 진입점입니다.</p>
+        </div>
+      </div>
+      <div id="featured-grid" class="featured-grid"></div>
+    </section>
+
+    <section aria-labelledby="all-documents-title">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Document Library</p>
+          <h2 id="all-documents-title">전체 문서</h2>
+          <p class="section-note">폴더 위치가 아니라 실제 업무 목적을 기준으로 분류했습니다.</p>
+        </div>
+      </div>
+      <div id="category-filters" class="filters" aria-label="문서 영역 필터"></div>
+      <div id="document-grid" class="document-grid"></div>
+      <div id="empty-state" class="empty-state" hidden>검색 조건에 맞는 문서가 없습니다.</div>
+    </section>
+  </main>
+
+  <footer>
+    연금 코파일럿 프로젝트 문서 허브 프로토타입 · 원본 문서가 내용의 정본입니다.
+  </footer>
+
+  <script>
+    const repositoryBase = "https://github.com/jyleo2k2/KDA-securities/blob/main/";
+
+    const documentPaths = [
+      "../README.md",
+      "../AGENTS.md",
+      "../CLAUDE.md",
+      "../supabase/DB_HANDOFF.md",
+      "../data/knowledge/README.md",
+      "10_기획/기능정의서.html",
+      "10_기획/기획서.md",
+      "10_기획/사업모델_KPI.md",
+      "10_기획/엔진_설계근거.md",
+      "10_기획/커뮤니티_세액공제_기능.md",
+      "10_기획/화면_유저플로우.md",
+      "10_기획/확장_아이디어.md",
+      "20_리서치/ETF_비교지표_읽기.md",
+      "20_리서치/ETF_상품/ETF_상품_설명_통합원문.md",
+      "20_리서치/ETF_상품/README.md",
+      "20_리서치/ETF_테마/README.md",
+      "20_리서치/SWOT.md",
+      "20_리서치/경총_2025_퇴직연금_인식조사.pdf",
+      "20_리서치/네이버페이_동향.md",
+      "20_리서치/시장_경쟁.md",
+      "20_리서치/신한증권_투자권유준칙_투자자정보확인서_배점표.md",
+      "20_리서치/신한증권_투자성향진단_설문및점수로직.md",
+      "20_리서치/연금_기초.md",
+      "20_리서치/왜_연금인가.md",
+      "20_리서치/키움_동향.md",
+      "20_리서치/퇴직연금_2025_운용현황.md",
+      "20_리서치/퇴직연금_사업자공시_읽기.md",
+      "30_스펙/ETF_분배금_정기갱신_운영설계.md",
+      "30_스펙/ETF_자산군_분류_계약.md",
+      "30_스펙/ETF_장기_계획수익률_모델.md",
+      "30_스펙/ETF_종목_이벤트_마스터_계약.md",
+      "30_스펙/ETF_총수익률_비용_마스터_계약.md",
+      "30_스펙/ETF_테마_챗봇_계약.md",
+      "30_스펙/KIS_ETF_데이터_수집_계약.md",
+      "30_스펙/KIS_ETF_수정주가_수집_계약.md",
+      "30_스펙/KRX_데이터_수집_계약.md",
+      "30_스펙/KRX_지수_데이터_수집_계약.md",
+      "30_스펙/OpenDART_ETF_공시_수집_계약.md",
+      "30_스펙/거시지표_계획가정_검토.md",
+      "30_스펙/고객_목데이터_대표_2명_보고서.docx",
+      "30_스펙/고객_목데이터_대표_2명_요약본.docx",
+      "30_스펙/고객_목데이터_전체_예시.md",
+      "30_스펙/교육용_포트폴리오_엔진_계약.md",
+      "30_스펙/금융위원회_펀드상품기본정보_수집_계약.md",
+      "30_스펙/대표_시나리오_고객_6명_시연용_고객정보.docx",
+      "30_스펙/대표_시나리오_투자성향_포트폴리오_계약.md",
+      "30_스펙/데이터_품질_계약.md",
+      "30_스펙/배포_운영_가이드.md",
+      "30_스펙/수익률_가정_모델.md",
+      "30_스펙/아키텍처.md",
+      "30_스펙/연금계산기_엔진_계약.md",
+      "30_스펙/연금계좌_ETF_적격성_계약.md",
+      "30_스펙/장기_계획가정_운영_정책.md",
+      "30_스펙/챗봇_질문_예시.md",
+      "30_스펙/챗봇_추천카드_계약.md",
+      "30_스펙/챗봇_테스트_가이드.md",
+      "30_스펙/최근_PR_현황_2026-07-21.md",
+      "30_스펙/코드베이스_지도.md",
+      "30_스펙/투자성향_저장조회_API_계약.md",
+      "30_스펙/포트폴리오_위험정책_계약.md",
+      "30_스펙/프론트_라우트_화면_지도.html",
+      "30_스펙/화면_표시_데이터_계약.md",
+      "40_규제/사전지정운용제도_디폴트옵션.md",
+      "40_규제/연금계좌_공식근거_대조표.md",
+      "40_규제/연금계좌_세액공제.md",
+      "40_규제/연금계좌_예금자보호.md",
+      "40_규제/연금수령_과세.md",
+      "40_규제/중소기업퇴직연금기금_푸른씨앗.md",
+      "40_규제/컴플라이언스.md",
+      "40_규제/퇴직급여_IRP_이전_예외.md",
+      "40_규제/퇴직연금_가입자교육.md",
+      "40_규제/퇴직연금_미납부담금_보호.md",
+      "40_규제/퇴직연금_수령_중도인출.md",
+      "40_규제/퇴직연금_실물이전.md",
+      "50_발표/ERD.md",
+      "50_발표/README.md",
+      "50_발표/다이어그램.md",
+      "50_발표/발표_개요.md",
+      "superpowers/plans/2026-07-20-chat-backend-stability-structure.md",
+      "team/_공통_AI규칙.md",
+      "team/김태형/김태형-AI명령프롬프트.md",
+      "team/김태형/김태형-담당업무.md",
+      "team/이재용/이재용-AI명령프롬프트.md",
+      "team/이재용/이재용-담당업무.md",
+      "team/이호연/이호연-AI명령프롬프트.md",
+      "team/이호연/이호연-담당업무.md",
+      "team/정인성/정인성-AI명령프롬프트.md",
+      "team/정인성/정인성-담당업무.md",
+      "team/주식 전략을 활용한 연금 포트폴리오 운용안.md",
+      "team/진재현/진재현-AI명령프롬프트.md",
+      "team/진재현/진재현-담당업무.md",
+      "team/최호택/최호택-AI명령프롬프트.md",
+      "team/최호택/최호택-담당업무.md",
+      "목데이터_생성_및_참고자료.md",
+      "연금계좌세액공제 및 과세방법.md",
+      "전문가 답변 관련 데이터.md"
+    ];
+
+    const metadata = {
+      "../README.md": { title: "프로젝트 README", category: "시작하기", type: "정본", featured: true, summary: "프로젝트 정의, 실행 방법, 문서 지도와 현재 상태를 확인합니다." },
+      "../AGENTS.md": { title: "Codex 작업 진입점", category: "운영·QA", type: "운영", summary: "Codex 세션의 공통 규칙과 현재 작업 상태를 확인합니다." },
+      "../CLAUDE.md": { title: "Claude 작업 진입점", category: "운영·QA", type: "운영", summary: "Claude 세션의 공통 규칙과 현재 작업 상태를 확인합니다." },
+      "../supabase/DB_HANDOFF.md": { title: "Supabase DB 인계 문서", category: "운영·QA", type: "운영", summary: "원격 데이터베이스 적용 상태와 후속 작업을 확인합니다." },
+      "../data/knowledge/README.md": { title: "승인 지식 문서 운영", category: "기술·데이터", type: "운영", summary: "챗봇 검색에 사용하는 승인 문서와 동기화 절차를 확인합니다." },
+      "10_기획/기획서.md": { title: "제품 기획서", category: "기획·화면", type: "정본", featured: true, summary: "제품 문제, 대상 사용자, 핵심 기능과 구현 현황의 기준 문서입니다." },
+      "10_기획/기능정의서.html": { title: "기능정의서", category: "기획·화면", type: "정본", featured: true, summary: "기능 상태, 수용 기준, 구현 근거를 반응형 화면으로 확인합니다." },
+      "10_기획/화면_유저플로우.md": { title: "화면·사용자 흐름", category: "기획·화면", type: "정본", summary: "로그인부터 주요 기능까지 사용자 이동 흐름을 확인합니다." },
+      "20_리서치/ETF_상품/README.md": { title: "ETF 상품 자료 안내", category: "리서치", type: "안내", summary: "ETF 상품 설명 자료의 범위와 이용 방법을 확인합니다." },
+      "20_리서치/ETF_테마/README.md": { title: "ETF 테마 자료 안내", category: "리서치", type: "안내", summary: "ETF 테마 분류 자료와 승인 범위를 확인합니다." },
+      "20_리서치/연금_기초.md": { title: "연금 기초", category: "리서치", type: "정본", featured: true, summary: "DC형·IRP·연금저축계좌의 제도와 운용 원칙을 확인합니다." },
+      "30_스펙/아키텍처.md": { title: "기술 아키텍처", category: "기술·데이터", type: "정본", featured: true, summary: "프론트, API, 엔진, 데이터베이스와 AI의 책임 경계를 확인합니다." },
+      "30_스펙/코드베이스_지도.md": { title: "코드베이스 지도", category: "기술·데이터", type: "정본", featured: true, summary: "파일별 책임, 핵심 함수와 실제 구현 위치를 빠르게 찾습니다." },
+      "30_스펙/배포_운영_가이드.md": { title: "배포 운영 가이드", category: "운영·QA", type: "운영", summary: "Vercel·Render 환경 설정, 복구 순서와 검증 기준을 확인합니다." },
+      "30_스펙/프론트_라우트_화면_지도.html": { title: "프론트 라우트·화면 지도", category: "기획·화면", type: "정본", summary: "실제 라우트와 화면 구현 관계를 반응형 카드로 확인합니다." },
+      "30_스펙/고객_목데이터_대표_2명_보고서.docx": { title: "대표 고객 2명 보고서", category: "기술·데이터", type: "보고서" },
+      "30_스펙/고객_목데이터_대표_2명_요약본.docx": { title: "대표 고객 2명 요약", category: "기술·데이터", type: "보고서" },
+      "30_스펙/고객_목데이터_전체_예시.md": { title: "고객 데이터 전체 구조", category: "기술·데이터", type: "참고" },
+      "30_스펙/교육용_포트폴리오_엔진_계약.md": { title: "포트폴리오 엔진 계약", category: "기술·데이터", type: "계약" },
+      "30_스펙/대표_시나리오_고객_6명_시연용_고객정보.docx": { title: "대표 고객 6명 정보", category: "기술·데이터", type: "보고서" },
+      "50_발표/README.md": { title: "발표 자료 안내", category: "발표·팀", type: "안내" },
+      "50_발표/발표_개요.md": { title: "발표 개요", category: "발표·팀", type: "정본", summary: "발표 순서, 핵심 메시지와 팀 역할을 확인합니다." },
+      "superpowers/plans/2026-07-20-chat-backend-stability-structure.md": { title: "챗봇 백엔드 구조 계획 기록", category: "보관", type: "기록" },
+      "team/_공통_AI규칙.md": { title: "팀 공통 AI 규칙", category: "발표·팀", type: "운영" },
+      "목데이터_생성_및_참고자료.md": { title: "고객 데이터 생성 및 참고자료", category: "기술·데이터", type: "참고" }
+    };
+
+    const categoryByFolder = {
+      "10_기획": "기획·화면",
+      "20_리서치": "리서치",
+      "30_스펙": "기술·데이터",
+      "40_규제": "규제·근거",
+      "50_발표": "발표·팀",
+      "team": "발표·팀",
+      "superpowers": "보관"
+    };
+
+    const categoryDescriptions = {
+      "시작하기": "프로젝트 전체를 이해하기 위한 진입 문서입니다.",
+      "기획·화면": "제품 기획, 기능 상태와 화면 흐름을 설명합니다.",
+      "리서치": "연금 시장, 상품과 경쟁 환경을 조사한 자료입니다.",
+      "기술·데이터": "시스템 구조, API, 엔진과 데이터 계약을 설명합니다.",
+      "규제·근거": "연금계좌 제도와 공식 근거를 정리한 자료입니다.",
+      "운영·QA": "개발 세션, 데이터베이스, 배포와 검증 절차를 안내합니다.",
+      "발표·팀": "발표 구성, 다이어그램과 팀 역할을 정리합니다.",
+      "보관": "완료된 계획이나 시점성 기록을 보관합니다."
+    };
+
+    function formatOf(path) {
+      const extension = path.split(".").pop().toUpperCase();
+      return extension === "MD" ? "Markdown" : extension;
+    }
+
+    function categoryOf(path) {
+      const first = path.replace(/^\.\.\//, "").split("/")[0];
+      return metadata[path]?.category || categoryByFolder[first] || "기술·데이터";
+    }
+
+    function titleOf(path) {
+      if (metadata[path]?.title) return metadata[path].title;
+      const filename = path.split("/").pop().replace(/\.(md|html|pdf|docx)$/i, "");
+      return filename
+        .replaceAll("_", " ")
+        .replaceAll("목데이터", "고객 데이터")
+        .replaceAll("교육용", "")
+        .replaceAll("시연용", "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function typeOf(path) {
+      if (metadata[path]?.type) return metadata[path].type;
+      if (path.includes("_계약")) return "계약";
+      if (path.includes("가이드") || path.endsWith("README.md")) return "안내";
+      if (path.includes("최근_PR") || path.startsWith("superpowers/")) return "기록";
+      return "참고";
+    }
+
+    function hrefOf(path) {
+      const isMarkdown = path.toLowerCase().endsWith(".md");
+      if (!isMarkdown) return encodeURI(path);
+      const repositoryPath = path.startsWith("../") ? path.slice(3) : `docs/${path}`;
+      return repositoryBase + repositoryPath.split("/").map(encodeURIComponent).join("/");
+    }
+
+    const documents = documentPaths.map((path) => ({
+      path,
+      title: titleOf(path),
+      category: categoryOf(path),
+      type: typeOf(path),
+      format: formatOf(path),
+      featured: Boolean(metadata[path]?.featured),
+      summary: metadata[path]?.summary || categoryDescriptions[categoryOf(path)],
+      href: hrefOf(path)
+    }));
+
+    const featuredGrid = document.querySelector("#featured-grid");
+    const documentGrid = document.querySelector("#document-grid");
+    const filters = document.querySelector("#category-filters");
+    const searchInput = document.querySelector("#document-search");
+    const resultCount = document.querySelector("#result-count");
+    const emptyState = document.querySelector("#empty-state");
+    let activeCategory = "전체";
+
+    function cardMarkup(document, featured = false) {
+      const cardClass = featured ? "featured-card" : "doc-card";
+      const target = document.format === "DOCX" ? "" : ' target="_blank" rel="noreferrer"';
+      const arrow = featured ? '<span class="arrow" aria-hidden="true">↗</span>' : "";
+      return `
+        <a class="${cardClass}" href="${document.href}"${target} aria-label="${document.title} 열기">
+          <div class="card-content">
+            <div class="card-top">
+              <div class="badges">
+                <span class="badge">${document.type}</span>
+                <span class="badge format-badge">${document.format}</span>
+              </div>
+            </div>
+            <h3 class="card-title">${document.title}</h3>
+            <p class="card-summary">${document.summary}</p>
+            <div class="card-meta">
+              <span>${document.category}</span>
+              <span class="open-label">문서 열기 ↗</span>
+            </div>
+          </div>
+          ${arrow}
+        </a>`;
+    }
+
+    function renderFeatured() {
+      featuredGrid.innerHTML = documents.filter((document) => document.featured).map((document) => cardMarkup(document, true)).join("");
+    }
+
+    function renderFilters() {
+      const categories = ["전체", ...new Set(documents.map((document) => document.category))];
+      filters.innerHTML = categories.map((category) => `
+        <button class="filter-button${category === activeCategory ? " active" : ""}" type="button" data-category="${category}" aria-pressed="${category === activeCategory}">
+          ${category}
+        </button>`).join("");
+      filters.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-category]");
+        if (!button) return;
+        activeCategory = button.dataset.category;
+        filters.querySelectorAll("[data-category]").forEach((item) => {
+          const selected = item === button;
+          item.classList.toggle("active", selected);
+          item.setAttribute("aria-pressed", String(selected));
+        });
+        renderDocuments();
+      });
+      document.querySelector("#category-stat").textContent = `${categories.length - 1}개`;
+    }
+
+    function renderDocuments() {
+      const query = searchInput.value.trim().toLocaleLowerCase("ko");
+      const filtered = documents.filter((document) => {
+        const categoryMatches = activeCategory === "전체" || document.category === activeCategory;
+        const searchable = `${document.title} ${document.summary} ${document.category} ${document.type} ${document.path}`.toLocaleLowerCase("ko");
+        return categoryMatches && (!query || searchable.includes(query));
+      });
+      documentGrid.innerHTML = filtered.map((document) => cardMarkup(document)).join("");
+      resultCount.textContent = `${filtered.length}개 문서`;
+      emptyState.hidden = filtered.length > 0;
+    }
+
+    document.querySelector("#total-stat").textContent = `${documents.length}개`;
+    searchInput.addEventListener("input", renderDocuments);
+    renderFeatured();
+    renderFilters();
+    renderDocuments();
+  </script>
+</body>
+</html>
