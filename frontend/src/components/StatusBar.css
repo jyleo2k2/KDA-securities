@@ -53,6 +53,7 @@
   gap: 7px;
 }
 
+.ios-statusbar-cellular,
 .ios-statusbar-wifi,
 .ios-statusbar-battery {
   display: block;
