@@ -20,11 +20,11 @@ const ACCOUNT_LABELS: Record<AccountType, string> = {
 };
 
 const SLEEVE_LABELS: Record<string, string> = {
-  core_equity: "기본 주식",
-  real_assets: "금·부동산",
-  tactical: "작은 기회 투자",
+  core_equity: "핵심 주식",
+  real_assets: "실물자산(금·리츠 등)",
+  tactical: "전술 자산",
   fixed_income: "채권",
-  cash: "바로 쓸 돈",
+  cash: "현금성 자산",
 };
 
 const REBALANCE_STATUS_LABELS: Record<string, string> = {
@@ -64,32 +64,32 @@ const RISK_PROFILE_LABELS: Record<RiskProfile, string> = {
 const STRATEGY_GUIDES: Record<RiskProfile, {
   title: string;
   description: string;
-  analogy: string;
+  principle: string;
 }> = {
   stable: {
-    title: "돈 지키기 전략 (자본보전 중심)",
-    description: "연금 돈을 크게 잃지 않는 것을 먼저 생각해요. 채권과 현금을 많이, 주식은 조금만 담아요.",
-    analogy: "비 오는 날 우산과 우비를 챙기는 것과 같아요. 빨리 가는 것보다 안전하게 가는 것이 더 중요해요.",
+    title: "자본보전 중심 전략",
+    description: "변동성 관리에 초점을 둔 전략입니다. 채권과 현금성 자산 비중을 높이고, 주식 비중은 제한합니다.",
+    principle: "수익률 확대보다 손실과 가격 변동을 낮추는 데 우선순위를 둡니다.",
   },
   stable_seeking: {
-    title: "안전하게 나누기 전략 (방어적 분산)",
-    description: "채권과 현금을 중심에 두면서, 주식과 금·부동산 ETF도 조금 담아요.",
-    analogy: "우산을 챙기되 날씨가 좋으면 조금 더 멀리 걸어가 보는 것과 같아요.",
+    title: "방어적 분산 전략",
+    description: "채권과 현금성 자산을 중심으로 두고, 물가 상승에 대비해 주식과 실물자산 ETF를 일부 편입합니다.",
+    principle: "방어 자산을 중심으로 유지하면서 성장 자산을 보조적으로 편입합니다.",
   },
   risk_neutral: {
-    title: "기본·작은 기회 전략 (코어·위성)",
-    description: "여러 곳에 나눈 주식 ETF를 오래 가져갈 기본 투자로 두고, 특정 분야 ETF는 아주 조금만 더해요.",
-    analogy: "큰 기본 식사에 작은 반찬을 더하는 것과 같아요. 기본 투자는 많이, 새로운 기회 투자는 조금만 담아요.",
+    title: "코어·위성 전략",
+    description: "분산 주식 ETF를 코어(장기 기본 비중)로 두고, 특정 테마 ETF는 위성(보조 비중)으로 제한합니다.",
+    principle: "코어는 장기 분산투자, 위성은 제한된 비중의 보조 전략으로 구분합니다.",
   },
   active: {
-    title: "성장 비중 늘리기 전략 (성장 코어·위성)",
-    description: "주식 기본 투자를 더 크게 두되, 채권과 현금도 남겨 두는 계획이에요.",
-    analogy: "기본 주식 투자를 크게 하고 작은 도전도 조금 늘리는 것과 같아요. 시장이 떨어질 때 손실도 더 클 수 있어요.",
+    title: "성장 코어·위성 전략",
+    description: "주식 코어 비중을 높여 장기 성장을 추구하되, 채권과 현금성 자산을 함께 보유합니다.",
+    principle: "성장 자산 비중이 높은 만큼 정기 점검과 손실 감내 범위를 함께 확인합니다.",
   },
   aggressive: {
-    title: "성장·안전 나누기 전략 (바벨형 성장·전술)",
-    description: "주식과 작은 기회 투자를 많이 두면서도, 채권과 현금을 조금 남겨 한쪽에만 몰리지 않게 해요.",
-    analogy: "바벨처럼 양쪽 끝에 무게를 나눠 다는 것과 같아요. 성장 쪽과 안전 쪽의 역할을 나눠 둬요.",
+    title: "바벨형 성장·전술 전략",
+    description: "주식과 전술 자산(테마·팩터 ETF 등) 비중을 높이되, 채권과 현금성 자산을 남겨 변동성과 유동성을 함께 관리합니다.",
+    principle: "성장 자산과 방어 자산의 역할을 분리해 한 방향으로의 쏠림을 줄입니다.",
   },
 };
 
@@ -207,9 +207,9 @@ function PortfolioSectorGuide({ riskProfile }: { riskProfile: RiskProfile }) {
   return (
     <section className="portfolio-sector-guide" aria-labelledby="portfolio-sector-guide-title">
       <header>
-        <span>여러 분야로 나눠 보기</span>
+        <span>ETF 섹터 분산 예시</span>
         <h4 id="portfolio-sector-guide-title">{guideLabel} ETF 분야 예시</h4>
-        <p>투자성향에 따라 살펴볼 분야의 비율 예시예요. 실제 계산 결과나 계좌 한도는 바꾸지 않아요.</p>
+        <p>투자성향에 따른 ETF 섹터 비중 예시입니다. 실제 계산 결과나 계좌별 한도는 변경하지 않습니다.</p>
       </header>
       <div className="portfolio-sector-guide-layout">
         <div
@@ -254,9 +254,9 @@ function TargetAllocationGuide({
   return (
     <section className="portfolio-target-allocation" aria-labelledby="portfolio-target-allocation-title">
       <header>
-        <span>계산으로 정한 비율</span>
-        <h4 id="portfolio-target-allocation-title">연금 돈 나누기</h4>
-        <p>연금 돈을 어디에 얼마나 나눠 둘지 정한 비율이에요.</p>
+        <span>계산된 목표 비중</span>
+        <h4 id="portfolio-target-allocation-title">목표 자산배분</h4>
+        <p>연금계좌 자산을 자산군별로 배분하는 기준입니다.</p>
       </header>
       <div className="portfolio-target-allocation-layout">
         <div
@@ -278,7 +278,7 @@ function TargetAllocationGuide({
         </ul>
       </div>
       <p className="portfolio-target-allocation-note">
-        큰 비율을 먼저 정한 뒤, ETF 분야 살펴보기에서 각 분야의 위험을 확인할 수 있어요.
+        자산군 비중을 먼저 정한 뒤, ETF 테마별 특성과 위험을 확인할 수 있습니다.
       </p>
     </section>
   );
@@ -293,15 +293,15 @@ function RebalancingCadenceGuide({
   return (
     <section className="portfolio-rebalance-cadence" aria-labelledby="portfolio-rebalance-cadence-title">
       <header>
-        <span>비율 다시 맞춰 보기</span>
-        <h4 id="portfolio-rebalance-cadence-title">{cadence.review_interval_months}개월마다 비율 점검</h4>
+        <span>리밸런싱 점검</span>
+        <h4 id="portfolio-rebalance-cadence-title">{cadence.review_interval_months}개월마다 목표 비중 점검</h4>
         <p>{cadence.rationale}</p>
       </header>
       <div className="portfolio-review-summary">
-        <div><span>얼마마다 볼까</span><strong>{cadence.review_interval_months}개월</strong></div>
-        <div><span>비율 차이 기준</span><strong>±{percent(cadence.drift_threshold_percent_points)}</strong></div>
+        <div><span>점검 주기</span><strong>{cadence.review_interval_months}개월</strong></div>
+        <div><span>허용 이탈폭</span><strong>±{percent(cadence.drift_threshold_percent_points)}</strong></div>
       </div>
-      <p className="portfolio-target-allocation-note">리밸런싱은 달라진 비율을 처음 계획에 가깝게 맞추는 점검이에요. 새로 넣는 돈은 부족한 쪽에 먼저 넣어요.</p>
+      <p className="portfolio-target-allocation-note">리밸런싱은 달라진 비중을 목표 비중에 가깝게 조정하는 점검입니다. 새 납입금은 목표보다 부족한 자산군에 우선 배분합니다.</p>
     </section>
   );
 }
@@ -328,11 +328,11 @@ function EducationalStrategyGuide({
       <article className="portfolio-strategy-explanation">
         <strong>{guide.title}</strong>
         <p>{guide.description}</p>
-        <p><b>쉽게 말하면:</b> {guide.analogy}</p>
+        <p><b>핵심 운용 원칙:</b> {guide.principle}</p>
       </article>
 
       <p className="portfolio-strategy-transition">
-        이 성향이라면 연금 돈을 아래처럼 나눠 볼 수 있어요.
+        이 성향의 연금계좌 자산은 아래 기준으로 배분을 검토할 수 있습니다.
       </p>
       <TargetAllocationGuide evaluation={evaluation} />
       <RebalancingCadenceGuide evaluation={evaluation} />
@@ -430,7 +430,7 @@ function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
           <p>
             내가 고른 손실 범위 {percent(risk.stress_loss_limit_percent!)} · 가장 큰 충격 가정 {percent(risk.worst_stress_loss_percent)}
           </p>
-          {reviewRequired && <small>연금 돈을 나눈 비율과 새 납입 계획을 다시 확인해 주세요. 자동으로 팔지는 않아요.</small>}
+          {reviewRequired && <small>목표 자산배분과 새 납입 계획을 다시 확인해 주세요. 자동 매도는 실행하지 않습니다.</small>}
         </section>
       )}
       <div className="planning-source-chips" aria-label="위험·스트레스 출처">
@@ -980,7 +980,7 @@ export function EducationalPortfolioReview({
         <p className="portfolio-review-warning">투자성향보다 계좌 규칙이 먼저 적용되어, 가격이 크게 움직일 수 있는 자산 비율을 낮췄어요.</p>
       )}
       <p className="portfolio-review-disclaimer">
-        이 서비스가 자동으로 팔지는 않아요. 새로 넣는 돈으로 부족한 쪽을 먼저 채워 보는 안내예요.
+        이 서비스는 자동 매도하지 않습니다. 새 납입금으로 목표보다 부족한 자산군을 우선 보완하는 방법을 안내합니다.
       </p>
     </section>
   );

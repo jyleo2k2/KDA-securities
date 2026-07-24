@@ -527,40 +527,37 @@ _STRATEGY_LABELS = {
 }
 _STRATEGY_EXPLANATIONS = {
     "capital_preservation_core": (
-        "연금 돈을 크게 잃지 않는 것을 먼저 생각해요. 채권과 현금을 많이 "
-        "두고, 주식은 조금만 담아요.",
-        "비 오는 날 우산과 우비를 챙기는 것과 같아요. 빨리 가는 것보다 "
-        "안전하게 가는 것이 더 중요해요.",
+        "변동성 관리에 초점을 둔 전략입니다. 채권과 현금성 자산 비중을 "
+        "높이고, 주식 비중은 제한합니다.",
+        "수익률 확대보다 손실과 가격 변동을 낮추는 데 우선순위를 둡니다.",
     ),
     "defensive_diversified_core": (
-        "채권과 현금을 중심에 두면서, 오래 지나 돈의 가치가 줄어드는 데 "
-        "대비해 주식과 금·부동산 ETF도 조금 담아요.",
-        "우산을 챙기되 날씨가 좋으면 조금 더 멀리 걸어가 보는 것과 같아요.",
+        "채권과 현금성 자산을 중심으로 두고, 물가 상승에 대비해 주식과 "
+        "실물자산 ETF를 일부 편입합니다.",
+        "방어 자산을 중심으로 유지하면서 성장 자산을 보조적으로 편입합니다.",
     ),
     "balanced_core_satellite": (
-        "여러 나라·기업에 나눠 담는 주식 ETF를 오래 가져갈 기본 투자로 "
-        "두고, 특정 분야 ETF는 아주 조금만 더해요.",
-        "큰 기본 식사에 작은 반찬을 더하는 것과 같아요. 기본 투자는 많이, "
-        "새로운 기회 투자는 조금만 담아요.",
+        "분산 주식 ETF를 코어(장기 기본 비중)로 두고, 특정 테마 ETF는 "
+        "위성(보조 비중)으로 제한합니다.",
+        "코어는 장기 분산투자, 위성은 제한된 비중의 보조 전략으로 구분합니다.",
     ),
     "growth_core_satellite": (
-        "주식 기본 투자를 더 크게 두되, 채권과 현금도 남겨 두는 계획이에요.",
-        "기본 주식 투자를 크게 하고 작은 도전도 조금 늘리는 것과 같아요. "
-        "대신 시장이 떨어질 때 손실도 더 클 수 있어요.",
+        "주식 코어 비중을 높여 장기 성장을 추구하되, 채권과 현금성 자산을 "
+        "함께 보유합니다.",
+        "성장 자산 비중이 높은 만큼 정기 점검과 손실 감내 범위를 함께 확인합니다.",
     ),
     "barbell_growth_tactical": (
-        "주식과 작은 기회 투자를 많이 두면서도, 채권과 현금을 조금 남겨 "
-        "한쪽에만 몰리지 않게 해요.",
-        "바벨처럼 양쪽 끝에 무게를 나눠 다는 것과 같아요. 성장 쪽과 안전 "
-        "쪽의 역할을 나눠 두는 방식이에요.",
+        "주식과 전술 자산(테마·팩터 ETF 등) 비중을 높이되, 채권과 현금성 자산을 남겨 "
+        "변동성과 유동성을 함께 관리합니다.",
+        "성장 자산과 방어 자산의 역할을 분리해 한 방향으로의 쏠림을 줄입니다.",
     ),
 }
 _SLEEVE_LABELS = {
-    "core_equity": "기본 주식",
-    "real_assets": "금·부동산 등",
-    "tactical": "작은 기회 투자",
+    "core_equity": "핵심 주식",
+    "real_assets": "실물자산(금·리츠 등)",
+    "tactical": "전술 자산",
     "fixed_income": "채권",
-    "cash": "바로 쓸 돈",
+    "cash": "현금성 자산",
 }
 _STRESS_SCENARIO_LABELS = {
     "equity_drawdown": "주식시장 급락",
@@ -617,10 +614,10 @@ def _mentioned_retirement_start_age(message: str) -> int | None:
 def _strategy_summary(evaluation: EducationalPortfolioEvaluation) -> str:
     profile = _RISK_PROFILE_LABELS[evaluation.evaluated_input.risk_profile.value]
     strategy = _STRATEGY_LABELS[evaluation.strategy_label]
-    explanation, analogy = _STRATEGY_EXPLANATIONS[evaluation.strategy_label]
+    explanation, principle = _STRATEGY_EXPLANATIONS[evaluation.strategy_label]
     return (
         f"{profile}의 {strategy}이에요. {explanation}\n\n"
-        f"쉽게 말하면: {analogy}"
+        f"핵심 운용 원칙: {principle}"
     )
 
 
