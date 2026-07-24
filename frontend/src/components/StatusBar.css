@@ -9,7 +9,8 @@
   width: 100%;
   height: var(--statusbar-height, 54px);
   padding: 0 26px 0 29px;
-  background: inherit;
+  /* sticky 상태에서 스크롤 콘텐츠가 상태바 뒤로 비치지 않도록 불투명 표면을 유지한다. */
+  background: #fff;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard", system-ui, sans-serif;
 }
 
