@@ -36,7 +36,7 @@
 라우트로 노출되는 **모든 화면은 main-home 프레임 규격에 픽셀 단위로 고정**하고 **Figma 상단바를 갖는다**. 예외 없이 아래를 지킨다.
 
 - **프레임(크기)**: 화면 최상위를 `app-phone-stage`(무대) + `app-phone-frame`(폰 프레임)으로 감싼다. 치수·라운드·그림자는 `src/index.css`의 `--phone-frame-*` 변수(SSOT)만 값의 출처다. `width`/`height`/`border-radius`를 개별 화면 CSS에 하드코딩하지 않는다(특히 `min(844px, …)` 리터럴 금지). 화면 고유 레이아웃(예: `display:flex` 내부 컬럼)은 별도 클래스로 덧붙이되 치수는 건드리지 않는다.
-- **상단바**: 화면 프레임 최상단에 `<StatusBar />`(`src/components/StatusBar.tsx`)를 렌더한다. 상단바는 Figma StatusBar(다이나믹 아일랜드 + 셀룰러·Wi‑Fi·배터리)를 재현하며 임의로 아이콘을 빼거나 크기를 바꾸지 않는다.
+- **상단바**: 화면 프레임 최상단에 `<StatusBar />`(`src/components/StatusBar.tsx`)를 렌더한다. 상단바는 Figma StatusBar(다이나믹 아일랜드 + 셀룰러·Wi‑Fi·배터리)를 재현하며 임의로 아이콘을 빼거나 크기를 바꾸지 않는다. 아이콘은 손으로 그리지 말고 실제 에셋(`src/assets/main-home/icon-signal.svg`·`icon-wifi.svg`) 정밀 path를 사용한다. **다이나믹 아일랜드(검은 알약)는 화면 정중앙에 고정한다** — 좌측 시각과 우측 아이콘의 폭이 달라 `space-between`만으로는 왼쪽으로 치우치므로, 아일랜드를 `position: absolute; left: 50%; transform: translateX(-50%)`(부모는 `position: relative`)로 배치한다. iframe 화면도 동일하다.
 - **iframe 화면(profile-html·slangi 등 100vh iframe)**: 프레임과 상단바를 iframe 내부 HTML이 소유한다. 이때도 내부 HTML은 같은 프레임 규격(`min(844px, calc(100dvh - 80px))`, radius 44, 상단바 54px)을 따른다. 이 목록은 `src/phoneFrameContract.test.ts`의 허용 목록과 일치시킨다.
 - **강제(게이트)**: `src/phoneFrameContract.test.ts`가 위 규칙을 검사한다. 새 화면이 공용 프레임을 쓰지 않거나 치수를 하드코딩하면 `npm test`가 실패한다. 새 라우트 화면을 추가하면 이 테스트를 통과시키거나(권장) iframe 위임 화면이면 허용 목록에 등록한다.
 
