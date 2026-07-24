@@ -21,6 +21,7 @@ from backend.app.engine import (
 )
 from backend.app.etf_theme_repository import get_default_etf_theme_repository
 from backend.app.ingestion.naver_news import NaverNewsItem, NaverNewsResponse
+from backend.app.news_event_outcome_repository import NewsEventOutcomeRecord
 from backend.app.retrieval.repository import NewsMatch
 
 
@@ -97,9 +98,7 @@ class FakeLiveNewsSearch:
             items=(
                 LiveMarketNewsItem(
                     item_id="news-item-1",
-                    canonical_url=(
-                        "https://www.yna.co.kr/view/AKR20260720000100002"
-                    ),
+                    canonical_url=("https://www.yna.co.kr/view/AKR20260720000100002"),
                     title="반도체 실적 발표에 코스피 변동",
                     description="삼성전자 영업이익 발표 뒤 반도체 업종이 움직였다.",
                     original_url="https://www.yna.co.kr/view/AKR20260720000100002",
@@ -315,6 +314,63 @@ def test_event_strategy_does_not_personalize_etf_candidates_from_news() -> None:
     )
 
 
+def test_event_strategy_shows_verified_historical_outcome_card_only_from_ledger() -> (
+    None
+):
+    class OutcomeReader:
+        def list_for_theme_ids(self, theme_ids, *, limit=12):
+            assert theme_ids
+            assert limit == 12
+            return [
+                NewsEventOutcomeRecord(
+                    event_key="news:official-2024-01-01",
+                    occurred_on=datetime(2024, 1, 1, tzinfo=UTC).date(),
+                    theme_id="semiconductors",
+                    isu_code="111111",
+                    isu_name="검증 ETF",
+                    horizon_months=3,
+                    total_return_percent=Decimal("12.5"),
+                    maximum_drawdown_percent=Decimal("4.25"),
+                    peer_median_total_return_percent=Decimal("8.75"),
+                    peer_sample_count=4,
+                    event_source_url="https://example.test/event",
+                    event_source_label="공식 이벤트",
+                    event_source_as_of=datetime(2024, 1, 1, tzinfo=UTC).date(),
+                    history_source="kis_adjusted_close_plus_kind_cash_distribution",
+                    history_source_url="https://example.test/returns",
+                    history_source_as_of=datetime(2024, 4, 1, tzinfo=UTC).date(),
+                )
+            ]
+
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        live_news=FakeLiveNewsSearch(),
+        theme_repository=get_default_etf_theme_repository(),
+        news_event_outcomes=OutcomeReader(),
+    )
+
+    response = service.ask(
+        ChatRequest(
+            message="실시간 뉴스 기반 이벤트 운용전략을 알려줘",
+            survey_profile=_survey(EducationalRiskProfile.ACTIVE),
+        )
+    )
+
+    card = next(
+        section
+        for section in response.sections
+        if section.title == "과거 뉴스 이벤트 성과 검증"
+    )
+    assert card.blocks[0].rows[0][1] == "검증 ETF"
+    assert card.blocks[0].rows[0][3] == "12.50%"
+    assert "자동 비중 변경" in card.content
+    assert any(
+        source.evidence_id.startswith("news-event-outcome:")
+        for source in response.sources
+    )
+
+
 def test_empty_stored_news_does_not_offer_live_news_exit() -> None:
     service = ChatService(
         knowledge=LocalMarkdownKnowledgeRepository(),
@@ -342,8 +398,7 @@ def test_pension_news_keeps_market_news_with_notice_and_pension_exit() -> None:
     assert response.news_items
     assert response.answer.startswith("연금 제도 뉴스는 제공하지 않아요")
     assert any(
-        "연금 제도 뉴스는 제공하지 않아요" in item
-        for item in response.limitations
+        "연금 제도 뉴스는 제공하지 않아요" in item for item in response.limitations
     )
     assert any("가장 최신 기사는 약" in item for item in response.limitations)
     assert any(

@@ -45,6 +45,7 @@ from ..ingestion.embeddings import get_query_embedder
 from ..investment_profile_repository import InvestmentProfileRepository
 from ..macro_evidence import MacroEvidenceRepository
 from ..market_evidence_repository import KrxMarketEvidenceRepository
+from ..news_event_outcome_repository import PostgresNewsEventOutcomeRepository
 from ..pension_accounts_repository import PensionAccountRepository
 from ..portfolio_universe_repository import (
     DEFAULT_RETURN_ROOT,
@@ -395,6 +396,11 @@ def _chat_service(
         macro_evidence=MacroEvidenceRepository(Path(macro_evidence_report_path)),
         distribution_events=(
             PostgresEtfDistributionEventRepository(database_url, pool=pool)
+            if database_url
+            else None
+        ),
+        news_event_outcomes=(
+            PostgresNewsEventOutcomeRepository(database_url, pool=pool)
             if database_url
             else None
         ),
