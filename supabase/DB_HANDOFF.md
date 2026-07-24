@@ -901,8 +901,8 @@ uv run ruff check .
 ### 2026-07-24 KST
 
 - 작업자/브랜치/시작 기준: 김태형 / `codex/김태형/etf-distribution-refresh-implementation` / `origin/main` `3a4e4fb`.
-- 변경 내용: private Storage 버킷 `official-etf-distribution-raw`를 만드는 additive migration과 service_role 전용 `storage.objects` 정책을 추가했다. 수집 원본의 SHA-256·파일 크기·1년 보존 종료일을 manifest로 보관하는 서버 전용 어댑터, KIND 45일 정정 창·KIS 120일 예정 창·확정 이벤트 30% 초과 감소 격리의 순수 규칙을 추가했다.
-- 결정 및 근거: 기존 `etf_distribution_event_versions`의 `loading → ready` 전환과 KIND 계산 권위를 변경하지 않는다. Storage는 공개 URL·브라우저 credential·anon/authenticated 정책을 만들지 않으며, Supabase Storage lifecycle 미지원 때문에 실제 1년 만료 삭제는 다음 수집기·수동 E2E 단계에서 Storage API로 검증한다.
+- 변경 내용: private Storage 버킷 `official-etf-distribution-raw`를 만드는 additive migration을 추가했다. 수집 원본의 SHA-256·파일 크기·1년 보존 종료일을 manifest로 보관하는 서버 전용 어댑터, KIND 45일 정정 창·KIS 120일 예정 창·확정 이벤트 30% 초과 감소 격리의 순수 규칙을 추가했다.
+- 결정 및 근거: 기존 `etf_distribution_event_versions`의 `loading → ready` 전환과 KIND 계산 권위를 변경하지 않는다. `service_role`은 Storage RLS를 우회하므로 별도 `storage.objects` 허용 정책을 만들지 않아 anon/authenticated deny-by-default를 유지한다. Storage는 공개 URL·브라우저 credential을 만들지 않으며, Supabase Storage lifecycle 미지원 때문에 실제 1년 만료 삭제는 다음 수집기·수동 E2E 단계에서 Storage API로 검증한다.
 - 로컬 검증과 실제 결과: `uv run python -m pytest tests/test_etf_distribution_refresh.py tests/test_etf_corporate_events.py tests/test_schema_contract.py` 46 passed, 관련 `ruff check`와 `git diff --check` 통과.
 - 원격 조회: 2026-07-24 Supabase migration history에 기존 ETF 분배금 이벤트 마스터가 있고, 이번 신규 migration은 없다. Security Advisor의 `auth_leaked_password_protection` WARN은 기존 Auth 설정이며 이번 Storage 변경과 무관하다.
 - 원격 적용 여부와 migration version: 미적용(LOCAL-VERIFIED). `20260724021452_create_official_etf_distribution_raw_storage.sql`은 이재용 승인 후에만 적용한다.

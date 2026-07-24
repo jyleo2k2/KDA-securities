@@ -588,10 +588,8 @@ def test_official_etf_distribution_raw_storage_is_private_and_service_only() -> 
 
     assert "insert into storage.buckets" in sql
     assert "official-etf-distribution-raw" in sql
-    assert "false" in sql
-    assert "on storage.objects" in sql
-    assert "for all" in sql
-    assert "to service_role" in sql
+    assert "public = false" in sql
+    assert "on storage.objects" not in sql
     assert "to authenticated" not in sql
     assert "to anon" not in sql
 
