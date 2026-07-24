@@ -1130,3 +1130,51 @@ def test_message_parser_keeps_unreadable_assistant_payload_safe(
     assert parsed.response is None
     assert parsed.question_message_id is None
     assert parsed.content == "저장된 답변 형식을 읽을 수 없습니다."
+
+
+def test_message_parser_removes_legacy_etf_theme_draft_notice() -> None:
+    from backend.app.api.chat import (
+        _message_out,
+        _without_legacy_etf_theme_draft_notice,
+    )
+
+    response = _service().ask(ChatRequest(message="반도체 테마가 뭐야?"))
+    retained_notice = "미래 성과를 예측하거나 보장하지 않습니다."
+    legacy_notice = (
+        "테마 설명은 사용자가 제공한 조사 내용을 서비스 분류체계로 정리한 것으로 "
+        "공식 문서 검증 전 초안입니다."
+    )
+    response = response.model_copy(
+        update={
+            "limitations": [
+                retained_notice,
+                legacy_notice,
+            ]
+        }
+    )
+    live_response = _without_legacy_etf_theme_draft_notice(response)
+    assert legacy_notice not in live_response.limitations
+    assert retained_notice in live_response.limitations
+
+    message = StoredChatMessage(
+        message_id=uuid4(),
+        role="assistant",
+        content=json.dumps(
+            {
+                "schema_version": 1,
+                "question_message_id": str(uuid4()),
+                "response": response.model_dump(mode="json"),
+            },
+            ensure_ascii=False,
+        ),
+        model_name=None,
+        created_at=datetime(2026, 7, 15, tzinfo=UTC),
+        evidence=(),
+    )
+
+    parsed = _message_out(message)
+
+    assert parsed.response is not None
+    assert parsed.response.intent == ChatIntent.ETF_THEME
+    assert legacy_notice not in parsed.response.limitations
+    assert retained_notice in parsed.response.limitations

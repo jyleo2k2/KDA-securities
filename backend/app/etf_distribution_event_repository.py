@@ -39,6 +39,12 @@ class EtfDistributionEventDataset:
     events: list[dict[str, Any]]
 
 
+@dataclass(frozen=True, slots=True)
+class EtfDistributionEventMaster:
+    as_of: date
+    events: list[dict[str, Any]]
+
+
 class PostgresEtfDistributionEventRepository:
     """Read the latest ready official event master; never calculates events."""
 
@@ -106,6 +112,37 @@ class PostgresEtfDistributionEventRepository:
                 for row in rows
             ],
         )
+
+    def latest_ready_master(self) -> EtfDistributionEventMaster:
+        """Read canonical raw payloads for an append-only refresh candidate."""
+
+        with self._connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
+                select id, as_of from public.etf_distribution_event_versions
+                where status = 'ready' order by as_of desc, id desc limit 1
+                """
+            )
+            version = cursor.fetchone()
+            if version is None:
+                raise EtfDistributionEventUnavailable("no ready event master")
+            cursor.execute(
+                """
+                select raw_payload
+                from public.etf_distribution_events
+                where version_id = %s
+                order by effective_date, isu_code, event_type, event_key
+                """,
+                (int(version[0]),),
+            )
+            rows = cursor.fetchall()
+        as_of = version[1]
+        if not isinstance(as_of, date):
+            as_of = date.fromisoformat(str(as_of))
+        events = [row[0] for row in rows]
+        if not all(isinstance(event, dict) for event in events):
+            raise EtfDistributionEventUnavailable("ready event master is malformed")
+        return EtfDistributionEventMaster(as_of=as_of, events=events)
 
 
 def _date_text(value: object) -> str | None:

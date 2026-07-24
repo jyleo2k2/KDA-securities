@@ -1,5 +1,6 @@
-.login-flow-stage { min-height: 100dvh; display: grid; place-items: center; padding: 24px; background: #e8e8dd; font-family: "Cafe24SsurroundAir", "Noto Sans KR", sans-serif; }
-.login-flow-phone { width: min(100%, 390px); height: min(844px, calc(100dvh - 48px)); min-height: 640px; position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: 42px; background: #fff; box-shadow: 0 24px 70px rgba(0, 0, 0, .16); color: #111; }
+/* 프레임 치수는 index.css 폰 프레임 SSOT(.app-phone-stage/.app-phone-frame)를 재사용한다. */
+.login-flow-stage { font-family: "Cafe24SsurroundAir", "Noto Sans KR", sans-serif; }
+.login-flow-phone { position: relative; display: flex; flex-direction: column; overflow: hidden; color: #111; }
 
 .login-intro, .login-form-page, .login-success-page { flex: 1; min-height: 0; display: flex; flex-direction: column; }.login-intro-copy { padding: 56px 26px 0; }.login-kicker { margin: 0 0 10px; color: #18a860; font-size: 14px; font-weight: 800; }.login-intro h1, .login-form-page h1, .login-form-page h2, .login-success-page h1 { margin: 0; font-weight: 900; letter-spacing: -1.8px; }.login-intro h1 { font-size: 34px; line-height: 1.3; }.login-intro h1 em, .login-form-page h2 em, .login-success-page h1 em { color: #f0c000; font-style: normal; }.login-intro-copy > p:not(.login-kicker) { margin: 15px 0 0; color: #8a9691; font-size: 15px; }.login-page-dots { display: flex; gap: 8px; margin-top: 25px; }.login-page-dots > * { display: block; width: 8px; height: 8px; border-radius: 50%; background: #d6dad3; }.login-page-dots b { width: 22px; border-radius: 4px; background: #18a860; }
 .login-intro-visual { position: relative; display: flex; flex: 1; align-items: end; justify-content: end; min-height: 155px; padding: 12px 25px 0; }.login-intro-visual img { width: min(72%, 245px); object-fit: contain; z-index: 1; }.login-bill { position: absolute; z-index: 2; display: grid; place-items: center; width: 38px; height: 21px; border: 1px solid #007848; border-radius: 4px; background: #18a860; color: #fff; font-size: 11px; font-weight: 900; box-shadow: 0 3px 7px rgba(0,0,0,.12); }.login-bill-one { top: 23%; right: 34%; transform: rotate(-20deg); }.login-bill-two { top: 12%; right: 16%; transform: rotate(16deg); background: #48c078; }
@@ -18,4 +19,4 @@
 @keyframes loginFloatY { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 @keyframes loginSpin { to { transform: rotate(360deg); } }
 @keyframes loginBounceBang { 0%, 100% { transform: translate(calc(-50% - 10px), calc(-50% - 149px)) scale(1); } 50% { transform: translate(calc(-50% - 10px), calc(-50% - 156px)) scale(1.06); } }
-@media (max-width: 480px) { .login-flow-stage { padding: 0; background: #fff; }.login-flow-phone { width: 100%; height: 100dvh; min-height: 0; border-radius: 0; box-shadow: none; } }
+/* 모바일(≤480px) 프레임 해제는 공용 .app-phone-* 규칙에서 처리한다. */

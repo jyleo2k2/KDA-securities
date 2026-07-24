@@ -18,11 +18,12 @@ createRoot(container).render(
     <MainHomeScreen
       aggregation={null}
       displayName="정민재"
-      error="이 계정에는 연동된 연금 데이터가 없습니다."
+      error="아직 연결된 연금 계좌가 없어요. 계좌를 연결하면 자산을 한눈에 정리해서 보여드릴게요!"
       investmentProfile={null}
       loading={false}
       portfolio={null}
       onOpenChat={noop}
+      onOpenSlangi={noop}
       onOpenPlanner={noop}
       onOpenProfile={noop}
       onOpenStrategyExplore={noop}

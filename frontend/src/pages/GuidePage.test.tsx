@@ -713,7 +713,14 @@ describe("GuidePage chat history deletion", () => {
     expect(within(card).getByText("4.57%")).toBeInTheDocument();
     expect(within(card).getAllByText(/공식 출처/)).toHaveLength(3);
     const outcomeCard = screen.getByLabelText("과거 유사국면 ETF 근거 카드");
-    expect(within(outcomeCard).getByText("2024년 1월 유사국면")).toBeInTheDocument();
+    const outcomeDisclosure = within(outcomeCard).getByText("과거 실적은 필요할 때 확인").closest("details");
+    expect(outcomeDisclosure).not.toHaveAttribute("open");
+    fireEvent.click(within(outcomeCard).getByText("과거 실적은 필요할 때 확인").closest("summary")!);
+    expect(outcomeDisclosure).toHaveAttribute("open");
+    const regimeDisclosure = within(outcomeCard).getByText("2024년 1월 유사국면").closest("details");
+    expect(regimeDisclosure).not.toHaveAttribute("open");
+    fireEvent.click(within(outcomeCard).getByText("2024년 1월 유사국면").closest("summary")!);
+    expect(regimeDisclosure).toHaveAttribute("open");
     expect(within(outcomeCard).getByText("KODEX 200")).toBeInTheDocument();
     expect(within(outcomeCard).getByText("10.0000%")).toBeInTheDocument();
     expect(within(outcomeCard).getByText("최대낙폭 -25%")).toBeInTheDocument();
@@ -1518,10 +1525,12 @@ describe("GuidePage chat history deletion", () => {
     renderGuide();
 
     fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
-    const preview = await screen.findByText(
-      "위험중립형 투자전략 — 35년의 장기 운용기간을 고려한 전략이에요.",
-    );
-    const section = preview.closest("details");
+    const sectionTitle = await screen.findByText("위험중립형 투자전략", { exact: true });
+    const section = sectionTitle.closest("details");
+    expect(within(section as HTMLElement).getByText(
+      "35년의 장기 운용기간을 고려한 전략이에요. 목표비중을 확인해 보세요.",
+      { exact: true },
+    )).toBeInTheDocument();
     const limitations = screen.getByText("확인할 점 1가지 보기").closest("details");
 
     expect(section).not.toHaveAttribute("open");
@@ -1530,7 +1539,7 @@ describe("GuidePage chat history deletion", () => {
     expect(limitations).not.toHaveAttribute("open");
     expect(document.querySelector(".holdings-required-panel")).not.toBeNull();
 
-    fireEvent.click(preview.closest("summary")!);
+    fireEvent.click(sectionTitle.closest("summary")!);
     fireEvent.click(screen.getByText("확인할 점 1가지 보기").closest("summary")!);
 
     expect(section).toHaveAttribute("open");

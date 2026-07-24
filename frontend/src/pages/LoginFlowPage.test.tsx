@@ -50,8 +50,8 @@ const savedProfile = {
   preferences: null,
 } as InvestmentProfileResponse;
 
-function renderLogin(): void {
-  render(<LoginFlowPage auth={auth} onAuthenticated={onAuthenticated} onProfileSaved={onProfileSaved} onStart={onStart} />);
+function renderLogin(): ReturnType<typeof render> {
+  return render(<LoginFlowPage auth={auth} onAuthenticated={onAuthenticated} onProfileSaved={onProfileSaved} onStart={onStart} />);
 }
 
 function openForm(): void {
@@ -78,6 +78,13 @@ describe("LoginFlowPage", () => {
     };
     vi.mocked(getAccountLinkOptions).mockResolvedValue(linkOptions);
     vi.mocked(saveInvestmentProfile).mockResolvedValue(savedProfile);
+  });
+
+  it("renders the Figma dynamic-island status bar on the intro screen", () => {
+    const { container } = renderLogin();
+    expect(container.querySelector(".ios-statusbar")).not.toBeNull();
+    expect(container.querySelector(".ios-statusbar-island")).not.toBeNull();
+    expect(container.querySelector(".ios-statusbar-time")).toHaveTextContent("9:41");
   });
 
   it("shows success only after Supabase sign-in resolves", async () => {

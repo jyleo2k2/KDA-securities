@@ -185,8 +185,8 @@ export function PensionPlannerPage({
   }, [accountOptions, portfolio, profile]);
 
   return (
-    <main className="pension-planner-stage">
-      <section className="pension-planner-frame" aria-label="연금 계산기">
+    <main className="app-phone-stage pension-planner-stage">
+      <section className="app-phone-frame pension-planner-frame" aria-label="연금 계산기">
     <iframe
       ref={iframeRef}
       src={`${import.meta.env.BASE_URL}pension-calculator-html/연금계산기.dc.html`}

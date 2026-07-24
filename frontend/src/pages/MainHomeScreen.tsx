@@ -16,8 +16,10 @@ import type {
   AssetClass,
   InvestmentProfileResponse,
   RiskProfile,
+  StrategyPlanningReturnEvaluation,
   UserPensionPortfolio,
 } from "../api/types";
+import { getStrategyPlanningReturns } from "../api/client";
 import { StatusBar } from "../components/StatusBar";
 import { YeongeumiMascot } from "../components/YeongeumiMascot";
 import { latestPortfolioDate } from "../ownerPensionPortfolio";
@@ -33,6 +35,7 @@ interface MainHomeScreenProps {
   onOpenChat: () => void;
   onOpenPlanner: () => void;
   onOpenProfile: () => void;
+  onOpenSlangi: () => void;
   onScrollPositionChange?: (scrollTop: number) => void;
   onOpenStrategyExplore: () => void;
   onOpenUserPick: () => void;
@@ -129,6 +132,7 @@ function HoldingPie({ slices, selectedIndex, onSelect }: {
           : <path d={donutSlicePath(startDeg, endDeg)} fill={slice.color} stroke="#fff" strokeWidth={2} strokeLinejoin="round" />;
         return (
           <g
+            className="mhs-pie-slice"
             key={slice.label}
             role="button"
             tabIndex={0}
@@ -162,27 +166,37 @@ function HoldingPie({ slices, selectedIndex, onSelect }: {
 }
 
 interface StrategyCard {
+  strategyId: string;
   title: string;
-  value: string;
   valueColor: string;
   desc: string;
-  warning?: string;
-  footnote: string;
   bg: string;
 }
 
 const STRATEGY_CARDS: StrategyCard[] = [
-  { title: "시장 베타", value: "6.75%", valueColor: "#4FB6E6", desc: "광범위지수 ETF로 시장 전체 흐름을 따라가는 코어 전략이에요.", footnote: "계획수익률 · 글로벌주식 CMA 7.0% · 할인 0.25%p", bg: "#EAF7FC" },
-  { title: "팩터", value: "6.60%", valueColor: "#24386E", desc: "가치·퀄리티·모멘텀 등 검증된 요인을 규칙 기반 ETF로 담아요.", footnote: "계획수익률 · 글로벌주식 CMA 7.0% · 할인 0.40%p", bg: "#EAEDF3" },
-  { title: "테마", value: "6.00%", valueColor: "#F5871F", desc: "AI·반도체·바이오 등 성장 테마를 분산해 담아요.", footnote: "계획수익률 · 글로벌주식 CMA 7.0% · 할인 1.00%p", bg: "#FFF3E6" },
-  { title: "탑다운", value: "산정 전", valueColor: "#3B4148", desc: "거시 흐름에 따라 국가·지역·산업·채권 비중을 조절해요.", warning: "※ 지역·자산 비중 확정 후 계산해요.", footnote: "실제 구성 가중 CMA · 할인 0.75%p", bg: "#EEF0F1" },
-  { title: "바텀업", value: "6.25%", valueColor: "#1E9E5D", desc: "기업과 산업을 분석해 연금 적격 액티브 ETF를 선별해요.", footnote: "계획수익률 · 지역별 주식 CMA · 할인 0.75%p", bg: "#E9F8EF" },
-  { title: "바벨", value: "산정 전", valueColor: "#1E2124", desc: "성장자산과 단기채·현금성 자산을 양쪽에 배치해요.", warning: "※ 성장·방어 비중 확정 후 계산해요.", footnote: "실제 구성 가중 CMA · 구성별 할인", bg: "#F5F5F5" },
-  { title: "변동성 관리", value: "산정 전", valueColor: "#9CA7AE", desc: "저변동 ETF와 채권으로 목표 변동성에 맞춰 비중을 조절해요.", warning: "※ 목표 변동성에 따른 비중 확정 후 계산해요.", footnote: "실제 구성 가중 CMA · 구성별 할인", bg: "#F1F2F3" },
-  { title: "롱숏·시장중립", value: "산정 전", valueColor: "#7B4FC0", desc: "매수·매도를 함께 활용하는 적격 시장중립 상품을 찾아요.", warning: "※ 연금 적격 상품과 별도 CMA가 아직 확정되지 않았어요.", footnote: "별도 CMA 필요 · 잠정 할인 0.75%p", bg: "#F3EEFB" },
-  { title: "이벤트드리븐", value: "산정 전", valueColor: "#B8860B", desc: "합병·분할·자사주 등 공시된 기업행동에서 후보를 살펴봐요.", warning: "※ 연금 적격 상품과 별도 CMA가 아직 확정되지 않았어요.", footnote: "별도 CMA 필요 · 잠정 할인 0.75%p", bg: "#FFF8DE" },
-  { title: "추세추종·글로벌 매크로", value: "5.65%", valueColor: "#2F6FE0", desc: "멀티에셋 ETF로 글로벌 추세를 규칙 기반으로 따라가요.", footnote: "계획수익률 · 글로벌 60/40 CMA 6.4% · 할인 0.75%p", bg: "#EAF1FE" },
+  { strategyId: "market_beta", title: "시장 전체 따라가기", valueColor: "#4FB6E6", desc: "많은 회사가 든 ETF로 주식시장 전체를 넓게 따라가요.", bg: "#EAF7FC" },
+  { strategyId: "factor", title: "회사 특징 고르기", valueColor: "#24386E", desc: "좋은 회사·싼 가격·꾸준한 흐름 같은 특징을 살펴봐요.", bg: "#EAEDF3" },
+  { strategyId: "thematic", title: "성장 분야 살펴보기", valueColor: "#F5871F", desc: "AI·반도체·바이오처럼 한 분야의 기회를 조금씩 살펴봐요.", bg: "#FFF3E6" },
+  { strategyId: "top_down", title: "큰 경제 흐름 보기", valueColor: "#3B4148", desc: "금리·물가·경기를 보고 나라와 산업 비율을 살펴봐요.", bg: "#EEF0F1" },
+  { strategyId: "bottom_up", title: "회사 하나씩 살펴보기", valueColor: "#1E9E5D", desc: "전문가가 회사를 골라 담는 펀드를 작은 비중으로 살펴봐요.", bg: "#E9F8EF" },
+  { strategyId: "barbell", title: "성장·안전 나누기", valueColor: "#1E2124", desc: "성장할 돈과 채권·현금 같은 안전한 돈을 나눠 둬요.", bg: "#F5F5F5" },
+  { strategyId: "volatility_managed", title: "가격 흔들림 줄이기", valueColor: "#9CA7AE", desc: "가격이 너무 크게 출렁이면 채권·현금 비율을 늘려요.", bg: "#F1F2F3" },
+  { strategyId: "market_neutral", title: "시장 흔들림 줄이기", valueColor: "#7B4FC0", desc: "시장이 오르내려도 덜 흔들리게 만든 상품을 살펴봐요.", bg: "#F3EEFB" },
+  { strategyId: "event_driven", title: "회사 큰 소식 보기", valueColor: "#B8860B", desc: "합병·분할처럼 회사에 큰 일이 생긴 뒤를 살펴봐요.", bg: "#FFF8DE" },
+  { strategyId: "trend_global_macro", title: "세계 시장 흐름 보기", valueColor: "#2F6FE0", desc: "주식·채권 등 세계 시장의 큰 흐름을 함께 살펴봐요.", bg: "#EAF1FE" },
 ];
+
+function strategyPlanningFootnote(
+  planningReturn: StrategyPlanningReturnEvaluation | undefined,
+): string {
+  if (!planningReturn) return "장기 계산용 가정을 불러오는 중이에요.";
+  return `장기 계산용 가정 · 대표 구성 전망 ${formatPlanningPercent(planningReturn.cma_weighted_return_percent)} · 여유 폭 ${formatPlanningPercent(planningReturn.uncertainty_discount_percent)}p`;
+}
+
+function formatPlanningPercent(value: string): string {
+  const [whole, decimal = ""] = value.split(".");
+  return `${whole}.${decimal.padEnd(2, "0").slice(0, 2)}%`;
+}
 
 const PORTFOLIO_INFO_CATEGORIES: Array<{ title: string; desc: string }> = [
   { title: "주식형", desc: "ETF 중 주식을 투자하는 상품" },
@@ -240,6 +254,7 @@ export function MainHomeScreen({
   onOpenChat,
   onOpenPlanner,
   onOpenProfile,
+  onOpenSlangi,
   onScrollPositionChange,
   onOpenStrategyExplore,
   onOpenUserPick,
@@ -247,6 +262,7 @@ export function MainHomeScreen({
 }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
   const [selectedHolding, setSelectedHolding] = useState<number | null>(null);
+  const [strategyPlanningReturns, setStrategyPlanningReturns] = useState<StrategyPlanningReturnEvaluation[] | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const allocationSlices: AllocationSlice[] = aggregation?.asset_class_totals
     .slice(0, 4)
@@ -276,12 +292,19 @@ export function MainHomeScreen({
     document.addEventListener("click", clear);
     return () => document.removeEventListener("click", clear);
   }, [selectedHolding]);
+  useEffect(() => {
+    let active = true;
+    getStrategyPlanningReturns()
+      .then((returns) => { if (active) setStrategyPlanningReturns(returns); })
+      .catch(() => { if (active) setStrategyPlanningReturns([]); });
+    return () => { active = false; };
+  }, []);
   const totalBalance = aggregation ? formatKrw(aggregation.total_amount_krw) : "-";
   const asOfDate = portfolio ? latestPortfolioDate(portfolio) : null;
 
   return (
-    <main className="mhs-stage">
-    <section className="mhs-phone" aria-label="연금 도우미 메인 홈">
+    <main className="app-phone-stage mhs-stage">
+    <section className="app-phone-frame mhs-phone" aria-label="연금 도우미 메인 홈">
     <div className="mhs-page">
       <StatusBar />
 
@@ -294,13 +317,13 @@ export function MainHomeScreen({
       </div>
 
       <div className="mhs-body" ref={bodyRef} onScroll={handleBodyScroll}>
-        <div className="mhs-greeting-card">
+        <button type="button" className="mhs-greeting-card mhs-greeting-card-button" onClick={onOpenSlangi} aria-label="연그미와 놀기 열기">
           <div className="mhs-greeting-copy">
             <p className="mhs-greeting-title">슬랑이를 <span className="mhs-greeting-title-accent">만져 보세요!</span></p>
             <p className="mhs-greeting-sub">톡톡 두드리면 오늘의 저축 팁을 알려드려요</p>
           </div>
           <img src={piggy} alt="슬랑이" className="mhs-greeting-img" />
-        </div>
+        </button>
         {investmentProfile?.assessment && <p className="mhs-greeting-sub">저장 투자성향 · {PROFILE_LABELS[investmentProfile.assessment.risk_profile]} · {investmentProfile.assessment.assessed_on} 진단{investmentProfile.assessment.is_expired ? " · 만료" : ""}</p>}
         <h2 className="mhs-section-title">내 연금 <span className="mhs-section-title-gold">자산</span></h2>
 
@@ -327,7 +350,7 @@ export function MainHomeScreen({
               const dim = selectable && selectedHolding !== null && !active;
               return (
                 <span
-                  className="mhs-allocation-item"
+                  className={`mhs-allocation-item${selectable ? " is-selectable" : ""}`}
                   key={slice.label}
                   role={selectable ? "button" : undefined}
                   tabIndex={selectable ? 0 : undefined}
@@ -434,7 +457,14 @@ export function MainHomeScreen({
         </div>
 
         <div className="mhs-strategy-scroll">
-          {STRATEGY_CARDS.map((card) => (
+          {STRATEGY_CARDS.map((card) => {
+            const planningReturn = strategyPlanningReturns?.find(
+              (item) => item.strategy_id === card.strategyId,
+            );
+            const value = planningReturn
+              ? formatPlanningPercent(planningReturn.net_planning_return_percent)
+              : strategyPlanningReturns === null ? "계산 중…" : "확인 필요";
+            return (
             <button
               type="button"
               className="mhs-strategy-card mhs-strategy-card-button"
@@ -444,12 +474,12 @@ export function MainHomeScreen({
               aria-label={`${card.title} 전략 상세 보기`}
             >
               <span className="mhs-strategy-card-title">{card.title}</span>
-              <p className="mhs-strategy-card-value" style={{ color: card.valueColor }}>{card.value}</p>
+              <p className="mhs-strategy-card-value" style={{ color: card.valueColor }}>{value}</p>
               <p className="mhs-strategy-card-desc">{card.desc}</p>
-              {card.warning && <p className="mhs-strategy-card-warning">{card.warning}</p>}
-              <p className="mhs-strategy-card-footnote">{card.footnote}</p>
+              <p className="mhs-strategy-card-footnote">{strategyPlanningFootnote(planningReturn)}</p>
             </button>
-          ))}
+            );
+          })}
         </div>
         <p className="mhs-strategy-disclaimer">계획수익률은 운용 가정이며 미래 수익을 보장하지 않아요.</p>
 

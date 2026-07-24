@@ -260,12 +260,6 @@ function AnswerBlocks({ blocks }: { blocks: AnswerBlock[] }) {
   );
 }
 
-function sectionPreview(content: string): string {
-  const normalized = displayText(content).replace(/\s+/g, " ").trim();
-  const sentence = normalized.match(/^.*?[.!?](?:\s|$)/);
-  return (sentence?.[0] ?? normalized).trim();
-}
-
 const REPRESENTATIVE_COMPANY_LABELS = [
   "테마에서의 역할:",
   "쉽게 말하면:",
@@ -416,52 +410,58 @@ function MacroRegimeOutcomeCards({ response }: { response: ChatResponse }) {
         <h3>유사국면 이후 ETF 총수익률·최대낙폭</h3>
         <p>국면 다음 달 첫 거래일부터 계산한 실제 관측값이며 미래 예측이나 자동 리밸런싱 신호가 아니에요.</p>
       </header>
-      <div className="macro-regime-list">
-        {evaluation.groups.map((group, groupIndex) => (
-          <details key={group.regime_period} open={groupIndex === 0}>
-            <summary>
-              <strong>{regimeMonth(group.regime_period)} 유사국면</strong>
-              <span>유사도 거리 {Number(group.distance).toFixed(4)}</span>
-            </summary>
-            <div className="macro-regime-etfs">
-              {group.etfs.map((etf) => (
-                <article key={`${group.regime_period}-${etf.isu_code}`}>
-                  <div className="macro-regime-etf-heading">
-                    <strong>{etf.isu_name}</strong>
-                    <span>{etf.isu_code}</span>
-                  </div>
-                  <div className="macro-regime-horizons">
-                    {etf.horizons.map((horizon) => (
-                      <div key={horizon.horizon_months}>
-                        <span>{horizon.horizon_months}개월</span>
-                        <strong className={Number(horizon.total_return_percent) >= 0 ? "positive" : "negative"}>
-                          {numericText(horizon.total_return_percent, "%")}
-                        </strong>
-                        <small>최대낙폭 {drawdownText(horizon.maximum_drawdown_percent)}</small>
-                        <em>{horizon.start_date} ~ {horizon.end_date}</em>
-                      </div>
-                    ))}
-                    {etf.gaps.map((gap) => (
-                      <div className="unavailable" key={`gap-${gap.horizon_months}`}>
-                        <span>{gap.horizon_months}개월</span>
-                        <strong>관측 부족</strong>
-                        <small title={gap.reason}>{REGIME_GAP_LABELS[gap.reason] ?? "기타 관측 제한"}</small>
-                      </div>
-                    ))}
-                  </div>
-                  {etf.source && (
-                    <SourceLink locator={etf.source.reference}>
-                      <span className="macro-regime-source-chip">
-                        {etf.source.label} · {etf.source.as_of}
-                      </span>
-                    </SourceLink>
-                  )}
-                </article>
-              ))}
-            </div>
-          </details>
-        ))}
-      </div>
+      <details className="macro-regime-disclosure">
+        <summary>
+          <span><strong>과거 실적은 필요할 때 확인</strong><small>{evaluation.groups.length}개 유사국면</small></span>
+          <em>펼쳐보기</em>
+        </summary>
+        <div className="macro-regime-list">
+          {evaluation.groups.map((group) => (
+            <details key={group.regime_period}>
+              <summary>
+                <strong>{regimeMonth(group.regime_period)} 유사국면</strong>
+                <span>유사도 거리 {Number(group.distance).toFixed(4)}</span>
+              </summary>
+              <div className="macro-regime-etfs">
+                {group.etfs.map((etf) => (
+                  <article key={`${group.regime_period}-${etf.isu_code}`}>
+                    <div className="macro-regime-etf-heading">
+                      <strong>{etf.isu_name}</strong>
+                      <span>{etf.isu_code}</span>
+                    </div>
+                    <div className="macro-regime-horizons">
+                      {etf.horizons.map((horizon) => (
+                        <div key={horizon.horizon_months}>
+                          <span>{horizon.horizon_months}개월</span>
+                          <strong className={Number(horizon.total_return_percent) >= 0 ? "positive" : "negative"}>
+                            {numericText(horizon.total_return_percent, "%")}
+                          </strong>
+                          <small>최대낙폭 {drawdownText(horizon.maximum_drawdown_percent)}</small>
+                          <em>{horizon.start_date} ~ {horizon.end_date}</em>
+                        </div>
+                      ))}
+                      {etf.gaps.map((gap) => (
+                        <div className="unavailable" key={`gap-${gap.horizon_months}`}>
+                          <span>{gap.horizon_months}개월</span>
+                          <strong>관측 부족</strong>
+                          <small title={gap.reason}>{REGIME_GAP_LABELS[gap.reason] ?? "기타 관측 제한"}</small>
+                        </div>
+                      ))}
+                    </div>
+                    {etf.source && (
+                      <SourceLink locator={etf.source.reference}>
+                        <span className="macro-regime-source-chip">
+                          {etf.source.label} · {etf.source.as_of}
+                        </span>
+                      </SourceLink>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </details>
+          ))}
+        </div>
+      </details>
     </section>
   );
 }
@@ -718,7 +718,7 @@ function AssistantMessage({
         <Fragment key={`${section.title}-${index}`}>
           <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "verified_pension_account_brief" || response.data_mode === "verified_pension_tax_rule_brief" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
             <summary>
-              <span>{section.title}{response.data_mode !== "verified_pension_account_brief" && sectionPreview(section.content) && ` — ${sectionPreview(section.content)}`}</span>
+              <span>{section.title}</span>
               <small>내용 보기</small>
             </summary>
             {section.blocks?.length ? (

@@ -1,0 +1,41 @@
+name: Official ETF distribution refresh
+
+on:
+  schedule:
+    # GitHub Actions cron is UTC: Sun-Thu 21:30 UTC is Mon-Fri 06:30 KST.
+    - cron: "30 21 * * 0-4"
+  workflow_dispatch:
+    inputs:
+      as_of:
+        description: "KST 기준일 (YYYY-MM-DD, 비우면 실행일)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: official-etf-distribution-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
+      KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: Remove expired official raw evidence
+        run: uv run python scripts/cleanup_expired_etf_distribution_raw.py --apply
+      - name: Refresh official KIND and KIS distribution evidence
+        run: >-
+          uv run python scripts/refresh_etf_distribution_events.py --apply
+          ${{ inputs.as_of && format('--as-of {0}', inputs.as_of) || '' }}

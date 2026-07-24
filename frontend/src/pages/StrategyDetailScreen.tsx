@@ -8,6 +8,20 @@ interface StrategyDetailScreenProps {
   onBack: () => void;
 }
 
+const EXAMPLE_ASSET_BARS = [
+  { label: "주식 ETF", weight: 6, color: "#4f8a70" },
+  { label: "채권 ETF", weight: 3, color: "#7183b1" },
+  { label: "현금성 자산", weight: 1, color: "#d8a45e" },
+] as const;
+
+const EXAMPLE_EQUITY_SECTOR_BARS = [
+  { label: "넓은 시장", weight: 3, color: "#4f8a70" },
+  { label: "반도체", weight: 2, color: "#82ad67" },
+  { label: "바이오·헬스케어", weight: 2, color: "#d8a45e" },
+  { label: "은행·금융", weight: 2, color: "#7183b1" },
+  { label: "전력·에너지", weight: 1, color: "#bf7d70" },
+] as const;
+
 function selectedStrategy(): StrategyExploreItem {
   const hash = typeof window !== "undefined" ? window.location.hash : "";
   const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "";
@@ -19,8 +33,8 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
   const strategy = selectedStrategy();
 
   return (
-    <main className="sd-stage" style={{ "--sd-accent": strategy.accent } as React.CSSProperties}>
-      <section className="sd-phone" aria-label={`${strategy.name} 상세`}>
+    <main className="app-phone-stage sd-stage" style={{ "--sd-accent": strategy.accent } as React.CSSProperties}>
+      <section className="app-phone-frame sd-phone" aria-label={`${strategy.name} 상세`}>
         <StatusBar />
 
         <header className="sd-header">
@@ -40,23 +54,74 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
             </div>
           </div>
 
+          <section className="sd-allocation-example" aria-labelledby="strategy-allocation-example-title">
+            <span className="sd-allocation-kicker">교육용 예시 바</span>
+            <h2 className="sd-card-title" id="strategy-allocation-example-title">연금 돈을 <span>나눠 담는 모습</span></h2>
+            <p className="sd-card-body">주식·채권·현금을 함께 두고, 주식 안에서도 ETF 분야를 나눠 보는 예시예요.</p>
+
+            <div className="sd-bar" role="img" aria-label="주식 ETF, 채권 ETF, 현금성 자산으로 나눈 교육용 예시 바">
+              {EXAMPLE_ASSET_BARS.map((item) => (
+                <span key={item.label} style={{ flexGrow: item.weight, backgroundColor: item.color }} />
+              ))}
+            </div>
+            <ul className="sd-bar-legend" aria-label="큰 자산군 예시">
+              {EXAMPLE_ASSET_BARS.map((item) => (
+                <li key={item.label}>
+                  <i style={{ backgroundColor: item.color }} />
+                  {item.label}
+                </li>
+              ))}
+            </ul>
+
+            <div className="sd-sector-example">
+              <strong>주식 안에서는 ETF 분야도 나눠 봐요</strong>
+              <div className="sd-bar sd-sector-bar" role="img" aria-label="넓은 시장, 반도체, 바이오 헬스케어, 은행 금융, 전력 에너지 ETF 분야 예시 바">
+                {EXAMPLE_EQUITY_SECTOR_BARS.map((item) => (
+                  <span key={item.label} style={{ flexGrow: item.weight, backgroundColor: item.color }} />
+                ))}
+              </div>
+              <ul className="sd-bar-legend sd-sector-legend" aria-label="주식 ETF 분야 예시">
+                {EXAMPLE_EQUITY_SECTOR_BARS.map((item) => (
+                  <li key={item.label}>
+                    <i style={{ backgroundColor: item.color }} />
+                    {item.label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <p className="sd-allocation-note">막대 크기는 이해를 돕기 위한 예시예요. 실제 비중과 ETF 분야는 투자성향·계좌 규칙·엔진 결과를 확인해 직접 결정해요.</p>
+          </section>
+
           <section className="sd-card">
-            <h2 className="sd-card-title">어떻게 <span>운용되나요?</span></h2>
+            <h2 className="sd-card-title">쉽게 말하면 <span>이렇게 해요</span></h2>
             <p className="sd-card-body">{strategy.howItWorks}</p>
           </section>
 
           <section className="sd-card">
-            <h2 className="sd-card-title">연금계좌에 <span>이렇게 담아요</span></h2>
+            <h2 className="sd-card-title">연금계좌에는 <span>이렇게 나눠요</span></h2>
             <p className="sd-card-body">{strategy.accountApplication}</p>
             <dl className="sd-facts">
               <div className="sd-fact">
-                <dt>포트폴리오 버킷</dt>
+                <dt>이 전략의 자리</dt>
                 <dd>{strategy.bucket}</dd>
               </div>
               <div className="sd-fact">
                 <dt>구현 난이도</dt>
                 <dd>{strategy.directness}</dd>
               </div>
+            </dl>
+          </section>
+
+          <section className="sd-card sd-words" aria-labelledby="strategy-easy-words-title">
+            <h2 className="sd-card-title" id="strategy-easy-words-title">낯선 말 <span>쉽게 보기</span></h2>
+            <dl>
+              {strategy.easyWords.map((item) => (
+                <div key={item.word}>
+                  <dt>{item.word}</dt>
+                  <dd>{item.meaning}</dd>
+                </div>
+              ))}
             </dl>
           </section>
 

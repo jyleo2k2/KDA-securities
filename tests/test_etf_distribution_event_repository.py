@@ -7,6 +7,7 @@ import pytest
 from backend.app import etf_distribution_event_repository
 from backend.app.etf_distribution_event_repository import (
     EtfDistributionEventLoadError,
+    PostgresEtfDistributionEventRepository,
     load_etf_distribution_event_master,
 )
 
@@ -96,10 +97,32 @@ def test_normalizes_zero_value_schedule_as_unannounced_amount(
     assert connection.cursor_obj.executemany_calls[0][1][0][9] is None
 
 
+def test_reads_latest_ready_master_raw_payloads() -> None:
+    connection = _Connection(
+        fetchone_values=[(9, date(2026, 7, 24))],
+        fetchall_values=[[(_report()["events"][0],)]],
+    )
+
+    master = PostgresEtfDistributionEventRepository(
+        "postgresql://unused", connection_factory=lambda _url: connection
+    ).latest_ready_master()
+
+    assert master.as_of == date(2026, 7, 24)
+    assert master.events[0]["isu_code"] == "069500"
+    assert "raw_payload" in connection.cursor_obj.executed[-1][0]
+
+
 class _Cursor:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        fetchone_values: list[tuple[object, ...]] | None = None,
+        fetchall_values: list[list[tuple[object, ...]]] | None = None,
+    ) -> None:
         self.executed: list[tuple[str, object]] = []
         self.executemany_calls: list[tuple[str, list[tuple[object, ...]]]] = []
+        self._fetchone_values = fetchone_values or [(42,)]
+        self._fetchall_values = fetchall_values or []
 
     def __enter__(self) -> "_Cursor":
         return self
@@ -113,13 +136,24 @@ class _Cursor:
     def executemany(self, sql: str, params: list[tuple[object, ...]]) -> None:
         self.executemany_calls.append((sql, params))
 
-    def fetchone(self) -> tuple[int]:
-        return (42,)
+    def fetchone(self) -> tuple[object, ...]:
+        return self._fetchone_values.pop(0)
+
+    def fetchall(self) -> list[tuple[object, ...]]:
+        return self._fetchall_values.pop(0)
 
 
 class _Connection:
-    def __init__(self) -> None:
-        self.cursor_obj = _Cursor()
+    def __init__(
+        self,
+        *,
+        fetchone_values: list[tuple[object, ...]] | None = None,
+        fetchall_values: list[list[tuple[object, ...]]] | None = None,
+    ) -> None:
+        self.cursor_obj = _Cursor(
+            fetchone_values=fetchone_values,
+            fetchall_values=fetchall_values,
+        )
 
     def __enter__(self) -> "_Connection":
         return self

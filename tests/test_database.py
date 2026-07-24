@@ -15,6 +15,9 @@ def test_database_pool_uses_configured_connection_bounds() -> None:
         assert pool.min_size == 2
         assert pool.max_size == 8
         assert pool._check is ConnectionPool.check_connection
+        # 트랜잭션 풀러(6543)에서 prepared statement 충돌을 막기 위해
+        # psycopg가 서버측 prepared statement를 만들지 않도록 강제한다.
+        assert pool.kwargs.get("prepare_threshold", "MISSING") is None
     finally:
         pool.close()
         get_database_pool.cache_clear()
