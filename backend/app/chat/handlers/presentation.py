@@ -1,5 +1,7 @@
 """Response presentation, context, capabilities, and follow-up cards."""
 
+from decimal import Decimal
+
 from ..cards import build_suggested_follow_ups, pension_tax_credit_follow_ups
 from ..models import (
     ChatCapabilities,
@@ -172,6 +174,34 @@ def attach_visualizations(response: ChatResponse) -> ChatResponse:
                 or item.label.startswith(f"{account_label} · ")
             )
         )
+        allocation_totals: dict[str, Decimal] = {}
+        for target in evaluation.target_sleeves:
+            label = {
+                "core_equity": "주식",
+                "real_assets": "금/원자재",
+                "tactical": "현금",
+                "cash": "현금",
+            }.get(target.sleeve, _SLEEVE_LABELS[target.sleeve])
+            allocation_totals[label] = (
+                allocation_totals.get(label, Decimal("0"))
+                + target.target_percent
+            )
+        allocation_items = [
+            VisualizationDatum(
+                label=label,
+                value=_one_decimal(target_percent),
+                unit="%",
+                role=VisualizationDatumRole.SEGMENT,
+            )
+            for label, target_percent in allocation_totals.items()
+        ]
+        rounding_difference = Decimal("100.0") - sum(
+            (item.value for item in allocation_items), Decimal("0")
+        )
+        if allocation_items and rounding_difference:
+            allocation_items[-1] = allocation_items[-1].model_copy(
+                update={"value": allocation_items[-1].value + rounding_difference}
+            )
         visualizations.append(
             ChatVisualization(
                 kind=VisualizationKind.SLEEVE_ALLOCATION,
@@ -179,15 +209,7 @@ def attach_visualizations(response: ChatResponse) -> ChatResponse:
                 description="규칙 엔진이 계산한 5개 슬리브 목표비중이에요.",
                 data_boundary=DataBoundary.ENGINE,
                 evidence_ids=[evidence_id],
-                items=[
-                    VisualizationDatum(
-                        label=_SLEEVE_LABELS[target.sleeve],
-                        value=_one_decimal(target.target_percent),
-                        unit="%",
-                        role=VisualizationDatumRole.SEGMENT,
-                    )
-                    for target in evaluation.target_sleeves
-                ],
+                items=allocation_items,
             )
         )
         stress_items = evaluation.portfolio_risk.stress_scenarios

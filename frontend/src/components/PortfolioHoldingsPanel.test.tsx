@@ -318,12 +318,12 @@ describe("EducationalPortfolioReview", () => {
     expect(
       screen.getByText(/코어는 장기 분산투자, 위성은 제한된 비중의 보조 전략/),
     ).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /핵심 주식 45.0%, 실물자산\(금·리츠 등\) 5.0%, 채권 43.0%, 현금성 자산 7.0%/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /주식 45.0%, 금\/원자재 5.0%, 채권 43.0%, 현금 7.0%/ })).toBeInTheDocument();
     expect(screen.getByText("조심해서 계산한 경우")).toBeInTheDocument();
     expect(screen.getByText("기본으로 계산한 경우")).toBeInTheDocument();
     expect(screen.getByText(/CMA는 여러 자산의 10년 이상 장기 전망/)).toBeInTheDocument();
-    expect(screen.getByText("어떤 ETF 분야를 살펴볼까?")).toBeInTheDocument();
-    expect(screen.getByText(/이 서비스는 “이 ETF를 사세요”라고 정해 주지 않아요/)).toBeInTheDocument();
+    expect(screen.queryByText("어떤 ETF 분야를 살펴볼까?")).not.toBeInTheDocument();
+    expect(screen.queryByText(/이 서비스는 “이 ETF를 사세요”라고 정해 주지 않아요/)).not.toBeInTheDocument();
     expect(screen.queryByText("스태그플레이션")).not.toBeInTheDocument();
 
     const strategyCases = [
@@ -369,8 +369,8 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.getByText(/과거에 같이 오르내린 정도는 최대 82.0%/)).toBeInTheDocument();
     expect(screen.getByText(/같은 회사가 몇 개 겹쳤는지를 뜻하는 숫자는 아니에요/)).toBeInTheDocument();
     expect(screen.getByText(/자동 매도하지 않습니다/)).toBeInTheDocument();
-    expect(screen.getByText("3개월마다 목표 비중 점검")).toBeInTheDocument();
-    expect(screen.getByText(/리밸런싱은 달라진 비중을 목표 비중에 가깝게 조정하는 점검/)).toBeInTheDocument();
+    expect(screen.getByText("리밸런싱 주기: 3개월마다")).toBeInTheDocument();
+    expect(screen.getByText("각 자산 유형별로 ±5.0%p만큼의 차이가 날 수 있어요.")).toBeInTheDocument();
     expect(screen.getByText("12.3%")).toBeInTheDocument();
     expect(screen.getByText("주식이 크게 떨어질 때")).toBeInTheDocument();
     expect(screen.getByText("-18.5%")).toBeInTheDocument();

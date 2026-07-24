@@ -320,6 +320,10 @@ def test_portfolio_uses_full_allocation_products_for_defensive_sleeves(
     )
     assert result.planning_return.is_forecast is False
     assert result.planning_return.historical_performance_used is False
+    assert (
+        result.planning_return.base_planning_return_percent
+        > result.planning_return.conservative_planning_return_percent
+    )
     assert result.planning_horizon_years == 3
     assert result.current_holdings_planning_return is not None
     assert result.current_holdings_planning_return.components[0].isu_code == "CORE01"
@@ -347,6 +351,53 @@ def test_portfolio_uses_full_allocation_products_for_defensive_sleeves(
         for warning in unavailable.warnings
     )
 
+
+@pytest.mark.parametrize("profile", list(RiskProfile))
+def test_each_risk_profile_has_a_lower_conservative_planning_return(
+    profile: RiskProfile,
+) -> None:
+    products = [
+        _product("CORE01", asset_class="equity", strategy="broad_market"),
+        _product(
+            "CORE02",
+            asset_class="equity",
+            strategy="broad_market",
+            region="united_states",
+        ),
+        _product("TACT01", asset_class="equity", strategy="sector_or_theme"),
+        _product("TACT02", asset_class="equity", strategy="covered_call"),
+        _product("REAL01", asset_class="commodity", strategy="gold"),
+        _product(
+            "BOND01",
+            asset_class="fixed_income",
+            strategy="government_bond",
+            allocation_bucket="full_allocation_eligible",
+        ),
+        _product(
+            "CASH01",
+            asset_class="cash_equivalent",
+            strategy="money_market",
+            allocation_bucket="full_allocation_eligible",
+        ),
+    ]
+    histories = {
+        str(product["isu_code"]): _history(str(index + 1))
+        for index, product in enumerate(products)
+    }
+
+    result = build_educational_portfolio(
+        _request(profile=profile),
+        products=products,
+        histories=histories,
+        source_as_of=date(2026, 7, 16),
+    )
+
+    assert result.planning_return.base_planning_return_percent is not None
+    assert result.planning_return.conservative_planning_return_percent is not None
+    assert (
+        result.planning_return.base_planning_return_percent
+        > result.planning_return.conservative_planning_return_percent
+    )
 
 @pytest.mark.parametrize(
     ("profile", "months", "threshold"),

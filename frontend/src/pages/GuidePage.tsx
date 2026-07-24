@@ -475,6 +475,7 @@ function AssistantMessage({
   onOpenPlanner,
   onAnalyzeHoldings,
   surveyProfile,
+  userName,
   disabled,
   usedFollowUpMessages,
 }: {
@@ -484,6 +485,7 @@ function AssistantMessage({
   onOpenPlanner?: () => void;
   onAnalyzeHoldings?: (portfolio: EducationalPortfolioInput) => void;
   surveyProfile: CompletedSurveyProfile | null;
+  userName: string | null;
   disabled: boolean;
   usedFollowUpMessages: ReadonlySet<string>;
 }) {
@@ -493,6 +495,24 @@ function AssistantMessage({
   if (!response) return <p className="message-copy">{text}</p>;
 
   const isEducationalPortfolio = response.intent === "educational_portfolio";
+  const educationalEvaluation = response.educational_portfolio_evaluation;
+  const educationalProfileLabel = educationalEvaluation
+    ? {
+      stable: "안정형",
+      stable_seeking: "안정추구형",
+      risk_neutral: "위험중립형",
+      active: "적극투자형",
+      aggressive: "공격투자형",
+    }[educationalEvaluation.evaluated_input.risk_profile]
+    : undefined;
+  const educationalLead = (
+    isEducationalPortfolio
+    && userName
+    && educationalProfileLabel
+    && educationalEvaluation?.strategy_label
+  )
+    ? `${userName.replace(/\(가상\)/g, "")}님의 투자성향(${educationalProfileLabel})에 가장 적합한 투자전략은 ${educationalEvaluation.strategy_label}입니다.`
+    : undefined;
   const isPensionTaxCredit = (
     response.intent === "pension_tax"
     && response.pension_tax_result?.tax_credit != null
@@ -537,7 +557,9 @@ function AssistantMessage({
       (item) => !item.label.endsWith("법정 세액공제액"),
     )
     : response.numeric_evidence;
-  const visibleSections = isPensionTaxCredit
+  const visibleSections = isEducationalPortfolio
+    ? []
+    : isPensionTaxCredit
     ? response.sections.filter(
       (section) => section.title !== "당해연도 세액공제 간이 계산",
     )
@@ -668,7 +690,7 @@ function AssistantMessage({
           {displayText(
             showPensionTaxBreakdown
               ? response.answer.split(/\r?\n/, 1)[0]
-              : response.answer,
+              : educationalLead ?? response.answer,
           )}
         </p>
       )}
@@ -1737,6 +1759,14 @@ export function GuidePage({
                   )}
                   response={message.response}
                   surveyProfile={surveyProfile}
+                  userName={
+                    userContext?.nickname
+                    ?? (
+                      typeof auth.session?.user?.user_metadata?.name === "string"
+                        ? auth.session.user.user_metadata.name
+                        : null
+                    )
+                  }
                   disabled={isSending || deletingSessionId !== null}
                   text={message.text}
                   usedFollowUpMessages={usedFollowUpMessages}

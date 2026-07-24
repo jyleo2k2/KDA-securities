@@ -701,6 +701,7 @@ def calculate_portfolio_planning_return(
                 "verified annual cost is required for CMA-minus-cost planning: "
                 f"{candidate.isu_code}"
             )
+        uncertainty_discount = _uncertainty_discount(classification)
         result = calculate_etf_planning_return(
             EtfPlanningReturnInput(
                 etf_code=candidate.isu_code,
@@ -710,7 +711,7 @@ def calculate_portfolio_planning_return(
                 industry_excess_earnings_growth_percent=Decimal("0"),
                 industry_growth_confidence=Decimal("0"),
                 industry_growth_persistence=Decimal("0"),
-                uncertainty_discount_percent=Decimal("0"),
+                uncertainty_discount_percent=uncertainty_discount,
                 annual_cost_drag_percent=cost,
                 sources=PlanningReturnSources(
                     asset_class_cma=cma_source,
@@ -729,7 +730,7 @@ def calculate_portfolio_planning_return(
                 target_percent=candidate.target_percent,
                 cma_assumption_code=code,
                 cma_percent=_percent(CMA_ASSUMPTIONS_PERCENT[code]),
-                uncertainty_discount_percent=Decimal("0"),
+                uncertainty_discount_percent=uncertainty_discount,
                 annual_cost_drag_percent=_percent(cost),
                 gross_planning_return_percent=result.gross_planning_return_percent,
                 net_planning_return_percent=result.net_planning_return_percent,
@@ -813,6 +814,23 @@ def calculate_portfolio_planning_return(
         else None
     )
     base = net
+    weighted_uncertainty_discount = (
+        sum(
+            (
+                item.target_percent * item.uncertainty_discount_percent
+                for item in components
+            ),
+            Decimal("0"),
+        )
+        / coverage
+        if coverage
+        else None
+    )
+    conservative = (
+        base - weighted_uncertainty_discount
+        if base is not None and weighted_uncertainty_discount is not None
+        else None
+    )
     if not (
         CMA_HORIZON_MIN_YEARS
         <= portfolio_horizon_years
@@ -838,7 +856,7 @@ def calculate_portfolio_planning_return(
         gross_planning_return_percent=_percent(gross) if gross is not None else None,
         net_planning_return_percent=_percent(net) if net is not None else None,
         conservative_planning_return_percent=(
-            _percent(net) if net is not None else None
+            _percent(conservative) if conservative is not None else None
         ),
         base_planning_return_percent=(
             _percent(base) if base is not None else None
