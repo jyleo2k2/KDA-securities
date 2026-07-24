@@ -28,6 +28,9 @@
   --phone-stage-pad: 40px;
   --phone-stage-bg: #e8e8dd;
   --phone-frame-shadow: 0 24px 70px rgba(0, 0, 0, .16);
+  /* 상단바(StatusBar) 높이 SSOT. 상단바를 오버레이로 얹는 화면(guide)은
+     이 값만큼 콘텐츠 상단을 비워 겹침을 막는다. StatusBar.css 와 반드시 일치. */
+  --statusbar-height: 54px;
 }
 
 /* 공용 폰 프레임: main-home 기준 픽셀 고정. 새 화면은 이 두 클래스를 쓴다. */
@@ -741,7 +744,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   width: var(--phone-frame-width);
   height: var(--phone-frame-height);
   max-height: calc(100dvh - 80px);
-  padding-top: 38px;
+  /* 오버레이 상단바(desktop-preview-status)와 겹치지 않도록 상단바 높이만큼 확보한다. */
+  padding-top: var(--statusbar-height);
   overflow: hidden;
   border-radius: var(--phone-frame-radius);
   background: #fff;
