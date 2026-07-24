@@ -35,6 +35,9 @@ describe("ChatVisualization allocation donut", () => {
   it("shows and hides selected allocation detail with its evidence", () => {
     render(<ChatVisualization visualization={visualization} sources={sources} />);
 
+    expect(screen.getByText("전체")).toHaveClass("allocation-donut-label");
+    expect(screen.getByText("100%")).toHaveClass("allocation-donut-total");
+
     const slice = screen.getByRole("button", { name: "국내주식 45%" });
     fireEvent.click(slice);
 

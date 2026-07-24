@@ -33,6 +33,7 @@
 .mhs-asset-gain { font-size: 16px; font-weight: 800; color: #18A860; margin: 8px 0 0; }
 
 .mhs-pie-wrap { display: flex; justify-content: center; padding: 26px 0 22px; }
+.mhs-pie-wrap svg text { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-weight: 700; }
 .mhs-pie-mascot { width: 156px; height: 156px; }
 .mhs-pie-slice:focus { outline: none; }
 .mhs-pie-slice:focus-visible path,

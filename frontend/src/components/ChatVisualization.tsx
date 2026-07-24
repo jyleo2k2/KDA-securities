@@ -198,8 +198,8 @@ export function ChatVisualization({ visualization, sources }: {
               />
             );
           })}
-          <text x="50" y="48" textAnchor="middle">전체</text>
-          <text x="50" y="60" textAnchor="middle" className="allocation-donut-total">100%</text>
+          <text x="50" y="43" textAnchor="middle" className="allocation-donut-label">전체</text>
+          <text x="50" y="64" textAnchor="middle" className="allocation-donut-total">100%</text>
         </svg>
         <ul className="allocation-legend">
           {visualization.items.map((item, index) => (
