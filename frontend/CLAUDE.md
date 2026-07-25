@@ -2,7 +2,7 @@
 
 > 적용 범위: `frontend/` 하위 전체(React + TypeScript + Vite PWA).
 > 이 파일과 같은 폴더의 `AGENTS.md`·`CLAUDE.md`는 내용 동기화 대상이다. 한쪽을 바꾸면 같은 커밋에서 다른 쪽도 바꾼다.
-> 최종 갱신: 2026-07-23
+> 최종 갱신: 2026-07-25
 
 ## 임무
 
@@ -36,10 +36,12 @@
 라우트로 노출되는 **모든 화면은 main-home 프레임 규격에 픽셀 단위로 고정**하고 **Figma 상단바를 갖는다**. 예외 없이 아래를 지킨다.
 
 - **프레임(크기)**: 화면 최상위를 `app-phone-stage`(무대) + `app-phone-frame`(폰 프레임)으로 감싼다. 치수·라운드·그림자는 `src/index.css`의 `--phone-frame-*` 변수(SSOT)만 값의 출처다. `width`/`height`/`border-radius`를 개별 화면 CSS에 하드코딩하지 않는다(특히 `min(844px, …)` 리터럴 금지). 화면 고유 레이아웃(예: `display:flex` 내부 컬럼)은 별도 클래스로 덧붙이되 치수는 건드리지 않는다.
-- **상단바**: 화면 프레임 최상단에 `<StatusBar />`(`src/components/StatusBar.tsx`)를 렌더한다. 상단바는 Figma StatusBar(다이나믹 아일랜드 + 셀룰러·Wi‑Fi·배터리)를 재현하며 임의로 아이콘을 빼거나 크기를 바꾸지 않는다. 아이콘은 손으로 그리지 말고 실제 에셋(`src/assets/main-home/icon-signal.svg`·`icon-wifi.svg`) 정밀 path를 사용한다. **다이나믹 아일랜드(검은 알약)는 화면 정중앙에 고정한다** — 좌측 시각과 우측 아이콘의 폭이 달라 `space-between`만으로는 왼쪽으로 치우치므로, 아일랜드를 `position: absolute; left: 50%; transform: translateX(-50%)`(부모는 `position: relative`)로 배치한다. iframe 화면도 동일하다.
+- **상단바**: 화면 프레임 최상단에 `<StatusBar />`(`src/components/StatusBar.tsx`)를 렌더한다. 상단바는 Figma StatusBar(다이나믹 아일랜드 + 셀룰러·Wi‑Fi·배터리)를 재현하며 임의로 아이콘을 빼거나 크기를 바꾸지 않는다. 아이콘 SVG path를 화면 소스로 복사하지 않는다 — 상단바 마크업의 유일한 소유자는 `StatusBar.tsx`다. **다이나믹 아일랜드(검은 알약)는 화면 정중앙에 고정한다** — 좌측 시각과 우측 아이콘의 폭이 달라 `space-between`만으로는 왼쪽으로 치우치므로, 아일랜드를 `position: absolute; left: 50%; transform: translateX(-50%)`(부모는 `position: relative`)로 배치한다. iframe 화면도 동일하다.
+- **상단바 글꼴(시각 "9:41")**: 상단바 컨테이너는 `font-family`를 **스스로 선언**한다. 기준값은 main-home과 같은 `-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Pretendard', system-ui, sans-serif`(`StatusBar.css`)이며 `font-weight: 600; font-size: 15px`를 함께 지정한다. 선언을 빠뜨리면 부모 컨테이너의 본문 폰트(`Cafe24SsurroundAir` 등)를 상속해 화면마다 시각 글꼴이 어긋난다(2026-07-25 벤치마킹·연금계산기 회귀 원인).
+- **상단바 아이콘과 전역 svg 규칙**: `src/index.css`의 전역 `svg { stroke: currentColor; stroke-width: 1.7 }`는 선(line)으로 그리는 UI 아이콘용이다. 상단바 아이콘은 `fill`로만 그린 도형이라 이 외곽선이 덧그려지면 신호막대가 두꺼워지고 Wi‑Fi 호가 통짜 삼각형이 된다. `StatusBar.tsx`가 인라인 `stroke: none`으로 차단하고 있으니 제거하지 않는다. **새로 추가하는 `fill` 전용 아이콘도 같은 차단이 필요하다.**
 - **iframe 화면(profile-html·slangi 등 100vh iframe)**: 프레임과 상단바를 iframe 내부 HTML이 소유한다. 이때도 내부 HTML은 같은 프레임 규격(`min(844px, calc(100dvh - 80px))`, radius 44, 상단바 54px)을 따른다. 이 목록은 `src/phoneFrameContract.test.ts`의 허용 목록과 일치시킨다.
 - **상단바 높이·겹침**: 상단바 높이는 `--statusbar-height`(현재 54px, SSOT) 하나로 관리한다. 상단바를 콘텐츠 흐름 안(`flex`)에 두면 자동으로 헤더가 그 아래에 붙지만, 상단바를 오버레이(`position: fixed`, 예: guide의 `desktop-preview-status`)로 얹는 화면은 콘텐츠 상단을 `padding-top: var(--statusbar-height)`만큼 비워 겹침을 막는다. 상단바 높이를 바꾸면 두 값이 자동으로 맞으므로 개별 픽셀(38px 등)을 하드코딩하지 않는다.
-- **강제(게이트)**: `src/phoneFrameContract.test.ts`가 위 규칙을 검사한다. 새 화면이 공용 프레임을 쓰지 않거나 치수를 하드코딩하면 `npm test`가 실패한다. 새 라우트 화면을 추가하면 이 테스트를 통과시키거나(권장) iframe 위임 화면이면 허용 목록에 등록한다.
+- **강제(게이트)**: `src/phoneFrameContract.test.ts`가 위 규칙을 검사한다. 새 화면이 공용 프레임을 쓰지 않거나, 치수를 하드코딩하거나, `<StatusBar />` 없이 프레임만 그리거나, 상단바 아이콘 path를 복사하거나, iframe HTML이 상단바 `font-family`를 빠뜨리면 `npm test`가 실패한다. 새 라우트 화면을 추가하면 이 테스트를 통과시키거나(권장) 성격에 맞는 허용 목록(`IFRAME_FULLSCREEN_PAGES`: 프레임까지 iframe 위임 / `IFRAME_STATUSBAR_PAGES`: 프레임은 공용, 상단바만 iframe 소유)에 등록한다. iframe HTML을 새로 라우트에 붙이면 같은 테스트의 `embeddedHtmlModules` 목록에도 추가한다.
 
 ## 검증 명령
 
