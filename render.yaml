@@ -1,11 +1,18 @@
 services:
   - type: web
+    # 실제 운영 서비스는 Render 대시보드의 `KDA-securities`
+    # (srv-d9hee07lk1mc73dqomf0, https://kda-securities.onrender.com)이다.
+    # 아래 name 은 초기 blueprint 값이며 대시보드 서비스명과 다르다.
+    # 이름을 바꾸면 Render 가 별도 서비스를 새로 만들 수 있으므로 그대로 둔다.
+    # 폐기된 옛 주소 https://pension-copilot-api.onrender.com 은 상태 확인에 쓰지 않는다.
     name: pension-copilot-api
     runtime: python
     plan: free
     buildCommand: uv sync --frozen --no-dev
     startCommand: uv run --no-sync uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
+    # autoDeploy 가 false 이므로 main push 만으로는 코드가 갱신되지 않는다.
+    # 코드 변경은 대시보드에서 Manual Deploy -> Deploy latest commit 으로 반영한다.
     autoDeploy: false
     envVars:
       - key: PYTHON_VERSION

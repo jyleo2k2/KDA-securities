@@ -114,11 +114,13 @@ npm run dev
 원격 운영 주소와 환경변수·재배포·검증 절차는 [배포 운영 가이드](./docs/30_스펙/배포_운영_가이드.md)를 정본으로 사용한다.
 
 - 프론트: `https://kda-securities-lzix-zeta.vercel.app`
-- API: `https://pension-copilot-api.onrender.com`
-- Vercel Production: `VITE_API_BASE_URL=https://pension-copilot-api.onrender.com`
+- API: `https://kda-securities.onrender.com` (Render 서비스 `KDA-securities`)
+- Vercel Production: `VITE_API_BASE_URL=https://kda-securities.onrender.com`
 - Render: `CORS_ORIGINS`에 실제 사용하는 Vercel Production alias를 JSON 배열로 설정
 
-2026-07-24 실측에서 Render health·계좌 정보 API는 HTTP 200이었지만, Vercel의 API URL은 빈 값이었고 Render CORS는 Production alias 요청을 거부했다. 최신 배포도 일부 `blocked` 상태라서 **환경변수 복구 → Render 재배포 → Vercel 재배포 → 원격 골든패스 E2E**가 필요하다. 아직 복구 완료로 표시하지 않는다.
+`https://pension-copilot-api.onrender.com`은 2026-07-21 이전 코드가 떠 있는 폐기된 옛 서비스다. 살아 있으면서 HTTP 200을 반환하므로 상태 확인에 사용하지 않는다.
+
+2026-07-25 실측에서 Render는 최신 `main`(`bd21abf`)으로 배포됐고 Production alias CORS preflight가 통과했다. 다만 Vercel 배포 번들이 아직 옛 API 주소를 호출하므로 **Vercel `VITE_API_BASE_URL` 교체 → 재배포 → 원격 골든패스 E2E**가 남았다. 아직 복구 완료로 표시하지 않는다.
 
 ### 5. API 확인
 
