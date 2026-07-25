@@ -22,12 +22,13 @@ const PROFILE_DESCRIPTIONS: Record<RiskProfile, string> = {
   aggressive: "높은 수익을 추구하며 큰 가격 변동과 손실 가능성을 감수하는 공격투자형입니다.",
 };
 
-const GRADE_ROWS: Array<{ label: string; flexFilled: number; flexEmpty: number; width: string; barColor: string; labelColor: string; highlight?: boolean }> = [
+// 강조 행은 진단 결과(profileLabel)로 결정한다. 고정 강조값을 두지 않는다.
+const GRADE_ROWS: Array<{ label: string; flexFilled: number; flexEmpty: number; width: string; barColor: string; labelColor: string }> = [
   { label: "안정형", flexFilled: 1, flexEmpty: 5, width: "16%", barColor: "#22A94D", labelColor: "#166F39" },
   { label: "안정추구형", flexFilled: 2, flexEmpty: 4, width: "80%", barColor: "#7FC24A", labelColor: "#5E9A2E" },
   { label: "위험중립형", flexFilled: 3, flexEmpty: 3, width: "87%", barColor: "#FDC526", labelColor: "#B7791F" },
   { label: "적극투자형", flexFilled: 5, flexEmpty: 1, width: "92%", barColor: "#F08A3C", labelColor: "#C4661E" },
-  { label: "공격투자형", flexFilled: 6, flexEmpty: 0, width: "96%", barColor: "#E0453A", labelColor: "#C0392B", highlight: true },
+  { label: "공격투자형", flexFilled: 6, flexEmpty: 0, width: "96%", barColor: "#E0453A", labelColor: "#C0392B" },
 ];
 
 const CHART_BARS: Array<{ heightPct: number; dotColor: string; barBg: string; final?: boolean }> = [
@@ -176,9 +177,9 @@ export function InvestorResultScreen({ assessment, displayName, onBack, onStart 
       </div>
 
       <div className="irs-footer">
-        <div className="irs-start" onClick={onStart}>
+        <button type="button" className="irs-start" onClick={onStart}>
           서비스 시작하기
-        </div>
+        </button>
       </div>
     </div>
   );

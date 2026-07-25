@@ -15,6 +15,7 @@ import {
   getInvestmentProfile,
   getMyPensionAccounts,
   getMyPensionContext,
+  withoutDemoNameMarker,
 } from "./api/client";
 import type {
   AggregationEvaluation,
@@ -231,7 +232,7 @@ function AppRoutes(): JSX.Element {
   const metadataName = metadata?.nickname ?? metadata?.name;
   const email = auth.session?.user.email ?? "";
   const displayName = typeof metadataName === "string" && metadataName.trim()
-    ? metadataName.replace(/\(가상\)/g, "").trim()
+    ? withoutDemoNameMarker(metadataName)
     : email.replace("@kda-demo.invalid", "") || "인증 사용자";
   if (
     auth.configured

@@ -21,7 +21,8 @@
      신규·수정 화면은 이 변수(또는 .app-phone-stage/.app-phone-frame)를
      반드시 재사용하고, 프레임 치수를 개별 값으로 하드코딩하지 않는다.
      강제 규칙: frontend/AGENTS.md·CLAUDE.md, 검증: PhoneFrameContract 테스트. */
-  --phone-frame-width: min(100%, 390px);
+  --phone-frame-max-width: 390px;
+  --phone-frame-width: min(100%, var(--phone-frame-max-width));
   --phone-frame-height: min(844px, calc(100dvh - 80px));
   --phone-frame-min-height: 640px;
   --phone-frame-radius: 44px;

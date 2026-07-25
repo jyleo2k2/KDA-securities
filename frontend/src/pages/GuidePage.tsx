@@ -26,6 +26,7 @@ import {
   getMyPensionAccounts,
   updateRebalancingReminder,
   completeRebalancingReview,
+  withoutDemoNameMarker,
 } from "../api/client";
 import { RebalancingReminderCard } from "../components/RebalancingReminderCard";
 import { ChatVisualization } from "../components/ChatVisualization";
@@ -511,7 +512,7 @@ function AssistantMessage({
     && educationalProfileLabel
     && educationalEvaluation?.strategy_label
   )
-    ? `${userName.replace(/\(가상\)/g, "")}님의 투자성향(${educationalProfileLabel})에 가장 적합한 투자전략은 ${educationalEvaluation.strategy_label}입니다.`
+    ? `${userName}님의 투자성향(${educationalProfileLabel})에 가장 적합한 투자전략은 ${educationalEvaluation.strategy_label}입니다.`
     : undefined;
   const isPensionTaxCredit = (
     response.intent === "pension_tax"
@@ -1529,7 +1530,7 @@ export function GuidePage({
           <p className="sidebar-label">내 연금계좌</p>
           {userContext ? (
             <div className="user-context-card">
-              <strong>{userContext.nickname.replace(/\(가상\)/g, "")}</strong>
+              <strong>{userContext.nickname}</strong>
               <span>{userContext.scenario_name}</span>
               <small>
                 총 연금자산 {Number(userContext.total_pension_balance_krw).toLocaleString("ko-KR")}원
@@ -1694,7 +1695,7 @@ export function GuidePage({
                 <span className="design-brand-mark">연</span>
                 <strong>연그미</strong>
               </div>
-              <h1>{(userContext?.nickname ?? selectedScenarioData?.name ?? "고객").replace(/\(가상\)/g, "")}님 ! 막막한 노후 준비, <em><br />연그미</em>와 대화하며 풀어보세요.</h1>
+              <h1>{userContext?.nickname ?? selectedScenarioData?.name ?? "고객"}님 ! 막막한 노후 준비, <em><br />연그미</em>와 대화하며 풀어보세요.</h1>
 
               {/* 정민재 박스는 로그인 컨텍스트로 즉시 채워진다. 리밸런싱 카드는 API 응답이 늦으므로 로딩 중 같은 골격의 스켈레톤으로 자리를 잡아 아래 추천 질문이 밀리지 않게 한다. */}
               <div className="welcome-intro-cards">
@@ -1763,7 +1764,7 @@ export function GuidePage({
                     userContext?.nickname
                     ?? (
                       typeof auth.session?.user?.user_metadata?.name === "string"
-                        ? auth.session.user.user_metadata.name
+                        ? withoutDemoNameMarker(auth.session.user.user_metadata.name)
                         : null
                     )
                   }

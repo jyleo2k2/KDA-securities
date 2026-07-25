@@ -30,6 +30,7 @@ vi.mock("./api/client", () => ({
   getInvestmentProfile: vi.fn(),
   getMyPensionAccounts: vi.fn(),
   getMyPensionContext: vi.fn(),
+  withoutDemoNameMarker: (value: string) => value.replace(/\(가상\)/g, "").trim(),
 }));
 vi.mock("./auth/useSupabaseAuth", () => ({ useSupabaseAuth: vi.fn() }));
 vi.mock("./pages/MainHomeScreen", () => ({
