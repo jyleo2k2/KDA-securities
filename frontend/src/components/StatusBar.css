@@ -71,9 +71,12 @@
 .ios-statusbar.desktop-preview-status {
   position: fixed;
   z-index: 100;
-  top: calc((100dvh - min(844px, calc(100dvh - 80px))) / 2);
+  /* 무대 중앙에 놓인 폰 프레임 상단에 맞춘다. 치수는 index.css --phone-frame-* SSOT 를 따른다. */
+  top: calc((100dvh - var(--phone-frame-height)) / 2);
   left: 50%;
-  width: 390px;
+  /* fixed 라 컨테이너가 없다. --phone-frame-width 의 min(100%, …) 은 여기서 뷰포트 기준이 되어
+     프레임보다 넓어지므로, 같은 SSOT 상한값만 쓴다. 480px 이하는 아래 미디어쿼리가 100% 로 덮는다. */
+  width: var(--phone-frame-max-width);
   transform: translateX(-50%);
   background: rgba(247, 248, 249, .92);
   backdrop-filter: blur(18px);

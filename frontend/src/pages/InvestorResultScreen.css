@@ -50,7 +50,7 @@
 .irs-grade-row-bar { height: 8px; border-radius: 99px; }
 
 .irs-footer { flex: none; padding: 12px 18px 26px; border-top: 1px solid #F1F2F4; }
-.irs-start { background: #22A94D; border-radius: 16px; height: 54px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 8px 20px rgba(34, 169, 77, .28); font-size: 16px; font-weight: 800; color: #fff; transition: transform .16s cubic-bezier(.23,1,.32,1), filter .18s ease; }
+.irs-start { width: 100%; border: 0; font-family: inherit; background: #22A94D; border-radius: 16px; height: 54px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 8px 20px rgba(34, 169, 77, .28); font-size: 16px; font-weight: 800; color: #fff; transition: transform .16s cubic-bezier(.23,1,.32,1), filter .18s ease; }
 .irs-start:active { transform: scale(.98); }
 @media (hover: hover) and (pointer: fine) { .irs-start:hover { filter: brightness(0.98); } }
 

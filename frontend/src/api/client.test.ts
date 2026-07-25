@@ -19,6 +19,7 @@ import {
   getDemoHeroes,
   getMyPensionAccounts,
   getMyPensionContext,
+  getScenarios,
   getStoredChatMessages,
   sendAuthenticatedChatStream,
 } from "./client";
@@ -228,6 +229,18 @@ describe("demo customer display names", () => {
 
     expect(heroes[0]?.nickname).toBe("박준호");
     expect(context.nickname).toBe("이서연");
+  });
+
+  // 화면단 .replace 를 제거했으므로 시나리오 이름도 이 경계에서 씻겨야 한다.
+  it("removes the demo marker from scenario names", async () => {
+    auth.getSession.mockResolvedValue({ data: { session: { access_token: "access-token" } } });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([{ code: "dc_dormant", name: "박준호(가상)" }])),
+    ));
+
+    const scenarios = await getScenarios("access-token");
+
+    expect(scenarios[0]?.name).toBe("박준호");
   });
 
   it("removes the demo marker from stored chat salutations", async () => {

@@ -158,6 +158,7 @@
           <span class="step">investor-result<small>성향 결과</small></span>
         </div>
         <div class="gate-cond">노출 조건: <code>auth.configured &amp;&amp; (!accessToken || loginSuccessPending || resurveyPending)</code> — 즉 미로그인 · 로그인 직후 · 성향 재진단 시. 재진단이면 <code>investor-info</code>부터 시작.</div>
+        <div class="gate-cond">저장된 투자성향이 있고 만료 전이면 로그인 직후 <code>#/main-home</code>으로 바로 이동한다. 단 설문을 막 마치고 <code>investor-result</code>를 보는 중에는 <code>reviewingAssessment</code>가 이 자동 이동을 막고, 사용자가 <b>“서비스 시작하기”</b>를 눌러야 홈으로 넘어간다.</div>
       </div>
       <div class="conn">↓ <b>“서비스 시작하기 / 나중에 할게요”</b> (onStart)</div>
       <div class="tier">

@@ -15,6 +15,7 @@ import {
   getInvestmentProfile,
   getMyPensionAccounts,
   getMyPensionContext,
+  withoutDemoNameMarker,
 } from "./api/client";
 import type {
   AggregationEvaluation,
@@ -101,6 +102,9 @@ function AppRoutes(): JSX.Element {
   const navigate = useNavigate();
   const [loginSuccessPending, setLoginSuccessPending] = useState(false);
   const [resurveyPending, setResurveyPending] = useState(false);
+  // 설문 직후 결과 화면을 보는 중에는 성향이 채워져도 홈으로 자동 이동하지 않는다.
+  // 이동은 사용자가 "서비스 시작하기"를 눌러 goToMainHome 이 실행될 때만 일어난다.
+  const [reviewingAssessment, setReviewingAssessment] = useState(false);
   const [selectedScenarioCode, setSelectedScenarioCode] = useState(
     selectedScenarioFromStorage,
   );
@@ -130,10 +134,15 @@ function AppRoutes(): JSX.Element {
   }, [auth.session]);
 
   useEffect(() => {
-    if (!loginSuccessPending || resurveyPending || currentUserData.loading) return;
+    if (
+      !loginSuccessPending
+      || resurveyPending
+      || reviewingAssessment
+      || currentUserData.loading
+    ) return;
     const assessment = currentUserData.investmentProfile?.assessment;
     if (assessment && !assessment.is_expired) { setLoginSuccessPending(false); navigate("/main-home"); }
-  }, [loginSuccessPending, resurveyPending, currentUserData.loading, currentUserData.investmentProfile, navigate]);
+  }, [loginSuccessPending, resurveyPending, reviewingAssessment, currentUserData.loading, currentUserData.investmentProfile, navigate]);
   useEffect(() => {
     if (auth.loading) return;
     const previous = previousAuthRef.current;
@@ -203,11 +212,13 @@ function AppRoutes(): JSX.Element {
   function goToMainHome(): void {
     setLoginSuccessPending(false);
     setResurveyPending(false);
+    setReviewingAssessment(false);
     navigate("/main-home");
   }
   function handleProfileSaved(
     investmentProfile: InvestmentProfileResponse,
   ): void {
+    setReviewingAssessment(true);
     setCurrentUserData((previous) => ({ ...previous, investmentProfile }));
   }
   async function handleSignOut(): Promise<void> {
@@ -220,6 +231,7 @@ function AppRoutes(): JSX.Element {
     mainHomeScrollTopRef.current = 0;
     setLoginSuccessPending(false);
     setResurveyPending(false);
+    setReviewingAssessment(false);
     navigate("/login");
     await auth.signOut();
   }
@@ -231,7 +243,7 @@ function AppRoutes(): JSX.Element {
   const metadataName = metadata?.nickname ?? metadata?.name;
   const email = auth.session?.user.email ?? "";
   const displayName = typeof metadataName === "string" && metadataName.trim()
-    ? metadataName.replace(/\(가상\)/g, "").trim()
+    ? withoutDemoNameMarker(metadataName)
     : email.replace("@kda-demo.invalid", "") || "인증 사용자";
   if (
     auth.configured

@@ -30,6 +30,7 @@ vi.mock("./api/client", () => ({
   getInvestmentProfile: vi.fn(),
   getMyPensionAccounts: vi.fn(),
   getMyPensionContext: vi.fn(),
+  withoutDemoNameMarker: (value: string) => value.replace(/\(가상\)/g, "").trim(),
 }));
 vi.mock("./auth/useSupabaseAuth", () => ({ useSupabaseAuth: vi.fn() }));
 vi.mock("./pages/MainHomeScreen", () => ({
@@ -73,8 +74,24 @@ vi.mock("./pages/MainHomeScreen", () => ({
   ),
 }));
 vi.mock("./pages/LoginFlowPage", () => ({
-  LoginFlowPage: ({ onStart }: { onStart: () => void }) => (
-    <button type="button" onClick={onStart}>시작</button>
+  LoginFlowPage: ({ onAuthenticated, onProfileSaved, onStart }: {
+    onAuthenticated: () => void;
+    onProfileSaved: (profile: InvestmentProfileResponse) => void;
+    onStart: () => void;
+  }) => (
+    <>
+      <button type="button" onClick={onAuthenticated}>로그인 완료</button>
+      <button
+        type="button"
+        onClick={() => onProfileSaved({
+          assessment: { risk_profile: "active", is_expired: false },
+          preferences: null,
+        } as InvestmentProfileResponse)}
+      >
+        설문 저장
+      </button>
+      <button type="button" onClick={onStart}>시작</button>
+    </>
   ),
 }));
 vi.mock("./pages/GuidePage", () => ({ GuidePage: () => <main>챗</main> }));
@@ -109,6 +126,17 @@ function setUser(id: string, token: string): void {
         user_metadata: { nickname: id, representative_age: 35 },
       },
     },
+    loading: false,
+    configured: true,
+    error: null,
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+  } as unknown as ReturnType<typeof useSupabaseAuth>;
+}
+
+function signOut(): void {
+  authState = {
+    session: null,
     loading: false,
     configured: true,
     error: null,
@@ -201,5 +229,37 @@ describe("App owned pension data", () => {
     fireEvent.click(await screen.findByRole("button", { name: "계산기 뒤로 가기" }));
 
     expect(await screen.findByTestId("home-scroll-top")).toHaveTextContent("384");
+  });
+
+  it("sends an owner with a saved profile straight to the home screen", async () => {
+    vi.mocked(getMyPensionAccounts).mockResolvedValue(portfolioA);
+    signOut();
+    const view = render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "로그인 완료" }));
+    setUser("user-a", "token-a");
+    view.rerender(<App />);
+
+    expect(await screen.findByText("user-a:60000000")).toBeInTheDocument();
+  });
+
+  it("keeps the assessment result visible until the owner starts the service", async () => {
+    vi.mocked(getMyPensionAccounts).mockResolvedValue(portfolioA);
+    vi.mocked(getInvestmentProfile).mockResolvedValue({
+      assessment: null,
+      preferences: null,
+    } as InvestmentProfileResponse);
+    signOut();
+    const view = render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "로그인 완료" }));
+    setUser("user-a", "token-a");
+    view.rerender(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "설문 저장" }));
+
+    expect(screen.queryByText("user-a:60000000")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+
+    expect(await screen.findByText("user-a:60000000")).toBeInTheDocument();
   });
 });

@@ -497,11 +497,18 @@ export function MainHomeScreen({
 
       {infoOpen && (
         <div className="mhs-sheet-overlay">
-          <div className="mhs-sheet-backdrop" onClick={() => setInfoOpen(false)} />
+          <div className="mhs-sheet-backdrop" onClick={() => setInfoOpen(false)} aria-hidden="true" />
           <div className="mhs-sheet">
             <div className="mhs-sheet-header">
               <span className="mhs-sheet-title">포트폴리오</span>
-              <span className="mhs-sheet-close" onClick={() => setInfoOpen(false)}>✕</span>
+              <button
+                type="button"
+                className="mhs-sheet-close"
+                onClick={() => setInfoOpen(false)}
+                aria-label="포트폴리오 안내 닫기"
+              >
+                ✕
+              </button>
             </div>
             <div className="mhs-sheet-body">
               <ul className="mhs-sheet-list">

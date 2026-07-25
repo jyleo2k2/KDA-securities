@@ -71,7 +71,9 @@ export interface ChatStreamResult {
   idempotency_replayed?: boolean;
 }
 
-function withoutDemoNameMarker(value: string): string {
+// 표시 이름 세척의 단일 지점. REST 응답은 아래 헬퍼들이 이미 통과시키므로 화면에서 다시 지우지
+// 않는다. Supabase Auth 의 user_metadata 처럼 이 모듈을 거치지 않는 값만 직접 호출한다.
+export function withoutDemoNameMarker(value: string): string {
   return value.replace(/\(가상\)/g, "").trim();
 }
 
@@ -269,8 +271,14 @@ async function apiPostStream<TBody>(
   return result;
 }
 
-export function getScenarios(accessToken: string): Promise<ScenarioSummary[]> {
-  return apiGet("/chat/scenarios", accessToken);
+export async function getScenarios(
+  accessToken: string,
+): Promise<ScenarioSummary[]> {
+  const scenarios = await apiGet<ScenarioSummary[]>("/chat/scenarios", accessToken);
+  return scenarios.map((scenario) => ({
+    ...scenario,
+    name: withoutDemoNameMarker(scenario.name),
+  }));
 }
 
 export function getChatCards(): Promise<ChatCardCatalog> {

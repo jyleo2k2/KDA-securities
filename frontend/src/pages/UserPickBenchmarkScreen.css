@@ -10,7 +10,7 @@
 
 .benchmark-html-frame {
   display: block;
-  width: 390px;
+  width: var(--phone-frame-max-width);
   height: 100%;
   border: 0;
 }
