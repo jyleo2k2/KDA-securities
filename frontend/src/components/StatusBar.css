@@ -65,6 +65,9 @@
   display: block;
 }
 
+/* 상단바 아이콘의 전역 svg stroke 차단은 StatusBar.tsx 의 인라인 style 이 담당한다
+   (전역 요소 선택자를 확실히 이기고 테스트로 검증 가능). */
+
 .ios-statusbar.desktop-preview-status {
   position: fixed;
   z-index: 100;
