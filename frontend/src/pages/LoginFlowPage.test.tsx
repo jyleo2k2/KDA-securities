@@ -194,18 +194,23 @@ describe("LoginFlowPage", () => {
     expect(getAccountLinkOptions).toHaveBeenCalledTimes(2);
   });
 
-  it("publishes the saved profile to the app immediately after resurvey", async () => {
+  it("shows the assessment result before entering the app", async () => {
     auth = {
       ...auth,
       session: { access_token: "access-token", user: { id: "user-1" } },
     } as SupabaseAuthState;
-    render(<LoginFlowPage auth={auth} onAuthenticated={onAuthenticated} onProfileSaved={onProfileSaved} onStart={onStart} resurvey />);
+    const { container } = render(<LoginFlowPage auth={auth} displayName="이정수" onAuthenticated={onAuthenticated} onProfileSaved={onProfileSaved} onStart={onStart} resurvey />);
 
     fireEvent.click(screen.getByRole("button", { name: "투자 성향 진단받기" }));
     fireEvent.click(screen.getByRole("button", { name: "테스트 설문 저장" }));
 
     await waitFor(() => expect(saveInvestmentProfile).toHaveBeenCalledWith(expect.any(Object), "access-token"));
     expect(onProfileSaved).toHaveBeenCalledWith(savedProfile);
+    expect(await screen.findByText("이정수님의 투자성향은")).toBeInTheDocument();
+    expect(container.querySelector(".irs-type")).toHaveTextContent("공격투자형 입니다.");
+    expect(onStart).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "서비스 시작하기" }));
     expect(onStart).toHaveBeenCalledOnce();
   });
 });

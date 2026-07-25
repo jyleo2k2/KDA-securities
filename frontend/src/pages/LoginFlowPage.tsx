@@ -37,7 +37,7 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
   const [linkOptions, setLinkOptions] = useState<AccountLinkOptionsResponse | null>(null);
   const [linkOptionsLoading, setLinkOptionsLoading] = useState(false);
   const [linkOptionsError, setLinkOptionsError] = useState<string | null>(null);
-  const [assessment] = useState<InvestmentProfileAssessment | null>(null);
+  const [assessment, setAssessment] = useState<InvestmentProfileAssessment | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -61,8 +61,10 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
     if (!accessToken) throw new Error("authenticated session is missing");
     const response = await saveInvestmentProfile(submission, accessToken);
     if (response.assessment === null) throw new Error("saved assessment is missing");
+    // 결과 화면을 먼저 보여주고, 홈 이동은 사용자가 "서비스 시작하기"를 누를 때 onStart 로 진행한다.
+    setAssessment(response.assessment);
+    setStep("investor-result");
     onProfileSaved(response);
-    onStart();
   }
 
   function openConsent(): void {
