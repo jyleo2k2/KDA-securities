@@ -13,6 +13,7 @@ import httpx
 
 OFFICIAL_ETF_DISTRIBUTION_RAW_BUCKET = "official-etf-distribution-raw"
 OFFICIAL_ETF_UNIVERSE_REFERENCE_RAW_BUCKET = "official-etf-universe-reference-raw"
+OFFICIAL_ETF_UNIVERSE_CACHE_BUCKET = "official-etf-universe-cache"
 RAW_RETENTION_DAYS = 365
 MAX_DELETE_PATHS_PER_REQUEST = 1000
 

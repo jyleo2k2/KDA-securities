@@ -1,0 +1,29 @@
+name: ETF universe operational-cache integrity
+
+on:
+  schedule:
+    # Monthly integrity check: second day of each month, 07:20 KST.
+    - cron: "20 22 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: etf-universe-operational-cache-integrity
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: Materialize and hash-verify the latest operational cache
+        run: uv run python scripts/restore_etf_universe_cache.py --apply

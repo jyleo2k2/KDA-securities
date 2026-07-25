@@ -12,10 +12,12 @@ from backend.app.ingestion.etf_distribution_refresh import (
 )
 from backend.app.ingestion.official_raw_storage import (
     OFFICIAL_ETF_DISTRIBUTION_RAW_BUCKET,
+    OFFICIAL_ETF_UNIVERSE_CACHE_BUCKET,
     OFFICIAL_ETF_UNIVERSE_REFERENCE_RAW_BUCKET,
     OfficialRawStorage,
     build_raw_run_manifest,
 )
+from scripts.archive_etf_universe_cache import prepare_operational_cache_snapshot
 
 
 def _confirmed(day: str) -> dict[str, str]:
@@ -378,3 +380,81 @@ def test_private_raw_storage_materializes_only_a_hash_verified_current_run(
     assert (
         tmp_path / "materialized" / "kis-retirement-list" / "retirement.xlsx"
     ).read_bytes() == b"verified-official-workbook"
+
+
+def test_operational_cache_snapshot_keeps_only_latest_required_files(tmp_path) -> None:
+    cache_root = tmp_path / "cache"
+    required = {
+        "returns": (
+            "dc_etf_cost_return_2026-07-22.json",
+            "dc_etf_cost_return_2026-07-23.json",
+            "irp_etf_cost_return_2026-07-23.json",
+            "pension_savings_etf_cost_return_2026-07-23.json",
+            "pension_etf_cost_return_master_2026-07-23.json",
+        ),
+        "events": ("etf_corporate_events_2026-07-20.json",),
+        "kis": (
+            "etf_snapshot_2026-07-23.json",
+            "adjusted_price_master_2026-07-23.json",
+        ),
+    }
+    for section, filenames in required.items():
+        directory = cache_root / section
+        directory.mkdir(parents=True)
+        for filename in filenames:
+            (directory / filename).write_text(filename, encoding="utf-8")
+
+    snapshot_root = tmp_path / "snapshot"
+    selected = prepare_operational_cache_snapshot(
+        cache_root=cache_root,
+        snapshot_root=snapshot_root,
+    )
+
+    assert [path.relative_to(snapshot_root).as_posix() for path in selected] == [
+        "returns/dc_etf_cost_return_2026-07-23.json",
+        "returns/irp_etf_cost_return_2026-07-23.json",
+        "returns/pension_savings_etf_cost_return_2026-07-23.json",
+        "returns/pension_etf_cost_return_master_2026-07-23.json",
+        "events/etf_corporate_events_2026-07-20.json",
+        "kis/etf_snapshot_2026-07-23.json",
+        "kis/adjusted_price_master_2026-07-23.json",
+    ]
+
+
+def test_operational_cache_snapshot_requires_every_audit_input(tmp_path) -> None:
+    with pytest.raises(ValueError, match="required ETF cache file"):
+        prepare_operational_cache_snapshot(
+            cache_root=tmp_path / "missing",
+            snapshot_root=tmp_path / "snapshot",
+        )
+
+
+def test_private_operational_cache_uses_the_server_only_bucket(tmp_path) -> None:
+    source = tmp_path / "cache.json"
+    source.write_bytes(b"verified-cache")
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={"Key": "stored"})
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        storage = OfficialRawStorage(
+            supabase_url="https://example.test",
+            service_key="server-only-key",
+            bucket_name=OFFICIAL_ETF_UNIVERSE_CACHE_BUCKET,
+            client=client,
+        )
+        manifest = storage.upload_run(
+            run_id="20260724T010203Z",
+            files={"cache": source},
+            collected_at=datetime(2026, 7, 24, 1, 2, 3, tzinfo=UTC),
+        )
+        storage.promote_current_run(
+            dataset="etf-universe-operational-cache", manifest=manifest
+        )
+
+    assert all(
+        OFFICIAL_ETF_UNIVERSE_CACHE_BUCKET in str(request.url)
+        for request in requests
+    )
