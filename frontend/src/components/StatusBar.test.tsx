@@ -51,5 +51,15 @@ describe("StatusBar", () => {
     const { container } = render(<StatusBar />);
     const outline = container.querySelector(".ios-statusbar-battery rect[stroke]");
     expect(outline?.getAttribute("stroke-width")).toBe("1");
+    expect(outline?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+  });
+
+  it("상태 아이콘은 화면 배율이 달라도 정밀한 도형으로 렌더링한다", () => {
+    const { container } = render(<StatusBar />);
+    const icons = container.querySelectorAll(".ios-statusbar-icons svg");
+    expect(icons).toHaveLength(3);
+    icons.forEach((icon) => {
+      expect(icon.getAttribute("shape-rendering")).toBe("geometricPrecision");
+    });
   });
 });
