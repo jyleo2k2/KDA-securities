@@ -51,6 +51,9 @@ from .graceful_decline import GracefulDeclineKind, graceful_decline
 
 logger = logging.getLogger(__name__)
 
+_OUTCOME_READER_LIMIT = 300
+_OUTCOME_CARD_ROW_LIMIT = 12
+
 _NEWS_SCOPE_MESSAGES = {
     NewsScopeNotice.UNSUPPORTED_MARKET: (
         "해당 국가 증시 뉴스는 제공하지 않아요. 대신 한국·미국 증시 뉴스를 보여드려요."
@@ -702,7 +705,9 @@ def attach_event_strategy(
         data_boundary=DataBoundary.ENGINE,
     )
     outcome_rows = (
-        news_event_outcomes.list_for_theme_ids(tuple(dict.fromkeys(theme_ids)))
+        news_event_outcomes.list_for_theme_ids(
+            tuple(dict.fromkeys(theme_ids)), limit=_OUTCOME_READER_LIMIT
+        )
         if news_event_outcomes is not None and theme_ids
         else []
     )
@@ -784,9 +789,13 @@ def _historical_outcome_section(
             ),
             [],
         )
+    display_rows = _representative_outcome_rows(rows)
+    event_dates = [row.occurred_on for row in rows]
+    event_count = len({row.event_key for row in rows})
+    event_etf_pairs = len({(row.event_key, row.isu_code) for row in rows})
     sources: list[SourceEvidence] = []
     table_rows: list[list[str]] = []
-    for row in rows:
+    for row in display_rows:
         evidence_id = (
             f"news-event-outcome:{row.event_key}:{row.isu_code}:{row.horizon_months}"
         )
@@ -818,7 +827,11 @@ def _historical_outcome_section(
             title="과거 뉴스 이벤트 성과 검증",
             content=(
                 "아래는 과거 이벤트 뒤의 실현 총수익률과 최대낙폭입니다. "
-                "미래 수익 예측이나 자동 비중 변경에는 사용하지 않습니다."
+                f"검증 범위는 {min(event_dates).isoformat()}~"
+                f"{max(event_dates).isoformat()}의 공식 이벤트 {event_count}건, "
+                f"이벤트-ETF 쌍 {event_etf_pairs}건입니다. "
+                "표는 범위의 앞·뒤를 함께 보여 주는 대표 표본이며, 미래 수익 예측이나 "
+                "자동 비중 변경에는 사용하지 않습니다."
             ),
             evidence_ids=evidence_ids,
             blocks=[
@@ -839,6 +852,15 @@ def _historical_outcome_section(
         ),
         sources,
     )
+
+
+def _representative_outcome_rows(
+    rows: list[NewsEventOutcomeRecord],
+) -> list[NewsEventOutcomeRecord]:
+    if len(rows) <= _OUTCOME_CARD_ROW_LIMIT:
+        return rows
+    half_limit = _OUTCOME_CARD_ROW_LIMIT // 2
+    return [*rows[:half_limit], *rows[-half_limit:]]
 
 
 def news_follow_up_response(
