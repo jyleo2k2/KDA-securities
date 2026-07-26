@@ -35,6 +35,7 @@ interface MainHomeScreenProps {
   onOpenChat: () => void;
   onOpenPlanner: () => void;
   onOpenProfile: () => void;
+  onRequestPortfolioDiagnosis: () => void;
   onOpenSlangi: () => void;
   onScrollPositionChange?: (scrollTop: number) => void;
   onOpenStrategyExplore: () => void;
@@ -254,6 +255,7 @@ export function MainHomeScreen({
   onOpenChat,
   onOpenPlanner,
   onOpenProfile,
+  onRequestPortfolioDiagnosis,
   onOpenSlangi,
   onScrollPositionChange,
   onOpenStrategyExplore,
@@ -516,7 +518,7 @@ export function MainHomeScreen({
             <p className="mhs-summary-sub-label">현재 자산 비중 기준</p>
             <p className="mhs-summary-text">{buildPortfolioOneLineSummary(aggregation)}</p>
             <div className="mhs-summary-cta-row">
-              <button type="button" className="mhs-summary-cta mhs-summary-cta-button" onClick={onOpenChat}>내 포트폴리오 자세히 진단받기 <span className="mhs-summary-cta-chevron">›</span></button>
+              <button type="button" className="mhs-summary-cta mhs-summary-cta-button" onClick={onRequestPortfolioDiagnosis}>내 포트폴리오 자세히 진단받기 <span className="mhs-summary-cta-chevron">›</span></button>
             </div>
           </div>
         </div>

@@ -8,6 +8,7 @@ import {
   ApiError,
   getInvestmentProfile,
   getMyPensionAccounts,
+  getMyPensionContext,
 } from "./api/client";
 import type {
   InvestmentProfileResponse,
@@ -40,7 +41,9 @@ vi.mock("./pages/MainHomeScreen", () => ({
     initialScrollTop,
     investmentProfile,
     loading,
+    onOpenChat,
     onOpenPlanner,
+    onRequestPortfolioDiagnosis,
     onScrollPositionChange,
     portfolio,
   }: {
@@ -49,7 +52,9 @@ vi.mock("./pages/MainHomeScreen", () => ({
     initialScrollTop: number;
     investmentProfile: InvestmentProfileResponse | null;
     loading: boolean;
+    onOpenChat: () => void;
     onOpenPlanner: () => void;
+    onRequestPortfolioDiagnosis: () => void;
     onScrollPositionChange: (scrollTop: number) => void;
     portfolio: UserPensionPortfolio | null;
   }) => (
@@ -69,6 +74,10 @@ vi.mock("./pages/MainHomeScreen", () => ({
         }}
       >
         계산기 열기
+      </button>
+      <button type="button" onClick={onOpenChat}>일반 챗봇 열기</button>
+      <button type="button" onClick={onRequestPortfolioDiagnosis}>
+        포트폴리오 진단 열기
       </button>
     </main>
   ),
@@ -98,7 +107,25 @@ vi.mock("./pages/LoginFlowPage", () => ({
     </>
   ),
 }));
-vi.mock("./pages/GuidePage", () => ({ GuidePage: () => <main>챗</main> }));
+vi.mock("./pages/GuidePage", () => ({
+  GuidePage: ({
+    onPortfolioDiagnosisConsumed,
+    portfolioDiagnosisRequestId,
+  }: {
+    onPortfolioDiagnosisConsumed?: () => void;
+    portfolioDiagnosisRequestId?: string;
+  }) => (
+    <main>
+      챗
+      <span data-testid="portfolio-diagnosis-request">
+        {portfolioDiagnosisRequestId ?? "none"}
+      </span>
+      <button type="button" onClick={onPortfolioDiagnosisConsumed}>
+        진단 요청 소비
+      </button>
+    </main>
+  ),
+}));
 vi.mock("./pages/PensionPlannerPage", () => ({
   PensionPlannerPage: ({ onBack }: { onBack: () => void }) => (
     <button type="button" onClick={onBack}>계산기 뒤로 가기</button>
@@ -156,6 +183,7 @@ describe("App owned pension data", () => {
     setUser("user-a", "token-a");
     vi.mocked(useSupabaseAuth).mockImplementation(() => authState);
     vi.mocked(getInvestmentProfile).mockResolvedValue(savedProfile);
+    vi.mocked(getMyPensionContext).mockRejectedValue(new Error("연동 데이터 없음"));
     vi.mocked(aggregatePensionAccounts).mockResolvedValue({
       total_amount_krw: "60000000",
     } as never);
@@ -233,6 +261,31 @@ describe("App owned pension data", () => {
     fireEvent.click(await screen.findByRole("button", { name: "계산기 뒤로 가기" }));
 
     expect(await screen.findByTestId("home-scroll-top")).toHaveTextContent("384");
+  });
+
+  it("opens portfolio diagnosis with one-time guide state", async () => {
+    vi.mocked(getMyPensionAccounts).mockResolvedValue(portfolioA);
+    render(<App />);
+
+    await screen.findByText("user-a:60000000");
+    fireEvent.click(screen.getByRole("button", { name: "포트폴리오 진단 열기" }));
+
+    expect(await screen.findByText("챗")).toBeInTheDocument();
+    expect(screen.getByTestId("portfolio-diagnosis-request")).not.toHaveTextContent("none");
+
+    fireEvent.click(screen.getByRole("button", { name: "진단 요청 소비" }));
+    expect(screen.getByTestId("portfolio-diagnosis-request")).toHaveTextContent("none");
+  });
+
+  it("opens regular chat without a portfolio diagnosis request", async () => {
+    vi.mocked(getMyPensionAccounts).mockResolvedValue(portfolioA);
+    render(<App />);
+
+    await screen.findByText("user-a:60000000");
+    fireEvent.click(screen.getByRole("button", { name: "일반 챗봇 열기" }));
+
+    expect(await screen.findByText("챗")).toBeInTheDocument();
+    expect(screen.getByTestId("portfolio-diagnosis-request")).toHaveTextContent("none");
   });
 
   it("keeps an owner with a saved profile on the success screen until they start", async () => {
