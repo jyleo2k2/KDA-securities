@@ -119,8 +119,12 @@ def test_rebalancing_profile_restores_saved_engine_inputs() -> None:
             return stored if owner_id == OWNER_ID else None
 
     app.dependency_overrides[require_supabase_user_id] = lambda: OWNER_ID
-    app.dependency_overrides[get_optional_demo_user_context_repository] = ContextRepository
-    app.dependency_overrides[get_optional_investment_profile_repository] = ProfileRepository
+    app.dependency_overrides[get_optional_demo_user_context_repository] = (
+        ContextRepository
+    )
+    app.dependency_overrides[get_optional_investment_profile_repository] = (
+        ProfileRepository
+    )
     try:
         with TestClient(app) as client:
             response = client.get("/chat/rebalancing-profile")
