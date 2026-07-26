@@ -54,6 +54,9 @@ NARRATION_CACHE_VERSION = 4
 NARRATION_CACHE_PERSIST_DEBOUNCE_SECONDS = 5.0
 _NARRATION_CACHE_FILE_LOCK = threading.Lock()
 
+# 워밍업은 응답을 버리므로 서비스 모델과 무관하게 최저가 모델로 호출한다.
+PREWARM_MODEL = "claude-haiku-4-5"
+
 NARRATABLE_INTENTS = {
     ChatIntent.ACCOUNT_RULE,
     ChatIntent.MOCK_PORTFOLIO,
@@ -134,6 +137,9 @@ class ClaudeNarrator:
         self.agent: Agent[None, NarrationOutput] = self._build_agent()
 
     def _build_agent(self) -> Agent[None, NarrationOutput]:
+        return self._build_agent_for(self._model)
+
+    def _build_agent_for(self, model: str) -> Agent[None, NarrationOutput]:
         settings = AnthropicModelSettings(
             # 출력 길이는 시스템프롬프트의 문장 수 제한으로 관리한다.
             # max_tokens는 안전 상한일 뿐이며, 초과 절단 시 구조화 출력이
@@ -143,7 +149,7 @@ class ClaudeNarrator:
             anthropic_cache_instructions=True,
             anthropic_cache_tool_definitions=True,
         )
-        if not self._model.startswith("claude-haiku"):
+        if not model.startswith("claude-haiku"):
             # Haiku 계열은 adaptive thinking 미지원(400)이고, enabled(고정
             # 예산)는 매번 thinking을 강제 생성해 오히려 느리다(실측:
             # enabled 7.2초 vs OFF 3.6초, 2026-07-18). Haiku에서는 thinking을
@@ -155,7 +161,7 @@ class ClaudeNarrator:
             }
         return Agent(
             AnthropicModel(
-                self._model,
+                model,
                 provider=AnthropicProvider(api_key=self._api_key),
             ),
             output_type=NativeOutput(NarrationOutput),
@@ -172,9 +178,12 @@ class ClaudeNarrator:
         HTTP 클라이언트가 그 루프에 묶여 이후 요청 스레드의 호출이 멈춘다
         (TestClient 재현으로 확인). 실패해도 본 요청은 결정론 폴백으로
         동작하므로 경고만 남긴다.
+
+        워밍업은 프로세스·연결 초기화가 목적이라 답변 품질을 쓰지 않고
+        버린다. 그래서 서비스 모델과 무관하게 항상 최저가 모델로 호출한다.
         """
         try:
-            self._build_agent().run_sync(
+            self._build_agent_for(PREWARM_MODEL).run_sync(
                 "검증 답변:\n연금 코파일럿 내레이터 워밍업 호출이다.\n\n"
                 "제한사항:\n한 문장으로만 답한다."
             )
