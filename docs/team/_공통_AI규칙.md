@@ -42,6 +42,12 @@
 - 병합 후 claim을 release하고, 브랜치·워크트리 삭제는 `git-pr-cleanup`의 병합·조상·clean·ignored 파일 검증을 통과한 뒤 수행한다.
 - 세부 핫스팟과 작업 범위 조율은 `git-session-manager` 스킬의 로컬 claim 절차를 따른다. PR 본문 형식은 CI로 강제하지 않는다.
 
+### 2-2. 검증 체계 — 로컬 훅이 1차, CI는 한도 소진 상태
+
+- **GitHub Actions는 2026-07-26부터 무료 한도(월 2,000분) 소진으로 모든 실행이 실패한다.** 러너가 배정되지 않아 `runner_name`이 비어 있고 실행 스텝 0개로 3초 만에 끝난다. 코드·워크플로 문제가 아니다. CI red를 결함으로 보고하거나 재실행으로 되돌리려 하지 말고, PR 본문에 한도 소진 사실만 적는다. 다음 청구 주기 초기화 또는 총괄의 한도 상향까지 이 상태가 정상이다.
+- **CI를 대신하는 1차 게이트는 로컬 자동검증 훅이다.** `.claude/settings.json`과 로컬 `.codex/hooks.json`에 같은 검사가 걸려 있다: `.py` 편집 직후 `uv run ruff check <파일>`(PostToolUse), 턴 종료 시 변경 파일에 `.py`가 있으면 `uv run pytest -q`(Stop). 실패하면 턴이 차단되므로 백엔드 린트·회귀는 사람이 챙기지 않아도 막힌다.
+- **훅이 안 돌리는 것은 직접 돌린다.** 프론트는 훅 대상이 아니므로 `frontend/` 변경 PR은 `npm test`(vitest)와 `npm run build`(tsc + vite build)를 수동 실행하고 결과를 보고한다. 승인 RAG 코퍼스 검증(`uv run python scripts/ingest_knowledge.py --validate-only`)과 라우트·화면 지도 동기화도 CI 전용 검사였으므로 해당 파일을 바꾼 PR에서 직접 확인한다.
+
 ## 3. 너가 일하는 방식 (메타 규칙)
 1. 먼저 읽어라(추측 금지). 2. 계획 먼저 제시·승인. 3. 작게 쪼개라(한 번에 하나).
 4. 모르면 `TODO: 확인 필요`(환각 금지). 5. 검증하고 정직히 보고(테스트 실행 결과로). 6. 기존 스타일 따라라.
