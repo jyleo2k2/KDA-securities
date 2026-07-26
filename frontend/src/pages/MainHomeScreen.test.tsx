@@ -120,6 +120,14 @@ function renderHome(
 }
 
 describe("MainHomeScreen", () => {
+  it("메인 홈에 연금 KDA 브랜드명을 표시한다", () => {
+    const { container } = renderHome();
+
+    expect(screen.getByLabelText("연금 KDA 메인 홈")).toBeInTheDocument();
+    expect(container.querySelector(".mhs-header-title")).toHaveTextContent("연금 KDA");
+    expect(container.querySelector(".mhs-header-title-accent")).toHaveTextContent("KDA");
+  });
+
   it("shows the authenticated owner's engine aggregation", () => {
     renderHome();
 

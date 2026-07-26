@@ -385,13 +385,13 @@ export function MainHomeScreen({
 
   return (
     <main className="app-phone-stage mhs-stage">
-    <section className="app-phone-frame mhs-phone" aria-label="연금 도우미 메인 홈">
+    <section className="app-phone-frame mhs-phone" aria-label="연금 KDA 메인 홈">
     <div className="mhs-page">
       <StatusBar />
 
       <div className="mhs-header">
         <span className="mhs-header-dot" />
-        <span className="mhs-header-title">연금 <span className="mhs-header-title-accent">도우미</span></span>
+        <span className="mhs-header-title">연금 <span className="mhs-header-title-accent">KDA</span></span>
         <button type="button" className="mhs-profile-button" onClick={onOpenProfile} aria-label="프로필 열기">
           <img src={profileIcon} alt="" className="mhs-profile-icon" />
         </button>

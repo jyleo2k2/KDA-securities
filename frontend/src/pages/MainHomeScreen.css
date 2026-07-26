@@ -7,7 +7,11 @@
 .mhs-header { flex: none; display: flex; align-items: center; gap: 8px; padding: 14px 22px 0; }
 .mhs-header-dot { width: 22px; height: 22px; border-radius: 50%; display: inline-block; background-color: #18A860; }
 .mhs-header-title { font-size: 20px; font-weight: 900; color: #111; white-space: nowrap; }
-.mhs-header-title-accent { color: #FFD860; }
+.mhs-header-title-accent {
+  color: #FFD860;
+  font-family: "Cafe24SsurroundAir", Pretendard, -apple-system, sans-serif;
+  font-weight: 400;
+}
 .mhs-profile-button { margin-left: auto; padding: 0; border: 0; background: transparent; cursor: pointer; }
 .mhs-profile-icon { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; pointer-events: none; }
 

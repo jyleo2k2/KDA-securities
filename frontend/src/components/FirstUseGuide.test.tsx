@@ -333,6 +333,13 @@ function addUserPickFixture(
           </div>
           <div data-comparison>내 포트폴리오와 <span>비교</span></div>
           <div
+            data-comparison-table
+            style="border: 1px solid #EDEFF1; border-radius: 16px"
+          >
+            <span>구성종목</span>
+            <div>국내주식형</div>
+          </div>
+          <div
             data-open-detail
             style="background: #22A94D; border-radius: 14px; cursor: pointer"
           >
@@ -350,11 +357,16 @@ function addUserPickFixture(
     const sheetHeading = frameDocument.querySelector(
       "[data-sheet-heading]",
     ) as HTMLElement;
+    const comparisonTable = frameDocument.querySelector(
+      "[data-comparison-table]",
+    ) as HTMLElement;
     sheetHeading.getBoundingClientRect = () => rect(350, 22, 346, 64);
-    comparison.getBoundingClientRect = () => rect(470, 22, 346, 250);
+    comparison.getBoundingClientRect = () => rect(440, 22, 346, 28);
+    comparisonTable.getBoundingClientRect = () => rect(470, 22, 346, 250);
     detailButton.getBoundingClientRect = () => rect(760, 22, 346, 52);
     sheetHeading.scrollIntoView = vi.fn();
     comparison.scrollIntoView = vi.fn();
+    comparisonTable.scrollIntoView = vi.fn();
     detailButton.scrollIntoView = vi.fn();
     frameDocument.querySelector("[data-sheet-backdrop]")?.addEventListener(
       "click",
@@ -892,17 +904,13 @@ describe("FirstUseGuide", () => {
         name: "추천 포트폴리오를 하나씩 둘러보세요",
       }),
     ).toBeInTheDocument();
-    const recommendedHeading = userPickFrame.contentDocument!.querySelector(
-      "[data-recommendation-heading]",
+    const recommendedPortfolio = userPickFrame.contentDocument!.querySelector(
+      "[data-recommended-portfolio]",
     ) as HTMLElement;
-    const recommendationScroller = userPickFrame.contentDocument!.querySelector(
-      ".scrolly",
-    ) as HTMLElement;
-    expect(recommendationScroller.scrollTo).toHaveBeenCalledWith({
-      top: 467,
+    expect(recommendedPortfolio.scrollIntoView).toHaveBeenCalledWith({
+      block: "start",
       behavior: "smooth",
     });
-    expect(recommendedHeading.scrollIntoView).not.toHaveBeenCalled();
 
     fireEvent.click(userPickGuide.getByRole("button", {
       name: "내 비중과 비교하기",
@@ -915,12 +923,17 @@ describe("FirstUseGuide", () => {
     ).toBeInTheDocument();
     expect(
       userPickFrame.contentDocument?.querySelector<HTMLElement>(
-        "[data-sheet-heading]",
+        "[data-comparison-table]",
       )?.scrollIntoView,
     ).toHaveBeenCalledWith({
-      block: "start",
+      block: "center",
       behavior: "smooth",
     });
+    expect(
+      userPickGuide.getByRole("heading", {
+        name: "내 비중과 달라지는 부분을 비교해요",
+      }).closest("section"),
+    ).toHaveClass("is-top");
 
     fireEvent.click(userPickGuide.getByRole("button", {
       name: "운용 근거 보기",
@@ -951,8 +964,21 @@ describe("FirstUseGuide", () => {
       "[data-review-heading]",
     );
     expect(reviewHeading?.scrollIntoView).toHaveBeenCalledWith({
-      block: "start",
+      block: "center",
       behavior: "smooth",
+    });
+    expect(
+      userPickGuide.getByRole("heading", {
+        name: "따라한 이용자의 후기도 확인해요",
+      }).closest("section"),
+    ).toHaveClass("is-top");
+    expect(
+      userPickFrame.contentDocument?.querySelector(".fug-spotlight"),
+    ).toHaveStyle({
+      height: "216px",
+      left: "8px",
+      top: "562px",
+      width: "374px",
     });
 
     fireEvent.click(userPickGuide.getByRole("button", {
