@@ -101,11 +101,167 @@ describe("PensionPlannerPage", () => {
 
     await waitFor(() => expect(calculateCombinedPension).toHaveBeenCalledWith(
       expect.objectContaining({
+        contribution_end_age: 60,
         accounts: [
           expect.objectContaining({ account_id: "dc-1" }),
           expect.objectContaining({ account_id: "irp-1" }),
         ],
       }),
     ));
+  });
+
+  it("caps the default contribution end age at 65", async () => {
+    vi.mocked(calculateCombinedPension).mockResolvedValue({
+      headline: {},
+      yearly: [],
+      strategies: [],
+      tax: {},
+      assumption: {},
+      warnings: [],
+    } as never);
+    render(
+      <PensionPlannerPage
+        {...props}
+        aggregation={{ total_amount_krw: "40000000" } as never}
+        portfolio={{
+          owner_id: "owner-1",
+          data_boundary: "mock",
+          accounts: [
+            {
+              account_id: "dc-1",
+              account_name: "회사 DC",
+              account_type: "dc",
+              market_value_krw: "40000000",
+              holdings: [],
+            },
+          ] as never,
+        }}
+        profile={{ current_age: 64, risk_profile: "risk_neutral" }}
+      />,
+    );
+
+    const iframe = screen.getByTitle("예상 연금 계산 및 세액공제 확인") as HTMLIFrameElement;
+    window.dispatchEvent(new MessageEvent("message", {
+      data: { type: "pension-planner-ready" },
+      origin: window.location.origin,
+      source: iframe.contentWindow,
+    }));
+
+    await waitFor(() => expect(calculateCombinedPension).toHaveBeenCalledWith(
+      expect.objectContaining({ contribution_end_age: 65 }),
+    ));
+  });
+
+  it("forwards the calculated monthly payout to the calculator frame", async () => {
+    vi.mocked(calculateCombinedPension).mockResolvedValue({
+      headline: { monthly_payout_after_tax_krw: "1351219" },
+      yearly: [],
+      strategies: [],
+      tax: {},
+      assumption: {},
+      warnings: [],
+    } as never);
+    render(
+      <PensionPlannerPage
+        {...props}
+        aggregation={{ total_amount_krw: "40000000" } as never}
+        portfolio={{
+          owner_id: "owner-1",
+          data_boundary: "mock",
+          accounts: [
+            {
+              account_id: "dc-1",
+              account_name: "회사 DC",
+              account_type: "dc",
+              market_value_krw: "40000000",
+              holdings: [],
+            },
+          ] as never,
+        }}
+        profile={{ current_age: 35, risk_profile: "risk_neutral" }}
+      />,
+    );
+
+    const iframe = screen.getByTitle("예상 연금 계산 및 세액공제 확인") as HTMLIFrameElement;
+    const postMessage = vi.spyOn(iframe.contentWindow as Window, "postMessage");
+    window.dispatchEvent(new MessageEvent("message", {
+      data: { type: "pension-planner-ready" },
+      origin: window.location.origin,
+      source: iframe.contentWindow,
+    }));
+
+    await waitFor(() => expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          calculation: expect.objectContaining({
+            headline: expect.objectContaining({
+              monthly_payout_after_tax_krw: "1351219",
+            }),
+          }),
+        }),
+      }),
+      window.location.origin,
+    ));
+    postMessage.mockRestore();
+  });
+
+  it("forwards all ten investment theme strategies to the calculator frame", async () => {
+    vi.mocked(calculateCombinedPension).mockResolvedValue({
+      headline: {},
+      yearly: [],
+      strategies: [],
+      tax: {},
+      assumption: {},
+      warnings: [],
+    } as never);
+    render(
+      <PensionPlannerPage
+        {...props}
+        aggregation={{ total_amount_krw: "40000000" } as never}
+        portfolio={{
+          owner_id: "owner-1",
+          data_boundary: "mock",
+          accounts: [
+            {
+              account_id: "dc-1",
+              account_name: "회사 DC",
+              account_type: "dc",
+              market_value_krw: "40000000",
+              holdings: [],
+            },
+          ] as never,
+        }}
+        profile={{ current_age: 35, risk_profile: "risk_neutral" }}
+      />,
+    );
+
+    const iframe = screen.getByTitle("예상 연금 계산 및 세액공제 확인") as HTMLIFrameElement;
+    const postMessage = vi.spyOn(iframe.contentWindow as Window, "postMessage");
+    window.dispatchEvent(new MessageEvent("message", {
+      data: { type: "pension-planner-ready" },
+      origin: window.location.origin,
+      source: iframe.contentWindow,
+    }));
+
+    await waitFor(() => expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          themeStrategies: [
+            expect.objectContaining({ id: "market-beta", name: "시장 베타 전략" }),
+            expect.objectContaining({ id: "factor", name: "팩터 전략" }),
+            expect.objectContaining({ id: "theme", name: "테마 전략" }),
+            expect.objectContaining({ id: "topdown", name: "탑다운 전략" }),
+            expect.objectContaining({ id: "bottomup", name: "바텀업 전략" }),
+            expect.objectContaining({ id: "target", name: "타깃 전략" }),
+            expect.objectContaining({ id: "volatility", name: "변동성 관리 전략" }),
+            expect.objectContaining({ id: "longshort", name: "롱숏·시장중립 전략" }),
+            expect.objectContaining({ id: "eventdriven", name: "이벤트드리븐 전략" }),
+            expect.objectContaining({ id: "trend", name: "추세추종·글로벌 매크로 전략" }),
+          ],
+        }),
+      }),
+      window.location.origin,
+    ));
+    postMessage.mockRestore();
   });
 });

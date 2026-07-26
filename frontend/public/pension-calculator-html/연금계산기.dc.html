@@ -60,7 +60,34 @@
 
       <sc-if value="{{ tabPension }}" hint-placeholder-val="{{ true }}">
       <div>
-        <div style="background:#fff; border-radius:18px; padding:22px 20px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+        <div style="background:#fff; border-radius:18px; padding:24px 20px; margin-top:16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+          <div style="font-size:14.5px; font-weight:600; color:#6B7178;">{{ yearsText }} 뒤 예상 적립 자산</div>
+          <div style="display:inline-block; background:#FFF4D6; border-radius:12px; padding:8px 14px; margin-top:12px;">
+            <span style="font-size:27px; font-weight:800; color:#1E2124;">{{ assetText }}</span>
+          </div>
+          <div style="display:flex; height:14px; border-radius:99px; overflow:hidden; margin-top:22px; background:#EEF0F2;">
+            <div style="background:#22A94D; width:{{ principalPct }};"></div>
+            <div style="background:#FDC526; flex:1;"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-top:16px;">
+            <div>
+              <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;"><div style="width:9px;height:9px;border-radius:50%;background:#22A94D;"></div><span style="font-size:13.5px;color:#6B7178;font-weight:600;">적립 원금</span></div>
+              <div style="font-size:16px; font-weight:800;">{{ principalText }}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; justify-content:flex-end;"><div style="width:9px;height:9px;border-radius:50%;background:#FDC526;"></div><span style="font-size:13.5px;color:#6B7178;font-weight:600;">투자 수익</span></div>
+              <div style="font-size:16px; font-weight:800; color:#C79300;">{{ profitText }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#fff; border-radius:18px; padding:24px 20px; margin-top:16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+          <div style="font-size:14.5px; font-weight:600; color:#6B7178;">65세부터 25년간 예상 월 수령액</div>
+          <div style="font-size:24px; font-weight:800; margin-top:8px; color:#166F39;">{{ payoutText }}</div>
+          <div style="font-size:12.5px; color:#9AA0A6; font-weight:500; margin-top:10px; line-height:1.5;">예상 수익률이 유지된다고 가정한 참고 수치이며, 실제 수령액은 운용 성과에 따라 달라질 수 있어요.</div>
+        </div>
+
+        <div style="background:#fff; border-radius:18px; padding:22px 20px; margin-top:16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
           <div style="display:flex; align-items:center; gap:8px; margin-bottom:20px;">
             <div style="width:4px; height:18px; border-radius:2px; background:#22A94D;"></div>
             <span style="font-size:17px; font-weight:800;">입력 조건</span>
@@ -94,7 +121,7 @@
               <span style="font-size:15.5px; font-weight:600; color:#4A5058;">연금 납입 종료 시점</span>
               <span style="font-size:19px; font-weight:800;">{{ endAgeText }}</span>
             </div>
-            <input type="range" class="brand-range" min="55" max="70" step="1" value="{{ endAge }}" onInput="{{ onEndAge }}" style="--fill:{{ endAgeFill }};">
+            <input type="range" class="brand-range" min="55" max="65" step="1" value="{{ endAge }}" onInput="{{ onEndAge }}" style="--fill:{{ endAgeFill }};">
           </div>
 
           <div style="margin-bottom:24px;">
@@ -135,32 +162,6 @@
           </sc-if>
         </div>
 
-        <div style="background:#fff; border-radius:18px; padding:24px 20px; margin-top:16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
-          <div style="font-size:14.5px; font-weight:600; color:#6B7178;">{{ yearsText }} 뒤 예상 적립 자산</div>
-          <div style="display:inline-block; background:#FFF4D6; border-radius:12px; padding:8px 14px; margin-top:12px;">
-            <span style="font-size:27px; font-weight:800; color:#1E2124;">{{ assetText }}</span>
-          </div>
-          <div style="display:flex; height:14px; border-radius:99px; overflow:hidden; margin-top:22px; background:#EEF0F2;">
-            <div style="background:#22A94D; width:{{ principalPct }};"></div>
-            <div style="background:#FDC526; flex:1;"></div>
-          </div>
-          <div style="display:flex; justify-content:space-between; margin-top:16px;">
-            <div>
-              <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;"><div style="width:9px;height:9px;border-radius:50%;background:#22A94D;"></div><span style="font-size:13.5px;color:#6B7178;font-weight:600;">적립 원금</span></div>
-              <div style="font-size:16px; font-weight:800;">{{ principalText }}</div>
-            </div>
-            <div style="text-align:right;">
-              <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; justify-content:flex-end;"><div style="width:9px;height:9px;border-radius:50%;background:#FDC526;"></div><span style="font-size:13.5px;color:#6B7178;font-weight:600;">투자 수익</span></div>
-              <div style="font-size:16px; font-weight:800; color:#C79300;">{{ profitText }}</div>
-            </div>
-          </div>
-        </div>
-
-        <div style="background:#fff; border-radius:18px; padding:24px 20px; margin-top:16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
-          <div style="font-size:14.5px; font-weight:600; color:#6B7178;">65세부터 25년간 예상 월 수령액</div>
-          <div style="font-size:24px; font-weight:800; margin-top:8px; color:#166F39;">{{ payoutText }}</div>
-          <div style="font-size:12.5px; color:#9AA0A6; font-weight:500; margin-top:10px; line-height:1.5;">예상 수익률이 유지된다고 가정한 참고 수치이며, 실제 수령액은 운용 성과에 따라 달라질 수 있어요.</div>
-        </div>
       </div>
       </sc-if>
 
@@ -297,7 +298,22 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844},&quot;taxRateLow&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:16.5,&quot;min&quot;:0,&quot;max&quot;:20,&quot;step&quot;:0.1,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;세액공제율&quot;},&quot;taxRateHigh&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:13.2,&quot;min&quot;:0,&quot;max&quot;:20,&quot;step&quot;:0.1,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;세액공제율&quot;}}">
 class Component extends DCLogic {
-  state = { age:35, endAge:55, monthly:0, tab:'pension', salaryLow:true, paidP:0, paidI:0, isa:0, strategyId:null, accountId:'all', accounts:[], calculation:null };
+  state = {
+    age:35, endAge:55, monthly:0, tab:'pension', salaryLow:true, paidP:0, paidI:0, isa:0,
+    strategyId:null, themeId:'market-beta', accountId:'all', accounts:[], calculation:null,
+    themeStrategies:[
+      { id:'market-beta', name:'시장 베타 전략', implementation:'ETF로 구현 가능' },
+      { id:'factor', name:'팩터 전략', implementation:'ETF로 구현 가능' },
+      { id:'theme', name:'테마 전략', implementation:'ETF로 구현 가능' },
+      { id:'topdown', name:'탑다운 전략', implementation:'ETF로 구현 가능' },
+      { id:'bottomup', name:'바텀업 전략', implementation:'ETF·펀드로 구현 가능' },
+      { id:'target', name:'타깃 전략', implementation:'ETF·TDF로 구현 가능' },
+      { id:'volatility', name:'변동성 관리 전략', implementation:'ETF로 구현 가능' },
+      { id:'longshort', name:'롱숏·시장중립 전략', implementation:'계좌 적격 상품 확인 필요' },
+      { id:'eventdriven', name:'이벤트드리븐 전략', implementation:'계좌 적격 상품 확인 필요' },
+      { id:'trend', name:'추세추종·글로벌 매크로 전략', implementation:'계좌 적격 상품 확인 필요' },
+    ],
+  };
 
   constructor(props) {
     super(props);
@@ -306,11 +322,13 @@ class Component extends DCLogic {
       const payload = event.data.payload || {};
       this.setState({
         accounts: Array.isArray(payload.accounts) ? payload.accounts : [],
+        themeStrategies: Array.isArray(payload.themeStrategies) ? payload.themeStrategies : [],
         accountId: payload.accountId || 'all',
         age: Number(payload.age) || 35,
-        endAge: Number(payload.endAge) || 60,
+        endAge: Math.min(65, Number(payload.endAge) || 60),
         monthly: Number(payload.monthly) || 0,
         strategyId: payload.strategyId || null,
+        themeId: payload.themeId || 'market-beta',
         calculation: payload.calculation || null,
       });
     });
@@ -335,6 +353,7 @@ class Component extends DCLogic {
         endAge:next.endAge,
         monthly:next.accountId === 'all' ? 0 : next.monthly,
         strategyId:next.strategyId,
+        themeId:next.themeId,
       },
     }, window.location.origin);
   }
@@ -369,9 +388,10 @@ class Component extends DCLogic {
   pct(v, min, max) { return ((v - min) / (max - min) * 100).toFixed(1) + '%'; }
 
   renderVals() {
-    const { age, endAge, monthly, tab, salaryLow, paidP, paidI, isa, strategyId, accountId, accounts, calculation } = this.state;
-    const strategies = calculation?.strategies || [];
-    const strat = strategies.find(s => s.strategy_id === strategyId) || strategies.find(s => s.risk_profile === calculation?.selected_risk_profile) || strategies[0] || null;
+    const { age, endAge, monthly, tab, salaryLow, paidP, paidI, isa, strategyId, themeId, accountId, accounts, themeStrategies, calculation } = this.state;
+    const engineStrategies = calculation?.strategies || [];
+    const strat = engineStrategies.find(s => s.strategy_id === strategyId) || engineStrategies.find(s => s.risk_profile === calculation?.selected_risk_profile) || engineStrategies[0] || null;
+    const selectedTheme = themeStrategies.find(theme => theme.id === themeId) || themeStrategies[0] || null;
     const rate = Number(strat?.net_annual_return_percent || 0);
     const rLow = this.props.taxRateLow ?? 16.5;
     const rHigh = this.props.taxRateHigh ?? 13.2;
@@ -410,19 +430,19 @@ class Component extends DCLogic {
       currentBalanceText: this.fmt(Number(selectedAccount?.balance || 0)),
       ageText: age + '세', endAgeText: endAge + '세',
       monthlyText: (combinedAccount ? 0 : monthly).toLocaleString() + '만원',
-      ageFill: this.pct(age, 20, 64), endAgeFill: this.pct(endAge, 55, 70),
+      ageFill: this.pct(age, 20, 64), endAgeFill: this.pct(endAge, 55, 65),
       monthlyFill: this.pct(combinedAccount ? 0 : monthly, 0, 150),
       monthlyOpacity: combinedAccount ? 0.35 : 1,
       onAge: (e) => { const value=+e.target.value; this.setState({ age:value }, () => this.requestCalculation()); },
       onEndAge: (e) => { const value=+e.target.value; this.setState({ endAge:value }, () => this.requestCalculation()); },
       onMonthly: (e) => { if (combinedAccount) return; const value=+e.target.value; this.setState({ monthly:value }, () => this.requestCalculation()); },
-      strategies: strategies.filter(s => s.within_profile).map(s => ({
-        id: s.strategy_id,
-        name: s.presentation.display_name,
-        select: () => this.selectAndScroll('strategy', s.strategy_id, { strategyId:s.strategy_id }),
-        chipStyle: this.stratChip(s.strategy_id === strategyId),
+      strategies: themeStrategies.map(theme => ({
+        id: theme.id,
+        name: theme.name,
+        select: () => this.selectAndScroll('strategy', theme.id, { themeId:theme.id }),
+        chipStyle: this.stratChip(theme.id === themeId),
       })),
-      selEtf: strat?.presentation?.summary || '계좌와 투자성향을 불러오고 있어요.',
+      selEtf: selectedTheme?.implementation || '투자 전략을 불러오고 있어요.',
       selCma: '', selDiscount: '비용 차감 후', selRateText: strat ? rate.toFixed(2) + '%' : '-',
       selWarn: false, selEstimate: false,
 

@@ -11,6 +11,14 @@ import type {
   UserPensionPortfolio,
 } from "../api/types";
 import { plannerAccountOptions } from "../ownerPensionPortfolio";
+import { STRATEGIES } from "./strategyExplore/strategies";
+
+const MAX_CONTRIBUTION_END_AGE = 65;
+const PLANNER_THEME_STRATEGIES = STRATEGIES.map((strategy) => ({
+  id: strategy.id,
+  implementation: strategy.directness,
+  name: strategy.name,
+}));
 
 export interface PensionPlannerProfile {
   current_age: number;
@@ -23,6 +31,7 @@ interface PlannerRequest {
   endAge: number;
   monthly: number;
   strategyId: string | null;
+  themeId: string;
 }
 
 interface PensionPlannerPageProps {
@@ -51,9 +60,13 @@ export function PensionPlannerPage({
   const defaultRequest = useMemo<PlannerRequest>(() => ({
     accountId: "all",
     age: profile?.current_age ?? 35,
-    endAge: Math.min(70, Math.max(60, (profile?.current_age ?? 35) + 1)),
+    endAge: Math.min(
+      MAX_CONTRIBUTION_END_AGE,
+      Math.max(60, (profile?.current_age ?? 35) + 1),
+    ),
     monthly: 0,
     strategyId: null,
+    themeId: PLANNER_THEME_STRATEGIES[0].id,
   }), [profile?.current_age]);
   const currentRequestRef = useRef(defaultRequest);
 
@@ -78,6 +91,7 @@ export function PensionPlannerPage({
         type: "pension-planner-state",
         payload: {
           accounts: accountOptions,
+          themeStrategies: PLANNER_THEME_STRATEGIES,
           ...request,
           calculation: calculation
             ? { ...calculation, selected_risk_profile: profile?.risk_profile }
