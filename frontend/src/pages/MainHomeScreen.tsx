@@ -77,6 +77,7 @@ const PIE_INNER_RADIUS = 48;
 const PIE_LABEL_RADIUS = 63;
 const PIE_SELECT_OFFSET = 7;
 const STRATEGY_PLANNING_RETURN_RETRY_MS = 3_000;
+const PROMO_DRAG_START_THRESHOLD_PX = 5;
 const PROMO_DRAG_THRESHOLD_PX = 40;
 const STRATEGY_DRAG_THRESHOLD_PX = 5;
 
@@ -271,10 +272,12 @@ export function MainHomeScreen({
   const [promoTimerKey, setPromoTimerKey] = useState(0);
   const [selectedHolding, setSelectedHolding] = useState<number | null>(null);
   const [strategyPlanningReturns, setStrategyPlanningReturns] = useState<StrategyPlanningReturnEvaluation[] | null>(null);
+  const [isPromoDragging, setIsPromoDragging] = useState(false);
   const [isStrategyDragging, setIsStrategyDragging] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
   const promoTouchStartX = useRef<number | null>(null);
   const promoPointerDrag = useRef<{
+    moved: boolean;
     pointerId: number;
     startX: number;
   } | null>(null);
@@ -314,16 +317,36 @@ export function MainHomeScreen({
   const handlePromoPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if (event.pointerType !== "mouse" || event.button !== 0) return;
     promoPointerDrag.current = {
+      moved: false,
       pointerId: event.pointerId,
       startX: event.clientX,
     };
   };
-  const finishPromoPointerDrag = (event: ReactPointerEvent<HTMLElement>) => {
+  const handlePromoPointerMove = (event: ReactPointerEvent<HTMLElement>) => {
     const drag = promoPointerDrag.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    promoPointerDrag.current = null;
     const deltaX = event.clientX - drag.startX;
-    if (Math.abs(deltaX) < PROMO_DRAG_THRESHOLD_PX) return;
+    if (!drag.moved && Math.abs(deltaX) < PROMO_DRAG_START_THRESHOLD_PX) return;
+    if (!drag.moved) {
+      drag.moved = true;
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      setIsPromoDragging(true);
+    }
+    event.preventDefault();
+  };
+  const finishPromoPointerDrag = (
+    event: ReactPointerEvent<HTMLElement>,
+    cancelled = false,
+  ) => {
+    const drag = promoPointerDrag.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    promoPointerDrag.current = null;
+    setIsPromoDragging(false);
+    const deltaX = event.clientX - drag.startX;
+    if (cancelled || !drag.moved || Math.abs(deltaX) < PROMO_DRAG_THRESHOLD_PX) return;
     movePromo(deltaX < 0 ? 1 : -1);
   };
   const handleStrategyPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -419,7 +442,7 @@ export function MainHomeScreen({
 
       <div className="mhs-body" ref={bodyRef} onScroll={handleBodyScroll}>
         <section
-          className="mhs-promo-carousel"
+          className={`mhs-promo-carousel${isPromoDragging ? " is-dragging" : ""}`}
           aria-label="홈 추천 카드"
           aria-roledescription="캐러셀"
           tabIndex={0}
@@ -428,10 +451,10 @@ export function MainHomeScreen({
             if (event.key === "ArrowRight") movePromo(1);
           }}
           onPointerDown={handlePromoPointerDown}
+          onPointerMove={handlePromoPointerMove}
           onPointerUp={finishPromoPointerDrag}
-          onPointerCancel={() => {
-            promoPointerDrag.current = null;
-          }}
+          onPointerCancel={(event) => finishPromoPointerDrag(event, true)}
+          onDragStart={(event) => event.preventDefault()}
           onTouchStart={(event) => {
             promoTouchStartX.current = event.touches[0]?.clientX ?? null;
           }}
