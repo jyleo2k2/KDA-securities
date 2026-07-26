@@ -26,6 +26,7 @@ describe("StrategyDetailScreen", () => {
 
     render(<StrategyDetailScreen onBack={vi.fn()} />);
 
+    expect(document.querySelector(".sd-brand")).toHaveTextContent("연금 KDA");
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("팩터 전략");
     expect(screen.getByRole("heading", { name: "핵심 용어 풀이" })).toBeInTheDocument();
     expect(screen.getByText("팩터")).toBeInTheDocument();

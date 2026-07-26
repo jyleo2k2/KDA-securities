@@ -64,7 +64,7 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
 
         <header className="sd-header">
           <button type="button" className="sd-back" data-strategy-detail-back onClick={onBack} aria-label="뒤로 가기">‹</button>
-          <span className="sd-brand">연금 <em>도우미</em></span>
+          <span className="sd-brand">연금 <em>KDA</em></span>
         </header>
 
         <div className="sd-scroll">
