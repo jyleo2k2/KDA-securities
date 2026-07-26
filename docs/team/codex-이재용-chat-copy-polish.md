@@ -1,6 +1,6 @@
-# codex/이재용/chat-copy-polish — 남은 작업
+# codex/이재용/chat-copy-polish — 완료 기록
 
-> 작성일: 2026-07-26 · 작성자: 이재용(codex) · PR: [#379](https://github.com/jyleo2k2/KDA-securities/pull/379) (Draft)
+> 작성일: 2026-07-26 · 작성자: 이재용(codex) · PR: [#379](https://github.com/jyleo2k2/KDA-securities/pull/379) — `main` 병합 완료(`34962e9`, 2026-07-26)
 > 대상 작업: 인계 프롬프트 [인계_챗봇_답변문구_톤리뷰.md](./인계_챗봇_답변문구_톤리뷰.md) — PR #362 산출물 답변 54개 톤 리뷰
 
 ## 1. 작업 상태 — 코드 작업은 완료
@@ -17,9 +17,9 @@
 수정한 파일은 `backend/app/chat/handlers/`의 `glossary.py`·`hesitation.py`·`graceful_decline.py` 3개다.
 수치와 사실은 바꾸지 않았고 문장 구조만 손봤다.
 
-## 2. 남은 일 — 이것만 하면 끝난다
+## 2. 마무리 — 전부 완료
 
-### 2-1. (차단) GitHub Actions 러너 미배정 — 저장소 전역 장애
+### 2-1. CI 실패는 GitHub Actions 무료 한도 소진 (코드 무관)
 
 PR #379의 `backend`·`frontend`·`route-map-sync` 3개 job이 모두 실패했지만 **이 PR의 코드 문제가 아니다.**
 러너가 배정되지 않은 채 3초 만에 끝났고 실행된 스텝이 0개다(`runner_name`이 비어 있음).
@@ -27,28 +27,25 @@ PR #379의 `backend`·`frontend`·`route-map-sync` 3개 job이 모두 실패했�
 2026-07-26 09:55:01(`chat-donut-sort-by-weight`)을 마지막으로 **09:56:44부터 `main` push를 포함한 저장소의 모든 CI 실행이 예외 없이 실패**로 바뀌었다.
 `.github/workflows/ci.yml`은 이 기간에 변경되지 않았다.
 
-할 일:
+원인은 **GitHub Actions 무료 한도(월 2,000분) 소진**으로 확인됐다(2026-07-26 총괄 확인).
+다음 청구 주기 초기화 또는 한도 상향 전까지 이 저장소의 CI red는 정상 상태이며, 재실행해도 같은 결과다.
 
-1. GitHub Settings → Billing / Actions usage에서 사용량 한도·결제 상태를 확인한다.
-2. 해결되면 PR #379의 CI를 재실행한다. 코드 수정은 필요 없다.
-3. 같은 이유로 막혀 있는 다른 PR(#375 등)도 함께 재실행 대상이다.
+대체 게이트는 로컬 자동검증 훅이다(`.py` 편집 시 ruff, 턴 종료 시 `uv run pytest -q`).
+이 PR은 백엔드 문구만 바꿨으므로 훅 검증 범위 안에서 완결됐다. 상시 규칙은 [헌장 §2-2](./_공통_AI규칙.md)에 기록했다.
 
 확인 명령:
 
     gh run list --limit 20 --json headBranch,conclusion,createdAt
     gh pr checks 379
 
-### 2-2. Draft → Ready 전환과 머지 승인
+### 2-2. Ready 전환과 머지 승인 — 완료
 
-CI가 초록으로 돌아온 뒤 Draft를 해제하고 이재용(총괄) 머지 승인을 받는다.
-`route-map-sync`는 프론트 라우트·화면 변경이 없으므로 통과가 정상이다(이 PR은 백엔드 문구만 변경).
+CI 복구를 기다리지 않고 Draft를 해제해 이재용(총괄) 승인으로 `main`에 병합했다(`34962e9`).
+`route-map-sync`는 프론트 라우트·화면 변경이 없어 애초에 판정 대상이 아니었다(이 PR은 백엔드 문구만 변경).
 
-### 2-3. 병합 후 정리
+### 2-3. 병합 후 정리 — 완료
 
-    uv run python scripts/git_session_manager.py release
-
-병합 확인 후 브랜치·워크트리 삭제는 `git-pr-cleanup`의 검증을 거쳐 수행한다.
-워크트리 경로: `C:\dev\finance-project-1-codex-이재용-chat-copy-polish`
+claim release와 브랜치·워크트리 삭제까지 마쳤다. 남은 산출물 없음.
 
 ## 3. 리뷰어에게 물어볼 것 (선택)
 
