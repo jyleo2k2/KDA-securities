@@ -425,6 +425,7 @@ def test_reads_operational_audit_from_database() -> None:
     assert audit.version_id == 7
     assert audit.account_product_counts["pension_savings"] == 1
     assert "products_without_history" in connection.cursor_obj.executed[0][0]
+    assert "sum(p.count_by_account)::integer" in connection.cursor_obj.executed[0][0]
 
 
 class _FakeCursor:
