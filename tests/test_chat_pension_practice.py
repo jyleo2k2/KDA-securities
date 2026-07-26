@@ -100,6 +100,58 @@ def test_practice_answers_use_the_matching_evidence(
 
 
 @pytest.mark.parametrize(
+    ("message", "must_contain", "expects_numeric_evidence"),
+    [
+        ("한도 넘게 넣으면 어떻게 돼?", ("1,800만원",), True),
+        (
+            "급하게 돈 필요하면 담보대출도 돼?",
+            ("계좌 잔액이 줄지 않는다", "50%"),
+            True,
+        ),
+        (
+            "돈 없을 때 한 달 걸러도 돼?",
+            ("계좌 해지와 다르다", "다시 납입할 수 있다"),
+            False,
+        ),
+    ],
+)
+def test_enriched_approved_documents_reach_the_actual_answer(
+    message: str,
+    must_contain: tuple[str, ...],
+    expects_numeric_evidence: bool,
+) -> None:
+    response = _service().ask(ChatRequest(message=message))
+    body = response.answer + "\n".join(
+        section.content for section in response.sections
+    )
+
+    assert response.intent is ChatIntent.ACCOUNT_RULE
+    assert response.sources
+    assert all(marker in body for marker in must_contain)
+    if expects_numeric_evidence:
+        assert response.numeric_evidence
+        source_ids = {source.evidence_id for source in response.sources}
+        assert all(
+            evidence.evidence_id in source_ids
+            for evidence in response.numeric_evidence
+        )
+
+
+def test_pension_savings_risk_cap_answer_remains_separate_from_irp() -> None:
+    response = _service().ask(
+        ChatRequest(message="연금저축펀드 위험자산 한도는 어떻게 돼?")
+    )
+    body = response.answer + "\n".join(
+        section.content for section in response.sections
+    )
+
+    assert response.intent is ChatIntent.ACCOUNT_RULE
+    assert response.sources
+    assert "DC형·IRP에 적용" in body
+    assert "연금저축펀드에는 동일한 한도가 없다" in body
+
+
+@pytest.mark.parametrize(
     ("message", "expected_reason"),
     [
         (
