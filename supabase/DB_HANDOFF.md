@@ -932,6 +932,16 @@ uv run ruff check .
 - 남은 위험 또는 blocker: 2011~2019 14개 이벤트의 결과를 카드에 넣으려면 해당 ETF의 공식 총수익률 이력 백필이 먼저 필요하다. 현재 검증된 2020~2025 구간만 적재 후보로 유지한다.
 - 다음 작업: 승인된 원장을 기준으로 2020~2025 48개 완결 쌍의 보고서를 생성·적재하고, 오래된 이력 백필 후 같은 명령으로 2011~2019 결측을 재평가한다.
 
+### 2026-07-26 KST — FOMC 과거 사후성과 원격 적재 (REMOTE-APPLIED)
+
+- 작업자/브랜치/시작 기준: 김태형 / `codex/김태형/fomc-event-ledger-remote-load` / `origin/main` `aaedf08`.
+- 변경 내용: 병합된 `fomc_policy_event_ledger_2011_2025.json`을 원격 ETF 총수익률로 계산해, 완결된 2020~2025 FOMC 이벤트의 1·3·6개월 사후성과를 `news_event_outcomes`에 upsert했다.
+- 결정 및 근거: 입력 원장 30건 중 기존 총수익률 이력 시작일 이전의 2011~2019 구간은 보간하지 않고 제외했다. 적재 결과는 과거 설명 카드 전용이며 계획수익률·비중 변경·리밸런싱 신호에는 사용하지 않는다.
+- 로컬 검증과 실제 결과: `build_news_event_outcome_ledger.py`는 30개 이벤트·90개 이벤트-ETF 쌍을 평가해 검증된 horizon 144개를 생성했고, `load_news_event_outcome_ledger.py --apply`가 144행을 적재했다. 임시 보고서는 적재 후 삭제했다.
+- 원격 적용 여부와 migration version: schema 변경 없는 REMOTE-APPLIED 데이터 적재다. Supabase 사후 조회에서 FOMC 원장 행 144, 이벤트 16, 이벤트-ETF 쌍 48, horizon `[1, 3, 6]`을 확인했다.
+- 남은 위험 또는 blocker: 2011~2019 14개 이벤트·42개 이벤트-ETF 쌍은 공식 총수익률 이력 백필 전까지 `outcome_precedes_history_coverage`으로 유지한다.
+- 다음 작업: 오래된 수정주가·분배금 원본을 확보하면 같은 원장을 재실행해 결측 구간만 추가 적재하고, 별도 원장 검토 절차로 FOMC 외 공식 이벤트를 확장한다.
+
 ```markdown
 ### YYYY-MM-DD HH:mm KST
 
