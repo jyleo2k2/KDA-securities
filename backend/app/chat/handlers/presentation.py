@@ -55,6 +55,19 @@ def build_capabilities(*, scenarios: ScenarioRepository) -> ChatCapabilities:
     )
 
 
+def _sorted_by_weight_desc(
+    items: list[VisualizationDatum],
+) -> list[VisualizationDatum]:
+    """Order donut segments so the largest weight is always drawn first.
+
+    The engine emits sleeves and asset classes in a fixed definition order, so
+    the chart would otherwise place a small slice ahead of a dominant one.
+    Ties keep their original relative order to stay deterministic.
+    """
+
+    return sorted(items, key=lambda item: item.value, reverse=True)
+
+
 def attach_visualizations(response: ChatResponse) -> ChatResponse:
     """Attach only views backed by the response's existing engine evidence."""
 
@@ -68,15 +81,17 @@ def attach_visualizations(response: ChatResponse) -> ChatResponse:
                 description="계좌를 합쳐 어떤 자산에 얼마나 담겼는지 보여줘요.",
                 data_boundary=DataBoundary.MOCK,
                 evidence_ids=["mock:scenario", "engine:scenario"],
-                items=[
-                    VisualizationDatum(
-                        label=_ASSET_CLASS_LABELS[item.asset_class_code],
-                        value=item.allocation_percent,
-                        unit="%",
-                        role=VisualizationDatumRole.SEGMENT,
-                    )
-                    for item in evaluation.asset_allocations
-                ],
+                items=_sorted_by_weight_desc(
+                    [
+                        VisualizationDatum(
+                            label=_ASSET_CLASS_LABELS[item.asset_class_code],
+                            value=item.allocation_percent,
+                            unit="%",
+                            role=VisualizationDatumRole.SEGMENT,
+                        )
+                        for item in evaluation.asset_allocations
+                    ]
+                ),
             )
         )
 
@@ -186,15 +201,17 @@ def attach_visualizations(response: ChatResponse) -> ChatResponse:
                 allocation_totals.get(label, Decimal("0"))
                 + target.target_percent
             )
-        allocation_items = [
-            VisualizationDatum(
-                label=label,
-                value=_one_decimal(target_percent),
-                unit="%",
-                role=VisualizationDatumRole.SEGMENT,
-            )
-            for label, target_percent in allocation_totals.items()
-        ]
+        allocation_items = _sorted_by_weight_desc(
+            [
+                VisualizationDatum(
+                    label=label,
+                    value=_one_decimal(target_percent),
+                    unit="%",
+                    role=VisualizationDatumRole.SEGMENT,
+                )
+                for label, target_percent in allocation_totals.items()
+            ]
+        )
         rounding_difference = Decimal("100.0") - sum(
             (item.value for item in allocation_items), Decimal("0")
         )
@@ -202,6 +219,7 @@ def attach_visualizations(response: ChatResponse) -> ChatResponse:
             allocation_items[-1] = allocation_items[-1].model_copy(
                 update={"value": allocation_items[-1].value + rounding_difference}
             )
+            allocation_items = _sorted_by_weight_desc(allocation_items)
         visualizations.append(
             ChatVisualization(
                 kind=VisualizationKind.SLEEVE_ALLOCATION,

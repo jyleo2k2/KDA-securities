@@ -200,12 +200,15 @@ def test_chatbot_only_explains_structured_portfolio_engine_result() -> None:
         for item in response.visualizations
         if item.kind.value == "sleeve_allocation"
     )
-    assert [item.label for item in allocation.items] == [
+    # The donut must always read largest-weight-first, not engine sleeve order.
+    values = [item.value for item in allocation.items]
+    assert values == sorted(values, reverse=True)
+    assert set(item.label for item in allocation.items) == {
         "주식",
         "금/원자재",
         "현금",
         "채권",
-    ]
+    }
     assert sum(item.value for item in allocation.items) == Decimal("100.0")
     sections = {section.title: section for section in response.sections}
     strategy_section = sections["위험중립형의 코어·위성 전략"]
@@ -913,3 +916,103 @@ def test_missing_return_master_names_each_unavailable_account() -> None:
     assert "IRP 계좌용 ETF 비용·수익률 기준 데이터" in response.answer
     assert "연금저축펀드 계좌용 ETF 비용·수익률 기준 데이터" in response.answer
     assert "0원" not in response.answer
+
+
+def test_donut_segments_are_ordered_by_weight_desc() -> None:
+    from backend.app.chat.handlers.presentation import _sorted_by_weight_desc
+    from backend.app.chat.models import (
+        VisualizationDatum,
+        VisualizationDatumRole,
+    )
+
+    def datum(label: str, value: str) -> VisualizationDatum:
+        return VisualizationDatum(
+            label=label,
+            value=Decimal(value),
+            unit="%",
+            role=VisualizationDatumRole.SEGMENT,
+        )
+
+    # Engine sleeve order puts the dominant bond sleeve last for a stable
+    # profile; the donut must reorder it to the front.
+    ordered = _sorted_by_weight_desc(
+        [
+            datum("주식", "13.0"),
+            datum("금/원자재", "2.0"),
+            datum("현금", "15.0"),
+            datum("채권", "70.0"),
+        ]
+    )
+
+    assert [item.label for item in ordered] == ["채권", "현금", "주식", "금/원자재"]
+    assert [item.value for item in ordered] == [
+        Decimal("70.0"),
+        Decimal("15.0"),
+        Decimal("13.0"),
+        Decimal("2.0"),
+    ]
+
+
+def test_equal_weight_segments_keep_stable_order() -> None:
+    from backend.app.chat.handlers.presentation import _sorted_by_weight_desc
+    from backend.app.chat.models import (
+        VisualizationDatum,
+        VisualizationDatumRole,
+    )
+
+    def datum(label: str, value: str) -> VisualizationDatum:
+        return VisualizationDatum(
+            label=label,
+            value=Decimal(value),
+            unit="%",
+            role=VisualizationDatumRole.SEGMENT,
+        )
+
+    ordered = _sorted_by_weight_desc(
+        [datum("주식", "50.0"), datum("채권", "50.0")]
+    )
+
+    assert [item.label for item in ordered] == ["주식", "채권"]
+
+
+def test_rounding_adjustment_cannot_break_weight_order() -> None:
+    """The 100% rounding fix lands on the smallest slice, so order must hold.
+
+    Without a re-sort the correction could lift the last (smallest) segment
+    above the one before it and put a thin slice ahead of a thicker one.
+    """
+
+    from backend.app.chat.handlers.presentation import _sorted_by_weight_desc
+    from backend.app.chat.models import (
+        VisualizationDatum,
+        VisualizationDatumRole,
+    )
+
+    def datum(label: str, value: str) -> VisualizationDatum:
+        return VisualizationDatum(
+            label=label,
+            value=Decimal(value),
+            unit="%",
+            role=VisualizationDatumRole.SEGMENT,
+        )
+
+    items = _sorted_by_weight_desc(
+        [
+            datum("\uc8fc\uc2dd", "44.0"),
+            datum("\ucc44\uad8c", "44.0"),
+            datum("\ud604\uae08", "5.0"),
+            datum("\uae08\u00b7\uc6d0\uc790\uc7ac", "5.0"),
+        ]
+    )
+    rounding_difference = Decimal("100.0") - sum(
+        (item.value for item in items), Decimal("0")
+    )
+    assert rounding_difference == Decimal("2.0")
+    items[-1] = items[-1].model_copy(
+        update={"value": items[-1].value + rounding_difference}
+    )
+    items = _sorted_by_weight_desc(items)
+
+    values = [item.value for item in items]
+    assert values == sorted(values, reverse=True)
+    assert sum(values, Decimal("0")) == Decimal("100.0")
