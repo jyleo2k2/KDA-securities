@@ -79,11 +79,11 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
 
           <div className="se-brand">
             <span className="se-brand-mark" />
-            <span className="se-brand-name">연금 <em>도우미</em></span>
+            <span className="se-brand-name">연금 <em>KDA</em></span>
           </div>
 
           <p className="se-headline">
-            <span className="se-brandc">연금 도우미</span>에서
+            <span className="se-brandc">연금 KDA</span>에서
             <br />
             제공하는 <span className="se-accentc">추천 전략</span>들을 확인해보세요!
           </p>

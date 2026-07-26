@@ -18,6 +18,8 @@ describe("StrategyExploreScreen", () => {
     render(<StrategyExploreScreen onBack={() => {}} />);
     const activeCard = screen.getByRole("button", { name: `1번째 전략 상세 보기: ${STRATEGIES[0].name}` });
 
+    expect(document.querySelector(".se-brand-name")).toHaveTextContent("연금 KDA");
+    expect(document.querySelector(".se-brandc")).toHaveTextContent("연금 KDA");
     fireEvent.click(activeCard);
 
     expect(window.location.hash).toBe(`#/strategy-detail?strategy=${STRATEGIES[0].id}`);
