@@ -18,16 +18,18 @@ type LoginStep = "intro" | "form" | "consent" | "success" | "linking" | "risk-as
 interface LoginFlowPageProps {
   auth: SupabaseAuthState;
   displayName?: string;
+  hasSavedProfile?: boolean;
   onAuthenticated: () => void;
   onProfileSaved: (profile: InvestmentProfileResponse) => void;
   onStart: () => void;
+  profileLoading?: boolean;
   resurvey?: boolean;
 }
 
 const REQUIRED_CONSENT_ID = "account-link";
 const LINKING_DURATION_MS = 1500;
 
-export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSaved, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
+export function LoginFlowPage({ auth, displayName, hasSavedProfile = false, onAuthenticated, onProfileSaved, onStart, profileLoading = false, resurvey = false }: LoginFlowPageProps): JSX.Element {
   const [step, setStep] = useState<LoginStep>(resurvey ? "risk-assessment" : "intro");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
@@ -70,6 +72,12 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
   function openConsent(): void {
     setConsents({}); setStep("consent");
     if (linkOptions === null && !linkOptionsLoading) void loadLinkOptions();
+  }
+
+  // 저장된 투자성향이 있으면 계좌 연동·설문을 건너뛰고 홈으로 들어간다.
+  function startService(): void {
+    if (hasSavedProfile) { onStart(); return; }
+    openConsent();
   }
 
   function toggleConsent(id: string): void {
@@ -252,7 +260,7 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
               <span className="login-sparkle">✦</span>
               <img src={piggySuccess} alt="저금통" />
             </div>
-            <button type="button" className="login-primary" onClick={openConsent}>시작하기</button>
+            <button type="button" className="login-primary" disabled={profileLoading} onClick={startService}>{profileLoading ? "정보를 확인하는 중..." : "시작하기"}</button>
           </div>
         )}
       </section>
