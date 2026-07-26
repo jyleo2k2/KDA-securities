@@ -292,6 +292,53 @@ describe("MainHomeScreen", () => {
     expect(screen.queryByText("산정 전")).not.toBeInTheDocument();
   });
 
+  it("scrolls strategy cards by mouse drag without opening a dragged card", () => {
+    const onOpenStrategyExplore = vi.fn();
+    renderHome({ onOpenStrategyExplore });
+    const strategyScroll = screen.getByRole("region", { name: "전략 카드 목록" });
+    const firstCard = screen.getByRole("button", {
+      name: "시장 베타 전략 전략 상세 보기",
+    });
+    Object.defineProperty(strategyScroll, "scrollLeft", {
+      configurable: true,
+      value: 120,
+      writable: true,
+    });
+    Object.assign(strategyScroll, {
+      hasPointerCapture: vi.fn(() => true),
+      releasePointerCapture: vi.fn(),
+      setPointerCapture: vi.fn(),
+    });
+
+    fireEvent.pointerDown(firstCard, {
+      button: 0,
+      clientX: 240,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+    fireEvent.pointerMove(strategyScroll, {
+      clientX: 140,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+
+    expect(strategyScroll).toHaveProperty("scrollLeft", 220);
+    expect(strategyScroll).toHaveClass("is-dragging");
+
+    fireEvent.pointerUp(strategyScroll, {
+      clientX: 140,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+    fireEvent.click(firstCard);
+
+    expect(strategyScroll).not.toHaveClass("is-dragging");
+    expect(onOpenStrategyExplore).not.toHaveBeenCalled();
+
+    fireEvent.click(firstCard);
+    expect(onOpenStrategyExplore).toHaveBeenCalledOnce();
+  });
+
   it("retries the planning-return request when the API starts after the home screen", async () => {
     vi.useFakeTimers();
     vi.mocked(getStrategyPlanningReturns)
