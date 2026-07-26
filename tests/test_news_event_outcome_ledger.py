@@ -1,11 +1,17 @@
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 from backend.app.engine.models import AccountType, SourceChip
 from backend.app.engine.news_event_outcomes import HistoricalNewsEvent
 from backend.app.portfolio_universe_repository import PortfolioUniverseRepository
 from scripts.audit_news_event_outcome_coverage import summarize_outcome_coverage
-from scripts.build_news_event_outcome_ledger import build_outcome_evaluation
+from scripts.build_news_event_outcome_ledger import (
+    HistoricalNewsEventLedger,
+    build_outcome_evaluation,
+)
+
+_FOMC_LEDGER_PATH = Path("data/reference/fomc_policy_event_ledger_2011_2025.json")
 
 
 def _source() -> SourceChip:
@@ -83,3 +89,25 @@ def test_outcome_coverage_makes_missing_history_boundaries_explicit() -> None:
     assert coverage["available_horizon_rows"] == {"1": 1, "3": 0, "6": 0}
     assert coverage["missing_horizon_rows"] == {"1": 0, "3": 1, "6": 1}
     assert coverage["gap_reasons"] == {"outcome_exceeds_history_coverage": 2}
+
+
+def test_fomc_policy_ledger_uses_official_sources_and_explicit_bank_peers() -> None:
+    ledger = HistoricalNewsEventLedger.model_validate_json(
+        _FOMC_LEDGER_PATH.read_text(encoding="utf-8")
+    )
+
+    assert len(ledger.events) == 30
+    assert len({event.event_id for event in ledger.events}) == 30
+    assert ledger.events[0].occurred_on == date(2011, 8, 9)
+    assert ledger.events[-1].occurred_on == date(2025, 12, 10)
+    assert all(event.theme_id == "bank_finance" for event in ledger.events)
+    assert all(
+        event.peer_isu_codes == ("091170", "091220", "139270")
+        for event in ledger.events
+    )
+    assert all(
+        event.source.reference.startswith(
+            "https://www.federalreserve.gov/monetarypolicy/"
+        )
+        for event in ledger.events
+    )
