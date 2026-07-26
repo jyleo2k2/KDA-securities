@@ -26,7 +26,7 @@ export interface StrategyExploreItem {
 
 // 각 전략의 정성 설명은 docs/team/주식 전략을 활용한 연금 포트폴리오 운용안.md 근거다.
 // 전략별 자산배분 %·수익률 등 수치는 문서에 근거가 없어 화면에 넣지 않는다(수치 환각 금지 규칙).
-export const STRATEGIES: StrategyExploreItem[] = [
+const STRATEGY_DATA: StrategyExploreItem[] = [
   { id: "market-beta", name: "시장 베타 전략", accent: "#4FB6E6", role: "공무원", img: marketBeta, desc: "시장 수익률을 포트폴리오의 기준 수익원으로 활용하는 장기 분산 전략입니다.", keywords: ["시장 수익률", "코어"], directness: "ETF로 구현 가능", bucket: "코어(장기 보유)", accountApplication: "국내외 광범위 지수 ETF를 중심으로 분산합니다. 계좌별 위험자산 한도와 전체 주식 비중을 함께 점검합니다.", howItWorks: "개별 종목의 성패보다 시장 전체의 성장에 투자합니다. 단기 전망에 따라 자주 바꾸기보다, 정한 자산배분을 주기적으로 점검하는 방식입니다.", easyWords: [{ word: "시장 베타", meaning: "시장 전체의 움직임에 따라 수익률이 변하는 특성입니다. 시장 베타 전략은 특정 종목 선택보다 시장 평균 수익률을 추구합니다." }, { word: "지수 ETF", meaning: "코스피200·S&P500처럼 특정 지수를 구성하는 여러 종목에 한 번에 투자하는 ETF입니다." }] },
   { id: "factor", name: "팩터 전략", accent: "#24386E", role: "회계사", img: factor, desc: "재무 건전성·가격 수준·추세처럼 장기 성과와 관련된 기업 특성을 기준으로 ETF를 선택하는 규칙 기반 전략입니다.", keywords: ["기업 특성", "코어 보완"], directness: "ETF로 구현 가능", bucket: "코어 보완", accountApplication: "퀄리티·가치·모멘텀·최소변동성 ETF를 성격이 다른 보조 슬리브로 나눠 편입합니다. 한 팩터에만 집중하지 않는 것이 중요합니다.", howItWorks: "정해 둔 기업 특성을 가진 종목을 편입한 ETF를 활용합니다. 팩터별 성과 차이가 장기간 이어질 수 있으므로, 최근 성과만 보고 비중을 크게 바꾸지 않습니다.", easyWords: [{ word: "팩터", meaning: "회사를 고를 때 보는 공통 특징입니다. 재무지표나 주가 특성에 따라 종목을 체계적으로 분류하는 기준입니다." }, { word: "퀄리티", meaning: "수익성·재무 건전성·이익의 안정성이 상대적으로 높은 기업 특성입니다." }, { word: "가치", meaning: "이익·자산·현금흐름에 비해 주가가 낮은 기업을 찾는 접근입니다." }, { word: "모멘텀", meaning: "상대적으로 강했던 가격 추세가 일정 기간 이어지는 경향을 활용하는 방식입니다." }, { word: "최소변동성", meaning: "시장 대비 가격 변동이 상대적으로 낮은 종목을 선별하는 방식입니다." }] },
   { id: "theme", name: "테마 전략", accent: "#F5871F", role: "스타트업 창업가", img: theme, desc: "산업 구조 변화가 예상되는 분야에 집중해 성장 기회를 찾는 위성 전략입니다.", keywords: ["산업 변화", "위성"], directness: "ETF로 구현 가능", bucket: "위성(보조 비중)", accountApplication: "AI·반도체·바이오·인프라 등 테마 ETF는 코어 포트폴리오와 분리해 제한된 비중으로 편입합니다.", howItWorks: "성장 논리, 밸류에이션, 편입 종목의 집중도를 함께 확인합니다. 기대가 이미 가격에 반영됐을 수 있으므로 한 테마에 연금자산을 집중하지 않습니다.", easyWords: [{ word: "테마 ETF", meaning: "특정 산업·기술·사회 변화와 관련된 여러 기업을 묶어 투자하는 ETF입니다." }, { word: "밸류에이션", meaning: "기업의 이익·자산·성장 전망과 비교해 현재 가격이 높은지 낮은지를 평가하는 기준입니다." }, { word: "집중도", meaning: "ETF 성과가 소수 종목이나 한 산업에 얼마나 크게 좌우되는지를 나타내는 정도입니다." }] },
@@ -38,3 +38,10 @@ export const STRATEGIES: StrategyExploreItem[] = [
   { id: "eventdriven", name: "이벤트드리븐 전략", accent: "#F5C518", role: "M&A 전문 변호사·자문역", img: eventdriven, desc: "합병·분할·자사주 매입 등 기업 이벤트가 가격에 반영되는 과정에서 기회를 찾는 전략입니다.", keywords: ["기업 이벤트", "상품 확인"], directness: "계좌 적격 상품 확인 필요", bucket: "위성(보조 비중)", accountApplication: "연금계좌에서 편입 가능한 관련 펀드가 있을 때만 검토합니다. 단일 이벤트에 직접 투자하기보다 분산된 상품의 운용 방식과 위험을 확인합니다.", howItWorks: "공시된 기업 이벤트의 성사 가능성, 일정, 가격 차이를 분석합니다. 거래 무산·일정 변경·규제 변수로 손실이 발생할 수 있으므로 코어 자산을 대체하는 방식으로 사용하지 않습니다.", easyWords: [{ word: "기업행동", meaning: "합병·분할·유상증자·자사주 매입처럼 기업의 자본 구조나 소유 관계에 영향을 주는 사건입니다." }, { word: "합병차익거래", meaning: "합병 발표 뒤 인수가격과 시장가격의 차이가 좁혀질 가능성을 활용하는 전략입니다." }, { word: "스페셜 시추에이션", meaning: "기업에 발생한 특정 사건이 가치와 가격에 미치는 영향을 분석하는 투자 상황을 뜻합니다." }] },
   { id: "trend", name: "추세추종·글로벌 매크로 전략", accent: "#2F6FE0", role: "국제 정세 담당 애널리스트", img: trend, desc: "여러 자산의 가격 추세와 글로벌 경제 환경을 규칙에 따라 활용하는 멀티에셋 전략입니다.", keywords: ["추세", "멀티에셋"], directness: "계좌 적격 상품 확인 필요", bucket: "위성(보조 비중)", accountApplication: "연금계좌에서 편입 가능한 멀티에셋 또는 글로벌 매크로 펀드가 있을 때만 제한된 비중으로 검토합니다.", howItWorks: "주식·채권·원자재·통화 등 여러 자산의 추세와 거시 환경을 함께 점검합니다. 추세가 자주 바뀌는 구간에서는 손실과 매매 비용이 커질 수 있어 규칙과 비용을 확인해야 합니다.", easyWords: [{ word: "추세추종", meaning: "가격이 일정 방향으로 움직이는 경향을 규칙으로 포착해 활용하는 전략입니다." }, { word: "글로벌 매크로", meaning: "국가별 금리·물가·경기·환율 변화가 자산가격에 미치는 영향을 분석하는 투자 접근입니다." }, { word: "멀티에셋", meaning: "주식·채권·원자재·현금 등 여러 자산군을 함께 운용하는 방식입니다." }] },
 ];
+
+export const STRATEGIES = STRATEGY_DATA.map((strategy) => ({
+  ...strategy,
+  directness: strategy.directness === "계좌 적격 상품 확인 필요"
+    ? "계좌별 매수 가능 상품 확인"
+    : strategy.directness,
+}));

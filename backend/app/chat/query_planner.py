@@ -185,6 +185,23 @@ _GLOSSARY_QUESTION = re.compile(
     r"쉽게\s*(?:알려|설명|말해)|설명해|알려\s*줘|모르겠|"
     r"안\s*(?:돼|되)|괜찮(?:아|을까)|해도\s*(?:돼|되)"
 )
+# 무엇을 물어야 할지 모르는 상태를 그대로 표현한 질문. 특정 기능으로
+# 분류할 수 없지만 서비스의 첫 질문이 될 가능성이 높다.
+_GETTING_STARTED_QUESTION = re.compile(
+    r"(?:뭐|무엇|어디|어떻게|어디서)\s*(?:부터|서부터)|"
+    r"처음(?:에는|엔|부터|인데|이라|이야|이면)?\s*(?:뭐|무엇|뭘|어떻게|어디)|"
+    r"어떻게\s*시작|시작(?:하는\s*법|하려면|해야)|"
+    r"뭘\s*(?:해야|하면)|무엇을\s*해야|"
+    r"어떻게\s*하는\s*(?:건지|지)|감이?\s*안\s*(?:와|잡)"
+)
+
+
+def _is_getting_started_question(message: str) -> bool:
+    """Detect "뭐부터 해야 할지 모르겠어" style openers."""
+
+    return _GETTING_STARTED_QUESTION.search(message) is not None
+
+
 _GLOSSARY_TERM_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("risk_asset_cap", re.compile(r"위험\s*자산(?:\s*(?:한도|비중|70\s*%?))?")),
     ("safe_asset", re.compile(r"안전\s*자산")),
@@ -351,6 +368,14 @@ _EDUCATIONAL_PORTFOLIO_TERMS = re.compile(
     r"안정\s*추구형|위험\s*중립형|적극\s*투자형|"
     r"공격\s*투자형|안정형"
 )
+# 나이를 밝히고 운용 방법을 묻는 표현. 타깃 사용자는 "35살인데 어떻게
+# 배분해?"처럼 전략·포트폴리오라는 말 없이 묻는다. 나이와 운용 동사가
+# 함께 있을 때만 전략 안내로 본다.
+_AGE_BASED_ALLOCATION_QUESTION = re.compile(
+    r"(?:\d{2})\s*(?:살|세)[^?]{0,20}"
+    r"(?:어떻게|어떤|뭐가|무엇이|어느)[^?]{0,12}"
+    r"(?:배분|운용|굴려|굴리|투자|담아|담으|시작|전략|맞아|좋아|하지|해야)"
+)
 _TAX_CREDIT_TERMS = re.compile(
     r"세액\s*공제|절세\s*혜택|공제\s*혜택|공제\s*한도|"
     # "세액"을 생략하고 "공제 얼마야?"처럼 축약해 물어도 세액공제 계산으로
@@ -358,6 +383,13 @@ _TAX_CREDIT_TERMS = re.compile(
     # 묻는 신호가 가까이 있을 때만 매칭한다.
     r"공제(?:액|율)?\s*(?:은|는|이|가)?\s*"
     r"(?:얼마|금액|계산|환급|돌려\s*받|받을\s*수)"
+)
+# "공제"라는 말조차 모르는 입문자는 "900만원 넣으면 얼마 돌려받아?"처럼
+# 묻는다. 납입 금액과 환급을 묻는 표현이 함께 있을 때만 세액공제로 본다.
+_CONTRIBUTION_REFUND_QUESTION = re.compile(
+    r"\d[\d,]*(?:\.\d+)?\s*(?:억|천만|만|천)?\s*원[^?]{0,20}"
+    r"(?:넣|납입|입금|저축|불입)[^?]{0,20}"
+    r"(?:얼마|환급|돌려\s*받|아끼|절세|혜택)"
 )
 _WITHDRAWAL_TAX_TERMS = re.compile(
     r"중도\s*해지|연금\s*외\s*수령|해지.{0,10}(?:세금|세액|과세)|"
@@ -584,6 +616,10 @@ def plan_question(
     account_types = _account_types(normalized)
     account_rule_topic = _account_rule_topic(normalized, account_types)
     tax_credit_topic = _TAX_CREDIT_TERMS.search(normalized) is not None
+    if not tax_credit_topic and _CONTRIBUTION_REFUND_QUESTION.search(normalized):
+        # 납입 금액과 환급을 함께 물으면 세액공제 계산이 답이다. 중도해지
+        # 세금 질문을 가로채지 않도록 해지 표현이 없을 때만 적용한다.
+        tax_credit_topic = _WITHDRAWAL_TAX_TERMS.search(normalized) is None
     withdrawal_tax_topic = _WITHDRAWAL_TAX_TERMS.search(normalized) is not None
     requests_calculation = _PENSION_TAX_CALCULATION_TERMS.search(
         normalized
@@ -609,6 +645,7 @@ def plan_question(
         ),
         ChatIntent.EDUCATIONAL_PORTFOLIO: (
             _EDUCATIONAL_PORTFOLIO_TERMS.search(normalized) is not None
+            or _AGE_BASED_ALLOCATION_QUESTION.search(normalized) is not None
         ),
         ChatIntent.PROVIDER_DISCLOSURE: bool(account_types)
         and _DISCLOSURE_TERMS.search(normalized) is not None,
@@ -772,5 +809,13 @@ def plan_question(
             intent=ChatIntent.GLOSSARY,
             max_results=max_results,
             glossary_term_id=glossary_term_id,
+        )
+    # 어떤 인텐트도 받지 못했고 용어도 특정되지 않은 질문 가운데 "뭐부터
+    # 해야 할지 모르겠어"처럼 시작점을 묻는 것은 차단 대신 안내로 받는다.
+    if _is_getting_started_question(normalized):
+        return QueryPlan(
+            normalized_message=normalized,
+            intent=ChatIntent.GETTING_STARTED,
+            max_results=max_results,
         )
     return _blocked(normalized, BlockedReason.UNSUPPORTED, max_results)

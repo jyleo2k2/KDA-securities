@@ -36,6 +36,7 @@ describe("StrategyDetailScreen", () => {
     expect(screen.getByRole("button", { name: "주식 ETF 60%" })).toBeInTheDocument();
     expect(screen.getByText("주식 안에서는 ETF 분야도 나눠 봐요")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "주식 ETF 분야 비중 예시" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "시장 전체 주식 ETF 안에서 30% 자세히 보기" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "반도체 20%" })).toBeInTheDocument();
     expect(screen.getByText(/막대 크기는 이해를 돕기 위한 예시예요/)).toBeInTheDocument();
     expect(document.querySelector(".sd-operation-guide")).toHaveTextContent("전략의 운용 방식");
@@ -70,5 +71,14 @@ describe("StrategyDetailScreen", () => {
     render(<StrategyDetailScreen onBack={vi.fn()} />);
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("시장 베타 전략");
+  });
+
+  it("uses plain wording when a strategy needs an account-specific product check", () => {
+    window.location.hash = "#/strategy-detail?strategy=longshort";
+
+    render(<StrategyDetailScreen onBack={vi.fn()} />);
+
+    expect(screen.getAllByText("계좌별 매수 가능 상품 확인")).toHaveLength(2);
+    expect(screen.queryByText("계좌 적격 상품 확인 필요")).not.toBeInTheDocument();
   });
 });

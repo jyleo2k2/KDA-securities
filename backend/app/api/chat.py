@@ -683,12 +683,18 @@ async def chat_authenticated_stream(
         if narrator is not None and allow_narration:
             yield _sse("phase", {"message": "이해하기 쉽게 정리하고 있어요."})
             narration_started_at = perf_counter()
-            response = await asyncio.to_thread(
-                narrator.narrate,
-                response,
-                pension_tax_input=chat_request.pension_tax,
-                pension_tax_message=chat_request.message,
-            )
+            try:
+                response = await asyncio.to_thread(
+                    narrator.narrate,
+                    response,
+                    pension_tax_input=chat_request.pension_tax,
+                    pension_tax_message=chat_request.message,
+                )
+            except Exception:  # noqa: BLE001 — 검증된 엔진 답변은 그대로 전달한다.
+                logger.exception(
+                    "chat_narration_failed intent=%s; deterministic response retained",
+                    response.intent,
+                )
             if response.narration_mode == "claude_verified":
                 yield _sse("narration_update", {"answer": response.answer})
         else:

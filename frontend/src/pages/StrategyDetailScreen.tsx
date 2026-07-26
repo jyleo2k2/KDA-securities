@@ -15,7 +15,7 @@ const EXAMPLE_ASSET_BARS = [
 ] as const;
 
 const EXAMPLE_EQUITY_SECTOR_BARS = [
-  { label: "넓은 시장", percent: 30, color: "#4f8a70", description: "여러 업종에 넓게 분산하는 중심 자산이에요." },
+  { label: "시장 전체", percent: 30, color: "#4f8a70", description: "여러 업종에 넓게 분산하는 중심 자산이에요." },
   { label: "반도체", percent: 20, color: "#82ad67", description: "반도체 산업의 성장 흐름을 담는 분야예요." },
   { label: "바이오·헬스케어", percent: 20, color: "#d8a45e", description: "의료와 건강 관련 기업을 담는 분야예요." },
   { label: "은행·금융", percent: 20, color: "#7183b1", description: "은행과 보험 등 금융 기업을 담는 분야예요." },
