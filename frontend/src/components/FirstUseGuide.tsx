@@ -18,7 +18,7 @@ const HOME_GUIDE_VERSION = "v3";
 const STRATEGY_DETAIL_GUIDE_VERSION = "v2";
 const CHAT_GUIDE_VERSION = "v5";
 const PENSION_PLANNER_GUIDE_VERSION = "v2";
-const USER_PICK_GUIDE_VERSION = "v3";
+const USER_PICK_GUIDE_VERSION = "v4";
 const COMPLETE_KEY =
   `pension-first-use-guide:${HOME_GUIDE_VERSION}:complete`;
 const STRATEGY_DETAIL_COMPLETE_KEY =
@@ -40,9 +40,13 @@ interface GuideStep {
   activateText?: string;
   accents?: string[];
   bodyAccents?: string[];
+  coachPosition?: "top" | "bottom";
   closestSelector?: string;
-  scrollOffset?: number;
+  focusBlock?: ScrollLogicalPosition;
   selector?: string;
+  spotlightPadding?: number;
+  targetEndClosestSelector?: string;
+  targetEndText?: string;
   targetText?: string;
   title: string;
   body: string;
@@ -248,8 +252,8 @@ const USER_PICK_STEPS: GuideStep[] = [
     cta: "추천 포트폴리오 보기",
   },
   {
-    scrollOffset: 72,
-    targetText: "추천 벤치마킹 포트폴리오",
+    closestSelector: "[style*=\"cursor\"]",
+    targetText: "꾸준한거북이",
     title: "추천 포트폴리오를 하나씩 둘러보세요",
     accents: ["추천 포트폴리오"],
     body: "수익률뿐 아니라 운용기간, 직업군, 자산 구성과 투자전략을 함께 살펴보고 비교할 이용자를 선택하세요.",
@@ -259,8 +263,11 @@ const USER_PICK_STEPS: GuideStep[] = [
   {
     activateClosestSelector: "[style*=\"cursor\"]",
     activateText: "꾸준한거북이",
-    closestSelector: "[style*=\"align-items\"][style*=\"justify-content\"]",
-    targetText: "꾸준한거북이님",
+    coachPosition: "top",
+    closestSelector: "[style*=\"border-radius:16px\"], [style*=\"border-radius: 16px\"]",
+    focusBlock: "center",
+    spotlightPadding: 8,
+    targetText: "구성종목",
     title: "내 비중과 달라지는 부분을 비교해요",
     accents: ["내 비중", "비교"],
     body: "국내주식·해외주식·채권·현금성 자산별로 현재 비중과 이 이용자의 비중, 따라갈 때의 변화를 확인할 수 있어요.",
@@ -279,7 +286,12 @@ const USER_PICK_STEPS: GuideStep[] = [
     cta: "따라하기 후기 보기",
   },
   {
+    coachPosition: "top",
     closestSelector: "[style*=\"align-items\"][style*=\"gap\"]",
+    focusBlock: "center",
+    spotlightPadding: 8,
+    targetEndClosestSelector: "[style*=\"border-radius:18px\"], [style*=\"border-radius: 18px\"]",
+    targetEndText: "장기러버",
     targetText: "따라하기 후기",
     title: "따라한 이용자의 후기도 확인해요",
     accents: ["이용자의 후기"],
@@ -444,6 +456,44 @@ function targetForStep(
   );
   if (!target || !step.closestSelector) return target;
   return target.closest<HTMLElement>(step.closestSelector);
+}
+
+function targetRectForStep(
+  contentDocument: Document,
+  step: GuideStep,
+): Rect | null {
+  const target = targetForStep(contentDocument, step);
+  if (!target) return null;
+  const targetRect = elementRect(target);
+  if (!step.targetEndText) return targetRect;
+
+  const endTarget = guideElement(
+    contentDocument,
+    undefined,
+    step.targetEndText,
+  );
+  const resolvedEndTarget = endTarget && step.targetEndClosestSelector
+    ? endTarget.closest<HTMLElement>(step.targetEndClosestSelector)
+    : endTarget;
+  if (!resolvedEndTarget) return targetRect;
+
+  const endRect = elementRect(resolvedEndTarget);
+  const top = Math.min(targetRect.top, endRect.top);
+  const left = Math.min(targetRect.left, endRect.left);
+  const right = Math.max(
+    targetRect.left + targetRect.width,
+    endRect.left + endRect.width,
+  );
+  const bottom = Math.max(
+    targetRect.top + targetRect.height,
+    endRect.top + endRect.height,
+  );
+  return {
+    height: bottom - top,
+    left,
+    top,
+    width: right - left,
+  };
 }
 
 function activateStep(
@@ -713,8 +763,10 @@ export function FirstUseGuide(): JSX.Element | null {
       setTargetRect(null);
       return;
     }
-    const target = targetForStep(contentDocument, guide.steps[stepIndex]);
-    setTargetRect(target ? elementRect(target) : null);
+    setTargetRect(targetRectForStep(
+      contentDocument,
+      guide.steps[stepIndex],
+    ));
   }, [contentDocument, guide, mode, phone, stepIndex]);
 
   useLayoutEffect(() => {
@@ -745,23 +797,10 @@ export function FirstUseGuide(): JSX.Element | null {
       const target = mode === "steps"
         ? targetForStep(contentDocument, step)
         : null;
-      if (
-        target
-        && step.scrollOffset !== undefined
-        && scrollArea
-        && typeof scrollArea.scrollTo === "function"
-      ) {
-        const targetTop = scrollArea.scrollTop
-          + target.getBoundingClientRect().top
-          - scrollArea.getBoundingClientRect().top
-          + step.scrollOffset;
-        scrollArea.scrollTo({ top: targetTop, behavior: "smooth" });
-      } else {
-        target?.scrollIntoView({
-          block: guide.focusBlock ?? "center",
-          behavior: "smooth",
-        });
-      }
+      target?.scrollIntoView({
+        block: step.focusBlock ?? guide.focusBlock ?? "center",
+        behavior: "smooth",
+      });
       measure();
     };
     alignTarget();
@@ -864,16 +903,19 @@ export function FirstUseGuide(): JSX.Element | null {
     }
   }
 
-  const relativeTarget = targetRect && {
-    height: targetRect.height,
-    left: targetRect.left - phoneRect.left,
-    top: targetRect.top - phoneRect.top,
-    width: targetRect.width,
-  };
-  const coachAtTop = relativeTarget
-    ? relativeTarget.top + relativeTarget.height / 2 > phoneRect.height / 2
-    : false;
   const currentStep = guide.steps[stepIndex];
+  const spotlightPadding = currentStep.spotlightPadding ?? 0;
+  const relativeTarget = targetRect && {
+    height: targetRect.height + spotlightPadding * 2,
+    left: targetRect.left - phoneRect.left - spotlightPadding,
+    top: targetRect.top - phoneRect.top - spotlightPadding,
+    width: targetRect.width + spotlightPadding * 2,
+  };
+  const coachAtTop = currentStep.coachPosition
+    ? currentStep.coachPosition === "top"
+    : relativeTarget
+      ? relativeTarget.top + relativeTarget.height / 2 > phoneRect.height / 2
+      : false;
   const portalHost = guide.portalSelector
     ? contentDocument.querySelector<HTMLElement>(guide.portalSelector)
       ?? document.querySelector<HTMLElement>(guide.portalSelector)
