@@ -30,6 +30,7 @@ vi.mock("../auth/supabase", () => ({
 import {
   firstUseGuideStorageKey,
   FirstUseGuide,
+  strategyDetailGuideStorageKey,
 } from "./FirstUseGuide";
 
 const TARGET_USER_ID = "81294832-0880-45c9-8b9e-6ae4de58ac42";
@@ -102,6 +103,41 @@ function addHomeFixture(onUserPick: () => void): void {
   strategy.scrollIntoView = vi.fn();
   userPick.scrollIntoView = vi.fn();
   userPick.addEventListener("click", onUserPick);
+}
+
+function addStrategyDetailFixture(): void {
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    `
+      <section class="sd-phone">
+        <header class="sd-header">연금 도우미</header>
+        <div class="sd-scroll">
+          <div class="sd-hero">팩터 전략</div>
+          <section class="sd-allocation-example">연금계좌 자산배분 예시</section>
+          <section class="sd-card sd-operation-guide">전략의 운용 방식</section>
+          <section class="sd-card sd-account-guide">연금계좌에는 이렇게 나눠요</section>
+          <section class="sd-card sd-words">핵심 용어 풀이</section>
+        </div>
+      </section>
+    `,
+  );
+  const phone = document.querySelector(".sd-phone") as HTMLElement;
+  const hero = document.querySelector(".sd-hero") as HTMLElement;
+  const allocation = document.querySelector(".sd-allocation-example") as HTMLElement;
+  const operation = document.querySelector(".sd-operation-guide") as HTMLElement;
+  const account = document.querySelector(".sd-account-guide") as HTMLElement;
+  const words = document.querySelector(".sd-words") as HTMLElement;
+  phone.getBoundingClientRect = () => rect(0, 0, 390, 844);
+  hero.getBoundingClientRect = () => rect(110, 22, 346, 150);
+  allocation.getBoundingClientRect = () => rect(280, 22, 346, 260);
+  operation.getBoundingClientRect = () => rect(560, 22, 346, 150);
+  account.getBoundingClientRect = () => rect(730, 22, 346, 180);
+  words.getBoundingClientRect = () => rect(930, 22, 346, 210);
+  hero.scrollIntoView = vi.fn();
+  allocation.scrollIntoView = vi.fn();
+  operation.scrollIntoView = vi.fn();
+  account.scrollIntoView = vi.fn();
+  words.scrollIntoView = vi.fn();
 }
 
 describe("FirstUseGuide", () => {
@@ -246,6 +282,78 @@ describe("FirstUseGuide", () => {
       expect(document.querySelector(".mhs-section-title")).toHaveTextContent(
         "세액공제 / 연금수령액 계산",
       );
+    });
+  });
+
+  it("walks through the strategy detail guide and stores completion separately", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/#/strategy-detail?strategy=factor",
+    );
+    addStrategyDetailFixture();
+    render(<FirstUseGuide />);
+
+    expect(
+      await screen.findByText("전략 상세 화면을 살펴볼까요?"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "1분 안내 보기" }));
+
+    expect(
+      await screen.findByText("전략의 역할부터 확인해요"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "자산배분 예시 보기" }));
+    expect(
+      await screen.findByText("자산배분 예시는 구조를 이해하는 참고예요"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "운용 방식 보기" }));
+    expect(
+      await screen.findByText("전략이 작동하는 방식을 읽어보세요"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "연금계좌 적용 보기" }));
+    expect(
+      await screen.findByText("연금계좌에서 맡을 역할을 확인해요"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "핵심 용어 보기" }));
+    expect(
+      await screen.findByText("낯선 용어는 여기서 풀어볼 수 있어요"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "안내 마치기" }));
+    expect(
+      window.sessionStorage.getItem(
+        strategyDetailGuideStorageKey(TARGET_USER_ID),
+      ),
+    ).toBe("true");
+    expect(
+      window.sessionStorage.getItem(firstUseGuideStorageKey(TARGET_USER_ID)),
+    ).toBeNull();
+  });
+
+  it("opens the strategy detail preview without an authenticated session", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/?tour-preview=1#/strategy-detail?strategy=factor",
+    );
+    authMocks.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+    addStrategyDetailFixture();
+    render(<FirstUseGuide />);
+
+    expect(
+      await screen.findByText("전략 상세 화면을 살펴볼까요?"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "나중에 볼게요" }));
+    await waitFor(() => {
+      expect(
+        screen.queryByText("전략 상세 화면을 살펴볼까요?"),
+      ).not.toBeInTheDocument();
     });
   });
 });

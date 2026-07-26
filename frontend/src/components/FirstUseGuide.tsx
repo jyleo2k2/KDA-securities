@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useRef,
   useState,
   type JSX,
   type ReactNode,
@@ -14,6 +15,8 @@ import "./FirstUseGuide.css";
 
 const GUIDE_VERSION = "v2";
 const COMPLETE_KEY = `pension-first-use-guide:${GUIDE_VERSION}:complete`;
+const STRATEGY_DETAIL_COMPLETE_KEY =
+  `pension-first-use-guide:${GUIDE_VERSION}:strategy-detail:complete`;
 const PREVIEW_QUERY = "tour-preview";
 const TARGET_GUIDE_EMAIL = "jeongsu33@kda-demo.invalid";
 
@@ -25,6 +28,20 @@ interface GuideStep {
   cta: string;
 }
 
+interface GuideConfig {
+  backgroundSelector: string;
+  completeKey: string;
+  finalTargetSelector?: string;
+  id: "home" | "strategy-detail";
+  introBody: string;
+  introTitle: string;
+  portalSelector?: string;
+  route: string;
+  scrollSelector: string;
+  shellSelector: string;
+  steps: GuideStep[];
+}
+
 interface Rect {
   height: number;
   left: number;
@@ -32,7 +49,7 @@ interface Rect {
   width: number;
 }
 
-const STEPS: GuideStep[] = [
+const HOME_STEPS: GuideStep[] = [
   {
     selector: ".mhs-asset-total",
     title: "내 연금을 한곳에서 볼 수 있어요 !",
@@ -72,9 +89,71 @@ const STEPS: GuideStep[] = [
   },
 ];
 
-function isHomeRoute(): boolean {
+const STRATEGY_DETAIL_STEPS: GuideStep[] = [
+  {
+    selector: ".sd-hero",
+    title: "전략의 역할부터 확인해요",
+    body: "전략 이름과 설명을 읽고 내 연금 포트폴리오에서 어떤 역할을 맡을 수 있는지 먼저 살펴보세요.",
+    cta: "자산배분 예시 보기",
+  },
+  {
+    selector: ".sd-allocation-example",
+    title: "자산배분 예시는 구조를 이해하는 참고예요",
+    body: "막대 크기는 확정 비중이 아니에요. 주식·채권·현금성 자산과 주식 ETF 분야를 나누는 방식을 확인해 보세요.",
+    cta: "운용 방식 보기",
+  },
+  {
+    selector: ".sd-operation-guide",
+    title: "전략이 작동하는 방식을 읽어보세요",
+    body: "언제나 유리한 전략은 없어요. 어떤 기준으로 자산을 고르고 비중을 점검하는지 확인해 보세요.",
+    cta: "연금계좌 적용 보기",
+  },
+  {
+    selector: ".sd-account-guide",
+    title: "연금계좌에서 맡을 역할을 확인해요",
+    body: "포트폴리오 내 역할과 구현 난이도를 함께 보고, 계좌 규칙과 투자성향에 맞는지 살펴보세요.",
+    cta: "핵심 용어 보기",
+  },
+  {
+    selector: ".sd-words",
+    title: "낯선 용어는 여기서 풀어볼 수 있어요",
+    body: "전략을 이해하는 데 필요한 핵심 용어를 쉬운 설명과 함께 확인할 수 있어요.",
+    cta: "안내 마치기",
+  },
+];
+
+const GUIDES: GuideConfig[] = [
+  {
+    backgroundSelector: ".mhs-header, .mhs-body, .mhs-tab-toggle",
+    completeKey: COMPLETE_KEY,
+    finalTargetSelector: ".mhs-userpick-card-button",
+    id: "home",
+    introBody: "홈의 주요 기능을 확인하는 방법을 1분 안에 알려드릴게요.",
+    introTitle: "처음이신가요?",
+    portalSelector: ".mhs-page",
+    route: "/main-home",
+    scrollSelector: ".mhs-body",
+    shellSelector: ".mhs-phone",
+    steps: HOME_STEPS,
+  },
+  {
+    backgroundSelector: ".sd-header, .sd-scroll",
+    completeKey: STRATEGY_DETAIL_COMPLETE_KEY,
+    id: "strategy-detail",
+    introBody: "전략의 역할과 자산배분 예시를 읽는 방법을 1분 안에 알려드릴게요.",
+    introTitle: "전략 상세 화면을 살펴볼까요?",
+    route: "/strategy-detail",
+    scrollSelector: ".sd-scroll",
+    shellSelector: ".sd-phone",
+    steps: STRATEGY_DETAIL_STEPS,
+  },
+];
+
+const COMPLETE_KEYS = GUIDES.map((guide) => guide.completeKey);
+
+function activeGuide(): GuideConfig | null {
   const route = window.location.hash.slice(1).split("?")[0];
-  return route === "/main-home";
+  return GUIDES.find((guide) => guide.route === route) ?? null;
 }
 
 function previewRequested(): boolean {
@@ -95,11 +174,11 @@ function guideStorageKey(baseKey: string, userId: string | null): string {
   return userId ? `${baseKey}:${userId}` : baseKey;
 }
 
-function guideShouldOpen(userId: string | null): boolean {
+function guideShouldOpen(baseKey: string, userId: string | null): boolean {
   if (previewRequested()) return true;
   if (!userId) return false;
   return window.sessionStorage.getItem(
-    guideStorageKey(COMPLETE_KEY, userId),
+    guideStorageKey(baseKey, userId),
   ) !== "true";
 }
 
@@ -123,11 +202,14 @@ function guideTitle(step: GuideStep): ReactNode {
 
 export function FirstUseGuide(): JSX.Element | null {
   const [phone, setPhone] = useState<HTMLElement | null>(null);
+  const [guide, setGuide] = useState<GuideConfig | null>(null);
   const [mode, setMode] = useState<"intro" | "steps" | "closed">("closed");
   const [stepIndex, setStepIndex] = useState(0);
   const [phoneRect, setPhoneRect] = useState<Rect | null>(null);
   const [targetRect, setTargetRect] = useState<Rect | null>(null);
   const [eligibleUserId, setEligibleUserId] = useState<string | null>(null);
+  const activeGuideId = useRef<GuideConfig["id"] | null>(null);
+  const dismissedPreviewGuideId = useRef<GuideConfig["id"] | null>(null);
 
   useEffect(() => {
     if (previewRequested() || !supabase) return;
@@ -149,9 +231,11 @@ export function FirstUseGuide(): JSX.Element | null {
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
         if (currentEligibleUserId) {
-          window.sessionStorage.removeItem(
-            guideStorageKey(COMPLETE_KEY, currentEligibleUserId),
-          );
+          COMPLETE_KEYS.forEach((key) => {
+            window.sessionStorage.removeItem(
+              guideStorageKey(key, currentEligibleUserId),
+            );
+          });
         }
         initialized = true;
         updateEligibility(null);
@@ -164,9 +248,11 @@ export function FirstUseGuide(): JSX.Element | null {
         && currentAuthUserId === null
         && nextEligibleUserId
       ) {
-        window.sessionStorage.removeItem(
-          guideStorageKey(COMPLETE_KEY, nextEligibleUserId),
-        );
+        COMPLETE_KEYS.forEach((key) => {
+          window.sessionStorage.removeItem(
+            guideStorageKey(key, nextEligibleUserId),
+          );
+        });
       }
       initialized = true;
       updateEligibility(session);
@@ -177,16 +263,32 @@ export function FirstUseGuide(): JSX.Element | null {
     };
   }, []);
 
-  const findHome = useCallback(() => {
-    const nextPhone = isHomeRoute()
-      ? document.querySelector<HTMLElement>(".mhs-phone")
+  const findGuide = useCallback(() => {
+    const nextGuide = activeGuide();
+    const nextPhone = nextGuide
+      ? document.querySelector<HTMLElement>(nextGuide.shellSelector)
       : null;
+    if (activeGuideId.current !== nextGuide?.id) {
+      activeGuideId.current = nextGuide?.id ?? null;
+      dismissedPreviewGuideId.current = null;
+      setStepIndex(0);
+      setTargetRect(null);
+      setMode("closed");
+    }
+    setGuide(nextGuide);
     setPhone(nextPhone);
-    if (!nextPhone) {
+    if (!nextGuide || !nextPhone) {
       setMode("closed");
       return;
     }
-    if (!guideShouldOpen(eligibleUserId)) {
+    if (
+      previewRequested()
+      && dismissedPreviewGuideId.current === nextGuide.id
+    ) {
+      setMode("closed");
+      return;
+    }
+    if (!guideShouldOpen(nextGuide.completeKey, eligibleUserId)) {
       setMode("closed");
       return;
     }
@@ -194,37 +296,39 @@ export function FirstUseGuide(): JSX.Element | null {
   }, [eligibleUserId]);
 
   useEffect(() => {
-    findHome();
-    const observer = new MutationObserver(findHome);
+    findGuide();
+    const observer = new MutationObserver(findGuide);
     observer.observe(document.body, { childList: true, subtree: true });
-    window.addEventListener("hashchange", findHome);
+    window.addEventListener("hashchange", findGuide);
     return () => {
       observer.disconnect();
-      window.removeEventListener("hashchange", findHome);
+      window.removeEventListener("hashchange", findGuide);
     };
-  }, [findHome]);
+  }, [findGuide]);
 
   const measure = useCallback(() => {
-    if (!phone || mode === "closed") return;
+    if (!guide || !phone || mode === "closed") return;
     const nextPhoneRect = elementRect(phone);
     setPhoneRect(nextPhoneRect);
     if (mode === "intro") {
       setTargetRect(null);
       return;
     }
-    const target = document.querySelector<HTMLElement>(STEPS[stepIndex].selector);
+    const target = document.querySelector<HTMLElement>(
+      guide.steps[stepIndex].selector,
+    );
     setTargetRect(target ? elementRect(target) : null);
-  }, [mode, phone, stepIndex]);
+  }, [guide, mode, phone, stepIndex]);
 
   useLayoutEffect(() => {
-    if (!phone || mode === "closed") return;
+    if (!guide || !phone || mode === "closed") return;
     const target = mode === "steps"
-      ? document.querySelector<HTMLElement>(STEPS[stepIndex].selector)
+      ? document.querySelector<HTMLElement>(guide.steps[stepIndex].selector)
       : null;
     target?.scrollIntoView({ block: "center", behavior: "smooth" });
     const frame = window.requestAnimationFrame(measure);
     const timer = window.setTimeout(measure, 260);
-    const scrollArea = phone.querySelector(".mhs-body");
+    const scrollArea = phone.querySelector(guide.scrollSelector);
     window.addEventListener("resize", measure);
     scrollArea?.addEventListener("scroll", measure, { passive: true });
     return () => {
@@ -233,14 +337,12 @@ export function FirstUseGuide(): JSX.Element | null {
       window.removeEventListener("resize", measure);
       scrollArea?.removeEventListener("scroll", measure);
     };
-  }, [measure, mode, phone, stepIndex]);
+  }, [guide, measure, mode, phone, stepIndex]);
 
   useEffect(() => {
-    if (!phone || mode === "closed") return;
+    if (!guide || !phone || mode === "closed") return;
     const background = Array.from(
-      phone.querySelectorAll<HTMLElement>(
-        ".mhs-header, .mhs-body, .mhs-tab-toggle",
-      ),
+      phone.querySelectorAll<HTMLElement>(guide.backgroundSelector),
     );
     const previous = background.map((element) => ({
       ariaHidden: element.getAttribute("aria-hidden"),
@@ -258,10 +360,10 @@ export function FirstUseGuide(): JSX.Element | null {
         else element.setAttribute("aria-hidden", ariaHidden);
       });
     };
-  }, [mode, phone]);
+  }, [guide, mode, phone]);
 
   useEffect(() => {
-    if (!phone || !previewRequested()) return;
+    if (guide?.id !== "home" || !phone || !previewRequested()) return;
     const taxHeading = Array.from(
       phone.querySelectorAll<HTMLElement>(".mhs-section-title"),
     ).find((element) => element.textContent?.trim() === "세액공제");
@@ -271,34 +373,41 @@ export function FirstUseGuide(): JSX.Element | null {
     return () => {
       taxHeading.textContent = originalText;
     };
-  }, [phone]);
+  }, [guide, phone]);
 
-  if (!phone || !phoneRect || mode === "closed") return null;
+  if (!guide || !phone || !phoneRect || mode === "closed") return null;
+  const visibleGuide = guide;
 
   function dismissForNow(): void {
+    if (previewRequested()) {
+      dismissedPreviewGuideId.current = visibleGuide.id;
+    }
     window.sessionStorage.setItem(
-      guideStorageKey(COMPLETE_KEY, eligibleUserId),
+      guideStorageKey(visibleGuide.completeKey, eligibleUserId),
       "true",
     );
     setMode("closed");
   }
 
   function completeGuide(): void {
+    if (previewRequested()) {
+      dismissedPreviewGuideId.current = visibleGuide.id;
+    }
     window.sessionStorage.setItem(
-      guideStorageKey(COMPLETE_KEY, eligibleUserId),
+      guideStorageKey(visibleGuide.completeKey, eligibleUserId),
       "true",
     );
     setMode("closed");
   }
 
   function handleStepCta(): void {
-    if (stepIndex < STEPS.length - 1) {
+    if (stepIndex < visibleGuide.steps.length - 1) {
       setStepIndex((current) => current + 1);
       return;
     }
-    const finalTarget = document.querySelector<HTMLElement>(
-      STEPS[STEPS.length - 1].selector,
-    );
+    const finalTarget = visibleGuide.finalTargetSelector
+      ? document.querySelector<HTMLElement>(visibleGuide.finalTargetSelector)
+      : null;
     completeGuide();
     finalTarget?.click();
   }
@@ -312,8 +421,10 @@ export function FirstUseGuide(): JSX.Element | null {
   const coachAtTop = relativeTarget
     ? relativeTarget.top + relativeTarget.height / 2 > phoneRect.height / 2
     : false;
-  const currentStep = STEPS[stepIndex];
-  const portalHost = phone.querySelector<HTMLElement>(".mhs-page") ?? phone;
+  const currentStep = guide.steps[stepIndex];
+  const portalHost = guide.portalSelector
+    ? phone.querySelector<HTMLElement>(guide.portalSelector) ?? phone
+    : phone;
 
   return createPortal(
     <div className="fug-root" aria-live="polite">
@@ -322,8 +433,8 @@ export function FirstUseGuide(): JSX.Element | null {
           <div className="fug-intro-backdrop" />
           <section className="fug-panel fug-intro-panel" aria-labelledby="fug-intro-title">
             <span className="fug-eyebrow">처음 이용 안내</span>
-            <h2 id="fug-intro-title">처음이신가요?</h2>
-            <p>홈의 주요 기능을 확인하는 방법을 1분 안에 알려드릴게요.</p>
+            <h2 id="fug-intro-title">{guide.introTitle}</h2>
+            <p>{guide.introBody}</p>
             <div className="fug-actions">
               <button type="button" className="fug-secondary" onClick={dismissForNow}>
                 나중에 볼게요
@@ -359,7 +470,7 @@ export function FirstUseGuide(): JSX.Element | null {
             aria-labelledby="fug-step-title"
           >
             <div className="fug-progress">
-              <span>{stepIndex + 1} / {STEPS.length}</span>
+              <span>{stepIndex + 1} / {guide.steps.length}</span>
               <button type="button" onClick={completeGuide}>건너뛰기</button>
             </div>
             <h2 id="fug-step-title">
@@ -391,4 +502,8 @@ export function FirstUseGuide(): JSX.Element | null {
 export const FIRST_USE_GUIDE_STORAGE_KEY = COMPLETE_KEY;
 export function firstUseGuideStorageKey(userId: string): string {
   return guideStorageKey(COMPLETE_KEY, userId);
+}
+
+export function strategyDetailGuideStorageKey(userId: string): string {
+  return guideStorageKey(STRATEGY_DETAIL_COMPLETE_KEY, userId);
 }
