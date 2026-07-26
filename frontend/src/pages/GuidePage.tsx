@@ -93,6 +93,7 @@ const BOUNDARY_LABELS: Record<DataBoundary, string> = {
 };
 
 const DEFAULT_TYPING_INTERVAL_MS = 50;
+const CHAT_SESSION_PAGE_SIZE = 20;
 const SERVER_READY_RETRY_DELAYS_MS = [3000, 6000, 12000] as const;
 const PENSION_TAX_LOCAL_INCOME_TAX_NOTICE =
   "세액공제율과 세액공제액은 지방소득세를 고려해서 계산했어요.";
@@ -510,10 +511,13 @@ function AssistantMessage({
   const educationalFinalRiskTarget = Number(
     educationalEvaluation?.final_general_risk_target_percent,
   );
-  const educationalLossToleranceDefenseOnly = (
+  const educationalRawRiskTarget = Number(
+    educationalEvaluation?.raw_risk_target_percent,
+  );
+  const educationalLossToleranceAdjusted = (
     educationalEvaluation?.loss_tolerance_binding === true
     && Number.isFinite(educationalFinalRiskTarget)
-    && educationalFinalRiskTarget === 0
+    && Number.isFinite(educationalRawRiskTarget)
   );
   const educationalLead = (
     isEducationalPortfolio
@@ -521,13 +525,17 @@ function AssistantMessage({
     && educationalProfileLabel
     && educationalEvaluation?.strategy_label
   )
-    ? educationalLossToleranceDefenseOnly
+    ? educationalLossToleranceAdjusted
       ? (
-        `${userName}님의 ${educationalProfileLabel} 투자성향보다 선택한 손실감내율 `
-        + `${Number(educationalEvaluation.evaluated_input.loss_tolerance_percent).toFixed(1)}%가 우선 적용돼, `
-        + "채권과 현금성 자산 중심의 방어 배분으로 조정됐습니다."
+        `${userName}님의 이번 포트폴리오에는 ${educationalProfileLabel} 운용 성향과 선택한 손실감내율 `
+        + `${Number(educationalEvaluation.evaluated_input.loss_tolerance_percent).toFixed(1)}%를 함께 반영했습니다. `
+        + `손실감내율을 우선 적용해 성장자산 비중을 ${educationalRawRiskTarget.toFixed(1)}%에서 `
+        + `${educationalFinalRiskTarget.toFixed(1)}%로 낮췄습니다.`
       )
-      : `${userName}님의 투자성향(${educationalProfileLabel})에 가장 적합한 투자전략은 ${educationalEvaluation.strategy_label}입니다.`
+      : (
+        `${userName}님의 이번 포트폴리오에 적용한 운용 성향은 ${educationalProfileLabel}이며, `
+        + `${educationalEvaluation.strategy_label} 기준으로 구성했습니다.`
+      )
     : undefined;
   const isPensionTaxCredit = (
     response.intent === "pension_tax"
@@ -561,11 +569,22 @@ function AssistantMessage({
       item.kind === "tax_summary" && item.title === "세액공제 요약"
     ))
     : undefined;
-  const remainingVisualizations = isMissedTaxCredit
+  const embedsEducationalStrategyVisualizations = (
+    isEducationalPortfolio
+    && educationalEvaluation != null
+    && educationalEvaluation.evaluated_input.current_holdings.length === 0
+  );
+  const educationalStrategyVisualizations = embedsEducationalStrategyVisualizations
+    ? response.visualizations.filter((item) => (
+      item.kind === "sleeve_allocation" || item.kind === "stress_scenarios"
+    ))
+    : [];
+  const remainingVisualizations = (isMissedTaxCredit
     ? response.visualizations.filter((item) => item.kind !== "tax_summary")
     : taxSummaryVisualization
       ? response.visualizations.filter((item) => item !== taxSummaryVisualization)
-      : response.visualizations;
+      : response.visualizations
+  ).filter((item) => !educationalStrategyVisualizations.includes(item));
   const visibleNumericEvidence = isMissedTaxCredit
     ? []
     : isPensionTaxCredit
@@ -729,7 +748,11 @@ function AssistantMessage({
 
       {!showPensionTaxBreakdown && numericEvidenceCards}
 
-      <EducationalPortfolioReview evaluation={response.educational_portfolio_evaluation} />
+      <EducationalPortfolioReview
+        evaluation={response.educational_portfolio_evaluation}
+        visualizations={educationalStrategyVisualizations}
+        sources={response.sources}
+      />
 
       {shouldShowHoldingsPanel && onAnalyzeHoldings && (
         <PortfolioHoldingsPanel
@@ -864,6 +887,7 @@ export function GuidePage({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [serverReady, setServerReady] = useState<boolean | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
+  const [visibleSessionCount, setVisibleSessionCount] = useState(CHAT_SESSION_PAGE_SIZE);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [conversationContext, setConversationContext] =
     useState<ConversationContext | null>(null);
@@ -1042,7 +1066,7 @@ export function GuidePage({
     onInputClear: () => setInput(""),
     onPersistedSession: (sessionId, token, userId) => {
       setActiveSessionId(sessionId);
-      void refreshChatSessions(token, userId);
+      if (isSidebarOpen) void refreshChatSessions(token, userId);
     },
     onServerReady: setServerReady,
     onStart: () => setHistoryLoading(false),
@@ -1202,6 +1226,8 @@ export function GuidePage({
     if (userChanged) {
       conversationGenerationRef.current += 1;
       setMessages([]);
+      setChatSessions([]);
+      setVisibleSessionCount(CHAT_SESSION_PAGE_SIZE);
       setActiveSessionId(null);
       setConversationContext(null);
       setSelectedScenario("");
@@ -1218,13 +1244,20 @@ export function GuidePage({
       setHistoryLoading(false);
       return;
     }
+    if (!isSidebarOpen) {
+      setHistoryLoading(false);
+      return;
+    }
 
     let active = true;
     setHistoryLoading(true);
     setHistoryError(null);
     void getChatSessions(accessToken)
       .then((sessions) => {
-        if (active) setChatSessions(sessions);
+        if (active) {
+          setChatSessions(sessions);
+          setVisibleSessionCount(CHAT_SESSION_PAGE_SIZE);
+        }
       })
       .catch((error: unknown) => {
         if (active) setHistoryError(authenticatedErrorMessage(error));
@@ -1235,7 +1268,7 @@ export function GuidePage({
     return () => {
       active = false;
     };
-  }, [accessToken, authenticatedUserId, auth.configured, auth.loading]);
+  }, [accessToken, authenticatedUserId, auth.configured, auth.loading, isSidebarOpen]);
 
   useEffect(() => {
     if (userContext) setSelectedScenario(userContext.scenario_code);
@@ -1259,6 +1292,7 @@ export function GuidePage({
         || sessionListGenerationRef.current !== sessionListGeneration
       ) return;
       setChatSessions(sessions);
+      setVisibleSessionCount(CHAT_SESSION_PAGE_SIZE);
       setHistoryError(null);
     } catch (error) {
       if (
@@ -1448,6 +1482,9 @@ export function GuidePage({
   }
 
   async function deleteAllStoredSessions() {
+    const sessionsToDelete = chatSessions.filter(
+      (session) => session.session_id !== activeSessionId,
+    );
     if (
       !accessToken
       || !authenticatedUserId
@@ -1455,9 +1492,12 @@ export function GuidePage({
       || isSending
       || deletingSessionId
       || deletingAllSessions
-      || chatSessions.length === 0
+      || sessionsToDelete.length === 0
     ) return;
-    if (!window.confirm("지난 대화를 모두 지울까요?\n삭제 후에는 되돌릴 수 없어요.")) {
+    const confirmationMessage = activeSessionId
+      ? "현재 대화를 제외한 지난 대화를 모두 지울까요?\n삭제 후에는 되돌릴 수 없어요."
+      : "지난 대화를 모두 지울까요?\n삭제 후에는 되돌릴 수 없어요.";
+    if (!window.confirm(confirmationMessage)) {
       return;
     }
 
@@ -1469,37 +1509,50 @@ export function GuidePage({
     setDeleteStatus(null);
     setHistoryError(null);
     try {
-      try {
-        await deleteAllChatSessions(requestToken);
-      } catch (error) {
-        // During a rolling API update an older server may not have the
-        // collection DELETE route yet. The established per-session route
-        // still enforces the same owner boundary, so use it only for that
-        // compatibility case.
-        if (
-          !(error instanceof ApiError)
-          || (error.status !== 404 && error.status !== 405)
-        ) {
-          throw error;
-        }
+      if (activeSessionId) {
         await Promise.all(
-          chatSessions.map((session) => deleteChatSession(
+          sessionsToDelete.map((session) => deleteChatSession(
             session.session_id,
             requestToken,
           )),
         );
+      } else {
+        try {
+          await deleteAllChatSessions(requestToken);
+        } catch (error) {
+          // During a rolling API update an older server may not have the
+          // collection DELETE route yet. The established per-session route
+          // still enforces the same owner boundary, so use it only for that
+          // compatibility case.
+          if (
+            !(error instanceof ApiError)
+            || (error.status !== 404 && error.status !== 405)
+          ) {
+            throw error;
+          }
+          await Promise.all(
+            sessionsToDelete.map((session) => deleteChatSession(
+              session.session_id,
+              requestToken,
+            )),
+          );
+        }
       }
       if (!isCurrentOperation(authGeneration, requestUserId, requestToken)) return;
-      conversationGenerationRef.current += 1;
-      setChatSessions([]);
-      setMessages([]);
-      setActiveSessionId(null);
-      setConversationContext(null);
-      setDeleteStatus("지난 대화를 모두 지웠어요.");
+      setChatSessions((current) => current.filter(
+        (session) => session.session_id === activeSessionId,
+      ));
+      setVisibleSessionCount(CHAT_SESSION_PAGE_SIZE);
+      setDeleteStatus(
+        activeSessionId
+          ? "현재 대화를 제외한 지난 대화를 지웠어요."
+          : "지난 대화를 모두 지웠어요.",
+      );
       window.setTimeout(() => textareaRef.current?.focus(), 0);
     } catch (error) {
       if (!isCurrentOperation(authGeneration, requestUserId, requestToken)) return;
       setHistoryError(authenticatedErrorMessage(error));
+      void refreshChatSessions(requestToken, requestUserId);
     } finally {
       if (isCurrentOperation(authGeneration, requestUserId, requestToken)) {
         setDeletingAllSessions(false);
@@ -1540,18 +1593,27 @@ export function GuidePage({
                 <span><strong>내 대화</strong><small>{auth.session.user.email ?? "인증 사용자"}</small></span>
                 <button type="button" onClick={() => void handleLogout()} disabled={authSubmitting}>로그아웃</button>
               </div>
-              <ChatSessionList
-                activeSessionId={activeSessionId}
-                chatSessions={chatSessions}
-                deleteStatus={deleteStatus}
-                deletingAllSessions={deletingAllSessions}
-                deletingSessionId={deletingSessionId}
-                historyLoading={historyLoading}
-                isSending={isSending}
-                onDelete={(session) => void deleteStoredSession(session)}
-                onDeleteAll={() => void deleteAllStoredSessions()}
-                onLoad={(sessionId) => void loadStoredSession(sessionId)}
-              />
+              {isSidebarOpen && (
+                <ChatSessionList
+                  activeSessionId={activeSessionId}
+                  chatSessions={chatSessions.slice(0, visibleSessionCount)}
+                  deletableSessionCount={chatSessions.filter(
+                    (session) => session.session_id !== activeSessionId,
+                  ).length}
+                  deleteStatus={deleteStatus}
+                  deletingAllSessions={deletingAllSessions}
+                  deletingSessionId={deletingSessionId}
+                  hasMoreSessions={visibleSessionCount < chatSessions.length}
+                  historyLoading={historyLoading}
+                  isSending={isSending}
+                  onDelete={(session) => void deleteStoredSession(session)}
+                  onDeleteAll={() => void deleteAllStoredSessions()}
+                  onLoadMore={() => setVisibleSessionCount((current) => (
+                    current + CHAT_SESSION_PAGE_SIZE
+                  ))}
+                  onLoad={(sessionId) => void loadStoredSession(sessionId)}
+                />
+              )}
             </>
           ) : auth.configured ? (
             <>
@@ -1799,6 +1861,7 @@ export function GuidePage({
           ) : (
             <ChatMessageList
               conversationEndRef={conversationEndRef}
+              conversationKey={activeSessionId}
               deletingSessionId={deletingSessionId}
               isSending={isSending}
               latestMessageRef={latestMessageRef}

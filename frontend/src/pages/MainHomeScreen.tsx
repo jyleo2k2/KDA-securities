@@ -75,6 +75,7 @@ const PIE_RADIUS = 78;
 const PIE_INNER_RADIUS = 48;
 const PIE_LABEL_RADIUS = 63;
 const PIE_SELECT_OFFSET = 7;
+const STRATEGY_PLANNING_RETURN_RETRY_MS = 3_000;
 
 function buildHoldingPieSlices(
   aggregation: AggregationEvaluation | null,
@@ -175,16 +176,16 @@ interface StrategyCard {
 }
 
 const STRATEGY_CARDS: StrategyCard[] = [
-  { strategyId: "market_beta", title: "시장 전체 따라가기", valueColor: "#4FB6E6", desc: "많은 회사가 든 ETF로 주식시장 전체를 넓게 따라가요.", bg: "#EAF7FC" },
-  { strategyId: "factor", title: "회사 특징 고르기", valueColor: "#24386E", desc: "좋은 회사·싼 가격·꾸준한 흐름 같은 특징을 살펴봐요.", bg: "#EAEDF3" },
-  { strategyId: "thematic", title: "성장 분야 살펴보기", valueColor: "#F5871F", desc: "AI·반도체·바이오처럼 한 분야의 기회를 조금씩 살펴봐요.", bg: "#FFF3E6" },
-  { strategyId: "top_down", title: "큰 경제 흐름 보기", valueColor: "#3B4148", desc: "금리·물가·경기를 보고 나라와 산업 비율을 살펴봐요.", bg: "#EEF0F1" },
-  { strategyId: "bottom_up", title: "회사 하나씩 살펴보기", valueColor: "#1E9E5D", desc: "전문가가 회사를 골라 담는 펀드를 작은 비중으로 살펴봐요.", bg: "#E9F8EF" },
-  { strategyId: "barbell", title: "성장·안전 나누기", valueColor: "#1E2124", desc: "성장할 돈과 채권·현금 같은 안전한 돈을 나눠 둬요.", bg: "#F5F5F5" },
-  { strategyId: "volatility_managed", title: "가격 흔들림 줄이기", valueColor: "#9CA7AE", desc: "가격이 너무 크게 출렁이면 채권·현금 비율을 늘려요.", bg: "#F1F2F3" },
-  { strategyId: "market_neutral", title: "시장 흔들림 줄이기", valueColor: "#7B4FC0", desc: "시장이 오르내려도 덜 흔들리게 만든 상품을 살펴봐요.", bg: "#F3EEFB" },
-  { strategyId: "event_driven", title: "회사 큰 소식 보기", valueColor: "#B8860B", desc: "합병·분할처럼 회사에 큰 일이 생긴 뒤를 살펴봐요.", bg: "#FFF8DE" },
-  { strategyId: "trend_global_macro", title: "세계 시장 흐름 보기", valueColor: "#2F6FE0", desc: "주식·채권 등 세계 시장의 큰 흐름을 함께 살펴봐요.", bg: "#EAF1FE" },
+  { strategyId: "market_beta", title: "시장 베타 전략", valueColor: "#4FB6E6", desc: "시장 수익률을 포트폴리오의 기준 수익원으로 활용하는 장기 분산 전략입니다.", bg: "#EAF7FC" },
+  { strategyId: "factor", title: "팩터 전략", valueColor: "#24386E", desc: "재무 건전성·가격 수준·추세 등 기업 특성을 기준으로 ETF를 선택하는 전략입니다.", bg: "#EAEDF3" },
+  { strategyId: "thematic", title: "테마 전략", valueColor: "#F5871F", desc: "산업 구조 변화가 예상되는 분야에 집중해 성장 기회를 찾는 위성 전략입니다.", bg: "#FFF3E6" },
+  { strategyId: "top_down", title: "탑다운 전략", valueColor: "#3B4148", desc: "금리·물가·경기 같은 거시 환경을 분석해 국가·산업·자산군 비중을 조정합니다.", bg: "#EEF0F1" },
+  { strategyId: "bottom_up", title: "바텀업 전략", valueColor: "#1E9E5D", desc: "개별 기업의 경쟁력·재무상태·성장성을 분석해 투자 대상을 선별하는 전략입니다.", bg: "#E9F8EF" },
+  { strategyId: "barbell", title: "바벨 전략", valueColor: "#1E2124", desc: "성장자산과 단기채·현금성자산을 함께 배분해 상·하방 위험에 대응합니다.", bg: "#F5F5F5" },
+  { strategyId: "volatility_managed", title: "변동성 관리 전략", valueColor: "#9CA7AE", desc: "목표 변동성에 맞춰 주식·채권·현금성자산 비중을 조절하는 위험관리 전략입니다.", bg: "#F1F2F3" },
+  { strategyId: "market_neutral", title: "롱숏·시장중립 전략", valueColor: "#7B4FC0", desc: "매수와 헤지 포지션을 함께 활용해 시장 방향성 노출을 낮추는 전략입니다.", bg: "#F3EEFB" },
+  { strategyId: "event_driven", title: "이벤트드리븐 전략", valueColor: "#B8860B", desc: "합병·분할·자사주 매입 등 기업 이벤트가 가격에 반영되는 과정을 활용합니다.", bg: "#FFF8DE" },
+  { strategyId: "trend_global_macro", title: "추세추종·글로벌 매크로 전략", valueColor: "#2F6FE0", desc: "자산 가격 추세와 글로벌 거시 환경을 규칙에 따라 활용하는 멀티에셋 전략입니다.", bg: "#EAF1FE" },
 ];
 
 function strategyPlanningFootnote(
@@ -306,10 +307,24 @@ export function MainHomeScreen({
   }, [selectedHolding]);
   useEffect(() => {
     let active = true;
-    getStrategyPlanningReturns()
-      .then((returns) => { if (active) setStrategyPlanningReturns(returns); })
-      .catch(() => { if (active) setStrategyPlanningReturns([]); });
-    return () => { active = false; };
+    let retryTimer: number | undefined;
+    const loadStrategyPlanningReturns = () => {
+      getStrategyPlanningReturns()
+        .then((returns) => { if (active) setStrategyPlanningReturns(returns); })
+        .catch(() => {
+          if (active) {
+            retryTimer = window.setTimeout(
+              loadStrategyPlanningReturns,
+              STRATEGY_PLANNING_RETURN_RETRY_MS,
+            );
+          }
+        });
+    };
+    loadStrategyPlanningReturns();
+    return () => {
+      active = false;
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+    };
   }, []);
   useEffect(() => {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
@@ -538,7 +553,7 @@ export function MainHomeScreen({
             );
             const value = planningReturn
               ? formatPlanningPercent(planningReturn.net_planning_return_percent)
-              : strategyPlanningReturns === null ? "계산 중…" : "확인 필요";
+              : "계산 중…";
             return (
             <button
               type="button"

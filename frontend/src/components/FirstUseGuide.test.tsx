@@ -28,8 +28,10 @@ vi.mock("../auth/supabase", () => ({
 }));
 
 import {
+  chatGuideStorageKey,
   firstUseGuideStorageKey,
   FirstUseGuide,
+  pensionPlannerGuideStorageKey,
   strategyDetailGuideStorageKey,
 } from "./FirstUseGuide";
 
@@ -140,6 +142,110 @@ function addStrategyDetailFixture(): void {
   words.scrollIntoView = vi.fn();
 }
 
+function addChatFixture(): void {
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    `
+      <section class="guide-phone">
+        <div class="ios-statusbar">9:41</div>
+        <div class="app-shell">
+          <main class="chat-main">
+            <div class="conversation">
+              <div class="welcome design-welcome">
+                <h1>이정수님! 막막한 노후 준비, 연그미와 대화하며 풀어보세요.</h1>
+                <div class="welcome-intro-cards">
+                  <div class="selected-scenario-card">내 연금 상황</div>
+                  <section class="rebalancing-reminder-card">리밸런싱 점검</section>
+                </div>
+                <section class="chat-home-card-section">추천 질문</section>
+                <section class="chat-home-card-section etf-theme-section">ETF 테마</section>
+              </div>
+            </div>
+            <div class="composer-wrap">연금에 대해 무엇이든 물어보세요</div>
+          </main>
+        </div>
+      </section>
+    `,
+  );
+  const phone = document.querySelector(".guide-phone") as HTMLElement;
+  const appShell = document.querySelector(".app-shell") as HTMLElement;
+  const headline = document.querySelector(".design-welcome h1") as HTMLElement;
+  const introCards = document.querySelector(".welcome-intro-cards") as HTMLElement;
+  const recommendations = document.querySelector(
+    ".chat-home-card-section:not(.etf-theme-section)",
+  ) as HTMLElement;
+  const themes = document.querySelector(".etf-theme-section") as HTMLElement;
+  const composer = document.querySelector(".composer-wrap") as HTMLElement;
+  phone.getBoundingClientRect = () => rect(0, 0, 390, 844);
+  appShell.getBoundingClientRect = () => rect(54, 0, 390, 790);
+  headline.getBoundingClientRect = () => rect(140, 22, 346, 105);
+  introCards.getBoundingClientRect = () => rect(265, 22, 346, 240);
+  recommendations.getBoundingClientRect = () => rect(530, 22, 346, 210);
+  themes.getBoundingClientRect = () => rect(760, 22, 346, 240);
+  composer.getBoundingClientRect = () => rect(770, 18, 354, 68);
+  headline.scrollIntoView = vi.fn();
+  introCards.scrollIntoView = vi.fn();
+  recommendations.scrollIntoView = vi.fn();
+  themes.scrollIntoView = vi.fn();
+  composer.scrollIntoView = vi.fn();
+}
+
+function addPensionPlannerFixture(onTaxTab: () => void): void {
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    `
+      <section class="pension-planner-frame">
+        <iframe title="예상 연금 계산 및 세액공제 확인"></iframe>
+      </section>
+    `,
+  );
+  const frame = document.querySelector("iframe") as HTMLIFrameElement;
+  const frameDocument = frame.contentDocument;
+  if (!frameDocument) throw new Error("iframe document is unavailable");
+  frameDocument.body.innerHTML = `
+    <div id="pension-phone">
+      <div class="scrolly">
+        <div>예상 연금 계산 및 세액공제 확인</div>
+        <div>
+          <div>예상 연금</div>
+          <div data-tax-tab>세액공제</div>
+        </div>
+        <div data-pension-savings-card>
+          <input class="brand-range" type="range" max="600" />
+        </div>
+        <div data-irp-card>
+          <input class="brand-range tax-range-irp" type="range" max="900" />
+        </div>
+        <div data-isa-card>
+          <input class="brand-range" type="range" max="3000" />
+        </div>
+      </div>
+    </div>
+  `;
+  const phone = frameDocument.querySelector("#pension-phone") as HTMLElement;
+  const taxTab = frameDocument.querySelector("[data-tax-tab]") as HTMLElement;
+  const pensionSavings = frameDocument.querySelector(
+    ".brand-range[max=\"600\"]",
+  ) as HTMLElement;
+  const irp = frameDocument.querySelector(".tax-range-irp") as HTMLElement;
+  const isa = frameDocument.querySelector(
+    ".brand-range[max=\"3000\"]",
+  ) as HTMLElement;
+  const pensionSavingsCard = pensionSavings.parentElement as HTMLElement;
+  const irpCard = irp.parentElement as HTMLElement;
+  const isaCard = isa.parentElement as HTMLElement;
+  phone.getBoundingClientRect = () => rect(0, 0, 390, 844);
+  taxTab.getBoundingClientRect = () => rect(110, 195, 170, 48);
+  pensionSavingsCard.getBoundingClientRect = () => rect(260, 16, 358, 220);
+  irpCard.getBoundingClientRect = () => rect(496, 16, 358, 240);
+  isaCard.getBoundingClientRect = () => rect(752, 16, 358, 260);
+  taxTab.scrollIntoView = vi.fn();
+  pensionSavingsCard.scrollIntoView = vi.fn();
+  irpCard.scrollIntoView = vi.fn();
+  isaCard.scrollIntoView = vi.fn();
+  taxTab.addEventListener("click", onTaxTab);
+}
+
 describe("FirstUseGuide", () => {
   beforeEach(() => {
     document.body.replaceChildren();
@@ -171,7 +277,10 @@ describe("FirstUseGuide", () => {
     addHomeFixture(vi.fn());
     render(<FirstUseGuide />);
 
-    expect(await screen.findByText("처음이신가요?")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "처음이신가요?" }),
+    ).toBeInTheDocument();
+    expect(document.querySelector(".fug-title-accent")).toHaveTextContent("처음");
     expect(screen.getByRole("button", { name: "1분 안내 보기" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "나중에 볼게요" })).toBeInTheDocument();
   });
@@ -182,10 +291,22 @@ describe("FirstUseGuide", () => {
     render(<FirstUseGuide />);
 
     fireEvent.click(await screen.findByRole("button", { name: "1분 안내 보기" }));
-    expect(await screen.findByText("내 연금을 한곳에서 볼 수 있어요 !")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", {
+        name: "내 연금을 한곳에서 볼 수 있어요 !",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      Array.from(document.querySelectorAll(".fug-title-accent"))
+        .map((element) => element.textContent),
+    ).toEqual(expect.arrayContaining(["내 연금", "DC형·IRP·연금저축", "정보 기준일"]));
 
     fireEvent.click(screen.getByRole("button", { name: "자산 구성 보기" }));
-    expect(await screen.findByText("자산 구성부터 천천히 살펴보세요")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", {
+        name: "자산 구성부터 천천히 살펴보세요",
+      }),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "진단 기능 보기" }));
     expect(
@@ -196,19 +317,23 @@ describe("FirstUseGuide", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "세액공제도 보기" }));
     expect(
-      await screen.findByText(
-        "놓치고 있는 세액공제 금액 및 연금 수령액을 계산해볼 수 있어요 !",
-      ),
+      await screen.findByRole("heading", {
+        name: "놓치고 있는 세액공제 금액 및 연금 수령액을 계산해볼 수 있어요 !",
+      }),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "전략 설명 보기" }));
-    expect(await screen.findByText("전략은 운용 방식부터 비교해 보세요")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", {
+        name: "전략은 운용 방식부터 비교해 보세요",
+      }),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "이용자 Pick 보기" }));
     expect(
-      await screen.findByText(
-        "다른 이용자들의 PICK과 PICK에 대한 근거도 참고할 수 있어요 !",
-      ),
+      await screen.findByRole("heading", {
+        name: "다른 이용자들의 PICK과 PICK에 대한 근거도 참고할 수 있어요 !",
+      }),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "이용자 Pick 둘러보기" }));
@@ -245,10 +370,51 @@ describe("FirstUseGuide", () => {
       );
     });
 
-    expect(await screen.findByText("처음이신가요?")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "처음이신가요?" }),
+    ).toBeInTheDocument();
     expect(
       window.sessionStorage.getItem(firstUseGuideStorageKey(TARGET_USER_ID)),
     ).toBeNull();
+  });
+
+  it("clears stale chatbot completion when sign-in wins the initial session race", async () => {
+    window.history.replaceState(null, "", "/#/guide");
+    window.sessionStorage.setItem(
+      chatGuideStorageKey(TARGET_USER_ID),
+      "true",
+    );
+    let resolveSession: ((value: unknown) => void) | null = null;
+    authMocks.getSession.mockReturnValue(new Promise((resolve) => {
+      resolveSession = resolve;
+    }));
+    addChatFixture();
+    render(<FirstUseGuide />);
+
+    await waitFor(() => expect(authStateChangeListener).not.toBeNull());
+    act(() => {
+      authStateChangeListener?.(
+        "SIGNED_IN",
+        authSession("jeongsu33@kda-demo.invalid"),
+      );
+    });
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "연그미와 대화를 시작해 볼까요?",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      window.sessionStorage.getItem(chatGuideStorageKey(TARGET_USER_ID)),
+    ).toBeNull();
+
+    await act(async () => {
+      resolveSession?.({
+        data: { session: authSession("jeongsu33@kda-demo.invalid") },
+        error: null,
+      });
+      await Promise.resolve();
+    });
   });
 
   it("does not open for any other authenticated user", async () => {
@@ -295,31 +461,43 @@ describe("FirstUseGuide", () => {
     render(<FirstUseGuide />);
 
     expect(
-      await screen.findByText("전략 상세 화면을 살펴볼까요?"),
+      await screen.findByRole("heading", {
+        name: "전략 상세 화면을 살펴볼까요?",
+      }),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "1분 안내 보기" }));
 
     expect(
-      await screen.findByText("전략의 역할부터 확인해요"),
+      await screen.findByRole("heading", {
+        name: "전략의 역할부터 확인해요",
+      }),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "자산배분 예시 보기" }));
     expect(
-      await screen.findByText("자산배분 예시는 구조를 이해하는 참고예요"),
+      await screen.findByRole("heading", {
+        name: "자산배분 예시는 구조를 이해하는 참고예요",
+      }),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "운용 방식 보기" }));
     expect(
-      await screen.findByText("전략이 작동하는 방식을 읽어보세요"),
+      await screen.findByRole("heading", {
+        name: "전략이 작동하는 방식을 읽어보세요",
+      }),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "연금계좌 적용 보기" }));
     expect(
-      await screen.findByText("연금계좌에서 맡을 역할을 확인해요"),
+      await screen.findByRole("heading", {
+        name: "연금계좌에서 맡을 역할을 확인해요",
+      }),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "핵심 용어 보기" }));
     expect(
-      await screen.findByText("낯선 용어는 여기서 풀어볼 수 있어요"),
+      await screen.findByRole("heading", {
+        name: "낯선 용어는 여기서 풀어볼 수 있어요",
+      }),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "안내 마치기" }));
@@ -347,13 +525,217 @@ describe("FirstUseGuide", () => {
     render(<FirstUseGuide />);
 
     expect(
-      await screen.findByText("전략 상세 화면을 살펴볼까요?"),
+      await screen.findByRole("heading", {
+        name: "전략 상세 화면을 살펴볼까요?",
+      }),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "나중에 볼게요" }));
     await waitFor(() => {
       expect(
         screen.queryByText("전략 상세 화면을 살펴볼까요?"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  it("walks through the complete chatbot guide and stores completion separately", async () => {
+    window.history.replaceState(null, "", "/#/guide");
+    addChatFixture();
+    render(<FirstUseGuide />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "연그미와 대화를 시작해 볼까요?",
+      }),
+    ).toBeInTheDocument();
+    expect(document.querySelector(".fug-root-chat")).toBeInTheDocument();
+    expect(
+      document.querySelector(".fug-root-chat")?.parentElement,
+    ).toHaveClass("app-shell");
+    fireEvent.click(screen.getByRole("button", { name: "1분 안내 보기" }));
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "연그미에게 무엇이든 물어보세요",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector(".fug-title-accent"),
+    ).toHaveTextContent("연그미");
+    expect(
+      Array.from(document.querySelectorAll(".fug-title-accent"))
+        .map((element) => element.textContent),
+    ).toEqual(expect.arrayContaining([
+      "연금계좌 운용",
+      "세액공제",
+      "리밸런싱",
+      "ETF 테마",
+    ]));
+
+    fireEvent.click(screen.getByRole("button", { name: "내 정보 카드 보기" }));
+    expect(
+      await screen.findByRole("heading", {
+        name: "내 연금 상황과 점검 알림을 확인해요",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "추천 질문 보기" }));
+    expect(
+      await screen.findByRole("heading", {
+        name: "추천 질문으로 바로 시작해 보세요",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "ETF 테마 보기" }));
+    expect(
+      await screen.findByRole("heading", {
+        name: "관심 있는 ETF 테마를 둘러보세요",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "질문 입력창 보기" }));
+    expect(
+      await screen.findByRole("heading", {
+        name: "궁금한 내용을 직접 입력해 보세요",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "챗봇 안내 마치기" }));
+    expect(
+      window.sessionStorage.getItem(chatGuideStorageKey(TARGET_USER_ID)),
+    ).toBe("true");
+    expect(
+      window.sessionStorage.getItem(firstUseGuideStorageKey(TARGET_USER_ID)),
+    ).toBeNull();
+  });
+
+  it("walks through the pension calculator guide inside its iframe", async () => {
+    window.history.replaceState(null, "", "/#/planner");
+    const onTaxTab = vi.fn();
+    addPensionPlannerFixture(onTaxTab);
+    render(<FirstUseGuide />);
+
+    expect(
+      await screen.findByText("세액공제 계산기를 살펴볼까요?"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "1분 안내 보기" }));
+
+    expect(
+      await screen.findByText("세액공제 탭에서 남은 한도를 확인해요"),
+    ).toBeInTheDocument();
+    expect(onTaxTab).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "연금저축 한도 보기" }));
+    expect(
+      await screen.findByText("연금저축 납입액을 조절해 보세요"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "IRP·DC 한도 보기" }));
+    expect(
+      await screen.findByText("IRP·DC 본인 추가납입도 함께 살펴봐요"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "ISA 전환 혜택 보기" }));
+    expect(
+      await screen.findByText("ISA 만기 전환 혜택도 비교할 수 있어요"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "안내 마치기" }));
+    expect(
+      window.sessionStorage.getItem(
+        pensionPlannerGuideStorageKey(TARGET_USER_ID),
+      ),
+    ).toBe("true");
+    expect(
+      window.sessionStorage.getItem(firstUseGuideStorageKey(TARGET_USER_ID)),
+    ).toBeNull();
+  });
+
+  it("does not open the chatbot guide for another authenticated user", async () => {
+    window.history.replaceState(null, "", "/#/guide");
+    authMocks.getSession.mockResolvedValue({
+      data: {
+        session: authSession(
+          "another-user@kda-demo.invalid",
+          "92b0ac69-a30c-4a4b-94ca-530ed9b43f6c",
+        ),
+      },
+      error: null,
+    });
+    addChatFixture();
+    render(<FirstUseGuide />);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("연그미와 대화를 시작해 볼까요?"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("opens the chatbot guide after the same login finishes the home guide", async () => {
+    addHomeFixture(vi.fn());
+    render(<FirstUseGuide />);
+
+    expect(
+      await screen.findByRole("heading", { name: "처음이신가요?" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "나중에 볼게요" }));
+    expect(
+      window.sessionStorage.getItem(firstUseGuideStorageKey(TARGET_USER_ID)),
+    ).toBe("true");
+
+    addChatFixture();
+    act(() => {
+      window.history.replaceState(null, "", "/#/guide");
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "연그미와 대화를 시작해 볼까요?",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      window.sessionStorage.getItem(chatGuideStorageKey(TARGET_USER_ID)),
+    ).toBeNull();
+  });
+
+  it("opens when the chatbot app is entered and closes on both optional exits", async () => {
+    window.history.replaceState(null, "", "/#/user-pick-benchmark");
+    render(<FirstUseGuide />);
+    addChatFixture();
+
+    act(() => {
+      window.history.replaceState(null, "", "/#/guide");
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+    expect(
+      await screen.findByRole("heading", {
+        name: "연그미와 대화를 시작해 볼까요?",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "나중에 볼게요" }));
+    await waitFor(() => {
+      expect(document.querySelector(".fug-root-chat")).not.toBeInTheDocument();
+    });
+
+    window.sessionStorage.removeItem(chatGuideStorageKey(TARGET_USER_ID));
+    act(() => {
+      window.history.replaceState(null, "", "/#/user-pick-benchmark");
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+      window.history.replaceState(null, "", "/#/guide");
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+    expect(
+      await screen.findByRole("heading", {
+        name: "연그미와 대화를 시작해 볼까요?",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "1분 안내 보기" }));
+    fireEvent.click(screen.getByRole("button", { name: "건너뛰기" }));
+    await waitFor(() => {
+      expect(document.querySelector(".fug-root-chat")).not.toBeInTheDocument();
     });
   });
 });

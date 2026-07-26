@@ -175,7 +175,10 @@ def test_latest_server_conversation_context_is_restored_from_assistant(
     )
 
     assert restored == trusted
-    assert any("role = 'assistant'" in query for query, _ in cursor.executed)
+    context_query = next(
+        query for query, _ in cursor.executed if "role = 'assistant'" in query
+    )
+    assert "limit 20" in context_query
 
 
 def test_save_exchange_is_one_transaction_with_relational_evidence(
