@@ -92,6 +92,7 @@ class ChatIntent(StrEnum):
     ETF_THEME = "etf_theme"
     ETF_DISTRIBUTION = "etf_distribution"
     MACRO_EVIDENCE = "macro_evidence"
+    GLOSSARY = "glossary"
     OUT_OF_SCOPE = "out_of_scope"
 
 

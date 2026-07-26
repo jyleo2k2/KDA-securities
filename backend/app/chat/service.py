@@ -51,6 +51,7 @@ from .handlers.distribution_events import (
     distribution_event_response,
     distribution_reinvestment_response,
 )
+from .handlers.glossary import build_glossary_response, find_glossary_term
 from .handlers.pension_tax import pension_tax_response
 from .handlers.portfolio import (
     age_style_portfolio_guide,
@@ -92,6 +93,21 @@ _EDUCATIONAL_STRATEGY_ACCOUNT_TYPES = (
     AccountType.DC,
     AccountType.PENSION_SAVINGS,
 )
+
+
+def _glossary_response(
+    plan: QueryPlan,
+    knowledge: KnowledgeSearch,
+) -> ChatResponse:
+    """Answer a term question from the approved glossary, never from an LLM."""
+
+    term = find_glossary_term(plan.glossary_term_id or "")
+    if term is None:
+        return blocked_response(
+            BlockedReason.UNSUPPORTED,
+            user_message=plan.normalized_message,
+        )
+    return build_glossary_response(term, knowledge)
 
 
 class ChatService:
@@ -227,6 +243,8 @@ class ChatService:
             )
             if request.portfolio is not None:
                 response = custom_portfolio(request)
+            elif resolved_plan.intent == ChatIntent.GLOSSARY:
+                response = _glossary_response(resolved_plan, self._knowledge)
             elif request.educational_portfolio is not None:
                 response = educational_portfolio(
                     request.educational_portfolio,
