@@ -16,6 +16,9 @@ from scripts.build_news_event_outcome_ledger import (
 )
 
 _FOMC_LEDGER_PATH = Path("data/reference/fomc_policy_event_ledger_2011_2025.json")
+_BOK_LEDGER_PATH = Path(
+    "data/reference/bok_base_rate_change_event_ledger_2011_2025.json"
+)
 
 
 def _source() -> SourceChip:
@@ -113,6 +116,28 @@ def test_fomc_policy_ledger_uses_official_sources_and_explicit_bank_peers() -> N
         event.source.reference.startswith(
             "https://www.federalreserve.gov/monetarypolicy/"
         )
+        for event in ledger.events
+    )
+
+
+def test_bok_base_rate_ledger_uses_official_sources_and_explicit_bank_peers() -> None:
+    ledger = HistoricalNewsEventLedger.model_validate_json(
+        _BOK_LEDGER_PATH.read_text(encoding="utf-8")
+    )
+
+    assert len(ledger.events) == 31
+    assert len({event.event_id for event in ledger.events}) == 31
+    assert ledger.events[0].occurred_on == date(2011, 1, 13)
+    assert ledger.events[-1].occurred_on == date(2025, 5, 29)
+    assert all(event.event_id.startswith("bok-base-rate-") for event in ledger.events)
+    assert all(event.theme_id == "bank_finance" for event in ledger.events)
+    assert all(
+        event.peer_isu_codes == ("091170", "091220", "139270")
+        for event in ledger.events
+    )
+    assert all(
+        event.source.reference
+        == "https://www.bok.or.kr/portal/singl/baseRate/list.do?menuNo=200656"
         for event in ledger.events
     )
 
