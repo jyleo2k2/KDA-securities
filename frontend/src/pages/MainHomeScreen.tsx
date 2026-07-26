@@ -75,6 +75,7 @@ const PIE_RADIUS = 78;
 const PIE_INNER_RADIUS = 48;
 const PIE_LABEL_RADIUS = 63;
 const PIE_SELECT_OFFSET = 7;
+const STRATEGY_PLANNING_RETURN_RETRY_MS = 3_000;
 
 function buildHoldingPieSlices(
   aggregation: AggregationEvaluation | null,
@@ -306,10 +307,24 @@ export function MainHomeScreen({
   }, [selectedHolding]);
   useEffect(() => {
     let active = true;
-    getStrategyPlanningReturns()
-      .then((returns) => { if (active) setStrategyPlanningReturns(returns); })
-      .catch(() => { if (active) setStrategyPlanningReturns([]); });
-    return () => { active = false; };
+    let retryTimer: number | undefined;
+    const loadStrategyPlanningReturns = () => {
+      getStrategyPlanningReturns()
+        .then((returns) => { if (active) setStrategyPlanningReturns(returns); })
+        .catch(() => {
+          if (active) {
+            retryTimer = window.setTimeout(
+              loadStrategyPlanningReturns,
+              STRATEGY_PLANNING_RETURN_RETRY_MS,
+            );
+          }
+        });
+    };
+    loadStrategyPlanningReturns();
+    return () => {
+      active = false;
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+    };
   }, []);
   useEffect(() => {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
@@ -538,7 +553,7 @@ export function MainHomeScreen({
             );
             const value = planningReturn
               ? formatPlanningPercent(planningReturn.net_planning_return_percent)
-              : strategyPlanningReturns === null ? "계산 중…" : "확인 필요";
+              : "계산 중…";
             return (
             <button
               type="button"

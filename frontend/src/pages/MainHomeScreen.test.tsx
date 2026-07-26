@@ -43,6 +43,7 @@ const strategyPlanningReturns = [
 })) as StrategyPlanningReturnEvaluation[];
 
 beforeEach(() => {
+  vi.clearAllMocks();
   vi.mocked(getStrategyPlanningReturns).mockResolvedValue(strategyPlanningReturns);
 });
 
@@ -289,5 +290,28 @@ describe("MainHomeScreen", () => {
     expect(screen.getByText("3.40%")).toBeInTheDocument();
     expect(screen.getByText("4.30%")).toBeInTheDocument();
     expect(screen.queryByText("산정 전")).not.toBeInTheDocument();
+  });
+
+  it("retries the planning-return request when the API starts after the home screen", async () => {
+    vi.useFakeTimers();
+    vi.mocked(getStrategyPlanningReturns)
+      .mockRejectedValueOnce(new Error("API starting"))
+      .mockResolvedValueOnce(strategyPlanningReturns);
+
+    try {
+      renderHome();
+
+      await act(async () => { await Promise.resolve(); });
+      expect(screen.getAllByText("계산 중…")).toHaveLength(10);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3_000);
+      });
+
+      expect(screen.getByText("6.75%")).toBeInTheDocument();
+      expect(getStrategyPlanningReturns).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
