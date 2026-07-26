@@ -263,46 +263,81 @@ function addUserPickFixture(
   const frame = document.querySelector("iframe") as HTMLIFrameElement;
   const frameDocument = frame.contentDocument;
   if (!frameDocument) throw new Error("iframe document is unavailable");
-  frameDocument.body.innerHTML = `<div id="benchmark-phone"></div>`;
+  frameDocument.body.innerHTML = `
+    <x-dc style="display:none">
+      <div style="cursor:pointer"><span>꾸준한거북이</span></div>
+      <div style="cursor:pointer">상세히 보기</div>
+      <div>내 포트폴리오와 비교</div>
+      <div>이 회원의 운용 근거</div>
+    </x-dc>
+    <div id="benchmark-phone"></div>
+  `;
   const phone = frameDocument.querySelector("#benchmark-phone") as HTMLElement;
   phone.getBoundingClientRect = () => rect(0, 0, 390, 844);
 
   const renderDetail = () => {
     phone.innerHTML = `
-      <div class="scrolly">
-        <section style="background:#fff;border-radius:20px">
-          <div>이 회원의 운용 근거</div>
-          <div>왜 이렇게 나눴냐면요</div>
-          <div>이 전략을 고른 이유</div>
-          <div>언제 다시 맞추냐면요</div>
-        </section>
-        <section style="background:#fff;border-radius:18px">
-          <div>장기러버</div>
-          <div>8개월째 따라하는 중</div>
-        </section>
+      <div style="position: absolute; inset: 0; z-index: 30">
+        <header><svg data-close-detail style="cursor: pointer"></svg></header>
+        <div class="scrolly">
+          <section data-rationale style="background: #fff; border-radius: 20px">
+            <div>이 회원의 운용 근거</div>
+            <div>왜 이렇게 나눴냐면요</div>
+            <div>이 전략을 고른 이유</div>
+            <div>언제 다시 맞추냐면요</div>
+          </section>
+          <div
+            data-review-heading
+            style="display: flex; align-items: center; gap: 7px"
+          >
+            따라하기 후기
+          </div>
+          <section data-review style="background: #fff; border-radius: 18px">
+            <div>장기러버</div>
+            <div>8개월째 따라하는 중</div>
+          </section>
+        </div>
       </div>
     `;
     const rationale = frameDocument.querySelector(
-      "section[style*=\"border-radius:20px\"]",
+      "[data-rationale]",
     ) as HTMLElement;
     const review = frameDocument.querySelector(
-      "section[style*=\"border-radius:18px\"]",
+      "[data-review]",
+    ) as HTMLElement;
+    const reviewHeading = frameDocument.querySelector(
+      "[data-review-heading]",
     ) as HTMLElement;
     rationale.getBoundingClientRect = () => rect(140, 16, 358, 410);
+    reviewHeading.getBoundingClientRect = () => rect(570, 20, 180, 28);
     review.getBoundingClientRect = () => rect(590, 16, 358, 180);
     rationale.scrollIntoView = vi.fn();
+    reviewHeading.scrollIntoView = vi.fn();
     review.scrollIntoView = vi.fn();
+    frameDocument.querySelector("[data-close-detail]")?.addEventListener(
+      "click",
+      renderComparison,
+    );
   };
 
   const renderComparison = () => {
     phone.innerHTML = `
-      <div class="scrolly">
-        <div data-comparison>내 포트폴리오와 <span>비교</span></div>
-        <div
-          data-open-detail
-          style="background:#22A94D;border-radius:14px;cursor:pointer"
-        >
-          상세히 보기
+      <div data-sheet-backdrop style="position: absolute; inset: 0; z-index: 20"></div>
+      <div style="position: absolute; inset: 0; top: 320px; z-index: 21">
+        <div class="scrolly">
+          <div
+            data-sheet-heading
+            style="display: flex; align-items: flex-start; justify-content: space-between"
+          >
+            <div><span>꾸준한거북이</span>님</div>
+          </div>
+          <div data-comparison>내 포트폴리오와 <span>비교</span></div>
+          <div
+            data-open-detail
+            style="background: #22A94D; border-radius: 14px; cursor: pointer"
+          >
+            상세히 보기
+          </div>
         </div>
       </div>
     `;
@@ -312,40 +347,69 @@ function addUserPickFixture(
     const detailButton = frameDocument.querySelector(
       "[data-open-detail]",
     ) as HTMLElement;
+    const sheetHeading = frameDocument.querySelector(
+      "[data-sheet-heading]",
+    ) as HTMLElement;
+    sheetHeading.getBoundingClientRect = () => rect(350, 22, 346, 64);
     comparison.getBoundingClientRect = () => rect(470, 22, 346, 250);
     detailButton.getBoundingClientRect = () => rect(760, 22, 346, 52);
+    sheetHeading.scrollIntoView = vi.fn();
     comparison.scrollIntoView = vi.fn();
     detailButton.scrollIntoView = vi.fn();
+    frameDocument.querySelector("[data-sheet-backdrop]")?.addEventListener(
+      "click",
+      renderList,
+    );
     detailButton.addEventListener("click", () => {
       onDetailOpen();
       renderDetail();
     });
   };
 
-  phone.innerHTML = `
-    <div class="scrolly">
-      <section style="background:#fff;border-radius:20px">
-        <span>현재 포트폴리오</span>
-      </section>
-      <section style="background:#fff;border-radius:20px;cursor:pointer">
-        <span>꾸준한거북이</span>
-      </section>
-    </div>
-  `;
-  const currentPortfolio = frameDocument.querySelector(
-    "section:not([style*=\"cursor:pointer\"])",
-  ) as HTMLElement;
-  const recommendedPortfolio = frameDocument.querySelector(
-    "section[style*=\"cursor:pointer\"]",
-  ) as HTMLElement;
-  currentPortfolio.getBoundingClientRect = () => rect(130, 16, 358, 352);
-  recommendedPortfolio.getBoundingClientRect = () => rect(520, 16, 358, 280);
-  currentPortfolio.scrollIntoView = vi.fn();
-  recommendedPortfolio.scrollIntoView = vi.fn();
-  recommendedPortfolio.addEventListener("click", () => {
-    onPortfolioOpen();
-    renderComparison();
-  });
+  function renderList(): void {
+    phone.innerHTML = `
+      <div class="scrolly">
+        <section data-current-portfolio style="background: #fff; border-radius: 20px">
+          <span>현재 포트폴리오</span>
+        </section>
+        <div data-recommendation-heading>추천 벤치마킹 포트폴리오</div>
+        <section data-recommended-portfolio style="background: #fff; border-radius: 20px; cursor: pointer">
+          <span>꾸준한거북이</span>
+        </section>
+        <section style="background: #fff; border-radius: 20px; cursor: pointer">
+          <span>배당모으미</span>
+        </section>
+      </div>
+    `;
+    const currentPortfolio = frameDocument!.querySelector(
+      "[data-current-portfolio]",
+    ) as HTMLElement;
+    const recommendationHeading = frameDocument!.querySelector(
+      "[data-recommendation-heading]",
+    ) as HTMLElement;
+    const listScroller = frameDocument!.querySelector(
+      ".scrolly",
+    ) as HTMLElement;
+    const recommendedPortfolio = Array.from(
+      frameDocument!.querySelectorAll<HTMLElement>(
+        "[data-recommended-portfolio]",
+      ),
+    ).find((element) => element.textContent?.includes("꾸준한거북이"))!;
+    currentPortfolio.getBoundingClientRect = () => rect(130, 16, 358, 352);
+    recommendationHeading.getBoundingClientRect = () => rect(500, 18, 240, 28);
+    recommendedPortfolio.getBoundingClientRect = () => rect(540, 16, 358, 280);
+    listScroller.getBoundingClientRect = () => rect(105, 0, 390, 739);
+    listScroller.scrollTo = vi.fn();
+    currentPortfolio.scrollIntoView = vi.fn();
+    recommendationHeading.scrollIntoView = vi.fn();
+    recommendedPortfolio.scrollIntoView = vi.fn();
+    recommendedPortfolio.addEventListener("click", () => {
+      onPortfolioOpen();
+      renderComparison();
+    });
+  }
+
+  renderList();
 }
 
 describe("FirstUseGuide", () => {
@@ -828,13 +892,17 @@ describe("FirstUseGuide", () => {
         name: "추천 포트폴리오를 하나씩 둘러보세요",
       }),
     ).toBeInTheDocument();
-    const recommendedPortfolio = Array.from(
-      userPickFrame.contentDocument!.querySelectorAll<HTMLElement>("section"),
-    ).find((element) => element.textContent?.includes("꾸준한거북이"));
-    expect(recommendedPortfolio?.scrollIntoView).toHaveBeenCalledWith({
-      block: "start",
+    const recommendedHeading = userPickFrame.contentDocument!.querySelector(
+      "[data-recommendation-heading]",
+    ) as HTMLElement;
+    const recommendationScroller = userPickFrame.contentDocument!.querySelector(
+      ".scrolly",
+    ) as HTMLElement;
+    expect(recommendationScroller.scrollTo).toHaveBeenCalledWith({
+      top: 467,
       behavior: "smooth",
     });
+    expect(recommendedHeading.scrollIntoView).not.toHaveBeenCalled();
 
     fireEvent.click(userPickGuide.getByRole("button", {
       name: "내 비중과 비교하기",
@@ -847,7 +915,7 @@ describe("FirstUseGuide", () => {
     ).toBeInTheDocument();
     expect(
       userPickFrame.contentDocument?.querySelector<HTMLElement>(
-        "[data-comparison]",
+        "[data-sheet-heading]",
       )?.scrollIntoView,
     ).toHaveBeenCalledWith({
       block: "start",
@@ -879,10 +947,10 @@ describe("FirstUseGuide", () => {
         name: "따라한 이용자의 후기도 확인해요",
       }),
     ).toBeInTheDocument();
-    const review = Array.from(
-      userPickFrame.contentDocument!.querySelectorAll<HTMLElement>("section"),
-    ).find((element) => element.textContent?.includes("장기러버"));
-    expect(review?.scrollIntoView).toHaveBeenCalledWith({
+    const reviewHeading = userPickFrame.contentDocument?.querySelector<HTMLElement>(
+      "[data-review-heading]",
+    );
+    expect(reviewHeading?.scrollIntoView).toHaveBeenCalledWith({
       block: "start",
       behavior: "smooth",
     });
@@ -895,6 +963,66 @@ describe("FirstUseGuide", () => {
         userPickGuideStorageKey(TARGET_USER_ID),
       ),
     ).toBe("true");
+  });
+
+  it("restores the matching User Pick screen when moving backward", async () => {
+    window.history.replaceState(null, "", "/#/user-pick-benchmark");
+    addUserPickFixture(vi.fn(), vi.fn());
+    render(<FirstUseGuide />);
+
+    const userPickFrame = document.querySelector(
+      'iframe[title="투자 벤치마킹하기"]',
+    ) as HTMLIFrameElement;
+    const userPickGuide = within(userPickFrame.contentDocument!.body);
+    fireEvent.click(await userPickGuide.findByRole("button", {
+      name: "1분 안내 보기",
+    }));
+    fireEvent.click(userPickGuide.getByRole("button", {
+      name: "추천 포트폴리오 보기",
+    }));
+    fireEvent.click(userPickGuide.getByRole("button", {
+      name: "내 비중과 비교하기",
+    }));
+    fireEvent.click(userPickGuide.getByRole("button", {
+      name: "운용 근거 보기",
+    }));
+
+    expect(
+      await userPickGuide.findByRole("heading", {
+        name: "운용 근거를 읽고 판단해요",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      userPickFrame.contentDocument?.querySelector("[data-review-heading]"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(userPickGuide.getByRole("button", { name: "이전" }));
+
+    expect(
+      await userPickGuide.findByRole("heading", {
+        name: "내 비중과 달라지는 부분을 비교해요",
+      }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        userPickFrame.contentDocument?.querySelector("[data-sheet-heading]"),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(userPickGuide.getByRole("button", { name: "이전" }));
+
+    expect(
+      await userPickGuide.findByRole("heading", {
+        name: "추천 포트폴리오를 하나씩 둘러보세요",
+      }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        userPickFrame.contentDocument?.querySelector(
+          "[data-recommendation-heading]",
+        ),
+      ).toBeInTheDocument();
+    });
   });
 
   it("waits for the calculator runtime and ignores its hidden source template", async () => {

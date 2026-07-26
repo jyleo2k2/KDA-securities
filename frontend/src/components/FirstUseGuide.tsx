@@ -18,7 +18,7 @@ const HOME_GUIDE_VERSION = "v3";
 const STRATEGY_DETAIL_GUIDE_VERSION = "v2";
 const CHAT_GUIDE_VERSION = "v5";
 const PENSION_PLANNER_GUIDE_VERSION = "v2";
-const USER_PICK_GUIDE_VERSION = "v2";
+const USER_PICK_GUIDE_VERSION = "v3";
 const COMPLETE_KEY =
   `pension-first-use-guide:${HOME_GUIDE_VERSION}:complete`;
 const STRATEGY_DETAIL_COMPLETE_KEY =
@@ -41,6 +41,7 @@ interface GuideStep {
   accents?: string[];
   bodyAccents?: string[];
   closestSelector?: string;
+  scrollOffset?: number;
   selector?: string;
   targetText?: string;
   title: string;
@@ -238,7 +239,7 @@ const PENSION_PLANNER_STEPS: GuideStep[] = [
 
 const USER_PICK_STEPS: GuideStep[] = [
   {
-    closestSelector: "[style*=\"border-radius:20px\"]",
+    closestSelector: "[style*=\"border-radius:20px\"], [style*=\"border-radius: 20px\"]",
     targetText: "현재 포트폴리오",
     title: "내 포트폴리오를 기준으로 비교해요",
     accents: ["내 포트폴리오", "비교"],
@@ -247,8 +248,8 @@ const USER_PICK_STEPS: GuideStep[] = [
     cta: "추천 포트폴리오 보기",
   },
   {
-    closestSelector: "[style*=\"cursor:pointer\"]",
-    targetText: "꾸준한거북이",
+    scrollOffset: 72,
+    targetText: "추천 벤치마킹 포트폴리오",
     title: "추천 포트폴리오를 하나씩 둘러보세요",
     accents: ["추천 포트폴리오"],
     body: "수익률뿐 아니라 운용기간, 직업군, 자산 구성과 투자전략을 함께 살펴보고 비교할 이용자를 선택하세요.",
@@ -256,9 +257,10 @@ const USER_PICK_STEPS: GuideStep[] = [
     cta: "내 비중과 비교하기",
   },
   {
-    activateClosestSelector: "[style*=\"cursor:pointer\"]",
+    activateClosestSelector: "[style*=\"cursor\"]",
     activateText: "꾸준한거북이",
-    targetText: "내 포트폴리오와 비교",
+    closestSelector: "[style*=\"align-items\"][style*=\"justify-content\"]",
+    targetText: "꾸준한거북이님",
     title: "내 비중과 달라지는 부분을 비교해요",
     accents: ["내 비중", "비교"],
     body: "국내주식·해외주식·채권·현금성 자산별로 현재 비중과 이 이용자의 비중, 따라갈 때의 변화를 확인할 수 있어요.",
@@ -266,9 +268,9 @@ const USER_PICK_STEPS: GuideStep[] = [
     cta: "운용 근거 보기",
   },
   {
-    activateClosestSelector: "[style*=\"cursor:pointer\"]",
+    activateClosestSelector: "[style*=\"cursor\"]",
     activateText: "상세히 보기",
-    closestSelector: "[style*=\"border-radius:20px\"]",
+    closestSelector: "[style*=\"border-radius:20px\"], [style*=\"border-radius: 20px\"]",
     targetText: "왜 이렇게 나눴냐면요",
     title: "운용 근거를 읽고 판단해요",
     accents: ["운용 근거"],
@@ -277,8 +279,8 @@ const USER_PICK_STEPS: GuideStep[] = [
     cta: "따라하기 후기 보기",
   },
   {
-    closestSelector: "[style*=\"border-radius:18px\"]",
-    targetText: "장기러버",
+    closestSelector: "[style*=\"align-items\"][style*=\"gap\"]",
+    targetText: "따라하기 후기",
     title: "따라한 이용자의 후기도 확인해요",
     accents: ["이용자의 후기"],
     body: "실제로 따라한 기간과 경험을 읽고 좋아요·댓글로 다른 이용자의 의견까지 확인할 수 있어요.",
@@ -389,7 +391,10 @@ function elementByText(
   const expected = normalizedText(text);
   const matches = Array.from(
     contentDocument.querySelectorAll<HTMLElement>("*"),
-  ).filter((element) => normalizedText(element.textContent) === expected);
+  ).filter((element) => (
+    !element.closest("x-dc")
+    && normalizedText(element.textContent) === expected
+  ));
   return matches.find((element) => (
     !Array.from(element.children).some(
       (child) => normalizedText(child.textContent) === expected,
@@ -452,12 +457,72 @@ function activateStep(
   );
   const clickableTarget = activationTarget && step.activateClosestSelector
     ? activationTarget.closest<HTMLElement>(step.activateClosestSelector)
+      ?? activationTarget
     : activationTarget;
-  clickableTarget?.dispatchEvent(new MouseEvent("click", {
-    bubbles: true,
-    cancelable: true,
-    view: contentDocument.defaultView,
-  }));
+  clickableTarget?.click();
+}
+
+function userPickDetailRoot(contentDocument: Document): HTMLElement | null {
+  return elementByText(contentDocument, "이 회원의 운용 근거")
+    ?.closest<HTMLElement>(
+      "[style*=\"z-index:30\"], [style*=\"z-index: 30\"]",
+    ) ?? null;
+}
+
+function userPickSheetRoot(contentDocument: Document): HTMLElement | null {
+  return elementByText(contentDocument, "내 포트폴리오와 비교")
+    ?.closest<HTMLElement>(
+      "[style*=\"z-index:21\"], [style*=\"z-index: 21\"]",
+    ) ?? null;
+}
+
+function ensureUserPickView(
+  contentDocument: Document,
+  stepIndex: number,
+): void {
+  const detailRoot = userPickDetailRoot(contentDocument);
+  const sheetRoot = userPickSheetRoot(contentDocument);
+
+  if (stepIndex <= 1) {
+    if (detailRoot) {
+      detailRoot.querySelector<HTMLElement>(
+        "svg[style*=\"cursor\"]",
+      )?.dispatchEvent(new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        view: contentDocument.defaultView,
+      }));
+      return;
+    }
+    if (sheetRoot) {
+      (sheetRoot.previousElementSibling as HTMLElement | null)?.click();
+    }
+    return;
+  }
+
+  if (stepIndex === 2) {
+    if (detailRoot) {
+      detailRoot.querySelector<HTMLElement>(
+        "svg[style*=\"cursor\"]",
+      )?.dispatchEvent(new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        view: contentDocument.defaultView,
+      }));
+      return;
+    }
+    if (!sheetRoot) {
+      activateStep(contentDocument, USER_PICK_STEPS[2]);
+    }
+    return;
+  }
+
+  if (detailRoot) return;
+  if (!sheetRoot) {
+    activateStep(contentDocument, USER_PICK_STEPS[2]);
+    return;
+  }
+  activateStep(contentDocument, USER_PICK_STEPS[3]);
 }
 
 function elementRect(element: Element): Rect {
@@ -665,27 +730,50 @@ export function FirstUseGuide(): JSX.Element | null {
       && activatedStepKey.current !== currentStepKey
     ) {
       activatedStepKey.current = currentStepKey;
-      activateStep(contentDocument, guide.steps[stepIndex]);
+      if (guide.id === "user-pick") {
+        ensureUserPickView(contentDocument, stepIndex);
+      } else {
+        activateStep(contentDocument, guide.steps[stepIndex]);
+      }
     }
+    const scrollArea = phone.querySelector<HTMLElement>(guide.scrollSelector);
     const alignTarget = () => {
+      if (mode === "steps" && guide.id === "user-pick") {
+        ensureUserPickView(contentDocument, stepIndex);
+      }
+      const step = guide.steps[stepIndex];
       const target = mode === "steps"
-        ? targetForStep(contentDocument, guide.steps[stepIndex])
+        ? targetForStep(contentDocument, step)
         : null;
-      target?.scrollIntoView({
-        block: guide.focusBlock ?? "center",
-        behavior: "smooth",
-      });
+      if (
+        target
+        && step.scrollOffset !== undefined
+        && scrollArea
+        && typeof scrollArea.scrollTo === "function"
+      ) {
+        const targetTop = scrollArea.scrollTop
+          + target.getBoundingClientRect().top
+          - scrollArea.getBoundingClientRect().top
+          + step.scrollOffset;
+        scrollArea.scrollTo({ top: targetTop, behavior: "smooth" });
+      } else {
+        target?.scrollIntoView({
+          block: guide.focusBlock ?? "center",
+          behavior: "smooth",
+        });
+      }
       measure();
     };
     alignTarget();
     const frame = window.requestAnimationFrame(alignTarget);
-    const timer = window.setTimeout(alignTarget, 260);
-    const scrollArea = phone.querySelector(guide.scrollSelector);
+    const timers = [140, 360].map((delay) => (
+      window.setTimeout(alignTarget, delay)
+    ));
     window.addEventListener("resize", measure);
     scrollArea?.addEventListener("scroll", measure, { passive: true });
     return () => {
       window.cancelAnimationFrame(frame);
-      window.clearTimeout(timer);
+      timers.forEach((timer) => window.clearTimeout(timer));
       window.removeEventListener("resize", measure);
       scrollArea?.removeEventListener("scroll", measure);
     };
