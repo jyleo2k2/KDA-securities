@@ -22,6 +22,7 @@ from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
 from backend.app.chat.models import (
     ChatIntent,
     ChatRequest,
+    ChatResponse,
     ConversationContext,
     NewsConversationContext,
 )
@@ -35,7 +36,12 @@ from backend.app.chat.repository import (
 from backend.app.chat.scenarios import LocalScenarioRepository
 from backend.app.chat.service import ChatService
 from backend.app.chat.user_context import DemoUserFinancialContext
-from backend.app.engine import IncomeBasis
+from backend.app.engine import (
+    AccountType,
+    EducationalPortfolioInput,
+    EducationalRiskProfile,
+    IncomeBasis,
+)
 from backend.app.main import app
 from tests.conftest import FakeChatRepository as _BaseFakeChatRepository
 from tests.conftest import final_sse_response, parse_sse
@@ -1247,6 +1253,87 @@ def test_message_parser_keeps_unreadable_assistant_payload_safe(
 
     assert parsed.response is None
     assert parsed.question_message_id is None
+    assert parsed.content == "저장된 답변 형식을 읽을 수 없습니다."
+
+
+def test_message_parser_repairs_known_legacy_portfolio_visualization_evidence() -> None:
+    from backend.app.api.chat import _message_out
+
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        portfolio_universe_loader=lambda account: Universe(),
+    )
+    response = service.ask(
+        ChatRequest(
+            message="내 상황에 맞는 연금저축전략을 알려줘.",
+            educational_portfolio=EducationalPortfolioInput(
+                account_type=AccountType.IRP,
+                age=35,
+                retirement_start_age=60,
+                risk_profile=EducationalRiskProfile.RISK_NEUTRAL,
+                loss_tolerance_percent=Decimal("20"),
+            ),
+        )
+    )
+    legacy_response = response.model_dump(mode="json")
+    legacy_response["numeric_evidence"] = [
+        item
+        for item in legacy_response["numeric_evidence"]
+        if item["basis"] != "계좌별 목표 자산배분 합계"
+    ]
+    with pytest.raises(ValueError, match="matching NumericEvidence"):
+        ChatResponse.model_validate(legacy_response)
+
+    message = StoredChatMessage(
+        message_id=uuid4(),
+        role="assistant",
+        content=json.dumps(
+            {
+                "schema_version": 1,
+                "question_message_id": str(USER_MESSAGE_ID),
+                "response": legacy_response,
+            },
+            ensure_ascii=False,
+        ),
+        model_name=None,
+        created_at=datetime(2026, 7, 15, tzinfo=UTC),
+        evidence=(),
+    )
+
+    parsed = _message_out(message)
+
+    assert parsed.response is not None
+    assert parsed.response.intent == ChatIntent.EDUCATIONAL_PORTFOLIO
+    assert parsed.content == response.answer
+    assert ChatResponse.model_validate(parsed.response.model_dump()) == parsed.response
+
+
+def test_message_parser_does_not_repair_unrelated_numeric_mismatch() -> None:
+    from backend.app.api.chat import _message_out
+
+    response = _service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
+    invalid_response = response.model_dump(mode="json")
+    invalid_response["answer"] += " 근거 없는 값은 98765%입니다."
+    message = StoredChatMessage(
+        message_id=uuid4(),
+        role="assistant",
+        content=json.dumps(
+            {
+                "schema_version": 1,
+                "question_message_id": str(USER_MESSAGE_ID),
+                "response": invalid_response,
+            },
+            ensure_ascii=False,
+        ),
+        model_name=None,
+        created_at=datetime(2026, 7, 15, tzinfo=UTC),
+        evidence=(),
+    )
+
+    parsed = _message_out(message)
+
+    assert parsed.response is None
     assert parsed.content == "저장된 답변 형식을 읽을 수 없습니다."
 
 
