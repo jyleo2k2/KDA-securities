@@ -52,6 +52,9 @@ describe("initial hash routing", () => {
     render(<App />);
 
     expect(await screen.findByTestId("guide-page")).toBeTruthy();
+    const guideFrame = screen.getByLabelText("연금 가이드");
+    expect(guideFrame.querySelector(".ios-statusbar")).toBeTruthy();
+    expect(document.querySelector(".desktop-preview-status")).toBeNull();
   });
 
   it("loads the supplied profile html from its explicit public file path", async () => {
