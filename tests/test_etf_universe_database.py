@@ -1,5 +1,5 @@
 import json
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -10,8 +10,11 @@ from backend.app.api import deps
 from backend.app.engine.models import AccountType
 from backend.app.etf_universe_database import (
     PortfolioUniverseLoadError,
+    PortfolioUniverseOperationalAudit,
     PostgresPortfolioUniverseRepository,
+    audit_latest_portfolio_universe,
     load_portfolio_universe,
+    validate_portfolio_universe_operational_audit,
 )
 
 _AS_OF = "2026-07-16"
@@ -356,6 +359,74 @@ def test_api_repository_uses_database_when_url_is_configured(
     assert observed_max_size == [5]
 
 
+def _operational_audit(
+    **changes: object,
+) -> PortfolioUniverseOperationalAudit:
+    values: dict[str, object] = {
+        "version_id": 7,
+        "as_of": date(2026, 7, 16),
+        "loaded_at": datetime(2026, 7, 16, tzinfo=UTC),
+        "source_sha256": "a" * 64,
+        "expected_product_rows": 3,
+        "actual_product_rows": 3,
+        "expected_history_rows": 6,
+        "actual_history_rows": 6,
+        "products_without_history": 0,
+        "account_product_counts": {
+            "dc": 1,
+            "irp": 1,
+            "pension_savings": 1,
+        },
+    }
+    values.update(changes)
+    return PortfolioUniverseOperationalAudit(**values)  # type: ignore[arg-type]
+
+
+def test_operational_audit_accepts_complete_promoted_dataset() -> None:
+    validate_portfolio_universe_operational_audit(_operational_audit())
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"actual_product_rows": 2}, "product row count"),
+        ({"actual_history_rows": 5}, "history row count"),
+        ({"products_without_history": 1}, "without total-return history"),
+        ({"account_product_counts": {"dc": 1}}, "every account type"),
+    ],
+)
+def test_operational_audit_rejects_incomplete_promoted_dataset(
+    changes: dict[str, object], message: str
+) -> None:
+    with pytest.raises(PortfolioUniverseLoadError, match=message):
+        validate_portfolio_universe_operational_audit(_operational_audit(**changes))
+
+
+def test_reads_operational_audit_from_database() -> None:
+    connection = _AuditConnection(
+        (
+            7,
+            date(2026, 7, 16),
+            "2026-07-16T10:00:00+00:00",
+            "a" * 64,
+            3,
+            6,
+            3,
+            6,
+            0,
+            {"dc": 1, "irp": 1, "pension_savings": 1},
+        )
+    )
+
+    audit = audit_latest_portfolio_universe(
+        "postgresql://unused", connection_factory=lambda _url: connection
+    )
+
+    assert audit.version_id == 7
+    assert audit.account_product_counts["pension_savings"] == 1
+    assert "products_without_history" in connection.cursor_obj.executed[0][0]
+
+
 class _FakeCursor:
     def __init__(self) -> None:
         self.executed: list[tuple[str, tuple[object, ...] | None]] = []
@@ -447,4 +518,36 @@ class _ReadConnection:
         return None
 
     def cursor(self) -> _ReadCursor:
+        return self.cursor_obj
+
+
+class _AuditCursor:
+    def __init__(self, row: tuple[object, ...]) -> None:
+        self.row = row
+        self.executed: list[tuple[str, tuple[object, ...] | None]] = []
+
+    def __enter__(self) -> "_AuditCursor":
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        return None
+
+    def execute(self, sql: str, params: tuple[object, ...] | None = None) -> None:
+        self.executed.append((sql, params))
+
+    def fetchone(self) -> tuple[object, ...]:
+        return self.row
+
+
+class _AuditConnection:
+    def __init__(self, row: tuple[object, ...]) -> None:
+        self.cursor_obj = _AuditCursor(row)
+
+    def __enter__(self) -> "_AuditConnection":
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        return None
+
+    def cursor(self) -> _AuditCursor:
         return self.cursor_obj

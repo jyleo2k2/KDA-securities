@@ -12,7 +12,7 @@ from collections import defaultdict
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -54,11 +54,176 @@ class PortfolioUniverseLoadSummary:
 
 
 @dataclass(frozen=True, slots=True)
+class PortfolioUniverseOperationalAudit:
+    """Integrity evidence for the promoted ETF universe kept in PostgreSQL."""
+
+    version_id: int
+    as_of: date
+    loaded_at: datetime
+    source_sha256: str
+    expected_product_rows: int
+    actual_product_rows: int
+    expected_history_rows: int
+    actual_history_rows: int
+    products_without_history: int
+    account_product_counts: dict[str, int]
+
+    def as_json(self) -> dict[str, object]:
+        return {
+            "account_product_counts": self.account_product_counts,
+            "actual_history_rows": self.actual_history_rows,
+            "actual_product_rows": self.actual_product_rows,
+            "as_of": self.as_of.isoformat(),
+            "expected_history_rows": self.expected_history_rows,
+            "expected_product_rows": self.expected_product_rows,
+            "loaded_at": self.loaded_at.isoformat(),
+            "products_without_history": self.products_without_history,
+            "source_sha256": self.source_sha256,
+            "version_id": self.version_id,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class EtfThemeProductUniverse:
     """ETF 테마 카드에 필요한 상품 payload만 담는 경량 읽기 모델."""
 
     products: list[dict[str, Any]]
     as_of: date
+
+
+def audit_latest_portfolio_universe(
+    database_url: str,
+    *,
+    connection_factory: Callable[[str], Any] = psycopg.connect,
+) -> PortfolioUniverseOperationalAudit:
+    """Read the ready dataset and compare recorded counts to persisted rows.
+
+    The database is the durable boundary for the large total-return history.
+    This check deliberately reads aggregates only, so a scheduled runner never
+    needs to materialize the full price cache just to verify the promoted set.
+    """
+
+    if not database_url:
+        raise ValueError("database_url is required")
+    with connection_factory(database_url) as connection, connection.cursor() as cursor:
+        cursor.execute(
+            """
+            with latest as (
+                select id, as_of, loaded_at, source_sha256,
+                       product_rows, history_rows
+                from public.etf_dataset_versions
+                where status = 'ready'
+                order by as_of desc, id desc
+                limit 1
+            ), product_counts as (
+                select p.version_id,
+                       count(*)::integer as actual_product_rows,
+                       jsonb_object_agg(p.account_type, p.count_by_account)
+                           as account_product_counts
+                from (
+                    select version_id, account_type, count(*)::integer
+                        as count_by_account
+                    from public.etf_universe_products
+                    group by version_id, account_type
+                ) p
+                group by p.version_id
+            ), history_counts as (
+                select version_id, count(*)::integer as actual_history_rows
+                from public.etf_return_histories
+                group by version_id
+            ), missing_history_counts as (
+                select p.version_id, count(*)::integer as products_without_history
+                from public.etf_universe_products p
+                where not exists (
+                    select 1
+                    from public.etf_return_histories h
+                    where h.version_id = p.version_id
+                      and h.isu_code = p.isu_code
+                )
+                group by p.version_id
+            )
+            select latest.id, latest.as_of, latest.loaded_at, latest.source_sha256,
+                   latest.product_rows, latest.history_rows,
+                   coalesce(product_counts.actual_product_rows, 0),
+                   coalesce(history_counts.actual_history_rows, 0),
+                   coalesce(missing_history_counts.products_without_history, 0),
+                   coalesce(product_counts.account_product_counts, '{}'::jsonb)
+            from latest
+            left join product_counts on product_counts.version_id = latest.id
+            left join history_counts on history_counts.version_id = latest.id
+            left join missing_history_counts
+              on missing_history_counts.version_id = latest.id
+            """
+        )
+        row = cursor.fetchone()
+    if row is None:
+        raise PortfolioUniverseLoadError("database has no ready ETF dataset version")
+
+    (
+        version_id,
+        as_of,
+        loaded_at,
+        source_sha256,
+        expected_product_rows,
+        expected_history_rows,
+        actual_product_rows,
+        actual_history_rows,
+        products_without_history,
+        account_product_counts,
+    ) = row
+    parsed_as_of = as_of if isinstance(as_of, date) else date.fromisoformat(str(as_of))
+    parsed_loaded_at = (
+        loaded_at
+        if isinstance(loaded_at, datetime)
+        else datetime.fromisoformat(str(loaded_at))
+    )
+    if not isinstance(account_product_counts, dict):
+        raise PortfolioUniverseLoadError("ETF dataset account counts are invalid")
+    audit = PortfolioUniverseOperationalAudit(
+        version_id=int(version_id),
+        as_of=parsed_as_of,
+        loaded_at=parsed_loaded_at,
+        source_sha256=str(source_sha256),
+        expected_product_rows=int(expected_product_rows),
+        actual_product_rows=int(actual_product_rows),
+        expected_history_rows=int(expected_history_rows),
+        actual_history_rows=int(actual_history_rows),
+        products_without_history=int(products_without_history),
+        account_product_counts={
+            str(account): int(count)
+            for account, count in account_product_counts.items()
+        },
+    )
+    validate_portfolio_universe_operational_audit(audit)
+    return audit
+
+
+def validate_portfolio_universe_operational_audit(
+    audit: PortfolioUniverseOperationalAudit,
+) -> None:
+    """Reject a ready universe whose promoted rows are incomplete or changed."""
+
+    if len(audit.source_sha256) != 64:
+        raise PortfolioUniverseLoadError("ETF dataset source hash is invalid")
+    if audit.expected_product_rows != audit.actual_product_rows:
+        raise PortfolioUniverseLoadError(
+            "ETF dataset product row count does not match the promoted version"
+        )
+    if audit.expected_history_rows != audit.actual_history_rows:
+        raise PortfolioUniverseLoadError(
+            "ETF dataset history row count does not match the promoted version"
+        )
+    if audit.products_without_history:
+        raise PortfolioUniverseLoadError(
+            "ETF dataset has products without total-return history: "
+            f"{audit.products_without_history}"
+        )
+    if set(audit.account_product_counts) != {
+        account_type.value for account_type in ACCOUNT_TYPES
+    } or any(count <= 0 for count in audit.account_product_counts.values()):
+        raise PortfolioUniverseLoadError(
+            "ETF dataset does not contain products for every account type"
+        )
 
 
 class PostgresPortfolioUniverseRepository:
