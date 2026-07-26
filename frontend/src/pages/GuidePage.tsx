@@ -507,13 +507,27 @@ function AssistantMessage({
       aggressive: "공격투자형",
     }[educationalEvaluation.evaluated_input.risk_profile]
     : undefined;
+  const educationalFinalRiskTarget = Number(
+    educationalEvaluation?.final_general_risk_target_percent,
+  );
+  const educationalLossToleranceDefenseOnly = (
+    educationalEvaluation?.loss_tolerance_binding === true
+    && Number.isFinite(educationalFinalRiskTarget)
+    && educationalFinalRiskTarget === 0
+  );
   const educationalLead = (
     isEducationalPortfolio
     && userName
     && educationalProfileLabel
     && educationalEvaluation?.strategy_label
   )
-    ? `${userName}님의 투자성향(${educationalProfileLabel})에 가장 적합한 투자전략은 ${educationalEvaluation.strategy_label}입니다.`
+    ? educationalLossToleranceDefenseOnly
+      ? (
+        `${userName}님의 ${educationalProfileLabel} 투자성향보다 선택한 손실감내율 `
+        + `${Number(educationalEvaluation.evaluated_input.loss_tolerance_percent).toFixed(1)}%가 우선 적용돼, `
+        + "채권과 현금성 자산 중심의 방어 배분으로 조정됐습니다."
+      )
+      : `${userName}님의 투자성향(${educationalProfileLabel})에 가장 적합한 투자전략은 ${educationalEvaluation.strategy_label}입니다.`
     : undefined;
   const isPensionTaxCredit = (
     response.intent === "pension_tax"
