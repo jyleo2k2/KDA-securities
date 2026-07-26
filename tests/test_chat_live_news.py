@@ -322,7 +322,7 @@ def test_event_strategy_shows_verified_historical_outcome_card_only_from_ledger(
     class OutcomeReader:
         def list_for_theme_ids(self, theme_ids, *, limit=12):
             assert theme_ids
-            assert limit == 300
+            assert limit == 500
             return [
                 NewsEventOutcomeRecord(
                     event_key="news:official-2024-01-01",
@@ -410,6 +410,47 @@ def test_historical_outcome_card_shows_full_coverage_with_bounded_rows() -> None
     assert len(section.blocks[0].rows) == 12
     assert section.blocks[0].rows[0][1] == "ETF 0"
     assert section.blocks[0].rows[-1][1] == "ETF 12"
+
+
+def test_historical_outcome_card_summarizes_full_414_row_ledger() -> None:
+    base = NewsEventOutcomeRecord(
+        event_key="event-0",
+        occurred_on=date(2011, 1, 1),
+        theme_id="bank_finance",
+        isu_code="000000",
+        isu_name="ETF 0",
+        horizon_months=1,
+        total_return_percent=Decimal("1.5"),
+        maximum_drawdown_percent=Decimal("2.5"),
+        peer_median_total_return_percent=Decimal("1.0"),
+        peer_sample_count=3,
+        event_source_url="https://example.test/event",
+        event_source_label="official event",
+        event_source_as_of=date(2011, 1, 1),
+        history_source="kis_adjusted_close_plus_kind_cash_distribution",
+        history_source_url="https://example.test/returns",
+        history_source_as_of=date(2025, 7, 1),
+    )
+    rows = [
+        replace(
+            base,
+            event_key=f"event-{event_index}",
+            occurred_on=date(2011 + event_index // 3, 1 + event_index % 3, 1),
+            isu_code=f"{etf_index:06d}",
+            isu_name=f"ETF {etf_index}",
+            horizon_months=horizon_months,
+        )
+        for event_index in range(46)
+        for etf_index in range(3)
+        for horizon_months in (1, 3, 6)
+    ]
+
+    section, _ = _historical_outcome_section(rows)
+
+    assert len(rows) == 414
+    assert "공식 이벤트 46건" in section.content
+    assert "이벤트-ETF 쌍 138건" in section.content
+    assert len(section.blocks[0].rows) == 12
 
 
 def test_empty_stored_news_does_not_offer_live_news_exit() -> None:
