@@ -168,8 +168,8 @@ def test_fomc_policy_ledger_uses_official_sources_and_explicit_bank_peers() -> N
         _FOMC_LEDGER_PATH.read_text(encoding="utf-8")
     )
 
-    assert len(ledger.events) == 30
-    assert len({event.event_id for event in ledger.events}) == 30
+    assert len(ledger.events) == 63
+    assert len({event.event_id for event in ledger.events}) == 63
     assert ledger.events[0].occurred_on == date(2011, 8, 9)
     assert ledger.events[-1].occurred_on == date(2025, 12, 10)
     assert all(event.theme_id == "bank_finance" for event in ledger.events)
@@ -183,6 +183,41 @@ def test_fomc_policy_ledger_uses_official_sources_and_explicit_bank_peers() -> N
         )
         for event in ledger.events
     )
+    assert {
+        event.occurred_on
+        for event in ledger.events
+        if date(2020, 1, 1) <= event.occurred_on <= date(2025, 12, 31)
+    } == {
+        date(2020, 1, 29),
+        date(2020, 3, 2),
+        date(2020, 3, 15),
+        date(2020, 4, 29),
+        date(2020, 6, 10),
+        date(2020, 7, 29),
+        date(2020, 9, 16),
+        date(2020, 11, 5),
+        date(2020, 12, 16),
+        *(
+            date(year, month, day)
+            for year, month, day in (
+                (2021, 1, 27), (2021, 3, 17), (2021, 4, 28),
+                (2021, 6, 16), (2021, 7, 28), (2021, 9, 22),
+                (2021, 11, 3), (2021, 12, 15),
+                (2022, 1, 26), (2022, 3, 16), (2022, 5, 4),
+                (2022, 6, 15), (2022, 7, 27), (2022, 9, 21),
+                (2022, 11, 2), (2022, 12, 14),
+                (2023, 2, 1), (2023, 3, 22), (2023, 5, 3),
+                (2023, 6, 14), (2023, 7, 26), (2023, 9, 20),
+                (2023, 11, 1), (2023, 12, 13),
+                (2024, 1, 31), (2024, 3, 20), (2024, 5, 1),
+                (2024, 6, 12), (2024, 7, 31), (2024, 9, 18),
+                (2024, 11, 7), (2024, 12, 18),
+                (2025, 1, 29), (2025, 3, 19), (2025, 5, 7),
+                (2025, 6, 18), (2025, 7, 30), (2025, 9, 17),
+                (2025, 10, 29), (2025, 12, 10),
+            )
+        ),
+    }
 
 
 def test_bok_base_rate_ledger_uses_official_sources_and_explicit_bank_peers() -> None:

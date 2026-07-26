@@ -210,6 +210,8 @@
                 "as_of": "2026-07-26"
             }
         },
+        {"event_id":"fed-fomc-2020-01-29","occurred_on":"2020-01-29","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC historical materials (2020)","reference":"https://www.federalreserve.gov/monetarypolicy/fomchistorical2020.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2020-03-02","occurred_on":"2020-03-02","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC historical materials (2020)","reference":"https://www.federalreserve.gov/monetarypolicy/fomchistorical2020.htm","as_of":"2026-07-26"}},
         {
             "event_id": "fed-fomc-2020-03-15",
             "occurred_on": "2020-03-15",
@@ -225,6 +227,11 @@
                 "as_of": "2026-07-26"
             }
         },
+        {"event_id":"fed-fomc-2020-04-29","occurred_on":"2020-04-29","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC historical materials (2020)","reference":"https://www.federalreserve.gov/monetarypolicy/fomchistorical2020.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2020-06-10","occurred_on":"2020-06-10","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC historical materials (2020)","reference":"https://www.federalreserve.gov/monetarypolicy/fomchistorical2020.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2020-07-29","occurred_on":"2020-07-29","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC historical materials (2020)","reference":"https://www.federalreserve.gov/monetarypolicy/fomchistorical2020.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2020-09-16","occurred_on":"2020-09-16","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC historical materials (2020)","reference":"https://www.federalreserve.gov/monetarypolicy/fomchistorical2020.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2020-11-05","occurred_on":"2020-11-05","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC historical materials (2020)","reference":"https://www.federalreserve.gov/monetarypolicy/fomchistorical2020.htm","as_of":"2026-07-26"}},
         {
             "event_id": "fed-fomc-2020-12-16",
             "occurred_on": "2020-12-16",
@@ -240,6 +247,12 @@
                 "as_of": "2026-07-26"
             }
         },
+        {"event_id":"fed-fomc-2021-01-27","occurred_on":"2021-01-27","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2021-03-17","occurred_on":"2021-03-17","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2021-04-28","occurred_on":"2021-04-28","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2021-06-16","occurred_on":"2021-06-16","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2021-07-28","occurred_on":"2021-07-28","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2021-09-22","occurred_on":"2021-09-22","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
         {
             "event_id": "fed-fomc-2021-11-03",
             "occurred_on": "2021-11-03",
@@ -270,6 +283,7 @@
                 "as_of": "2026-07-26"
             }
         },
+        {"event_id":"fed-fomc-2022-01-26","occurred_on":"2022-01-26","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
         {
             "event_id": "fed-fomc-2022-03-16",
             "occurred_on": "2022-03-16",
@@ -285,6 +299,7 @@
                 "as_of": "2026-07-26"
             }
         },
+        {"event_id":"fed-fomc-2022-05-04","occurred_on":"2022-05-04","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
         {
             "event_id": "fed-fomc-2022-06-15",
             "occurred_on": "2022-06-15",
@@ -300,6 +315,7 @@
                 "as_of": "2026-07-26"
             }
         },
+        {"event_id":"fed-fomc-2022-07-27","occurred_on":"2022-07-27","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
         {
             "event_id": "fed-fomc-2022-09-21",
             "occurred_on": "2022-09-21",
@@ -315,6 +331,7 @@
                 "as_of": "2026-07-26"
             }
         },
+        {"event_id":"fed-fomc-2022-11-02","occurred_on":"2022-11-02","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
         {
             "event_id": "fed-fomc-2022-12-14",
             "occurred_on": "2022-12-14",
@@ -330,6 +347,7 @@
                 "as_of": "2026-07-26"
             }
         },
+        {"event_id":"fed-fomc-2023-02-01","occurred_on":"2023-02-01","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
         {
             "event_id": "fed-fomc-2023-03-22",
             "occurred_on": "2023-03-22",
@@ -345,6 +363,8 @@
                 "as_of": "2026-07-26"
             }
         },
+        {"event_id":"fed-fomc-2023-05-03","occurred_on":"2023-05-03","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2023-06-14","occurred_on":"2023-06-14","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
         {
             "event_id": "fed-fomc-2023-07-26",
             "occurred_on": "2023-07-26",
@@ -360,6 +380,8 @@
                 "as_of": "2026-07-26"
             }
         },
+        {"event_id":"fed-fomc-2023-09-20","occurred_on":"2023-09-20","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2023-11-01","occurred_on":"2023-11-01","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
         {
             "event_id": "fed-fomc-2023-12-13",
             "occurred_on": "2023-12-13",
@@ -375,6 +397,9 @@
                 "as_of": "2026-07-26"
             }
         },
+        {"event_id":"fed-fomc-2024-01-31","occurred_on":"2024-01-31","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2024-03-20","occurred_on":"2024-03-20","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2024-05-01","occurred_on":"2024-05-01","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
         {
             "event_id": "fed-fomc-2024-06-12",
             "occurred_on": "2024-06-12",
@@ -390,6 +415,7 @@
                 "as_of": "2026-07-26"
             }
         },
+        {"event_id":"fed-fomc-2024-07-31","occurred_on":"2024-07-31","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
         {
             "event_id": "fed-fomc-2024-09-18",
             "occurred_on": "2024-09-18",
@@ -405,6 +431,7 @@
                 "as_of": "2026-07-26"
             }
         },
+        {"event_id":"fed-fomc-2024-11-07","occurred_on":"2024-11-07","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
         {
             "event_id": "fed-fomc-2024-12-18",
             "occurred_on": "2024-12-18",
@@ -420,6 +447,11 @@
                 "as_of": "2026-07-26"
             }
         },
+        {"event_id":"fed-fomc-2025-01-29","occurred_on":"2025-01-29","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2025-03-19","occurred_on":"2025-03-19","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2025-05-07","occurred_on":"2025-05-07","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2025-06-18","occurred_on":"2025-06-18","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
+        {"event_id":"fed-fomc-2025-07-30","occurred_on":"2025-07-30","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
         {
             "event_id": "fed-fomc-2025-09-17",
             "occurred_on": "2025-09-17",
@@ -435,6 +467,7 @@
                 "as_of": "2026-07-26"
             }
         },
+        {"event_id":"fed-fomc-2025-10-29","occurred_on":"2025-10-29","theme_id":"bank_finance","peer_isu_codes":["091170","091220","139270"],"source":{"label":"Federal Reserve FOMC meeting calendar","reference":"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm","as_of":"2026-07-26"}},
         {
             "event_id": "fed-fomc-2025-12-10",
             "occurred_on": "2025-12-10",
