@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getStrategyPlanningReturns } from "../api/client";
@@ -150,6 +150,24 @@ describe("MainHomeScreen", () => {
     expect(screen.queryByText("KOSEF 국고채10년")).not.toBeInTheDocument();
   });
 
+  it("shows the largest asset holdings from the first-view prompt", () => {
+    // The prompt opens the detail, and the same click must not reach the
+    // document-level dismiss listener that closes it again.
+    const documentClick = vi.fn();
+    document.addEventListener("click", documentClick);
+    renderHome();
+
+    fireEvent.click(screen.getByRole("button", {
+      name: "가장 큰 자산의 보유 종목 먼저 보기",
+    }));
+
+    expect(documentClick).not.toHaveBeenCalled();
+    expect(screen.getByText("SOL 미국S&P500")).toBeInTheDocument();
+    expect(screen.getByText("ACE 미국나스닥100")).toBeInTheDocument();
+    expect(screen.queryByText("KOSEF 국고채10년")).not.toBeInTheDocument();
+    document.removeEventListener("click", documentClick);
+  });
+
   it("keeps the one-line diagnosis action connected to chat", () => {
     const onOpenChat = vi.fn();
     renderHome({ onOpenChat });
@@ -195,6 +213,36 @@ describe("MainHomeScreen", () => {
     expect(onOpenPlanner).toHaveBeenCalledOnce();
   });
 
+  it("shows the tax credit card first and loops every 2.5 seconds", () => {
+    vi.useFakeTimers();
+    const { container } = renderHome();
+    const track = container.querySelector(".mhs-promo-track");
+
+    expect(track).toHaveStyle({ transform: "translateX(-0%)" });
+    act(() => vi.advanceTimersByTime(2500));
+    expect(track).toHaveStyle({ transform: "translateX(-100%)" });
+    act(() => vi.advanceTimersByTime(2500));
+    expect(track).toHaveStyle({ transform: "translateX(-0%)" });
+
+    vi.useRealTimers();
+  });
+
+  it("supports dots, arrow keys, and swipe navigation", () => {
+    const { container } = renderHome();
+    const carousel = screen.getByRole("region", { name: "홈 추천 카드" });
+    const track = container.querySelector(".mhs-promo-track");
+
+    fireEvent.click(screen.getByRole("button", { name: "2번째 카드 보기" }));
+    expect(track).toHaveStyle({ transform: "translateX(-100%)" });
+
+    fireEvent.keyDown(carousel, { key: "ArrowLeft" });
+    expect(track).toHaveStyle({ transform: "translateX(-0%)" });
+
+    fireEvent.touchStart(carousel, { touches: [{ clientX: 280 }] });
+    fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 180 }] });
+    expect(track).toHaveStyle({ transform: "translateX(-100%)" });
+  });
+
   it("opens the supplied profile screen from the header icon", () => {
     const onOpenProfile = vi.fn();
     renderHome({ onOpenProfile });
@@ -207,6 +255,7 @@ describe("MainHomeScreen", () => {
     const onOpenSlangi = vi.fn();
     renderHome({ onOpenSlangi });
 
+    fireEvent.click(screen.getByRole("button", { name: "2번째 카드 보기" }));
     fireEvent.click(screen.getByRole("button", { name: "연그미와 놀기 열기" }));
     expect(onOpenSlangi).toHaveBeenCalledOnce();
   });
