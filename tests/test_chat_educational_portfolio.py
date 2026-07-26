@@ -481,7 +481,7 @@ def test_pension_strategy_question_uses_each_saved_account_scope() -> None:
     for user_name, account_types in account_scopes.items():
         response = service.ask(
             ChatRequest(
-                message="내 상황에 맞는 연금저축전략을 알려줘",
+                message="내 성향에 맞는 연금저축전략이 궁금해",
                 survey_profile=CompletedSurveyProfile(
                     account_type=account_types[0],
                     account_types=account_types,
