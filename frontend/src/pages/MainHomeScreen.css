@@ -88,7 +88,7 @@
 
 .mhs-strategy-scroll { display: flex; gap: 12px; overflow-x: auto; margin: 0; padding: 0 0 6px; scroll-padding-inline: 0; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .mhs-strategy-scroll::-webkit-scrollbar { display: none; }
-.mhs-strategy-card { flex: 0 0 168px; border: 1.5px solid #EAEDE7; border-radius: 20px; padding: 18px 16px; scroll-snap-align: start; }
+.mhs-strategy-card { flex: 0 0 145px; border: 1.5px solid #EAEDE7; border-radius: 20px; padding: 18px 16px; scroll-snap-align: start; }
 .mhs-strategy-card-button { color: inherit; cursor: pointer; font: inherit; text-align: left; }
 .mhs-strategy-card-button:focus-visible { outline: 3px solid #18A860; outline-offset: 2px; }
 .mhs-strategy-card-title { font-size: 16px; font-weight: 900; color: #111; }
