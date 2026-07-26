@@ -197,6 +197,11 @@ class MustNotRunNarrator:
         raise AssertionError("out-of-scope responses must not reach the narrator")
 
 
+class FailingNarrator:
+    def narrate(self, response, **kwargs):
+        raise TimeoutError("narration provider timed out")
+
+
 def test_authenticated_stream_saves_after_narration_update(monkeypatch) -> None:
     order: list[str] = []
     original_sse = chat_api._sse
@@ -228,6 +233,30 @@ def test_authenticated_stream_saves_after_narration_update(monkeypatch) -> None:
     assert response.status_code == 200
     assert order == ["narration_update", "save_exchange"]
     assert repository.saved[0]["response"].narration_mode == "claude_verified"
+
+
+def test_authenticated_stream_keeps_verified_response_when_narrator_fails(
+    caplog,
+) -> None:
+    repository = FakeChatRepository()
+    _override_authenticated_dependencies(repository)
+    app.dependency_overrides[get_chat_narrator] = FailingNarrator
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={"message": "IRP 위험자산 한도를 알려줘"},
+                headers=CHAT_HEADERS,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = final_sse_response(response.text)
+    assert payload["response"]["intent"] == "account_rule"
+    assert payload["response"]["narration_mode"] == "deterministic"
+    assert len(repository.saved) == 1
+    assert "chat_narration_failed" in caplog.text
 
 
 def test_authenticated_stream_skips_narrator_for_unsupported_question() -> None:
