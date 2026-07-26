@@ -1,0 +1,4 @@
+interface:
+  display_name: "Luna Delegation"
+  short_description: "luna 서브에이전트 위임 규칙 - 동시 4개 상한, 재귀 금지"
+  default_prompt: "Use $luna-delegation to split this work and delegate the executable parts to gpt-5.6-luna subagents."
