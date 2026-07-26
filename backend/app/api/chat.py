@@ -439,6 +439,53 @@ def get_my_pension_context(
     return context
 
 
+@router.get(
+    "/chat/rebalancing-profile",
+    response_model=CompletedSurveyProfile,
+)
+def get_rebalancing_profile(
+    owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
+    context_repository: Annotated[
+        DemoUserContextRepository | None,
+        Depends(get_optional_demo_user_context_repository),
+    ],
+    investment_profile_repository: Annotated[
+        InvestmentProfileRepository | None,
+        Depends(get_optional_investment_profile_repository),
+    ],
+) -> CompletedSurveyProfile:
+    """Return the persisted engine inputs needed for a holdings review."""
+
+    try:
+        context = _load_demo_context(context_repository, owner_id)
+        saved_profile = _load_saved_survey_profile(
+            investment_profile_repository,
+            owner_id,
+            context,
+        )
+    except _DATABASE_ERRORS as exc:
+        raise api_error(
+            ApiErrorCode.DATA_SOURCE_UNAVAILABLE,
+            "Rebalancing profile data is unavailable",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+        ) from exc
+    if context is None or saved_profile is None:
+        raise api_error(
+            ApiErrorCode.RESOURCE_NOT_FOUND,
+            "A saved investment profile is required for rebalancing review",
+            status.HTTP_404_NOT_FOUND,
+        )
+
+    profile = context.personalize_survey_profile(saved_profile)
+    if profile is None:
+        raise api_error(
+            ApiErrorCode.RESOURCE_NOT_FOUND,
+            "A usable pension account is required for rebalancing review",
+            status.HTTP_404_NOT_FOUND,
+        )
+    return profile
+
+
 @router.post("/chat/stream")
 async def chat_authenticated_stream(
     request: AuthenticatedChatRequest,

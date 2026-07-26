@@ -332,6 +332,12 @@ export function getInvestmentProfile(
   return apiGet("/me/investment-profile", accessToken);
 }
 
+export function getRebalancingProfile(
+  accessToken: string,
+): Promise<CompletedSurveyProfile> {
+  return apiGet("/chat/rebalancing-profile", accessToken);
+}
+
 export function calculatePortfolioCmaPension(
   request: PensionCalculatorPortfolioCmaRequest,
 ): Promise<PensionCalculatorPortfolioCmaEvaluation> {
