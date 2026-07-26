@@ -199,6 +199,10 @@ def _authenticated_request(
 ) -> ChatRequest:
     payload = request.model_dump(exclude={"session_id"})
     if context is not None:
+        has_portfolio_input = (
+            request.portfolio is not None
+            or request.educational_portfolio is not None
+        )
         candidate_survey = (
             saved_survey_profile if use_saved_survey_profile else request.survey_profile
         )
@@ -231,7 +235,11 @@ def _authenticated_request(
         payload.update(
             {
                 "scenario_code": context.scenario_code,
-                "pension_tax": context.to_pension_tax_input(),
+                "pension_tax": (
+                    None
+                    if has_portfolio_input
+                    else context.to_pension_tax_input()
+                ),
                 "survey_profile": survey_profile,
                 "conversation_context": conversation_context,
             }

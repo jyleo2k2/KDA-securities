@@ -23,7 +23,7 @@ const PROFILE: CompletedSurveyProfile = {
 const STRATEGY_VISUALIZATIONS: ChatVisualization[] = [
   {
     kind: "sleeve_allocation",
-    title: "IRP & DC형 목표 자산배분",
+    title: "DC형 목표 자산배분",
     description: "규칙 엔진이 계산한 목표비중이에요.",
     data_boundary: "engine",
     evidence_ids: [],
@@ -35,7 +35,7 @@ const STRATEGY_VISUALIZATIONS: ChatVisualization[] = [
   },
   {
     kind: "stress_scenarios",
-    title: "IRP & DC형 스트레스 점검",
+    title: "DC형 스트레스 점검",
     description: "규칙 엔진이 계산한 손실 추정치예요.",
     data_boundary: "engine",
     evidence_ids: [],
@@ -380,15 +380,15 @@ describe("EducationalPortfolioReview", () => {
     expect(
       screen.getByText(/코어는 장기 분산투자, 위성은 제한된 비중의 보조 전략/),
     ).toBeInTheDocument();
-    expect(screen.getByText("IRP & DC형 목표 자산배분")).toBeInTheDocument();
-    expect(screen.getByText("IRP & DC형 스트레스 점검")).toBeInTheDocument();
+    expect(screen.getByText("DC형 목표 자산배분")).toBeInTheDocument();
+    expect(screen.getByText("DC형 스트레스 점검")).toBeInTheDocument();
     expect(screen.getByText("연금저축펀드 목표 자산배분")).toBeInTheDocument();
     expect(screen.getByText("연금저축펀드 스트레스 점검")).toBeInTheDocument();
     expect(screen.queryByRole("img", { name: /주식 45.0%/ })).not.toBeInTheDocument();
     const orderedStrategyContent = [
       screen.getByText("코어·위성 전략"),
-      screen.getByText("IRP & DC형 목표 자산배분"),
-      screen.getByText("IRP & DC형 스트레스 점검"),
+      screen.getByText("DC형 목표 자산배분"),
+      screen.getByText("DC형 스트레스 점검"),
       screen.getByText("연금저축펀드 목표 자산배분"),
       screen.getByText("연금저축펀드 스트레스 점검"),
       screen.getByText(/^리밸런싱 주기:/),

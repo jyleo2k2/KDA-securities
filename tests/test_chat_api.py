@@ -39,6 +39,7 @@ from backend.app.engine import IncomeBasis
 from backend.app.main import app
 from tests.conftest import FakeChatRepository as _BaseFakeChatRepository
 from tests.conftest import final_sse_response, parse_sse
+from tests.test_chat_educational_portfolio import Universe
 
 OWNER_ID = UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
 SESSION_ID = UUID("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
@@ -179,6 +180,94 @@ def test_authenticated_chat_persists_supported_response() -> None:
     assert repository.saved[0]["idempotency_key"] == UUID(
         CHAT_HEADERS["Idempotency-Key"]
     )
+
+
+def test_authenticated_rebalancing_does_not_add_pension_tax_input() -> None:
+    context = DemoUserFinancialContext(
+        auth_user_id=OWNER_ID,
+        benchmark_user_id="USR-REBALANCE",
+        nickname="정민재",
+        representative_age=35,
+        customer_context="IRP 보유자산 점검 고객",
+        scenario_code="overlap_risk_concentration",
+        scenario_name="위험자산 중복",
+        age_band="30대",
+        risk_profile="balanced",
+        investment_horizon_years=25,
+        tax_year=2026,
+        income_basis=IncomeBasis.GROSS_SALARY,
+        income_amount_krw=Decimal("97500000"),
+        dc_balance_krw=Decimal("0"),
+        irp_balance_krw=Decimal("126300000"),
+        pension_savings_balance_krw=Decimal("0"),
+        total_pension_balance_krw=Decimal("126300000"),
+        irp_contribution_krw=Decimal("4920000"),
+        pension_savings_contribution_krw=Decimal("3840000"),
+        as_of_date=date(2026, 7, 23),
+        data_kind="mock",
+    )
+
+    class ContextRepository:
+        def get(self, owner_id):
+            assert owner_id == OWNER_ID
+            return context
+
+        def get_nickname(self, owner_id):
+            assert owner_id == OWNER_ID
+            return context.nickname
+
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        portfolio_universe_loader=lambda account: Universe(),
+    )
+    repository = FakeChatRepository()
+    _override_authenticated_dependencies(repository)
+    app.dependency_overrides[get_chat_service] = lambda: service
+    app.dependency_overrides[get_optional_demo_user_context_repository] = lambda: (
+        ContextRepository()
+    )
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={
+                    "message": (
+                        "개인 IRP의 실제 보유 비중을 목표 비중과 비교하고 "
+                        "이탈폭을 점검해줘."
+                    ),
+                    "educational_portfolio": {
+                        "account_type": "irp",
+                        "age": 35,
+                        "retirement_start_age": 60,
+                        "risk_profile": "risk_neutral",
+                        "loss_tolerance_percent": "20",
+                        "current_holdings": [
+                            {
+                                "isu_code": "EQ",
+                                "amount_krw": "1000000",
+                                "asset_class": "global_equity",
+                            },
+                            {
+                                "isu_code": "snapshot:cash",
+                                "amount_krw": "500000",
+                                "asset_class": "cash",
+                            },
+                        ],
+                        "new_contribution_krw": "0",
+                    },
+                },
+                headers=CHAT_HEADERS,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = final_sse_response(response.text)
+    assert payload["response"]["intent"] == "educational_portfolio"
+    assert payload["response"]["data_mode"] == "engine_educational_planning"
+    assert payload["response"]["educational_portfolio_evaluation"] is not None
+    assert len(repository.saved) == 1
 
 
 class VerifiedNarrator:

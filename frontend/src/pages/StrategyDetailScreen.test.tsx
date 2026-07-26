@@ -61,7 +61,7 @@ describe("StrategyDetailScreen", () => {
     expect(semiconductorSegment).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("status")).toHaveTextContent("주식 ETF 안에서 20% · 전체 자산 기준 12%");
 
-    fireEvent.click(semiconductorSegment);
+    fireEvent.click(screen.getByRole("heading", { name: "전략의 운용 방식" }));
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
@@ -80,5 +80,14 @@ describe("StrategyDetailScreen", () => {
 
     expect(screen.getAllByText("계좌별 매수 가능 상품 확인")).toHaveLength(2);
     expect(screen.queryByText("계좌 적격 상품 확인 필요")).not.toBeInTheDocument();
+  });
+
+  it("shows the target strategy as ETF-based", () => {
+    window.location.hash = "#/strategy-detail?strategy=target";
+
+    render(<StrategyDetailScreen onBack={vi.fn()} />);
+
+    expect(screen.getAllByText("ETF로 구현 가능")).toHaveLength(2);
+    expect(screen.queryByText("ETF·TDF로 구현 가능")).not.toBeInTheDocument();
   });
 });

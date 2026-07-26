@@ -335,7 +335,8 @@ def _completed_survey(
     risk_profile: EducationalRiskProfile = EducationalRiskProfile.RISK_NEUTRAL,
 ) -> CompletedSurveyProfile:
     return CompletedSurveyProfile(
-        account_type=AccountType.IRP,
+        account_type=AccountType.DC,
+        account_types=[AccountType.DC, AccountType.PENSION_SAVINGS],
         current_age=25,
         retirement_start_age=60,
         risk_profile=risk_profile,
@@ -453,16 +454,37 @@ def test_custom_portfolio_card_uses_completed_survey_age_and_profile() -> None:
     )
 
 
-def test_pension_strategy_question_uses_same_groups_for_all_saved_profiles() -> None:
+def test_pension_strategy_question_uses_each_saved_account_scope() -> None:
     service = _service()
+    account_labels = {
+        AccountType.DC: "DC형",
+        AccountType.IRP: "IRP",
+        AccountType.PENSION_SAVINGS: "연금저축펀드",
+    }
 
-    for saved_account_type in AccountType:
+    account_scopes = {
+        "박준호": [AccountType.DC],
+        "이서연": [AccountType.IRP, AccountType.PENSION_SAVINGS],
+        "정민재": [
+            AccountType.DC,
+            AccountType.IRP,
+            AccountType.PENSION_SAVINGS,
+        ],
+        "김하린": [AccountType.DC, AccountType.PENSION_SAVINGS],
+        "최지훈": [
+            AccountType.DC,
+            AccountType.IRP,
+            AccountType.PENSION_SAVINGS,
+        ],
+    }
+
+    for user_name, account_types in account_scopes.items():
         response = service.ask(
             ChatRequest(
                 message="내 상황에 맞는 연금저축전략을 알려줘",
                 survey_profile=CompletedSurveyProfile(
-                    account_type=saved_account_type,
-                    account_types=[saved_account_type],
+                    account_type=account_types[0],
+                    account_types=account_types,
                     current_age=35,
                     retirement_start_age=60,
                     risk_profile=EducationalRiskProfile.RISK_NEUTRAL,
@@ -471,17 +493,36 @@ def test_pension_strategy_question_uses_same_groups_for_all_saved_profiles() -> 
             )
         )
 
-        assert response.data_mode == "engine_multi_account_planning"
+        assert response.data_mode == (
+            "engine_educational_planning"
+            if len(account_types) == 1
+            else "engine_multi_account_planning"
+        )
         assert [
             evaluation.evaluated_input.account_type
             for evaluation in response.educational_portfolio_evaluations
-        ] == [AccountType.DC, AccountType.PENSION_SAVINGS]
-        assert [item.title for item in response.visualizations] == [
-            "IRP & DC형 목표 자산배분",
-            "IRP & DC형 스트레스 점검",
-            "연금저축펀드 목표 자산배분",
-            "연금저축펀드 스트레스 점검",
+        ] == account_types, user_name
+        expected_titles = [
+            title
+            for account_type in account_types
+            for title in (
+                f"{account_labels[account_type]} 목표 자산배분",
+                f"{account_labels[account_type]} 스트레스 점검",
+            )
         ]
+        assert (
+            [item.title for item in response.visualizations] == expected_titles
+        ), user_name
+        if any(
+            account_type in {AccountType.DC, AccountType.IRP}
+            for account_type in account_types
+        ):
+            assert any("70%" in item for item in response.limitations), user_name
+        if AccountType.PENSION_SAVINGS in account_types:
+            assert any(
+                "총량 70% 한도를 적용하지 않습니다" in item
+                for item in response.limitations
+            ), user_name
 
 
 def test_custom_portfolio_card_requests_survey_when_profile_is_missing() -> None:
@@ -782,7 +823,7 @@ def test_selected_chat_style_is_kept_for_follow_up_question() -> None:
     assert second.sections[1].title == "DC형 · 안정추구형의 방어적 분산 전략"
 
 
-def test_mvp_demo_profile_builds_irp_dc_and_pension_savings_strategy_plans() -> None:
+def test_mvp_demo_profile_builds_only_its_irp_strategy_plan() -> None:
     survey = CompletedSurveyProfile(
         account_type=AccountType.IRP,
         account_types=[AccountType.IRP],
@@ -799,13 +840,13 @@ def test_mvp_demo_profile_builds_irp_dc_and_pension_savings_strategy_plans() -> 
         )
     )
 
-    assert response.data_mode == "engine_multi_account_planning"
-    assert len(response.educational_portfolio_evaluations) == 2
+    assert response.data_mode == "engine_educational_planning"
+    assert len(response.educational_portfolio_evaluations) == 1
     evaluations = {
         evaluation.evaluated_input.account_type: evaluation
         for evaluation in response.educational_portfolio_evaluations
     }
-    assert set(evaluations) == {AccountType.DC, AccountType.PENSION_SAVINGS}
+    assert set(evaluations) == {AccountType.IRP}
     for evaluation in evaluations.values():
         assert evaluation.evaluated_input.age == 30
         assert evaluation.evaluated_input.retirement_start_age == 55
@@ -821,19 +862,11 @@ def test_mvp_demo_profile_builds_irp_dc_and_pension_savings_strategy_plans() -> 
 
     section_titles = [section.title for section in response.sections]
     assert section_titles == [
-        "적용한 MVP 설문 조건",
-        "DC형 · 위험중립형의 코어·위성 전략",
-        "DC형 · 목표 자산배분",
-        "DC형 · 장기 계산에 쓰는 수익률 가정",
-        "DC형 · ETF 분야 살펴보기",
-        "연금저축펀드 · 위험중립형의 코어·위성 전략",
-        "연금저축펀드 · 목표 자산배분",
-        "연금저축펀드 · 장기 계산에 쓰는 수익률 가정",
-        "연금저축펀드 · ETF 분야 살펴보기",
+        "위험중립형의 코어·위성 전략",
+        "목표 자산배분",
+        "장기 계산에 쓰는 수익률 가정",
+        "ETF 분야 살펴보기",
     ]
-    assert "현재 나이 30세" in response.sections[0].content
-    assert "연금수령 개시 55세" in response.sections[0].content
-    assert "손실감내율 약 10%" in response.sections[0].content
     assert all(
         "미래 수익을 맞히거나 약속하는 값은 아니에요" in section.content
         for section in response.sections
@@ -847,10 +880,8 @@ def test_mvp_demo_profile_builds_irp_dc_and_pension_savings_strategy_plans() -> 
     assert response.conversation_context is not None
     assert response.conversation_context.survey_profile == survey
     assert [visualization.title for visualization in response.visualizations] == [
-        "IRP & DC형 목표 자산배분",
-        "IRP & DC형 스트레스 점검",
-        "연금저축펀드 목표 자산배분",
-        "연금저축펀드 스트레스 점검",
+        "IRP 목표 자산배분",
+        "IRP 스트레스 점검",
     ]
 
 
@@ -879,6 +910,6 @@ def test_missing_return_master_names_each_unavailable_account() -> None:
     )
 
     assert response.data_mode == "unavailable"
-    assert "DC형 계좌용 ETF 비용·수익률 기준 데이터" in response.answer
+    assert "IRP 계좌용 ETF 비용·수익률 기준 데이터" in response.answer
     assert "연금저축펀드 계좌용 ETF 비용·수익률 기준 데이터" in response.answer
     assert "0원" not in response.answer

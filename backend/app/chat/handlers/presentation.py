@@ -2,7 +2,6 @@
 
 from decimal import Decimal
 
-from ...engine import AccountType
 from ..cards import build_suggested_follow_ups, pension_tax_credit_follow_ups
 from ..models import (
     ChatCapabilities,
@@ -164,11 +163,6 @@ def attach_visualizations(response: ChatResponse) -> ChatResponse:
         account_label = _ACCOUNT_TYPE_LABELS[
             evaluation.evaluated_input.account_type
         ]
-        display_account_label = (
-            "IRP & DC형"
-            if evaluation.evaluated_input.account_type == AccountType.DC
-            else account_label
-        )
         sleeve_label = _SLEEVE_LABELS[evaluation.target_sleeves[0].sleeve]
         evidence_id = next(
             item.evidence_id
@@ -211,7 +205,7 @@ def attach_visualizations(response: ChatResponse) -> ChatResponse:
         visualizations.append(
             ChatVisualization(
                 kind=VisualizationKind.SLEEVE_ALLOCATION,
-                title=f"{display_account_label} 목표 자산배분",
+                title=f"{account_label} 목표 자산배분",
                 description="규칙 엔진이 계산한 5개 슬리브 목표비중이에요.",
                 data_boundary=DataBoundary.ENGINE,
                 evidence_ids=[evidence_id],
@@ -223,7 +217,7 @@ def attach_visualizations(response: ChatResponse) -> ChatResponse:
             visualizations.append(
                 ChatVisualization(
                     kind=VisualizationKind.STRESS_SCENARIOS,
-                    title=f"{display_account_label} 스트레스 점검",
+                    title=f"{account_label} 스트레스 점검",
                     description="규칙 엔진의 스트레스 시나리오별 손실 추정치예요.",
                     data_boundary=DataBoundary.ENGINE,
                     evidence_ids=[evidence_id],
