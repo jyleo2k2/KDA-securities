@@ -8,6 +8,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -614,32 +615,47 @@ describe("FirstUseGuide", () => {
     addPensionPlannerFixture(onTaxTab);
     render(<FirstUseGuide />);
 
+    const plannerFrame = document.querySelector(
+      'iframe[title="예상 연금 계산 및 세액공제 확인"]',
+    ) as HTMLIFrameElement;
+    const plannerGuide = within(plannerFrame.contentDocument!.body);
     expect(
-      await screen.findByText("세액공제 계산기를 살펴볼까요?"),
+      await plannerGuide.findByText("세액공제 계산기를 살펴볼까요?"),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "1분 안내 보기" }));
+    expect(
+      plannerFrame.contentDocument?.querySelector("#pension-phone > .fug-root"),
+    ).toBeInTheDocument();
+    expect(
+      plannerFrame.contentDocument?.head.querySelector(
+        "style[data-first-use-guide-styles]",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector(".pension-planner-frame > .fug-root"),
+    ).not.toBeInTheDocument();
+    fireEvent.click(plannerGuide.getByRole("button", { name: "1분 안내 보기" }));
 
     expect(
-      await screen.findByText("세액공제 탭에서 남은 한도를 확인해요"),
+      await plannerGuide.findByText("세액공제 탭에서 남은 한도를 확인해요"),
     ).toBeInTheDocument();
     expect(onTaxTab).toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: "연금저축 한도 보기" }));
+    fireEvent.click(plannerGuide.getByRole("button", { name: "연금저축 한도 보기" }));
     expect(
-      await screen.findByText("연금저축 납입액을 조절해 보세요"),
+      await plannerGuide.findByText("연금저축 납입액을 조절해 보세요"),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "IRP·DC 한도 보기" }));
+    fireEvent.click(plannerGuide.getByRole("button", { name: "IRP·DC 한도 보기" }));
     expect(
-      await screen.findByText("IRP·DC 본인 추가납입도 함께 살펴봐요"),
+      await plannerGuide.findByText("IRP·DC 본인 추가납입도 함께 살펴봐요"),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "ISA 전환 혜택 보기" }));
+    fireEvent.click(plannerGuide.getByRole("button", { name: "ISA 전환 혜택 보기" }));
     expect(
-      await screen.findByText("ISA 만기 전환 혜택도 비교할 수 있어요"),
+      await plannerGuide.findByText("ISA 만기 전환 혜택도 비교할 수 있어요"),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "안내 마치기" }));
+    fireEvent.click(plannerGuide.getByRole("button", { name: "안내 마치기" }));
     expect(
       window.sessionStorage.getItem(
         pensionPlannerGuideStorageKey(TARGET_USER_ID),
@@ -648,6 +664,53 @@ describe("FirstUseGuide", () => {
     expect(
       window.sessionStorage.getItem(firstUseGuideStorageKey(TARGET_USER_ID)),
     ).toBeNull();
+  });
+
+  it("waits for the calculator runtime and ignores its hidden source template", async () => {
+    window.history.replaceState(null, "", "/#/planner");
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      `
+        <section class="pension-planner-frame">
+          <iframe title="예상 연금 계산 및 세액공제 확인"></iframe>
+        </section>
+      `,
+    );
+    const plannerFrame = document.querySelector(
+      'iframe[title="예상 연금 계산 및 세액공제 확인"]',
+    ) as HTMLIFrameElement;
+    const frameDocument = plannerFrame.contentDocument!;
+    frameDocument.body.innerHTML = `
+      <x-dc style="display:none">
+        <div id="pension-phone"></div>
+      </x-dc>
+    `;
+    render(<FirstUseGuide />);
+
+    expect(
+      frameDocument.querySelector("x-dc .fug-root"),
+    ).not.toBeInTheDocument();
+
+    frameDocument.body.insertAdjacentHTML(
+      "beforeend",
+      `
+        <div id="pension-phone">
+          <div class="scrolly"></div>
+        </div>
+      `,
+    );
+    const plannerGuide = within(frameDocument.body);
+    expect(
+      await plannerGuide.findByText("세액공제 계산기를 살펴볼까요?"),
+    ).toBeInTheDocument();
+    expect(
+      frameDocument.querySelector("x-dc .fug-root"),
+    ).not.toBeInTheDocument();
+    expect(
+      frameDocument.querySelector(
+        "body > #pension-phone > .fug-root",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("does not open the chatbot guide for another authenticated user", async () => {
