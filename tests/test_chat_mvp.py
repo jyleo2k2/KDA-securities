@@ -1517,16 +1517,19 @@ def test_narration_register_rule_is_first_instruction() -> None:
         assert banned in REGISTER_RULE
 
 
-def test_pension_tax_narration_uses_upgraded_model() -> None:
+def test_pension_tax_narration_stays_on_base_model() -> None:
+    # 세액 답변은 Tool 왕복이 더해져 상위 모델에서 평균 10초까지 늘고 숫자 가드
+    # 통과율도 더 낮았다(2026-07-26 실측). 느린 만큼 폴백만 늘어 값을 못 한다.
     narrator = ClaudeNarrator(
         api_key="test-key",
         model="test-model",
         upgraded_model="upgraded-model",
     )
 
-    response = _routing_response(ChatIntent.PENSION_TAX, 1)
+    response = _routing_response(ChatIntent.PENSION_TAX, 3)
 
-    assert narrator._model_for(response) == "upgraded-model"
+    assert ChatIntent.PENSION_TAX not in UPGRADED_INTENTS
+    assert narrator._model_for(response) == "test-model"
 
 
 def test_multi_source_account_rule_uses_upgraded_model() -> None:
@@ -1572,7 +1575,9 @@ def test_non_upgraded_intent_stays_on_base_model() -> None:
 def test_unset_upgraded_model_keeps_single_model() -> None:
     narrator = ClaudeNarrator(api_key="test-key", model="test-model")
 
-    response = _routing_response(ChatIntent.PENSION_TAX, 3)
+    response = _routing_response(
+        ChatIntent.ACCOUNT_RULE, UPGRADED_ACCOUNT_RULE_MIN_SOURCES
+    )
 
     assert narrator._model_for(response) == "test-model"
 
@@ -1599,8 +1604,9 @@ def test_upgraded_narration_reports_upgraded_model_name() -> None:
         model="test-model",
         upgraded_model="upgraded-model",
     )
-    base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
-    response = base.model_copy(update={"intent": ChatIntent.PENSION_TAX})
+    response = _routing_response(
+        ChatIntent.ACCOUNT_RULE, UPGRADED_ACCOUNT_RULE_MIN_SOURCES
+    )
 
     with narrator._agent_for_model("upgraded-model").override(
         model=_fake_narration_model("IRP 일반 위험자산 한도는 70%예요.")
