@@ -53,6 +53,10 @@ from .handlers.distribution_events import (
 )
 from .handlers.getting_started import getting_started_response
 from .handlers.glossary import build_glossary_response, find_glossary_term
+from .handlers.hesitation import (
+    build_hesitation_response,
+    hesitation_answer_by_id,
+)
 from .handlers.investing_principle import (
     build_investing_principle_response,
     investing_principle_by_id,
@@ -128,6 +132,21 @@ def _investing_principle_response(
             user_message=plan.normalized_message,
         )
     return build_investing_principle_response(principle, knowledge)
+
+
+def _hesitation_response(
+    plan: QueryPlan,
+    knowledge: KnowledgeSearch,
+) -> ChatResponse:
+    """Answer a hesitation question with approved facts, not reassurance."""
+
+    answer = hesitation_answer_by_id(plan.hesitation_answer_id or "")
+    if answer is None:
+        return blocked_response(
+            BlockedReason.UNSUPPORTED,
+            user_message=plan.normalized_message,
+        )
+    return build_hesitation_response(answer, knowledge)
 
 
 class ChatService:
@@ -271,6 +290,8 @@ class ChatService:
                 response = _investing_principle_response(
                     resolved_plan, self._knowledge
                 )
+            elif resolved_plan.intent == ChatIntent.HESITATION_SUPPORT:
+                response = _hesitation_response(resolved_plan, self._knowledge)
             elif request.educational_portfolio is not None:
                 response = educational_portfolio(
                     request.educational_portfolio,

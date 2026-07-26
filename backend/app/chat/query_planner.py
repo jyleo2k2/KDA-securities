@@ -92,6 +92,7 @@ class QueryPlan(BaseModel):
     distribution_reinvestment: DistributionReinvestmentRequest | None = None
     glossary_term_id: str | None = None
     investing_principle_id: str | None = None
+    hesitation_answer_id: str | None = None
     blocked_reason: BlockedReason | None = None
 
     @model_validator(mode="after")
@@ -115,6 +116,18 @@ class QueryPlan(BaseModel):
         ):
             raise ValueError(
                 "investing_principle_id is only valid for investing principle intent"
+            )
+        if (
+            self.intent == ChatIntent.HESITATION_SUPPORT
+            and self.hesitation_answer_id is None
+        ):
+            raise ValueError("hesitation support intent requires hesitation_answer_id")
+        if (
+            self.intent != ChatIntent.HESITATION_SUPPORT
+            and self.hesitation_answer_id is not None
+        ):
+            raise ValueError(
+                "hesitation_answer_id is only valid for hesitation support intent"
             )
         if self.intent != ChatIntent.NEWS and self.news_query is not None:
             raise ValueError("news_query is only valid for news intent")
@@ -497,6 +510,91 @@ _CONTRIBUTION_AMOUNT_ADVICE = re.compile(
     r"|적정.{0,8}(?:납입|금액)",
     re.I,
 )
+# 망설임이 담긴 질문. 감정을 단정하지 않고 승인된 사실로 답한다. 구체적인
+# 표현을 앞에 두어 넓은 표현이 가로채지 않게 한다.
+_HESITATION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    (
+        "peer_comparison",
+        re.compile(
+            r"남들?(?:은|이|보다)?[^?]{0,12}(?:얼마|어디|모으|모았|넣|투자|해)"
+            r"|또래[^?]{0,12}(?:얼마|어디|모으|모았|넣)"
+            r"|다들[^?]{0,12}(?:어디|얼마|투자|넣)"
+            r"|평균(?:이|은)?[^?]{0,8}얼마"
+            r"|친구[^?]{0,12}(?:수익|벌|났)"
+            r"|나만[^?]{0,8}(?:늦|뒤처|못)",
+            re.I,
+        ),
+    ),
+    (
+        "doing_well_check",
+        re.compile(
+            r"(?:내가|제가)?[^?]{0,6}잘\s*(?:하고|되고)\s*있"
+            r"|이\s*정도(?:면|로)?[^?]{0,10}(?:괜찮|되|맞|충분)"
+            r"|(?:내|제)[^?]{0,8}수익률[^?]{0,10}(?:낮|적|안\s*좋|괜찮)"
+            r"|제대로\s*(?:하고|가고)\s*있",
+            re.I,
+        ),
+    ),
+    (
+        "too_late_to_start",
+        re.compile(
+            r"(?:너무)?\s*늦(?:었|은|지|나|었나)"
+            r"|지금\s*(?:시작|해도|가입)[^?]{0,10}(?:늦|괜찮|돼|될까|의미)"
+            r"|\d{2}대(?:인데|라도|에)?[^?]{0,12}(?:늦|해도|시작|의미|되)"
+            r"|나이(?:가)?\s*(?:많|들)[^?]{0,12}(?:의미|늦|해도|되)"
+            r"|언제\s*시작(?:하는|해)[^?]{0,8}(?:좋|나)"
+            r"|(?:조금)?\s*더\s*기다(?:렸다|려)",
+            re.I,
+        ),
+    ),
+    (
+        "small_amount_start",
+        re.compile(
+            r"돈(?:이)?\s*(?:적|없|부족)[^?]{0,14}(?:시작|해도|넣|되|할\s*수)"
+            r"|월급(?:이)?\s*(?:적|작)[^?]{0,14}(?:해도|되|할\s*수|넣)"
+            r"|\d+\s*(?:만\s*)?원(?:으로|이라도|밖에)[^?]{0,10}(?:되|해도|시작|가능)"
+            r"|소액(?:으로|이라도)?[^?]{0,10}(?:되|해도|시작|가능)"
+            r"|조금씩(?:이라도)?[^?]{0,10}(?:되|해도|시작|가능)",
+            re.I,
+        ),
+    ),
+    (
+        "market_drop_fear",
+        re.compile(
+            r"폭락|급락|떨어지면|내리면|하락하면"
+            r"|시장(?:이)?\s*(?:불안|안\s*좋|흔들)"
+            r"|(?:요즘|지금)[^?]{0,10}불안"
+            r"|(?:지금|요즘)[^?]{0,10}(?:비싸|비싼|고점|많이\s*올라)"
+            r"|(?:비싸|비싼)[^?]{0,10}(?:것|거)\s*같"
+            r"|마이너스[^?]{0,12}(?:났|나면|인데|어떡)",
+            re.I,
+        ),
+    ),
+    (
+        "loss_fear",
+        re.compile(
+            r"손실[^?]{0,12}(?:나면|났|어떡|어떻|무서|걱정)"
+            r"|손해[^?]{0,12}(?:나면|났|어떡|무서|걱정)"
+            r"|돈[^?]{0,8}(?:잃|까먹)"
+            r"|원금[^?]{0,10}(?:까먹|잃|날리)"
+            r"|투자(?:가|는)?[^?]{0,8}(?:무서|겁나|두려)"
+            r"|무서(?:워|운|위)|겁나|두려[워운]"
+            r"|다\s*잃",
+            re.I,
+        ),
+    ),
+)
+
+
+def _hesitation_answer_id(message: str) -> str | None:
+    """Identify a hesitation question so it gets facts instead of a dead end."""
+
+    for answer_id, pattern in _HESITATION_PATTERNS:
+        if pattern.search(message) is not None:
+            return answer_id
+    return None
+
+
 # 특정 금융회사를 고르는 질문. 회사를 권유하지 않고 비교 기준을 제시한다.
 _PROVIDER_CHOICE_ADVICE = re.compile(
     r"(?:증권사|은행|보험사|금융\s*회사)[^?]{0,14}"
@@ -1077,6 +1175,17 @@ def plan_question(
             max_results=max_results,
             investing_principle_id=investing_principle_id,
         )
+    # 망설임이 담긴 질문은 안전 폴백으로 떨어뜨리지 않고 사실로 답한다.
+    # 연금 밖 자산을 지목한 질문은 기존 폴백을 유지한다.
+    if _NON_PENSION_ASSET.search(normalized) is None:
+        hesitation_answer_id = _hesitation_answer_id(normalized)
+        if hesitation_answer_id is not None:
+            return QueryPlan(
+                normalized_message=normalized,
+                intent=ChatIntent.HESITATION_SUPPORT,
+                max_results=max_results,
+                hesitation_answer_id=hesitation_answer_id,
+            )
     glossary_term_id = _glossary_term_id(normalized)
     if glossary_term_id is not None:
         return QueryPlan(

@@ -94,6 +94,7 @@ class ChatIntent(StrEnum):
     MACRO_EVIDENCE = "macro_evidence"
     GLOSSARY = "glossary"
     INVESTING_PRINCIPLE = "investing_principle"
+    HESITATION_SUPPORT = "hesitation_support"
     GETTING_STARTED = "getting_started"
     OUT_OF_SCOPE = "out_of_scope"
 
