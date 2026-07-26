@@ -27,7 +27,7 @@
   @media (max-width:480px) { #pension-phone { width:100vw !important; height:100dvh !important; } }
 </style>
 </helmet>
-<div id="pension-phone" style="width:100%; max-width:390px; height:100dvh; max-height:844px; background:#F5F6F8; margin:0 auto; font-family:'Cafe24SsurroundAir', Pretendard, -apple-system, sans-serif; color:#1E2124; display:flex; flex-direction:column; position:relative; overflow:hidden;">
+<div id="pension-phone" style="width:100%; max-width:390px; height:100dvh; max-height:844px; background:#F5F6F8; margin:0 auto; font-family:Pretendard, 'Cafe24SsurroundAir', -apple-system, sans-serif; color:#333; display:flex; flex-direction:column; position:relative; overflow:hidden;">
 
   <div style="flex:none; background:#fff; height:54px; display:flex; align-items:center; position: relative; justify-content:space-between; padding:0 26px 0 29px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Pretendard', system-ui, sans-serif; font-weight:600; font-size:15px; color:#111;">
     <span style="letter-spacing:-0.24px; font-variant-numeric:tabular-nums;">9:41</span>
@@ -47,8 +47,8 @@
   <div class="scrolly" style="flex:1; overflow-y:auto;">
 
     <div style="background:#EAF7F0; padding:24px 22px 22px;">
-      <div style="font-size:24px; font-weight:800; color:#166F39; line-height:1.3;">예상 연금 계산 및<br>세액공제 확인</div>
-      <div style="font-size:14.5px; font-weight:500; color:#3E8B5D; margin-top:9px; line-height:1.5;">슬라이더로 나의 예상 연금을 계산하고, 받을 수 있는 세액공제 혜택까지 한 번에 확인하세요</div>
+      <div style="font-size:24px; font-weight:900; color:#166F39; line-height:1.3;">예상 연금 계산 및<br>세액공제 확인</div>
+      <div style="font-size:14.5px; font-weight:600; color:#2E6B45; margin-top:9px; line-height:1.5;">슬라이더로 나의 예상 연금을 계산하고, 받을 수 있는 세액공제 혜택까지 한 번에 확인하세요</div>
     </div>
 
     <div style="background:#fff; display:flex; padding:0 22px; border-bottom:1px solid #ECEEF0; position:sticky; top:0; z-index:2;">
@@ -169,13 +169,13 @@
       <div>
         <div style="background:#fff; border-radius:18px; padding:24px 20px 20px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
-            <span style="font-size:14.5px; font-weight:600; color:#6B7178;">내 공제율 <span style="color:#166F39; font-weight:800;">{{ rateLabel }}</span></span>
+            <span style="font-size:14.5px; font-weight:700; color:#333;">내 공제율 <span style="color:#166F39; font-weight:800;">{{ rateLabel }}</span></span>
             <div onClick="{{ toggleSalary }}" style="display:flex; align-items:center; gap:6px; background:#F1F3F5; border-radius:99px; padding:8px 14px; cursor:pointer;">
               <span style="font-size:13px; font-weight:700; color:#4A5058;">{{ salaryChipText }}</span>
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8L9.5 4.5" stroke="#8B9096" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
             </div>
           </div>
-          <div style="font-size:22px; font-weight:800; line-height:1.35;">올해 안에 연금으로<br><span style="background:#FDC526; border-radius:8px; padding:2px 8px;">{{ totalMoreText }}</span> 더 공제받을 수 있어요</div>
+          <div style="font-size:22px; font-weight:900; line-height:1.35;">올해 안에 연금으로<br><span style="background:#FDC526; border-radius:8px; padding:2px 8px;">{{ totalMoreText }}</span> 더 공제받을 수 있어요</div>
           <div style="background:#EAF7F0; border-radius:12px; padding:12px 14px; margin-top:16px; font-size:13px; font-weight:600; color:#2E6B45; line-height:1.55;">총급여 5,500만원 이하(종합소득금액 4,500만원 이하)는 <b>16.5%</b>, 초과는 <b>13.2%</b>의 공제율이 적용돼요.</div>
         </div>
 
@@ -188,7 +188,7 @@
             <span style="font-size:12.5px; font-weight:700; color:#8B9096;">한도 600만원</span>
           </div>
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin:18px 0 10px;">
-            <span style="font-size:14px; font-weight:600; color:#4A5058;">납입한 금액</span>
+            <span style="font-size:14px; font-weight:700; color:#333;">납입한 금액</span>
             <span style="font-size:17px; font-weight:800;">{{ paidPText }}</span>
           </div>
           <div style="position:relative; height:12px; border-radius:99px; background:#EEF0F2; overflow:hidden;">
@@ -200,7 +200,7 @@
           </div>
           <input type="range" class="brand-range" min="0" max="600" step="10" value="{{ paidP }}" onInput="{{ onPaidP }}" style="--fill:{{ pFill }}; margin-top:16px;">
           <div style="background:#F6FBF7; border-radius:12px; padding:13px 15px; margin-top:16px; line-height:1.5;">
-            <sc-if value="{{ pNotFull }}" hint-placeholder-val="{{ true }}"><span style="font-size:14px; font-weight:600; color:#4A5058;">{{ remPText }} 더 납입하면 </span><span style="font-size:14px; font-weight:800; color:#166F39;">{{ moreDeductPText }}</span><span style="font-size:14px; font-weight:600; color:#4A5058;"> 더 공제받아요</span></sc-if>
+            <sc-if value="{{ pNotFull }}" hint-placeholder-val="{{ true }}"><span style="font-size:14px; font-weight:600; color:#333;">{{ remPText }} 더 납입하면 </span><span style="font-size:14px; font-weight:800; color:#166F39;">{{ moreDeductPText }}</span><span style="font-size:14px; font-weight:600; color:#333;"> 더 공제받아요</span></sc-if>
             <sc-if value="{{ pFull }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px; font-weight:700; color:#166F39;">연금저축 공제한도 600만원을 모두 채웠어요</span></sc-if>
             <sc-if value="{{ pCombinedFull }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px; font-weight:700; color:#166F39;">연금계좌 합산 공제한도 900만원을 이미 채웠어요</span></sc-if>
           </div>
@@ -215,7 +215,7 @@
             </div>
           </div>
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin:18px 0 10px;">
-            <span style="font-size:14px; font-weight:600; color:#4A5058;">납입한 금액</span>
+            <span style="font-size:14px; font-weight:700; color:#333;">납입한 금액</span>
             <span style="font-size:17px; font-weight:800;">{{ paidIText }}</span>
           </div>
           <div style="position:relative; height:12px; border-radius:99px; background:#EEF0F2; overflow:hidden;">
@@ -227,11 +227,11 @@
           </div>
           <input type="range" class="brand-range tax-range-irp" min="{{ iSliderMin }}" max="900" step="10" value="{{ eligibleTotal }}" onInput="{{ onPaidI }}" style="--fill:{{ iFill }}; margin-top:16px;">
           <div style="background:#F6FBF7; border-radius:12px; padding:13px 15px; margin-top:16px; line-height:1.5;">
-            <sc-if value="{{ iNotFull }}" hint-placeholder-val="{{ true }}"><span style="font-size:14px; font-weight:600; color:#4A5058;">{{ remIText }} 더 납입하면 </span><span style="font-size:14px; font-weight:800; color:#166F39;">{{ moreDeductIText }}</span><span style="font-size:14px; font-weight:600; color:#4A5058;"> 더 공제받아요</span></sc-if>
+            <sc-if value="{{ iNotFull }}" hint-placeholder-val="{{ true }}"><span style="font-size:14px; font-weight:600; color:#333;">{{ remIText }} 더 납입하면 </span><span style="font-size:14px; font-weight:800; color:#166F39;">{{ moreDeductIText }}</span><span style="font-size:14px; font-weight:600; color:#333;"> 더 공제받아요</span></sc-if>
             <sc-if value="{{ iFull }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px; font-weight:700; color:#166F39;">연금계좌 합산 공제한도 900만원을 모두 채웠어요</span></sc-if>
             <sc-if value="{{ iOverCap }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px; font-weight:700; color:#166F39;">IRP·DC 납입액 중 {{ eligibleIText }}만 세액공제 대상이에요</span></sc-if>
           </div>
-          <div style="font-size:12px; color:#9AA0A6; font-weight:500; margin-top:10px; line-height:1.5;">IRP와 DC형은 각각 900만원이 아니라 연금저축과 모두 합쳐 연 900만원까지 세액공제돼요. DC형 회사부담금은 제외돼요.</div>
+          <div style="font-size:12px; color:#8A9691; font-weight:600; margin-top:10px; line-height:1.5;">IRP와 DC형은 각각 900만원이 아니라 연금저축과 모두 합쳐 연 900만원까지 세액공제돼요. DC형 회사부담금은 제외돼요.</div>
         </div>
 
         <div style="background:#166F39; border-radius:18px 18px 0 0; padding:14px 18px; margin-top:20px; display:flex; align-items:center; gap:10px;">
@@ -251,14 +251,14 @@
           <div style="background:#EAF7F0; border-radius:12px; padding:13px 15px; margin-top:16px; font-size:13px; font-weight:600; color:#2E6B45; line-height:1.55;">ISA 만기 자금을 연금계좌(연금저축·IRP)로 전환하면, 전환금액의 <b>10%(최대 300만원)</b>까지 세액공제 한도가 추가로 늘어나 더 공제받을 수 있어요.</div>
 
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin:18px 0 10px;">
-            <span style="font-size:14px; font-weight:600; color:#4A5058;">ISA 계좌 전환(납입) 금액</span>
+            <span style="font-size:14px; font-weight:700; color:#333;">ISA 계좌 전환(납입) 금액</span>
             <span style="font-size:17px; font-weight:800;">{{ isaText }}</span>
           </div>
           <input type="range" class="brand-range" min="0" max="3000" step="100" value="{{ isa }}" onInput="{{ onIsa }}" style="--fill:{{ isaFill }};">
 
           <div style="background:#F1F6FB; border-radius:12px; padding:14px 16px; margin-top:16px;">
             <div style="display:flex; justify-content:space-between; align-items:baseline;">
-              <span style="font-size:13.5px; font-weight:600; color:#4A5058;">추가 세액공제 인정 한도</span>
+              <span style="font-size:13.5px; font-weight:700; color:#333;">추가 세액공제 인정 한도</span>
               <span style="font-size:15px; font-weight:800; color:#1E2124;">{{ isaCapText }} <span style="font-size:12px; color:#8B9096; font-weight:700;">/ 300만원</span></span>
             </div>
             <div style="position:relative; height:10px; border-radius:99px; background:#DCE7F2; overflow:hidden; margin-top:9px;">
@@ -268,20 +268,20 @@
           </div>
 
           <div style="background:#F6FBF7; border-radius:12px; padding:13px 15px; margin-top:14px; line-height:1.5;">
-            <sc-if value="{{ isaHasSome }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px; font-weight:600; color:#4A5058;">전환금액의 10%인 </span><span style="font-size:14px; font-weight:800; color:#166F39;">{{ isaCapText }}</span><span style="font-size:14px; font-weight:600; color:#4A5058;">이 추가 공제 대상이 되어 </span><span style="font-size:14px; font-weight:800; color:#166F39;">{{ isaDeductText }}</span><span style="font-size:14px; font-weight:600; color:#4A5058;"> 더 공제받아요</span></sc-if>
-            <sc-if value="{{ isaNone }}" hint-placeholder-val="{{ true }}"><span style="font-size:14px; font-weight:600; color:#8B9096;">ISA 만기 전환 금액을 입력하면 추가 공제액을 확인할 수 있어요</span></sc-if>
+            <sc-if value="{{ isaHasSome }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px; font-weight:600; color:#333;">전환금액의 10%인 </span><span style="font-size:14px; font-weight:800; color:#166F39;">{{ isaCapText }}</span><span style="font-size:14px; font-weight:600; color:#333;">이 추가 공제 대상이 되어 </span><span style="font-size:14px; font-weight:800; color:#166F39;">{{ isaDeductText }}</span><span style="font-size:14px; font-weight:600; color:#333;"> 더 공제받아요</span></sc-if>
+            <sc-if value="{{ isaNone }}" hint-placeholder-val="{{ true }}"><span style="font-size:14px; font-weight:600; color:#8A9691;">ISA 만기 전환 금액을 입력하면 추가 공제액을 확인할 수 있어요</span></sc-if>
           </div>
         </div>
 
         <div style="background:#EEF1F4; border-radius:18px; padding:22px 20px; margin-top:16px;">
           <div style="font-size:16px; font-weight:800; margin-bottom:16px;">꼭 확인해주세요!</div>
           <div style="display:flex; flex-direction:column; gap:14px;">
-            <div style="display:flex; gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#9AA0A6;margin-top:8px;flex:none;"></div><span style="font-size:13.5px; line-height:1.6; color:#5A6068;">세액공제 예상 금액은 사용자가 연결한 마이데이터를 통해 확인된 연금, 보험 정보를 기준으로 계산한 예상치예요.</span></div>
-            <div style="display:flex; gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#9AA0A6;margin-top:8px;flex:none;"></div><span style="font-size:13.5px; line-height:1.6; color:#5A6068;">실제 납부 금액, 공제 대상 여부, 공제 한도 적용 방식에 따라 실제 연말정산 결과는 안내된 금액과 다를 수 있어요.</span></div>
-            <div style="display:flex; gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#9AA0A6;margin-top:8px;flex:none;"></div><span style="font-size:13.5px; line-height:1.6; color:#5A6068;">본인 납입액은 연금저축·IRP·DC형을 합쳐 연 1,800만원까지 가능하지만, 세액공제는 연금저축 최대 600만원·전체 합산 최대 900만원까지만 적용돼요.</span></div>
-            <div style="display:flex; gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#9AA0A6;margin-top:8px;flex:none;"></div><span style="font-size:13.5px; line-height:1.6; color:#5A6068;">DC형은 근로자가 직접 추가납입한 금액만 세액공제 대상이며 회사가 납입하는 사용자부담금은 제외돼요.</span></div>
-            <div style="display:flex; gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#9AA0A6;margin-top:8px;flex:none;"></div><span style="font-size:13.5px; line-height:1.6; color:#5A6068;">ISA 만기 자금은 만기 후 60일 이내 연금계좌로 전환한 경우에만 추가 세액공제 대상이 되며, 전환금액의 10%(최대 300만원)까지 인정돼요.</span></div>
-            <div style="display:flex; gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#9AA0A6;margin-top:8px;flex:none;"></div><span style="font-size:13.5px; line-height:1.6; color:#5A6068;">정확한 공제 대상 여부와 최종 공제 금액은 해당 금융기관 또는 국세청(홈택스)을 통해 확인해 주세요.</span></div>
+            <div style="display:flex; gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#9AA0A6;margin-top:8px;flex:none;"></div><span style="font-size:13.5px; font-weight:600; line-height:1.6; color:#5A6068;">세액공제 예상 금액은 사용자가 연결한 마이데이터를 통해 확인된 연금, 보험 정보를 기준으로 계산한 예상치예요.</span></div>
+            <div style="display:flex; gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#9AA0A6;margin-top:8px;flex:none;"></div><span style="font-size:13.5px; font-weight:600; line-height:1.6; color:#5A6068;">실제 납부 금액, 공제 대상 여부, 공제 한도 적용 방식에 따라 실제 연말정산 결과는 안내된 금액과 다를 수 있어요.</span></div>
+            <div style="display:flex; gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#9AA0A6;margin-top:8px;flex:none;"></div><span style="font-size:13.5px; font-weight:600; line-height:1.6; color:#5A6068;">본인 납입액은 연금저축·IRP·DC형을 합쳐 연 1,800만원까지 가능하지만, 세액공제는 연금저축 최대 600만원·전체 합산 최대 900만원까지만 적용돼요.</span></div>
+            <div style="display:flex; gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#9AA0A6;margin-top:8px;flex:none;"></div><span style="font-size:13.5px; font-weight:600; line-height:1.6; color:#5A6068;">DC형은 근로자가 직접 추가납입한 금액만 세액공제 대상이며 회사가 납입하는 사용자부담금은 제외돼요.</span></div>
+            <div style="display:flex; gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#9AA0A6;margin-top:8px;flex:none;"></div><span style="font-size:13.5px; font-weight:600; line-height:1.6; color:#5A6068;">ISA 만기 자금은 만기 후 60일 이내 연금계좌로 전환한 경우에만 추가 세액공제 대상이 되며, 전환금액의 10%(최대 300만원)까지 인정돼요.</span></div>
+            <div style="display:flex; gap:10px;"><div style="width:5px;height:5px;border-radius:50%;background:#9AA0A6;margin-top:8px;flex:none;"></div><span style="font-size:13.5px; font-weight:600; line-height:1.6; color:#5A6068;">정확한 공제 대상 여부와 최종 공제 금액은 해당 금융기관 또는 국세청(홈택스)을 통해 확인해 주세요.</span></div>
           </div>
         </div>
       </div>
