@@ -58,6 +58,7 @@ function renderGuide(
     onConsumed?: () => void;
     requestId: string;
   },
+  onOpenProfile?: () => void,
 ): ReturnType<typeof render> {
   const auth = {
     session: { access_token: "access-token", user: { id: "user-1", email: "owner@example.com" } },
@@ -71,6 +72,7 @@ function renderGuide(
     <GuidePage
       auth={auth}
       onOpenPlanner={onOpenPlanner}
+      onOpenProfile={onOpenProfile}
       onPortfolioDiagnosisConsumed={portfolioDiagnosis?.onConsumed}
       onSignOut={onSignOut}
       portfolioDiagnosisRequestId={portfolioDiagnosis?.requestId}
@@ -410,6 +412,19 @@ describe("GuidePage chat history deletion", () => {
     expect(screen.getByAltText("프로필")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("연금에 대해 무엇이든 물어보세요")).toBeInTheDocument();
     expect(screen.getByText(/AI 답변은 투자 판단을 돕는 정보이며, 미래 수익을 보장하지 않습니다/)).toBeInTheDocument();
+  });
+
+  it("opens the profile screen from the top-right profile button", async () => {
+    const onOpenProfile = vi.fn();
+    renderGuide(undefined, undefined, undefined, onOpenProfile);
+
+    const historySidebar = screen.getByRole("complementary");
+    fireEvent.click(await screen.findByRole("button", {
+      name: "로그인됨 · 프로필 화면 열기",
+    }));
+
+    expect(onOpenProfile).toHaveBeenCalledOnce();
+    expect(historySidebar).not.toHaveClass("sidebar-open");
   });
 
   it("confirms deletion, disables controls, removes the row, and clears the active chat", async () => {

@@ -109,9 +109,11 @@ vi.mock("./pages/LoginFlowPage", () => ({
 }));
 vi.mock("./pages/GuidePage", () => ({
   GuidePage: ({
+    onOpenProfile,
     onPortfolioDiagnosisConsumed,
     portfolioDiagnosisRequestId,
   }: {
+    onOpenProfile?: () => void;
     onPortfolioDiagnosisConsumed?: () => void;
     portfolioDiagnosisRequestId?: string;
   }) => (
@@ -123,6 +125,7 @@ vi.mock("./pages/GuidePage", () => ({
       <button type="button" onClick={onPortfolioDiagnosisConsumed}>
         진단 요청 소비
       </button>
+      <button type="button" onClick={onOpenProfile}>프로필 화면 열기</button>
     </main>
   ),
 }));
@@ -286,6 +289,19 @@ describe("App owned pension data", () => {
 
     expect(await screen.findByText("챗")).toBeInTheDocument();
     expect(screen.getByTestId("portfolio-diagnosis-request")).toHaveTextContent("none");
+  });
+
+  it("opens the profile screen from the guide profile button", async () => {
+    vi.mocked(getMyPensionAccounts).mockResolvedValue(portfolioA);
+    render(<App />);
+
+    await screen.findByText("user-a:60000000");
+    fireEvent.click(screen.getByRole("button", { name: "일반 챗봇 열기" }));
+    fireEvent.click(await screen.findByRole("button", { name: "프로필 화면 열기" }));
+
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#/profile-html");
+    });
   });
 
   it("keeps an owner with a saved profile on the success screen until they start", async () => {
