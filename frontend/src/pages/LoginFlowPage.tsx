@@ -4,7 +4,6 @@ import bangIcon from "../assets/login/bang.png";
 import piggyClean from "../assets/login/piggy-clean.png";
 import piggyForm from "../assets/login/piggy-form.webp";
 import piggyIntro from "../assets/login/piggy-intro.webp";
-import piggySuccess from "../assets/login/piggy-success.png";
 import { getAccountLinkOptions, saveInvestmentProfile } from "../api/client";
 import type { AccountLinkOptionsResponse, InvestmentProfileAssessment, InvestmentProfileResponse, InvestmentProfileSubmission } from "../api/types";
 import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
@@ -13,10 +12,11 @@ import { InvestorInfoForm } from "./InvestorInfoForm";
 import { InvestorResultScreen } from "./InvestorResultScreen";
 import "./LoginFlowPage.css";
 
-type LoginStep = "intro" | "form" | "consent" | "success" | "linking" | "risk-assessment" | "investor-info" | "investor-result";
+type LoginStep = "intro" | "form" | "consent" | "linking" | "risk-assessment" | "investor-info" | "investor-result";
 
 interface LoginFlowPageProps {
   auth: SupabaseAuthState;
+  awaitingProfile?: boolean;
   displayName?: string;
   onAuthenticated: () => void;
   onProfileSaved: (profile: InvestmentProfileResponse) => void;
@@ -27,7 +27,7 @@ interface LoginFlowPageProps {
 const REQUIRED_CONSENT_ID = "account-link";
 const LINKING_DURATION_MS = 1500;
 
-export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSaved, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
+export function LoginFlowPage({ auth, awaitingProfile = false, displayName, onAuthenticated, onProfileSaved, onStart, resurvey = false }: LoginFlowPageProps): JSX.Element {
   const [step, setStep] = useState<LoginStep>(resurvey ? "risk-assessment" : "intro");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
@@ -44,7 +44,7 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
     if (!auth.configured) { setNotice("로그인 환경이 설정되지 않았습니다."); return; }
     if (!loginId.trim() || !password || submitting) return;
     setSubmitting(true); setNotice(null);
-    try { await auth.signIn(loginId, password); setPassword(""); onAuthenticated(); setStep("success"); }
+    try { await auth.signIn(loginId, password); setPassword(""); onAuthenticated(); openConsent(); }
     catch { /* shared hook exposes a safe error message */ }
     finally { setSubmitting(false); }
   }
@@ -90,6 +90,22 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
       <section className="app-phone-frame login-flow-phone" aria-label="연금 도우미 로그인">
         <StatusBar />
 
+        {awaitingProfile ? (
+          <div className="login-linking-page">
+            <div className="login-linking-copy">
+              <h1>연금 정보를 <em>확인</em>하고 있어요</h1>
+              <p>조금만 기다려주세요</p>
+            </div>
+            <div className="login-linking-visual">
+              <img src={piggyClean} alt="저금통" />
+            </div>
+            <div className="login-linking-status">
+              <span className="login-linking-spinner" aria-hidden="true" />
+              <span>불러오는 중…</span>
+            </div>
+          </div>
+        ) : (
+          <>
         {step === "intro" && (
           <div className="login-intro">
             <div className="login-intro-copy">
@@ -138,7 +154,7 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
         {step === "consent" && (
           <div className="login-consent-page">
             <div className="login-consent-header">
-              <button type="button" className="login-back" onClick={() => setStep("success")} aria-label="로그인 성공 화면으로 돌아가기">‹</button>
+              <button type="button" className="login-back" onClick={() => setStep("form")} aria-label="로그인 화면으로 돌아가기">‹</button>
               <h1>연금계좌 연동</h1>
             </div>
             <div className="login-consent-content">
@@ -239,21 +255,7 @@ export function LoginFlowPage({ auth, displayName, onAuthenticated, onProfileSav
         {step === "investor-result" && (
           <InvestorResultScreen assessment={assessment} displayName={displayName} onBack={() => setStep("investor-info")} onStart={onStart} />
         )}
-
-        {step === "success" && (
-          <div className="login-success-page">
-            <header>
-              <h1><em>로그인 성공!</em><br />이제 차곡차곡 모아볼까요?</h1>
-              <p>오늘부터 연금의 든든한 길을 함께 찾아볼게요.</p>
-            </header>
-            <div className="login-success-visual">
-              <span className="login-bill login-bill-one">₩</span>
-              <span className="login-bill login-bill-two">₩</span>
-              <span className="login-sparkle">✦</span>
-              <img src={piggySuccess} alt="저금통" />
-            </div>
-            <button type="button" className="login-primary" onClick={openConsent}>시작하기</button>
-          </div>
+          </>
         )}
       </section>
     </main>

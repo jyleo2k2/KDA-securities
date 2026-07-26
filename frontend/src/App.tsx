@@ -245,6 +245,7 @@ function AppRoutes(): JSX.Element {
     return (
       <LoginFlowPage
         auth={auth}
+        awaitingProfile={loginSuccessPending && !resurveyPending && currentUserData.loading}
         displayName={displayName}
         onAuthenticated={() => setLoginSuccessPending(true)}
         onProfileSaved={handleProfileSaved}
