@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
     steps:
@@ -27,3 +28,5 @@ jobs:
         run: uv sync --locked
       - name: Materialize and hash-verify the latest operational cache
         run: uv run python scripts/restore_etf_universe_cache.py --apply
+      - name: Verify the promoted ETF universe in PostgreSQL
+        run: uv run python scripts/verify_etf_universe_operational_state.py
