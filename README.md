@@ -120,7 +120,7 @@ npm run dev
 
 `https://pension-copilot-api.onrender.com`은 2026-07-21 이전 코드가 떠 있는 폐기된 옛 서비스다. 살아 있으면서 HTTP 200을 반환하므로 상태 확인에 사용하지 않는다.
 
-2026-07-25 실측에서 Render는 최신 `main`(`bd21abf`)으로 배포됐고 Production alias CORS preflight가 통과했다. 다만 Vercel 배포 번들이 아직 옛 API 주소를 호출하므로 **Vercel `VITE_API_BASE_URL` 교체 → 재배포 → 원격 골든패스 E2E**가 남았다. 아직 복구 완료로 표시하지 않는다.
+2026-07-26 실측에서 프론트–백엔드 연결은 복구를 확인했다. Render `/health` 200, openapi 경로 42개가 로컬 `main`과 일치하고, 두 Production alias CORS preflight가 통과하며, Vercel 배포 번들의 API 주소도 `kda-securities.onrender.com`으로 교체됐다. 남은 것은 **① `kda4` alias의 Vercel SSO 해제(외부 공유는 `zeta` 사용) ② 로그인 이후 원격 골든패스 E2E**다. 아직 복구 완료로 표시하지 않는다.
 
 ### 5. API 확인
 
