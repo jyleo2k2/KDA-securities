@@ -1,6 +1,6 @@
 /* 프레임 치수는 index.css 폰 프레임 SSOT(.app-phone-stage/.app-phone-frame)를 재사용한다. */
 .sd-stage {
-  font-family: "Cafe24SsurroundAir", "Noto Sans KR", sans-serif;
+  font-family: Pretendard, "Cafe24SsurroundAir", -apple-system, sans-serif;
 }
 
 .sd-phone {
@@ -86,7 +86,7 @@
   background: color-mix(in srgb, var(--sd-accent, #18a860) 14%, #fff);
   color: var(--sd-accent, #18a860);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   padding: 3px 9px;
   border-radius: 8px;
 }
@@ -101,8 +101,8 @@
 
 .sd-desc {
   font-size: 13px;
-  font-weight: 500;
-  color: #8a9691;
+  font-weight: 600;
+  color: #8A9691;
   margin: 0;
   line-height: 1.5;
 }
@@ -127,8 +127,8 @@
 
 .sd-card-body {
   font-size: 13px;
-  font-weight: 500;
-  color: #4a544f;
+  font-weight: 600;
+  color: #333;
   margin: 0;
   line-height: 1.6;
 }
@@ -175,9 +175,9 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: #56625c;
+  color: #333;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .sd-bar-legend i {
@@ -214,9 +214,9 @@
 
 .sd-allocation-note {
   margin: 13px 0 0;
-  color: #8a9691;
+  color: #8A9691;
   font-size: 10px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.55;
 }
 
@@ -235,8 +235,8 @@
 
 .sd-fact dt {
   font-size: 11px;
-  font-weight: 700;
-  color: #8a9691;
+  font-weight: 800;
+  color: #8A9691;
   margin: 0 0 4px;
 }
 
@@ -279,16 +279,16 @@
 
 .sd-words dd {
   margin: 0;
-  color: #4a544f;
+  color: #333;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.5;
 }
 
 .sd-note p {
   font-size: 11px;
-  font-weight: 500;
-  color: #a0aaa4;
+  font-weight: 600;
+  color: #8A9691;
   margin: 0;
   line-height: 1.55;
 }

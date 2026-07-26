@@ -144,3 +144,14 @@ describe("상단바 SSOT (main-home 기준 통일)", () => {
     ).toEqual([]);
   });
 });
+
+describe("화면 타이포그래피 (main-home 기준 통일)", () => {
+  it("연금 계산기는 Pretendard를 기본 글꼴로 사용한다", () => {
+    const calculatorHtml = Object.entries(embeddedHtmlModules)
+      .find(([path]) => path.endsWith("/연금계산기.dc.html"))?.[1];
+
+    expect(calculatorHtml).toMatch(
+      /id="pension-phone"[^>]*font-family:Pretendard,\s*'Cafe24SsurroundAir'/,
+    );
+  });
+});
