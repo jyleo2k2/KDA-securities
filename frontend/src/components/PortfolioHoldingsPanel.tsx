@@ -302,7 +302,7 @@ function EducationalStrategyGuide({
   return (
     <section className="portfolio-strategy-guide" aria-labelledby="portfolio-strategy-guide-title">
       <header>
-        <span>{lossToleranceAdjusted ? "손실감내도 반영 연금투자전략" : "투자성향 기반 연금투자전략"}</span>
+        <span>{lossToleranceAdjusted ? "손실감내도 반영 연금투자전략" : "현재 설문 결과 기준 연금투자전략"}</span>
         <h3 id="portfolio-strategy-guide-title">
           {RISK_PROFILE_LABELS[profile]}{lossToleranceAdjusted ? " · " : "의 "}{strategyTitle}
         </h3>
@@ -320,7 +320,7 @@ function EducationalStrategyGuide({
       <p className="portfolio-strategy-transition">
         {lossToleranceAdjusted
           ? "입력한 손실감내 범위를 반영하면 연금자산을 아래처럼 나누게 됩니다."
-          : "이 성향이라면 연금자산을 아래처럼 나눠 볼 수 있어요."}
+          : "현재 설문 결과를 기준으로 연금자산을 아래처럼 나눠 볼 수 있어요."}
       </p>
       {visualizations
         .filter((visualization) => (

@@ -478,7 +478,6 @@ function AssistantMessage({
   onOpenPlanner,
   onAnalyzeHoldings,
   surveyProfile,
-  userName,
   disabled,
   usedFollowUpMessages,
 }: {
@@ -521,21 +520,17 @@ function AssistantMessage({
   );
   const educationalLead = (
     isEducationalPortfolio
-    && userName
     && educationalProfileLabel
     && educationalEvaluation?.strategy_label
   )
     ? educationalLossToleranceAdjusted
       ? (
-        `${userName}님의 이번 포트폴리오에는 ${educationalProfileLabel} 운용 성향과 선택한 손실감내율 `
+        `현재 투자성향 설문 결과(${educationalProfileLabel})와 선택한 손실감내율 `
         + `${Number(educationalEvaluation.evaluated_input.loss_tolerance_percent).toFixed(1)}%를 함께 반영했습니다. `
         + `손실감내율을 우선 적용해 성장자산 비중을 ${educationalRawRiskTarget.toFixed(1)}%에서 `
         + `${educationalFinalRiskTarget.toFixed(1)}%로 낮췄습니다.`
       )
-      : (
-        `${userName}님의 이번 포트폴리오에 적용한 운용 성향은 ${educationalProfileLabel}이며, `
-        + `${educationalEvaluation.strategy_label} 기준으로 구성했습니다.`
-      )
+      : `현재 투자성향 설문 결과(${educationalProfileLabel})를 기준으로 한 예시 전략은 ${educationalEvaluation.strategy_label}입니다.`
     : undefined;
   const isPensionTaxCredit = (
     response.intent === "pension_tax"
