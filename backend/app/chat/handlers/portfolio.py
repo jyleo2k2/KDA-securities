@@ -1604,6 +1604,14 @@ def educational_portfolio(
         educational_portfolio_evaluations=[display_evaluation],
         macro_regime_etf_outcomes=macro_outcomes,
         limitations=[
+            (
+                "DC형·IRP는 일반 위험자산 비중을 70% 한도 안에서 계산합니다."
+                if request.account_type in {AccountType.DC, AccountType.IRP}
+                else (
+                    "연금저축펀드는 DC형·IRP와 같은 일반 위험자산 총량 "
+                    "70% 한도를 적용하지 않습니다."
+                )
+            ),
             "설명은 규칙 엔진 결과 코드와 수치만 정해진 문장으로 변환합니다.",
             "CMA는 여러 자산의 10~15년 장기 전망을 정리한 계산용 가정이며 "
             "매년 다시 확인합니다.",

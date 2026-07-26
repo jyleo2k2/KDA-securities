@@ -1,9 +1,6 @@
 import logging
 
-from ..engine import (
-    AccountType,
-    EducationalPortfolioInput,
-)
+from ..engine import EducationalPortfolioInput
 from ..etf_component_repository import EtfComponentSnapshotRepository
 from ..etf_distribution_event_repository import PostgresEtfDistributionEventRepository
 from ..etf_product_description_repository import (
@@ -87,12 +84,6 @@ from .routing import IntentRouter, NewsFollowUpAction
 from .scenarios import ScenarioRepository
 
 logger = logging.getLogger(__name__)
-
-_EDUCATIONAL_STRATEGY_ACCOUNT_TYPES = (
-    AccountType.DC,
-    AccountType.PENSION_SAVINGS,
-)
-
 
 class ChatService:
     def __init__(
@@ -306,7 +297,7 @@ class ChatService:
                                     ),
                                 )
                                 for account_type in (
-                                    _EDUCATIONAL_STRATEGY_ACCOUNT_TYPES
+                                    survey_profile.portfolio_account_types()
                                 )
                             ],
                             portfolio_universe_loader=(self._portfolio_universe_loader),

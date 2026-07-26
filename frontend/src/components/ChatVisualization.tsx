@@ -35,11 +35,7 @@ export function ChatVisualization({ visualization, sources }: {
     visualization.kind === "sleeve_allocation"
     || visualization.kind === "stress_scenarios"
   );
-  const displayTitle = (
-    isStrategyVisualization && visualization.title.startsWith("DC형 ")
-  )
-    ? `IRP & ${visualization.title}`
-    : visualization.title;
+  const displayTitle = visualization.title;
   const descriptionStyle = isStrategyVisualization
     ? { marginTop: 0 }
     : undefined;

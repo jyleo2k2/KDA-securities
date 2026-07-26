@@ -118,8 +118,8 @@ describe("ChatVisualization allocation donut", () => {
 
     expect(container.querySelector(".sleeve-allocation-donut")).toBeInTheDocument();
     expect(container.querySelector(".sleeve-allocation-legend")).toBeInTheDocument();
-    expect(screen.getByText("IRP & DC형 목표 자산배분")).toBeInTheDocument();
-    expect(screen.queryByText("DC형 목표 자산배분")).not.toBeInTheDocument();
+    expect(screen.getByText("DC형 목표 자산배분")).toBeInTheDocument();
+    expect(screen.queryByText("IRP & DC형 목표 자산배분")).not.toBeInTheDocument();
     expect(screen.getByText("현재 자산군 비중입니다.")).toHaveStyle({ marginTop: 0 });
     expect(screen.getByText("금/원자재")).toBeInTheDocument();
     expect(container.querySelector("path")).toHaveAttribute("stroke", "none");
@@ -153,8 +153,8 @@ describe("ChatVisualization allocation donut", () => {
       />,
     );
 
-    expect(screen.getByText("IRP & DC형 스트레스 점검")).toBeInTheDocument();
-    expect(screen.queryByText("DC형 스트레스 점검")).not.toBeInTheDocument();
+    expect(screen.getByText("DC형 스트레스 점검")).toBeInTheDocument();
+    expect(screen.queryByText("IRP & DC형 스트레스 점검")).not.toBeInTheDocument();
     expect(screen.getByText("현재 자산군 비중입니다.")).toHaveStyle({ marginTop: 0 });
     expect(screen.getByText("-27.3%")).toBeInTheDocument();
   });
