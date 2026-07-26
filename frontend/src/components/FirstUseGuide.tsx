@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import type { Session } from "@supabase/supabase-js";
 
 import { supabase } from "../auth/supabase";
+import firstUseGuideStyles from "./FirstUseGuide.css?inline";
 import "./FirstUseGuide.css";
 
 const HOME_GUIDE_VERSION = "v3";
@@ -27,6 +28,7 @@ const PENSION_PLANNER_COMPLETE_KEY =
   `pension-first-use-guide:${PENSION_PLANNER_GUIDE_VERSION}:pension-planner:complete`;
 const PREVIEW_QUERY = "tour-preview";
 const TARGET_GUIDE_EMAIL = "jeongsu33@kda-demo.invalid";
+const GUIDE_STYLE_ATTRIBUTE = "data-first-use-guide-styles";
 
 interface GuideStep {
   accent?: string;
@@ -276,7 +278,6 @@ const GUIDES: GuideConfig[] = [
     id: "pension-planner",
     introBody: "납입액을 바꿔 세액공제 한도와 예상 공제액을 확인하는 방법을 1분 안에 알려드릴게요.",
     introTitle: "세액공제 계산기를 살펴볼까요?",
-    portalSelector: ".pension-planner-frame",
     route: "/planner",
     scrollSelector: ".scrolly",
     shellSelector: "#pension-phone",
@@ -300,6 +301,26 @@ function contentDocumentForGuide(guide: GuideConfig): Document | null {
   return document.querySelector<HTMLIFrameElement>(
     guide.frameSelector,
   )?.contentDocument ?? null;
+}
+
+function ensureGuideStyles(contentDocument: Document): void {
+  if (
+    contentDocument === document
+    || contentDocument.head.querySelector(`[${GUIDE_STYLE_ATTRIBUTE}]`)
+  ) return;
+  const style = contentDocument.createElement("style");
+  style.setAttribute(GUIDE_STYLE_ATTRIBUTE, "");
+  style.textContent = firstUseGuideStyles;
+  contentDocument.head.appendChild(style);
+}
+
+function guideShell(
+  contentDocument: Document,
+  selector: string,
+): HTMLElement | null {
+  return Array.from(
+    contentDocument.querySelectorAll<HTMLElement>(selector),
+  ).find((element) => !element.closest("x-dc")) ?? null;
 }
 
 function targetForStep(
@@ -419,8 +440,9 @@ export function FirstUseGuide(): JSX.Element | null {
     const nextContentDocument = nextGuide
       ? contentDocumentForGuide(nextGuide)
       : null;
+    if (nextContentDocument) ensureGuideStyles(nextContentDocument);
     const nextPhone = nextGuide && nextContentDocument
-      ? nextContentDocument.querySelector<HTMLElement>(nextGuide.shellSelector)
+      ? guideShell(nextContentDocument, nextGuide.shellSelector)
       : null;
     if (activeGuideId.current !== nextGuide?.id) {
       activeGuideId.current = nextGuide?.id ?? null;
@@ -467,8 +489,25 @@ export function FirstUseGuide(): JSX.Element | null {
       guide.frameSelector,
     );
     if (!frame) return;
-    frame.addEventListener("load", findGuide);
-    return () => frame.removeEventListener("load", findGuide);
+    let frameObserver: MutationObserver | null = null;
+    const observeFrame = () => {
+      frameObserver?.disconnect();
+      const frameDocument = frame.contentDocument;
+      if (frameDocument?.documentElement) {
+        frameObserver = new MutationObserver(findGuide);
+        frameObserver.observe(frameDocument.documentElement, {
+          childList: true,
+          subtree: true,
+        });
+      }
+      findGuide();
+    };
+    frame.addEventListener("load", observeFrame);
+    observeFrame();
+    return () => {
+      frame.removeEventListener("load", observeFrame);
+      frameObserver?.disconnect();
+    };
   }, [findGuide, guide]);
 
   const measure = useCallback(() => {
