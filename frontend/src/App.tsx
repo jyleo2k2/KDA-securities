@@ -51,6 +51,10 @@ interface CurrentUserData {
   error: string | null;
 }
 
+interface GuideNavigationState {
+  portfolioDiagnosisRequestId?: string;
+}
+
 const EMPTY_USER_DATA: CurrentUserData = {
   portfolio: null,
   aggregation: null,
@@ -93,6 +97,7 @@ function AppRoutes(): JSX.Element {
   const auth = useSupabaseAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const guideNavigationState = location.state as GuideNavigationState | null;
   const [loginSuccessPending, setLoginSuccessPending] = useState(false);
   const [resurveyPending, setResurveyPending] = useState(false);
   const [selectedScenarioCode, setSelectedScenarioCode] = useState(
@@ -261,7 +266,14 @@ function AppRoutes(): JSX.Element {
               initialScenarioCode={selectedScenarioCode}
               onBack={goToMainHome}
               onOpenPlanner={() => navigate("/planner")}
+              onOpenProfile={() => navigate("/profile-html")}
+              onPortfolioDiagnosisConsumed={() => {
+                navigate("/guide", { replace: true, state: null });
+              }}
               onSignOut={handleSignOut}
+              portfolioDiagnosisRequestId={
+                guideNavigationState?.portfolioDiagnosisRequestId
+              }
               surveyProfile={null}
               userContext={guideContext}
             />
@@ -282,6 +294,11 @@ function AppRoutes(): JSX.Element {
             onOpenChat={() => navigate("/guide")}
             onOpenPlanner={() => navigate("/planner")}
             onOpenProfile={() => navigate("/profile-html")}
+            onRequestPortfolioDiagnosis={() => {
+              navigate("/guide", {
+                state: { portfolioDiagnosisRequestId: crypto.randomUUID() },
+              });
+            }}
             onOpenSlangi={() => navigate("/slangi")}
             onScrollPositionChange={(scrollTop) => {
               mainHomeScrollTopRef.current = scrollTop;

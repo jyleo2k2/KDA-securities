@@ -26,6 +26,7 @@ createRoot(container).render(
       onOpenSlangi={noop}
       onOpenPlanner={noop}
       onOpenProfile={noop}
+      onRequestPortfolioDiagnosis={noop}
       onOpenStrategyExplore={noop}
       onOpenUserPick={noop}
     />

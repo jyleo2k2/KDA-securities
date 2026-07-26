@@ -326,25 +326,48 @@ function EducationalStrategyGuide({
   const profile = evaluation.evaluated_input.risk_profile;
   const guide = STRATEGY_GUIDES[profile];
   const planning = evaluation.planning_return;
+  const finalRiskTarget = Number(evaluation.final_general_risk_target_percent);
+  const lossToleranceDefenseOnly = (
+    evaluation.loss_tolerance_binding
+    && Number.isFinite(finalRiskTarget)
+    && finalRiskTarget === 0
+  );
+  const strategyTitle = lossToleranceDefenseOnly
+    ? "손실감내도 우선 방어 배분"
+    : guide.title;
+  const strategyDescription = lossToleranceDefenseOnly
+    ? (
+      `선택한 손실감내율 ${percent(String(evaluation.evaluated_input.loss_tolerance_percent))}가 `
+      + `${RISK_PROFILE_LABELS[profile]}의 기본 비중보다 우선 적용돼, 성장자산 비중을 `
+      + `${percent(evaluation.final_general_risk_target_percent)}로 낮추고 채권과 현금성 자산 중심으로 조정했습니다.`
+    )
+    : guide.description;
+  const strategyPrinciple = lossToleranceDefenseOnly
+    ? "선택한 손실 범위를 먼저 지키고, 투자성향과 손실감내 답변이 서로 맞는지 다시 확인합니다."
+    : guide.principle;
 
   return (
     <section className="portfolio-strategy-guide" aria-labelledby="portfolio-strategy-guide-title">
       <header>
-        <span>투자성향 기반 연금투자전략</span>
-        <h3 id="portfolio-strategy-guide-title">{RISK_PROFILE_LABELS[profile]}의 {guide.title}</h3>
+        <span>{lossToleranceDefenseOnly ? "손실감내도 반영 연금투자전략" : "투자성향 기반 연금투자전략"}</span>
+        <h3 id="portfolio-strategy-guide-title">
+          {RISK_PROFILE_LABELS[profile]}{lossToleranceDefenseOnly ? " · " : "의 "}{strategyTitle}
+        </h3>
         <p>
           {ACCOUNT_LABELS[evaluation.evaluated_input.account_type]} · 연금을 받기 시작할 때까지 {evaluation.planning_horizon_years}년
         </p>
       </header>
 
       <article className="portfolio-strategy-explanation">
-        <strong>{guide.title}</strong>
-        <p>{guide.description}</p>
-        <p><b>핵심 운용 원칙:</b> {guide.principle}</p>
+        <strong>{strategyTitle}</strong>
+        <p>{strategyDescription}</p>
+        <p><b>핵심 운용 원칙:</b> {strategyPrinciple}</p>
       </article>
 
       <p className="portfolio-strategy-transition">
-        이 성향이라면 연금자산을 아래처럼 나눠 볼 수 있어요.
+        {lossToleranceDefenseOnly
+          ? "입력한 손실감내 범위를 반영하면 연금자산을 아래처럼 나누게 됩니다."
+          : "이 성향이라면 연금자산을 아래처럼 나눠 볼 수 있어요."}
       </p>
       <TargetAllocationGuide evaluation={evaluation} />
       <RebalancingCadenceGuide evaluation={evaluation} />

@@ -29,8 +29,11 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false
+      # 검증 답변을 Claude가 자연어로 다시 쓰는 단계. false면 규칙 엔진의
+      # 결정론 답변이 그대로 나가며 수치·출처는 동일하다. 시연 품질을 위해
+      # true로 두되, 과금이 붙는 값이므로 변경 시 배포 가이드 §3-1을 따른다.
       - key: ENABLE_CLAUDE_NARRATION
-        value: "false"
+        value: "true"
       # 시연·테스트 계정(설문 결과를 저장하지 않음). 값은 Render 대시보드에서 주입.
       - key: EPHEMERAL_INVESTMENT_PROFILE_OWNER_IDS
         sync: false

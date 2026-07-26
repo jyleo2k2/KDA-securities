@@ -23,6 +23,7 @@ import {
   getScenarios,
   getStoredChatMessages,
   getRebalancingReminder,
+  getRebalancingProfile,
   getMyPensionAccounts,
   updateRebalancingReminder,
   completeRebalancingReview,
@@ -506,13 +507,27 @@ function AssistantMessage({
       aggressive: "공격투자형",
     }[educationalEvaluation.evaluated_input.risk_profile]
     : undefined;
+  const educationalFinalRiskTarget = Number(
+    educationalEvaluation?.final_general_risk_target_percent,
+  );
+  const educationalLossToleranceDefenseOnly = (
+    educationalEvaluation?.loss_tolerance_binding === true
+    && Number.isFinite(educationalFinalRiskTarget)
+    && educationalFinalRiskTarget === 0
+  );
   const educationalLead = (
     isEducationalPortfolio
     && userName
     && educationalProfileLabel
     && educationalEvaluation?.strategy_label
   )
-    ? `${userName}님의 투자성향(${educationalProfileLabel})에 가장 적합한 투자전략은 ${educationalEvaluation.strategy_label}입니다.`
+    ? educationalLossToleranceDefenseOnly
+      ? (
+        `${userName}님의 ${educationalProfileLabel} 투자성향보다 선택한 손실감내율 `
+        + `${Number(educationalEvaluation.evaluated_input.loss_tolerance_percent).toFixed(1)}%가 우선 적용돼, `
+        + "채권과 현금성 자산 중심의 방어 배분으로 조정됐습니다."
+      )
+      : `${userName}님의 투자성향(${educationalProfileLabel})에 가장 적합한 투자전략은 ${educationalEvaluation.strategy_label}입니다.`
     : undefined;
   const isPensionTaxCredit = (
     response.intent === "pension_tax"
@@ -815,7 +830,10 @@ export function GuidePage({
   initialScenarioCode,
   onBack,
   onOpenPlanner,
+  onOpenProfile,
+  onPortfolioDiagnosisConsumed,
   onSignOut,
+  portfolioDiagnosisRequestId,
   surveyProfile,
   userContext,
   typingIntervalMs = DEFAULT_TYPING_INTERVAL_MS,
@@ -824,7 +842,10 @@ export function GuidePage({
   initialScenarioCode?: string;
   onBack?: () => void;
   onOpenPlanner?: () => void;
+  onOpenProfile?: () => void;
+  onPortfolioDiagnosisConsumed?: () => void;
   onSignOut: () => Promise<void>;
+  portfolioDiagnosisRequestId?: string;
   surveyProfile: CompletedSurveyProfile | null;
   userContext: DemoUserFinancialContext | null;
   typingIntervalMs?: number;
@@ -884,6 +905,7 @@ export function GuidePage({
     userId: string | null;
     accessToken: string | null;
   }>({ userId: authenticatedUserId, accessToken: accessToken ?? null });
+  const consumedPortfolioDiagnosisRequestRef = useRef<string | null>(null);
   const authGenerationRef = useRef(0);
   const conversationGenerationRef = useRef(0);
   const sessionListGenerationRef = useRef(0);
@@ -1027,6 +1049,35 @@ export function GuidePage({
     getAuthGeneration: () => authGenerationRef.current,
   });
 
+  useEffect(() => {
+    if (
+      !accessToken
+      || !portfolioDiagnosisRequestId
+      || consumedPortfolioDiagnosisRequestRef.current === portfolioDiagnosisRequestId
+      || chatCardsLoading
+      || isSending
+      || messages.length > 0
+    ) return;
+
+    const portfolioCard = visibleChatCards.find(
+      (card) => card.card_id === "edu_portfolio",
+    );
+    if (!portfolioCard) return;
+
+    consumedPortfolioDiagnosisRequestRef.current = portfolioDiagnosisRequestId;
+    onPortfolioDiagnosisConsumed?.();
+    void submitPrompt(portfolioCard.message);
+  }, [
+    accessToken,
+    chatCardsLoading,
+    isSending,
+    messages.length,
+    onPortfolioDiagnosisConsumed,
+    portfolioDiagnosisRequestId,
+    submitPrompt,
+    visibleChatCards,
+  ]);
+
   const usedFollowUpMessages = useMemo(
     () => new Set(
       messages
@@ -1049,15 +1100,18 @@ export function GuidePage({
   }
 
   async function requestActualRebalancingReview() {
-    if (!accessToken || !surveyProfile) {
+    if (!accessToken) {
       appendRebalancingReviewNotice("저장된 투자성향과 로그인된 계좌가 있어야 실제 보유 비중을 점검할 수 있어요.");
       return;
     }
 
     setReminderBusy(true);
     try {
-      const portfolio = await getMyPensionAccounts(accessToken);
-      const review = buildActualRebalancingReviewRequest(surveyProfile, portfolio);
+      const [profile, portfolio] = await Promise.all([
+        surveyProfile ? Promise.resolve(surveyProfile) : getRebalancingProfile(accessToken),
+        getMyPensionAccounts(accessToken),
+      ]);
+      const review = buildActualRebalancingReviewRequest(profile, portfolio);
       if (review.status !== "ready") {
         appendRebalancingReviewNotice(
           review.status === "account_not_found"
@@ -1679,9 +1733,9 @@ export function GuidePage({
             <button
               className={`design-avatar ${auth.session ? "authenticated" : "anonymous"}`}
               type="button"
-              aria-label={`${authStatusLabel} · 계정 메뉴 열기`}
+              aria-label={`${authStatusLabel} · 프로필 화면 열기`}
               title={authStatusLabel}
-              onClick={() => setIsSidebarOpen(true)}
+              onClick={onOpenProfile}
             >
               <img src={profileIcon} alt="프로필" />
             </button>
