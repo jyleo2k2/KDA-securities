@@ -607,3 +607,27 @@ def test_accumulation_question_redirects_to_pension_planner() -> None:
     assert response.data_mode == "pension_planner_redirect"
     assert response.suggested_follow_ups[0].follow_up_id == "open_pension_planner"
     assert "연금계산기" in response.answer
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        ("연금저축이 뭐야?", ChatIntent.ACCOUNT_RULE),
+        ("IRP가 뭔지 쉽게 알려줘", ChatIntent.ACCOUNT_RULE),
+        ("DC형이랑 DB형은 뭐가 달라?", ChatIntent.ACCOUNT_RULE),
+        ("연금계좌에 돈만 넣어두면 알아서 불어나?", ChatIntent.ACCOUNT_RULE),
+        ("연금계좌로 뭘 살 수 있어?", ChatIntent.ACCOUNT_RULE),
+        ("연금은 언제부터 받을 수 있어?", ChatIntent.ACCOUNT_RULE),
+        ("내 퇴직연금은 어디서 확인해?", ChatIntent.ACCOUNT_RULE),
+        ("투자 성향이 뭐야? 왜 물어봐?", ChatIntent.EDUCATIONAL_PORTFOLIO),
+    ],
+)
+def test_beginner_questions_route_without_topic_guard(
+    message: str, expected: ChatIntent
+) -> None:
+    # 타깃은 용어를 모르는 사용자다. 아래 어법은 토픽 가드가 꺼진 환경에서도
+    # 결정론 라우팅만으로 답해야 한다(챗봇 테스트 가이드 §2-4-1 A).
+    plan = plan_question(message)
+
+    assert plan.intent is expected
+    assert plan.blocked_reason is None
