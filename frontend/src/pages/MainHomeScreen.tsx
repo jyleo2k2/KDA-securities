@@ -416,7 +416,8 @@ export function MainHomeScreen({
               <button
                 type="button"
                 className="mhs-portfolio-select-prompt"
-                onClick={() => {
+                onClick={(event) => {
+                  event.stopPropagation();
                   if (holdingSlices.length > 0) setSelectedHolding(0);
                 }}
                 disabled={holdingSlices.length === 0}
