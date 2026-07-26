@@ -36,4 +36,14 @@ describe("ChatTypingAnswer", () => {
 
     expect(screen.getByText("즉시 표시 답변입니다.")).toBeInTheDocument();
   });
+
+  it("caps long answer animation at two seconds", () => {
+    vi.useFakeTimers();
+    const text = Array.from({ length: 100 }, (_, index) => `답변${index + 1}`).join(" ");
+    render(<ChatTypingAnswer animate intervalMs={50} text={text} />);
+
+    act(() => vi.advanceTimersByTime(2_000));
+
+    expect(screen.getByText(text)).toBeInTheDocument();
+  });
 });

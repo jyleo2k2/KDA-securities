@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -50,6 +50,12 @@ const CHAT_SESSION: ChatSessionSummary = {
   created_at: "2026-07-19T00:00:00Z",
   updated_at: "2026-07-19T00:00:00Z",
 };
+const PREVIOUS_SESSION: ChatSessionSummary = {
+  session_id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  title: "지난 대화",
+  created_at: "2026-07-18T00:00:00Z",
+  updated_at: "2026-07-18T00:00:00Z",
+};
 
 function renderGuide(
   onSignOut = vi.fn().mockResolvedValue(undefined),
@@ -81,6 +87,20 @@ function renderGuide(
     />,
   );
 }
+
+async function openHistory(): Promise<void> {
+  const previousCalls = vi.mocked(getChatSessions).mock.calls.length;
+  fireEvent.click(screen.getByRole("button", { name: "지난 대화 열기" }));
+  await waitFor(() => {
+    expect(getChatSessions).toHaveBeenCalledTimes(previousCalls + 1);
+  });
+}
+
+async function openStoredSession(): Promise<void> {
+  await openHistory();
+  fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
+}
+
 const RECOMMENDED_CHAT_CARDS: ChatCard[] = [
   {
     card_id: "news_market",
@@ -403,9 +423,11 @@ describe("GuidePage chat history deletion", () => {
     const historySidebar = screen.getByRole("complementary");
     expect(historyButton).toBeInTheDocument();
     expect(historySidebar).not.toHaveClass("sidebar-open");
+    expect(getChatSessions).not.toHaveBeenCalled();
 
     fireEvent.click(historyButton);
     expect(historySidebar).toHaveClass("sidebar-open");
+    await waitFor(() => expect(getChatSessions).toHaveBeenCalledOnce());
 
     fireEvent.click(screen.getByRole("button", { name: "지난 대화 닫기" }));
     expect(historySidebar).not.toHaveClass("sidebar-open");
@@ -434,17 +456,20 @@ describe("GuidePage chat history deletion", () => {
     );
     renderGuide();
 
+    await openHistory();
     const openButton = await screen.findByRole("button", { name: /^IRP 규칙/ });
     fireEvent.click(openButton);
     expect(await screen.findByText("저장된 질문")).toBeInTheDocument();
+    await openHistory();
 
+    const activeOpenButton = screen.getByRole("button", { name: /^IRP 규칙/ });
     const deleteButton = screen.getByRole("button", { name: "대화 삭제: IRP 규칙" });
     const composer = screen.getByLabelText("질문 입력");
     fireEvent.click(deleteButton);
 
     expect(window.confirm).toHaveBeenCalled();
     expect(deleteChatSession).toHaveBeenCalledWith(SESSION_ID, "access-token");
-    expect(openButton).toBeDisabled();
+    expect(activeOpenButton).toBeDisabled();
     expect(deleteButton).toBeDisabled();
 
     finishDelete?.();
@@ -452,7 +477,6 @@ describe("GuidePage chat history deletion", () => {
       expect(screen.queryByRole("button", { name: "대화 삭제: IRP 규칙" })).not.toBeInTheDocument();
       expect(screen.queryByText("저장된 질문")).not.toBeInTheDocument();
     });
-    expect(await screen.findByRole("status")).toHaveTextContent("대화가 삭제되었습니다.");
     await waitFor(() => expect(composer).toHaveFocus());
   });
 
@@ -500,10 +524,100 @@ describe("GuidePage chat history deletion", () => {
   it("keeps stored conversations when logging out", async () => {
     const onSignOut = vi.fn().mockResolvedValue(undefined);
     renderGuide(onSignOut);
+    await openHistory();
     await screen.findByText("IRP 규칙");
     fireEvent.click(screen.getAllByRole("button", { name: "로그아웃" })[0]);
     await waitFor(() => expect(onSignOut).toHaveBeenCalledOnce());
     expect(deleteChatSession).not.toHaveBeenCalled();
+  });
+
+  it("deletes every previous session while preserving the active conversation", async () => {
+    vi.mocked(getChatSessions).mockResolvedValue([CHAT_SESSION, PREVIOUS_SESSION]);
+    renderGuide();
+
+    await openStoredSession();
+    expect(await screen.findByText("저장된 질문")).toBeInTheDocument();
+    await openHistory();
+    fireEvent.click(await screen.findByRole("button", {
+      name: "현재 대화 제외 모두 삭제",
+    }));
+
+    await waitFor(() => {
+      expect(deleteChatSession).toHaveBeenCalledTimes(1);
+    });
+    expect(deleteChatSession).toHaveBeenCalledWith(
+      PREVIOUS_SESSION.session_id,
+      "access-token",
+    );
+    expect(deleteChatSession).not.toHaveBeenCalledWith(SESSION_ID, "access-token");
+    expect(deleteAllChatSessions).not.toHaveBeenCalled();
+    expect(screen.getByText("저장된 질문")).toBeInTheDocument();
+    const activeSessionButton = screen.getByRole("button", { name: /^IRP 규칙/ });
+    expect(activeSessionButton.closest(".history-item")).toHaveClass("active");
+    expect(screen.queryByRole("button", { name: "대화 삭제: 지난 대화" }))
+      .not.toBeInTheDocument();
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "현재 대화를 제외한 지난 대화를 지웠어요.",
+    );
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("현재 대화를 제외"));
+
+    vi.mocked(getChatSessions).mockResolvedValue([CHAT_SESSION]);
+    fireEvent.click(screen.getByRole("button", { name: "지난 대화 닫기" }));
+    await openHistory();
+    expect(screen.getByRole("button", { name: /^IRP 규칙/ }).closest(".history-item"))
+      .toHaveClass("active");
+    expect(screen.queryByRole("button", { name: "대화 삭제: 지난 대화" }))
+      .not.toBeInTheDocument();
+  });
+
+  it("keeps a large hidden history out of the chat render tree and reveals it in pages", async () => {
+    const sessions = Array.from({ length: 500 }, (_, index): ChatSessionSummary => ({
+      session_id: `session-${index + 1}`,
+      title: `대화 ${index + 1}`,
+      created_at: "2026-07-19T00:00:00Z",
+      updated_at: "2026-07-19T00:00:00Z",
+    }));
+    vi.mocked(getChatSessions).mockResolvedValue(sessions);
+    renderGuide();
+
+    expect(getChatSessions).not.toHaveBeenCalled();
+    expect(document.querySelectorAll(".history-open")).toHaveLength(0);
+
+    await openHistory();
+    expect(document.querySelectorAll(".history-open")).toHaveLength(20);
+    fireEvent.click(screen.getByRole("button", { name: "이전 대화 더 보기" }));
+    expect(document.querySelectorAll(".history-open")).toHaveLength(40);
+    fireEvent.click(screen.getByRole("button", { name: "이전 대화 더 보기" }));
+    expect(document.querySelectorAll(".history-open")).toHaveLength(60);
+
+    fireEvent.click(screen.getByRole("button", { name: "지난 대화 닫기" }));
+    expect(document.querySelectorAll(".history-open")).toHaveLength(0);
+  });
+
+  it("renders a long active conversation in bounded message pages", async () => {
+    vi.mocked(getStoredChatMessages).mockResolvedValue(
+      Array.from({ length: 90 }, (_, index) => ({
+        message_id: `message-${index + 1}`,
+        question_message_id: null,
+        role: "user" as const,
+        content: `저장 메시지 ${index + 1}`,
+        response: null,
+        model_name: null,
+        created_at: "2026-07-19T00:00:00Z",
+        evidence: [],
+      })),
+    );
+    renderGuide();
+
+    await openStoredSession();
+    expect(await screen.findByText("저장 메시지 90")).toBeInTheDocument();
+    expect(screen.queryByText("저장 메시지 50")).not.toBeInTheDocument();
+    expect(document.querySelectorAll(".message-row")).toHaveLength(40);
+
+    fireEvent.click(screen.getByRole("button", { name: "이전 메시지 더 보기" }));
+    expect(screen.getByText("저장 메시지 11")).toBeInTheDocument();
+    expect(screen.queryByText("저장 메시지 10")).not.toBeInTheDocument();
+    expect(document.querySelectorAll(".message-row")).toHaveLength(80);
   });
 
   it("falls back to owned per-session deletion while an older API is deployed", async () => {
@@ -512,6 +626,7 @@ describe("GuidePage chat history deletion", () => {
     );
     renderGuide();
 
+    await openHistory();
     fireEvent.click(await screen.findByRole("button", { name: "전체 삭제" }));
 
     await waitFor(() => {
@@ -557,6 +672,7 @@ describe("GuidePage chat history deletion", () => {
     vi.mocked(window.confirm).mockReturnValue(false);
     renderGuide();
 
+    await openHistory();
     fireEvent.click(await screen.findByRole("button", { name: "대화 삭제: IRP 규칙" }));
 
     expect(deleteChatSession).not.toHaveBeenCalled();
@@ -572,7 +688,7 @@ describe("GuidePage chat history deletion", () => {
     );
     renderGuide();
 
-    fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
+    await openStoredSession();
     await screen.findByText("저장된 질문");
     const composer = screen.getByLabelText("질문 입력");
     fireEvent.change(composer, { target: { value: "첫 질문" } });
@@ -580,6 +696,7 @@ describe("GuidePage chat history deletion", () => {
     await screen.findAllByText("답변을 준비하지 못했어요. 잠시 후 다시 시도해 주세요.");
     const retryButton = screen.getByRole("button", { name: /다시 시도/ });
 
+    await openHistory();
     fireEvent.click(screen.getByRole("button", { name: "대화 삭제: IRP 규칙" }));
 
     await waitFor(() => expect(deleteChatSession).toHaveBeenCalledTimes(1));
@@ -725,13 +842,7 @@ describe("GuidePage chat history deletion", () => {
     expect(screen.queryByLabelText("이어서 물어보기")).not.toBeInTheDocument();
   });
 
-  it("does not restore a deleted row from an older session refresh", async () => {
-    let finishRefresh: ((sessions: ChatSessionSummary[]) => void) | undefined;
-    vi.mocked(getChatSessions)
-      .mockResolvedValueOnce([CHAT_SESSION])
-      .mockImplementationOnce(() => new Promise((resolve) => {
-        finishRefresh = resolve;
-      }));
+  it("does not refresh hidden session history after a persisted answer", async () => {
     vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
       persisted: true,
       session_id: SESSION_ID,
@@ -752,23 +863,14 @@ describe("GuidePage chat history deletion", () => {
     } as unknown as Awaited<ReturnType<typeof sendAuthenticatedChatStream>>);
     renderGuide();
 
-    fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
+    await openStoredSession();
     await screen.findByText("저장된 질문");
     const composer = screen.getByLabelText("질문 입력");
     fireEvent.change(composer, { target: { value: "새 질문" } });
     fireEvent.submit(composer.closest("form")!);
-    await waitFor(() => expect(getChatSessions).toHaveBeenCalledTimes(2));
 
-    fireEvent.click(screen.getByRole("button", { name: "대화 삭제: IRP 규칙" }));
-    await waitFor(() => {
-      expect(screen.queryByRole("button", { name: "대화 삭제: IRP 규칙" })).not.toBeInTheDocument();
-    });
-
-    await act(async () => {
-      finishRefresh?.([CHAT_SESSION]);
-      await Promise.resolve();
-    });
-    expect(screen.queryByRole("button", { name: "대화 삭제: IRP 규칙" })).not.toBeInTheDocument();
+    expect(await screen.findByText("저장 답변")).toBeInTheDocument();
+    expect(getChatSessions).toHaveBeenCalledOnce();
   });
 
   it("shows BOK, KOSIS, and FRED observations as a macro evidence card", async () => {
@@ -1466,7 +1568,7 @@ describe("GuidePage chat history deletion", () => {
     });
     renderGuide();
 
-    fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
+    await openStoredSession();
     const themeSection = (await screen.findByText(/조선 테마란/)).closest("details");
     const followUps = screen.getByLabelText("이어서 물어보기");
     expect(themeSection?.nextElementSibling).toBe(followUps);
@@ -1509,7 +1611,7 @@ describe("GuidePage chat history deletion", () => {
     ]);
     renderGuide();
 
-    fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
+    await openStoredSession();
     const companyName = await screen.findByText("Samsung Electronics");
     const companyCard = companyName.closest(".answer-callout");
 
@@ -1549,7 +1651,7 @@ describe("GuidePage chat history deletion", () => {
     ]);
     renderGuide();
 
-    fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
+    await openStoredSession();
     const sectionTitle = await screen.findByText("자동차 테마 ETF상품");
     const productSection = sectionTitle.closest("details");
     const productCard = screen.getByText("1. KODEX 자동차").closest(".answer-callout");
@@ -1587,7 +1689,7 @@ describe("GuidePage chat history deletion", () => {
     ]);
     renderGuide();
 
-    fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
+    await openStoredSession();
     const titles = await screen.findAllByText(/구성종목 TOP3$/);
     const answer = titles[0].closest(".answer-content");
 
@@ -1628,7 +1730,7 @@ describe("GuidePage chat history deletion", () => {
     ]);
     renderGuide();
 
-    fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
+    await openStoredSession();
     const answerLead = await screen.findByText(THEME_CONSIDERATIONS_RESPONSE.answer);
     const answerContent = answerLead.closest(".answer-content");
     const riskHeading = screen.getByText("주의할 위험 3가지");
@@ -1673,7 +1775,7 @@ describe("GuidePage chat history deletion", () => {
     ]);
     renderGuide();
 
-    fireEvent.click(await screen.findByRole("button", { name: /^IRP 규칙/ }));
+    await openStoredSession();
     await screen.findByText(STRUCTURED_PORTFOLIO_RESPONSE.answer);
     expect(screen.queryByText("위험중립형 투자전략", { exact: true })).not.toBeInTheDocument();
     expect(document.querySelector(".holdings-required-panel")).toBeNull();

@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type JSX,
+  type PointerEvent as ReactPointerEvent,
   type UIEvent,
 } from "react";
 
@@ -75,6 +76,8 @@ const PIE_RADIUS = 78;
 const PIE_INNER_RADIUS = 48;
 const PIE_LABEL_RADIUS = 63;
 const PIE_SELECT_OFFSET = 7;
+const STRATEGY_PLANNING_RETURN_RETRY_MS = 3_000;
+const STRATEGY_DRAG_THRESHOLD_PX = 5;
 
 function buildHoldingPieSlices(
   aggregation: AggregationEvaluation | null,
@@ -267,8 +270,16 @@ export function MainHomeScreen({
   const [promoTimerKey, setPromoTimerKey] = useState(0);
   const [selectedHolding, setSelectedHolding] = useState<number | null>(null);
   const [strategyPlanningReturns, setStrategyPlanningReturns] = useState<StrategyPlanningReturnEvaluation[] | null>(null);
+  const [isStrategyDragging, setIsStrategyDragging] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
   const promoTouchStartX = useRef<number | null>(null);
+  const strategyDrag = useRef<{
+    moved: boolean;
+    pointerId: number;
+    startScrollLeft: number;
+    startX: number;
+  } | null>(null);
+  const suppressStrategyClick = useRef(false);
   const allocationSlices: AllocationSlice[] = aggregation?.asset_class_totals
     .slice(0, 4)
     .map((item, index) => ({
@@ -295,6 +306,43 @@ export function MainHomeScreen({
   const movePromo = (direction: -1 | 1) => {
     selectPromo((activePromo + direction + 2) % 2);
   };
+  const handleStrategyPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "mouse" || event.button !== 0) return;
+    strategyDrag.current = {
+      moved: false,
+      pointerId: event.pointerId,
+      startScrollLeft: event.currentTarget.scrollLeft,
+      startX: event.clientX,
+    };
+    suppressStrategyClick.current = false;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setIsStrategyDragging(true);
+  };
+  const handleStrategyPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = strategyDrag.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const deltaX = event.clientX - drag.startX;
+    if (!drag.moved && Math.abs(deltaX) < STRATEGY_DRAG_THRESHOLD_PX) return;
+    drag.moved = true;
+    event.preventDefault();
+    event.currentTarget.scrollLeft = drag.startScrollLeft - deltaX;
+  };
+  const finishStrategyDrag = (
+    event: ReactPointerEvent<HTMLDivElement>,
+    cancelled = false,
+  ) => {
+    const drag = strategyDrag.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    suppressStrategyClick.current = !cancelled && drag.moved;
+    strategyDrag.current = null;
+    setIsStrategyDragging(false);
+    window.setTimeout(() => {
+      suppressStrategyClick.current = false;
+    }, 0);
+  };
   useLayoutEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = initialScrollTop;
   }, [initialScrollTop]);
@@ -306,10 +354,24 @@ export function MainHomeScreen({
   }, [selectedHolding]);
   useEffect(() => {
     let active = true;
-    getStrategyPlanningReturns()
-      .then((returns) => { if (active) setStrategyPlanningReturns(returns); })
-      .catch(() => { if (active) setStrategyPlanningReturns([]); });
-    return () => { active = false; };
+    let retryTimer: number | undefined;
+    const loadStrategyPlanningReturns = () => {
+      getStrategyPlanningReturns()
+        .then((returns) => { if (active) setStrategyPlanningReturns(returns); })
+        .catch(() => {
+          if (active) {
+            retryTimer = window.setTimeout(
+              loadStrategyPlanningReturns,
+              STRATEGY_PLANNING_RETURN_RETRY_MS,
+            );
+          }
+        });
+    };
+    loadStrategyPlanningReturns();
+    return () => {
+      active = false;
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+    };
   }, []);
   useEffect(() => {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
@@ -531,14 +593,28 @@ export function MainHomeScreen({
           <button type="button" className="mhs-strategy-more" onClick={onOpenStrategyExplore}>시나리오·더보기 +</button>
         </div>
 
-        <div className="mhs-strategy-scroll">
+        <div
+          className={`mhs-strategy-scroll${isStrategyDragging ? " is-dragging" : ""}`}
+          role="region"
+          aria-label="전략 카드 목록"
+          onPointerDown={handleStrategyPointerDown}
+          onPointerMove={handleStrategyPointerMove}
+          onPointerUp={finishStrategyDrag}
+          onPointerCancel={(event) => finishStrategyDrag(event, true)}
+          onClickCapture={(event) => {
+            if (!suppressStrategyClick.current) return;
+            event.preventDefault();
+            event.stopPropagation();
+            suppressStrategyClick.current = false;
+          }}
+        >
           {STRATEGY_CARDS.map((card) => {
             const planningReturn = strategyPlanningReturns?.find(
               (item) => item.strategy_id === card.strategyId,
             );
             const value = planningReturn
               ? formatPlanningPercent(planningReturn.net_planning_return_percent)
-              : strategyPlanningReturns === null ? "계산 중…" : "확인 필요";
+              : "계산 중…";
             return (
             <button
               type="button"
@@ -616,7 +692,7 @@ export function MainHomeScreen({
           홈 화면
         </span>
         <span className="mhs-tab-toggle-item" onClick={onOpenChat}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A0AAA4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.6-.8L3 21l1.8-5.4a8.5 8.5 0 0 1-.8-3.6A8.38 8.38 0 0 1 12.5 3 8.38 8.38 0 0 1 21 11.5z" />
           </svg>
           챗봇

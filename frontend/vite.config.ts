@@ -19,6 +19,14 @@ export default defineConfig({
         // The supplied standalone benchmark bundle includes large source HTML
         // files that must remain available but are not suitable for precaching.
         globIgnores: ["benchmark-html/**", "pension-calculator-html/**"],
+        // Precache-excluded iframe documents must bypass the SPA navigation
+        // fallback. An iframe load is a navigation request, so without this the
+        // service worker answers it with index.html and the app renders inside
+        // the iframe instead of the standalone screen.
+        navigateFallbackDenylist: [
+          /^\/benchmark-html\//,
+          /^\/pension-calculator-html\//,
+        ],
         runtimeCaching: [],
       },
       manifest: {

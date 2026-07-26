@@ -269,6 +269,60 @@ def test_current_holdings_include_realized_macro_regime_evidence_card() -> None:
     assert "KIND" in outcome.source.label
 
 
+def test_actual_dc_holdings_with_cash_snapshot_return_rebalancing_review() -> None:
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        portfolio_universe_loader=lambda account: OutcomeUniverse(),
+        macro_evidence=MacroRepository(),
+    )
+    response = service.ask(
+        ChatRequest(
+            message=(
+                "초기 직장 DC의 실제 보유 비중을 목표 비중과 비교하고 "
+                "이탈폭을 점검해줘."
+            ),
+            educational_portfolio=EducationalPortfolioInput(
+                account_type=AccountType.DC,
+                age=35,
+                retirement_start_age=60,
+                risk_profile=EducationalRiskProfile.RISK_NEUTRAL,
+                loss_tolerance_percent=Decimal("20"),
+                current_holdings=[
+                    {
+                        "isu_code": "EQ",
+                        "amount_krw": Decimal("14748000"),
+                        "asset_class": "global_equity",
+                    },
+                    {
+                        "isu_code": "BOND",
+                        "amount_krw": Decimal("4538000"),
+                        "asset_class": "bond",
+                    },
+                    {
+                        "isu_code": "snapshot:deposit",
+                        "amount_krw": Decimal("1134500"),
+                        "asset_class": "deposit",
+                    },
+                    {
+                        "isu_code": "snapshot:cash",
+                        "amount_krw": Decimal("1134500"),
+                        "asset_class": "cash",
+                    },
+                ],
+            ),
+        )
+    )
+
+    assert response.intent == ChatIntent.EDUCATIONAL_PORTFOLIO
+    assert response.data_mode == "engine_educational_planning"
+    assert "현재 비중·목표 비중·이탈폭" in response.answer
+    assert response.educational_portfolio_evaluation is not None
+    rebalancing = response.educational_portfolio_evaluation.rebalancing
+    assert rebalancing.current_total_krw == Decimal("21555000")
+    assert rebalancing.unclassified_holding_amount_krw == Decimal("0")
+
+
 def test_direct_future_return_prediction_remains_blocked() -> None:
     response = _service().ask(ChatRequest(message="내년 연금 수익률을 예측해줘"))
 

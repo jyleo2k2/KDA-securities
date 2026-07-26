@@ -451,7 +451,27 @@ describe("EducationalPortfolioReview", () => {
 
     expect(screen.getByText("위험중립형 · 손실감내도 우선 방어 배분")).toBeInTheDocument();
     expect(screen.getByText(/선택한 손실감내율 5.0%가 위험중립형의 기본 비중보다 우선 적용돼/)).toBeInTheDocument();
-    expect(screen.getByText(/성장자산 비중을 0.0%로 낮추고 채권과 현금성 자산 중심으로 조정/)).toBeInTheDocument();
+    expect(screen.getByText(/성장자산 비중을 48.5%에서 0.0%로 낮추고 채권과 현금성 자산 중심으로 조정/)).toBeInTheDocument();
+    expect(screen.queryByText("위험중립형의 코어·위성 전략")).not.toBeInTheDocument();
+
+    rerender(<EducationalPortfolioReview evaluation={{
+      ...noHoldingsEvaluation,
+      evaluated_input: {
+        ...noHoldingsEvaluation.evaluated_input,
+        age: 42,
+        retirement_start_age: 60,
+        loss_tolerance_percent: "15",
+      },
+      planning_horizon_years: 18,
+      raw_risk_target_percent: "48.5000",
+      final_general_risk_target_percent: "27.2000",
+      loss_tolerance_binding: true,
+      stress_loss_proxy_percent: "15.0000",
+    }} />);
+
+    expect(screen.getByText("위험중립형 · 손실감내도 반영 조정 배분")).toBeInTheDocument();
+    expect(screen.getByText(/선택한 손실감내율 15.0%가 위험중립형의 기본 비중보다 우선 적용돼/)).toBeInTheDocument();
+    expect(screen.getByText(/성장자산 비중을 48.5%에서 27.2%로 낮추고 나머지를 채권과 현금성 자산에 배분/)).toBeInTheDocument();
     expect(screen.queryByText("위험중립형의 코어·위성 전략")).not.toBeInTheDocument();
 
     const strategyCases = [

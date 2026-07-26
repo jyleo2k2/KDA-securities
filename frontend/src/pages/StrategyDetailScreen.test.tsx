@@ -32,12 +32,37 @@ describe("StrategyDetailScreen", () => {
     expect(screen.getByText(/회사를 고를 때 보는 공통 특징/)).toBeInTheDocument();
     expect(screen.getByText("최소변동성")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "연금계좌 자산배분 예시" })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /주식 ETF, 채권 ETF, 현금성 자산/ })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "큰 자산군 비중 예시" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "주식 ETF 60%" })).toBeInTheDocument();
     expect(screen.getByText("주식 안에서는 ETF 분야도 나눠 봐요")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /넓은 시장, 반도체, 바이오 헬스케어/ })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "주식 ETF 분야 비중 예시" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "시장 전체 주식 ETF 안에서 30% 자세히 보기" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "반도체 20%" })).toBeInTheDocument();
     expect(screen.getByText(/막대 크기는 이해를 돕기 위한 예시예요/)).toBeInTheDocument();
     expect(document.querySelector(".sd-operation-guide")).toHaveTextContent("전략의 운용 방식");
     expect(document.querySelector(".sd-account-guide")).toHaveTextContent("연금계좌에는 이렇게 나눠요");
+  });
+
+  it("shows allocation details when a bar segment is selected", () => {
+    render(<StrategyDetailScreen onBack={vi.fn()} />);
+
+    const stockSegment = screen.getByRole("button", { name: "주식 ETF 60% 자세히 보기" });
+    fireEvent.click(stockSegment);
+
+    expect(stockSegment).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("주식 ETF 60%");
+    expect(screen.getByRole("status")).toHaveTextContent("성장 기회를 담당하지만 가격 변동이 큰 자산이에요.");
+    expect(screen.getByRole("button", { name: "채권 ETF 30% 자세히 보기" })).toHaveClass("is-dimmed");
+
+    const semiconductorSegment = screen.getByRole("button", { name: "반도체 주식 ETF 안에서 20% 자세히 보기" });
+    fireEvent.click(semiconductorSegment);
+
+    expect(stockSegment).toHaveAttribute("aria-pressed", "false");
+    expect(semiconductorSegment).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("주식 ETF 안에서 20% · 전체 자산 기준 12%");
+
+    fireEvent.click(screen.getByRole("heading", { name: "전략의 운용 방식" }));
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
   it("falls back to the first strategy when the hash has no valid id", () => {
@@ -46,5 +71,23 @@ describe("StrategyDetailScreen", () => {
     render(<StrategyDetailScreen onBack={vi.fn()} />);
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("시장 베타 전략");
+  });
+
+  it("uses plain wording when a strategy needs an account-specific product check", () => {
+    window.location.hash = "#/strategy-detail?strategy=longshort";
+
+    render(<StrategyDetailScreen onBack={vi.fn()} />);
+
+    expect(screen.getAllByText("계좌별 매수 가능 상품 확인")).toHaveLength(2);
+    expect(screen.queryByText("계좌 적격 상품 확인 필요")).not.toBeInTheDocument();
+  });
+
+  it("shows the target strategy as ETF-based", () => {
+    window.location.hash = "#/strategy-detail?strategy=target";
+
+    render(<StrategyDetailScreen onBack={vi.fn()} />);
+
+    expect(screen.getAllByText("ETF로 구현 가능")).toHaveLength(2);
+    expect(screen.queryByText("ETF·TDF로 구현 가능")).not.toBeInTheDocument();
   });
 });
