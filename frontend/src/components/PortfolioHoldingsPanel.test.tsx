@@ -495,7 +495,22 @@ describe("EducationalPortfolioReview", () => {
 
     rerender(<EducationalPortfolioReview evaluation={evaluationWithCurrentHoldingsPlanning} />);
 
-    expect(screen.getByText("먼저 볼 내용")).toBeInTheDocument();
+    const sectorGuideTitle = screen.getByText("위험중립형 ETF 분야 예시");
+    const cadenceTitle = screen.getByText("리밸런싱 주기: 3개월마다");
+    const reviewLeadTitle = screen.getByText("먼저 볼 내용");
+    expect(sectorGuideTitle.closest("details")).toBeNull();
+    expect(cadenceTitle.closest("details")).toBeNull();
+    expect(
+      sectorGuideTitle.compareDocumentPosition(cadenceTitle)
+      & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      cadenceTitle.compareDocumentPosition(reviewLeadTitle)
+      & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByRole("img", { name: /채권 25%, 반도체 17%, 바이오·헬스케어 14%/ })).toBeInTheDocument();
+    expect(screen.getByText(/실제 계산 결과나 계좌별 한도는 변경하지 않습니다/)).toBeInTheDocument();
+    expect(screen.getByText("각 자산 유형별로 ±5.0%p만큼의 차이가 날 수 있어요.")).toBeInTheDocument();
     expect(screen.getByText("1개 자산군의 비중을 확인해 보세요")).toBeInTheDocument();
     const allocationDetails = screen.getByText("자산 구성과 조정 기준").closest("details");
     const evidenceDetails = screen.getByText("위험과 수익률 계산 근거").closest("details");
@@ -506,9 +521,6 @@ describe("EducationalPortfolioReview", () => {
 
     expect(screen.getByText("70.0%")).toBeInTheDocument();
     expect(screen.getByText("핵심 주식")).toBeInTheDocument();
-    expect(screen.getByText("위험중립형 ETF 분야 예시")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /채권 25%, 반도체 17%, 바이오·헬스케어 14%/ })).toBeInTheDocument();
-    expect(screen.getByText(/실제 계산 결과나 계좌별 한도는 변경하지 않습니다/)).toBeInTheDocument();
     expect(screen.queryByText("AI소프트웨어")).not.toBeInTheDocument();
     expect(screen.queryByText("코리아밸류업")).not.toBeInTheDocument();
     expect(screen.queryByText("ESG")).not.toBeInTheDocument();
@@ -517,8 +529,6 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.getByText(/과거에 같이 오르내린 정도는 최대 82.0%/)).toBeInTheDocument();
     expect(screen.getByText(/같은 회사가 몇 개 겹쳤는지를 뜻하는 숫자는 아니에요/)).toBeInTheDocument();
     expect(screen.getByText(/자동 매도하지 않습니다/)).toBeInTheDocument();
-    expect(screen.getByText("리밸런싱 주기: 3개월마다")).toBeInTheDocument();
-    expect(screen.getByText("각 자산 유형별로 ±5.0%p만큼의 차이가 날 수 있어요.")).toBeInTheDocument();
     expect(screen.getByText("12.3%")).toBeInTheDocument();
     expect(screen.getByText("주식이 크게 떨어질 때")).toBeInTheDocument();
     expect(screen.getByText("-18.5%")).toBeInTheDocument();
