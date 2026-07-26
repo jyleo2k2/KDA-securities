@@ -135,9 +135,9 @@
 
 /* 떠 있는 탭바는 iOS 재질처럼 아래 콘텐츠가 비쳐 흐르게 한다.
    색은 반투명 표면이 아니라 solid 활성 알약에만 둔다. */
-.mhs-tab-toggle { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; align-items: center; padding: 4px; border-radius: 999px; background: rgba(255, 255, 255, .62); -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%); box-shadow: 0 10px 30px rgba(0, 0, 0, .14), inset 0 1px 0 rgba(255, 255, 255, .75), 0 0 0 1px rgba(234, 237, 231, .6); z-index: 10; }
+.mhs-tab-toggle { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; align-items: center; padding: 4px; border-radius: 999px; background: rgba(255, 255, 255, .34); -webkit-backdrop-filter: blur(18px) saturate(190%); backdrop-filter: blur(18px) saturate(190%); box-shadow: 0 10px 30px rgba(0, 0, 0, .12), inset 0 1px 0 rgba(255, 255, 255, .55), 0 0 0 1px rgba(255, 255, 255, .45); z-index: 10; }
 /* 반투명 위 글자는 대비를 올려 읽히게 한다(vibrancy) */
-.mhs-tab-toggle-item { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 800; letter-spacing: .01em; padding: 9px 16px; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s; color: #7C8983; }
+.mhs-tab-toggle-item { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 800; letter-spacing: .01em; padding: 9px 16px; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s; color: #55635D; }
 .mhs-tab-toggle-item-active { background: #18A860; color: #fff; }
 
 /* press 피드백: 눌리는 요소는 눌림에 반응해 "듣고 있다"는 감각을 준다 */
