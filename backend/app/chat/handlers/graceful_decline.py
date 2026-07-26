@@ -94,8 +94,8 @@ def graceful_decline(
                 ),
                 SuggestedFollowUp(
                     follow_up_id="decline_educational_portfolio",
-        label="포트폴리오 예시",
-        message="연금저축 포트폴리오 예시를 보여줘",
+                    label="포트폴리오 예시",
+                    message="연금저축 포트폴리오 예시를 보여줘",
                 ),
                 SuggestedFollowUp(
                     follow_up_id="decline_etf_total_return",
@@ -212,9 +212,9 @@ def graceful_decline(
         return GracefulDecline(
             answer=(
                 "손실이 나지 않는 방법을 알려드릴 수는 없어요. 다만 "
-                "연금계좌에서 원리금보장상품과 실적배당상품이 어떻게 "
-                "다른지, 예금자보호는 어디까지 적용되는지는 공식 기준으로 "
-                "설명해 드릴 수 있어요."
+                "연금계좌의 원리금보장상품과 실적배당상품이 어떻게 다른지는 "
+                "공식 기준으로 설명해 드릴 수 있어요. 예금자보호가 어디까지 "
+                "적용되는지도 함께 확인하실 수 있어요."
             ),
             suggested_follow_ups=[
                 SuggestedFollowUp(
