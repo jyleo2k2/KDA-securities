@@ -89,13 +89,6 @@ export default function App(): JSX.Element {
   return <HashRouter><AppRoutes /></HashRouter>;
 }
 
-function DesktopPreviewStatus(): JSX.Element | null {
-  const { pathname } = useLocation();
-  if (["/", "/login", "/main-home", "/planner", "/profile-html", "/slangi", "/strategy-explore", "/strategy-detail", "/user-pick-benchmark"].includes(pathname)) return null;
-
-  return <StatusBar className="desktop-preview-status" />;
-}
-
 function AppRoutes(): JSX.Element {
   const auth = useSupabaseAuth();
   const location = useLocation();
@@ -267,14 +260,15 @@ function AppRoutes(): JSX.Element {
 
   return (
     <>
-      <DesktopPreviewStatus />
       <Routes>
       <Route path="/" element={<Navigate replace to="/main-home" />} />
       <Route path="/login" element={<Navigate replace to="/main-home" />} />
       <Route
         path="/guide"
         element={(
-          <div className="guide-tab">
+          <main className="app-phone-stage guide-tab">
+            <section className="app-phone-frame guide-phone" aria-label="연금 가이드">
+              <StatusBar />
             <GuidePage
               auth={auth}
               initialScenarioCode={selectedScenarioCode}
@@ -284,7 +278,8 @@ function AppRoutes(): JSX.Element {
               surveyProfile={null}
               userContext={guideContext}
             />
-          </div>
+            </section>
+          </main>
         )}
       />
       <Route

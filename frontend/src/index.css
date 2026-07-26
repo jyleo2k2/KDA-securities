@@ -741,19 +741,21 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 }
 
 /* Canvas-2.dc.html 원본을 GuidePage 기능에 그대로 매핑한 최종 화면. */
-.guide-tab { min-height: 100dvh; display: grid; place-items: center; background: #e8e8dd; }
+.guide-phone { display: flex; flex-direction: column; }
 .guide-tab .app-shell {
-  width: var(--phone-frame-width);
-  height: var(--phone-frame-height);
-  max-height: calc(100dvh - 80px);
-  /* 오버레이 상단바(desktop-preview-status)와 겹치지 않도록 상단바 높이만큼 확보한다. */
-  padding-top: var(--statusbar-height);
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: auto;
+  max-height: none;
+  margin: 0;
+  padding-top: 0;
   overflow: hidden;
-  border-radius: var(--phone-frame-radius);
+  border-radius: 0;
   background: #fff;
   color: #0f1113;
   font-family: Pretendard, "Cafe24SsurroundAir", -apple-system, sans-serif;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, .16);
+  box-shadow: none;
 }
 .guide-tab .chat-main {
   height: 100%;
@@ -1167,12 +1169,11 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .rebalancing-reminder-card.is-skeleton .skeleton-button { width: 127px; height: 36px; border-radius: 999px; }
 
 @media (max-width: 480px) {
-  .guide-tab { display: block; background: #fff; }
+  .guide-tab { background: #fff; }
   .guide-tab .app-shell,
   .guide-tab .chat-main {
     width: 100%;
-    height: 100dvh;
+    height: 100%;
     max-height: none;
   }
-  .guide-tab .app-shell { border-radius: 0; box-shadow: none; }
 }
