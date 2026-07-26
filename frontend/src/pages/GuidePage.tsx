@@ -816,7 +816,9 @@ export function GuidePage({
   initialScenarioCode,
   onBack,
   onOpenPlanner,
+  onPortfolioDiagnosisConsumed,
   onSignOut,
+  portfolioDiagnosisRequestId,
   surveyProfile,
   userContext,
   typingIntervalMs = DEFAULT_TYPING_INTERVAL_MS,
@@ -825,7 +827,9 @@ export function GuidePage({
   initialScenarioCode?: string;
   onBack?: () => void;
   onOpenPlanner?: () => void;
+  onPortfolioDiagnosisConsumed?: () => void;
   onSignOut: () => Promise<void>;
+  portfolioDiagnosisRequestId?: string;
   surveyProfile: CompletedSurveyProfile | null;
   userContext: DemoUserFinancialContext | null;
   typingIntervalMs?: number;
@@ -885,6 +889,7 @@ export function GuidePage({
     userId: string | null;
     accessToken: string | null;
   }>({ userId: authenticatedUserId, accessToken: accessToken ?? null });
+  const consumedPortfolioDiagnosisRequestRef = useRef<string | null>(null);
   const authGenerationRef = useRef(0);
   const conversationGenerationRef = useRef(0);
   const sessionListGenerationRef = useRef(0);
@@ -1027,6 +1032,35 @@ export function GuidePage({
     onStart: () => setHistoryLoading(false),
     getAuthGeneration: () => authGenerationRef.current,
   });
+
+  useEffect(() => {
+    if (
+      !accessToken
+      || !portfolioDiagnosisRequestId
+      || consumedPortfolioDiagnosisRequestRef.current === portfolioDiagnosisRequestId
+      || chatCardsLoading
+      || isSending
+      || messages.length > 0
+    ) return;
+
+    const portfolioCard = visibleChatCards.find(
+      (card) => card.card_id === "edu_portfolio",
+    );
+    if (!portfolioCard) return;
+
+    consumedPortfolioDiagnosisRequestRef.current = portfolioDiagnosisRequestId;
+    onPortfolioDiagnosisConsumed?.();
+    void submitPrompt(portfolioCard.message);
+  }, [
+    accessToken,
+    chatCardsLoading,
+    isSending,
+    messages.length,
+    onPortfolioDiagnosisConsumed,
+    portfolioDiagnosisRequestId,
+    submitPrompt,
+    visibleChatCards,
+  ]);
 
   const usedFollowUpMessages = useMemo(
     () => new Set(

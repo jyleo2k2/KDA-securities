@@ -108,6 +108,7 @@ function renderHome(
       onOpenChat={vi.fn()}
       onOpenPlanner={vi.fn()}
       onOpenProfile={vi.fn()}
+      onRequestPortfolioDiagnosis={vi.fn()}
       onOpenSlangi={vi.fn()}
       onOpenStrategyExplore={vi.fn()}
       onOpenUserPick={vi.fn()}
@@ -168,15 +169,21 @@ describe("MainHomeScreen", () => {
     document.removeEventListener("click", documentClick);
   });
 
-  it("keeps the one-line diagnosis action connected to chat", () => {
+  it("separates portfolio diagnosis from the regular chat tab", () => {
     const onOpenChat = vi.fn();
-    renderHome({ onOpenChat });
+    const onRequestPortfolioDiagnosis = vi.fn();
+    renderHome({ onOpenChat, onRequestPortfolioDiagnosis });
 
     expect(screen.getByText("내 포트폴리오 한 줄 진단")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", {
       name: /내 포트폴리오 자세히 진단받기/,
     }));
+    expect(onRequestPortfolioDiagnosis).toHaveBeenCalledOnce();
+    expect(onOpenChat).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText("챗봇"));
     expect(onOpenChat).toHaveBeenCalledOnce();
+    expect(onRequestPortfolioDiagnosis).toHaveBeenCalledOnce();
   });
 
   it("restores and reports the home scroll position", () => {

@@ -54,6 +54,10 @@ const CHAT_SESSION: ChatSessionSummary = {
 function renderGuide(
   onSignOut = vi.fn().mockResolvedValue(undefined),
   onOpenPlanner?: () => void,
+  portfolioDiagnosis?: {
+    onConsumed?: () => void;
+    requestId: string;
+  },
 ): ReturnType<typeof render> {
   const auth = {
     session: { access_token: "access-token", user: { id: "user-1", email: "owner@example.com" } },
@@ -63,7 +67,17 @@ function renderGuide(
     signIn: vi.fn(),
     signOut: vi.fn(),
   } as unknown as SupabaseAuthState;
-  return render(<GuidePage auth={auth} onOpenPlanner={onOpenPlanner} onSignOut={onSignOut} surveyProfile={null} userContext={null} />);
+  return render(
+    <GuidePage
+      auth={auth}
+      onOpenPlanner={onOpenPlanner}
+      onPortfolioDiagnosisConsumed={portfolioDiagnosis?.onConsumed}
+      onSignOut={onSignOut}
+      portfolioDiagnosisRequestId={portfolioDiagnosis?.requestId}
+      surveyProfile={null}
+      userContext={null}
+    />,
+  );
 }
 const RECOMMENDED_CHAT_CARDS: ChatCard[] = [
   {
@@ -351,6 +365,32 @@ describe("GuidePage chat history deletion", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+  });
+
+  it("submits the portfolio recommendation card once for a home diagnosis entry", async () => {
+    const onConsumed = vi.fn();
+    vi.mocked(getChatCards).mockResolvedValue({ cards: RECOMMENDED_CHAT_CARDS });
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      persisted: false,
+      session_id: null,
+      response: STRUCTURED_PORTFOLIO_RESPONSE,
+    });
+
+    renderGuide(undefined, undefined, {
+      onConsumed,
+      requestId: "portfolio-diagnosis-request-1",
+    });
+
+    await waitFor(() => {
+      expect(sendAuthenticatedChatStream).toHaveBeenCalledTimes(1);
+    });
+    expect(vi.mocked(sendAuthenticatedChatStream).mock.calls[0]?.[0]).toBe(
+      RECOMMENDED_CHAT_CARDS.find((card) => card.card_id === "edu_portfolio")?.message,
+    );
+    expect(onConsumed).toHaveBeenCalledOnce();
+
+    await screen.findByText(STRUCTURED_PORTFOLIO_RESPONSE.answer);
+    expect(sendAuthenticatedChatStream).toHaveBeenCalledTimes(1);
   });
 
   it("renders the attached Canvas-2 conversation shell", async () => {
