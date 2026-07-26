@@ -11,6 +11,7 @@ from scripts.audit_news_event_outcome_coverage import summarize_outcome_coverage
 from scripts.build_news_event_outcome_ledger import (
     HistoricalNewsEventLedger,
     build_outcome_evaluation,
+    events_through,
     load_local_cache_universe,
 )
 
@@ -152,3 +153,27 @@ def test_local_cache_universe_uses_explicit_roots(
         "adjusted_price_root": tmp_path / "adjusted-prices",
         "event_root": tmp_path / "events",
     }
+
+
+def test_events_through_keeps_only_the_explicit_incremental_range() -> None:
+    source = _source()
+    events = (
+        HistoricalNewsEvent(
+            event_id="fed-2019-12-11",
+            occurred_on=date(2019, 12, 11),
+            theme_id="bank_finance",
+            peer_isu_codes=("111111",),
+            source=source,
+        ),
+        HistoricalNewsEvent(
+            event_id="fed-2020-03-15",
+            occurred_on=date(2020, 3, 15),
+            theme_id="bank_finance",
+            peer_isu_codes=("111111",),
+            source=source,
+        ),
+    )
+
+    assert [event.event_id for event in events_through(events, date(2019, 12, 31))] == [
+        "fed-2019-12-11"
+    ]

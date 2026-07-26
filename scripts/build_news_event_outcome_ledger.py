@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -103,6 +104,16 @@ def load_local_cache_universe(
     )
 
 
+def events_through(
+    events: tuple[HistoricalNewsEvent, ...], through_date: date | None
+) -> tuple[HistoricalNewsEvent, ...]:
+    """Keep an explicit closed event-date range for an incremental backfill."""
+
+    if through_date is None:
+        return events
+    return tuple(event for event in events if event.occurred_on <= through_date)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Build realized 1/3/6-month outcomes for reviewed news events."
@@ -124,6 +135,11 @@ def _parser() -> argparse.ArgumentParser:
         default=Path("data/cache/kis/adjusted_prices"),
     )
     parser.add_argument("--event-root", type=Path, default=Path("data/cache/events"))
+    parser.add_argument(
+        "--through-date",
+        type=date.fromisoformat,
+        help="inclusive event-date upper bound for an incremental backfill",
+    )
     return parser
 
 
@@ -132,6 +148,9 @@ def main() -> int:
     ledger = HistoricalNewsEventLedger.model_validate_json(
         args.events.read_text(encoding="utf-8")
     )
+    events = events_through(ledger.events, args.through_date)
+    if not events:
+        raise ValueError("event-date range contains no reviewed events")
     universe = (
         load_local_cache_universe(
             return_root=args.return_root,
@@ -144,13 +163,13 @@ def main() -> int:
             AccountType.PENSION_SAVINGS
         )
     )
-    evaluation = build_outcome_evaluation(events=ledger.events, universe=universe)
+    evaluation = build_outcome_evaluation(events=events, universe=universe)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(evaluation.model_dump_json(indent=2), encoding="utf-8")
     print(
         json.dumps(
             {
-                "event_count": len(ledger.events),
+                "event_count": len(events),
                 "outcome_count": len(evaluation.outcomes),
                 "output": args.output.as_posix(),
                 "verified_horizon_rows": sum(
