@@ -51,6 +51,7 @@ from .handlers.distribution_events import (
     distribution_event_response,
     distribution_reinvestment_response,
 )
+from .handlers.getting_started import getting_started_response
 from .handlers.glossary import build_glossary_response, find_glossary_term
 from .handlers.pension_tax import pension_tax_response
 from .handlers.portfolio import (
@@ -243,6 +244,8 @@ class ChatService:
             )
             if request.portfolio is not None:
                 response = custom_portfolio(request)
+            elif resolved_plan.intent == ChatIntent.GETTING_STARTED:
+                response = getting_started_response()
             elif resolved_plan.intent == ChatIntent.GLOSSARY:
                 response = _glossary_response(resolved_plan, self._knowledge)
             elif request.educational_portfolio is not None:

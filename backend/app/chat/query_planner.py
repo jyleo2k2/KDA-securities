@@ -185,6 +185,23 @@ _GLOSSARY_QUESTION = re.compile(
     r"쉽게\s*(?:알려|설명|말해)|설명해|알려\s*줘|모르겠|"
     r"안\s*(?:돼|되)|괜찮(?:아|을까)|해도\s*(?:돼|되)"
 )
+# 무엇을 물어야 할지 모르는 상태를 그대로 표현한 질문. 특정 기능으로
+# 분류할 수 없지만 서비스의 첫 질문이 될 가능성이 높다.
+_GETTING_STARTED_QUESTION = re.compile(
+    r"(?:뭐|무엇|어디|어떻게|어디서)\s*(?:부터|서부터)|"
+    r"처음(?:에는|엔|부터|인데|이라|이야|이면)?\s*(?:뭐|무엇|뭘|어떻게|어디)|"
+    r"어떻게\s*시작|시작(?:하는\s*법|하려면|해야)|"
+    r"뭘\s*(?:해야|하면)|무엇을\s*해야|"
+    r"어떻게\s*하는\s*(?:건지|지)|감이?\s*안\s*(?:와|잡)"
+)
+
+
+def _is_getting_started_question(message: str) -> bool:
+    """Detect "뭐부터 해야 할지 모르겠어" style openers."""
+
+    return _GETTING_STARTED_QUESTION.search(message) is not None
+
+
 _GLOSSARY_TERM_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("risk_asset_cap", re.compile(r"위험\s*자산(?:\s*(?:한도|비중|70\s*%?))?")),
     ("safe_asset", re.compile(r"안전\s*자산")),
@@ -772,5 +789,13 @@ def plan_question(
             intent=ChatIntent.GLOSSARY,
             max_results=max_results,
             glossary_term_id=glossary_term_id,
+        )
+    # 어떤 인텐트도 받지 못했고 용어도 특정되지 않은 질문 가운데 "뭐부터
+    # 해야 할지 모르겠어"처럼 시작점을 묻는 것은 차단 대신 안내로 받는다.
+    if _is_getting_started_question(normalized):
+        return QueryPlan(
+            normalized_message=normalized,
+            intent=ChatIntent.GETTING_STARTED,
+            max_results=max_results,
         )
     return _blocked(normalized, BlockedReason.UNSUPPORTED, max_results)
