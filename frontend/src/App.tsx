@@ -266,6 +266,7 @@ function AppRoutes(): JSX.Element {
               initialScenarioCode={selectedScenarioCode}
               onBack={goToMainHome}
               onOpenPlanner={() => navigate("/planner")}
+              onOpenProfile={() => navigate("/profile-html")}
               onPortfolioDiagnosisConsumed={() => {
                 navigate("/guide", { replace: true, state: null });
               }}

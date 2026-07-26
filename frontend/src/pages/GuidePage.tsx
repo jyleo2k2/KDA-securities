@@ -830,6 +830,7 @@ export function GuidePage({
   initialScenarioCode,
   onBack,
   onOpenPlanner,
+  onOpenProfile,
   onPortfolioDiagnosisConsumed,
   onSignOut,
   portfolioDiagnosisRequestId,
@@ -841,6 +842,7 @@ export function GuidePage({
   initialScenarioCode?: string;
   onBack?: () => void;
   onOpenPlanner?: () => void;
+  onOpenProfile?: () => void;
   onPortfolioDiagnosisConsumed?: () => void;
   onSignOut: () => Promise<void>;
   portfolioDiagnosisRequestId?: string;
@@ -1731,9 +1733,9 @@ export function GuidePage({
             <button
               className={`design-avatar ${auth.session ? "authenticated" : "anonymous"}`}
               type="button"
-              aria-label={`${authStatusLabel} · 계정 메뉴 열기`}
+              aria-label={`${authStatusLabel} · 프로필 화면 열기`}
               title={authStatusLabel}
-              onClick={() => setIsSidebarOpen(true)}
+              onClick={onOpenProfile}
             >
               <img src={profileIcon} alt="프로필" />
             </button>
