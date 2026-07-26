@@ -1754,6 +1754,7 @@ def educational_portfolios(
     return ChatResponse(
         intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
         answer=(
+            f"이번 포트폴리오에 적용한 운용 성향은 {profile_label}입니다. "
             f"{account_names}의 계좌 규칙을 각각 적용했어요. 계좌별 ETF "
             "포트폴리오와 장기 계획수익률은 아래에서 볼 수 있어요."
         ),
