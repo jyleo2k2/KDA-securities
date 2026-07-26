@@ -942,6 +942,16 @@ uv run ruff check .
 - 남은 위험 또는 blocker: 2011~2019 14개 이벤트·42개 이벤트-ETF 쌍은 공식 총수익률 이력 백필 전까지 `outcome_precedes_history_coverage`으로 유지한다.
 - 다음 작업: 오래된 수정주가·분배금 원본을 확보하면 같은 원장을 재실행해 결측 구간만 추가 적재하고, 별도 원장 검토 절차로 FOMC 외 공식 이벤트를 확장한다.
 
+### 2026-07-26 KST — FOMC 2011~2019 KIS·KIND 결합 백필 준비 (LOCAL-VERIFIED)
+
+- 작업자/브랜치/시작 기준: 김태형 / `codex/김태형/fomc-kis-history-backfill` / `origin/main` `60a7b85`.
+- 변경 내용: KIS 수정주가 수집기를 3개 은행·금융 ETF에 2011-01-01~2020-06-30 범위로 실행해 6,951개 관측을 원본·캐시로 보관했다. KIND 2011-01-01~2026-07-16 현금분배·분배락 원본과 결합해 같은 ETF의 총수익률 근거를 만들었다.
+- 결정 및 근거: `--local-cache`와 `--through-date` 옵션을 원장 생성기에 추가해, DB 기반 기본 경로를 유지하면서도 명시적 KIS·KIND 캐시와 이벤트 상한으로 증분 백필을 재현한다. 가격 이력만으로 현금분배를 추정하지 않고 KIND 현금분배를 결합한다.
+- 로컬 검증과 실제 결과: 생성기·사후성과 테스트 `7 passed`, Ruff·`git diff --check`를 통과했다. `--through-date 2019-12-31` E2E는 FOMC 이벤트 14건·이벤트-ETF 쌍 42건·검증된 1·3·6개월 결과 126행을 생성했고 gap은 0건이었다.
+- 원격 적용 여부와 migration version: LOCAL-VERIFIED 상태다. 새 스키마 migration은 없고, 원격 `news_event_outcomes` 126행 upsert는 PR 병합과 이재용 승인 후 별도 실행한다.
+- 남은 위험 또는 blocker: 수집 첫 재시도에서 KIS 토큰 발급 HTTP 403이 있었으나, 충분한 간격 뒤 한 번의 3종 배치로 정상 수집했다. 정기 운영은 같은 실행에서 토큰을 한 번만 발급·재사용해야 한다.
+- 다음 작업: PR 병합 후 생성 보고서를 원격 원장에 upsert하고, 2020~2025 기존 144행과 합쳐 FOMC 전체 270행을 사후 조회로 검증한다.
+
 ```markdown
 ### YYYY-MM-DD HH:mm KST
 
