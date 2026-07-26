@@ -327,12 +327,42 @@ describe("MainHomeScreen", () => {
     expect(screen.queryByText("산정 전")).not.toBeInTheDocument();
   });
 
+  it("opens the strategy introduction from a card click without capturing the pointer", () => {
+    const onOpenStrategyExplore = vi.fn();
+    renderHome({ onOpenStrategyExplore });
+    const strategyScroll = screen.getByRole("region", { name: "전략 카드 목록" });
+    const firstCard = screen.getByRole("button", {
+      name: "시장 베타 전략 소개 화면 열기",
+    });
+    Object.assign(strategyScroll, {
+      hasPointerCapture: vi.fn(() => false),
+      releasePointerCapture: vi.fn(),
+      setPointerCapture: vi.fn(),
+    });
+
+    fireEvent.pointerDown(firstCard, {
+      button: 0,
+      clientX: 240,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+    fireEvent.pointerUp(firstCard, {
+      clientX: 240,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+    fireEvent.click(firstCard);
+
+    expect(strategyScroll.setPointerCapture).not.toHaveBeenCalled();
+    expect(onOpenStrategyExplore).toHaveBeenCalledOnce();
+  });
+
   it("scrolls strategy cards by mouse drag without opening a dragged card", () => {
     const onOpenStrategyExplore = vi.fn();
     renderHome({ onOpenStrategyExplore });
     const strategyScroll = screen.getByRole("region", { name: "전략 카드 목록" });
     const firstCard = screen.getByRole("button", {
-      name: "시장 베타 전략 전략 상세 보기",
+      name: "시장 베타 전략 소개 화면 열기",
     });
     Object.defineProperty(strategyScroll, "scrollLeft", {
       configurable: true,
