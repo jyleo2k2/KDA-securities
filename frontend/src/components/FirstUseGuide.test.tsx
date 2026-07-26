@@ -388,7 +388,12 @@ describe("FirstUseGuide", () => {
   });
 
   it("walks through six home anchors and finishes through the real User Pick CTA", async () => {
-    const onUserPick = vi.fn();
+    let inertWhenUserPickOpened: boolean | null = null;
+    const onUserPick = vi.fn(() => {
+      inertWhenUserPickOpened = (
+        document.querySelector(".mhs-body") as HTMLElement
+      ).inert;
+    });
     addHomeFixture(onUserPick);
     render(<FirstUseGuide />);
 
@@ -438,8 +443,12 @@ describe("FirstUseGuide", () => {
       }),
     ).toBeInTheDocument();
 
+    expect(
+      (document.querySelector(".mhs-body") as HTMLElement).inert,
+    ).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "이용자 Pick 둘러보기" }));
     await waitFor(() => expect(onUserPick).toHaveBeenCalledOnce());
+    expect(inertWhenUserPickOpened).not.toBe(true);
     expect(
       window.sessionStorage.getItem(firstUseGuideStorageKey(TARGET_USER_ID)),
     ).toBe("true");
@@ -803,6 +812,13 @@ describe("FirstUseGuide", () => {
       )
         .map((element) => element.textContent),
     ).toEqual(expect.arrayContaining(["내 포트폴리오", "비교"]));
+    const currentPortfolio = Array.from(
+      userPickFrame.contentDocument!.querySelectorAll<HTMLElement>("section"),
+    ).find((element) => element.textContent?.includes("현재 포트폴리오"));
+    expect(currentPortfolio?.scrollIntoView).toHaveBeenCalledWith({
+      block: "start",
+      behavior: "smooth",
+    });
 
     fireEvent.click(userPickGuide.getByRole("button", {
       name: "추천 포트폴리오 보기",
@@ -812,6 +828,13 @@ describe("FirstUseGuide", () => {
         name: "추천 포트폴리오를 하나씩 둘러보세요",
       }),
     ).toBeInTheDocument();
+    const recommendedPortfolio = Array.from(
+      userPickFrame.contentDocument!.querySelectorAll<HTMLElement>("section"),
+    ).find((element) => element.textContent?.includes("꾸준한거북이"));
+    expect(recommendedPortfolio?.scrollIntoView).toHaveBeenCalledWith({
+      block: "start",
+      behavior: "smooth",
+    });
 
     fireEvent.click(userPickGuide.getByRole("button", {
       name: "내 비중과 비교하기",
@@ -822,6 +845,14 @@ describe("FirstUseGuide", () => {
         name: "내 비중과 달라지는 부분을 비교해요",
       }),
     ).toBeInTheDocument();
+    expect(
+      userPickFrame.contentDocument?.querySelector<HTMLElement>(
+        "[data-comparison]",
+      )?.scrollIntoView,
+    ).toHaveBeenCalledWith({
+      block: "start",
+      behavior: "smooth",
+    });
 
     fireEvent.click(userPickGuide.getByRole("button", {
       name: "운용 근거 보기",
@@ -832,6 +863,13 @@ describe("FirstUseGuide", () => {
         name: "운용 근거를 읽고 판단해요",
       }),
     ).toBeInTheDocument();
+    const rationale = Array.from(
+      userPickFrame.contentDocument!.querySelectorAll<HTMLElement>("section"),
+    ).find((element) => element.textContent?.includes("왜 이렇게 나눴냐면요"));
+    expect(rationale?.scrollIntoView).toHaveBeenCalledWith({
+      block: "start",
+      behavior: "smooth",
+    });
 
     fireEvent.click(userPickGuide.getByRole("button", {
       name: "따라하기 후기 보기",
@@ -841,6 +879,13 @@ describe("FirstUseGuide", () => {
         name: "따라한 이용자의 후기도 확인해요",
       }),
     ).toBeInTheDocument();
+    const review = Array.from(
+      userPickFrame.contentDocument!.querySelectorAll<HTMLElement>("section"),
+    ).find((element) => element.textContent?.includes("장기러버"));
+    expect(review?.scrollIntoView).toHaveBeenCalledWith({
+      block: "start",
+      behavior: "smooth",
+    });
 
     fireEvent.click(userPickGuide.getByRole("button", {
       name: "이용자 Pick 안내 마치기",

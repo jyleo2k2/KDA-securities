@@ -135,12 +135,14 @@
 
 /* 챗봇 화면은 긴 안내 문장과 하단 입력창까지 단계별로 설명하므로
    홈 투어의 시각 언어는 유지하되, 390px 폰 프레임에서 더 크게 읽히도록 보정한다. */
-.fug-root-chat .fug-spotlight {
+.fug-root-chat .fug-spotlight,
+.fug-root-user-pick .fug-spotlight {
   border-radius: 19px;
   box-shadow: 0 0 0 999px rgba(17, 17, 17, .6), 0 0 0 4px #55C77D;
 }
 
-.fug-root-chat .fug-panel {
+.fug-root-chat .fug-panel,
+.fug-root-user-pick .fug-panel {
   right: 12px;
   left: 12px;
   padding: 24px 20px 22px;
@@ -149,42 +151,52 @@
 }
 
 .fug-root-chat .fug-intro-panel,
-.fug-root-chat .fug-step-panel.is-bottom {
+.fug-root-chat .fug-step-panel.is-bottom,
+.fug-root-user-pick .fug-intro-panel,
+.fug-root-user-pick .fug-step-panel.is-bottom {
   bottom: 16px;
 }
 
-.fug-root-chat .fug-step-panel.is-top {
+.fug-root-chat .fug-step-panel.is-top,
+.fug-root-user-pick .fug-step-panel.is-top {
   top: 16px;
 }
 
-.fug-root-chat .fug-eyebrow {
+.fug-root-chat .fug-eyebrow,
+.fug-root-user-pick .fug-eyebrow {
   margin-bottom: 9px;
   font-size: 15px;
 }
 
-.fug-root-chat .fug-panel h2 {
+.fug-root-chat .fug-panel h2,
+.fug-root-user-pick .fug-panel h2 {
   font-size: 23px;
   line-height: 1.38;
   letter-spacing: -.8px;
 }
 
-.fug-root-chat .fug-panel > p {
+.fug-root-chat .fug-panel > p,
+.fug-root-user-pick .fug-panel > p {
   margin-top: 12px;
   font-size: 15.5px;
   line-height: 1.62;
 }
 
-.fug-root-chat .fug-progress {
+.fug-root-chat .fug-progress,
+.fug-root-user-pick .fug-progress {
   margin-bottom: 12px;
   font-size: 15px;
 }
 
-.fug-root-chat .fug-actions {
+.fug-root-chat .fug-actions,
+.fug-root-user-pick .fug-actions {
   margin-top: 22px;
 }
 
 .fug-root-chat .fug-primary,
-.fug-root-chat .fug-secondary {
+.fug-root-chat .fug-secondary,
+.fug-root-user-pick .fug-primary,
+.fug-root-user-pick .fug-secondary {
   min-height: 48px;
   padding: 13px 18px;
   border-radius: 15px;
@@ -193,7 +205,10 @@
 
 .fug-root-chat .fug-primary:focus-visible,
 .fug-root-chat .fug-secondary:focus-visible,
-.fug-root-chat .fug-progress button:focus-visible {
+.fug-root-chat .fug-progress button:focus-visible,
+.fug-root-user-pick .fug-primary:focus-visible,
+.fug-root-user-pick .fug-secondary:focus-visible,
+.fug-root-user-pick .fug-progress button:focus-visible {
   outline-color: #55C77D;
 }
 

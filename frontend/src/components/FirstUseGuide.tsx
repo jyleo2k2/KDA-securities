@@ -18,7 +18,7 @@ const HOME_GUIDE_VERSION = "v3";
 const STRATEGY_DETAIL_GUIDE_VERSION = "v2";
 const CHAT_GUIDE_VERSION = "v5";
 const PENSION_PLANNER_GUIDE_VERSION = "v2";
-const USER_PICK_GUIDE_VERSION = "v1";
+const USER_PICK_GUIDE_VERSION = "v2";
 const COMPLETE_KEY =
   `pension-first-use-guide:${HOME_GUIDE_VERSION}:complete`;
 const STRATEGY_DETAIL_COMPLETE_KEY =
@@ -53,6 +53,7 @@ interface GuideConfig {
   backgroundSelector: string;
   completeKey: string;
   finalTargetSelector?: string;
+  focusBlock?: ScrollLogicalPosition;
   frameSelector?: string;
   id: "chat" | "home" | "strategy-detail" | "pension-planner" | "user-pick";
   introBody: string;
@@ -344,6 +345,7 @@ const GUIDES: GuideConfig[] = [
   {
     backgroundSelector: ".scrolly",
     completeKey: USER_PICK_COMPLETE_KEY,
+    focusBlock: "start",
     frameSelector: "iframe[title=\"투자 벤치마킹하기\"]",
     id: "user-pick",
     introBody: "내 포트폴리오와 다른 이용자의 자산 구성·운용 근거·후기를 비교하는 방법을 화면 끝까지 알려드릴게요.",
@@ -669,7 +671,10 @@ export function FirstUseGuide(): JSX.Element | null {
       const target = mode === "steps"
         ? targetForStep(contentDocument, guide.steps[stepIndex])
         : null;
-      target?.scrollIntoView({ block: "center", behavior: "smooth" });
+      target?.scrollIntoView({
+        block: guide.focusBlock ?? "center",
+        behavior: "smooth",
+      });
       measure();
     };
     alignTarget();
@@ -764,7 +769,11 @@ export function FirstUseGuide(): JSX.Element | null {
         )
       : null;
     completeGuide();
-    finalTarget?.click();
+    if (finalTarget) {
+      finalTarget.ownerDocument.defaultView?.setTimeout(() => {
+        finalTarget.click();
+      }, 0);
+    }
   }
 
   const relativeTarget = targetRect && {
