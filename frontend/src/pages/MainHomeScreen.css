@@ -13,6 +13,16 @@
 
 .mhs-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 22px 70px; }
 
+.mhs-promo-carousel { outline: none; touch-action: pan-y; }
+.mhs-promo-carousel:focus-visible { border-radius: 22px; outline: 3px solid #18A860; outline-offset: 3px; }
+.mhs-promo-viewport { overflow: hidden; border-radius: 22px; }
+.mhs-promo-track { display: flex; align-items: stretch; transition: transform .38s cubic-bezier(.23, 1, .32, 1); }
+.mhs-promo-slide { display: flex; flex: 0 0 100%; min-width: 0; }
+.mhs-promo-dots { display: flex; justify-content: center; gap: 6px; margin-top: 9px; }
+.mhs-promo-dot { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 999px; background: #D8DED9; cursor: pointer; transition: width .2s ease, background .2s ease; }
+.mhs-promo-dot.is-active { width: 20px; background: #18A860; }
+.mhs-promo-dot:focus-visible { outline: 2px solid #18A860; outline-offset: 3px; }
+
 .mhs-greeting-card { background: #F1F3EE; border-radius: 22px; padding: 20px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; overflow: hidden; }
 .mhs-greeting-card-button { width: 100%; border: 0; font: inherit; text-align: left; cursor: pointer; }
 .mhs-greeting-card-button:focus-visible { outline: 3px solid #18A860; outline-offset: 3px; }
@@ -75,7 +85,7 @@
 .mhs-summary-cta-button { border: none; background: none; padding: 0; font-family: inherit; }
 .mhs-summary-cta-chevron { font-size: 16px; }
 
-.mhs-tax-card { border-radius: 22px; padding: 22px 22px; display: flex; align-items: center; gap: 18px; background-color: #18A860; }
+.mhs-tax-card { width: 100%; border-radius: 22px; padding: 22px 22px; display: flex; align-items: center; gap: 18px; background-color: #18A860; }
 .mhs-tax-icon-wrap { flex-shrink: 0; width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; }
 .mhs-tax-icon { width: 100%; height: 100%; object-fit: contain; }
 .mhs-tax-copy { flex: 1; min-width: 0; }
@@ -146,4 +156,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .mhs-body > *, .mhs-sheet, .mhs-sheet-backdrop { animation: none; opacity: 1; transform: none; }
+  .mhs-promo-track, .mhs-promo-dot { transition: none; }
 }

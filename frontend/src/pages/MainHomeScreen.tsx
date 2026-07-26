@@ -261,9 +261,12 @@ export function MainHomeScreen({
   portfolio,
 }: MainHomeScreenProps): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
+  const [activePromo, setActivePromo] = useState(0);
+  const [promoTimerKey, setPromoTimerKey] = useState(0);
   const [selectedHolding, setSelectedHolding] = useState<number | null>(null);
   const [strategyPlanningReturns, setStrategyPlanningReturns] = useState<StrategyPlanningReturnEvaluation[] | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const promoTouchStartX = useRef<number | null>(null);
   const allocationSlices: AllocationSlice[] = aggregation?.asset_class_totals
     .slice(0, 4)
     .map((item, index) => ({
@@ -283,6 +286,13 @@ export function MainHomeScreen({
   const handleBodyScroll = (event: UIEvent<HTMLDivElement>) => {
     onScrollPositionChange?.(event.currentTarget.scrollTop);
   };
+  const selectPromo = (index: number) => {
+    setActivePromo(index);
+    setPromoTimerKey((current) => current + 1);
+  };
+  const movePromo = (direction: -1 | 1) => {
+    selectPromo((activePromo + direction + 2) % 2);
+  };
   useLayoutEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = initialScrollTop;
   }, [initialScrollTop]);
@@ -299,6 +309,13 @@ export function MainHomeScreen({
       .catch(() => { if (active) setStrategyPlanningReturns([]); });
     return () => { active = false; };
   }, []);
+  useEffect(() => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => {
+      setActivePromo((current) => (current + 1) % 2);
+    }, 2500);
+    return () => window.clearInterval(timer);
+  }, [promoTimerKey]);
   const totalBalance = aggregation ? formatKrw(aggregation.total_amount_krw) : "-";
   const asOfDate = portfolio ? latestPortfolioDate(portfolio) : null;
 
@@ -317,13 +334,80 @@ export function MainHomeScreen({
       </div>
 
       <div className="mhs-body" ref={bodyRef} onScroll={handleBodyScroll}>
-        <button type="button" className="mhs-greeting-card mhs-greeting-card-button" onClick={onOpenSlangi} aria-label="연그미와 놀기 열기">
-          <div className="mhs-greeting-copy">
-            <p className="mhs-greeting-title">슬랑이를 <span className="mhs-greeting-title-accent">만져 보세요!</span></p>
-            <p className="mhs-greeting-sub">톡톡 두드리면 오늘의 저축 팁을 알려드려요</p>
+        <section
+          className="mhs-promo-carousel"
+          aria-label="홈 추천 카드"
+          aria-roledescription="캐러셀"
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowLeft") movePromo(-1);
+            if (event.key === "ArrowRight") movePromo(1);
+          }}
+          onTouchStart={(event) => {
+            promoTouchStartX.current = event.touches[0]?.clientX ?? null;
+          }}
+          onTouchEnd={(event) => {
+            const startX = promoTouchStartX.current;
+            const endX = event.changedTouches[0]?.clientX;
+            promoTouchStartX.current = null;
+            if (startX === null || endX === undefined || Math.abs(endX - startX) < 40) return;
+            movePromo(endX < startX ? 1 : -1);
+          }}
+        >
+          <div className="mhs-promo-viewport">
+            <div
+              className="mhs-promo-track"
+              style={{ transform: `translateX(-${activePromo * 100}%)` }}
+            >
+              <div className="mhs-promo-slide" aria-hidden={activePromo !== 0}>
+                <div className="mhs-tax-card">
+                  <span className="mhs-tax-icon-wrap">
+                    <img src={taxCreditMissed} alt="놓친 세액공제액 찾기" className="mhs-tax-icon" />
+                  </span>
+                  <div className="mhs-tax-copy">
+                    <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
+                    <p className="mhs-tax-sub">지금 놓치고 있는 세액공제액이 얼마인지 확인해 보세요.</p>
+                    <button
+                      type="button"
+                      className="mhs-tax-button"
+                      onClick={onOpenPlanner}
+                      tabIndex={activePromo === 0 ? 0 : -1}
+                    >
+                      완료율 확인하기 <span>→</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="mhs-promo-slide" aria-hidden={activePromo !== 1}>
+                <button
+                  type="button"
+                  className="mhs-greeting-card mhs-greeting-card-button"
+                  onClick={onOpenSlangi}
+                  aria-label="연그미와 놀기 열기"
+                  tabIndex={activePromo === 1 ? 0 : -1}
+                >
+                  <div className="mhs-greeting-copy">
+                    <p className="mhs-greeting-title">슬랑이를 <span className="mhs-greeting-title-accent">만져 보세요!</span></p>
+                    <p className="mhs-greeting-sub">톡톡 두드리면 오늘의 저축 팁을 알려드려요</p>
+                  </div>
+                  <img src={piggy} alt="슬랑이" className="mhs-greeting-img" />
+                </button>
+              </div>
+            </div>
           </div>
-          <img src={piggy} alt="슬랑이" className="mhs-greeting-img" />
-        </button>
+          <div className="mhs-promo-dots" aria-label="추천 카드 선택">
+            {[0, 1].map((promoIndex, dotIndex) => (
+              <button
+                key={promoIndex}
+                type="button"
+                className={`mhs-promo-dot${activePromo === promoIndex ? " is-active" : ""}`}
+                onClick={() => selectPromo(promoIndex)}
+                aria-label={`${dotIndex + 1}번째 카드 보기`}
+                aria-current={activePromo === promoIndex ? "true" : undefined}
+              />
+            ))}
+          </div>
+        </section>
         {investmentProfile?.assessment && <p className="mhs-greeting-sub">저장 투자성향 · {PROFILE_LABELS[investmentProfile.assessment.risk_profile]} · {investmentProfile.assessment.assessed_on} 진단{investmentProfile.assessment.is_expired ? " · 만료" : ""}</p>}
         <h2 className="mhs-section-title">내 연금 <span className="mhs-section-title-gold">자산</span></h2>
 
@@ -433,18 +517,6 @@ export function MainHomeScreen({
             <div className="mhs-summary-cta-row">
               <button type="button" className="mhs-summary-cta mhs-summary-cta-button" onClick={onOpenChat}>내 포트폴리오 자세히 진단받기 <span className="mhs-summary-cta-chevron">›</span></button>
             </div>
-          </div>
-        </div>
-
-        <h2 className="mhs-section-title">세액공제</h2>
-        <div className="mhs-tax-card">
-          <span className="mhs-tax-icon-wrap">
-            <img src={taxCreditMissed} alt="놓친 세액공제액 찾기" className="mhs-tax-icon" />
-          </span>
-          <div className="mhs-tax-copy">
-            <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
-            <p className="mhs-tax-sub">지금 놓치고 있는 세액공제액이 얼마인지 확인해 보세요.</p>
-            <button type="button" className="mhs-tax-button" onClick={onOpenPlanner}>완료율 확인하기 <span>→</span></button>
           </div>
         </div>
 
