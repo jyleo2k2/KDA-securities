@@ -43,5 +43,7 @@ export const STRATEGIES = STRATEGY_DATA.map((strategy) => ({
   ...strategy,
   directness: strategy.directness === "계좌 적격 상품 확인 필요"
     ? "계좌별 매수 가능 상품 확인"
-    : strategy.directness,
+    : strategy.directness === "ETF·TDF로 구현 가능"
+      ? "ETF로 구현 가능"
+      : strategy.directness,
 }));
