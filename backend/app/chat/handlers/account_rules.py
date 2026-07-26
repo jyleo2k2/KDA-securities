@@ -217,6 +217,26 @@ def blocked_response(reason: BlockedReason, *, user_message: str = "") -> ChatRe
             GracefulDeclineKind.FOREIGN_MARKET_OR_INDIVIDUAL_STOCK,
             user_message,
         )
+    if reason == BlockedReason.CONTRIBUTION_AMOUNT_ADVICE:
+        return graceful_decline_response(
+            GracefulDeclineKind.CONTRIBUTION_AMOUNT_ADVICE,
+            user_message,
+        )
+    if reason == BlockedReason.PROVIDER_CHOICE_ADVICE:
+        return graceful_decline_response(
+            GracefulDeclineKind.PROVIDER_CHOICE_ADVICE,
+            user_message,
+        )
+    if reason == BlockedReason.PERSONAL_ALLOCATION_ADVICE:
+        return graceful_decline_response(
+            GracefulDeclineKind.PERSONAL_ALLOCATION_ADVICE,
+            user_message,
+        )
+    if reason == BlockedReason.PRINCIPAL_GUARANTEE_QUESTION:
+        return graceful_decline_response(
+            GracefulDeclineKind.PRINCIPAL_GUARANTEE_QUESTION,
+            user_message,
+        )
     if reason == BlockedReason.PRODUCT_LEVEL_UNAVAILABLE:
         return ChatResponse(
             intent=ChatIntent.OUT_OF_SCOPE,
