@@ -876,6 +876,9 @@ export function EducationalPortfolioReview({
         <p title={evaluation.strategy_label}>{ACCOUNT_LABELS[evaluation.evaluated_input.account_type]} · {strategyLabel(evaluation.strategy_label)}</p>
       </header>
 
+      <PortfolioSectorGuide riskProfile={evaluation.evaluated_input.risk_profile} />
+      <RebalancingCadenceGuide evaluation={evaluation} />
+
       <div className="portfolio-review-lead">
         <span>먼저 볼 내용</span>
         <strong>{reviewHeadline}</strong>
@@ -897,9 +900,6 @@ export function EducationalPortfolioReview({
           <em>펼쳐보기</em>
         </summary>
         <div className="portfolio-review-details-body">
-          <PortfolioSectorGuide riskProfile={evaluation.evaluated_input.risk_profile} />
-          <RebalancingCadenceGuide evaluation={evaluation} />
-
           <div className="overlap-check">
             <strong>한곳에 너무 몰렸는지 보기</strong>
             <p>지금 가진 ETF 비율을 목표와 비교했어요. 비슷한 역할의 ETF가 한곳에 몰렸는지는 아래 비율 차이에서 볼 수 있어요.</p>
