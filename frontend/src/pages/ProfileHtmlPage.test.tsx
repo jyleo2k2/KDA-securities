@@ -74,6 +74,25 @@ describe("ProfileHtmlPage", () => {
     expect(onResurvey).toHaveBeenCalledOnce();
   });
 
+  it("forwards the chat history button to the supplied callback", () => {
+    const onOpenChatHistory = vi.fn();
+
+    render(<ProfileHtmlPage {...props} onOpenChatHistory={onOpenChatHistory} />);
+
+    const iframe = screen.getByTitle("내 프로필") as HTMLIFrameElement;
+    const frameDocument = iframe.contentDocument;
+    expect(frameDocument).not.toBeNull();
+    if (!frameDocument) return;
+
+    frameDocument.open();
+    frameDocument.write('<!doctype html><body><button type="button" data-profile-html-chat-history>채팅 기록</button></body>');
+    frameDocument.close();
+    fireEvent.load(iframe);
+    fireEvent.click(frameDocument.querySelector("[data-profile-html-chat-history]") as HTMLButtonElement);
+
+    expect(onOpenChatHistory).toHaveBeenCalledOnce();
+  });
+
   it("forwards the profile logout button to the supplied callback", () => {
     const onSignOut = vi.fn().mockResolvedValue(undefined);
 

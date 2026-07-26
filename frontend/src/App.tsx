@@ -52,6 +52,7 @@ interface CurrentUserData {
 }
 
 interface GuideNavigationState {
+  openChatHistory?: boolean;
   portfolioDiagnosisRequestId?: string;
 }
 
@@ -263,6 +264,7 @@ function AppRoutes(): JSX.Element {
               <StatusBar />
             <GuidePage
               auth={auth}
+              initialHistoryOpen={guideNavigationState?.openChatHistory}
               initialScenarioCode={selectedScenarioCode}
               onBack={goToMainHome}
               onOpenPlanner={() => navigate("/planner")}
@@ -328,6 +330,9 @@ function AppRoutes(): JSX.Element {
             email={email}
             investmentProfile={currentUserData.investmentProfile}
             onBack={goToMainHome}
+            onOpenChatHistory={() => {
+              navigate("/guide", { state: { openChatHistory: true } });
+            }}
             onResurvey={() => setResurveyPending(true)}
             portfolio={currentUserData.portfolio}
           />

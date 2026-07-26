@@ -845,6 +845,7 @@ function authenticatedErrorMessage(error: unknown): string {
 
 export function GuidePage({
   auth,
+  initialHistoryOpen = false,
   initialScenarioCode,
   onBack,
   onOpenPlanner,
@@ -857,6 +858,7 @@ export function GuidePage({
   typingIntervalMs = DEFAULT_TYPING_INTERVAL_MS,
 }: {
   auth: SupabaseAuthState;
+  initialHistoryOpen?: boolean;
   initialScenarioCode?: string;
   onBack?: () => void;
   onOpenPlanner?: () => void;
@@ -879,7 +881,7 @@ export function GuidePage({
   const [chatCardsLoading, setChatCardsLoading] = useState(true);
   const [chatCardsRequestVersion, setChatCardsRequestVersion] = useState(0);
   const [selectedScenario, setSelectedScenario] = useState(initialScenarioCode ?? "");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(initialHistoryOpen);
   const [serverReady, setServerReady] = useState<boolean | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
   const [visibleSessionCount, setVisibleSessionCount] = useState(CHAT_SESSION_PAGE_SIZE);
