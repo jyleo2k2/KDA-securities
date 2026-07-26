@@ -183,7 +183,31 @@ _GLOSSARY_QUESTION = re.compile(
     r"뭐(?:야|예요|에요|지|니|냐)|무슨\s*(?:말|뜻)|무엇|"
     r"뜻이?\s*(?:뭐|무엇|어떻게)|어떤\s*(?:의미|뜻)|"
     r"쉽게\s*(?:알려|설명|말해)|설명해|알려\s*줘|모르겠|"
+    r"뭐가\s*달라|무엇이\s*다른|차이(?:가|는)?\s*(?:뭐|무엇)|"
     r"안\s*(?:돼|되)|괜찮(?:아|을까)|해도\s*(?:돼|되)"
+)
+# 정의를 묻는 것이 분명한 어미. 이 신호가 있으면 데이터 조회 인텐트보다
+# 용어 설명이 앞선다. "채권이 뭐야?"에 ETF 카탈로그를 주지 않기 위함이다.
+_DEFINITION_QUESTION = re.compile(
+    r"(?:이|가|은|는|란|이란)?\s*"
+    r"(?:뭐(?:야|예요|에요|지|니|냐)|무슨\s*(?:말|뜻)|"
+    r"뜻이?\s*(?:뭐|무엇)|어떤\s*(?:의미|뜻)|무엇(?:인가|이야|이에요)?)"
+    r"|뭐가\s*달라|차이(?:가|는)?\s*(?:뭐|무엇)"
+)
+# 뜻풀이에 자리를 내줄 수 있는 인텐트. 상품·수치 조회라서 정의 질문에는
+# 답이 되지 않는다. 계좌 규칙·세액 계산은 제도 설명이 더 정확하므로 뺀다.
+_DEFINITION_OVERRIDABLE_INTENTS = frozenset(
+    {
+        ChatIntent.ETF_THEME,
+        ChatIntent.MACRO_EVIDENCE,
+        ChatIntent.EDUCATIONAL_PORTFOLIO,
+        ChatIntent.ETF_DISTRIBUTION,
+    }
+)
+# "채권"처럼 테마 이름이면서 기초 용어인 말이 있다. ETF·테마·상품을 함께
+# 언급하면 카탈로그 질문, 그렇지 않으면 용어 질문으로 본다.
+_PRODUCT_LOOKUP_CONTEXT = re.compile(
+    r"ETF|테마|상품|종목|후보|담을|투자할|편입", re.I
 )
 # 무엇을 물어야 할지 모르는 상태를 그대로 표현한 질문. 특정 기능으로
 # 분류할 수 없지만 서비스의 첫 질문이 될 가능성이 높다.
@@ -215,6 +239,29 @@ _GLOSSARY_TERM_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("pension_income_tax", re.compile(r"연금\s*소득세")),
     ("in_kind_transfer", re.compile(r"실물\s*이전")),
     ("tax_credit", re.compile(r"세액\s*공제")),
+    # 경제·투자 기초 용어. 더 긴 표현이 짧은 표현에 먹히지 않도록
+    # 구체적인 것부터 둔다("연평균 수익률"이 "수익률"보다 앞).
+    ("annualized_return", re.compile(r"연\s*평균\s*수익률")),
+    ("compound_interest", re.compile(r"복리")),
+    ("simple_interest", re.compile(r"단리")),
+    ("asset_allocation", re.compile(r"자산\s*배분")),
+    ("diversification", re.compile(r"분산\s*투자")),
+    ("installment_investing", re.compile(r"적립식|적립\s*투자")),
+    ("volatility", re.compile(r"변동성")),
+    ("currency_hedge", re.compile(r"환\s*헤지|환헷지")),
+    ("exchange_rate", re.compile(r"환율")),
+    ("inflation", re.compile(r"인플레이션|물가\s*상승")),
+    ("interest_rate", re.compile(r"금리|이자율")),
+    ("market_cap", re.compile(r"시가\s*총액")),
+    ("dividend", re.compile(r"배당(?!\s*상품)")),
+    ("kospi", re.compile(r"코스피|KOSPI", re.I)),
+    ("kosdaq", re.compile(r"코스닥|KOSDAQ", re.I)),
+    ("sp500", re.compile(r"S\s*&\s*P\s*500|에스\s*앤\s*피\s*500", re.I)),
+    ("nasdaq", re.compile(r"나스닥|NASDAQ", re.I)),
+    ("index", re.compile(r"지수")),
+    ("bond", re.compile(r"채권")),
+    ("stock", re.compile(r"주식")),
+    ("fund", re.compile(r"펀드")),
     (
         "db_dc",
         re.compile(
@@ -367,6 +414,13 @@ _EDUCATIONAL_PORTFOLIO_TERMS = re.compile(
     r"포트폴리오|자산\s*배분|투자\s*(?:성향|스타일)|"
     r"안정\s*추구형|위험\s*중립형|적극\s*투자형|"
     r"공격\s*투자형|안정형"
+)
+# 리밸런싱을 "언제·얼마나 자주" 하는지는 성향별 점검 주기가 답이다.
+# 엔진이 이미 성향마다 주기를 계산하므로 안내 경로로 잇는다.
+_REBALANCING_CADENCE_QUESTION = re.compile(
+    r"(?:리\s*밸런싱|리밸런스)[^?]{0,12}"
+    r"(?:언제|얼마나\s*자주|주기|자주\s*해|몇\s*(?:개월|달|번))"
+    r"|(?:언제|얼마나\s*자주|주기)[^?]{0,12}(?:리\s*밸런싱|리밸런스)"
 )
 # 나이를 밝히고 운용 방법을 묻는 표현. 타깃 사용자는 "35살인데 어떻게
 # 배분해?"처럼 전략·포트폴리오라는 말 없이 묻는다. 나이와 운용 동사가
@@ -646,6 +700,7 @@ def plan_question(
         ChatIntent.EDUCATIONAL_PORTFOLIO: (
             _EDUCATIONAL_PORTFOLIO_TERMS.search(normalized) is not None
             or _AGE_BASED_ALLOCATION_QUESTION.search(normalized) is not None
+            or _REBALANCING_CADENCE_QUESTION.search(normalized) is not None
         ),
         ChatIntent.PROVIDER_DISCLOSURE: bool(account_types)
         and _DISCLOSURE_TERMS.search(normalized) is not None,
@@ -671,6 +726,25 @@ def plan_question(
             None,
         )
     )
+    # 정의를 묻는 것이 분명하고 사전에 있는 용어라면 데이터 조회보다 뜻풀이가
+    # 먼저다. "채권이 뭐야?"에 ETF 카탈로그를, "인플레이션이 뭐야?"에 거시지표
+    # 수치를 주면 질문·답변이 어긋난다. 계좌·세액 인텐트는 제도 설명이 더
+    # 정확하므로 그대로 둔다.
+    # 단, "반도체 ETF가 뭐야?"처럼 상품을 함께 지목한 질문은 카탈로그 안내가
+    # 답이므로 양보하지 않는다.
+    if (
+        intent in _DEFINITION_OVERRIDABLE_INTENTS
+        and _PRODUCT_LOOKUP_CONTEXT.search(normalized) is None
+        and _DEFINITION_QUESTION.search(normalized)
+    ):
+        definition_term_id = _glossary_term_id(normalized)
+        if definition_term_id is not None:
+            return QueryPlan(
+                normalized_message=normalized,
+                intent=ChatIntent.GLOSSARY,
+                max_results=max_results,
+                glossary_term_id=definition_term_id,
+            )
 
     if intent == ChatIntent.MOCK_PORTFOLIO:
         return QueryPlan(
