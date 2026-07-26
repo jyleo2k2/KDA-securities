@@ -4,6 +4,7 @@ from decimal import Decimal
 from backend.app.engine.models import AccountType, SourceChip
 from backend.app.engine.news_event_outcomes import HistoricalNewsEvent
 from backend.app.portfolio_universe_repository import PortfolioUniverseRepository
+from scripts.audit_news_event_outcome_coverage import summarize_outcome_coverage
 from scripts.build_news_event_outcome_ledger import build_outcome_evaluation
 
 
@@ -51,3 +52,34 @@ def test_build_outcome_evaluation_uses_only_explicit_event_peers() -> None:
         6,
     ]
     assert evaluation.is_forecast is False
+
+
+def test_outcome_coverage_makes_missing_history_boundaries_explicit() -> None:
+    universe = PortfolioUniverseRepository(
+        account_type=AccountType.PENSION_SAVINGS,
+        products=[{"isu_code": "111111", "isu_name": "검증 ETF"}],
+        histories={
+            "111111": {
+                date(2025, 1, 2): Decimal("100"),
+                date(2025, 2, 3): Decimal("110"),
+            }
+        },
+        history_sources={"111111": "kis_adjusted_close_plus_kind_cash_distribution"},
+        as_of=date(2025, 2, 3),
+        source_path=None,  # type: ignore[arg-type]
+    )
+    event = HistoricalNewsEvent(
+        event_id="fed-2025-01-01",
+        occurred_on=date(2025, 1, 1),
+        theme_id="bank_finance",
+        peer_isu_codes=("111111",),
+        source=_source(),
+    )
+
+    coverage = summarize_outcome_coverage(
+        build_outcome_evaluation(events=(event,), universe=universe)
+    )
+
+    assert coverage["available_horizon_rows"] == {"1": 1, "3": 0, "6": 0}
+    assert coverage["missing_horizon_rows"] == {"1": 0, "3": 1, "6": 1}
+    assert coverage["gap_reasons"] == {"outcome_exceeds_history_coverage": 2}
