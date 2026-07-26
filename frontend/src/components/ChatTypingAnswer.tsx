@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 const DEFAULT_TYPING_INTERVAL_MS = 50;
+const MAX_TYPING_DURATION_MS = 2_000;
 
 function usePrefersReducedMotion(): boolean {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => (
@@ -50,12 +51,16 @@ export function ChatTypingAnswer({
     }
 
     const tokens = text.match(/\s*\S+\s*/g) ?? (text ? [text] : []);
+    const tokensPerTick = Math.max(
+      1,
+      Math.ceil((tokens.length * intervalMs) / MAX_TYPING_DURATION_MS),
+    );
     let tokenIndex = 0;
     let timer: number | undefined;
     setDisplayedText("");
 
     const revealNextToken = () => {
-      tokenIndex += 1;
+      tokenIndex = Math.min(tokenIndex + tokensPerTick, tokens.length);
       setDisplayedText(tokens.slice(0, tokenIndex).join(""));
       if (tokenIndex < tokens.length) timer = window.setTimeout(revealNextToken, intervalMs);
     };

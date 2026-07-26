@@ -3,24 +3,30 @@ import type { ChatSessionSummary } from "../api/types";
 export function ChatSessionList({
   activeSessionId,
   chatSessions,
+  deletableSessionCount,
   deleteStatus,
   deletingAllSessions,
   deletingSessionId,
+  hasMoreSessions,
   historyLoading,
   isSending,
   onDelete,
   onDeleteAll,
+  onLoadMore,
   onLoad,
 }: {
   activeSessionId: string | null;
   chatSessions: ChatSessionSummary[];
+  deletableSessionCount: number;
   deleteStatus: string | null;
   deletingAllSessions: boolean;
   deletingSessionId: string | null;
+  hasMoreSessions: boolean;
   historyLoading: boolean;
   isSending: boolean;
   onDelete: (session: ChatSessionSummary) => void;
   onDeleteAll: () => void;
+  onLoadMore: () => void;
   onLoad: (sessionId: string) => void;
 }) {
   return (
@@ -67,15 +73,27 @@ export function ChatSessionList({
           );
         })}
       </div>
+      {hasMoreSessions && (
+        <div className="history-delete-all-wrap">
+          <button
+            className="history-delete-all"
+            type="button"
+            onClick={onLoadMore}
+            disabled={historyLoading || isSending || deletingSessionId !== null || deletingAllSessions}
+          >
+            <span>이전 대화 더 보기</span>
+          </button>
+        </div>
+      )}
       {deleteStatus && (
         <p className="auth-note" role="status" aria-live="polite">
           {deleteStatus}
         </p>
       )}
-      {chatSessions.length > 0 && (
+      {deletableSessionCount > 0 && (
         <div className="history-delete-all-wrap">
           <button
-            aria-label="전체 삭제"
+            aria-label={activeSessionId ? "현재 대화 제외 모두 삭제" : "전체 삭제"}
             className="history-delete-all"
             type="button"
             onClick={onDeleteAll}
@@ -84,7 +102,13 @@ export function ChatSessionList({
             <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none">
               <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
             </svg>
-            <span>{deletingAllSessions ? "정리 중" : "지난 대화 모두 삭제"}</span>
+            <span>{
+              deletingAllSessions
+                ? "정리 중"
+                : activeSessionId
+                  ? "현재 대화 제외 모두 삭제"
+                  : "지난 대화 모두 삭제"
+            }</span>
           </button>
         </div>
       )}

@@ -1,10 +1,14 @@
+import { useEffect, useState } from "react";
 import type { FormEvent, KeyboardEvent, ReactNode, RefObject } from "react";
 
 import type { ConversationMessage } from "../hooks/useChatStream";
 import { ChatIcon } from "./ChatIcon";
 
+const CHAT_MESSAGE_PAGE_SIZE = 40;
+
 export function ChatMessageList({
   conversationEndRef,
+  conversationKey,
   deletingSessionId,
   isSending,
   latestMessageRef,
@@ -15,6 +19,7 @@ export function ChatMessageList({
   sendingStage,
 }: {
   conversationEndRef: RefObject<HTMLDivElement | null>;
+  conversationKey: string | null;
   deletingSessionId: string | null;
   isSending: boolean;
   latestMessageRef: RefObject<HTMLDivElement | null>;
@@ -24,9 +29,27 @@ export function ChatMessageList({
   renderStreamingAnswer: () => ReactNode;
   sendingStage: string;
 }) {
+  const [visibleMessageCount, setVisibleMessageCount] = useState(CHAT_MESSAGE_PAGE_SIZE);
+  const visibleMessages = messages.slice(-visibleMessageCount);
+
+  useEffect(() => {
+    setVisibleMessageCount(CHAT_MESSAGE_PAGE_SIZE);
+  }, [conversationKey]);
+
   return (
     <div className="message-list">
-      {messages.map((message) => (
+      {visibleMessageCount < messages.length && (
+        <button
+          className="retry-button"
+          type="button"
+          onClick={() => setVisibleMessageCount((current) => (
+            current + CHAT_MESSAGE_PAGE_SIZE
+          ))}
+        >
+          이전 메시지 더 보기
+        </button>
+      )}
+      {visibleMessages.map((message) => (
         <div
           className={`message-row ${message.role}`}
           key={message.id}
