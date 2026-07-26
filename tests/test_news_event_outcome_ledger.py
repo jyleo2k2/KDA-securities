@@ -7,7 +7,10 @@ import pytest
 from backend.app.engine.models import AccountType, SourceChip
 from backend.app.engine.news_event_outcomes import HistoricalNewsEvent
 from backend.app.portfolio_universe_repository import PortfolioUniverseRepository
-from scripts.audit_news_event_outcome_coverage import summarize_outcome_coverage
+from scripts.audit_news_event_outcome_coverage import (
+    summarize_ledger_coverages,
+    summarize_outcome_coverage,
+)
 from scripts.build_news_event_outcome_ledger import (
     HistoricalNewsEventLedger,
     build_outcome_evaluation,
@@ -96,6 +99,68 @@ def test_outcome_coverage_makes_missing_history_boundaries_explicit() -> None:
     assert coverage["available_horizon_rows"] == {"1": 1, "3": 0, "6": 0}
     assert coverage["missing_horizon_rows"] == {"1": 0, "3": 1, "6": 1}
     assert coverage["gap_reasons"] == {"outcome_exceeds_history_coverage": 2}
+
+
+def test_ledger_coverage_keeps_each_source_separate_and_totals_explicit() -> None:
+    universe = PortfolioUniverseRepository(
+        account_type=AccountType.PENSION_SAVINGS,
+        products=[{"isu_code": "111111", "isu_name": "검증 ETF"}],
+        histories={
+            "111111": {
+                date(2025, 1, 2): Decimal("100"),
+                date(2025, 2, 3): Decimal("110"),
+                date(2025, 4, 1): Decimal("120"),
+                date(2025, 7, 1): Decimal("130"),
+            }
+        },
+        history_sources={"111111": "kis_adjusted_close_plus_kind_cash_distribution"},
+        as_of=date(2025, 7, 1),
+        source_path=None,  # type: ignore[arg-type]
+    )
+    complete_event = HistoricalNewsEvent(
+        event_id="fed-2025-01-01",
+        occurred_on=date(2025, 1, 1),
+        theme_id="bank_finance",
+        peer_isu_codes=("111111",),
+        source=_source(),
+    )
+    incomplete_event = HistoricalNewsEvent(
+        event_id="bok-2025-05-01",
+        occurred_on=date(2025, 5, 1),
+        theme_id="bank_finance",
+        peer_isu_codes=("111111",),
+        source=_source(),
+    )
+
+    coverage = summarize_ledger_coverages(
+        {
+            "fomc": build_outcome_evaluation(
+                events=(complete_event,), universe=universe
+            ),
+            "bok": build_outcome_evaluation(
+                events=(incomplete_event,), universe=universe
+            ),
+        }
+    )
+
+    assert coverage["ledgers"]["fomc"]["available_horizon_rows"] == {
+        "1": 1,
+        "3": 1,
+        "6": 1,
+    }
+    assert coverage["ledgers"]["bok"]["missing_horizon_rows"] == {
+        "1": 1,
+        "3": 1,
+        "6": 1,
+    }
+    assert coverage["totals"] == {
+        "available_horizon_rows": {"1": 1, "3": 1, "6": 1},
+        "fully_covered_event_etf_pairs": 1,
+        "gap_reasons": {"start_observation_unavailable": 3},
+        "missing_horizon_rows": {"1": 1, "3": 1, "6": 1},
+        "reviewed_event_count": 2,
+        "reviewed_event_etf_pairs": 2,
+    }
 
 
 def test_fomc_policy_ledger_uses_official_sources_and_explicit_bank_peers() -> None:
