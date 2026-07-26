@@ -17,6 +17,7 @@ const HOME_GUIDE_VERSION = "v3";
 const STRATEGY_DETAIL_GUIDE_VERSION = "v2";
 const CHAT_GUIDE_VERSION = "v5";
 const PENSION_PLANNER_GUIDE_VERSION = "v2";
+const USER_PICK_GUIDE_VERSION = "v1";
 const COMPLETE_KEY =
   `pension-first-use-guide:${HOME_GUIDE_VERSION}:complete`;
 const STRATEGY_DETAIL_COMPLETE_KEY =
@@ -25,15 +26,21 @@ const CHAT_COMPLETE_KEY =
   `pension-first-use-guide:${CHAT_GUIDE_VERSION}:chat:complete`;
 const PENSION_PLANNER_COMPLETE_KEY =
   `pension-first-use-guide:${PENSION_PLANNER_GUIDE_VERSION}:pension-planner:complete`;
+const USER_PICK_COMPLETE_KEY =
+  `pension-first-use-guide:${USER_PICK_GUIDE_VERSION}:user-pick:complete`;
 const PREVIEW_QUERY = "tour-preview";
 const TARGET_GUIDE_EMAIL = "jeongsu33@kda-demo.invalid";
 
 interface GuideStep {
   accent?: string;
+  activateClosestSelector?: string;
+  activateSelector?: string;
+  activateText?: string;
   accents?: string[];
   bodyAccents?: string[];
   closestSelector?: string;
-  selector: string;
+  selector?: string;
+  targetText?: string;
   title: string;
   body: string;
   cta: string;
@@ -45,7 +52,7 @@ interface GuideConfig {
   completeKey: string;
   finalTargetSelector?: string;
   frameSelector?: string;
-  id: "chat" | "home" | "strategy-detail" | "pension-planner";
+  id: "chat" | "home" | "strategy-detail" | "pension-planner" | "user-pick";
   introBody: string;
   introBodyAccents?: string[];
   introTitle: string;
@@ -226,6 +233,57 @@ const PENSION_PLANNER_STEPS: GuideStep[] = [
   },
 ];
 
+const USER_PICK_STEPS: GuideStep[] = [
+  {
+    closestSelector: "[style*=\"border-radius:20px\"]",
+    targetText: "현재 포트폴리오",
+    title: "내 포트폴리오를 기준으로 비교해요",
+    accents: ["내 포트폴리오", "비교"],
+    body: "현재 자산 구성 비율과 투자전략을 먼저 확인하면 다른 이용자와 무엇이 다른지 더 쉽게 볼 수 있어요.",
+    bodyAccents: ["자산 구성 비율", "투자전략", "다른 이용자"],
+    cta: "추천 포트폴리오 보기",
+  },
+  {
+    closestSelector: "[style*=\"cursor:pointer\"]",
+    targetText: "꾸준한거북이",
+    title: "추천 포트폴리오를 하나씩 둘러보세요",
+    accents: ["추천 포트폴리오"],
+    body: "수익률뿐 아니라 운용기간, 직업군, 자산 구성과 투자전략을 함께 살펴보고 비교할 이용자를 선택하세요.",
+    bodyAccents: ["운용기간", "직업군", "자산 구성", "투자전략"],
+    cta: "내 비중과 비교하기",
+  },
+  {
+    activateClosestSelector: "[style*=\"cursor:pointer\"]",
+    activateText: "꾸준한거북이",
+    targetText: "내 포트폴리오와 비교",
+    title: "내 비중과 달라지는 부분을 비교해요",
+    accents: ["내 비중", "비교"],
+    body: "국내주식·해외주식·채권·현금성 자산별로 현재 비중과 이 이용자의 비중, 따라갈 때의 변화를 확인할 수 있어요.",
+    bodyAccents: ["현재 비중", "이 이용자의 비중", "따라갈 때의 변화"],
+    cta: "운용 근거 보기",
+  },
+  {
+    activateClosestSelector: "[style*=\"cursor:pointer\"]",
+    activateText: "상세히 보기",
+    closestSelector: "[style*=\"border-radius:20px\"]",
+    targetText: "왜 이렇게 나눴냐면요",
+    title: "운용 근거를 읽고 판단해요",
+    accents: ["운용 근거"],
+    body: "왜 이 비중으로 나눴는지, 전략을 고른 이유와 언제 다시 맞추는지를 읽고 내 상황에 맞는지 판단하세요.",
+    bodyAccents: ["전략을 고른 이유", "언제 다시 맞추는지", "내 상황"],
+    cta: "따라하기 후기 보기",
+  },
+  {
+    closestSelector: "[style*=\"border-radius:18px\"]",
+    targetText: "장기러버",
+    title: "따라한 이용자의 후기도 확인해요",
+    accents: ["이용자의 후기"],
+    body: "실제로 따라한 기간과 경험을 읽고 좋아요·댓글로 다른 이용자의 의견까지 확인할 수 있어요.",
+    bodyAccents: ["따라한 기간과 경험", "좋아요·댓글"],
+    cta: "이용자 Pick 안내 마치기",
+  },
+];
+
 const GUIDES: GuideConfig[] = [
   {
     backgroundSelector: ".mhs-header, .mhs-body, .mhs-tab-toggle",
@@ -282,6 +340,21 @@ const GUIDES: GuideConfig[] = [
     shellSelector: "#pension-phone",
     steps: PENSION_PLANNER_STEPS,
   },
+  {
+    backgroundSelector: ".scrolly",
+    completeKey: USER_PICK_COMPLETE_KEY,
+    frameSelector: "iframe[title=\"투자 벤치마킹하기\"]",
+    id: "user-pick",
+    introBody: "내 포트폴리오와 다른 이용자의 자산 구성·운용 근거·후기를 비교하는 방법을 화면 끝까지 알려드릴게요.",
+    introBodyAccents: ["내 포트폴리오", "자산 구성", "운용 근거", "후기"],
+    introTitle: "이용자 Pick을 함께 살펴볼까요?",
+    introTitleAccents: ["이용자 Pick"],
+    portalSelector: ".benchmark-html-frame-wrap",
+    route: "/user-pick-benchmark",
+    scrollSelector: ".scrolly",
+    shellSelector: "#benchmark-phone",
+    steps: USER_PICK_STEPS,
+  },
 ];
 
 const COMPLETE_KEYS = GUIDES.map((guide) => guide.completeKey);
@@ -302,13 +375,66 @@ function contentDocumentForGuide(guide: GuideConfig): Document | null {
   )?.contentDocument ?? null;
 }
 
+function normalizedText(value: string | null): string {
+  return value?.replace(/\s+/g, " ").trim() ?? "";
+}
+
+function elementByText(
+  contentDocument: Document,
+  text: string,
+): HTMLElement | null {
+  const expected = normalizedText(text);
+  const matches = Array.from(
+    contentDocument.querySelectorAll<HTMLElement>("*"),
+  ).filter((element) => normalizedText(element.textContent) === expected);
+  return matches.find((element) => (
+    !Array.from(element.children).some(
+      (child) => normalizedText(child.textContent) === expected,
+    )
+  )) ?? matches[0] ?? null;
+}
+
+function guideElement(
+  contentDocument: Document,
+  selector?: string,
+  text?: string,
+): HTMLElement | null {
+  if (selector) {
+    return contentDocument.querySelector<HTMLElement>(selector);
+  }
+  return text ? elementByText(contentDocument, text) : null;
+}
+
 function targetForStep(
   contentDocument: Document,
   step: GuideStep,
 ): HTMLElement | null {
-  const target = contentDocument.querySelector<HTMLElement>(step.selector);
+  const target = guideElement(
+    contentDocument,
+    step.selector,
+    step.targetText,
+  );
   if (!target || !step.closestSelector) return target;
   return target.closest<HTMLElement>(step.closestSelector);
+}
+
+function activateStep(
+  contentDocument: Document,
+  step: GuideStep,
+): void {
+  const activationTarget = guideElement(
+    contentDocument,
+    step.activateSelector,
+    step.activateText,
+  );
+  const clickableTarget = activationTarget && step.activateClosestSelector
+    ? activationTarget.closest<HTMLElement>(step.activateClosestSelector)
+    : activationTarget;
+  clickableTarget?.dispatchEvent(new MouseEvent("click", {
+    bubbles: true,
+    cancelable: true,
+    view: contentDocument.defaultView,
+  }));
 }
 
 function elementRect(element: Element): Rect {
@@ -365,6 +491,7 @@ export function FirstUseGuide(): JSX.Element | null {
   const [targetRect, setTargetRect] = useState<Rect | null>(null);
   const [eligibleUserId, setEligibleUserId] = useState<string | null>(null);
   const activeGuideId = useRef<GuideConfig["id"] | null>(null);
+  const activatedStepKey = useRef<string | null>(null);
   const dismissedPreviewGuideId = useRef<GuideConfig["id"] | null>(null);
 
   useEffect(() => {
@@ -425,6 +552,7 @@ export function FirstUseGuide(): JSX.Element | null {
     if (activeGuideId.current !== nextGuide?.id) {
       activeGuideId.current = nextGuide?.id ?? null;
       dismissedPreviewGuideId.current = null;
+      activatedStepKey.current = null;
       setStepIndex(0);
       setTargetRect(null);
       setMode("closed");
@@ -490,12 +618,24 @@ export function FirstUseGuide(): JSX.Element | null {
         guide.activateSelector,
       )?.click();
     }
-    const target = mode === "steps"
-      ? targetForStep(contentDocument, guide.steps[stepIndex])
-      : null;
-    target?.scrollIntoView({ block: "center", behavior: "smooth" });
-    const frame = window.requestAnimationFrame(measure);
-    const timer = window.setTimeout(measure, 260);
+    const currentStepKey = `${guide.id}:${stepIndex}`;
+    if (
+      mode === "steps"
+      && activatedStepKey.current !== currentStepKey
+    ) {
+      activatedStepKey.current = currentStepKey;
+      activateStep(contentDocument, guide.steps[stepIndex]);
+    }
+    const alignTarget = () => {
+      const target = mode === "steps"
+        ? targetForStep(contentDocument, guide.steps[stepIndex])
+        : null;
+      target?.scrollIntoView({ block: "center", behavior: "smooth" });
+      measure();
+    };
+    alignTarget();
+    const frame = window.requestAnimationFrame(alignTarget);
+    const timer = window.setTimeout(alignTarget, 260);
     const scrollArea = phone.querySelector(guide.scrollSelector);
     window.addEventListener("resize", measure);
     scrollArea?.addEventListener("scroll", measure, { passive: true });
@@ -688,4 +828,8 @@ export function chatGuideStorageKey(userId: string): string {
 
 export function pensionPlannerGuideStorageKey(userId: string): string {
   return guideStorageKey(PENSION_PLANNER_COMPLETE_KEY, userId);
+}
+
+export function userPickGuideStorageKey(userId: string): string {
+  return guideStorageKey(USER_PICK_COMPLETE_KEY, userId);
 }

@@ -33,6 +33,7 @@ import {
   FirstUseGuide,
   pensionPlannerGuideStorageKey,
   strategyDetailGuideStorageKey,
+  userPickGuideStorageKey,
 } from "./FirstUseGuide";
 
 const TARGET_USER_ID = "81294832-0880-45c9-8b9e-6ae4de58ac42";
@@ -244,6 +245,106 @@ function addPensionPlannerFixture(onTaxTab: () => void): void {
   irpCard.scrollIntoView = vi.fn();
   isaCard.scrollIntoView = vi.fn();
   taxTab.addEventListener("click", onTaxTab);
+}
+
+function addUserPickFixture(
+  onPortfolioOpen: () => void,
+  onDetailOpen: () => void,
+): void {
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    `
+      <section class="benchmark-html-frame-wrap">
+        <iframe title="투자 벤치마킹하기"></iframe>
+      </section>
+    `,
+  );
+  const frame = document.querySelector("iframe") as HTMLIFrameElement;
+  const frameDocument = frame.contentDocument;
+  if (!frameDocument) throw new Error("iframe document is unavailable");
+  frameDocument.body.innerHTML = `<div id="benchmark-phone"></div>`;
+  const phone = frameDocument.querySelector("#benchmark-phone") as HTMLElement;
+  phone.getBoundingClientRect = () => rect(0, 0, 390, 844);
+
+  const renderDetail = () => {
+    phone.innerHTML = `
+      <div class="scrolly">
+        <section style="background:#fff;border-radius:20px">
+          <div>이 회원의 운용 근거</div>
+          <div>왜 이렇게 나눴냐면요</div>
+          <div>이 전략을 고른 이유</div>
+          <div>언제 다시 맞추냐면요</div>
+        </section>
+        <section style="background:#fff;border-radius:18px">
+          <div>장기러버</div>
+          <div>8개월째 따라하는 중</div>
+        </section>
+      </div>
+    `;
+    const rationale = frameDocument.querySelector(
+      "section[style*=\"border-radius:20px\"]",
+    ) as HTMLElement;
+    const review = frameDocument.querySelector(
+      "section[style*=\"border-radius:18px\"]",
+    ) as HTMLElement;
+    rationale.getBoundingClientRect = () => rect(140, 16, 358, 410);
+    review.getBoundingClientRect = () => rect(590, 16, 358, 180);
+    rationale.scrollIntoView = vi.fn();
+    review.scrollIntoView = vi.fn();
+  };
+
+  const renderComparison = () => {
+    phone.innerHTML = `
+      <div class="scrolly">
+        <div data-comparison>내 포트폴리오와 <span>비교</span></div>
+        <div
+          data-open-detail
+          style="background:#22A94D;border-radius:14px;cursor:pointer"
+        >
+          상세히 보기
+        </div>
+      </div>
+    `;
+    const comparison = frameDocument.querySelector(
+      "[data-comparison]",
+    ) as HTMLElement;
+    const detailButton = frameDocument.querySelector(
+      "[data-open-detail]",
+    ) as HTMLElement;
+    comparison.getBoundingClientRect = () => rect(470, 22, 346, 250);
+    detailButton.getBoundingClientRect = () => rect(760, 22, 346, 52);
+    comparison.scrollIntoView = vi.fn();
+    detailButton.scrollIntoView = vi.fn();
+    detailButton.addEventListener("click", () => {
+      onDetailOpen();
+      renderDetail();
+    });
+  };
+
+  phone.innerHTML = `
+    <div class="scrolly">
+      <section style="background:#fff;border-radius:20px">
+        <span>현재 포트폴리오</span>
+      </section>
+      <section style="background:#fff;border-radius:20px;cursor:pointer">
+        <span>꾸준한거북이</span>
+      </section>
+    </div>
+  `;
+  const currentPortfolio = frameDocument.querySelector(
+    "section:not([style*=\"cursor:pointer\"])",
+  ) as HTMLElement;
+  const recommendedPortfolio = frameDocument.querySelector(
+    "section[style*=\"cursor:pointer\"]",
+  ) as HTMLElement;
+  currentPortfolio.getBoundingClientRect = () => rect(130, 16, 358, 352);
+  recommendedPortfolio.getBoundingClientRect = () => rect(520, 16, 358, 280);
+  currentPortfolio.scrollIntoView = vi.fn();
+  recommendedPortfolio.scrollIntoView = vi.fn();
+  recommendedPortfolio.addEventListener("click", () => {
+    onPortfolioOpen();
+    renderComparison();
+  });
 }
 
 describe("FirstUseGuide", () => {
@@ -648,6 +749,79 @@ describe("FirstUseGuide", () => {
     expect(
       window.sessionStorage.getItem(firstUseGuideStorageKey(TARGET_USER_ID)),
     ).toBeNull();
+  });
+
+  it("continues from User Pick into comparison, rationale, and reviews", async () => {
+    window.history.replaceState(null, "", "/#/user-pick-benchmark");
+    const onPortfolioOpen = vi.fn();
+    const onDetailOpen = vi.fn();
+    addUserPickFixture(onPortfolioOpen, onDetailOpen);
+    render(<FirstUseGuide />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "이용자 Pick을 함께 살펴볼까요?",
+      }),
+    ).toBeInTheDocument();
+    expect(document.querySelector(".fug-root-user-pick")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "1분 안내 보기" }));
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "내 포트폴리오를 기준으로 비교해요",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      Array.from(document.querySelectorAll(".fug-title-accent"))
+        .map((element) => element.textContent),
+    ).toEqual(expect.arrayContaining(["내 포트폴리오", "비교"]));
+
+    fireEvent.click(screen.getByRole("button", {
+      name: "추천 포트폴리오 보기",
+    }));
+    expect(
+      await screen.findByRole("heading", {
+        name: "추천 포트폴리오를 하나씩 둘러보세요",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", {
+      name: "내 비중과 비교하기",
+    }));
+    expect(onPortfolioOpen).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByRole("heading", {
+        name: "내 비중과 달라지는 부분을 비교해요",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", {
+      name: "운용 근거 보기",
+    }));
+    expect(onDetailOpen).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByRole("heading", {
+        name: "운용 근거를 읽고 판단해요",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", {
+      name: "따라하기 후기 보기",
+    }));
+    expect(
+      await screen.findByRole("heading", {
+        name: "따라한 이용자의 후기도 확인해요",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", {
+      name: "이용자 Pick 안내 마치기",
+    }));
+    expect(
+      window.sessionStorage.getItem(
+        userPickGuideStorageKey(TARGET_USER_ID),
+      ),
+    ).toBe("true");
   });
 
   it("does not open the chatbot guide for another authenticated user", async () => {
