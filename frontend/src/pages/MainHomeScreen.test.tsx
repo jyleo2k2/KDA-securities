@@ -271,8 +271,18 @@ describe("MainHomeScreen", () => {
     renderHome();
 
     expect(screen.getByText("전략별 계획수익률")).toBeInTheDocument();
-    expect(screen.getByText("회사 특징 고르기")).toBeInTheDocument();
-    expect(screen.getByText(/좋은 회사·싼 가격·꾸준한 흐름/)).toBeInTheDocument();
+    expect(screen.getByText("시장 베타 전략")).toBeInTheDocument();
+    expect(screen.getByText("팩터 전략")).toBeInTheDocument();
+    expect(screen.getByText("테마 전략")).toBeInTheDocument();
+    expect(screen.getByText("탑다운 전략")).toBeInTheDocument();
+    expect(screen.getByText("바텀업 전략")).toBeInTheDocument();
+    expect(screen.getByText("바벨 전략")).toBeInTheDocument();
+    expect(screen.getByText("변동성 관리 전략")).toBeInTheDocument();
+    expect(screen.getByText("롱숏·시장중립 전략")).toBeInTheDocument();
+    expect(screen.getByText("이벤트드리븐 전략")).toBeInTheDocument();
+    expect(screen.getByText("추세추종·글로벌 매크로 전략")).toBeInTheDocument();
+    expect(screen.getByText(/재무 건전성·가격 수준·추세/)).toBeInTheDocument();
+    expect(screen.queryByText("시장 전체 따라가기")).not.toBeInTheDocument();
     expect(await screen.findByText("6.75%")).toBeInTheDocument();
     expect(screen.getByText("4.75%")).toBeInTheDocument();
     expect(screen.getByText("4.63%")).toBeInTheDocument();
