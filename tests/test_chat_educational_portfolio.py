@@ -399,6 +399,37 @@ def test_custom_portfolio_card_uses_completed_survey_age_and_profile() -> None:
     )
 
 
+def test_pension_strategy_question_uses_same_account_groups_for_all_saved_profiles() -> None:
+    service = _service()
+
+    for saved_account_type in AccountType:
+        response = service.ask(
+            ChatRequest(
+                message="내 상황에 맞는 연금저축전략을 알려줘",
+                survey_profile=CompletedSurveyProfile(
+                    account_type=saved_account_type,
+                    account_types=[saved_account_type],
+                    current_age=35,
+                    retirement_start_age=60,
+                    risk_profile=EducationalRiskProfile.RISK_NEUTRAL,
+                    loss_tolerance_percent=Decimal("20"),
+                ),
+            )
+        )
+
+        assert response.data_mode == "engine_multi_account_planning"
+        assert [
+            evaluation.evaluated_input.account_type
+            for evaluation in response.educational_portfolio_evaluations
+        ] == [AccountType.DC, AccountType.PENSION_SAVINGS]
+        assert [item.title for item in response.visualizations] == [
+            "IRP & DC형 목표 자산배분",
+            "IRP & DC형 스트레스 점검",
+            "연금저축펀드 목표 자산배분",
+            "연금저축펀드 스트레스 점검",
+        ]
+
+
 def test_custom_portfolio_card_requests_survey_when_profile_is_missing() -> None:
     response = _service().ask(
         ChatRequest(message="내 상황에 맞는 연금저축전략을 알려줘.")

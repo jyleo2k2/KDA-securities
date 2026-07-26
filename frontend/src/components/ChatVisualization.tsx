@@ -31,12 +31,25 @@ export function ChatVisualization({ visualization, sources }: {
   visualization: ChatVisualizationData;
   sources: SourceEvidence[];
 }) {
+  const isStrategyVisualization = (
+    visualization.kind === "sleeve_allocation"
+    || visualization.kind === "stress_scenarios"
+  );
+  const displayTitle = (
+    isStrategyVisualization && visualization.title.startsWith("DC형 ")
+  )
+    ? `IRP & ${visualization.title}`
+    : visualization.title;
+  const descriptionStyle = isStrategyVisualization
+    ? { marginTop: 0 }
+    : undefined;
+
   if (visualization.kind === "tax_summary") {
     return (
-      <section className="allocation-chart tax-visualization" aria-label={visualization.title}>
-        <h3>{visualization.title}</h3>
+      <section className="allocation-chart tax-visualization" aria-label={displayTitle}>
+        <h3>{displayTitle}</h3>
         {visualization.description && (
-          <p className="visualization-description">{visualization.description}</p>
+          <p className="visualization-description" style={descriptionStyle}>{visualization.description}</p>
         )}
         <div
           className="tax-summary-grid"
@@ -98,9 +111,9 @@ export function ChatVisualization({ visualization, sources }: {
       ? `${numericText(current.value, current.unit)} / 기준 ${numericText(limit.value, limit.unit)}`
       : `최대 ${numericText(limit?.value ?? 0, limit?.unit ?? "%")}`;
     return (
-      <section className="allocation-chart" aria-label={visualization.title}>
-        <h3>{visualization.title}</h3>
-        <p className="visualization-description">{visualization.description}</p>
+      <section className="allocation-chart" aria-label={displayTitle}>
+        <h3>{displayTitle}</h3>
+        <p className="visualization-description" style={descriptionStyle}>{visualization.description}</p>
         <div className="allocation-row">
           <div><span>위험자산</span><strong>{summary}</strong></div>
           <div className="allocation-track" role="img" aria-label={`위험자산 ${summary}`}>
@@ -113,9 +126,9 @@ export function ChatVisualization({ visualization, sources }: {
 
   if (visualization.kind === "stress_scenarios" || visualization.kind === "disclosure_comparison") {
     return (
-      <section className="allocation-chart" aria-label={visualization.title}>
-        <h3>{visualization.title}</h3>
-        <p className="visualization-description">{visualization.description}</p>
+      <section className="allocation-chart" aria-label={displayTitle}>
+        <h3>{displayTitle}</h3>
+        <p className="visualization-description" style={descriptionStyle}>{visualization.description}</p>
         <div className="tax-summary-grid">
           {visualization.items.map((item) => (
             <div key={item.label} style={{ minWidth: 0, padding: 12 }}>
@@ -141,9 +154,9 @@ export function ChatVisualization({ visualization, sources }: {
 
   if (visualization.series?.length) {
     return (
-      <section className="allocation-chart" aria-label={visualization.title}>
-        <h3>{visualization.title}</h3>
-        <p className="visualization-description">{visualization.description}</p>
+      <section className="allocation-chart" aria-label={displayTitle}>
+        <h3>{displayTitle}</h3>
+        <p className="visualization-description" style={descriptionStyle}>{visualization.description}</p>
         <div className="projection-series">
           {visualization.series.map((series) => (
             <div className="projection-series-row" key={series.label}>
@@ -181,9 +194,9 @@ export function ChatVisualization({ visualization, sources }: {
   }, [selectedIndex]);
 
   return (
-    <section className="allocation-chart" aria-label={visualization.title}>
-      <h3>{visualization.title}</h3>
-      <p className="visualization-description">{visualization.description}</p>
+    <section className="allocation-chart" aria-label={displayTitle}>
+      <h3>{displayTitle}</h3>
+      <p className="visualization-description" style={descriptionStyle}>{visualization.description}</p>
       <div className={`allocation-pie-layout${isSleeveAllocation ? " sleeve-allocation-layout" : ""}`}>
         <svg className={`allocation-donut${isSleeveAllocation ? " sleeve-allocation-donut" : ""}`} viewBox="0 0 100 100" aria-label="자산군 비중을 탭해 상세 보기">
           {donutArcPaths(
