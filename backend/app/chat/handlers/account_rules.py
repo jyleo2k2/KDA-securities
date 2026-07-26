@@ -54,19 +54,32 @@ _PENSION_TAX_RULE_BRIEF_QUESTION = re.compile(
     r"연금\s*계좌.{0,16}(?:세액\s*공제\s*(?:혜택|제도)|납입\s*규칙|규칙)",
     re.I,
 )
+# 계좌를 지목하지 않고 연금 자체의 뜻을 묻는 말. "연금저축이 뭐야"처럼 특정
+# 계좌를 물으면 연금 바로 뒤가 이어지는 낱말이라 여기에 걸리지 않는다.
+_PENSION_DEFINITION_QUESTION = re.compile(
+    r"연금\s*(?:이란|이라는|은|는|이|을|를)?\s*"
+    r"(?:뭐|뭔지|무엇|어떤\s*(?:거|것|제도))",
+    re.I,
+)
 _ACCOUNT_BRIEF_ORDER = (
     AccountType.PENSION_SAVINGS,
     AccountType.IRP,
     AccountType.DC,
 )
+# "연금이 뭐야"는 제도 정의를 묻는 말이다. 규칙을 나열하기 전에 무엇을 위한
+# 돈인지 한 번에 그려주고, 우리가 다루는 계좌 세 가지로 자연스럽게 잇는다.
+_PENSION_DEFINITION = (
+    "연금은 일해서 버는 동안 소득의 일부를 미리 떼어 두었다가, 더 이상 "
+    "일하지 않는 나이가 됐을 때 나눠 받는 돈이에요. 지금의 내가 나중의 "
+    "나에게 월급을 보내주는 셈이죠.\n\n"
+    "여기서는 그중 스스로 넣고 굴리는 연금저축·IRP·DC형 세 가지를 다뤄요."
+)
 _ACCOUNT_BRIEF_COPY = {
     AccountType.PENSION_SAVINGS: (
         "연금저축펀드: 절세하면서 비교적 자유롭게 투자하는 개인 연금",
         (
-            "펀드와 국내 상장 ETF 등을 활용할 수 있고, 퇴직연금처럼 "
-            "위험자산 비중을 70%로 제한하지 않습니다. 따라서 장기 투자기간이 "
-            "긴 20~30대가 주식형 ETF 중심으로 적극 운용하기에 상대적으로 "
-            "유리합니다."
+            "펀드와 국내 상장 ETF를 담을 수 있고, 퇴직연금과 달리 위험자산 "
+            "70% 제한이 없어요."
         ),
     ),
     AccountType.IRP: (
@@ -75,11 +88,8 @@ _ACCOUNT_BRIEF_COPY = {
             "관리하는 개인 퇴직연금"
         ),
         (
-            "IRP의 장점은 연금저축만으로는 채우지 못하는 세액공제 한도를 "
-            "600만 원에서 900만 원까지 확대할 수 있다는 점입니다. IRP에는 "
-            "예금과 같은 원리금보장상품도 편입할 수 있어 안정적인 운용이 "
-            "가능하고, 이직하거나 퇴직할 때 받은 여러 직장의 퇴직금을 한 "
-            "계좌에 모아 관리할 수 있습니다."
+            "세액공제 한도를 600만 원에서 900만 원까지 넓혀 주고, 여러 직장의 "
+            "퇴직금을 한 계좌에 모을 수 있어요."
         ),
     ),
     AccountType.DC: (
@@ -88,16 +98,8 @@ _ACCOUNT_BRIEF_COPY = {
             "투자하는 퇴직연금"
         ),
         (
-            "근로자는 회사가 납입한 적립금을 직접 운용하고, 퇴직할 때 회사가 "
-            "납입한 원금과 운용손익을 합쳐 퇴직급여로 받습니다. 따라서 운용을 "
-            "잘하면 퇴직급여가 증가하지만, 반대로 손실이 나면 받을 금액도 "
-            "줄어들 수 있습니다."
-        ),
-        (
-            "근로자가 DC계좌에 자기 돈을 추가로 넣을 수도 있으며, 이 "
-            "추가납입액은 연금저축·IRP와 합산해 연 900만 원까지 세액공제 "
-            "대상이 됩니다. 그러나 회사가 의무적으로 낸 부담금은 본인의 "
-            "세액공제 대상이 아닙니다."
+            "회사가 넣어준 돈을 내가 직접 굴리고, 그 결과가 퇴직급여에 그대로 "
+            "반영돼요."
         ),
     ),
 }
@@ -406,7 +408,9 @@ def is_eligibility_question(message: str) -> bool:
 
 
 def _requests_account_brief(request: ChatRequest, plan: QueryPlan) -> bool:
-    if not plan.account_types:
+    # 계좌를 지목하지 않은 물음은 원래 전용 응답(전체 정리·수령 요건 등)으로
+    # 간다. 제도 자체의 뜻을 묻는 경우만 예외로 짧은 소개를 쓴다.
+    if not plan.account_types and not _asks_pension_definition(request.message, plan):
         return False
     if _ACCOUNT_BRIEF_NARROW_TOPIC.search(request.message):
         return False
@@ -417,12 +421,27 @@ def _requests_account_brief(request: ChatRequest, plan: QueryPlan) -> bool:
     )
 
 
-def _account_brief_response(account_types: tuple[AccountType, ...]) -> ChatResponse:
+def _asks_pension_definition(message: str, plan: QueryPlan) -> bool:
+    """계좌를 지목하지 않고 연금 자체의 뜻을 물었는지 판단한다."""
+
+    if plan.account_types:
+        return False
+    return _PENSION_DEFINITION_QUESTION.search(message) is not None
+
+
+def _account_brief_response(
+    account_types: tuple[AccountType, ...],
+    *,
+    define_pension: bool = False,
+) -> ChatResponse:
     selected = tuple(
         account_type
         for account_type in _ACCOUNT_BRIEF_ORDER
         if account_type in account_types
     )
+    # "연금이 뭐야"처럼 계좌를 지목하지 않은 물음은 세 계좌를 모두 보여준다.
+    if not selected:
+        selected = _ACCOUNT_BRIEF_ORDER
     account_cards: list[AnswerBlock] = []
     account_titles: list[str] = []
     for account_type in selected:
@@ -451,6 +470,10 @@ def _account_brief_response(account_types: tuple[AccountType, ...]) -> ChatRespo
         answer = f"{'·'.join(account_titles)}의 차이를 정리했어요."
         section_title = f"{'·'.join(account_titles)} 차이"
         section_content = "두 계좌의 역할과 특징을 비교해 보세요."
+
+    # 정의를 물었으면 규칙보다 "연금이 무엇인지"를 먼저 말한다.
+    if define_pension:
+        answer = _PENSION_DEFINITION
 
     evidence_id = "rule:pension_overview:law"
     section = AnswerSection(
@@ -604,7 +627,10 @@ def handle_account_rule(
     if _PENSION_TAX_RULE_BRIEF_QUESTION.search(request.message):
         return _pension_tax_rule_brief_response()
     if _requests_account_brief(request, plan):
-        return _account_brief_response(plan.account_types)
+        return _account_brief_response(
+            plan.account_types,
+            define_pension=_asks_pension_definition(request.message, plan),
+        )
     if plan.account_rule_topic == AccountRuleTopic.PENSION_ACCOUNT_OVERVIEW:
         return build_pension_account_overview_response()
     if plan.account_rule_topic is not None:

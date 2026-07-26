@@ -89,6 +89,14 @@ REGISTER_RULE = (
     "말투를 지키되 과장된 감탄이나 근거 없는 안심은 넣지 않는다.\n\n"
 )
 
+# 내레이션 상한은 프롬프트·구조화 출력 스키마·후검증 세 곳이 같은 값을 쓴다.
+# 한 곳만 바꾸면 정상 내레이션이 길이 검증에 걸려 통째로 폴백된다.
+#
+# 상한 자체는 안전장치이고, 실제 분량은 프롬프트의 문장 수 지시가 정한다.
+# 세액공제와 중도해지를 함께 묻는 결정론 원문이 342자까지 나오므로 상한을
+# 그보다 낮추면 정상 답변이 폴백된다(실측: 280자로 낮췄을 때 재현).
+NARRATION_MAX_CHARS = 350
+
 SYSTEM_PROMPT = (
     REGISTER_RULE
     +
@@ -104,8 +112,11 @@ SYSTEM_PROMPT = (
     "때만 한 문장 안에서 "
     "짧게 안내한다. "
     "과도하게 친근하거나 가벼운 말투, 근거 없는 안심·격려는 쓰지 않는다. "
-    "본문은 두세 문장, 350자 이내로 쓰고 모든 문장은 중간에 끊지 말고 "
-    "완결한다. "
+    f"본문은 두 문장 이내, {NARRATION_MAX_CHARS}자 이내로 쓰고 모든 문장은 "
+    "중간에 끊지 말고 완결한다. 결론과 그 근거가 되는 숫자만 남기고, 검증 "
+    "답변의 나머지 세부는 사용자가 후속 질문으로 골라 보므로 여기서 함께 "
+    "옮기지 않는다. 다만 검증 답변이 서로 다른 계산 결과를 여러 건 담고 "
+    "있으면 어느 것도 빠뜨리지 않는다. "
     "사실·외부 의견·서비스 해석의 경계를 유지하고 숫자와 단위는 원문 "
     "그대로 둔다."
     " 연금세액 Tool 입력이 제공되면 검증 답변을 쓰기 전에 요청된 "
@@ -123,10 +134,10 @@ class NarrationOutput(BaseModel):
     """
 
     narration: str = Field(
-        max_length=350,
+        max_length=NARRATION_MAX_CHARS,
         description=(
             "검증 답변을 투자 입문 성인에게 맞는 한국어로 "
-            "350자 이내에 요약한 한 문단"
+            f"{NARRATION_MAX_CHARS}자 이내에 요약한 한 문단"
         )
     )
 
@@ -487,7 +498,7 @@ class ClaudeNarrator:
             result = self._agent_for_model(model).run_sync(prompt)
             output = result.output
             candidate = output.narration.strip()
-            if not candidate or len(candidate) > 350:
+            if not candidate or len(candidate) > NARRATION_MAX_CHARS:
                 raise ValueError("Claude returned an invalid narration")
         except (AgentRunError, ValueError):
             return self._fallback(
