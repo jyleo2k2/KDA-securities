@@ -10,6 +10,8 @@ class GracefulDeclineKind(StrEnum):
     STOCK_NEWS = "stock_news"
     FOREIGN_MARKET_OR_INDIVIDUAL_STOCK = "foreign_market_or_individual_stock"
     PREDICTION_OR_ORDER = "prediction_or_order"
+    CONTRIBUTION_AMOUNT_ADVICE = "contribution_amount_advice"
+    PROVIDER_CHOICE_ADVICE = "provider_choice_advice"
 
 
 @dataclass(frozen=True)
@@ -102,6 +104,71 @@ def graceful_decline(
             limitations=[
                 "미래 수익 예측, 상품 추천, 매수·매도 주문은 지원하지 않아요.",
                 "과거 실적은 미래 수익을 보장하지 않아요.",
+            ],
+        )
+
+    if kind is GracefulDeclineKind.CONTRIBUTION_AMOUNT_ADVICE:
+        # 적정 납입액은 소득·지출에 따라 달라 정답을 정할 수 없다. 대신
+        # 세액공제 한도라는 공식 기준점을 주고 계산기로 넘긴다.
+        return GracefulDecline(
+            answer=(
+                "얼마가 알맞은지는 소득과 생활비에 따라 달라서 금액을 "
+                "정해드리지는 않아요. 대신 기준점으로 삼을 만한 건 "
+                "세액공제 납입 한도예요. 공식 근거의 한도 금액을 먼저 "
+                "확인하고, 그 안에서 형편에 맞춰 정하는 분이 많아요."
+            ),
+            suggested_follow_ups=[
+                SuggestedFollowUp(
+                    follow_up_id="advice_tax_credit_limit",
+                    label="세액공제 한도 알아보기",
+                    message="연금계좌 세액공제 납입 한도를 알려줘",
+                ),
+                SuggestedFollowUp(
+                    follow_up_id="advice_pension_planner",
+                    label="연금 계산기로 확인하기",
+                    message="연금 계산기로 예상 수령액을 계산해줘",
+                ),
+                SuggestedFollowUp(
+                    follow_up_id="advice_contribution_flexibility",
+                    label="납입을 쉬어도 되는지 보기",
+                    message="연금저축 납입을 한 달 쉬어도 되나요?",
+                ),
+            ],
+            limitations=[
+                "적정 납입액은 개인의 소득·지출에 따라 달라 특정 금액을 "
+                "권유하지 않아요.",
+            ],
+        )
+
+    if kind is GracefulDeclineKind.PROVIDER_CHOICE_ADVICE:
+        # 특정 금융회사를 권유하지 않는다. 대신 비교 기준과 공시 데이터로 넘긴다.
+        return GracefulDecline(
+            answer=(
+                "어느 회사가 더 낫다고 말씀드리지는 않아요. 대신 비교하는 "
+                "기준은 알려드릴 수 있어요. 담을 수 있는 상품의 범위, "
+                "수수료, 그리고 과거 운용 실적 공시를 함께 보는 것이 "
+                "일반적이에요."
+            ),
+            suggested_follow_ups=[
+                SuggestedFollowUp(
+                    follow_up_id="advice_provider_disclosure",
+                    label="사업자 공시 비교 기준 보기",
+                    message="IRP 사업자 과거 수익률 공시를 알려줘",
+                ),
+                SuggestedFollowUp(
+                    follow_up_id="advice_account_investable",
+                    label="계좌별 담을 수 있는 상품 보기",
+                    message="연금계좌에 어떤 상품을 담을 수 있어?",
+                ),
+                SuggestedFollowUp(
+                    follow_up_id="advice_account_overview",
+                    label="세 계좌 차이 비교하기",
+                    message="DC형, IRP, 연금저축은 뭐가 달라?",
+                ),
+            ],
+            limitations=[
+                "특정 금융회사를 권유하지 않아요. 공시는 과거 실적이며 "
+                "미래 수익을 보장하지 않아요.",
             ],
         )
 

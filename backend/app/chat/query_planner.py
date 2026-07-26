@@ -21,6 +21,8 @@ class BlockedReason(StrEnum):
     FOREIGN_MARKET_OR_INDIVIDUAL_STOCK = "foreign_market_or_individual_stock"
     PRODUCT_LEVEL_UNAVAILABLE = "product_level_unavailable"
     ACCOUNT_SELECTION_REQUIRED = "account_selection_required"
+    CONTRIBUTION_AMOUNT_ADVICE = "contribution_amount_advice"
+    PROVIDER_CHOICE_ADVICE = "provider_choice_advice"
     UNSUPPORTED = "unsupported"
 
 
@@ -376,6 +378,57 @@ _PENSION_BASICS_QUESTION = re.compile(
     r"어떻게\s*(?:시작|가입)|(?:시작|가입).{0,8}어떻게)",
     re.I,
 )
+# 타깃 사용자는 "중도인출"이 아니라 "돈 필요하면 뺄 수 있어?"라고 묻는다.
+# 제도 용어를 몰라도 계좌 규칙 안내에 닿도록 일상어 표현을 함께 받는다.
+# 각 표현이 연금계좌에서만 성립하는 행위(납입 중단·중도인출·일시금 수령 등)를
+# 가리키므로 별도 문맥 단어를 요구하지 않는다. 대신 표현 자체를 좁게 유지한다.
+_PENSION_PRACTICE_QUESTION = re.compile(
+    # 개설·준비
+    r"계좌.{0,10}(?:여러\s*개|두\s*개|하나만|개수|몇\s*개)"
+    r"|(?:여러\s*개|두\s*개|몇\s*개).{0,10}(?:만들|개설|가입)"
+    r"|(?:만들|개설|가입).{0,10}(?:뭐|무엇|어떤).{0,6}(?:준비|필요|있어야)"
+    r"|(?:준비물|필요\s*서류)"
+    # 납입 유연성
+    r"|(?:한\s*달|매달|다달이|이번\s*달).{0,12}"
+    r"(?:걸러|거르|쉬|건너뛰|안\s*넣|못\s*넣)"
+    r"|(?:몰아서|한꺼번에|한\s*번에).{0,12}(?:넣|납입|입금)"
+    r"|한도.{0,10}(?:넘|초과).{0,12}(?:넣|납입)"
+    r"|(?:넣|납입).{0,12}(?:쉬어|쉬면|멈|중단|안\s*해도)"
+    # 중도인출·담보
+    r"|(?:돈|자금|목돈).{0,14}(?:빼|뺄|뺴|찾|인출|쓸|써야|필요)"
+    r"[^?]{0,14}(?:빼|뺄|찾|인출|쓸|대출|돼|되|있어)"
+    r"|(?:중간|중도|급하|갑자기).{0,14}(?:빼|뺄|찾|인출)"
+    r"|담보\s*대출|담보.{0,8}대출"
+    # 상품 변경·비용
+    r"|(?:상품|펀드|ETF).{0,10}(?:바꾸|바꿀|바꿔|바꿨|교체|변경|갈아타)"
+    r"|(?:바꾸|바꿀|바꿔|바꾸면|교체|변경).{0,10}수수료"
+    # 이전 시 보유 상품 처리
+    r"|(?:옮기|옮길|이전).{0,12}(?:상품|펀드|ETF).{0,12}"
+    r"(?:팔|현금화|해지|정리)"
+    # 연말정산·수령 방식
+    r"|연말\s*정산"
+    r"|(?:한\s*번에|한꺼번에).{0,10}(?:다|전부|모두)?\s*(?:받|찾|수령)"
+    r"|일시금",
+    re.I,
+)
+# 정답이 사람마다 다른 조언형 질문. 특정 금액을 권유하지 않고 세액공제
+# 한도라는 공식 기준점을 제시한 뒤 계산기로 넘긴다.
+_CONTRIBUTION_AMOUNT_ADVICE = re.compile(
+    r"(?:한\s*달|매달|매월|월|다달이).{0,12}얼마"
+    r"|얼마(?:씩|나)?.{0,12}(?:넣|납입|저축|모으).{0,12}(?:좋|나은|될까|할까|괜찮)"
+    r"|(?:넣|납입|저축).{0,12}얼마.{0,12}(?:좋|나은|될까|할까|적당)"
+    r"|적정.{0,8}(?:납입|금액)",
+    re.I,
+)
+# 특정 금융회사를 고르는 질문. 회사를 권유하지 않고 비교 기준을 제시한다.
+_PROVIDER_CHOICE_ADVICE = re.compile(
+    r"(?:증권사|은행|보험사|금융\s*회사)[^?]{0,14}"
+    r"(?:어디|어느|중에).{0,12}(?:나은|나아|좋|괜찮|해야)"
+    r"|(?:어디|어느)[^?]{0,12}(?:에서|로)?\s*"
+    r"(?:만들|가입|개설).{0,12}(?:좋|나은|나아|괜찮|될까|할까)"
+    r"|(?:증권사|은행|보험사)[^?]{0,10}추천",
+    re.I,
+)
 _ACCOUNT_OVERVIEW_WORDS = re.compile(
     r"규칙|뭐|무엇|전체|전반|한눈에|정리|설명|알려|기본|차이|비교"
 )
@@ -709,12 +762,35 @@ def plan_question(
             or account_types
             or account_rule_topic
             or (_PENSION_CONTEXT.search(normalized) and _RULE_TERMS.search(normalized))
+            or _PENSION_PRACTICE_QUESTION.search(normalized) is not None
         ),
     }
     personal_account_tax_request = (
         intent_matches[ChatIntent.PENSION_TAX]
         and re.search(r"내\s*계좌", normalized) is not None
     )
+    # 정답이 사람마다 다른 조언형 질문은 금액·회사를 고르지 않고, 공식
+    # 기준점과 비교 항목을 제시하는 대안 응답으로 돌린다. 다른 인텐트가
+    # 이미 구체적으로 잡은 질문은 건드리지 않는다.
+    # 금융회사 선택은 "은행" 같은 말이 테마명과 겹치므로 테마 매칭보다 앞선다.
+    advice_candidate = not any(
+        matched
+        for candidate, matched in intent_matches.items()
+        if candidate is not ChatIntent.ETF_THEME
+    )
+    if advice_candidate:
+        if _CONTRIBUTION_AMOUNT_ADVICE.search(normalized):
+            return _blocked(
+                normalized,
+                BlockedReason.CONTRIBUTION_AMOUNT_ADVICE,
+                max_results,
+            )
+        if _PROVIDER_CHOICE_ADVICE.search(normalized):
+            return _blocked(
+                normalized,
+                BlockedReason.PROVIDER_CHOICE_ADVICE,
+                max_results,
+            )
     # "내 계좌"는 목시나리오 선택에도 쓰이지만 명시적 세금 요청과 함께면
     # 세금 계산 의도가 더 구체적이다. 전역 우선순위는 유지해 다른 복합 질문의
     # 기존 라우팅 범위를 넓히지 않는다.
