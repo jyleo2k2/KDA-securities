@@ -17,11 +17,14 @@ const GUIDE_VERSION = "v2";
 const COMPLETE_KEY = `pension-first-use-guide:${GUIDE_VERSION}:complete`;
 const STRATEGY_DETAIL_COMPLETE_KEY =
   `pension-first-use-guide:${GUIDE_VERSION}:strategy-detail:complete`;
+const PENSION_PLANNER_COMPLETE_KEY =
+  `pension-first-use-guide:${GUIDE_VERSION}:pension-planner:complete`;
 const PREVIEW_QUERY = "tour-preview";
 const TARGET_GUIDE_EMAIL = "jeongsu33@kda-demo.invalid";
 
 interface GuideStep {
   accent?: string;
+  closestSelector?: string;
   selector: string;
   title: string;
   body: string;
@@ -29,10 +32,12 @@ interface GuideStep {
 }
 
 interface GuideConfig {
+  activateSelector?: string;
   backgroundSelector: string;
   completeKey: string;
   finalTargetSelector?: string;
-  id: "home" | "strategy-detail";
+  frameSelector?: string;
+  id: "home" | "strategy-detail" | "pension-planner";
   introBody: string;
   introTitle: string;
   portalSelector?: string;
@@ -122,6 +127,36 @@ const STRATEGY_DETAIL_STEPS: GuideStep[] = [
   },
 ];
 
+const PENSION_PLANNER_STEPS: GuideStep[] = [
+  {
+    selector: ".scrolly > div:nth-child(2) > div:nth-child(2)",
+    title: "세액공제 탭에서 남은 한도를 확인해요",
+    body: "연금저축·IRP·DC형 본인 추가납입액을 합산한 세액공제 한도와 예상 공제액을 확인할 수 있어요.",
+    cta: "연금저축 한도 보기",
+  },
+  {
+    closestSelector: "div",
+    selector: ".brand-range[max=\"600\"]:not(.tax-range-irp)",
+    title: "연금저축 납입액을 조절해 보세요",
+    body: "현재 납입액을 기준으로 연금저축 600만원 한도까지 남은 금액과 추가 공제액을 비교해 볼 수 있어요.",
+    cta: "IRP·DC 한도 보기",
+  },
+  {
+    closestSelector: "div",
+    selector: ".brand-range.tax-range-irp",
+    title: "IRP·DC 본인 추가납입도 함께 살펴봐요",
+    body: "연금저축과 합산한 900만원 한도 안에서 추가로 공제받을 수 있는 금액을 확인해 보세요.",
+    cta: "ISA 전환 혜택 보기",
+  },
+  {
+    closestSelector: "div",
+    selector: ".brand-range[max=\"3000\"]",
+    title: "ISA 만기 전환 혜택도 비교할 수 있어요",
+    body: "ISA 만기 자금을 연금계좌로 전환할 때 적용되는 추가 세액공제 한도를 입력값에 따라 확인할 수 있어요.",
+    cta: "안내 마치기",
+  },
+];
+
 const GUIDES: GuideConfig[] = [
   {
     backgroundSelector: ".mhs-header, .mhs-body, .mhs-tab-toggle",
@@ -147,6 +182,20 @@ const GUIDES: GuideConfig[] = [
     shellSelector: ".sd-phone",
     steps: STRATEGY_DETAIL_STEPS,
   },
+  {
+    activateSelector: ".scrolly > div:nth-child(2) > div:nth-child(2)",
+    backgroundSelector: ".scrolly",
+    completeKey: PENSION_PLANNER_COMPLETE_KEY,
+    frameSelector: "iframe[title=\"예상 연금 계산 및 세액공제 확인\"]",
+    id: "pension-planner",
+    introBody: "납입액을 바꿔 세액공제 한도와 예상 공제액을 확인하는 방법을 1분 안에 알려드릴게요.",
+    introTitle: "세액공제 계산기를 살펴볼까요?",
+    portalSelector: ".pension-planner-frame",
+    route: "/planner",
+    scrollSelector: ".scrolly",
+    shellSelector: "#pension-phone",
+    steps: PENSION_PLANNER_STEPS,
+  },
 ];
 
 const COMPLETE_KEYS = GUIDES.map((guide) => guide.completeKey);
@@ -158,6 +207,22 @@ function activeGuide(): GuideConfig | null {
 
 function previewRequested(): boolean {
   return new URLSearchParams(window.location.search).get(PREVIEW_QUERY) === "1";
+}
+
+function contentDocumentForGuide(guide: GuideConfig): Document | null {
+  if (!guide.frameSelector) return document;
+  return document.querySelector<HTMLIFrameElement>(
+    guide.frameSelector,
+  )?.contentDocument ?? null;
+}
+
+function targetForStep(
+  contentDocument: Document,
+  step: GuideStep,
+): HTMLElement | null {
+  const target = contentDocument.querySelector<HTMLElement>(step.selector);
+  if (!target || !step.closestSelector) return target;
+  return target.closest<HTMLElement>(step.closestSelector);
 }
 
 function elementRect(element: Element): Rect {
@@ -202,6 +267,7 @@ function guideTitle(step: GuideStep): ReactNode {
 
 export function FirstUseGuide(): JSX.Element | null {
   const [phone, setPhone] = useState<HTMLElement | null>(null);
+  const [contentDocument, setContentDocument] = useState<Document | null>(null);
   const [guide, setGuide] = useState<GuideConfig | null>(null);
   const [mode, setMode] = useState<"intro" | "steps" | "closed">("closed");
   const [stepIndex, setStepIndex] = useState(0);
@@ -265,8 +331,11 @@ export function FirstUseGuide(): JSX.Element | null {
 
   const findGuide = useCallback(() => {
     const nextGuide = activeGuide();
-    const nextPhone = nextGuide
-      ? document.querySelector<HTMLElement>(nextGuide.shellSelector)
+    const nextContentDocument = nextGuide
+      ? contentDocumentForGuide(nextGuide)
+      : null;
+    const nextPhone = nextGuide && nextContentDocument
+      ? nextContentDocument.querySelector<HTMLElement>(nextGuide.shellSelector)
       : null;
     if (activeGuideId.current !== nextGuide?.id) {
       activeGuideId.current = nextGuide?.id ?? null;
@@ -276,6 +345,7 @@ export function FirstUseGuide(): JSX.Element | null {
       setMode("closed");
     }
     setGuide(nextGuide);
+    setContentDocument(nextContentDocument);
     setPhone(nextPhone);
     if (!nextGuide || !nextPhone) {
       setMode("closed");
@@ -306,24 +376,37 @@ export function FirstUseGuide(): JSX.Element | null {
     };
   }, [findGuide]);
 
+  useEffect(() => {
+    if (!guide?.frameSelector) return;
+    const frame = document.querySelector<HTMLIFrameElement>(
+      guide.frameSelector,
+    );
+    if (!frame) return;
+    frame.addEventListener("load", findGuide);
+    return () => frame.removeEventListener("load", findGuide);
+  }, [findGuide, guide]);
+
   const measure = useCallback(() => {
-    if (!guide || !phone || mode === "closed") return;
+    if (!guide || !phone || !contentDocument || mode === "closed") return;
     const nextPhoneRect = elementRect(phone);
     setPhoneRect(nextPhoneRect);
     if (mode === "intro") {
       setTargetRect(null);
       return;
     }
-    const target = document.querySelector<HTMLElement>(
-      guide.steps[stepIndex].selector,
-    );
+    const target = targetForStep(contentDocument, guide.steps[stepIndex]);
     setTargetRect(target ? elementRect(target) : null);
-  }, [guide, mode, phone, stepIndex]);
+  }, [contentDocument, guide, mode, phone, stepIndex]);
 
   useLayoutEffect(() => {
-    if (!guide || !phone || mode === "closed") return;
+    if (!guide || !phone || !contentDocument || mode === "closed") return;
+    if (mode === "steps" && guide.activateSelector) {
+      contentDocument.querySelector<HTMLElement>(
+        guide.activateSelector,
+      )?.click();
+    }
     const target = mode === "steps"
-      ? document.querySelector<HTMLElement>(guide.steps[stepIndex].selector)
+      ? targetForStep(contentDocument, guide.steps[stepIndex])
       : null;
     target?.scrollIntoView({ block: "center", behavior: "smooth" });
     const frame = window.requestAnimationFrame(measure);
@@ -337,7 +420,7 @@ export function FirstUseGuide(): JSX.Element | null {
       window.removeEventListener("resize", measure);
       scrollArea?.removeEventListener("scroll", measure);
     };
-  }, [guide, measure, mode, phone, stepIndex]);
+  }, [contentDocument, guide, measure, mode, phone, stepIndex]);
 
   useEffect(() => {
     if (!guide || !phone || mode === "closed") return;
@@ -406,7 +489,9 @@ export function FirstUseGuide(): JSX.Element | null {
       return;
     }
     const finalTarget = visibleGuide.finalTargetSelector
-      ? document.querySelector<HTMLElement>(visibleGuide.finalTargetSelector)
+      ? contentDocument?.querySelector<HTMLElement>(
+          visibleGuide.finalTargetSelector,
+        )
       : null;
     completeGuide();
     finalTarget?.click();
@@ -423,7 +508,9 @@ export function FirstUseGuide(): JSX.Element | null {
     : false;
   const currentStep = guide.steps[stepIndex];
   const portalHost = guide.portalSelector
-    ? phone.querySelector<HTMLElement>(guide.portalSelector) ?? phone
+    ? document.querySelector<HTMLElement>(guide.portalSelector)
+      ?? phone.querySelector<HTMLElement>(guide.portalSelector)
+      ?? phone
     : phone;
 
   return createPortal(
@@ -506,4 +593,8 @@ export function firstUseGuideStorageKey(userId: string): string {
 
 export function strategyDetailGuideStorageKey(userId: string): string {
   return guideStorageKey(STRATEGY_DETAIL_COMPLETE_KEY, userId);
+}
+
+export function pensionPlannerGuideStorageKey(userId: string): string {
+  return guideStorageKey(PENSION_PLANNER_COMPLETE_KEY, userId);
 }
