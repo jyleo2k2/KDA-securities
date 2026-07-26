@@ -85,6 +85,24 @@ def _database_url() -> str:
     return database_url
 
 
+def load_local_cache_universe(
+    *,
+    return_root: Path,
+    krx_root: Path,
+    adjusted_price_root: Path,
+    event_root: Path,
+) -> PortfolioUniverseRepository:
+    """Use explicitly supplied raw-cache roots for a historical backfill."""
+
+    return PortfolioUniverseRepository.from_latest_cache(
+        AccountType.PENSION_SAVINGS,
+        return_root=return_root,
+        krx_root=krx_root,
+        adjusted_price_root=adjusted_price_root,
+        event_root=event_root,
+    )
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Build realized 1/3/6-month outcomes for reviewed news events."
@@ -93,6 +111,19 @@ def _parser() -> argparse.ArgumentParser:
         "events", type=Path, help="reviewed historical event ledger JSON"
     )
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--local-cache",
+        action="store_true",
+        help="build from explicitly supplied local KIS/KIND cache roots",
+    )
+    parser.add_argument("--return-root", type=Path, default=Path("data/cache/returns"))
+    parser.add_argument("--krx-root", type=Path, default=Path("data/raw/krx"))
+    parser.add_argument(
+        "--adjusted-price-root",
+        type=Path,
+        default=Path("data/cache/kis/adjusted_prices"),
+    )
+    parser.add_argument("--event-root", type=Path, default=Path("data/cache/events"))
     return parser
 
 
@@ -101,8 +132,17 @@ def main() -> int:
     ledger = HistoricalNewsEventLedger.model_validate_json(
         args.events.read_text(encoding="utf-8")
     )
-    universe = PostgresPortfolioUniverseRepository(_database_url()).latest(
-        AccountType.PENSION_SAVINGS
+    universe = (
+        load_local_cache_universe(
+            return_root=args.return_root,
+            krx_root=args.krx_root,
+            adjusted_price_root=args.adjusted_price_root,
+            event_root=args.event_root,
+        )
+        if args.local_cache
+        else PostgresPortfolioUniverseRepository(_database_url()).latest(
+            AccountType.PENSION_SAVINGS
+        )
     )
     evaluation = build_outcome_evaluation(events=ledger.events, universe=universe)
     args.output.parent.mkdir(parents=True, exist_ok=True)
