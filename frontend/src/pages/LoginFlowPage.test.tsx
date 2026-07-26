@@ -213,4 +213,28 @@ describe("LoginFlowPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "서비스 시작하기" }));
     expect(onStart).toHaveBeenCalledOnce();
   });
+
+  it("enters the home screen from success when a saved profile exists", async () => {
+    render(<LoginFlowPage auth={auth} hasSavedProfile onAuthenticated={onAuthenticated} onProfileSaved={onProfileSaved} onStart={onStart} />);
+    openForm();
+    fillLoginForm();
+    fireEvent.click(screen.getByRole("button", { name: "로그인하기" }));
+    await screen.findByText("로그인 성공!");
+
+    fireEvent.click(screen.getByRole("button", { name: "시작하기" }));
+
+    expect(onStart).toHaveBeenCalledOnce();
+    expect(getAccountLinkOptions).not.toHaveBeenCalled();
+  });
+
+  it("waits on the success screen while the saved profile is still loading", async () => {
+    render(<LoginFlowPage auth={auth} onAuthenticated={onAuthenticated} onProfileSaved={onProfileSaved} onStart={onStart} profileLoading />);
+    openForm();
+    fillLoginForm();
+    fireEvent.click(screen.getByRole("button", { name: "로그인하기" }));
+    await screen.findByText("로그인 성공!");
+
+    expect(screen.getByRole("button", { name: "정보를 확인하는 중..." })).toBeDisabled();
+    expect(onStart).not.toHaveBeenCalled();
+  });
 });
