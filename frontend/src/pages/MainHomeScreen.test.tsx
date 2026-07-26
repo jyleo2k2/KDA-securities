@@ -235,7 +235,7 @@ describe("MainHomeScreen", () => {
     vi.useRealTimers();
   });
 
-  it("supports dots, arrow keys, and swipe navigation", () => {
+  it("supports dots, arrow keys, touch swipes, and mouse drags", () => {
     const { container } = renderHome();
     const carousel = screen.getByRole("region", { name: "홈 추천 카드" });
     const track = container.querySelector(".mhs-promo-track");
@@ -249,6 +249,19 @@ describe("MainHomeScreen", () => {
     fireEvent.touchStart(carousel, { touches: [{ clientX: 280 }] });
     fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 180 }] });
     expect(track).toHaveStyle({ transform: "translateX(-100%)" });
+
+    fireEvent.pointerDown(carousel, {
+      button: 0,
+      clientX: 180,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+    fireEvent.pointerUp(carousel, {
+      clientX: 280,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+    expect(track).toHaveStyle({ transform: "translateX(-0%)" });
   });
 
   it("opens the supplied profile screen from the header icon", () => {

@@ -1,5 +1,13 @@
+import {
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+
 import type { ChatCard } from "../api/types";
 import { ChatIcon } from "./ChatIcon";
+
+const ETF_THEME_DRAG_THRESHOLD_PX = 5;
 
 const ETF_THEME_RAIL_CSS = `
 .etf-theme-rail {
@@ -14,8 +22,15 @@ const ETF_THEME_RAIL_CSS = `
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  cursor: grab;
 }
 .etf-theme-rail::-webkit-scrollbar { display: none; }
+.etf-theme-rail.is-dragging {
+  scroll-snap-type: none;
+  user-select: none;
+}
+.etf-theme-rail.is-dragging,
+.etf-theme-rail.is-dragging .etf-theme-rail-card { cursor: grabbing; }
 .etf-theme-rail-card {
   scroll-snap-align: start;
   display: grid;
@@ -97,6 +112,44 @@ export function ChatEtfThemeCards({
   onSubmit: (message: string) => void;
   themeCards: readonly ThemeCard[];
 }) {
+  const [isDragging, setIsDragging] = useState(false);
+  const drag = useRef<{
+    moved: boolean;
+    pointerId: number;
+    startScrollLeft: number;
+    startX: number;
+  } | null>(null);
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "mouse" || event.button !== 0) return;
+    drag.current = {
+      moved: false,
+      pointerId: event.pointerId,
+      startScrollLeft: event.currentTarget.scrollLeft,
+      startX: event.clientX,
+    };
+  };
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const currentDrag = drag.current;
+    if (!currentDrag || currentDrag.pointerId !== event.pointerId) return;
+    const deltaX = event.clientX - currentDrag.startX;
+    if (!currentDrag.moved && Math.abs(deltaX) < ETF_THEME_DRAG_THRESHOLD_PX) return;
+    if (!currentDrag.moved) {
+      currentDrag.moved = true;
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      setIsDragging(true);
+    }
+    event.preventDefault();
+    event.currentTarget.scrollLeft = currentDrag.startScrollLeft - deltaX;
+  };
+  const finishPointerDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const currentDrag = drag.current;
+    if (!currentDrag || currentDrag.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    drag.current = null;
+    setIsDragging(false);
+  };
   const renderCard = (card: ThemeCard) => (
     <button
       type="button"
@@ -118,7 +171,15 @@ export function ChatEtfThemeCards({
         <h2 id="etf-theme-heading">ETF 섹터 알아보기</h2>
         <span>테마의 구성과 유의점을 확인해 보세요.</span>
       </header>
-      <div className="etf-theme-rail" role="list" aria-label="ETF 섹터 카드 목록 (옆으로 넘겨 보기)">
+      <div
+        className={`etf-theme-rail${isDragging ? " is-dragging" : ""}`}
+        role="list"
+        aria-label="ETF 섹터 카드 목록 (옆으로 넘겨 보기)"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={finishPointerDrag}
+        onPointerCancel={finishPointerDrag}
+      >
         {themeCards.map(renderCard)}
       </div>
     </section>

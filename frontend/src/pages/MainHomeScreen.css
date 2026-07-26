@@ -15,7 +15,8 @@
 
 .mhs-promo-carousel { outline: none; touch-action: pan-y; }
 .mhs-promo-carousel:focus-visible { border-radius: 22px; outline: 3px solid #18A860; outline-offset: 3px; }
-.mhs-promo-viewport { overflow: hidden; border-radius: 22px; }
+.mhs-promo-viewport { overflow: hidden; border-radius: 22px; cursor: grab; }
+.mhs-promo-viewport:active { cursor: grabbing; }
 .mhs-promo-track { display: flex; align-items: stretch; transition: transform .38s cubic-bezier(.23, 1, .32, 1); }
 .mhs-promo-slide { display: flex; flex: 0 0 100%; min-width: 0; }
 .mhs-promo-dots { display: flex; justify-content: center; gap: 6px; margin-top: 9px; }

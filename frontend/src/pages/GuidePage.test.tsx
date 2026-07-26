@@ -1516,7 +1516,12 @@ describe("GuidePage chat history deletion", () => {
     },
   );
 
-  it("separates question and ETF theme cards on the empty chat screen", async () => {
+  it("drags ETF theme cards horizontally and keeps card submission", async () => {
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      response: THEME_RESPONSE,
+      persisted: false,
+      session_id: null,
+    });
     renderGuide();
 
     expect(await screen.findByRole("heading", {
@@ -1546,6 +1551,48 @@ describe("GuidePage chat history deletion", () => {
     expect(within(sectorCards).queryByRole("button", {
       name: "나머지 ETF 테마 16개 더보기",
     })).not.toBeInTheDocument();
+
+    Object.defineProperty(sectorCards, "scrollLeft", {
+      configurable: true,
+      value: 80,
+      writable: true,
+    });
+    Object.assign(sectorCards, {
+      hasPointerCapture: vi.fn(() => true),
+      releasePointerCapture: vi.fn(),
+      setPointerCapture: vi.fn(),
+    });
+    const semiconductorCard = within(sectorCards).getByRole("button", {
+      name: "반도체 ETF 테마 설명 보기",
+    });
+
+    fireEvent.pointerDown(semiconductorCard, {
+      button: 0,
+      clientX: 240,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+    fireEvent.pointerMove(sectorCards, {
+      clientX: 140,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+    expect(sectorCards).toHaveProperty("scrollLeft", 180);
+    expect(sectorCards).toHaveClass("is-dragging");
+
+    fireEvent.pointerUp(sectorCards, {
+      clientX: 140,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+    expect(sectorCards).not.toHaveClass("is-dragging");
+
+    fireEvent.click(semiconductorCard);
+    await waitFor(() => {
+      expect(vi.mocked(sendAuthenticatedChatStream).mock.calls.at(-1)?.[0]).toBe(
+        "반도체 테마가 뭐야?",
+      );
+    });
   });
 
   it("places ETF follow-ups below the theme section and hides a clicked question", async () => {

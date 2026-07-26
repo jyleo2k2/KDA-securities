@@ -77,6 +77,7 @@ const PIE_INNER_RADIUS = 48;
 const PIE_LABEL_RADIUS = 63;
 const PIE_SELECT_OFFSET = 7;
 const STRATEGY_PLANNING_RETURN_RETRY_MS = 3_000;
+const PROMO_DRAG_THRESHOLD_PX = 40;
 const STRATEGY_DRAG_THRESHOLD_PX = 5;
 
 function buildHoldingPieSlices(
@@ -273,6 +274,10 @@ export function MainHomeScreen({
   const [isStrategyDragging, setIsStrategyDragging] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
   const promoTouchStartX = useRef<number | null>(null);
+  const promoPointerDrag = useRef<{
+    pointerId: number;
+    startX: number;
+  } | null>(null);
   const strategyDrag = useRef<{
     moved: boolean;
     pointerId: number;
@@ -305,6 +310,21 @@ export function MainHomeScreen({
   };
   const movePromo = (direction: -1 | 1) => {
     selectPromo((activePromo + direction + 2) % 2);
+  };
+  const handlePromoPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
+    if (event.pointerType !== "mouse" || event.button !== 0) return;
+    promoPointerDrag.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+    };
+  };
+  const finishPromoPointerDrag = (event: ReactPointerEvent<HTMLElement>) => {
+    const drag = promoPointerDrag.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    promoPointerDrag.current = null;
+    const deltaX = event.clientX - drag.startX;
+    if (Math.abs(deltaX) < PROMO_DRAG_THRESHOLD_PX) return;
+    movePromo(deltaX < 0 ? 1 : -1);
   };
   const handleStrategyPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType !== "mouse" || event.button !== 0) return;
@@ -407,6 +427,11 @@ export function MainHomeScreen({
             if (event.key === "ArrowLeft") movePromo(-1);
             if (event.key === "ArrowRight") movePromo(1);
           }}
+          onPointerDown={handlePromoPointerDown}
+          onPointerUp={finishPromoPointerDrag}
+          onPointerCancel={() => {
+            promoPointerDrag.current = null;
+          }}
           onTouchStart={(event) => {
             promoTouchStartX.current = event.touches[0]?.clientX ?? null;
           }}
@@ -414,7 +439,7 @@ export function MainHomeScreen({
             const startX = promoTouchStartX.current;
             const endX = event.changedTouches[0]?.clientX;
             promoTouchStartX.current = null;
-            if (startX === null || endX === undefined || Math.abs(endX - startX) < 40) return;
+            if (startX === null || endX === undefined || Math.abs(endX - startX) < PROMO_DRAG_THRESHOLD_PX) return;
             movePromo(endX < startX ? 1 : -1);
           }}
         >
