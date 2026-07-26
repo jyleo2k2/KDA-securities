@@ -17,6 +17,7 @@ interface ProfileHtmlPageProps {
   investmentProfile: InvestmentProfileResponse | null;
   portfolio: UserPensionPortfolio | null;
   onBack: () => void;
+  onOpenChatHistory?: () => void;
   onResurvey?: () => void;
   onSignOut?: () => Promise<void>;
 }
@@ -35,19 +36,22 @@ export function ProfileHtmlPage({
   investmentProfile,
   portfolio,
   onBack,
+  onOpenChatHistory,
   onResurvey,
   onSignOut,
 }: ProfileHtmlPageProps): JSX.Element {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const onBackRef = useRef(onBack);
+  const onOpenChatHistoryRef = useRef(onOpenChatHistory);
   const onResurveyRef = useRef(onResurvey);
   const onSignOutRef = useRef(onSignOut ?? signOutFromProfile);
 
   useEffect(() => {
     onBackRef.current = onBack;
+    onOpenChatHistoryRef.current = onOpenChatHistory;
     onResurveyRef.current = onResurvey;
     onSignOutRef.current = onSignOut ?? signOutFromProfile;
-  }, [onBack, onResurvey, onSignOut]);
+  }, [onBack, onOpenChatHistory, onResurvey, onSignOut]);
 
   useEffect(() => {
     const iframe = iframeRef.current;
@@ -59,6 +63,9 @@ export function ProfileHtmlPage({
         closest?: (selector: string) => Element | null;
       } | null;
       if (target?.closest?.("[data-profile-html-back]")) onBackRef.current();
+      if (target?.closest?.("[data-profile-html-chat-history]")) {
+        onOpenChatHistoryRef.current?.();
+      }
       if (target?.closest?.("[data-profile-html-resurvey]")) onResurveyRef.current?.();
       if (target?.closest?.("[data-profile-html-sign-out]")) {
         void onSignOutRef.current();
