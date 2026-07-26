@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import type { Session } from "@supabase/supabase-js";
 
 import { supabase } from "../auth/supabase";
+import firstUseGuideStyles from "./FirstUseGuide.css?inline";
 import "./FirstUseGuide.css";
 
 const HOME_GUIDE_VERSION = "v3";
@@ -30,6 +31,7 @@ const USER_PICK_COMPLETE_KEY =
   `pension-first-use-guide:${USER_PICK_GUIDE_VERSION}:user-pick:complete`;
 const PREVIEW_QUERY = "tour-preview";
 const TARGET_GUIDE_EMAIL = "jeongsu33@kda-demo.invalid";
+const GUIDE_STYLE_ATTRIBUTE = "data-first-use-guide-styles";
 
 interface GuideStep {
   accent?: string;
@@ -334,7 +336,6 @@ const GUIDES: GuideConfig[] = [
     id: "pension-planner",
     introBody: "납입액을 바꿔 세액공제 한도와 예상 공제액을 확인하는 방법을 1분 안에 알려드릴게요.",
     introTitle: "세액공제 계산기를 살펴볼까요?",
-    portalSelector: ".pension-planner-frame",
     route: "/planner",
     scrollSelector: ".scrolly",
     shellSelector: "#pension-phone",
@@ -349,7 +350,7 @@ const GUIDES: GuideConfig[] = [
     introBodyAccents: ["내 포트폴리오", "자산 구성", "운용 근거", "후기"],
     introTitle: "이용자 Pick을 함께 살펴볼까요?",
     introTitleAccents: ["이용자 Pick"],
-    portalSelector: ".benchmark-html-frame-wrap",
+    portalSelector: "body",
     route: "/user-pick-benchmark",
     scrollSelector: ".scrolly",
     shellSelector: "#benchmark-phone",
@@ -403,6 +404,26 @@ function guideElement(
     return contentDocument.querySelector<HTMLElement>(selector);
   }
   return text ? elementByText(contentDocument, text) : null;
+}
+
+function ensureGuideStyles(contentDocument: Document): void {
+  if (
+    contentDocument === document
+    || contentDocument.head.querySelector(`[${GUIDE_STYLE_ATTRIBUTE}]`)
+  ) return;
+  const style = contentDocument.createElement("style");
+  style.setAttribute(GUIDE_STYLE_ATTRIBUTE, "");
+  style.textContent = firstUseGuideStyles;
+  contentDocument.head.appendChild(style);
+}
+
+function guideShell(
+  contentDocument: Document,
+  selector: string,
+): HTMLElement | null {
+  return Array.from(
+    contentDocument.querySelectorAll<HTMLElement>(selector),
+  ).find((element) => !element.closest("x-dc")) ?? null;
 }
 
 function targetForStep(
@@ -546,8 +567,9 @@ export function FirstUseGuide(): JSX.Element | null {
     const nextContentDocument = nextGuide
       ? contentDocumentForGuide(nextGuide)
       : null;
+    if (nextContentDocument) ensureGuideStyles(nextContentDocument);
     const nextPhone = nextGuide && nextContentDocument
-      ? nextContentDocument.querySelector<HTMLElement>(nextGuide.shellSelector)
+      ? guideShell(nextContentDocument, nextGuide.shellSelector)
       : null;
     if (activeGuideId.current !== nextGuide?.id) {
       activeGuideId.current = nextGuide?.id ?? null;
@@ -595,8 +617,25 @@ export function FirstUseGuide(): JSX.Element | null {
       guide.frameSelector,
     );
     if (!frame) return;
-    frame.addEventListener("load", findGuide);
-    return () => frame.removeEventListener("load", findGuide);
+    let frameObserver: MutationObserver | null = null;
+    const observeFrame = () => {
+      frameObserver?.disconnect();
+      const frameDocument = frame.contentDocument;
+      if (frameDocument?.documentElement) {
+        frameObserver = new MutationObserver(findGuide);
+        frameObserver.observe(frameDocument.documentElement, {
+          childList: true,
+          subtree: true,
+        });
+      }
+      findGuide();
+    };
+    frame.addEventListener("load", observeFrame);
+    observeFrame();
+    return () => {
+      frame.removeEventListener("load", observeFrame);
+      frameObserver?.disconnect();
+    };
   }, [findGuide, guide]);
 
   const measure = useCallback(() => {
@@ -683,7 +722,13 @@ export function FirstUseGuide(): JSX.Element | null {
     };
   }, [guide, phone]);
 
-  if (!guide || !phone || !phoneRect || mode === "closed") return null;
+  if (
+    !guide
+    || !phone
+    || !contentDocument
+    || !phoneRect
+    || mode === "closed"
+  ) return null;
   const visibleGuide = guide;
 
   function dismissForNow(): void {
@@ -733,7 +778,8 @@ export function FirstUseGuide(): JSX.Element | null {
     : false;
   const currentStep = guide.steps[stepIndex];
   const portalHost = guide.portalSelector
-    ? document.querySelector<HTMLElement>(guide.portalSelector)
+    ? contentDocument.querySelector<HTMLElement>(guide.portalSelector)
+      ?? document.querySelector<HTMLElement>(guide.portalSelector)
       ?? phone.querySelector<HTMLElement>(guide.portalSelector)
       ?? phone
     : phone;
