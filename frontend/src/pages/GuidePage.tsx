@@ -23,6 +23,7 @@ import {
   getScenarios,
   getStoredChatMessages,
   getRebalancingReminder,
+  getRebalancingProfile,
   getMyPensionAccounts,
   updateRebalancingReminder,
   completeRebalancingReview,
@@ -1049,15 +1050,18 @@ export function GuidePage({
   }
 
   async function requestActualRebalancingReview() {
-    if (!accessToken || !surveyProfile) {
+    if (!accessToken) {
       appendRebalancingReviewNotice("저장된 투자성향과 로그인된 계좌가 있어야 실제 보유 비중을 점검할 수 있어요.");
       return;
     }
 
     setReminderBusy(true);
     try {
-      const portfolio = await getMyPensionAccounts(accessToken);
-      const review = buildActualRebalancingReviewRequest(surveyProfile, portfolio);
+      const [profile, portfolio] = await Promise.all([
+        surveyProfile ? Promise.resolve(surveyProfile) : getRebalancingProfile(accessToken),
+        getMyPensionAccounts(accessToken),
+      ]);
+      const review = buildActualRebalancingReviewRequest(profile, portfolio);
       if (review.status !== "ready") {
         appendRebalancingReviewNotice(
           review.status === "account_not_found"
