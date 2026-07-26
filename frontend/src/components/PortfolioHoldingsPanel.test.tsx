@@ -334,6 +334,53 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.queryByText(/이 서비스는 “이 ETF를 사세요”라고 정해 주지 않아요/)).not.toBeInTheDocument();
     expect(screen.queryByText("스태그플레이션")).not.toBeInTheDocument();
 
+    rerender(<EducationalPortfolioReview evaluation={{
+      ...noHoldingsEvaluation,
+      evaluated_input: {
+        ...noHoldingsEvaluation.evaluated_input,
+        age: 42,
+        retirement_start_age: 60,
+        loss_tolerance_percent: "5",
+      },
+      planning_horizon_years: 18,
+      raw_risk_target_percent: "48.5000",
+      final_general_risk_target_percent: "0",
+      loss_tolerance_binding: true,
+      stress_loss_proxy_percent: "5.0000",
+      target_sleeves: [{
+        sleeve: "core_equity",
+        target_percent: "0",
+        risk_treatment: "general_risky",
+        role: "long_term_growth_core",
+      }, {
+        sleeve: "real_assets",
+        target_percent: "0",
+        risk_treatment: "general_risky",
+        role: "inflation_and_diversification",
+      }, {
+        sleeve: "tactical",
+        target_percent: "0",
+        risk_treatment: "general_risky",
+        role: "capped_tactical_satellite",
+      }, {
+        sleeve: "fixed_income",
+        target_percent: "62.5",
+        risk_treatment: "defensive",
+        role: "drawdown_buffer",
+      }, {
+        sleeve: "cash",
+        target_percent: "37.5",
+        risk_treatment: "defensive",
+        role: "liquidity_and_rebalancing_reserve",
+      }],
+    }} />);
+
+    expect(screen.getByText("위험중립형 · 손실감내도 우선 방어 배분")).toBeInTheDocument();
+    expect(screen.getByText(/선택한 손실감내율 5.0%가 위험중립형의 기본 비중보다 우선 적용돼/)).toBeInTheDocument();
+    expect(screen.getByText(/성장자산 비중을 0.0%로 낮추고 채권과 현금성 자산 중심으로 조정/)).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "채권 62.5%, 현금 37.5%" })).toBeInTheDocument();
+    expect(screen.queryByText("위험중립형의 코어·위성 전략")).not.toBeInTheDocument();
+
     const strategyCases = [
       ["stable", "안정형의 자본보전 중심 전략", "수익률 확대보다 손실과 가격 변동을 낮추는"],
       ["stable_seeking", "안정추구형의 방어적 분산 전략", "방어 자산을 중심으로 유지하면서 성장 자산을"],
