@@ -34,7 +34,10 @@ from backend.app.chat.models import (
 from backend.app.chat.narrator import (
     NARRATION_CACHE_VERSION,
     PREWARM_MODEL,
+    REGISTER_RULE,
     SYSTEM_PROMPT,
+    UPGRADED_ACCOUNT_RULE_MIN_SOURCES,
+    UPGRADED_INTENTS,
     ClaudeNarrator,
     _adds_unverified_content,
     _unsafe_claims,
@@ -1496,6 +1499,141 @@ def test_narrator_prewarm_swallows_errors(monkeypatch, caplog) -> None:
         narrator.prewarm()
 
     assert "narrator_prewarm_failed" in caplog.text
+
+
+def _routing_response(intent: ChatIntent, source_count: int) -> ChatResponse:
+    base = service().ask(ChatRequest(message="IRP 위험자산 한도를 알려줘"))
+    source = base.sources[0]
+    return base.model_copy(
+        update={"intent": intent, "sources": [source] * source_count}
+    )
+
+
+def test_narration_register_rule_is_first_instruction() -> None:
+    # 문체 지시가 문장 중간에 묻히면 모델이 검증 원문의 '-한다'체를 따라간다.
+    assert SYSTEM_PROMPT.startswith(REGISTER_RULE)
+    assert "해요체" in REGISTER_RULE
+    for banned in ("-습니다", "-합니다", "-한다"):
+        assert banned in REGISTER_RULE
+
+
+def test_pension_tax_narration_stays_on_base_model() -> None:
+    # 세액 답변은 Tool 왕복이 더해져 상위 모델에서 평균 10초까지 늘고 숫자 가드
+    # 통과율도 더 낮았다(2026-07-26 실측). 느린 만큼 폴백만 늘어 값을 못 한다.
+    narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        upgraded_model="upgraded-model",
+    )
+
+    response = _routing_response(ChatIntent.PENSION_TAX, 3)
+
+    assert ChatIntent.PENSION_TAX not in UPGRADED_INTENTS
+    assert narrator._model_for(response) == "test-model"
+
+
+def test_multi_source_account_rule_uses_upgraded_model() -> None:
+    narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        upgraded_model="upgraded-model",
+    )
+
+    response = _routing_response(
+        ChatIntent.ACCOUNT_RULE, UPGRADED_ACCOUNT_RULE_MIN_SOURCES
+    )
+
+    assert narrator._model_for(response) == "upgraded-model"
+
+
+def test_single_source_account_rule_stays_on_base_model() -> None:
+    # 근거 1건짜리 한 줄 규칙 답변은 기본 모델이 품질 차이 없이 더 빠르다.
+    narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        upgraded_model="upgraded-model",
+    )
+
+    response = _routing_response(ChatIntent.ACCOUNT_RULE, 1)
+
+    assert narrator._model_for(response) == "test-model"
+
+
+def test_non_upgraded_intent_stays_on_base_model() -> None:
+    narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        upgraded_model="upgraded-model",
+    )
+
+    response = _routing_response(ChatIntent.PROVIDER_DISCLOSURE, 5)
+
+    assert ChatIntent.PROVIDER_DISCLOSURE not in UPGRADED_INTENTS
+    assert narrator._model_for(response) == "test-model"
+
+
+def test_unset_upgraded_model_keeps_single_model() -> None:
+    narrator = ClaudeNarrator(api_key="test-key", model="test-model")
+
+    response = _routing_response(
+        ChatIntent.ACCOUNT_RULE, UPGRADED_ACCOUNT_RULE_MIN_SOURCES
+    )
+
+    assert narrator._model_for(response) == "test-model"
+
+
+def test_upgraded_and_base_narrations_use_separate_cache_entries() -> None:
+    # 모델별 문장이 다르므로 캐시가 섞이면 다른 모델의 답변이 재생된다.
+    narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        upgraded_model="upgraded-model",
+    )
+
+    base_key = narrator._cache_key(ChatIntent.ACCOUNT_RULE, "prompt", "test-model")
+    upgraded_key = narrator._cache_key(
+        ChatIntent.ACCOUNT_RULE, "prompt", "upgraded-model"
+    )
+
+    assert base_key != upgraded_key
+
+
+def test_upgraded_narration_reports_upgraded_model_name() -> None:
+    narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        upgraded_model="upgraded-model",
+    )
+    response = _routing_response(
+        ChatIntent.ACCOUNT_RULE, UPGRADED_ACCOUNT_RULE_MIN_SOURCES
+    )
+
+    with narrator._agent_for_model("upgraded-model").override(
+        model=_fake_narration_model("IRP 일반 위험자산 한도는 70%예요.")
+    ):
+        narrated = narrator.narrate(response)
+
+    assert narrated.narration_mode == "claude_verified"
+    assert narrated.model_name == "upgraded-model"
+
+
+def test_prewarm_does_not_build_upgraded_agent(monkeypatch) -> None:
+    # 상위 모델 에이전트는 실제 요청 전까지 만들지 않는다.
+    narrator = ClaudeNarrator(
+        api_key="test-key",
+        model="test-model",
+        upgraded_model="upgraded-model",
+    )
+
+    class FakeAgent:
+        def run_sync(self, prompt: str) -> None:
+            return None
+
+    monkeypatch.setattr(narrator, "_build_agent_for", lambda model: FakeAgent())
+
+    narrator.prewarm()
+
+    assert narrator._upgraded_agent is None
 
 
 def test_narration_cache_reuses_verified_result() -> None:

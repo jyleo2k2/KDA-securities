@@ -1142,7 +1142,7 @@ export function GuidePage({
         return;
       }
       await submitPrompt(
-        `${review.accountName}의 실제 보유 비중을 목표 비중과 비교하고 이탈폭을 점검해줘.`,
+        "리밸런싱 점검해줘",
         review.input,
       );
     } catch {

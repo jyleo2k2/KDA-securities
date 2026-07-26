@@ -163,6 +163,165 @@ GLOSSARY_TERMS: tuple[GlossaryTerm, ...] = (
         ),
         related=("IRP", "위험자산 한도", "디폴트옵션"),
     ),
+    # 아래는 승인 문서 §7-1의 경제·투자 기초 용어. 제도 용어보다 앞서
+    # 알아야 하는 배경 지식이라 타깃 사용자가 가장 먼저 막히는 지점이다.
+    GlossaryTerm(
+        term_id="compound_interest",
+        label="복리",
+        definition=(
+            "이자에 다시 이자가 붙어 시간이 지날수록 불어나는 방식이에요."
+        ),
+        related=("단리", "과세이연"),
+    ),
+    GlossaryTerm(
+        term_id="simple_interest",
+        label="단리",
+        definition="처음 원금에만 이자가 붙는 방식이에요.",
+        related=("복리",),
+    ),
+    GlossaryTerm(
+        term_id="stock",
+        label="주식",
+        definition=(
+            "회사의 소유권을 잘게 나눈 것으로, 회사 가치에 따라 값이 "
+            "오르내려요."
+        ),
+        related=("채권", "배당", "실적배당상품"),
+    ),
+    GlossaryTerm(
+        term_id="bond",
+        label="채권",
+        definition="정부나 기업에 돈을 빌려주고 정해진 이자를 받는 것이에요.",
+        related=("주식", "금리", "안전자산"),
+    ),
+    GlossaryTerm(
+        term_id="fund",
+        label="펀드",
+        definition=(
+            "여러 사람의 돈을 모아 운용 전문가가 대신 굴리는 상품이에요."
+        ),
+        related=("ETF", "실적배당상품", "총보수"),
+    ),
+    GlossaryTerm(
+        term_id="diversification",
+        label="분산투자",
+        definition=(
+            "한 곳에 몰지 않고 여러 자산에 나눠 담아 위험을 줄이는 "
+            "방법이에요."
+        ),
+        related=("자산배분", "리밸런싱", "변동성"),
+    ),
+    GlossaryTerm(
+        term_id="asset_allocation",
+        label="자산배분",
+        definition=(
+            "주식·채권처럼 성격이 다른 자산에 비중을 정해 나눠 담는 "
+            "것이에요."
+        ),
+        related=("분산투자", "리밸런싱", "위험자산 한도"),
+    ),
+    GlossaryTerm(
+        term_id="installment_investing",
+        label="적립식",
+        definition="정해진 주기로 같은 금액을 나눠 넣는 방법이에요.",
+        related=("복리", "변동성"),
+    ),
+    GlossaryTerm(
+        term_id="volatility",
+        label="변동성",
+        definition=(
+            "값이 위아래로 얼마나 크게 움직이는지를 나타내는 정도예요."
+        ),
+        related=("분산투자", "안전자산"),
+    ),
+    GlossaryTerm(
+        term_id="annualized_return",
+        label="연평균 수익률",
+        definition="여러 해의 성과를 한 해 기준으로 환산해 본 값이에요.",
+        related=("복리", "변동성"),
+    ),
+    GlossaryTerm(
+        term_id="interest_rate",
+        label="금리",
+        definition="돈을 빌리거나 맡길 때 붙는 이자의 비율이에요.",
+        related=("채권", "인플레이션"),
+    ),
+    GlossaryTerm(
+        term_id="inflation",
+        label="인플레이션",
+        definition=(
+            "물가가 올라 같은 돈으로 살 수 있는 양이 줄어드는 것이에요."
+        ),
+        related=("금리", "연평균 수익률"),
+    ),
+    GlossaryTerm(
+        term_id="exchange_rate",
+        label="환율",
+        definition="우리 돈과 외국 돈을 바꾸는 비율이에요.",
+        related=("환헤지",),
+    ),
+    GlossaryTerm(
+        term_id="currency_hedge",
+        label="환헤지",
+        definition=(
+            "환율이 변해도 수익이 흔들리지 않도록 미리 묶어두는 것이에요."
+        ),
+        related=("환율", "변동성"),
+    ),
+    GlossaryTerm(
+        term_id="dividend",
+        label="배당",
+        definition="회사가 번 이익의 일부를 주주에게 나눠주는 돈이에요.",
+        related=("주식", "실적배당상품"),
+    ),
+    GlossaryTerm(
+        term_id="market_cap",
+        label="시가총액",
+        definition="회사 주식 전체의 값을 합한 크기예요.",
+        related=("주식", "지수"),
+    ),
+    GlossaryTerm(
+        term_id="index",
+        label="지수",
+        definition=(
+            "시장 전체나 특정 묶음의 가격 흐름을 하나의 숫자로 나타낸 "
+            "것이에요."
+        ),
+        related=("ETF", "코스피", "S&P500"),
+    ),
+    GlossaryTerm(
+        term_id="kospi",
+        label="코스피",
+        definition=(
+            "한국거래소 유가증권시장에 상장된 주식 전체의 흐름을 나타내는 "
+            "대표 지수예요."
+        ),
+        related=("지수", "코스닥"),
+    ),
+    GlossaryTerm(
+        term_id="kosdaq",
+        label="코스닥",
+        definition=(
+            "한국거래소 코스닥시장에 상장된 주식의 흐름을 나타내는 "
+            "지수예요."
+        ),
+        related=("지수", "코스피"),
+    ),
+    GlossaryTerm(
+        term_id="sp500",
+        label="S&P500",
+        definition="미국 대표 기업 500곳의 주가 흐름을 나타내는 지수예요.",
+        related=("지수", "나스닥"),
+    ),
+    GlossaryTerm(
+        term_id="nasdaq",
+        label="나스닥",
+        definition=(
+            "미국 나스닥시장에 상장된 주식의 흐름을 나타내는 지수예요. "
+            "기술기업 비중이 커요."
+        ),
+        related=("지수", "S&P500"),
+    ),
 )
 
 _TERM_BY_ID = {term.term_id: term for term in GLOSSARY_TERMS}
@@ -176,6 +335,9 @@ _ACRONYM_ENDS_WITH_CONSONANT = {
     "ETF": False,
     "TDF": False,
     "IRP": False,
+    # "에스앤피오백"·"나스닥"으로 읽어 각각 받침이 없고 있다.
+    "S&P500": False,
+    "나스닥": True,
 }
 
 
@@ -192,6 +354,12 @@ def _ends_with_consonant(label: str) -> bool:
 
 def _topic_particle(label: str) -> str:
     return "은" if _ends_with_consonant(label) else "는"
+
+
+def subject_particle(label: str) -> str:
+    """Return 이/가 for a term label so follow-up wording reads naturally."""
+
+    return "이" if _ends_with_consonant(label) else "가"
 
 
 def find_glossary_term(term_id: str) -> GlossaryTerm | None:

@@ -21,6 +21,10 @@ class BlockedReason(StrEnum):
     FOREIGN_MARKET_OR_INDIVIDUAL_STOCK = "foreign_market_or_individual_stock"
     PRODUCT_LEVEL_UNAVAILABLE = "product_level_unavailable"
     ACCOUNT_SELECTION_REQUIRED = "account_selection_required"
+    CONTRIBUTION_AMOUNT_ADVICE = "contribution_amount_advice"
+    PROVIDER_CHOICE_ADVICE = "provider_choice_advice"
+    PERSONAL_ALLOCATION_ADVICE = "personal_allocation_advice"
+    PRINCIPAL_GUARANTEE_QUESTION = "principal_guarantee_question"
     UNSUPPORTED = "unsupported"
 
 
@@ -87,6 +91,8 @@ class QueryPlan(BaseModel):
     distribution_isu_code: str | None = None
     distribution_reinvestment: DistributionReinvestmentRequest | None = None
     glossary_term_id: str | None = None
+    investing_principle_id: str | None = None
+    hesitation_answer_id: str | None = None
     blocked_reason: BlockedReason | None = None
 
     @model_validator(mode="after")
@@ -97,6 +103,32 @@ class QueryPlan(BaseModel):
             raise ValueError("glossary intent requires glossary_term_id")
         if self.intent != ChatIntent.GLOSSARY and self.glossary_term_id is not None:
             raise ValueError("glossary_term_id is only valid for glossary intent")
+        if (
+            self.intent == ChatIntent.INVESTING_PRINCIPLE
+            and self.investing_principle_id is None
+        ):
+            raise ValueError(
+                "investing principle intent requires investing_principle_id"
+            )
+        if (
+            self.intent != ChatIntent.INVESTING_PRINCIPLE
+            and self.investing_principle_id is not None
+        ):
+            raise ValueError(
+                "investing_principle_id is only valid for investing principle intent"
+            )
+        if (
+            self.intent == ChatIntent.HESITATION_SUPPORT
+            and self.hesitation_answer_id is None
+        ):
+            raise ValueError("hesitation support intent requires hesitation_answer_id")
+        if (
+            self.intent != ChatIntent.HESITATION_SUPPORT
+            and self.hesitation_answer_id is not None
+        ):
+            raise ValueError(
+                "hesitation_answer_id is only valid for hesitation support intent"
+            )
         if self.intent != ChatIntent.NEWS and self.news_query is not None:
             raise ValueError("news_query is only valid for news intent")
         if self.intent != ChatIntent.NEWS and self.requests_event_strategy:
@@ -183,7 +215,31 @@ _GLOSSARY_QUESTION = re.compile(
     r"뭐(?:야|예요|에요|지|니|냐)|무슨\s*(?:말|뜻)|무엇|"
     r"뜻이?\s*(?:뭐|무엇|어떻게)|어떤\s*(?:의미|뜻)|"
     r"쉽게\s*(?:알려|설명|말해)|설명해|알려\s*줘|모르겠|"
+    r"뭐가\s*달라|무엇이\s*다른|차이(?:가|는)?\s*(?:뭐|무엇)|"
     r"안\s*(?:돼|되)|괜찮(?:아|을까)|해도\s*(?:돼|되)"
+)
+# 정의를 묻는 것이 분명한 어미. 이 신호가 있으면 데이터 조회 인텐트보다
+# 용어 설명이 앞선다. "채권이 뭐야?"에 ETF 카탈로그를 주지 않기 위함이다.
+_DEFINITION_QUESTION = re.compile(
+    r"(?:이|가|은|는|란|이란)?\s*"
+    r"(?:뭐(?:야|예요|에요|지|니|냐)|무슨\s*(?:말|뜻)|"
+    r"뜻이?\s*(?:뭐|무엇)|어떤\s*(?:의미|뜻)|무엇(?:인가|이야|이에요)?)"
+    r"|뭐가\s*달라|차이(?:가|는)?\s*(?:뭐|무엇)"
+)
+# 뜻풀이에 자리를 내줄 수 있는 인텐트. 상품·수치 조회라서 정의 질문에는
+# 답이 되지 않는다. 계좌 규칙·세액 계산은 제도 설명이 더 정확하므로 뺀다.
+_DEFINITION_OVERRIDABLE_INTENTS = frozenset(
+    {
+        ChatIntent.ETF_THEME,
+        ChatIntent.MACRO_EVIDENCE,
+        ChatIntent.EDUCATIONAL_PORTFOLIO,
+        ChatIntent.ETF_DISTRIBUTION,
+    }
+)
+# "채권"처럼 테마 이름이면서 기초 용어인 말이 있다. ETF·테마·상품을 함께
+# 언급하면 카탈로그 질문, 그렇지 않으면 용어 질문으로 본다.
+_PRODUCT_LOOKUP_CONTEXT = re.compile(
+    r"ETF|테마|상품|종목|후보|담을|투자할|편입", re.I
 )
 # 무엇을 물어야 할지 모르는 상태를 그대로 표현한 질문. 특정 기능으로
 # 분류할 수 없지만 서비스의 첫 질문이 될 가능성이 높다.
@@ -215,6 +271,29 @@ _GLOSSARY_TERM_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("pension_income_tax", re.compile(r"연금\s*소득세")),
     ("in_kind_transfer", re.compile(r"실물\s*이전")),
     ("tax_credit", re.compile(r"세액\s*공제")),
+    # 경제·투자 기초 용어. 더 긴 표현이 짧은 표현에 먹히지 않도록
+    # 구체적인 것부터 둔다("연평균 수익률"이 "수익률"보다 앞).
+    ("annualized_return", re.compile(r"연\s*평균\s*수익률")),
+    ("compound_interest", re.compile(r"복리")),
+    ("simple_interest", re.compile(r"단리")),
+    ("asset_allocation", re.compile(r"자산\s*배분")),
+    ("diversification", re.compile(r"분산\s*투자")),
+    ("installment_investing", re.compile(r"적립식|적립\s*투자")),
+    ("volatility", re.compile(r"변동성")),
+    ("currency_hedge", re.compile(r"환\s*헤지|환헷지")),
+    ("exchange_rate", re.compile(r"환율")),
+    ("inflation", re.compile(r"인플레이션|물가\s*상승")),
+    ("interest_rate", re.compile(r"금리|이자율")),
+    ("market_cap", re.compile(r"시가\s*총액")),
+    ("dividend", re.compile(r"배당(?!\s*상품)")),
+    ("kospi", re.compile(r"코스피|KOSPI", re.I)),
+    ("kosdaq", re.compile(r"코스닥|KOSDAQ", re.I)),
+    ("sp500", re.compile(r"S\s*&\s*P\s*500|에스\s*앤\s*피\s*500", re.I)),
+    ("nasdaq", re.compile(r"나스닥|NASDAQ", re.I)),
+    ("index", re.compile(r"지수")),
+    ("bond", re.compile(r"채권")),
+    ("stock", re.compile(r"주식")),
+    ("fund", re.compile(r"펀드")),
     (
         "db_dc",
         re.compile(
@@ -329,6 +408,227 @@ _PENSION_BASICS_QUESTION = re.compile(
     r"어떻게\s*(?:시작|가입)|(?:시작|가입).{0,8}어떻게)",
     re.I,
 )
+# 타깃 사용자는 "중도인출"이 아니라 "돈 필요하면 뺄 수 있어?"라고 묻는다.
+# 제도 용어를 몰라도 계좌 규칙 안내에 닿도록 일상어 표현을 함께 받는다.
+# 각 표현이 연금계좌에서만 성립하는 행위(납입 중단·중도인출·일시금 수령 등)를
+# 가리키므로 별도 문맥 단어를 요구하지 않는다. 대신 표현 자체를 좁게 유지한다.
+_PENSION_PRACTICE_QUESTION = re.compile(
+    # 개설·준비
+    r"계좌.{0,10}(?:여러\s*개|두\s*개|하나만|개수|몇\s*개)"
+    r"|(?:여러\s*개|두\s*개|몇\s*개).{0,10}(?:만들|개설|가입)"
+    r"|(?:만들|개설|가입).{0,10}(?:뭐|무엇|어떤).{0,6}(?:준비|필요|있어야)"
+    r"|(?:준비물|필요\s*서류)"
+    # 납입 유연성
+    r"|(?:한\s*달|매달|다달이|이번\s*달).{0,12}"
+    r"(?:걸러|거르|쉬|건너뛰|안\s*넣|못\s*넣)"
+    r"|(?:몰아서|한꺼번에|한\s*번에).{0,12}(?:넣|납입|입금)"
+    r"|한도.{0,10}(?:넘|초과).{0,12}(?:넣|납입)"
+    r"|(?:넣|납입).{0,12}(?:쉬어|쉬면|멈|중단|안\s*해도)"
+    # 중도인출·담보
+    r"|(?:돈|자금|목돈).{0,14}(?:빼|뺄|뺴|찾|인출|쓸|써야|필요)"
+    r"[^?]{0,14}(?:빼|뺄|찾|인출|쓸|대출|돼|되|있어)"
+    r"|(?:중간|중도|급하|갑자기).{0,14}(?:빼|뺄|찾|인출)"
+    r"|담보\s*대출|담보.{0,8}대출"
+    # 상품 변경·비용
+    r"|(?:상품|펀드|ETF).{0,10}(?:바꾸|바꿀|바꿔|바꿨|교체|변경|갈아타)"
+    r"|(?:바꾸|바꿀|바꿔|바꾸면|교체|변경).{0,10}수수료"
+    # 이전 시 보유 상품 처리
+    r"|(?:옮기|옮길|이전).{0,12}(?:상품|펀드|ETF).{0,12}"
+    r"(?:팔|현금화|해지|정리)"
+    # 연말정산·수령 방식
+    r"|연말\s*정산"
+    r"|(?:한\s*번에|한꺼번에).{0,10}(?:다|전부|모두)?\s*(?:받|찾|수령)"
+    r"|일시금",
+    re.I,
+)
+# 조언형 대안 응답에서 제외할 자산. 연금계좌에서 다루지 않는 대상을 콕 집어
+# 물으면 기존 안전 폴백을 그대로 유지한다("비트코인 지금 사도 돼?").
+# 문맥어를 요구하는 대신 제외 목록을 쓰는 이유는, 정작 도움이 필요한 질문이
+# "뭐 사야 돼?"처럼 짧고 문맥어가 없기 때문이다.
+_NON_PENSION_ASSET = re.compile(
+    r"비트\s*코인|코인|암호\s*화폐|가상\s*자산|이더리움|알트코인"
+    r"|부동산|아파트|주택\s*청약|청약\s*통장|전세|월세|토지|상가"
+    r"|로또|복권|도박|경마",
+    re.I,
+)
+# 정답이 사람마다 다른 조언형 질문. 특정 금액을 권유하지 않고 세액공제
+# 한도라는 공식 기준점을 제시한 뒤 계산기로 넘긴다.
+_PRINCIPLE_WHY_QUESTION = re.compile(
+    r"왜|이유(?:가|는)?|뭐가\s*좋|무슨\s*소용|어떤\s*점이\s*좋"
+    r"|얼마나\s*(?:영향|중요)|영향(?:을|이)?\s*(?:주|줘|미치)"
+    r"|(?:좋|필요|해야)(?:은|는)?\s*(?:이유|까닭)",
+    re.I,
+)
+# "왜 그렇게 하는가"에 답할 원리. 구체적인 표현을 먼저 두어 넓은 표현이
+# 가로채지 않게 한다.
+_INVESTING_PRINCIPLE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("fee_impact", re.compile(r"수수료|보수|비용")),
+    ("compounding_time", re.compile(r"복리")),
+    (
+        "young_risk_weight",
+        re.compile(r"(?:젊|어릴|20대|30대)[^?]{0,16}(?:주식|위험\s*자산|비중)"),
+    ),
+    (
+        "age_safe_asset",
+        re.compile(r"(?:나이|늙|은퇴|50대|60대)[^?]{0,16}(?:안전\s*자산|줄)"),
+    ),
+    ("why_currency_hedge", re.compile(r"환\s*헤지|환헷지")),
+    ("why_rebalance", re.compile(r"리\s*밸런싱|리밸런스")),
+    ("installment_effect", re.compile(r"적립식|나눠\s*사|분할\s*매수")),
+    (
+        "concentration_risk",
+        re.compile(r"(?:한\s*(?:곳|군데|종목)|몰아|집중)[^?]{0,12}(?:넣|투자|담)"),
+    ),
+    ("long_term_investing", re.compile(r"장기\s*투자|오래\s*(?:들고|가지|묻어)")),
+    ("why_diversify", re.compile(r"분산\s*투자|나눠\s*담")),
+    (
+        "risk_return_tradeoff",
+        re.compile(r"위험[^?]{0,10}(?:줄이|낮추)[^?]{0,12}수익|수익[^?]{0,10}위험"),
+    ),
+)
+
+
+def _investing_principle_id(message: str) -> str | None:
+    """Identify a "why do we do this?" question about investing basics."""
+
+    # 위험·수익 관계는 "왜"라는 말 없이 "줄이면 줄어?"처럼 묻는 경우가 많다.
+    tradeoff = dict(_INVESTING_PRINCIPLE_PATTERNS)["risk_return_tradeoff"]
+    if tradeoff.search(message) is not None:
+        return "risk_return_tradeoff"
+    if _PRINCIPLE_WHY_QUESTION.search(message) is None:
+        return None
+    for principle_id, pattern in _INVESTING_PRINCIPLE_PATTERNS:
+        if pattern.search(message) is not None:
+            return principle_id
+    return None
+
+
+_CONTRIBUTION_AMOUNT_ADVICE = re.compile(
+    r"(?:한\s*달|매달|매월|월|다달이).{0,12}얼마"
+    r"|얼마(?:씩|나)?.{0,12}(?:넣|납입|저축|모으).{0,12}(?:좋|나은|될까|할까|괜찮)"
+    r"|(?:넣|납입|저축).{0,12}얼마.{0,12}(?:좋|나은|될까|할까|적당)"
+    r"|적정.{0,8}(?:납입|금액)",
+    re.I,
+)
+# 망설임이 담긴 질문. 감정을 단정하지 않고 승인된 사실로 답한다. 구체적인
+# 표현을 앞에 두어 넓은 표현이 가로채지 않게 한다.
+_HESITATION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    (
+        "peer_comparison",
+        re.compile(
+            r"남들?(?:은|이|보다)?[^?]{0,12}(?:얼마|어디|모으|모았|넣|투자|해)"
+            r"|또래[^?]{0,12}(?:얼마|어디|모으|모았|넣)"
+            r"|다들[^?]{0,12}(?:어디|얼마|투자|넣)"
+            r"|평균(?:이|은)?[^?]{0,8}얼마"
+            r"|친구[^?]{0,12}(?:수익|벌|났)"
+            r"|나만[^?]{0,8}(?:늦|뒤처|못)",
+            re.I,
+        ),
+    ),
+    (
+        "doing_well_check",
+        re.compile(
+            r"(?:내가|제가)?[^?]{0,6}잘\s*(?:하고|되고)\s*있"
+            r"|이\s*정도(?:면|로)?[^?]{0,10}(?:괜찮|되|맞|충분)"
+            r"|(?:내|제)[^?]{0,8}수익률[^?]{0,10}(?:낮|적|안\s*좋|괜찮)"
+            r"|제대로\s*(?:하고|가고)\s*있",
+            re.I,
+        ),
+    ),
+    (
+        "too_late_to_start",
+        re.compile(
+            r"(?:너무)?\s*늦(?:었|은|지|나|었나)"
+            r"|지금\s*(?:시작|해도|가입)[^?]{0,10}(?:늦|괜찮|돼|될까|의미)"
+            r"|\d{2}대(?:인데|라도|에)?[^?]{0,12}(?:늦|해도|시작|의미|되)"
+            r"|나이(?:가)?\s*(?:많|들)[^?]{0,12}(?:의미|늦|해도|되)"
+            r"|언제\s*시작(?:하는|해)[^?]{0,8}(?:좋|나)"
+            r"|(?:조금)?\s*더\s*기다(?:렸다|려)",
+            re.I,
+        ),
+    ),
+    (
+        "small_amount_start",
+        re.compile(
+            r"돈(?:이)?\s*(?:적|없|부족)[^?]{0,14}(?:시작|해도|넣|되|할\s*수)"
+            r"|월급(?:이)?\s*(?:적|작)[^?]{0,14}(?:해도|되|할\s*수|넣)"
+            r"|\d+\s*(?:만\s*)?원(?:으로|이라도|밖에)[^?]{0,10}(?:되|해도|시작|가능)"
+            r"|소액(?:으로|이라도)?[^?]{0,10}(?:되|해도|시작|가능)"
+            r"|조금씩(?:이라도)?[^?]{0,10}(?:되|해도|시작|가능)",
+            re.I,
+        ),
+    ),
+    (
+        "market_drop_fear",
+        re.compile(
+            r"폭락|급락|떨어지면|내리면|하락하면"
+            r"|시장(?:이)?\s*(?:불안|안\s*좋|흔들)"
+            r"|(?:요즘|지금)[^?]{0,10}불안"
+            r"|(?:지금|요즘)[^?]{0,10}(?:비싸|비싼|고점|많이\s*올라)"
+            r"|(?:비싸|비싼)[^?]{0,10}(?:것|거)\s*같"
+            r"|마이너스[^?]{0,12}(?:났|나면|인데|어떡)",
+            re.I,
+        ),
+    ),
+    (
+        "loss_fear",
+        re.compile(
+            r"손실[^?]{0,12}(?:나면|났|어떡|어떻|무서|걱정)"
+            r"|손해[^?]{0,12}(?:나면|났|어떡|무서|걱정)"
+            r"|돈[^?]{0,8}(?:잃|까먹)"
+            r"|원금[^?]{0,10}(?:까먹|잃|날리)"
+            r"|투자(?:가|는)?[^?]{0,8}(?:무서|겁나|두려)"
+            r"|무서(?:워|운|위)|겁나|두려[워운]"
+            r"|다\s*잃",
+            re.I,
+        ),
+    ),
+)
+
+
+def _hesitation_answer_id(message: str) -> str | None:
+    """Identify a hesitation question so it gets facts instead of a dead end."""
+
+    for answer_id, pattern in _HESITATION_PATTERNS:
+        if pattern.search(message) is not None:
+            return answer_id
+    return None
+
+
+# 특정 금융회사를 고르는 질문. 회사를 권유하지 않고 비교 기준을 제시한다.
+_PROVIDER_CHOICE_ADVICE = re.compile(
+    r"(?:증권사|은행|보험사|금융\s*회사)[^?]{0,14}"
+    r"(?:어디|어느|중에).{0,12}(?:나은|나아|좋|괜찮|해야)"
+    r"|(?:어디|어느)[^?]{0,12}(?:에서|로)?\s*"
+    r"(?:만들|가입|개설).{0,12}(?:좋|나은|나아|괜찮|될까|할까)"
+    r"|(?:증권사|은행|보험사)[^?]{0,10}추천",
+    re.I,
+)
+# "나 어떻게 투자해야 해?"처럼 조건 없이 개인 맞춤 답을 구하는 질문.
+# 상품을 고르는 대신 필요한 조건을 되묻고 성향별 비교로 잇는다.
+_PERSONAL_ALLOCATION_ADVICE = re.compile(
+    r"(?:나|내가|저).{0,8}(?:어떻게|뭘|무엇을).{0,10}(?:투자|운용|사|해야|담)"
+    r"|어떻게\s*(?:투자|운용)(?:해야|하면|할까|하지)"
+    r"|(?:뭐|무엇|어떤\s*거).{0,6}(?:사|담|골라|넣)(?:야|아야|어야|면)?\s*"
+    r"(?:돼|되|할까|좋을까|하지)"
+    r"|내\s*나이.{0,10}(?:뭐|무엇|어떤).{0,8}(?:맞|좋)"
+    r"|(?:수익률|수익).{0,8}(?:높은|좋은).{0,8}(?:거|것|상품|알려|추천)"
+    r"|(?:ETF|상품|펀드|종목)[^?]{0,10}(?:제일|가장)[^?]{0,6}(?:좋|나은)"
+    r"|(?:제일|가장)[^?]{0,6}(?:좋|나은)[^?]{0,10}(?:ETF|상품|펀드|종목)"
+    r"|(?:지금|오늘|이제)[^?]{0,8}"
+    r"(?:사|팔|팔아|파|매수|매도)[^?]{0,8}(?:될까|돼|되나|해야|할까|하나|해)",
+    re.I,
+)
+# 원금 보장·손실 회피를 구하는 질문. 안심시키지 않고 제도 사실로 돌린다.
+_PRINCIPAL_GUARANTEE_QUESTION = re.compile(
+    r"원금.{0,8}(?:보장|지키|잃)"
+    r"|손해.{0,10}안\s*(?:보|나)"
+    r"|손실.{0,10}(?:없|안\s*(?:나|보))"
+    r"|안전한\s*(?:상품|거|것)"
+    r"|(?:얼마나|얼마).{0,8}(?:벌|수익).{0,8}(?:수\s*있|나|될까)"
+    r"|(?:사면|하면).{0,8}돈.{0,6}(?:벌|되)",
+    re.I,
+)
 _ACCOUNT_OVERVIEW_WORDS = re.compile(
     r"규칙|뭐|무엇|전체|전반|한눈에|정리|설명|알려|기본|차이|비교"
 )
@@ -367,6 +667,13 @@ _EDUCATIONAL_PORTFOLIO_TERMS = re.compile(
     r"포트폴리오|자산\s*배분|투자\s*(?:성향|스타일)|"
     r"안정\s*추구형|위험\s*중립형|적극\s*투자형|"
     r"공격\s*투자형|안정형"
+)
+# 리밸런싱을 "언제·얼마나 자주" 하는지는 성향별 점검 주기가 답이다.
+# 엔진이 이미 성향마다 주기를 계산하므로 안내 경로로 잇는다.
+_REBALANCING_CADENCE_QUESTION = re.compile(
+    r"(?:리\s*밸런싱|리밸런스)[^?]{0,12}"
+    r"(?:언제|얼마나\s*자주|주기|자주\s*해|몇\s*(?:개월|달|번))"
+    r"|(?:언제|얼마나\s*자주|주기)[^?]{0,12}(?:리\s*밸런싱|리밸런스)"
 )
 # 나이를 밝히고 운용 방법을 묻는 표현. 타깃 사용자는 "35살인데 어떻게
 # 배분해?"처럼 전략·포트폴리오라는 말 없이 묻는다. 나이와 운용 동사가
@@ -646,6 +953,7 @@ def plan_question(
         ChatIntent.EDUCATIONAL_PORTFOLIO: (
             _EDUCATIONAL_PORTFOLIO_TERMS.search(normalized) is not None
             or _AGE_BASED_ALLOCATION_QUESTION.search(normalized) is not None
+            or _REBALANCING_CADENCE_QUESTION.search(normalized) is not None
         ),
         ChatIntent.PROVIDER_DISCLOSURE: bool(account_types)
         and _DISCLOSURE_TERMS.search(normalized) is not None,
@@ -654,12 +962,48 @@ def plan_question(
             or account_types
             or account_rule_topic
             or (_PENSION_CONTEXT.search(normalized) and _RULE_TERMS.search(normalized))
+            or _PENSION_PRACTICE_QUESTION.search(normalized) is not None
         ),
     }
     personal_account_tax_request = (
         intent_matches[ChatIntent.PENSION_TAX]
         and re.search(r"내\s*계좌", normalized) is not None
     )
+    # 정답이 사람마다 다른 조언형 질문은 금액·회사를 고르지 않고, 공식
+    # 기준점과 비교 항목을 제시하는 대안 응답으로 돌린다. 다른 인텐트가
+    # 이미 구체적으로 잡은 질문은 건드리지 않는다.
+    # 금융회사 선택은 "은행" 같은 말이 테마명과 겹치므로 테마 매칭보다 앞선다.
+    advice_candidate = not any(
+        matched
+        for candidate, matched in intent_matches.items()
+        if candidate is not ChatIntent.ETF_THEME
+    )
+    if advice_candidate:
+        if _CONTRIBUTION_AMOUNT_ADVICE.search(normalized):
+            return _blocked(
+                normalized,
+                BlockedReason.CONTRIBUTION_AMOUNT_ADVICE,
+                max_results,
+            )
+        if _PROVIDER_CHOICE_ADVICE.search(normalized):
+            return _blocked(
+                normalized,
+                BlockedReason.PROVIDER_CHOICE_ADVICE,
+                max_results,
+            )
+        advice_scope = _NON_PENSION_ASSET.search(normalized) is None
+        if advice_scope and _PRINCIPAL_GUARANTEE_QUESTION.search(normalized):
+            return _blocked(
+                normalized,
+                BlockedReason.PRINCIPAL_GUARANTEE_QUESTION,
+                max_results,
+            )
+        if advice_scope and _PERSONAL_ALLOCATION_ADVICE.search(normalized):
+            return _blocked(
+                normalized,
+                BlockedReason.PERSONAL_ALLOCATION_ADVICE,
+                max_results,
+            )
     # "내 계좌"는 목시나리오 선택에도 쓰이지만 명시적 세금 요청과 함께면
     # 세금 계산 의도가 더 구체적이다. 전역 우선순위는 유지해 다른 복합 질문의
     # 기존 라우팅 범위를 넓히지 않는다.
@@ -671,6 +1015,25 @@ def plan_question(
             None,
         )
     )
+    # 정의를 묻는 것이 분명하고 사전에 있는 용어라면 데이터 조회보다 뜻풀이가
+    # 먼저다. "채권이 뭐야?"에 ETF 카탈로그를, "인플레이션이 뭐야?"에 거시지표
+    # 수치를 주면 질문·답변이 어긋난다. 계좌·세액 인텐트는 제도 설명이 더
+    # 정확하므로 그대로 둔다.
+    # 단, "반도체 ETF가 뭐야?"처럼 상품을 함께 지목한 질문은 카탈로그 안내가
+    # 답이므로 양보하지 않는다.
+    if (
+        intent in _DEFINITION_OVERRIDABLE_INTENTS
+        and _PRODUCT_LOOKUP_CONTEXT.search(normalized) is None
+        and _DEFINITION_QUESTION.search(normalized)
+    ):
+        definition_term_id = _glossary_term_id(normalized)
+        if definition_term_id is not None:
+            return QueryPlan(
+                normalized_message=normalized,
+                intent=ChatIntent.GLOSSARY,
+                max_results=max_results,
+                glossary_term_id=definition_term_id,
+            )
 
     if intent == ChatIntent.MOCK_PORTFOLIO:
         return QueryPlan(
@@ -802,6 +1165,27 @@ def plan_question(
         )
     # 기존 인텐트가 모두 받지 않은 뒤에만 용어 질문으로 본다. 계좌·세액
     # 질문을 가로채지 않도록 차단 직전에 둔다.
+    # "왜 그렇게 하나"는 뜻풀이로 답이 되지 않으므로 용어보다 먼저 본다.
+    # "리밸런싱이 뭐야?"는 용어, "리밸런싱을 왜 해?"는 원리다.
+    investing_principle_id = _investing_principle_id(normalized)
+    if investing_principle_id is not None:
+        return QueryPlan(
+            normalized_message=normalized,
+            intent=ChatIntent.INVESTING_PRINCIPLE,
+            max_results=max_results,
+            investing_principle_id=investing_principle_id,
+        )
+    # 망설임이 담긴 질문은 안전 폴백으로 떨어뜨리지 않고 사실로 답한다.
+    # 연금 밖 자산을 지목한 질문은 기존 폴백을 유지한다.
+    if _NON_PENSION_ASSET.search(normalized) is None:
+        hesitation_answer_id = _hesitation_answer_id(normalized)
+        if hesitation_answer_id is not None:
+            return QueryPlan(
+                normalized_message=normalized,
+                intent=ChatIntent.HESITATION_SUPPORT,
+                max_results=max_results,
+                hesitation_answer_id=hesitation_answer_id,
+            )
     glossary_term_id = _glossary_term_id(normalized)
     if glossary_term_id is not None:
         return QueryPlan(

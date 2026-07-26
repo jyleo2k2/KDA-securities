@@ -125,7 +125,7 @@ describe("actual rebalancing review", () => {
       expect(getRebalancingProfile).toHaveBeenCalledWith("access-token");
       expect(getMyPensionAccounts).toHaveBeenCalledWith("access-token");
       expect(submitPrompt).toHaveBeenCalledWith(
-        "개인형 IRP의 실제 보유 비중을 목표 비중과 비교하고 이탈폭을 점검해줘.",
+        "리밸런싱 점검해줘",
         expect.objectContaining({
           account_type: "irp",
           age: 35,
