@@ -117,7 +117,7 @@ def audit_latest_portfolio_universe(
                 limit 1
             ), product_counts as (
                 select p.version_id,
-                       count(*)::integer as actual_product_rows,
+                       sum(p.count_by_account)::integer as actual_product_rows,
                        jsonb_object_agg(p.account_type, p.count_by_account)
                            as account_product_counts
                 from (
