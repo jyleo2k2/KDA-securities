@@ -356,6 +356,12 @@ def _topic_particle(label: str) -> str:
     return "은" if _ends_with_consonant(label) else "는"
 
 
+def subject_particle(label: str) -> str:
+    """Return 이/가 for a term label so follow-up wording reads naturally."""
+
+    return "이" if _ends_with_consonant(label) else "가"
+
+
 def find_glossary_term(term_id: str) -> GlossaryTerm | None:
     return _TERM_BY_ID.get(term_id)
 

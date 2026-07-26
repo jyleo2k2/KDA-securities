@@ -12,6 +12,8 @@ class GracefulDeclineKind(StrEnum):
     PREDICTION_OR_ORDER = "prediction_or_order"
     CONTRIBUTION_AMOUNT_ADVICE = "contribution_amount_advice"
     PROVIDER_CHOICE_ADVICE = "provider_choice_advice"
+    PERSONAL_ALLOCATION_ADVICE = "personal_allocation_advice"
+    PRINCIPAL_GUARANTEE_QUESTION = "principal_guarantee_question"
 
 
 @dataclass(frozen=True)
@@ -169,6 +171,71 @@ def graceful_decline(
             limitations=[
                 "특정 금융회사를 권유하지 않아요. 공시는 과거 실적이며 "
                 "미래 수익을 보장하지 않아요.",
+            ],
+        )
+
+    if kind is GracefulDeclineKind.PERSONAL_ALLOCATION_ADVICE:
+        # "나 어떻게 투자해야 해?"는 조건이 있어야 답할 수 있다. 상품을
+        # 고르는 대신 어떤 정보가 더 필요한지 되물어 다음 단계로 잇는다.
+        return GracefulDecline(
+            answer=(
+                "어떤 게 맞을지는 나이와 투자성향, 그리고 어떤 계좌를 "
+                "쓰는지에 따라 달라져요. 무엇을 사라고 정해드리지는 "
+                "않지만, 조건을 알려주시면 성향별로 어떻게 나눠 담는지 "
+                "비교해서 보여드릴 수 있어요."
+            ),
+            suggested_follow_ups=[
+                SuggestedFollowUp(
+                    follow_up_id="advice_profile_guide",
+                    label="투자성향별로 비교하기",
+                    message="투자성향별 연금 운용 가이드를 비교해줘",
+                ),
+                SuggestedFollowUp(
+                    follow_up_id="advice_age_allocation",
+                    label="나이대로 알아보기",
+                    message="35살인데 어떻게 배분해?",
+                ),
+                SuggestedFollowUp(
+                    follow_up_id="advice_why_diversify",
+                    label="왜 나눠 담는지 보기",
+                    message="분산투자를 왜 해야 해?",
+                ),
+            ],
+            limitations=[
+                "개인에게 맞는 특정 상품을 골라 드리지 않아요. 실제 상품 "
+                "선택과 주문은 고객님이 하세요.",
+            ],
+        )
+
+    if kind is GracefulDeclineKind.PRINCIPAL_GUARANTEE_QUESTION:
+        # 원금 보장·손실 회피 질문. 안심시키는 대신 제도 사실로 답을 돌린다.
+        return GracefulDecline(
+            answer=(
+                "손실이 나지 않는 방법을 알려드릴 수는 없어요. 다만 "
+                "연금계좌에서 원리금보장상품과 실적배당상품이 어떻게 "
+                "다른지, 예금자보호는 어디까지 적용되는지는 공식 기준으로 "
+                "설명해 드릴 수 있어요."
+            ),
+            suggested_follow_ups=[
+                SuggestedFollowUp(
+                    follow_up_id="advice_principal_guaranteed",
+                    label="원리금보장상품이란",
+                    message="원리금보장상품이 뭐야?",
+                ),
+                SuggestedFollowUp(
+                    follow_up_id="advice_volatility",
+                    label="변동성이란",
+                    message="변동성이 뭐야?",
+                ),
+                SuggestedFollowUp(
+                    follow_up_id="advice_risk_return",
+                    label="위험과 수익의 관계 보기",
+                    message="위험을 줄이면 수익도 줄어?",
+                ),
+            ],
+            limitations=[
+                "원금 보장이나 손실 회피를 약속하지 않아요.",
+                "상품별 보호 여부는 가입 금융회사의 공식 안내를 확인해야 해요.",
             ],
         )
 

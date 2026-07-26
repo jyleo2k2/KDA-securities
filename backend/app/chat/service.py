@@ -53,6 +53,10 @@ from .handlers.distribution_events import (
 )
 from .handlers.getting_started import getting_started_response
 from .handlers.glossary import build_glossary_response, find_glossary_term
+from .handlers.investing_principle import (
+    build_investing_principle_response,
+    investing_principle_by_id,
+)
 from .handlers.pension_tax import pension_tax_response
 from .handlers.portfolio import (
     age_style_portfolio_guide,
@@ -109,6 +113,21 @@ def _glossary_response(
             user_message=plan.normalized_message,
         )
     return build_glossary_response(term, knowledge)
+
+
+def _investing_principle_response(
+    plan: QueryPlan,
+    knowledge: KnowledgeSearch,
+) -> ChatResponse:
+    """Explain why a practice is common, using approved wording only."""
+
+    principle = investing_principle_by_id(plan.investing_principle_id or "")
+    if principle is None:
+        return blocked_response(
+            BlockedReason.UNSUPPORTED,
+            user_message=plan.normalized_message,
+        )
+    return build_investing_principle_response(principle, knowledge)
 
 
 class ChatService:
@@ -248,6 +267,10 @@ class ChatService:
                 response = getting_started_response()
             elif resolved_plan.intent == ChatIntent.GLOSSARY:
                 response = _glossary_response(resolved_plan, self._knowledge)
+            elif resolved_plan.intent == ChatIntent.INVESTING_PRINCIPLE:
+                response = _investing_principle_response(
+                    resolved_plan, self._knowledge
+                )
             elif request.educational_portfolio is not None:
                 response = educational_portfolio(
                     request.educational_portfolio,

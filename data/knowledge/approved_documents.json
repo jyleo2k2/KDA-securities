@@ -18,7 +18,7 @@
       ],
       "topics": ["연금계좌", "DC", "IRP", "연금저축"],
       "question_families": ["계좌 차이", "위험자산 한도", "연금 기본 규칙"],
-      "content_sha256": "74d7221a4f37b34d1e64ffb9138e88f1a46150f607852125bb5dfe14f11a2170",
+      "content_sha256": "7e3738fd1a2f57e4203a57e046443d58a8a88c847ac3630733c81ad43b48594f",
       "as_of_date": "2026-07-20",
       "verified_at": "2026-07-16",
       "review_due_date": "2027-01-12",
