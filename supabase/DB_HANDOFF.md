@@ -911,6 +911,17 @@ uv run ruff check .
 
 ## 15. 작업 로그 템플릿
 
+### 2026-07-26 13:53 KST — ETF 유니버스 캐시 원격 보관 (REMOTE-E2E-VERIFIED)
+
+- 작업자/브랜치/시작 기준: 김태형 / `codex/김태형/etf-cache-ops-handoff` / `origin/main` `7e21fe2`.
+- 변경 내용: private Storage 버킷 `official-etf-universe-reference-raw`, `official-etf-universe-cache`를 원격에 적용했다. 후자는 일별 가격·총수익률 캐시의 매 실행 산출물과 manifest, 최신 run 포인터를 보관한다.
+- 결정 및 근거: 두 버킷 모두 `public=false`로 유지하고 공개 URL·브라우저 credential·`storage.objects` 사용자 정책을 만들지 않았다. 서버 전용 적재·복원 흐름만 허용해 원본·캐시의 외부 노출 경계를 유지한다.
+- 로컬 검증과 실제 결과: `uv run python scripts/archive_etf_universe_cache.py --apply`와 `uv run python scripts/restore_etf_universe_cache.py --apply`를 실행했다. run `20260726T045232Z`에 8개 산출물을 SHA-256·바이트 단위로 검증하며 복원했고, 버킷에는 manifest·latest 포인터를 포함한 객체 10개가 확인됐다. DB 감사는 version `4`, 기준일 `2026-07-23`, 상품 `2,507`, 총수익 이력 `898,190`, 이력 없는 상품 `0`으로 일치했다.
+- 원격 적용 여부와 migration version: Supabase MCP로 `create_official_etf_universe_reference_raw_storage`, `create_official_etf_universe_cache_storage`를 적용했다. 두 버킷의 `public=false`를 사후 조회로 확인했다.
+- 운영 조치: 유휴 상태가 5분을 넘긴 `postgres` Supavisor 연결 6개만 종료해 session pool 포화를 해소했고, 이후 앱 DB 연결·ETF 감사가 정상 통과했다. 활성 연결과 시스템 역할 연결은 건드리지 않았다.
+- 남은 위험 또는 blocker: 공식 원본 XLS의 최초 비공개 등록은 별도 승인·원본 수령이 필요하다. 현재 캐시 아카이브는 정기 워크플로가 복원 후 DB 감사까지 수행하도록 구성되어 있다.
+- 다음 작업: 공식 원본 수령 시 reference raw 버킷에 최초 등록하고, 월간 유니버스 갱신 run의 원본 SHA·기준일을 이 문서에 이어 기록한다.
+
 ```markdown
 ### YYYY-MM-DD HH:mm KST
 
