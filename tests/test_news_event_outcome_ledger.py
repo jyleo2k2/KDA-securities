@@ -2,6 +2,8 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
+
 from backend.app.engine.models import AccountType, SourceChip
 from backend.app.engine.news_event_outcomes import HistoricalNewsEvent
 from backend.app.portfolio_universe_repository import PortfolioUniverseRepository
@@ -9,6 +11,8 @@ from scripts.audit_news_event_outcome_coverage import summarize_outcome_coverage
 from scripts.build_news_event_outcome_ledger import (
     HistoricalNewsEventLedger,
     build_outcome_evaluation,
+    events_through,
+    load_local_cache_universe,
 )
 
 _FOMC_LEDGER_PATH = Path("data/reference/fomc_policy_event_ledger_2011_2025.json")
@@ -111,3 +115,65 @@ def test_fomc_policy_ledger_uses_official_sources_and_explicit_bank_peers() -> N
         )
         for event in ledger.events
     )
+
+
+def test_local_cache_universe_uses_explicit_roots(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    expected = object()
+    captured: dict[str, object] = {}
+
+    def fake_from_latest_cache(
+        cls: type[PortfolioUniverseRepository],
+        account_type: AccountType,
+        **kwargs: Path,
+    ) -> object:
+        captured["account_type"] = account_type
+        captured.update(kwargs)
+        return expected
+
+    monkeypatch.setattr(
+        PortfolioUniverseRepository,
+        "from_latest_cache",
+        classmethod(fake_from_latest_cache),
+    )
+
+    result = load_local_cache_universe(
+        return_root=tmp_path / "returns",
+        krx_root=tmp_path / "krx",
+        adjusted_price_root=tmp_path / "adjusted-prices",
+        event_root=tmp_path / "events",
+    )
+
+    assert result is expected
+    assert captured == {
+        "account_type": AccountType.PENSION_SAVINGS,
+        "return_root": tmp_path / "returns",
+        "krx_root": tmp_path / "krx",
+        "adjusted_price_root": tmp_path / "adjusted-prices",
+        "event_root": tmp_path / "events",
+    }
+
+
+def test_events_through_keeps_only_the_explicit_incremental_range() -> None:
+    source = _source()
+    events = (
+        HistoricalNewsEvent(
+            event_id="fed-2019-12-11",
+            occurred_on=date(2019, 12, 11),
+            theme_id="bank_finance",
+            peer_isu_codes=("111111",),
+            source=source,
+        ),
+        HistoricalNewsEvent(
+            event_id="fed-2020-03-15",
+            occurred_on=date(2020, 3, 15),
+            theme_id="bank_finance",
+            peer_isu_codes=("111111",),
+            source=source,
+        ),
+    )
+
+    assert [event.event_id for event in events_through(events, date(2019, 12, 31))] == [
+        "fed-2019-12-11"
+    ]
