@@ -358,15 +358,17 @@ export function MainHomeScreen({
       startX: event.clientX,
     };
     suppressStrategyClick.current = false;
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    setIsStrategyDragging(true);
   };
   const handleStrategyPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const drag = strategyDrag.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     const deltaX = event.clientX - drag.startX;
     if (!drag.moved && Math.abs(deltaX) < STRATEGY_DRAG_THRESHOLD_PX) return;
-    drag.moved = true;
+    if (!drag.moved) {
+      drag.moved = true;
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      setIsStrategyDragging(true);
+    }
     event.preventDefault();
     event.currentTarget.scrollLeft = drag.startScrollLeft - deltaX;
   };
@@ -670,7 +672,7 @@ export function MainHomeScreen({
               style={{ background: card.bg }}
               key={card.title}
               onClick={onOpenStrategyExplore}
-              aria-label={`${card.title} 전략 상세 보기`}
+              aria-label={`${card.title} 소개 화면 열기`}
             >
               <span className="mhs-strategy-card-title">{card.title}</span>
               <p className="mhs-strategy-card-value" style={{ color: card.valueColor }}>{value}</p>
