@@ -571,7 +571,7 @@ describe("GuidePage chat history deletion", () => {
   });
 
   it("keeps a large hidden history out of the chat render tree and reveals it in pages", async () => {
-    const sessions = Array.from({ length: 45 }, (_, index): ChatSessionSummary => ({
+    const sessions = Array.from({ length: 500 }, (_, index): ChatSessionSummary => ({
       session_id: `session-${index + 1}`,
       title: `대화 ${index + 1}`,
       created_at: "2026-07-19T00:00:00Z",
@@ -588,7 +588,7 @@ describe("GuidePage chat history deletion", () => {
     fireEvent.click(screen.getByRole("button", { name: "이전 대화 더 보기" }));
     expect(document.querySelectorAll(".history-open")).toHaveLength(40);
     fireEvent.click(screen.getByRole("button", { name: "이전 대화 더 보기" }));
-    expect(document.querySelectorAll(".history-open")).toHaveLength(45);
+    expect(document.querySelectorAll(".history-open")).toHaveLength(60);
 
     fireEvent.click(screen.getByRole("button", { name: "지난 대화 닫기" }));
     expect(document.querySelectorAll(".history-open")).toHaveLength(0);
