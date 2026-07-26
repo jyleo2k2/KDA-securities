@@ -36,6 +36,8 @@ describe("StrategyDetailScreen", () => {
     expect(screen.getByText("주식 안에서는 ETF 분야도 나눠 봐요")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /넓은 시장, 반도체, 바이오 헬스케어/ })).toBeInTheDocument();
     expect(screen.getByText(/막대 크기는 이해를 돕기 위한 예시예요/)).toBeInTheDocument();
+    expect(document.querySelector(".sd-operation-guide")).toHaveTextContent("전략의 운용 방식");
+    expect(document.querySelector(".sd-account-guide")).toHaveTextContent("연금계좌에는 이렇게 나눠요");
   });
 
   it("falls back to the first strategy when the hash has no valid id", () => {

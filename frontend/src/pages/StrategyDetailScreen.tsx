@@ -93,12 +93,12 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
             <p className="sd-allocation-note">막대 크기는 이해를 돕기 위한 예시예요. 실제 비중과 ETF 분야는 투자성향·계좌 규칙·엔진 결과를 확인해 직접 결정해요.</p>
           </section>
 
-          <section className="sd-card">
+          <section className="sd-card sd-operation-guide">
             <h2 className="sd-card-title">전략의 <span>운용 방식</span></h2>
             <p className="sd-card-body">{strategy.howItWorks}</p>
           </section>
 
-          <section className="sd-card">
+          <section className="sd-card sd-account-guide">
             <h2 className="sd-card-title">연금계좌에는 <span>이렇게 나눠요</span></h2>
             <p className="sd-card-body">{strategy.accountApplication}</p>
             <dl className="sd-facts">
