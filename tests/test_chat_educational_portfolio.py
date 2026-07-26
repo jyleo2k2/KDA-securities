@@ -399,7 +399,7 @@ def test_custom_portfolio_card_uses_completed_survey_age_and_profile() -> None:
     )
 
 
-def test_pension_strategy_question_uses_same_account_groups_for_all_saved_profiles() -> None:
+def test_pension_strategy_question_uses_same_groups_for_all_saved_profiles() -> None:
     service = _service()
 
     for saved_account_type in AccountType:
