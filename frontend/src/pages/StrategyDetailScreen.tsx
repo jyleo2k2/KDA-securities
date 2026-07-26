@@ -1,4 +1,4 @@
-import { useState, type JSX } from "react";
+import { useEffect, useState, type JSX } from "react";
 
 import { STRATEGIES, type StrategyExploreItem } from "./strategyExplore/strategies";
 import { StatusBar } from "../components/StatusBar";
@@ -50,6 +50,13 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
     ));
   }
 
+  useEffect(() => {
+    if (allocationSelection === null) return;
+    const clear = () => setAllocationSelection(null);
+    document.addEventListener("click", clear);
+    return () => document.removeEventListener("click", clear);
+  }, [allocationSelection]);
+
   return (
     <main className="app-phone-stage sd-stage" style={{ "--sd-accent": strategy.accent } as React.CSSProperties}>
       <section className="app-phone-frame sd-phone" aria-label={`${strategy.name} 상세`}>
@@ -86,7 +93,10 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
                   style={{ flexGrow: item.percent }}
                   aria-label={`${item.label} ${item.percent}% 자세히 보기`}
                   aria-pressed={selectedAsset?.label === item.label}
-                  onClick={() => selectAllocation({ group: "asset", label: item.label })}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    selectAllocation({ group: "asset", label: item.label });
+                  }}
                 >
                   <span style={{ backgroundColor: item.color }} />
                 </button>
@@ -99,7 +109,10 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
                     type="button"
                     className={selectedAsset?.label === item.label ? "is-selected" : ""}
                     aria-pressed={selectedAsset?.label === item.label}
-                    onClick={() => selectAllocation({ group: "asset", label: item.label })}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      selectAllocation({ group: "asset", label: item.label });
+                    }}
                   >
                     <i style={{ backgroundColor: item.color }} />
                     {item.label} <span>{item.percent}%</span>
@@ -128,7 +141,10 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
                     style={{ flexGrow: item.percent }}
                     aria-label={`${item.label} 주식 ETF 안에서 ${item.percent}% 자세히 보기`}
                     aria-pressed={selectedSector?.label === item.label}
-                    onClick={() => selectAllocation({ group: "sector", label: item.label })}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      selectAllocation({ group: "sector", label: item.label });
+                    }}
                   >
                     <span style={{ backgroundColor: item.color }} />
                   </button>
@@ -141,7 +157,10 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
                       type="button"
                       className={selectedSector?.label === item.label ? "is-selected" : ""}
                       aria-pressed={selectedSector?.label === item.label}
-                      onClick={() => selectAllocation({ group: "sector", label: item.label })}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        selectAllocation({ group: "sector", label: item.label });
+                      }}
                     >
                       <i style={{ backgroundColor: item.color }} />
                       {item.label} <span>{item.percent}%</span>

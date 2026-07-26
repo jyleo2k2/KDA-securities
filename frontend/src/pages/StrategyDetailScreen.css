@@ -185,7 +185,6 @@
 .sd-bar-segment.is-selected > span {
   filter: saturate(1.15);
   transform: scaleY(1.28);
-  box-shadow: 0 0 0 2px #fbfdf9, 0 0 0 4px #24352d;
 }
 
 .sd-bar-segment.is-dimmed > span {
@@ -197,7 +196,7 @@
 }
 
 .sd-bar-segment:focus-visible > span {
-  box-shadow: 0 0 0 2px #fbfdf9, 0 0 0 4px #24352d;
+  filter: saturate(1.15) brightness(1.04);
 }
 
 .sd-bar-legend {
@@ -246,8 +245,8 @@
 }
 
 .sd-bar-legend button:focus-visible {
-  outline: 2px solid #24352d;
-  outline-offset: 1px;
+  outline: none;
+  background: #f1f6ef;
 }
 
 .sd-bar-legend button span {
