@@ -72,4 +72,13 @@ describe("StrategyDetailScreen", () => {
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("시장 베타 전략");
   });
+
+  it("uses plain wording when a strategy needs an account-specific product check", () => {
+    window.location.hash = "#/strategy-detail?strategy=longshort";
+
+    render(<StrategyDetailScreen onBack={vi.fn()} />);
+
+    expect(screen.getAllByText("계좌별 매수 가능 상품 확인")).toHaveLength(2);
+    expect(screen.queryByText("계좌 적격 상품 확인 필요")).not.toBeInTheDocument();
+  });
 });
