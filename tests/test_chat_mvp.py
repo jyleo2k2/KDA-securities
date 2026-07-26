@@ -33,6 +33,7 @@ from backend.app.chat.models import (
 )
 from backend.app.chat.narrator import (
     NARRATION_CACHE_VERSION,
+    PREWARM_MODEL,
     SYSTEM_PROMPT,
     ClaudeNarrator,
     _adds_unverified_content,
@@ -1453,12 +1454,33 @@ def test_narrator_prewarm_uses_throwaway_agent(monkeypatch) -> None:
         def run_sync(self, prompt: str) -> None:
             calls.append(prompt)
 
-    monkeypatch.setattr(narrator, "_build_agent", lambda: FakeAgent())
+    monkeypatch.setattr(narrator, "_build_agent_for", lambda model: FakeAgent())
 
     narrator.prewarm()
 
     assert len(calls) == 1
     assert narrator.agent is original_agent
+
+
+def test_narrator_prewarm_uses_cheap_model(monkeypatch) -> None:
+    # 워밍업 응답은 버리므로 서비스 모델이 비싸도 최저가 모델로 호출한다.
+    narrator = ClaudeNarrator(api_key="test-key", model="claude-sonnet-5")
+    models: list[str] = []
+
+    class FakeAgent:
+        def run_sync(self, prompt: str) -> None:
+            return None
+
+    def record(model: str) -> FakeAgent:
+        models.append(model)
+        return FakeAgent()
+
+    monkeypatch.setattr(narrator, "_build_agent_for", record)
+
+    narrator.prewarm()
+
+    assert models == [PREWARM_MODEL]
+    assert PREWARM_MODEL.startswith("claude-haiku")
 
 
 def test_narrator_prewarm_swallows_errors(monkeypatch, caplog) -> None:
@@ -1468,7 +1490,7 @@ def test_narrator_prewarm_swallows_errors(monkeypatch, caplog) -> None:
         def run_sync(self, prompt: str) -> None:
             raise RuntimeError("network down")
 
-    monkeypatch.setattr(narrator, "_build_agent", lambda: BoomAgent())
+    monkeypatch.setattr(narrator, "_build_agent_for", lambda model: BoomAgent())
 
     with caplog.at_level(logging.WARNING, logger="backend.app.chat.narrator"):
         narrator.prewarm()
