@@ -74,12 +74,16 @@ vi.mock("./pages/MainHomeScreen", () => ({
   ),
 }));
 vi.mock("./pages/LoginFlowPage", () => ({
-  LoginFlowPage: ({ onAuthenticated, onProfileSaved, onStart }: {
+  LoginFlowPage: ({ hasSavedProfile, onAuthenticated, onProfileSaved, onStart, profileLoading }: {
+    hasSavedProfile: boolean;
     onAuthenticated: () => void;
     onProfileSaved: (profile: InvestmentProfileResponse) => void;
     onStart: () => void;
+    profileLoading: boolean;
   }) => (
     <>
+      <span data-testid="has-saved-profile">{hasSavedProfile ? "yes" : "no"}</span>
+      <span data-testid="profile-loading">{profileLoading ? "yes" : "no"}</span>
       <button type="button" onClick={onAuthenticated}>로그인 완료</button>
       <button
         type="button"
@@ -231,7 +235,7 @@ describe("App owned pension data", () => {
     expect(await screen.findByTestId("home-scroll-top")).toHaveTextContent("384");
   });
 
-  it("sends an owner with a saved profile straight to the home screen", async () => {
+  it("keeps an owner with a saved profile on the success screen until they start", async () => {
     vi.mocked(getMyPensionAccounts).mockResolvedValue(portfolioA);
     signOut();
     const view = render(<App />);
@@ -239,6 +243,13 @@ describe("App owned pension data", () => {
     fireEvent.click(screen.getByRole("button", { name: "로그인 완료" }));
     setUser("user-a", "token-a");
     view.rerender(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("has-saved-profile")).toHaveTextContent("yes");
+    });
+    expect(screen.queryByText("user-a:60000000")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
 
     expect(await screen.findByText("user-a:60000000")).toBeInTheDocument();
   });

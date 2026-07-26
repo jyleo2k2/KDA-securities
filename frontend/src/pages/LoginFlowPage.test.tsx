@@ -87,7 +87,7 @@ describe("LoginFlowPage", () => {
     expect(container.querySelector(".ios-statusbar-time")).toHaveTextContent("9:41");
   });
 
-  it("enters account consent only after Supabase sign-in resolves", async () => {
+  it("shows success only after Supabase sign-in resolves", async () => {
     renderLogin();
     openForm();
     fillLoginForm();
@@ -97,14 +97,7 @@ describe("LoginFlowPage", () => {
       expect(auth.signIn).toHaveBeenCalledWith("junho46", "password");
     });
     expect(onAuthenticated).toHaveBeenCalledOnce();
-    expect(await screen.findByText("DC형 퇴직연금")).toBeInTheDocument();
-  });
-
-  it("waits on the loading screen while the saved profile is resolved", () => {
-    render(<LoginFlowPage auth={auth} awaitingProfile onAuthenticated={onAuthenticated} onProfileSaved={onProfileSaved} onStart={onStart} />);
-
-    expect(screen.getByRole("heading", { name: "연금 정보를 확인하고 있어요" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "로그인" })).not.toBeInTheDocument();
+    expect(screen.getByText("로그인 성공!")).toBeInTheDocument();
   });
 
   it("keeps the form visible and shows the auth error when sign-in fails", async () => {
@@ -122,7 +115,7 @@ describe("LoginFlowPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "로그인하기" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("이메일 또는 비밀번호를 확인해 주세요.");
-    expect(screen.queryByText("연금계좌 연동")).not.toBeInTheDocument();
+    expect(screen.queryByText("로그인 성공!")).not.toBeInTheDocument();
     expect(onAuthenticated).not.toHaveBeenCalled();
   });
 
@@ -152,6 +145,9 @@ describe("LoginFlowPage", () => {
     openForm();
     fillLoginForm();
     fireEvent.click(screen.getByRole("button", { name: "로그인하기" }));
+    await screen.findByText("로그인 성공!");
+
+    fireEvent.click(screen.getByRole("button", { name: "시작하기" }));
 
     expect(await screen.findByText("DC형 퇴직연금")).toBeInTheDocument();
     expect(screen.queryByText("DB형 퇴직연금")).not.toBeInTheDocument();
@@ -166,16 +162,18 @@ describe("LoginFlowPage", () => {
     expect(onStart).not.toHaveBeenCalled();
   });
 
-  it("returns to the login form from account consent", async () => {
+  it("returns to the success screen from account consent", async () => {
     renderLogin();
     openForm();
     fillLoginForm();
     fireEvent.click(screen.getByRole("button", { name: "로그인하기" }));
+    await screen.findByText("로그인 성공!");
+    fireEvent.click(screen.getByRole("button", { name: "시작하기" }));
     await screen.findByText("DC형 퇴직연금");
 
-    fireEvent.click(screen.getByRole("button", { name: "로그인 화면으로 돌아가기" }));
+    fireEvent.click(screen.getByRole("button", { name: "로그인 성공 화면으로 돌아가기" }));
 
-    expect(screen.getByRole("button", { name: "로그인하기" })).toBeInTheDocument();
+    expect(screen.getByText("로그인 성공!")).toBeInTheDocument();
   });
 
   it("retries when account metadata fails to load", async () => {
@@ -186,6 +184,8 @@ describe("LoginFlowPage", () => {
     openForm();
     fillLoginForm();
     fireEvent.click(screen.getByRole("button", { name: "로그인하기" }));
+    await screen.findByText("로그인 성공!");
+    fireEvent.click(screen.getByRole("button", { name: "시작하기" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("연결 가능한 계좌 정보를 불러오지 못했습니다.");
     fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
@@ -212,5 +212,29 @@ describe("LoginFlowPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "서비스 시작하기" }));
     expect(onStart).toHaveBeenCalledOnce();
+  });
+
+  it("enters the home screen from success when a saved profile exists", async () => {
+    render(<LoginFlowPage auth={auth} hasSavedProfile onAuthenticated={onAuthenticated} onProfileSaved={onProfileSaved} onStart={onStart} />);
+    openForm();
+    fillLoginForm();
+    fireEvent.click(screen.getByRole("button", { name: "로그인하기" }));
+    await screen.findByText("로그인 성공!");
+
+    fireEvent.click(screen.getByRole("button", { name: "시작하기" }));
+
+    expect(onStart).toHaveBeenCalledOnce();
+    expect(getAccountLinkOptions).not.toHaveBeenCalled();
+  });
+
+  it("waits on the success screen while the saved profile is still loading", async () => {
+    render(<LoginFlowPage auth={auth} onAuthenticated={onAuthenticated} onProfileSaved={onProfileSaved} onStart={onStart} profileLoading />);
+    openForm();
+    fillLoginForm();
+    fireEvent.click(screen.getByRole("button", { name: "로그인하기" }));
+    await screen.findByText("로그인 성공!");
+
+    expect(screen.getByRole("button", { name: "정보를 확인하는 중..." })).toBeDisabled();
+    expect(onStart).not.toHaveBeenCalled();
   });
 });
