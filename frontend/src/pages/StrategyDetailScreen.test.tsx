@@ -61,7 +61,7 @@ describe("StrategyDetailScreen", () => {
     expect(semiconductorSegment).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("status")).toHaveTextContent("주식 ETF 안에서 20% · 전체 자산 기준 12%");
 
-    fireEvent.click(semiconductorSegment);
+    fireEvent.click(screen.getByRole("heading", { name: "전략의 운용 방식" }));
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
