@@ -64,7 +64,35 @@ NARRATABLE_INTENTS = {
     ChatIntent.PENSION_TAX,
 }
 
+# 인텐트별 상위 모델 라우팅(2026-07-26 실측). 세액 계산은 사용자가 금액을
+# 그대로 신뢰해 행동하고, 계좌 비교는 자문 경계를 문장으로 그어야 해서
+# 상위 모델의 용어 정의·경계 서술 품질이 값을 한다. 그 밖의 단문 사실
+# 전달은 기본 모델이 품질 차이 없이 약 2배 빠르다.
+UPGRADED_INTENTS = frozenset(
+    {
+        ChatIntent.PENSION_TAX,
+        ChatIntent.ACCOUNT_RULE,
+    }
+)
+# 계좌 규칙은 근거 문서가 여러 건 결합될 때만 비교·해설 성격이 강해진다.
+# 단일 근거의 한 줄 규칙 답변은 기본 모델로 충분하다.
+UPGRADED_ACCOUNT_RULE_MIN_SOURCES = 2
+
+# 검증 답변은 '-한다'체로 작성된 경우가 많아, 문체 지시가 문장 중간에 묻히면
+# 모델이 원문 문체를 따라가 하십시오체로 이탈한다(실측: 6개 문항 6회 위반).
+# 최우선 지시로 올리고 금지 어미를 열거하면 위반이 사라진다(같은 문항 0회).
+REGISTER_RULE = (
+    "가장 중요한 규칙: 모든 문장을 반드시 해요체로 끝낸다. "
+    "'-해요', '-예요', '-이에요', '-돼요', '-어요'로만 문장을 맺는다. "
+    "'-습니다', '-합니다', '-입니다', '-하십시오', '-바랍니다', '-이다', "
+    "'-한다'로 끝나는 문장은 절대 쓰지 않는다. 검증 답변 원문이 '-한다'나 "
+    "'-습니다'로 쓰여 있어도 해요체로 바꿔 쓴다. 친절하고 차분한 상담원의 "
+    "말투를 지키되 과장된 감탄이나 근거 없는 안심은 넣지 않는다.\n\n"
+)
+
 SYSTEM_PROMPT = (
+    REGISTER_RULE
+    +
     "당신은 연금 코파일럿의 설명 전용 내레이터다. 규칙 엔진 결과를 "
     "직접 다시 계산하지 않으며 새로운 "
     "수치·상품·전망·매매의견을 만들지 않는다. 제공된 검증 답변의 "
@@ -112,6 +140,7 @@ class ClaudeNarrator:
         *,
         api_key: str,
         model: str,
+        upgraded_model: str | None = None,
         cache_path: Path | None = None,
         cache_persist_debounce_seconds: float = (
             NARRATION_CACHE_PERSIST_DEBOUNCE_SECONDS
@@ -122,6 +151,8 @@ class ClaudeNarrator:
         if cache_persist_debounce_seconds < 0:
             raise ValueError("cache_persist_debounce_seconds must be non-negative")
         self._model = model.strip()
+        # 상위 모델 미설정이면 기본 모델만 쓰고 라우팅은 사실상 비활성이다.
+        self._upgraded_model = (upgraded_model or "").strip() or self._model
         self._api_key = api_key.strip()
         self._cache_path = cache_path
         self._cache_persist_debounce_seconds = cache_persist_debounce_seconds
@@ -135,9 +166,34 @@ class ClaudeNarrator:
         self._last_cache_persisted_at: float | None = None
         self._load_persistent_cache()
         self.agent: Agent[None, NarrationOutput] = self._build_agent()
+        # 상위 모델 에이전트는 실제로 필요한 첫 요청에서 만든다.
+        self._upgraded_agent: Agent[None, NarrationOutput] | None = None
+        self._upgraded_agent_lock = threading.Lock()
 
     def _build_agent(self) -> Agent[None, NarrationOutput]:
         return self._build_agent_for(self._model)
+
+    def _model_for(self, response: ChatResponse) -> str:
+        """인텐트와 근거 수로 이 응답에 쓸 모델을 고른다."""
+
+        if self._upgraded_model == self._model:
+            return self._model
+        if response.intent not in UPGRADED_INTENTS:
+            return self._model
+        if (
+            response.intent == ChatIntent.ACCOUNT_RULE
+            and len(response.sources) < UPGRADED_ACCOUNT_RULE_MIN_SOURCES
+        ):
+            return self._model
+        return self._upgraded_model
+
+    def _agent_for_model(self, model: str) -> Agent[None, NarrationOutput]:
+        if model == self._model:
+            return self.agent
+        with self._upgraded_agent_lock:
+            if self._upgraded_agent is None:
+                self._upgraded_agent = self._build_agent_for(model)
+            return self._upgraded_agent
 
     def _build_agent_for(self, model: str) -> Agent[None, NarrationOutput]:
         settings = AnthropicModelSettings(
@@ -190,9 +246,9 @@ class ClaudeNarrator:
         except Exception:  # noqa: BLE001 — 워밍업 실패는 서비스에 영향 없음
             logger.warning("narrator_prewarm_failed")
 
-    def _cache_key(self, intent: ChatIntent, prompt: str) -> str:
+    def _cache_key(self, intent: ChatIntent, prompt: str, model: str) -> str:
         return sha256(
-            f"{self._model}\x00{intent.value}\x00{prompt}".encode()
+            f"{model}\x00{intent.value}\x00{prompt}".encode()
         ).hexdigest()
 
     def _read_persistent_cache(
@@ -331,6 +387,7 @@ class ClaudeNarrator:
             warmer = ClaudeNarrator(
                 api_key=self._api_key,
                 model=self._model,
+                upgraded_model=self._upgraded_model,
                 cache_path=self._cache_path,
                 cache_persist_debounce_seconds=self._cache_persist_debounce_seconds,
             )
@@ -412,7 +469,8 @@ class ClaudeNarrator:
             )
         # 엔진 답변이 결정론이라 같은 프롬프트의 검증 통과 내레이션은 그대로
         # 재사용한다(정확 일치라 오적중 없음). 폴백은 캐시되지 않는다.
-        cache_key = self._cache_key(response.intent, prompt)
+        model = self._model_for(response)
+        cache_key = self._cache_key(response.intent, prompt, model)
         cached = self._cache_lookup(cache_key)
         if cached is not None:
             cached_answer, cached_reasoning = cached
@@ -421,13 +479,13 @@ class ClaudeNarrator:
                 {
                     "answer": cached_answer,
                     "narration_mode": "claude_verified",
-                    "model_name": self._model,
+                    "model_name": model,
                     "narration_reasoning": cached_reasoning,
                 }
             )
             return ChatResponse.model_validate(data)
         try:
-            result = self.agent.run_sync(prompt)
+            result = self._agent_for_model(model).run_sync(prompt)
             output = result.output
             candidate = output.narration.strip()
             if not candidate or len(candidate) > 350:
@@ -491,7 +549,7 @@ class ClaudeNarrator:
             {
                 "answer": candidate,
                 "narration_mode": "claude_verified",
-                "model_name": self._model,
+                "model_name": model,
                 "narration_reasoning": reasoning,
             }
         )

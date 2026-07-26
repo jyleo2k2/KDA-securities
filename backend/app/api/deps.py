@@ -447,11 +447,13 @@ def get_chat_service(
 def _chat_narrator(
     api_key: str,
     model: str,
+    upgraded_model: str,
     cache_path: Path,
 ) -> ClaudeNarrator:
     return ClaudeNarrator(
         api_key=api_key,
         model=model,
+        upgraded_model=upgraded_model,
         cache_path=cache_path,
     )
 
@@ -469,6 +471,7 @@ def get_chat_narrator(
     return _chat_narrator(
         api_key,
         settings.anthropic_model,
+        settings.anthropic_narration_upgraded_model,
         settings.narration_cache_path,
     )
 
