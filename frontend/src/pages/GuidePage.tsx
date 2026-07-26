@@ -377,15 +377,6 @@ function MacroEvidenceCards({ response }: { response: ChatResponse }) {
   );
 }
 
-const REGIME_GAP_LABELS: Record<string, string> = {
-  total_return_history_unavailable: "총수익 이력 없음",
-  verified_total_return_basis_unavailable: "총수익 기준 미확인",
-  source_chip_unavailable: "출처 확인 필요",
-  start_observation_unavailable: "시작 관측 부족",
-  end_observation_unavailable: "종료 관측 부족",
-  outcome_window_incomplete: "관측 구간 부족",
-};
-
 const SCENARIO_RISK_PROFILE_LABELS: Record<string, string> = {
   stable: "안정형",
   stable_seeking: "안정추구형",
@@ -407,6 +398,13 @@ function drawdownText(value: string | number): string {
 function MacroRegimeOutcomeCards({ response }: { response: ChatResponse }) {
   const evaluation = response.macro_regime_etf_outcomes;
   if (!evaluation) return null;
+  const visibleGroups = evaluation.groups
+    .map((group) => ({
+      ...group,
+      etfs: group.etfs.filter((etf) => etf.horizons.length > 0),
+    }))
+    .filter((group) => group.etfs.length > 0);
+  if (visibleGroups.length === 0) return null;
 
   return (
     <section className="macro-regime-card" aria-label="과거 유사국면 ETF 근거 카드">
@@ -417,11 +415,11 @@ function MacroRegimeOutcomeCards({ response }: { response: ChatResponse }) {
       </header>
       <details className="macro-regime-disclosure">
         <summary>
-          <span><strong>과거 실적은 필요할 때 확인</strong><small>{evaluation.groups.length}개 유사국면</small></span>
+          <span><strong>과거 실적은 필요할 때 확인</strong><small>{visibleGroups.length}개 유사국면</small></span>
           <em>펼쳐보기</em>
         </summary>
         <div className="macro-regime-list">
-          {evaluation.groups.map((group) => (
+          {visibleGroups.map((group) => (
             <details key={group.regime_period}>
               <summary>
                 <strong>{regimeMonth(group.regime_period)} 유사국면</strong>
@@ -443,13 +441,6 @@ function MacroRegimeOutcomeCards({ response }: { response: ChatResponse }) {
                           </strong>
                           <small>최대낙폭 {drawdownText(horizon.maximum_drawdown_percent)}</small>
                           <em>{horizon.start_date} ~ {horizon.end_date}</em>
-                        </div>
-                      ))}
-                      {etf.gaps.map((gap) => (
-                        <div className="unavailable" key={`gap-${gap.horizon_months}`}>
-                          <span>{gap.horizon_months}개월</span>
-                          <strong>관측 부족</strong>
-                          <small title={gap.reason}>{REGIME_GAP_LABELS[gap.reason] ?? "기타 관측 제한"}</small>
                         </div>
                       ))}
                     </div>
