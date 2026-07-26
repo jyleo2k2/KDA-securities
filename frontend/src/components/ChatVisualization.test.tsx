@@ -121,6 +121,19 @@ describe("ChatVisualization allocation donut", () => {
     expect(container.querySelector("path")).toHaveAttribute("stroke", "none");
     expect(screen.getByText("전체")).toHaveClass("allocation-donut-label");
     expect(screen.getByText("100%")).toHaveClass("allocation-donut-total");
+
+    const equitySlice = screen.getByRole("button", { name: "주식 48%" });
+    const pointerDownEvent = new Event("pointerdown", {
+      bubbles: true,
+      cancelable: true,
+    });
+    expect(equitySlice.dispatchEvent(pointerDownEvent)).toBe(false);
+    expect(pointerDownEvent.defaultPrevented).toBe(true);
+
+    equitySlice.focus();
+    expect(equitySlice).toHaveFocus();
+    fireEvent.keyDown(equitySlice, { key: "Enter" });
+    expect(screen.getByText("주식 상세")).toBeInTheDocument();
   });
 
   it("prefixes stress-scenario losses with a minus sign", () => {

@@ -1,9 +1,10 @@
 import { useMemo, useState, type FormEvent } from "react";
 
 import { calculatePortfolioCmaPension } from "../api/client";
-import { conicGradient, TARGET_ALLOCATION_COLORS } from "../charts";
+import { conicGradient } from "../charts";
 import type {
   AccountType,
+  ChatVisualization as ChatVisualizationData,
   CompletedSurveyProfile,
   EducationalPortfolioEvaluation,
   EducationalPortfolioInput,
@@ -11,7 +12,9 @@ import type {
   PortfolioPlanningEvaluation,
   PortfolioRiskEvaluation,
   RiskProfile,
+  SourceEvidence,
 } from "../api/types";
+import { ChatVisualization } from "./ChatVisualization";
 
 const ACCOUNT_LABELS: Record<AccountType, string> = {
   dc: "DC형 퇴직연금",
@@ -239,67 +242,6 @@ function PortfolioSectorGuide({ riskProfile }: { riskProfile: RiskProfile }) {
   );
 }
 
-function TargetAllocationGuide({
-  evaluation,
-}: {
-  evaluation: EducationalPortfolioEvaluation;
-}) {
-  const items = evaluation.target_sleeves.reduce<Array<{ label: string; weight: number }>>(
-    (current, item) => {
-      const weight = Number(item.target_percent);
-      if (!Number.isFinite(weight) || weight <= 0) return current;
-      const label = item.sleeve === "core_equity"
-        ? "주식"
-        : item.sleeve === "real_assets"
-          ? "금/원자재"
-          : item.sleeve === "tactical" || item.sleeve === "cash"
-            ? "현금"
-            : sleeveLabel(item.sleeve);
-      const existing = current.find((entry) => entry.label === label);
-      if (existing) existing.weight += weight;
-      else current.push({ label, weight });
-      return current;
-    },
-    [],
-  );
-  const gradientStops = conicGradient(
-    items.map((item) => item.weight),
-    TARGET_ALLOCATION_COLORS,
-  );
-
-  return (
-    <section className="portfolio-target-allocation" aria-labelledby="portfolio-target-allocation-title">
-      <header>
-        <span>계산된 목표 비중</span>
-        <h4 id="portfolio-target-allocation-title">목표 자산배분</h4>
-        <p>연금계좌 자산을 자산군별로 배분하는 기준입니다.</p>
-      </header>
-      <div className="portfolio-target-allocation-layout">
-        <div
-          aria-label={items.map((item) => `${item.label} ${item.weight.toFixed(1)}%`).join(", ")}
-          className="portfolio-target-donut"
-          role="img"
-          style={{ background: `conic-gradient(${gradientStops})` }}
-        >
-          <span>전체<br /><strong>100%</strong></span>
-        </div>
-        <ul className="portfolio-target-legend">
-          {items.map((item, index) => (
-            <li key={item.label}>
-              <i style={{ backgroundColor: TARGET_ALLOCATION_COLORS[index % TARGET_ALLOCATION_COLORS.length] }} />
-              <span>{item.label}</span>
-              <strong>{item.weight.toFixed(1)}%</strong>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <p className="portfolio-target-allocation-note">
-        자산군 비중을 먼저 정한 뒤, ETF 테마별 특성과 위험을 확인할 수 있습니다.
-      </p>
-    </section>
-  );
-}
-
 function RebalancingCadenceGuide({
   evaluation,
 }: {
@@ -320,8 +262,12 @@ function RebalancingCadenceGuide({
 
 function EducationalStrategyGuide({
   evaluation,
+  visualizations,
+  sources,
 }: {
   evaluation: EducationalPortfolioEvaluation;
+  visualizations: ChatVisualizationData[];
+  sources: SourceEvidence[];
 }) {
   const profile = evaluation.evaluated_input.risk_profile;
   const guide = STRATEGY_GUIDES[profile];
@@ -369,7 +315,18 @@ function EducationalStrategyGuide({
           ? "입력한 손실감내 범위를 반영하면 연금자산을 아래처럼 나누게 됩니다."
           : "이 성향이라면 연금자산을 아래처럼 나눠 볼 수 있어요."}
       </p>
-      <TargetAllocationGuide evaluation={evaluation} />
+      {visualizations
+        .filter((visualization) => (
+          visualization.kind === "sleeve_allocation"
+          || visualization.kind === "stress_scenarios"
+        ))
+        .map((visualization, index) => (
+          <ChatVisualization
+            visualization={visualization}
+            sources={sources}
+            key={`${visualization.kind}-${visualization.title}-${index}`}
+          />
+        ))}
       <RebalancingCadenceGuide evaluation={evaluation} />
 
       <section className="portfolio-strategy-planning" aria-labelledby="portfolio-strategy-planning-title">
@@ -867,12 +824,22 @@ export function PortfolioHoldingsPanel({
 
 export function EducationalPortfolioReview({
   evaluation,
+  visualizations = [],
+  sources = [],
 }: {
   evaluation?: EducationalPortfolioEvaluation | null;
+  visualizations?: ChatVisualizationData[];
+  sources?: SourceEvidence[];
 }) {
   if (!evaluation) return null;
   if (!evaluation.evaluated_input.current_holdings.length) {
-    return <EducationalStrategyGuide evaluation={evaluation} />;
+    return (
+      <EducationalStrategyGuide
+        evaluation={evaluation}
+        visualizations={visualizations}
+        sources={sources}
+      />
+    );
   }
 
   const rebalancing = evaluation.rebalancing;

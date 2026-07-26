@@ -205,6 +205,11 @@ export function ChatVisualization({ visualization, sources }: {
                 tabIndex={0}
                 aria-label={`${item.label} ${item.value}%`}
                 onClick={(event) => { event.stopPropagation(); toggle(index); }}
+                onPointerDown={(event) => {
+                  if (isSleeveAllocation) {
+                    event.preventDefault();
+                  }
+                }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();

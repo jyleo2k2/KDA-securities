@@ -561,11 +561,22 @@ function AssistantMessage({
       item.kind === "tax_summary" && item.title === "세액공제 요약"
     ))
     : undefined;
-  const remainingVisualizations = isMissedTaxCredit
+  const embedsEducationalStrategyVisualizations = (
+    isEducationalPortfolio
+    && educationalEvaluation != null
+    && educationalEvaluation.evaluated_input.current_holdings.length === 0
+  );
+  const educationalStrategyVisualizations = embedsEducationalStrategyVisualizations
+    ? response.visualizations.filter((item) => (
+      item.kind === "sleeve_allocation" || item.kind === "stress_scenarios"
+    ))
+    : [];
+  const remainingVisualizations = (isMissedTaxCredit
     ? response.visualizations.filter((item) => item.kind !== "tax_summary")
     : taxSummaryVisualization
       ? response.visualizations.filter((item) => item !== taxSummaryVisualization)
-      : response.visualizations;
+      : response.visualizations
+  ).filter((item) => !educationalStrategyVisualizations.includes(item));
   const visibleNumericEvidence = isMissedTaxCredit
     ? []
     : isPensionTaxCredit
@@ -729,7 +740,11 @@ function AssistantMessage({
 
       {!showPensionTaxBreakdown && numericEvidenceCards}
 
-      <EducationalPortfolioReview evaluation={response.educational_portfolio_evaluation} />
+      <EducationalPortfolioReview
+        evaluation={response.educational_portfolio_evaluation}
+        visualizations={educationalStrategyVisualizations}
+        sources={response.sources}
+      />
 
       {shouldShowHoldingsPanel && onAnalyzeHoldings && (
         <PortfolioHoldingsPanel

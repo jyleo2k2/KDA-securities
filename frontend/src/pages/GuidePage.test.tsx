@@ -599,7 +599,7 @@ describe("GuidePage chat history deletion", () => {
         intent: "educational_portfolio",
         answer: "설문 결과에 맞는 투자전략을 정리했어요.",
         narration_mode: "deterministic",
-        data_mode: "engine_educational_planning",
+        data_mode: "engine_multi_account_planning",
         numeric_evidence: [
           { label: "수령 개시까지 운용기간", value: "27", unit: "년", evidence_id: "engine:portfolio", basis: "엔진 계산" },
           { label: "equity_drawdown 스트레스 손실 추정치", value: "20", unit: "%", evidence_id: "engine:portfolio", basis: "엔진 시나리오" },
@@ -618,9 +618,72 @@ describe("GuidePage chat history deletion", () => {
         }],
         sources: [],
         warnings: [],
-        visualizations: [],
+        visualizations: [
+          {
+            kind: "sleeve_allocation",
+            title: "IRP & DC형 목표 자산배분",
+            description: "규칙 엔진이 계산한 목표비중이에요.",
+            data_boundary: "engine",
+            evidence_ids: [],
+            items: [{ label: "주식", value: "48", unit: "%", role: "segment" }],
+            series: [],
+          },
+          {
+            kind: "stress_scenarios",
+            title: "IRP & DC형 스트레스 점검",
+            description: "규칙 엔진이 계산한 손실 추정치예요.",
+            data_boundary: "engine",
+            evidence_ids: [],
+            items: [{ label: "주식시장 급락", value: "27.5", unit: "%", role: "value" }],
+            series: [],
+          },
+          {
+            kind: "sleeve_allocation",
+            title: "연금저축펀드 목표 자산배분",
+            description: "규칙 엔진이 계산한 목표비중이에요.",
+            data_boundary: "engine",
+            evidence_ids: [],
+            items: [{ label: "주식", value: "57.4", unit: "%", role: "segment" }],
+            series: [],
+          },
+          {
+            kind: "stress_scenarios",
+            title: "연금저축펀드 스트레스 점검",
+            description: "규칙 엔진이 계산한 손실 추정치예요.",
+            data_boundary: "engine",
+            evidence_ids: [],
+            items: [{ label: "주식시장 급락", value: "30", unit: "%", role: "value" }],
+            series: [],
+          },
+        ],
         limitations: [],
         conversation_context: null,
+        educational_portfolio_evaluation: {
+          evaluated_input: {
+            account_type: "dc",
+            age: 35,
+            retirement_start_age: 60,
+            risk_profile: "risk_neutral",
+            loss_tolerance_percent: "20",
+            current_holdings: [],
+            new_contribution_krw: "0",
+          },
+          strategy_label: "코어·위성 전략",
+          planning_horizon_years: 25,
+          final_general_risk_target_percent: "48",
+          loss_tolerance_binding: false,
+          rebalancing: {
+            cadence: {
+              review_interval_months: 1,
+              drift_threshold_percent_points: "3",
+            },
+          },
+          planning_return: {
+            conservative_planning_return_percent: "5.1",
+            base_planning_return_percent: "5.5",
+            sources: [],
+          },
+        },
       },
     } as unknown as Awaited<ReturnType<typeof sendAuthenticatedChatStream>>);
     renderGuide();
@@ -629,9 +692,33 @@ describe("GuidePage chat history deletion", () => {
     fireEvent.change(composer, { target: { value: "내 성향에 맞는 포트폴리오를 보여줘" } });
     fireEvent.submit(composer.closest("form")!);
 
-    expect(await screen.findByText("설문 결과에 맞는 투자전략을 정리했어요.")).toBeInTheDocument();
+    expect(await screen.findByText("위험중립형의 코어·위성 전략")).toBeInTheDocument();
     expect(screen.queryByText("위험중립형 투자전략", { exact: true })).not.toBeInTheDocument();
     expect(screen.getByText("연금 운용전략")).toBeInTheDocument();
+    const orderedStrategyContent = [
+      screen.getByText("코어·위성 전략"),
+      screen.getByText("IRP & DC형 목표 자산배분"),
+      screen.getByText("IRP & DC형 스트레스 점검"),
+      screen.getByText("연금저축펀드 목표 자산배분"),
+      screen.getByText("연금저축펀드 스트레스 점검"),
+      screen.getByText("리밸런싱 주기: 1개월마다"),
+      screen.getByText("두 가지 수익률 가정"),
+    ];
+    for (let index = 1; index < orderedStrategyContent.length; index += 1) {
+      expect(
+        orderedStrategyContent[index - 1].compareDocumentPosition(
+          orderedStrategyContent[index],
+        ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
+    for (const title of [
+      "IRP & DC형 목표 자산배분",
+      "IRP & DC형 스트레스 점검",
+      "연금저축펀드 목표 자산배분",
+      "연금저축펀드 스트레스 점검",
+    ]) {
+      expect(screen.getAllByText(title)).toHaveLength(1);
+    }
     expect(screen.queryByLabelText("수치 근거")).not.toBeInTheDocument();
     expect(screen.queryByText("검증 답변")).not.toBeInTheDocument();
     expect(screen.queryByText("equity_drawdown 스트레스 손실 추정치")).not.toBeInTheDocument();
