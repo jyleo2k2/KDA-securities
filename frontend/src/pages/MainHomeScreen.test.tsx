@@ -150,6 +150,24 @@ describe("MainHomeScreen", () => {
     expect(screen.queryByText("KOSEF 국고채10년")).not.toBeInTheDocument();
   });
 
+  it("shows the largest asset holdings from the first-view prompt", () => {
+    // The prompt opens the detail, and the same click must not reach the
+    // document-level dismiss listener that closes it again.
+    const documentClick = vi.fn();
+    document.addEventListener("click", documentClick);
+    renderHome();
+
+    fireEvent.click(screen.getByRole("button", {
+      name: "가장 큰 자산의 보유 종목 먼저 보기",
+    }));
+
+    expect(documentClick).not.toHaveBeenCalled();
+    expect(screen.getByText("SOL 미국S&P500")).toBeInTheDocument();
+    expect(screen.getByText("ACE 미국나스닥100")).toBeInTheDocument();
+    expect(screen.queryByText("KOSEF 국고채10년")).not.toBeInTheDocument();
+    document.removeEventListener("click", documentClick);
+  });
+
   it("keeps the one-line diagnosis action connected to chat", () => {
     const onOpenChat = vi.fn();
     renderHome({ onOpenChat });
