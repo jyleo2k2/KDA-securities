@@ -35,6 +35,52 @@ from .graceful_decline import GracefulDeclineKind, graceful_decline_response
 _NUMBERED_SECTION_HEADING = re.compile(r"^\d+(?:-\d+)?\.\s+")
 _SENTENCE_END = re.compile(r"[.!?](?=\s|$)")
 _MAX_VISIBLE_ANSWER_CHARS = 320
+
+# 근거 발췌는 승인 문서 원문이라 '-한다'체다. 내레이션이 폴백되면 이 원문이
+# 그대로 첫 문장이 되어 한 대화 안에서 말투가 튄다. 원문을 고쳐 쓰면 출처 칩이
+# 가리키는 문장과 화면 문장이 달라지므로, 원문은 그대로 두고 앞에 해요체 결론을
+# 한 줄 얹는다. 결론 문장은 뒤따르는 발췌에 이미 있는 사실만 말한다.
+#
+# 실제 폴백이 관측된 주제만 넣는다. 없는 주제는 종전처럼 발췌로 시작한다.
+# 한 주제가 서로 다른 물음을 함께 받을 때는 heading으로 갈라낸다. 담보대출과
+# 중도인출은 같은 withdrawal_requirements를 쓰지만 결론이 다르다.
+_TOPIC_LEAD = {
+    "3. 담보대출과 중도인출은 다르다": (
+        "담보대출과 중도인출은 다른 제도라서, 가능한 조건과 상환 의무가 서로 "
+        "달라요."
+    ),
+    "risk_cap": (
+        "DC형과 IRP는 위험자산을 70%까지 담을 수 있고, 연금저축펀드에는 이 "
+        "한도가 없어요."
+    ),
+    "tax_limit": (
+        "세액공제를 받을 수 있는 납입액과 실제로 넣을 수 있는 납입액은 한도가 "
+        "달라요."
+    ),
+    "withdrawal_requirements": (
+        "중도인출은 자유로운 출금이 아니라 법에서 정한 사유와 증빙을 갖췄을 "
+        "때만 가능해요."
+    ),
+    "receipt_start": "연금으로 받으려면 나이와 가입 기간 요건을 함께 채워야 해요.",
+    "retirement_benefit_transfer": (
+        "퇴직급여는 원칙적으로 본인이 지정한 IRP 계좌로 이전해서 받아요."
+    ),
+    "in_kind_transfer": (
+        "금융회사를 옮길 때는 상품을 팔지 않고 그대로 이전할 수 있는 경우와 "
+        "그렇지 않은 경우가 나뉘어요."
+    ),
+    "receipt_tax": (
+        "같은 돈이라도 연금으로 나눠 받을 때와 일시금으로 받을 때 세금이 "
+        "달라져요."
+    ),
+    "tax_rate": "세액공제율은 소득 구간에 따라 갈려요.",
+    "account_opening": (
+        "연금저축·IRP는 직접 열 수 있고, DC형은 회사를 통해 가입해요."
+    ),
+    "investable_assets": (
+        "연금계좌에서는 개별 주식은 담을 수 없고 ETF와 펀드를 활용해요."
+    ),
+}
 _ACCOUNT_BRIEF_QUESTION = re.compile(
     r"차이|비교|특징|"
     r"(?:란|은|는|이|가)\s*(?:뭐|무엇)|"
@@ -361,6 +407,12 @@ def account_rule_response(
             limitations=["질문을 계좌 유형과 함께 더 구체적으로 입력해 주세요."],
         )
     answer = _concise_knowledge_answer(excerpt)
+    # heading이 더 구체적이므로 먼저 찾는다(담보대출 vs 중도인출).
+    # heading이 더 구체적이므로 먼저 찾는다(담보대출 vs 중도인출).
+    lead = _TOPIC_LEAD.get(heading) or _TOPIC_LEAD.get(topic)
+    if lead is not None:
+        # 두괄식: 결론이 첫 문장, 그 근거인 원문이 뒤따른다.
+        answer = f"{lead}\n{answer}"
     risk_question = topic == "risk_cap"
     risk_label = (
         "DC형·IRP 위험자산 한도(연금저축 동일 한도 없음)"
