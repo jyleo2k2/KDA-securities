@@ -40,6 +40,7 @@ SYSTEM_PROMPT = """\
 
 allowed=true는 아래 기존 기능 중 하나로 안전하게 답할 수 있을 때만 사용한다.
 - account_rule: DC형·IRP·연금저축의 제도, 차이, 수령, 인출 규칙
+- glossary: 연금·투자 용어의 뜻을 묻는 질문(예: ETF·TDF·리밸런싱이 뭐야)
 - pension_tax_credit: 연금계좌 세액공제
 - pension_withdrawal_tax: 중도 해지 또는 연금 외 수령 세금
 - educational_portfolio: 연금계좌 운용 원리, 투자성향, 자산배분 교육
@@ -53,6 +54,7 @@ allowed=true는 아래 기존 기능 중 하나로 안전하게 답할 수 있�
 
 class TopicGuardRoute(StrEnum):
     ACCOUNT_RULE = "account_rule"
+    GLOSSARY = "glossary"
     PENSION_TAX_CREDIT = "pension_tax_credit"
     PENSION_WITHDRAWAL_TAX = "pension_withdrawal_tax"
     EDUCATIONAL_PORTFOLIO = "educational_portfolio"
@@ -80,6 +82,9 @@ _UNSUPPORTED_DECISION = TopicGuardDecision(
 
 _CANONICAL_ROUTE_QUESTIONS = {
     TopicGuardRoute.ACCOUNT_RULE: "DC형, IRP, 연금저축은 뭐가 달라?",
+    # 사전에 없는 용어까지 정의로 단정하지 않도록, 가드는 대표 용어 질문으로만
+    # 되돌린다. 실제 정의는 승인 문서 기반 용어 사전이 고른다.
+    TopicGuardRoute.GLOSSARY: "ETF가 뭐야?",
     TopicGuardRoute.PENSION_TAX_CREDIT: (
         "올해 연금저축에 600만원 넣으면 세액공제 얼마야?"
     ),

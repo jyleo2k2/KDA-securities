@@ -51,7 +51,7 @@ from .graceful_decline import GracefulDeclineKind, graceful_decline
 
 logger = logging.getLogger(__name__)
 
-_OUTCOME_READER_LIMIT = 300
+_OUTCOME_READER_LIMIT = 500
 _OUTCOME_CARD_ROW_LIMIT = 12
 
 _NEWS_SCOPE_MESSAGES = {

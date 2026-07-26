@@ -31,6 +31,7 @@ import {
   chatGuideStorageKey,
   firstUseGuideStorageKey,
   FirstUseGuide,
+  pensionPlannerGuideStorageKey,
   strategyDetailGuideStorageKey,
 } from "./FirstUseGuide";
 
@@ -187,6 +188,62 @@ function addChatFixture(): void {
   recommendations.scrollIntoView = vi.fn();
   themes.scrollIntoView = vi.fn();
   composer.scrollIntoView = vi.fn();
+}
+
+function addPensionPlannerFixture(onTaxTab: () => void): void {
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    `
+      <section class="pension-planner-frame">
+        <iframe title="예상 연금 계산 및 세액공제 확인"></iframe>
+      </section>
+    `,
+  );
+  const frame = document.querySelector("iframe") as HTMLIFrameElement;
+  const frameDocument = frame.contentDocument;
+  if (!frameDocument) throw new Error("iframe document is unavailable");
+  frameDocument.body.innerHTML = `
+    <div id="pension-phone">
+      <div class="scrolly">
+        <div>예상 연금 계산 및 세액공제 확인</div>
+        <div>
+          <div>예상 연금</div>
+          <div data-tax-tab>세액공제</div>
+        </div>
+        <div data-pension-savings-card>
+          <input class="brand-range" type="range" max="600" />
+        </div>
+        <div data-irp-card>
+          <input class="brand-range tax-range-irp" type="range" max="900" />
+        </div>
+        <div data-isa-card>
+          <input class="brand-range" type="range" max="3000" />
+        </div>
+      </div>
+    </div>
+  `;
+  const phone = frameDocument.querySelector("#pension-phone") as HTMLElement;
+  const taxTab = frameDocument.querySelector("[data-tax-tab]") as HTMLElement;
+  const pensionSavings = frameDocument.querySelector(
+    ".brand-range[max=\"600\"]",
+  ) as HTMLElement;
+  const irp = frameDocument.querySelector(".tax-range-irp") as HTMLElement;
+  const isa = frameDocument.querySelector(
+    ".brand-range[max=\"3000\"]",
+  ) as HTMLElement;
+  const pensionSavingsCard = pensionSavings.parentElement as HTMLElement;
+  const irpCard = irp.parentElement as HTMLElement;
+  const isaCard = isa.parentElement as HTMLElement;
+  phone.getBoundingClientRect = () => rect(0, 0, 390, 844);
+  taxTab.getBoundingClientRect = () => rect(110, 195, 170, 48);
+  pensionSavingsCard.getBoundingClientRect = () => rect(260, 16, 358, 220);
+  irpCard.getBoundingClientRect = () => rect(496, 16, 358, 240);
+  isaCard.getBoundingClientRect = () => rect(752, 16, 358, 260);
+  taxTab.scrollIntoView = vi.fn();
+  pensionSavingsCard.scrollIntoView = vi.fn();
+  irpCard.scrollIntoView = vi.fn();
+  isaCard.scrollIntoView = vi.fn();
+  taxTab.addEventListener("click", onTaxTab);
 }
 
 describe("FirstUseGuide", () => {
@@ -545,6 +602,48 @@ describe("FirstUseGuide", () => {
     fireEvent.click(screen.getByRole("button", { name: "챗봇 안내 마치기" }));
     expect(
       window.sessionStorage.getItem(chatGuideStorageKey(TARGET_USER_ID)),
+    ).toBe("true");
+    expect(
+      window.sessionStorage.getItem(firstUseGuideStorageKey(TARGET_USER_ID)),
+    ).toBeNull();
+  });
+
+  it("walks through the pension calculator guide inside its iframe", async () => {
+    window.history.replaceState(null, "", "/#/planner");
+    const onTaxTab = vi.fn();
+    addPensionPlannerFixture(onTaxTab);
+    render(<FirstUseGuide />);
+
+    expect(
+      await screen.findByText("세액공제 계산기를 살펴볼까요?"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "1분 안내 보기" }));
+
+    expect(
+      await screen.findByText("세액공제 탭에서 남은 한도를 확인해요"),
+    ).toBeInTheDocument();
+    expect(onTaxTab).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "연금저축 한도 보기" }));
+    expect(
+      await screen.findByText("연금저축 납입액을 조절해 보세요"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "IRP·DC 한도 보기" }));
+    expect(
+      await screen.findByText("IRP·DC 본인 추가납입도 함께 살펴봐요"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "ISA 전환 혜택 보기" }));
+    expect(
+      await screen.findByText("ISA 만기 전환 혜택도 비교할 수 있어요"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "안내 마치기" }));
+    expect(
+      window.sessionStorage.getItem(
+        pensionPlannerGuideStorageKey(TARGET_USER_ID),
+      ),
     ).toBe("true");
     expect(
       window.sessionStorage.getItem(firstUseGuideStorageKey(TARGET_USER_ID)),

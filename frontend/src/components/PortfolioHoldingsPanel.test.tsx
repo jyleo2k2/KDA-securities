@@ -4,7 +4,11 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { CompletedSurveyProfile, EducationalPortfolioEvaluation } from "../api/types";
+import type {
+  ChatVisualization,
+  CompletedSurveyProfile,
+  EducationalPortfolioEvaluation,
+} from "../api/types";
 import { EducationalPortfolioReview, PortfolioHoldingsPanel } from "./PortfolioHoldingsPanel";
 
 const PROFILE: CompletedSurveyProfile = {
@@ -15,6 +19,51 @@ const PROFILE: CompletedSurveyProfile = {
   risk_profile: "risk_neutral",
   loss_tolerance_percent: "20",
 };
+
+const STRATEGY_VISUALIZATIONS: ChatVisualization[] = [
+  {
+    kind: "sleeve_allocation",
+    title: "IRP & DC형 목표 자산배분",
+    description: "규칙 엔진이 계산한 목표비중이에요.",
+    data_boundary: "engine",
+    evidence_ids: [],
+    items: [
+      { label: "주식", value: 48, unit: "%", role: "segment" },
+      { label: "채권", value: 52, unit: "%", role: "segment" },
+    ],
+    series: [],
+  },
+  {
+    kind: "stress_scenarios",
+    title: "IRP & DC형 스트레스 점검",
+    description: "규칙 엔진이 계산한 손실 추정치예요.",
+    data_boundary: "engine",
+    evidence_ids: [],
+    items: [{ label: "주식시장 급락", value: 27.5, unit: "%", role: "value" }],
+    series: [],
+  },
+  {
+    kind: "sleeve_allocation",
+    title: "연금저축펀드 목표 자산배분",
+    description: "규칙 엔진이 계산한 목표비중이에요.",
+    data_boundary: "engine",
+    evidence_ids: [],
+    items: [
+      { label: "주식", value: 57.4, unit: "%", role: "segment" },
+      { label: "채권", value: 42.6, unit: "%", role: "segment" },
+    ],
+    series: [],
+  },
+  {
+    kind: "stress_scenarios",
+    title: "연금저축펀드 스트레스 점검",
+    description: "규칙 엔진이 계산한 손실 추정치예요.",
+    data_boundary: "engine",
+    evidence_ids: [],
+    items: [{ label: "주식시장 급락", value: 30, unit: "%", role: "value" }],
+    series: [],
+  },
+];
 
 afterEach(() => {
   cleanup();
@@ -319,14 +368,39 @@ describe("EducationalPortfolioReview", () => {
         sleeves: [],
       },
     } satisfies EducationalPortfolioEvaluation;
-    const { rerender } = render(<EducationalPortfolioReview evaluation={noHoldingsEvaluation} />);
+    const { rerender } = render(
+      <EducationalPortfolioReview
+        evaluation={noHoldingsEvaluation}
+        visualizations={STRATEGY_VISUALIZATIONS}
+      />,
+    );
 
     expect(screen.getByText("위험중립형의 코어·위성 전략")).toBeInTheDocument();
     expect(screen.getByText(/분산 주식 ETF를 코어\(장기 기본 비중\)로 두고/)).toBeInTheDocument();
     expect(
       screen.getByText(/코어는 장기 분산투자, 위성은 제한된 비중의 보조 전략/),
     ).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /주식 45.0%, 금\/원자재 5.0%, 채권 43.0%, 현금 7.0%/ })).toBeInTheDocument();
+    expect(screen.getByText("IRP & DC형 목표 자산배분")).toBeInTheDocument();
+    expect(screen.getByText("IRP & DC형 스트레스 점검")).toBeInTheDocument();
+    expect(screen.getByText("연금저축펀드 목표 자산배분")).toBeInTheDocument();
+    expect(screen.getByText("연금저축펀드 스트레스 점검")).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /주식 45.0%/ })).not.toBeInTheDocument();
+    const orderedStrategyContent = [
+      screen.getByText("코어·위성 전략"),
+      screen.getByText("IRP & DC형 목표 자산배분"),
+      screen.getByText("IRP & DC형 스트레스 점검"),
+      screen.getByText("연금저축펀드 목표 자산배분"),
+      screen.getByText("연금저축펀드 스트레스 점검"),
+      screen.getByText(/^리밸런싱 주기:/),
+      screen.getByText("두 가지 수익률 가정"),
+    ];
+    for (let index = 1; index < orderedStrategyContent.length; index += 1) {
+      expect(
+        orderedStrategyContent[index - 1].compareDocumentPosition(
+          orderedStrategyContent[index],
+        ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
     expect(screen.getByText("조심해서 계산한 경우")).toBeInTheDocument();
     expect(screen.getByText("기본으로 계산한 경우")).toBeInTheDocument();
     expect(screen.getByText(/CMA는 여러 자산의 10년 이상 장기 전망/)).toBeInTheDocument();
@@ -377,8 +451,27 @@ describe("EducationalPortfolioReview", () => {
 
     expect(screen.getByText("위험중립형 · 손실감내도 우선 방어 배분")).toBeInTheDocument();
     expect(screen.getByText(/선택한 손실감내율 5.0%가 위험중립형의 기본 비중보다 우선 적용돼/)).toBeInTheDocument();
-    expect(screen.getByText(/성장자산 비중을 0.0%로 낮추고 채권과 현금성 자산 중심으로 조정/)).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "채권 62.5%, 현금 37.5%" })).toBeInTheDocument();
+    expect(screen.getByText(/성장자산 비중을 48.5%에서 0.0%로 낮추고 채권과 현금성 자산 중심으로 조정/)).toBeInTheDocument();
+    expect(screen.queryByText("위험중립형의 코어·위성 전략")).not.toBeInTheDocument();
+
+    rerender(<EducationalPortfolioReview evaluation={{
+      ...noHoldingsEvaluation,
+      evaluated_input: {
+        ...noHoldingsEvaluation.evaluated_input,
+        age: 42,
+        retirement_start_age: 60,
+        loss_tolerance_percent: "15",
+      },
+      planning_horizon_years: 18,
+      raw_risk_target_percent: "48.5000",
+      final_general_risk_target_percent: "27.2000",
+      loss_tolerance_binding: true,
+      stress_loss_proxy_percent: "15.0000",
+    }} />);
+
+    expect(screen.getByText("위험중립형 · 손실감내도 반영 조정 배분")).toBeInTheDocument();
+    expect(screen.getByText(/선택한 손실감내율 15.0%가 위험중립형의 기본 비중보다 우선 적용돼/)).toBeInTheDocument();
+    expect(screen.getByText(/성장자산 비중을 48.5%에서 27.2%로 낮추고 나머지를 채권과 현금성 자산에 배분/)).toBeInTheDocument();
     expect(screen.queryByText("위험중립형의 코어·위성 전략")).not.toBeInTheDocument();
 
     const strategyCases = [
