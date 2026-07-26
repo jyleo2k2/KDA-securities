@@ -6,6 +6,7 @@ from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
 from backend.app.chat.models import (
     ChatIntent,
     ChatRequest,
+    ChatResponse,
     CompletedSurveyProfile,
 )
 from backend.app.chat.scenarios import LocalScenarioRepository
@@ -189,6 +190,7 @@ def test_chatbot_only_explains_structured_portfolio_engine_result() -> None:
     response = _service().ask(request)
 
     assert response.intent == ChatIntent.EDUCATIONAL_PORTFOLIO
+    assert ChatResponse.model_validate(response.model_dump()) == response
     assert response.educational_portfolio_evaluation is not None
     evaluation = response.educational_portfolio_evaluation
     assert evaluation.planning_return.is_forecast is False

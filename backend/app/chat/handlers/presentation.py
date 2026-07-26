@@ -11,6 +11,7 @@ from ..models import (
     ChatVisualization,
     ConversationContext,
     DataBoundary,
+    NumericEvidence,
     ReferentItem,
     ReferentList,
     VisualizationDatum,
@@ -72,6 +73,7 @@ def attach_visualizations(response: ChatResponse) -> ChatResponse:
     """Attach only views backed by the response's existing engine evidence."""
 
     visualizations: list[ChatVisualization] = []
+    numeric_evidence = list(response.numeric_evidence)
     if response.scenario_evaluation is not None:
         evaluation = response.scenario_evaluation
         visualizations.append(
@@ -220,6 +222,16 @@ def attach_visualizations(response: ChatResponse) -> ChatResponse:
                 update={"value": allocation_items[-1].value + rounding_difference}
             )
             allocation_items = _sorted_by_weight_desc(allocation_items)
+        numeric_evidence.extend(
+            NumericEvidence(
+                label=f"{account_label} 목표 자산배분 · {item.label}",
+                value=item.value,
+                unit=item.unit,
+                evidence_id=evidence_id,
+                basis="계좌별 목표 자산배분 합계",
+            )
+            for item in allocation_items
+        )
         visualizations.append(
             ChatVisualization(
                 kind=VisualizationKind.SLEEVE_ALLOCATION,
@@ -281,7 +293,12 @@ def attach_visualizations(response: ChatResponse) -> ChatResponse:
                 )
             )
 
-    return response.model_copy(update={"visualizations": visualizations})
+    return response.model_copy(
+        update={
+            "visualizations": visualizations,
+            "numeric_evidence": numeric_evidence,
+        }
+    )
 
 
 def with_context(
@@ -409,6 +426,9 @@ def finalize_response(
         )
         else response.suggested_follow_ups or build_suggested_follow_ups(response)
     )
-    return response.model_copy(
+    finalized = response.model_copy(
         update={"suggested_follow_ups": suggested_follow_ups}
     )
+    if finalized.educational_portfolio_evaluations:
+        return ChatResponse.model_validate(finalized.model_dump())
+    return finalized

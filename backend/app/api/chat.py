@@ -40,6 +40,7 @@ from ..chat.repository import (
     StoredMessageEvidence,
 )
 from ..chat.scenarios import LocalScenarioRepository
+from ..chat.stored_response import parse_stored_chat_response
 from ..chat.tools import PENSION_TAX_CLOSING_NOTICE
 from ..chat.topic_guard import ClaudeTopicGuard
 from ..chat.user_context import (
@@ -903,7 +904,7 @@ def _message_out(message: StoredChatMessage) -> StoredChatMessageOut:
             if not isinstance(payload, dict):
                 raise TypeError("assistant payload must be a JSON object")
             if payload.get("schema_version") == 1:
-                response = ChatResponse.model_validate(payload["response"])
+                response = parse_stored_chat_response(payload["response"])
                 response = _without_legacy_etf_theme_draft_notice(response)
                 question_message_id = UUID(payload["question_message_id"])
                 content = response.answer
