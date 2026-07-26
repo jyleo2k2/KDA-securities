@@ -14,6 +14,9 @@
 .mhs-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 22px 70px; }
 
 .mhs-promo-carousel { outline: none; touch-action: pan-y; }
+.mhs-promo-carousel.is-dragging { user-select: none; }
+.mhs-promo-carousel.is-dragging .mhs-promo-viewport,
+.mhs-promo-carousel.is-dragging button { cursor: grabbing; }
 .mhs-promo-carousel:focus-visible { border-radius: 22px; outline: 3px solid #18A860; outline-offset: 3px; }
 .mhs-promo-viewport { overflow: hidden; border-radius: 22px; cursor: grab; }
 .mhs-promo-viewport:active { cursor: grabbing; }

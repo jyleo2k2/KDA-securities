@@ -239,6 +239,11 @@ describe("MainHomeScreen", () => {
     const { container } = renderHome();
     const carousel = screen.getByRole("region", { name: "홈 추천 카드" });
     const track = container.querySelector(".mhs-promo-track");
+    Object.assign(carousel, {
+      hasPointerCapture: vi.fn(() => true),
+      releasePointerCapture: vi.fn(),
+      setPointerCapture: vi.fn(),
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "2번째 카드 보기" }));
     expect(track).toHaveStyle({ transform: "translateX(-100%)" });
@@ -250,17 +255,26 @@ describe("MainHomeScreen", () => {
     fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 180 }] });
     expect(track).toHaveStyle({ transform: "translateX(-100%)" });
 
-    fireEvent.pointerDown(carousel, {
+    fireEvent.pointerDown(screen.getByRole("button", { name: "연그미와 놀기 열기" }), {
       button: 0,
       clientX: 180,
       pointerId: 1,
       pointerType: "mouse",
     });
+    fireEvent.pointerMove(carousel, {
+      clientX: 280,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+    expect(carousel).toHaveClass("is-dragging");
+    expect(carousel.setPointerCapture).toHaveBeenCalledWith(1);
+
     fireEvent.pointerUp(carousel, {
       clientX: 280,
       pointerId: 1,
       pointerType: "mouse",
     });
+    expect(carousel).not.toHaveClass("is-dragging");
     expect(track).toHaveStyle({ transform: "translateX(-0%)" });
   });
 
