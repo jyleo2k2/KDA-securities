@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     pension_portal_api_key: SecretStr | None = None
     anthropic_api_key: SecretStr | None = None
     anthropic_model: str = "claude-haiku-4-5"
+    # 근거 여러 건을 묶어 설명하는 계좌 비교 답변에만 쓰는 상위 모델.
+    # 비우면 anthropic_model 하나로만 동작한다.
+    anthropic_narration_upgraded_model: str = "claude-sonnet-5"
     anthropic_topic_guard_model: str = "claude-haiku-4-5"
     enable_claude_narration: bool = False
     enable_claude_topic_guard: bool = False
