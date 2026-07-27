@@ -25,6 +25,8 @@
 .mhs-promo-viewport { overflow: hidden; border-radius: 22px; cursor: grab; }
 .mhs-promo-viewport:active { cursor: grabbing; }
 .mhs-promo-track { display: flex; align-items: stretch; transition: transform .38s cubic-bezier(.23, 1, .32, 1); }
+/* 복제 슬라이드에서 원본 첫 카드로 되돌릴 때는 이동이 보이면 안 된다 */
+.mhs-promo-track.is-snapping { transition: none; }
 .mhs-promo-slide { display: flex; flex: 0 0 100%; min-width: 0; }
 .mhs-promo-dots { display: flex; justify-content: center; gap: 6px; margin-top: 9px; }
 .mhs-promo-dot { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 999px; background: #D8DED9; cursor: pointer; transition: width .2s ease, background .2s ease; }
