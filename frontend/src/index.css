@@ -501,6 +501,10 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .portfolio-review-details[open] > summary { border-bottom: 1px solid #e6eee7; }
 .portfolio-review-details[open] > summary em { font-size: 0; }
 .portfolio-review-details[open] > summary em::after { content: "접기"; font-size: 9px; }
+.portfolio-review-priority { min-width: 0; overflow: hidden; border: 1px solid #bcd8c2; border-radius: 12px; background: #fff; box-shadow: 0 6px 18px rgba(35, 81, 55, .08); }
+.portfolio-review-priority > header { display: grid; gap: 2px; padding: 12px; border-bottom: 1px solid #dbe8dc; background: #f0f8f1; }
+.portfolio-review-priority > header small { color: #16864e; font-size: 8px; font-weight: 800; }
+.portfolio-review-priority > header h4 { margin: 0; color: #294838; font-size: 12px; }
 .portfolio-review-details-body { display: grid; min-width: 0; gap: 12px; padding: 12px; }
 .portfolio-sector-guide { display: grid; gap: 11px; padding: 13px; border: 1px solid #d9e8dc; border-radius: 12px; background: #f7fbf6; }
 .portfolio-sector-guide > header { display: grid; gap: 3px; }.portfolio-sector-guide > header > span { color: #16864e; font-size: 9px; font-weight: 800; }.portfolio-sector-guide h4 { margin: 0; color: #203c2e; font-size: 12px; }.portfolio-sector-guide > header p, .portfolio-sector-guide-note { margin: 0; color: #748178; font-size: 9px; line-height: 1.5; }
