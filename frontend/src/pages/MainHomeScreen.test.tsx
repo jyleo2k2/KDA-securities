@@ -265,6 +265,23 @@ describe("MainHomeScreen", () => {
     vi.useRealTimers();
   });
 
+  it("keeps the tax credit card still while the touring guide locks the home body", () => {
+    vi.useFakeTimers();
+    const { container } = renderHome();
+    const body = container.querySelector(".mhs-body") as HTMLElement;
+    const track = container.querySelector(".mhs-promo-track");
+
+    body.inert = true;
+    act(() => vi.advanceTimersByTime(2500));
+    expect(track).toHaveStyle({ transform: "translateX(-0%)" });
+
+    body.inert = false;
+    act(() => vi.advanceTimersByTime(2500));
+    expect(track).toHaveStyle({ transform: "translateX(-100%)" });
+
+    vi.useRealTimers();
+  });
+
   it("supports dots, arrow keys, touch swipes, and mouse drags", () => {
     const { container } = renderHome();
     const carousel = screen.getByRole("region", { name: "홈 추천 카드" });

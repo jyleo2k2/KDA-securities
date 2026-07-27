@@ -435,6 +435,7 @@ export function MainHomeScreen({
   useEffect(() => {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     const timer = window.setInterval(() => {
+      if (bodyRef.current?.inert) return;
       setActivePromo((current) => (current + 1) % PROMO_COUNT);
       setPromoOffset((current) => (current >= PROMO_COUNT ? 1 : current + 1));
       setIsPromoSnapping(false);

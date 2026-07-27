@@ -106,6 +106,7 @@ const HOME_STEPS: GuideStep[] = [
     cta: "세액공제도 보기",
   },
   {
+    activateSelector: ".mhs-promo-dot[aria-label=\"1번째 카드 보기\"]",
     selector: ".mhs-tax-card",
     title: "놓치고 있는 세액공제 금액 및 연금 수령액을 계산해볼 수 있어요 !",
     accents: ["세액공제 금액", "연금 수령액"],

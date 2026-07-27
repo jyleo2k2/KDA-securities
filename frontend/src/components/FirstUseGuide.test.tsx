@@ -79,6 +79,7 @@ function addHomeFixture(onUserPick: () => void): void {
             <button class="mhs-summary-cta-button" type="button">내 구성 진단받기</button>
             <h2 class="mhs-section-title">세액공제</h2>
             <div class="mhs-tax-card">세액공제</div>
+            <button class="mhs-promo-dot" type="button" aria-label="1번째 카드 보기"></button>
             <div class="mhs-strategy-scroll">전략별 계획수익률</div>
             <button class="mhs-userpick-card-button" type="button">지금 둘러보기</button>
           </div>
@@ -472,6 +473,10 @@ describe("FirstUseGuide", () => {
     });
     addHomeFixture(onUserPick);
     render(<FirstUseGuide />);
+    const firstPromoClick = vi.spyOn(
+      screen.getByRole("button", { name: "1번째 카드 보기" }),
+      "click",
+    );
 
     fireEvent.click(await screen.findByRole("button", { name: "1분 안내 보기" }));
     expect(
@@ -504,6 +509,7 @@ describe("FirstUseGuide", () => {
         name: "놓치고 있는 세액공제 금액 및 연금 수령액을 계산해볼 수 있어요 !",
       }),
     ).toBeInTheDocument();
+    expect(firstPromoClick).toHaveBeenCalledOnce();
 
     fireEvent.click(screen.getByRole("button", { name: "전략 설명 보기" }));
     expect(
