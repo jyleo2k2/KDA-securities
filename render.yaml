@@ -34,6 +34,11 @@ services:
       # true로 두되, 과금이 붙는 값이므로 변경 시 배포 가이드 §3-1을 따른다.
       - key: ENABLE_CLAUDE_NARRATION
         value: "true"
+      # 규칙 분류기가 놓친 질문만 작은 Haiku 분류기로 되살린다. 명백한 잡담은
+      # 정규식으로, 반복 질문은 캐시로 먼저 걸러서 실제 호출은 드물다.
+      # 과금이 붙는 값이므로 변경 시 배포 가이드 §3-1을 따른다.
+      - key: ENABLE_CLAUDE_TOPIC_GUARD
+        value: "true"
       # 시연·테스트 계정(설문 결과를 저장하지 않음). 값은 Render 대시보드에서 주입.
       - key: EPHEMERAL_INVESTMENT_PROFILE_OWNER_IDS
         sync: false

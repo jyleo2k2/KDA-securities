@@ -13,7 +13,7 @@ from pydantic_ai.exceptions import AgentRunError
 from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
 from pydantic_ai.providers.anthropic import AnthropicProvider
 
-from ..text_normalization import normalize_search_text
+from ..text_normalization import normalize_colloquial_text
 from .query_planner import BlockedReason, QueryPlan, plan_question
 
 logger = logging.getLogger(__name__)
@@ -123,7 +123,9 @@ class ClaudeTopicGuard:
         )
 
     def classify(self, message: str) -> TopicGuardDecision:
-        normalized = normalize_search_text(message)
+        # 분류기와 같은 표준형을 본다. 표기만 다른 같은 질문이 캐시를 공유하므로
+        # 불필요한 API 호출이 줄어든다.
+        normalized = normalize_colloquial_text(message)
         if not normalized:
             return _UNSUPPORTED_DECISION
         # 자주 나오는 명확한 잡담·범위 밖 질문은 API 호출 없이 끝낸다.

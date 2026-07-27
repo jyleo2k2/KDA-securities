@@ -6,6 +6,14 @@ from ..engine import AccountType
 from .models import ChatIntent, ChatRequest, MarketRegion
 
 CONTEXTUAL_FOLLOW_UP_TERMS = ("그럼", "그러면", "해당", "이 경우", "그 계좌")
+# 직전 전략 대화를 이어 묻는 신호. 계좌 문맥보다 넓게 잡아야 "그 전략의
+# 계획수익률"처럼 지시어로 전략을 가리키는 후속 질문을 놓치지 않는다.
+_STRATEGY_FOLLOW_UP = re.compile(
+    r"그럼|그러면|해당|이\s*경우|"
+    r"(?:그|이|위|방금|아까)\s*(?:전략|포트폴리오|배분|비중|구성|결과|추천)|"
+    r"전략(?:의|은|는|을|도|이)|포트폴리오(?:의|은|는|을|도|이)|"
+    r"계획수익률|리밸런싱|자산\s*배분|비중"
+)
 _NEWS_ORDINAL = re.compile(
     r"(?P<first>첫(?:\s*번째)?|1\s*번(?:째)?)|"
     r"(?P<second>두\s*번째|둘째|2\s*번(?:째)?)|"
@@ -73,9 +81,13 @@ class IntentRouter:
             and cls._is_referent_request(request.message)
         ):
             return request.message
+        # 직전이 전략 대화였어도 "그럼"처럼 이어 묻는 신호가 있을 때만 문맥을
+        # 덧붙인다. 신호 없는 질문까지 전략 요청으로 승격하면, 분류기가 놓친
+        # 오타 한 글자가 엉뚱한 전략·리밸런싱 답변으로 이어진다.
         if (
             context is not None
             and context.last_intent == ChatIntent.EDUCATIONAL_PORTFOLIO
+            and _STRATEGY_FOLLOW_UP.search(request.message) is not None
         ):
             return f"연금 운용 전략 {request.message}"
         if (
