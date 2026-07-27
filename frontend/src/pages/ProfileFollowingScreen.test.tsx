@@ -27,6 +27,10 @@ describe("ProfileFollowingScreen", () => {
 
     expect(await screen.findByText("꾸준한거북이")).toBeInTheDocument();
     expect(screen.queryByText("배당모으미")).not.toBeInTheDocument();
+    expect(screen.getByText("운용 기간")).toBeInTheDocument();
+    expect(screen.getByText("3년 8개월")).toBeInTheDocument();
+    expect(screen.queryByText("포트폴리오 구성 비율")).not.toBeInTheDocument();
+    expect(screen.queryByText("투자전략")).not.toBeInTheDocument();
     expect(screen.getByLabelText("팔로우 1,205")).toBeInTheDocument();
     expect(getBenchmarkFollows).toHaveBeenCalledWith("owner-a-token");
   });
