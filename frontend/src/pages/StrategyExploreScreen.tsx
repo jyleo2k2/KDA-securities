@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type JSX, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 
 import { cardStyle, normalizeIndex, shortestOffset, SWIPE_THRESHOLD_PX } from "./strategyExplore/fanMath";
-import { STRATEGIES, type StrategyExploreItem } from "./strategyExplore/strategies";
+import { STRATEGIES, STRATEGY_INTRO_SUMMARIES, type StrategyExploreItem } from "./strategyExplore/strategies";
 import { StatusBar } from "../components/StatusBar";
 import "./StrategyExploreScreen.css";
 
@@ -31,6 +31,7 @@ function highlightDesc(desc: string, keywords: string[]): ReactNode[] {
 export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): JSX.Element {
   const [active, setActive] = useState(initialActiveIndex);
   const current = STRATEGIES[active];
+  const currentIntro = STRATEGY_INTRO_SUMMARIES[current.id] ?? { desc: current.desc, keywords: current.keywords };
   const pointerStartX = useRef<number | null>(null);
 
   useEffect(() => {
@@ -123,6 +124,12 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
                   );
                 })}
               </ul>
+              <button type="button" className="se-fan-arrow se-fan-arrow-prev" aria-label="이전 전략" onClick={() => move(-1)}>
+                <span aria-hidden="true">&#8249;</span>
+              </button>
+              <button type="button" className="se-fan-arrow se-fan-arrow-next" aria-label="다음 전략" onClick={() => move(1)}>
+                <span aria-hidden="true">&#8250;</span>
+              </button>
             </div>
 
             <div className="se-pill-row">
@@ -130,20 +137,6 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
                 <span className="se-dot" />
                 <span>{current.name}</span>
               </span>
-            </div>
-
-            <div className="se-fan-controls">
-              <button type="button" className="se-fan-arrow" aria-label="이전 전략" onClick={() => move(-1)}>
-                <span aria-hidden="true">&#8249;</span>
-              </button>
-              <div className="se-fan-dots" aria-label="전략 선택">
-                {STRATEGIES.map((strategy, i) => (
-                  <button key={strategy.id} type="button" aria-label={`${i + 1}번째 전략 보기`} aria-current={i === active ? "true" : undefined} onClick={() => select(i)} />
-                ))}
-              </div>
-              <button type="button" className="se-fan-arrow" aria-label="다음 전략" onClick={() => move(1)}>
-                <span aria-hidden="true">&#8250;</span>
-              </button>
             </div>
 
             <p className="se-sr-only" aria-live="polite">{`${STRATEGIES.length}개 중 ${active + 1}번째 전략, ${current.name}`}</p>
@@ -158,7 +151,7 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
                 </div>
                 <div className="se-intro-summary">
                   <span className="se-intro-label">전략 요약</span>
-                  <span className="se-intro-desc">{highlightDesc(current.desc, current.keywords)}</span>
+                  <span className="se-intro-desc">{highlightDesc(currentIntro.desc, currentIntro.keywords)}</span>
                 </div>
               </div>
             </div>

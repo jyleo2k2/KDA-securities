@@ -24,6 +24,19 @@ export interface StrategyExploreItem {
   easyWords: { word: string; meaning: string }[];
 }
 
+export const STRATEGY_INTRO_SUMMARIES: Record<string, { desc: string; keywords: string[] }> = {
+  "market-beta": { desc: "시장 전체에 분산 투자해 장기 시장 수익률을 추구합니다.", keywords: ["시장 전체", "장기 시장 수익률"] },
+  factor: { desc: "재무·가치·추세 등 기업 특성으로 ETF를 고릅니다.", keywords: ["기업 특성", "ETF"] },
+  theme: { desc: "산업 변화가 기대되는 분야에서 성장 기회를 찾습니다.", keywords: ["산업 변화", "성장 기회"] },
+  topdown: { desc: "금리·물가·경기를 보고 자산군 비중을 조정합니다.", keywords: ["금리·물가·경기", "자산군 비중"] },
+  bottomup: { desc: "기업 경쟁력과 재무·성장성을 분석해 투자 대상을 고릅니다.", keywords: ["기업 경쟁력", "재무·성장성"] },
+  barbell: { desc: "성장자산과 단기채·현금을 함께 두어 위험을 완충합니다.", keywords: ["성장자산", "위험을 완충"] },
+  volatility: { desc: "주식·채권·현금 비중을 조절해 변동성을 관리합니다.", keywords: ["비중을 조절", "변동성"] },
+  longshort: { desc: "매수와 헤지를 함께 활용해 시장 방향 노출을 낮춥니다.", keywords: ["매수와 헤지", "시장 방향 노출"] },
+  eventdriven: { desc: "합병·분할·자사주 매입 등 기업 이벤트에서 기회를 찾습니다.", keywords: ["기업 이벤트", "기회"] },
+  trend: { desc: "자산 가격 추세와 글로벌 경제 흐름을 규칙으로 활용합니다.", keywords: ["가격 추세", "글로벌 경제 흐름"] },
+};
+
 // 각 전략의 정성 설명은 docs/team/주식 전략을 활용한 연금 포트폴리오 운용안.md 근거다.
 // 전략별 자산배분 %·수익률 등 수치는 문서에 근거가 없어 화면에 넣지 않는다(수치 환각 금지 규칙).
 const STRATEGY_DATA: StrategyExploreItem[] = [

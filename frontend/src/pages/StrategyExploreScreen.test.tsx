@@ -24,6 +24,14 @@ describe("StrategyExploreScreen", () => {
     expect(document.querySelector(".se-headline")).toHaveTextContent("증권사들의 전략들로 연금을 꾸려봐요!");
     expect(document.querySelector(".se-headline br")).not.toBeNull();
     expect(document.documentElement.style.getPropertyValue("--se-accent")).toBe(STRATEGIES[0].accent);
+    const fanStage = document.querySelector(".se-fan-stage");
+    expect(fanStage).not.toBeNull();
+    expect(document.querySelector(".se-fan-dots")).toBeNull();
+    expect(fanStage).toContainElement(screen.getByRole("button", { name: "이전 전략" }));
+    expect(fanStage).toContainElement(screen.getByRole("button", { name: "다음 전략" }));
+    expect(document.querySelector(".se-intro-desc")).toHaveTextContent(
+      "시장 전체에 분산 투자해 장기 시장 수익률을 추구합니다.",
+    );
     fireEvent.click(activeCard);
 
     expect(window.location.hash).toBe(`#/strategy-detail?strategy=${STRATEGIES[0].id}`);

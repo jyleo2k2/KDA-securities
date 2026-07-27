@@ -23,7 +23,7 @@ export function cardStyle(offset: number): FanCardStyle {
   const distance = Math.abs(offset);
   const visible = Math.min(distance, 3);
   return {
-    x: `${offset * 118}px`,
+    x: `${offset * 100}px`,
     y: `${visible * 30}px`,
     rotation: `${offset * 10}deg`,
     scale: String(Math.max(0.6, 1 - visible * 0.3)),
