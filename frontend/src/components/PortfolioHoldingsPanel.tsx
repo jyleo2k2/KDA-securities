@@ -395,9 +395,7 @@ function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
       {complete ? (
         <div className="portfolio-risk-metrics">
           <div><span>1년 동안의 흔들림 크기</span><strong>{optionalPercent(risk.annualized_volatility_percent)}</strong></div>
-          <div><span>떨어질 때의 흔들림</span><strong>{optionalPercent(risk.annualized_downside_deviation_percent)}</strong></div>
           <div><span>과거 가장 크게 떨어진 폭</span><strong>{optionalPercent(risk.maximum_drawdown_percent)}</strong></div>
-          <div><span>나쁜 날 하루 손실 기준</span><strong>{optionalPercent(risk.historical_95pct_one_day_loss_percent)}</strong></div>
         </div>
       ) : (
         <p className="portfolio-risk-unavailable">
@@ -406,7 +404,7 @@ function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
       )}
 
       <div className="stress-scenario-grid" aria-label="정책 스트레스 시나리오">
-        {risk.stress_scenarios.map((scenario) => (
+        {risk.stress_scenarios.filter((scenario) => scenario.scenario_code !== "stagflation").map((scenario) => (
           <div key={scenario.scenario_code}>
             <span title={scenario.scenario_code}>{STRESS_SCENARIO_LABELS[scenario.scenario_code] ?? "기타 시장 충격"}</span>
             <strong>{lossPercent(scenario.estimated_loss_percent)}</strong>
@@ -886,12 +884,11 @@ export function EducationalPortfolioReview({
         </header>
         <div className="portfolio-review-details-body">
           <div className="overlap-check">
-            <strong>한곳에 너무 몰렸는지 보기</strong>
-            <p>지금 가진 ETF 비율을 목표와 비교했어요. 비슷한 역할의 ETF가 한곳에 몰렸는지는 아래 비율 차이에서 볼 수 있어요.</p>
+            <strong>ETF 쏠림 확인</strong>
+            <p>보유 ETF가 비슷한 역할에 몰렸는지 목표 비중과 비교했어요.</p>
             {highestCorrelation !== null && (
-              <p>새 후보 ETF끼리 과거에 같이 오르내린 정도는 최대 {highestCorrelation.toFixed(1)}%예요. 같은 회사가 몇 개 겹쳤는지를 뜻하는 숫자는 아니에요.</p>
+              <p>후보 ETF가 과거에 같이 움직인 정도는 최대 {highestCorrelation.toFixed(1)}%예요. 구성종목 중복률과는 달라요.</p>
             )}
-            <small>ETF별 실제 구성종목 중복률은 구성종목 원천 데이터가 완전한 상품에 한해서만 계산할 수 있어 현재 결과에서 임의 추정하지 않습니다.</small>
           </div>
 
           <div className="portfolio-review-table-wrap">

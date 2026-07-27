@@ -454,28 +454,10 @@ export function MainHomeScreen({
   }, [promoOffset]);
   const totalBalance = aggregation ? formatKrw(aggregation.total_amount_krw) : "-";
   const asOfDate = portfolio ? latestPortfolioDate(portfolio) : null;
-  const renderInvestmentProfileSummary = (
-    tone: "green" | "neutral",
-  ): JSX.Element => {
-    const assessment = investmentProfile?.assessment;
-    const profileLabel = assessment
-      ? PROFILE_LABELS[assessment.risk_profile]
-      : "진단 전";
-    const assessedOn = assessment?.assessed_on ?? "진단 기록 없음";
-    return (
-      <div
-        className={`mhs-promo-profile mhs-promo-profile-${tone}`}
-        aria-label={`저장 투자성향 ${profileLabel}, 최근 진단 ${assessedOn}${assessment?.is_expired ? ", 만료" : ""}`}
-      >
-        <span className="mhs-promo-profile-label">저장 투자성향</span>
-        <strong className="mhs-promo-profile-value">{profileLabel}</strong>
-        <span className="mhs-promo-profile-divider" aria-hidden="true" />
-        <span className="mhs-promo-profile-label">최근 진단</span>
-        <strong className="mhs-promo-profile-value">{assessedOn}</strong>
-        {assessment?.is_expired && <strong className="mhs-promo-profile-expired">만료</strong>}
-      </div>
-    );
-  };
+  const assessment = investmentProfile?.assessment;
+  const profileLabel = assessment
+    ? PROFILE_LABELS[assessment.risk_profile]
+    : "진단 전";
 
   return (
     <main className="app-phone-stage mhs-stage">
@@ -540,7 +522,6 @@ export function MainHomeScreen({
                       </button>
                     </div>
                   </div>
-                  {renderInvestmentProfileSummary("green")}
                 </div>
               </div>
               <div className="mhs-promo-slide" aria-hidden={activePromo !== 1}>
@@ -558,7 +539,6 @@ export function MainHomeScreen({
                     </div>
                     <img src={piggy} alt="슬랑이" className="mhs-greeting-img" />
                   </div>
-                  {renderInvestmentProfileSummary("neutral")}
                 </button>
               </div>
               {/* 끝에서 첫 카드로 이어지는 모션만을 위한 복제본. 보조기술과 탭 순서에서는 제외한다. */}
@@ -575,7 +555,6 @@ export function MainHomeScreen({
                       </button>
                     </div>
                   </div>
-                  {renderInvestmentProfileSummary("green")}
                 </div>
               </div>
             </div>
@@ -598,7 +577,14 @@ export function MainHomeScreen({
         <div className="mhs-asset-card">
           <p className="mhs-asset-label">총 연금 자산</p>
           <p className="mhs-asset-total">{loading ? "불러오는 중…" : totalBalance}</p>
-          <p className="mhs-asset-gain">{error ?? (asOfDate ? `${displayName}님 · ${asOfDate} 기준` : "연금 데이터를 확인해 주세요.")}</p>
+          <p className="mhs-asset-gain">
+            {error ?? (asOfDate ? (
+              <>
+                <span>{displayName}님 · {profileLabel}</span>
+                <span> · {asOfDate} 기준</span>
+              </>
+            ) : "연금 데이터를 확인해 주세요.")}
+          </p>
 
           <div className="mhs-pie-wrap">
             {holdingSlices.length > 0 ? (
