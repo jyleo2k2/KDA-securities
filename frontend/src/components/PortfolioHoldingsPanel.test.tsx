@@ -534,8 +534,11 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.queryByText("ESG")).not.toBeInTheDocument();
     expect(screen.queryByText("운송 및 물류")).not.toBeInTheDocument();
     expect(screen.queryByText("여행 및 레저")).not.toBeInTheDocument();
-    expect(screen.getByText(/과거에 같이 오르내린 정도는 최대 82.0%/)).toBeInTheDocument();
-    expect(screen.getByText(/같은 회사가 몇 개 겹쳤는지를 뜻하는 숫자는 아니에요/)).toBeInTheDocument();
+    expect(screen.getByText("ETF 쏠림 확인")).toBeInTheDocument();
+    expect(screen.getByText(/과거에 같이 움직인 정도는 최대 82.0%/)).toBeInTheDocument();
+    expect(screen.getByText(/구성종목 중복률과는 달라요/)).toBeInTheDocument();
+    expect(screen.queryByText(/구성종목 원천 데이터가 완전한 상품/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/같은 회사가 몇 개 겹쳤는지를 뜻하는 숫자는 아니에요/)).not.toBeInTheDocument();
     expect(screen.getByText(/자동 매도하지 않습니다/)).toBeInTheDocument();
     expect(screen.getByText("12.3%")).toBeInTheDocument();
     expect(screen.getByText("주식이 크게 떨어질 때")).toBeInTheDocument();
