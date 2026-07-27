@@ -252,7 +252,7 @@ describe("PensionPlannerPage", () => {
             expect.objectContaining({ id: "theme", name: "테마 전략" }),
             expect.objectContaining({ id: "topdown", name: "탑다운 전략" }),
             expect.objectContaining({ id: "bottomup", name: "바텀업 전략" }),
-            expect.objectContaining({ id: "target", name: "타깃 전략" }),
+            expect.objectContaining({ id: "barbell", name: "바벨 전략" }),
             expect.objectContaining({ id: "volatility", name: "변동성 관리 전략" }),
             expect.objectContaining({ id: "longshort", name: "롱숏·시장중립 전략" }),
             expect.objectContaining({ id: "eventdriven", name: "이벤트드리븐 전략" }),

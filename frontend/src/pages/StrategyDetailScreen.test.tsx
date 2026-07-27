@@ -83,12 +83,15 @@ describe("StrategyDetailScreen", () => {
     expect(screen.queryByText("계좌 적격 상품 확인 필요")).not.toBeInTheDocument();
   });
 
-  it("shows the target strategy as ETF-based", () => {
-    window.location.hash = "#/strategy-detail?strategy=target";
+  it("shows the barbell strategy with its matching detail", () => {
+    window.location.hash = "#/strategy-detail?strategy=barbell";
 
     render(<StrategyDetailScreen onBack={vi.fn()} />);
 
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("바벨 전략");
+    expect(screen.getByText(/성장자산과 현금·단기채를 함께 보유/)).toBeInTheDocument();
+    expect(screen.getByText(/한쪽에는 장기 성장자산을/)).toBeInTheDocument();
     expect(screen.getAllByText("ETF로 구현 가능")).toHaveLength(2);
-    expect(screen.queryByText("ETF·TDF로 구현 가능")).not.toBeInTheDocument();
+    expect(screen.queryByText("타깃 전략")).not.toBeInTheDocument();
   });
 });
