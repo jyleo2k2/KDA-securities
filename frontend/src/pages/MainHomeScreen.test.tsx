@@ -134,7 +134,8 @@ describe("MainHomeScreen", () => {
     expect(screen.getByText("만져 보세요!")).toBeInTheDocument();
     expect(screen.getByAltText("슬랑이")).toBeInTheDocument();
     expect(screen.getByText("60,000,000원")).toBeInTheDocument();
-    expect(screen.getByText("박준호님 · 2026-07-23 기준")).toBeInTheDocument();
+    expect(document.querySelector(".mhs-asset-gain"))
+      .toHaveTextContent("박준호님 · 진단 전 · 2026-07-23 기준");
     expect(screen.getAllByText("글로벌주식")).not.toHaveLength(0);
     expect(screen.getByText("70.0%")).toBeInTheDocument();
     expect(
@@ -151,14 +152,12 @@ describe("MainHomeScreen", () => {
     expect(screen.getByText("슬랑이를 눌러 1원씩 적립해보세요")).toBeInTheDocument();
   });
 
-  it("shows an unassessed profile state inside both promo cards", () => {
+  it("removes the investment profile section from the promo carousel", () => {
     const { container } = renderHome();
 
-    expect(screen.getAllByLabelText(
-      "저장 투자성향 진단 전, 최근 진단 진단 기록 없음",
-    )).toHaveLength(3);
-    expect(container.querySelectorAll(".mhs-tax-card .mhs-promo-profile")).toHaveLength(2);
-    expect(container.querySelector(".mhs-greeting-card .mhs-promo-profile")).toBeInTheDocument();
+    expect(container.querySelector(".mhs-promo-profile")).not.toBeInTheDocument();
+    expect(screen.queryByText("저장 투자성향")).not.toBeInTheDocument();
+    expect(screen.queryByText("최근 진단")).not.toBeInTheDocument();
   });
 
   it("shows the real holdings for the selected donut asset class", () => {
@@ -239,11 +238,9 @@ describe("MainHomeScreen", () => {
 
     const { container } = renderHome({ investmentProfile, onOpenPlanner });
 
-    expect(screen.getAllByLabelText(
-      "저장 투자성향 적극투자형, 최근 진단 2026-07-22",
-    )).toHaveLength(3);
-    expect(container.querySelectorAll(".mhs-tax-card .mhs-promo-profile")).toHaveLength(2);
-    expect(container.querySelector(".mhs-greeting-card .mhs-promo-profile")).toBeInTheDocument();
+    expect(document.querySelector(".mhs-asset-gain"))
+      .toHaveTextContent("박준호님 · 적극투자형 · 2026-07-23 기준");
+    expect(container.querySelector(".mhs-promo-profile")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /완료율 확인하기/ }));
     expect(onOpenPlanner).toHaveBeenCalledOnce();
   });
