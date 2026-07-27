@@ -19,6 +19,8 @@ import type {
   PensionCalculatorInput,
   PensionCalculatorPortfolioCmaEvaluation,
   PensionCalculatorPortfolioCmaRequest,
+  PensionTaxCreditEvaluation,
+  PensionTaxCreditInput,
   PensionTaxScenarioInput,
   ProfileEvaluation,
   ProfileSurveyInput,
@@ -394,6 +396,12 @@ export function calculateCombinedPension(
   request: PensionCalculatorCombinedInput,
 ): Promise<PensionCalculatorEvaluation> {
   return apiPost("/engine/pension-calculator/combined", request);
+}
+
+export function calculatePensionTaxCredit(
+  request: PensionTaxCreditInput,
+): Promise<PensionTaxCreditEvaluation> {
+  return apiPost("/engine/pension-tax-credit", request);
 }
 
 interface ChatBodyOptions {

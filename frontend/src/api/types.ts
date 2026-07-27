@@ -534,6 +534,9 @@ export interface PensionTaxCreditEvaluation {
   total_credit_limit_krw: string;
   unused_combined_limit_krw: string;
   unused_total_limit_krw: string;
+  remaining_eligible_contribution_krw: string;
+  additional_tax_credit_krw: string | null;
+  limit_usage_percent: string;
   rate_determined: boolean;
   rate_scenarios: TaxCreditRateScenario[];
   assumption_notice: string;

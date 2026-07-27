@@ -170,12 +170,17 @@
         <div style="background:#fff; border-radius:18px; padding:24px 20px 20px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
             <span style="font-size:14.5px; font-weight:700; color:#333;">내 공제율 <span style="color:#166F39; font-weight:800;">{{ rateLabel }}</span></span>
-            <div onClick="{{ toggleSalary }}" style="display:flex; align-items:center; gap:6px; background:#F1F3F5; border-radius:99px; padding:8px 14px; cursor:pointer;">
+            <button type="button" onClick="{{ openIncomeSheet }}" style="display:flex; align-items:center; gap:6px; background:#F1F3F5; border:0; border-radius:99px; padding:8px 14px; cursor:pointer;">
               <span style="font-size:13px; font-weight:700; color:#4A5058;">{{ salaryChipText }}</span>
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8L9.5 4.5" stroke="#8B9096" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-            </div>
+            </button>
           </div>
-          <div style="font-size:22px; font-weight:900; line-height:1.35;">올해 안에 연금으로<br><span style="background:#FDC526; border-radius:8px; padding:2px 8px;">{{ totalMoreText }}</span> 더 공제받을 수 있어요</div>
+          <sc-if value="{{ incomePending }}" hint-placeholder-val="{{ true }}">
+            <div style="font-size:22px; font-weight:900; line-height:1.35;">소득을 입력하면<br><span style="color:#166F39;">내 공제율과 예상 혜택</span>을 확인할 수 있어요</div>
+          </sc-if>
+          <sc-if value="{{ incomeClassified }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:22px; font-weight:900; line-height:1.35;">올해 안에 연금으로<br><span style="background:#FDC526; border-radius:8px; padding:2px 8px;">{{ totalMoreText }}</span> 더 공제받을 수 있어요</div>
+          </sc-if>
           <div style="background:#EAF7F0; border-radius:12px; padding:12px 14px; margin-top:16px; font-size:13px; font-weight:600; color:#2E6B45; line-height:1.55;">총급여 5,500만원 이하(종합소득금액 4,500만원 이하)는 <b>16.5%</b>, 초과는 <b>13.2%</b>의 공제율이 적용돼요.</div>
         </div>
 
@@ -294,13 +299,46 @@
     
   </div>
 
+  <sc-if value="{{ incomeSheetOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeIncomeSheet }}" style="position:absolute; inset:0; z-index:20; background:rgba(18,22,20,0.42); display:flex; align-items:flex-end;">
+      <div onClick="{{ keepIncomeSheetOpen }}" style="width:100%; background:#fff; border-radius:26px 26px 0 0; padding:30px 24px 28px; box-shadow:0 -8px 28px rgba(0,0,0,0.12);">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div style="font-size:24px; font-weight:900; color:#1E2124;">급여수정</div>
+          <button type="button" aria-label="닫기" onClick="{{ closeIncomeSheet }}" style="border:0; background:none; padding:5px; cursor:pointer; color:#1E2124;">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 3L19 19M19 3L3 19" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"></path></svg>
+          </button>
+        </div>
+
+        <div style="font-size:18px; font-weight:800; color:#4A5058; margin-top:26px;">소득 종류를 선택해 주세요</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px;">
+          <button type="button" onClick="{{ selectSalaryIncome }}" style="{{ salaryIncomeStyle }}">✓&nbsp; 급여소득</button>
+          <button type="button" onClick="{{ selectComprehensiveIncome }}" style="{{ comprehensiveIncomeStyle }}">종합소득</button>
+        </div>
+
+        <label for="pension-income-amount" style="display:block; font-size:18px; font-weight:800; color:#4A5058; margin-top:28px;">소득금액은 얼마인가요?</label>
+        <div style="display:flex; align-items:center; border:1px solid #DDE2E5; border-radius:12px; margin-top:14px; padding:0 16px; height:58px;">
+          <input id="pension-income-amount" type="number" min="0" inputmode="numeric" value="{{ incomeDraftAmount }}" onInput="{{ onIncomeAmount }}" placeholder="0" style="min-width:0; flex:1; border:0; outline:0; text-align:right; font:800 21px Pretendard, sans-serif; color:#1E2124; background:transparent;">
+          <span style="font-size:17px; font-weight:700; color:#4A5058; margin-left:8px;">만원</span>
+        </div>
+        <sc-if value="{{ incomeError }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:12.5px; font-weight:700; color:#E44848; margin-top:8px;">소득금액을 입력해 주세요.</div>
+        </sc-if>
+
+        <button type="button" onClick="{{ saveIncome }}" style="width:100%; height:56px; border:0; border-radius:14px; background:#22A94D; color:#fff; font-size:18px; font-weight:900; margin-top:28px; cursor:pointer;">저장</button>
+      </div>
+    </div>
+  </sc-if>
+
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844},&quot;taxRateLow&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:16.5,&quot;min&quot;:0,&quot;max&quot;:20,&quot;step&quot;:0.1,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;세액공제율&quot;},&quot;taxRateHigh&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:13.2,&quot;min&quot;:0,&quot;max&quot;:20,&quot;step&quot;:0.1,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;세액공제율&quot;}}">
 class Component extends DCLogic {
   state = {
-    age:35, endAge:55, monthly:0, tab:'pension', salaryLow:true, paidP:0, paidI:0, isa:0,
+    age:35, endAge:55, monthly:0, tab:'pension', paidP:0, paidI:0, isa:0,
     strategyId:null, themeId:'market-beta', accountId:'all', accounts:[], calculation:null,
+    taxContextOwnerId:null, taxCalculation:null, taxLoading:false,
+    incomeBasis:null, incomeAmountManwon:null, incomeSheetOpen:false,
+    incomeDraftBasis:'gross_salary', incomeDraftAmount:'', incomeError:false,
     themeStrategies:[
       { id:'market-beta', name:'시장 베타 전략', implementation:'ETF로 구현 가능' },
       { id:'factor', name:'팩터 전략', implementation:'ETF로 구현 가능' },
@@ -318,19 +356,48 @@ class Component extends DCLogic {
   constructor(props) {
     super(props);
     window.addEventListener('message', (event) => {
-      if (event.origin !== window.location.origin || event.data?.type !== 'pension-planner-state') return;
-      const payload = event.data.payload || {};
-      this.setState({
-        accounts: Array.isArray(payload.accounts) ? payload.accounts : [],
-        themeStrategies: Array.isArray(payload.themeStrategies) ? payload.themeStrategies : [],
-        accountId: payload.accountId || 'all',
-        age: Number(payload.age) || 35,
-        endAge: Math.min(65, Number(payload.endAge) || 60),
-        monthly: Number(payload.monthly) || 0,
-        strategyId: payload.strategyId || null,
-        themeId: payload.themeId || 'market-beta',
-        calculation: payload.calculation || null,
-      });
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === 'pension-planner-state') {
+        const payload = event.data.payload || {};
+        const taxContext = payload.taxContext || null;
+        const ownerChanged = Boolean(
+          taxContext?.ownerId && taxContext.ownerId !== this.state.taxContextOwnerId
+        );
+        this.setState({
+          accounts: Array.isArray(payload.accounts) ? payload.accounts : [],
+          themeStrategies: Array.isArray(payload.themeStrategies) ? payload.themeStrategies : [],
+          accountId: payload.accountId || 'all',
+          age: Number(payload.age) || 35,
+          endAge: Math.min(65, Number(payload.endAge) || 60),
+          monthly: Number(payload.monthly) || 0,
+          strategyId: payload.strategyId || null,
+          themeId: payload.themeId || 'market-beta',
+          calculation: payload.calculation || null,
+          taxCalculation: payload.taxCalculation || this.state.taxCalculation,
+          ...(ownerChanged ? {
+            taxContextOwnerId:taxContext.ownerId,
+            paidP:Number(taxContext.paidP) || 0,
+            paidI:Number(taxContext.paidI) || 0,
+            incomeBasis:null,
+            incomeAmountManwon:null,
+            incomeDraftBasis:taxContext.incomeBasis === 'comprehensive_income'
+              ? 'comprehensive_income'
+              : 'gross_salary',
+            incomeDraftAmount:Number.isFinite(Number(taxContext.incomeAmountManwon))
+              ? String(Number(taxContext.incomeAmountManwon))
+              : '',
+          } : {}),
+        });
+      }
+      if (event.data?.type === 'pension-planner-tax-state') {
+        const payload = event.data.payload || {};
+        this.setState({
+          taxCalculation:payload.calculation || null,
+          taxLoading:false,
+          incomeBasis:payload.incomeBasis || null,
+          incomeAmountManwon:payload.incomeAmountManwon ?? null,
+        });
+      }
     });
     window.parent.postMessage({ type:'pension-planner-ready' }, window.location.origin);
   }
@@ -356,6 +423,27 @@ class Component extends DCLogic {
         themeId:next.themeId,
       },
     }, window.location.origin);
+  }
+
+  requestTaxCalculation(update = {}) {
+    const next = { ...this.state, ...update };
+    this.setState({ taxLoading:true });
+    window.parent.postMessage({
+      type:'pension-planner-tax-calculate',
+      payload:{
+        incomeBasis:next.incomeBasis,
+        incomeAmountManwon:next.incomeAmountManwon,
+        paidP:next.paidP,
+        paidI:next.paidI,
+        isa:next.isa,
+      },
+    }, window.location.origin);
+  }
+
+  incomeTypeStyle(active) {
+    return active
+      ? 'height:54px;border-radius:10px;border:2px solid #22A94D;background:#F6FBF7;color:#168A3F;font-size:16px;font-weight:800;cursor:pointer;'
+      : 'height:54px;border-radius:10px;border:1px solid #DDE2E5;background:#fff;color:#9AA0A6;font-size:16px;font-weight:700;cursor:pointer;';
   }
 
   selectAndScroll(kind, id, update) {
@@ -388,14 +476,16 @@ class Component extends DCLogic {
   pct(v, min, max) { return ((v - min) / (max - min) * 100).toFixed(1) + '%'; }
 
   renderVals() {
-    const { age, endAge, monthly, tab, salaryLow, paidP, paidI, isa, strategyId, themeId, accountId, accounts, themeStrategies, calculation } = this.state;
+    const {
+      age, endAge, monthly, tab, paidP, paidI, isa, strategyId, themeId,
+      accountId, accounts, themeStrategies, calculation, taxCalculation,
+      incomeBasis, incomeAmountManwon, incomeSheetOpen, incomeDraftBasis,
+      incomeDraftAmount, incomeError,
+    } = this.state;
     const engineStrategies = calculation?.strategies || [];
     const strat = engineStrategies.find(s => s.strategy_id === strategyId) || engineStrategies.find(s => s.risk_profile === calculation?.selected_risk_profile) || engineStrategies[0] || null;
     const selectedTheme = themeStrategies.find(theme => theme.id === themeId) || themeStrategies[0] || null;
     const rate = Number(strat?.net_annual_return_percent || 0);
-    const rLow = this.props.taxRateLow ?? 16.5;
-    const rHigh = this.props.taxRateHigh ?? 13.2;
-
     const years = Math.max(0, endAge - age);
     const headline = calculation?.headline || {};
     const FV = Number(headline.total_krw || 0);
@@ -405,17 +495,27 @@ class Component extends DCLogic {
     const selectedAccount = accounts.find(account => account.id === accountId) || accounts[0];
     const combinedAccount = accountId === 'all';
 
-    const r = salaryLow ? rLow : rHigh;
+    const taxScenario = taxCalculation?.rate_determined
+      ? taxCalculation.rate_scenarios?.[0]
+      : null;
+    const incomeClassified = Boolean(incomeBasis && taxScenario);
+    const r = Number(taxScenario?.local_inclusive_display_rate_percent || 0);
     const capP = 600, capAll = 900;
-    const eligibleP = Math.min(paidP, capP);
-    const eligibleI = Math.min(paidI, Math.max(0, capAll - eligibleP));
+    const eligibleP = taxCalculation
+      ? Number(taxCalculation.pension_savings_eligible_contribution_krw || 0) / 10000
+      : Math.min(paidP, capP);
+    const eligibleI = taxCalculation
+      ? Number(taxCalculation.retirement_eligible_contribution_krw || 0) / 10000
+      : Math.min(paidI, Math.max(0, capAll - eligibleP));
     const eligibleTotal = eligibleP + eligibleI;
-    const remAll = Math.max(0, capAll - eligibleTotal);
+    const remAll = taxCalculation
+      ? Number(taxCalculation.remaining_eligible_contribution_krw || 0) / 10000
+      : Math.max(0, capAll - eligibleTotal);
     const remP = Math.max(0, Math.min(capP - paidP, remAll));
     const remI = remAll;
     const moreP = remP * 10000 * r / 100;
     const moreI = remI * 10000 * r / 100;
-    const moreRegular = remAll * 10000 * r / 100;
+    const moreRegular = Number(taxCalculation?.additional_tax_credit_krw || 0);
     const isaCap = Math.min(Math.round(isa * 0.1), 300);
     const isaDeduct = isaCap * 10000 * r / 100;
 
@@ -457,12 +557,18 @@ class Component extends DCLogic {
       principalPct: FV > 0 ? (principal / FV * 100).toFixed(1) + '%' : '0%',
       payoutText: this.fmt(payout),
 
-      rateLabel: r + '%',
-      totalMoreText: this.fmt(moreRegular + isaDeduct),
+      incomePending: !incomeClassified,
+      incomeClassified,
+      rateLabel: incomeClassified ? r + '%' : '확인 전',
+      totalMoreText: this.fmt(moreRegular),
       isa, isaText: isa.toLocaleString() + '만원',
       isaFill: (isaCap / 300 * 100).toFixed(1) + '%', isaPctText: Math.round(isaCap / 300 * 100) + '%',
       isaCapText: isaCap.toLocaleString() + '만원', isaDeductText: this.fmt(isaDeduct),
-      onIsa: (e) => this.set('isa', e), isaHasSome: isaCap > 0, isaNone: isaCap <= 0,
+      onIsa: (e) => {
+        const value=+e.target.value;
+        this.setState({ isa:value, taxCalculation:null }, () => this.requestTaxCalculation());
+      },
+      isaHasSome: isaCap > 0, isaNone: isaCap <= 0,
       paidP, paidI,
       paidPText: paidP.toLocaleString() + '만원', paidIText: paidI.toLocaleString() + '만원',
       eligibleTotal, eligibleIText: eligibleI.toLocaleString() + '만원',
@@ -473,10 +579,50 @@ class Component extends DCLogic {
       pFull: paidP >= capP, pCombinedFull: paidP < capP && remP <= 0, pNotFull: remP > 0,
       iFull: remI <= 0 && paidI <= eligibleI, iOverCap: paidI > eligibleI, iNotFull: remI > 0,
       iSliderMin: eligibleP,
-      onPaidP: (e) => this.set('paidP', e),
-      onPaidI: (e) => this.setState({ paidI: Math.max(0, +e.target.value - eligibleP) }),
-      toggleSalary: () => this.setState(s => ({ salaryLow: !s.salaryLow })),
-      salaryChipText: salaryLow ? '급여소득 5,500만원 이하' : '급여소득 5,500만원 초과',
+      onPaidP: (e) => {
+        const value=+e.target.value;
+        this.setState({ paidP:value, taxCalculation:null }, () => this.requestTaxCalculation());
+      },
+      onPaidI: (e) => {
+        const value=Math.max(0, +e.target.value - eligibleP);
+        this.setState({ paidI:value, taxCalculation:null }, () => this.requestTaxCalculation());
+      },
+      incomeSheetOpen,
+      incomeDraftAmount,
+      incomeError,
+      openIncomeSheet: () => this.setState({
+        incomeSheetOpen:true,
+        incomeDraftBasis:incomeBasis || this.state.incomeDraftBasis,
+        incomeDraftAmount:incomeAmountManwon === null
+          ? this.state.incomeDraftAmount
+          : String(incomeAmountManwon),
+        incomeError:false,
+      }),
+      closeIncomeSheet: () => this.setState({ incomeSheetOpen:false, incomeError:false }),
+      keepIncomeSheetOpen: (e) => e.stopPropagation(),
+      selectSalaryIncome: () => this.setState({ incomeDraftBasis:'gross_salary' }),
+      selectComprehensiveIncome: () => this.setState({ incomeDraftBasis:'comprehensive_income' }),
+      salaryIncomeStyle: this.incomeTypeStyle(incomeDraftBasis === 'gross_salary'),
+      comprehensiveIncomeStyle: this.incomeTypeStyle(incomeDraftBasis === 'comprehensive_income'),
+      onIncomeAmount: (e) => this.setState({ incomeDraftAmount:e.target.value, incomeError:false }),
+      saveIncome: () => {
+        const amount=Number(this.state.incomeDraftAmount);
+        if (!Number.isFinite(amount) || amount < 0 || this.state.incomeDraftAmount === '') {
+          this.setState({ incomeError:true });
+          return;
+        }
+        const update={
+          incomeBasis:this.state.incomeDraftBasis,
+          incomeAmountManwon:amount,
+          incomeSheetOpen:false,
+          incomeError:false,
+          taxCalculation:null,
+        };
+        this.setState(update, () => this.requestTaxCalculation());
+      },
+      salaryChipText: incomeClassified
+        ? `${incomeBasis === 'comprehensive_income' ? '종합소득' : '급여소득'} ${Number(incomeAmountManwon || 0).toLocaleString()}만원`
+        : '자신의 소득 입력하기',
     };
   }
 

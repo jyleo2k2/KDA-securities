@@ -182,7 +182,9 @@ function AppRoutes(): JSX.Element {
 
   useEffect(() => {
     const generation = ++guideLoadGenerationRef.current;
-    if (!accessToken || location.pathname !== "/guide") {
+    const needsFinancialContext = location.pathname === "/guide"
+      || location.pathname === "/planner";
+    if (!accessToken || !needsFinancialContext) {
       setGuideContext(null);
       return;
     }
@@ -190,7 +192,9 @@ function AppRoutes(): JSX.Element {
       .then((context) => {
         if (guideLoadGenerationRef.current !== generation) return;
         setGuideContext(context);
-        setSelectedScenarioCode(context.scenario_code);
+        if (location.pathname === "/guide") {
+          setSelectedScenarioCode(context.scenario_code);
+        }
       })
       .catch(() => {
         if (guideLoadGenerationRef.current === generation) setGuideContext(null);
@@ -318,6 +322,7 @@ function AppRoutes(): JSX.Element {
         element={(
           <PensionPlannerPage
             aggregation={currentUserData.aggregation}
+            financialContext={guideContext}
             onBack={goToMainHome}
             portfolio={currentUserData.portfolio}
             profile={plannerProfile}

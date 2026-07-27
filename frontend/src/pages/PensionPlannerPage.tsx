@@ -3,10 +3,14 @@ import { useEffect, useMemo, useRef, type JSX } from "react";
 import {
   calculateCombinedPension,
   calculatePension,
+  calculatePensionTaxCredit,
 } from "../api/client";
 import type {
   AggregationEvaluation,
+  DemoUserFinancialContext,
+  IncomeBasis,
   PensionCalculatorEvaluation,
+  PensionTaxCreditEvaluation,
   RiskProfile,
   UserPensionPortfolio,
 } from "../api/types";
@@ -38,19 +42,32 @@ interface PensionPlannerPageProps {
   profile: PensionPlannerProfile | null;
   portfolio: UserPensionPortfolio | null;
   aggregation: AggregationEvaluation | null;
+  financialContext: DemoUserFinancialContext | null;
   onBack: () => void;
+}
+
+interface PlannerTaxRequest {
+  incomeBasis: Exclude<IncomeBasis, "unknown"> | null;
+  incomeAmountManwon: number | null;
+  paidP: number;
+  paidI: number;
+  isa: number;
 }
 
 export function PensionPlannerPage({
   profile,
   portfolio,
   aggregation,
+  financialContext,
   onBack,
 }: PensionPlannerPageProps): JSX.Element {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const onBackRef = useRef(onBack);
   const requestSequenceRef = useRef(0);
+  const taxRequestSequenceRef = useRef(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const taxDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const taxCalculationRef = useRef<PensionTaxCreditEvaluation | null>(null);
   const accountOptions = useMemo(
     () => portfolio && aggregation
       ? plannerAccountOptions(portfolio, aggregation)
@@ -69,6 +86,19 @@ export function PensionPlannerPage({
     themeId: PLANNER_THEME_STRATEGIES[0].id,
   }), [profile?.current_age]);
   const currentRequestRef = useRef(defaultRequest);
+  const initialTaxRequest = useMemo<PlannerTaxRequest>(() => ({
+    incomeBasis: null,
+    incomeAmountManwon: financialContext
+      ? Number(financialContext.income_amount_krw) / 10_000
+      : null,
+    paidP: financialContext
+      ? Number(financialContext.pension_savings_contribution_krw) / 10_000
+      : 0,
+    paidI: financialContext
+      ? Number(financialContext.irp_contribution_krw) / 10_000
+      : 0,
+    isa: 0,
+  }), [financialContext]);
 
   useEffect(() => {
     onBackRef.current = onBack;
@@ -77,6 +107,10 @@ export function PensionPlannerPage({
   useEffect(() => {
     currentRequestRef.current = defaultRequest;
   }, [defaultRequest]);
+
+  useEffect(() => {
+    taxCalculationRef.current = null;
+  }, [financialContext?.auth_user_id]);
 
   useEffect(() => {
     const iframe = iframeRef.current;
@@ -92,12 +126,61 @@ export function PensionPlannerPage({
         payload: {
           accounts: accountOptions,
           themeStrategies: PLANNER_THEME_STRATEGIES,
+          taxContext: financialContext
+            ? {
+                ownerId: financialContext.auth_user_id,
+                incomeBasis: financialContext.income_basis,
+                incomeAmountManwon: initialTaxRequest.incomeAmountManwon,
+                paidP: initialTaxRequest.paidP,
+                paidI: initialTaxRequest.paidI,
+              }
+            : null,
+          taxCalculation: taxCalculationRef.current,
           ...request,
           calculation: calculation
             ? { ...calculation, selected_risk_profile: profile?.risk_profile }
             : null,
         },
       }, window.location.origin);
+    };
+    const postTaxState = (
+      request: PlannerTaxRequest,
+      calculation: PensionTaxCreditEvaluation | null,
+    ): void => {
+      iframe.contentWindow?.postMessage({
+        type: "pension-planner-tax-state",
+        payload: { ...request, calculation },
+      }, window.location.origin);
+    };
+    const calculateTax = async (request: PlannerTaxRequest): Promise<void> => {
+      if (!financialContext) {
+        postTaxState(request, null);
+        return;
+      }
+      const sequence = ++taxRequestSequenceRef.current;
+      try {
+        const calculation = await calculatePensionTaxCredit({
+          tax_year: 2026,
+          income_basis: request.incomeBasis ?? "unknown",
+          income_amount_krw: request.incomeBasis && request.incomeAmountManwon !== null
+            ? String(Math.round(request.incomeAmountManwon * 10_000))
+            : null,
+          pension_savings_contribution_krw: String(Math.round(request.paidP * 10_000)),
+          irp_contribution_krw: String(Math.round(request.paidI * 10_000)),
+          dc_employee_additional_contribution_krw: "0",
+          isa_maturity_transfer_krw: String(Math.round(request.isa * 10_000)),
+          isa_transfer_eligibility_status: request.isa > 0 ? "eligible" : "none",
+        });
+        if (taxRequestSequenceRef.current === sequence) {
+          taxCalculationRef.current = calculation;
+          postTaxState(request, calculation);
+        }
+      } catch {
+        if (taxRequestSequenceRef.current === sequence) {
+          taxCalculationRef.current = null;
+          postTaxState(request, null);
+        }
+      }
     };
     const calculate = async (request: PlannerRequest): Promise<void> => {
       currentRequestRef.current = request;
@@ -166,9 +249,15 @@ export function PensionPlannerPage({
       ) return;
       if (event.data?.type === "pension-planner-ready") {
         void calculate(currentRequestRef.current);
+        void calculateTax(initialTaxRequest);
       }
       if (event.data?.type === "pension-planner-calculate") {
         scheduleCalculation(event.data.payload as PlannerRequest);
+      }
+      if (event.data?.type === "pension-planner-tax-calculate") {
+        if (taxDebounceRef.current !== null) clearTimeout(taxDebounceRef.current);
+        const request = event.data.payload as PlannerTaxRequest;
+        taxDebounceRef.current = setTimeout(() => void calculateTax(request), 120);
       }
     };
     const handleFrameClick = (event: Event): void => {
@@ -192,11 +281,18 @@ export function PensionPlannerPage({
 
     return () => {
       if (debounceRef.current !== null) clearTimeout(debounceRef.current);
+      if (taxDebounceRef.current !== null) clearTimeout(taxDebounceRef.current);
       window.removeEventListener("message", handleMessage);
       iframe.removeEventListener("load", connectFrame);
       frameDocument?.removeEventListener("click", handleFrameClick);
     };
-  }, [accountOptions, portfolio, profile]);
+  }, [
+    accountOptions,
+    financialContext,
+    initialTaxRequest,
+    portfolio,
+    profile,
+  ]);
 
   return (
     <main className="app-phone-stage pension-planner-stage">
