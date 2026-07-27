@@ -95,13 +95,13 @@ export function LoginFlowPage({ auth, displayName, hasSavedProfile = false, onAu
 
   return (
     <main className="app-phone-stage login-flow-stage">
-      <section className="app-phone-frame login-flow-phone" aria-label="연금 도우미 로그인">
+      <section className="app-phone-frame login-flow-phone" aria-label="연금KDA 로그인">
         <StatusBar />
 
         {step === "intro" && (
           <div className="login-intro">
             <div className="login-intro-copy">
-              <p className="login-kicker">연금 도우미</p>
+              <p className="login-kicker">연금KDA</p>
               <h1>차곡차곡 모아<br />든든한 <em>미래</em>로</h1>
               <p>연금 준비가 쉬워지는 나만의 가이드</p>
               <div className="login-page-dots"><b /><i /><i /></div>
@@ -125,7 +125,7 @@ export function LoginFlowPage({ auth, displayName, hasSavedProfile = false, onAu
             <button type="button" className="login-back" onClick={() => setStep("intro")} aria-label="이전 화면">←</button>
             <h1>로그인</h1>
             <div className="login-form-brand"><img src={piggyForm} alt="저금통" /></div>
-            <h2>안녕하세요.<br /><em>연금</em> 도우미입니다.</h2>
+            <h2>안녕하세요.<br /><em>연금KDA</em>입니다.</h2>
             <p>맞춤 서비스를 이용하기 위해 로그인해 주세요.</p>
             <form onSubmit={(event) => void handleSubmit(event)}>
               <label>
