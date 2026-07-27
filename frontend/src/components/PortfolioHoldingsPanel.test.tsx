@@ -256,7 +256,17 @@ describe("EducationalPortfolioReview", () => {
         stress_scenarios: [{
           scenario_code: "equity_drawdown",
           estimated_loss_percent: "-18.5000",
-          sleeve_shocks_percent: { core_equity: "-35.0000" },
+          sleeve_shocks_percent: { core_equity: "-35.0000", fixed_income: "0.0000" },
+          is_forecast: false,
+        }, {
+          scenario_code: "rate_inflation_shock",
+          estimated_loss_percent: "-11.8000",
+          sleeve_shocks_percent: { core_equity: "0.0000", fixed_income: "-12.0000" },
+          is_forecast: false,
+        }, {
+          scenario_code: "stagflation",
+          estimated_loss_percent: "-12.8000",
+          sleeve_shocks_percent: { core_equity: "-18.0000", fixed_income: "0.0000" },
           is_forecast: false,
         }],
         stress_loss_limit_percent: "20.0000",
@@ -541,7 +551,13 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.queryByText(/같은 회사가 몇 개 겹쳤는지를 뜻하는 숫자는 아니에요/)).not.toBeInTheDocument();
     expect(screen.getByText(/자동 매도하지 않습니다/)).toBeInTheDocument();
     expect(screen.getByText("12.3%")).toBeInTheDocument();
+    expect(screen.getByText("1년 동안의 흔들림 크기")).toBeInTheDocument();
+    expect(screen.getByText("과거 가장 크게 떨어진 폭")).toBeInTheDocument();
+    expect(screen.queryByText("떨어질 때의 흔들림")).not.toBeInTheDocument();
+    expect(screen.queryByText("나쁜 날 하루 손실 기준")).not.toBeInTheDocument();
     expect(screen.getByText("주식이 크게 떨어질 때")).toBeInTheDocument();
+    expect(screen.getByText("금리와 물가가 함께 오를 때")).toBeInTheDocument();
+    expect(screen.queryByText("물가는 오르는데 경기는 나쁠 때")).not.toBeInTheDocument();
     expect(screen.getByText("-18.5%")).toBeInTheDocument();
     expect(screen.getByText("내가 견딜 수 있다고 고른 범위 안")).toBeInTheDocument();
     expect(screen.getByText(/내가 고른 손실 범위 20.0%/)).toBeInTheDocument();
