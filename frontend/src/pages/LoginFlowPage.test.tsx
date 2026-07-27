@@ -87,6 +87,18 @@ describe("LoginFlowPage", () => {
     expect(container.querySelector(".ios-statusbar-time")).toHaveTextContent("9:41");
   });
 
+  it("uses the 연금KDA brand throughout the login flow", () => {
+    const { container } = renderLogin();
+    expect(container.querySelector('[aria-label="연금KDA 로그인"]')).not.toBeNull();
+    expect(screen.getByText("연금KDA")).toBeInTheDocument();
+    expect(container).not.toHaveTextContent("연금 도우미");
+
+    openForm();
+
+    expect(screen.getByText("연금KDA")).toBeInTheDocument();
+    expect(container).not.toHaveTextContent("연금 도우미");
+  });
+
   it("shows success only after Supabase sign-in resolves", async () => {
     renderLogin();
     openForm();
