@@ -1,0 +1,9 @@
+{
+  "_note": "USD per 1M tokens. 벤더 공식 가격 페이지에서 확인한 값만 넣는다. 미확인 모델은 넣지 않아야 '단가없음'으로 표시돼 조용히 틀린 비용이 나오지 않는다.",
+  "_verified_at": "",
+  "_source_urls": [
+    "https://www.anthropic.com/pricing",
+    "https://openai.com/api/pricing/",
+    "https://ai.google.dev/pricing"
+  ]
+}
