@@ -749,6 +749,10 @@ export type ChatIntent =
   | "etf_distribution"
   | "educational_portfolio"
   | "macro_evidence"
+  | "glossary"
+  | "investing_principle"
+  | "hesitation_support"
+  | "getting_started"
   | "out_of_scope";
 
 export type DataBoundary =
@@ -756,6 +760,7 @@ export type DataBoundary =
   | "official_disclosure"
   | "official_statistics"
   | "news_metadata"
+  | "news_summary"
   | "mock"
   | "engine"
   | "user_input"

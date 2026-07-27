@@ -11,6 +11,7 @@ class GracefulDeclineKind(StrEnum):
     FOREIGN_MARKET_OR_INDIVIDUAL_STOCK = "foreign_market_or_individual_stock"
     PREDICTION_OR_ORDER = "prediction_or_order"
     CONTRIBUTION_AMOUNT_ADVICE = "contribution_amount_advice"
+    FEE_TARGET_REQUIRED = "fee_target_required"
     PROVIDER_CHOICE_ADVICE = "provider_choice_advice"
     PERSONAL_ALLOCATION_ADVICE = "personal_allocation_advice"
     PRINCIPAL_GUARANTEE_QUESTION = "principal_guarantee_question"
@@ -139,6 +140,35 @@ def graceful_decline(
             limitations=[
                 "적정 납입액은 개인의 소득·지출에 따라 달라 특정 금액을 "
                 "권유하지 않아요.",
+            ],
+        )
+
+    if kind is GracefulDeclineKind.FEE_TARGET_REQUIRED:
+        return GracefulDecline(
+            answer=(
+                "어떤 비용이 궁금하세요? 연금계좌의 금융회사 수수료인지, "
+                "보유 상품의 총보수인지 알려주시면 확인해 드릴게요."
+            ),
+            suggested_follow_ups=[
+                SuggestedFollowUp(
+                    follow_up_id="fee_total_expense_ratio",
+                    label="ETF 총보수 알아보기",
+                    message="총보수가 뭐야?",
+                ),
+                SuggestedFollowUp(
+                    follow_up_id="fee_pension_account_comparison",
+                    label="연금계좌 수수료 비교 기준",
+                    message="연금계좌 수수료를 비교할 때 무엇을 봐야 해?",
+                ),
+                SuggestedFollowUp(
+                    follow_up_id="fee_long_term_impact",
+                    label="수수료의 장기 영향",
+                    message="수수료가 왜 중요해?",
+                ),
+            ],
+            limitations=[
+                "구체적인 수수료와 총보수는 금융회사·상품별 공식 공시를 "
+                "확인해야 해요."
             ],
         )
 

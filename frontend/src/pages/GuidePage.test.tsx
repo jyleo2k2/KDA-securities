@@ -16,6 +16,7 @@ import {
 } from "../api/client";
 import type { ChatCard, ChatResponse, ChatSessionSummary } from "../api/types";
 import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
+import { CHAT_PROMPT_CANDIDATES } from "../chatPromptCandidates";
 import {
   ETF_THEME_CARDS,
   filterChatCards,
@@ -434,7 +435,9 @@ describe("GuidePage chat history deletion", () => {
     fireEvent.click(screen.getByRole("button", { name: "지난 대화 닫기" }));
     expect(historySidebar).not.toHaveClass("sidebar-open");
     expect(screen.getByAltText("프로필")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("연금에 대해 무엇이든 물어보세요")).toBeInTheDocument();
+    expect(CHAT_PROMPT_CANDIDATES.map((candidate) => `예: ${candidate}`)).toContain(
+      screen.getByLabelText("질문 입력").getAttribute("placeholder"),
+    );
     expect(screen.getByText(/AI 답변은 투자 판단을 돕는 정보이며, 미래 수익을 보장하지 않습니다/)).toBeInTheDocument();
   });
 
@@ -1552,6 +1555,64 @@ describe("GuidePage chat history deletion", () => {
     },
   );
 
+  it.each([
+    ["glossary", "용어 설명", "deterministic"],
+    ["investing_principle", "투자 원리", "claude_verified"],
+    ["hesitation_support", "운용 고민", "deterministic"],
+    ["getting_started", "시작 안내", "claude_verified"],
+  ] as const)(
+    "shows the %s response as the beginner-friendly %s badge",
+    async (intent, label, narrationMode) => {
+      const response: ChatResponse = {
+        ...THEME_RESPONSE,
+        intent,
+        answer: `${label} 답변`,
+        narration_mode: narrationMode,
+      };
+      vi.mocked(getChatCards).mockResolvedValue({ cards: [RECOMMENDED_CHAT_CARDS[0]] });
+      vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+        persisted: false,
+        session_id: null,
+        response,
+      });
+      renderGuide();
+
+      fireEvent.click(await screen.findByRole("button", { name: /오늘 증시 뉴스/ }));
+
+      expect(await screen.findByText(label)).toHaveClass("intent-pill");
+      expect(screen.queryByText("검증 답변")).not.toBeInTheDocument();
+      expect(screen.queryByText("AI 서술")).not.toBeInTheDocument();
+    },
+  );
+
+  it("shows news summary sources with a user-facing label", async () => {
+    const response: ChatResponse = {
+      ...THEME_RESPONSE,
+      intent: "news",
+      answer: "기사 요약을 확인했어요.",
+      sources: [{
+        evidence_id: "news-summary:test",
+        label: "연금 시장 기사",
+        locator: "https://example.test/news",
+        data_boundary: "news_summary",
+        publisher: "테스트 일보",
+        as_of: "2026-07-26T00:00:00Z",
+      }],
+    };
+    vi.mocked(getChatCards).mockResolvedValue({ cards: [RECOMMENDED_CHAT_CARDS[0]] });
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      persisted: false,
+      session_id: null,
+      response,
+    });
+    renderGuide();
+
+    fireEvent.click(await screen.findByRole("button", { name: /오늘 증시 뉴스/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "출처 1개" }));
+
+    expect(await screen.findByText("기사 요약 · 2026-07-26")).toBeInTheDocument();
+  });
+
   it("drags ETF theme cards horizontally and keeps card submission", async () => {
     vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
       response: THEME_RESPONSE,
@@ -1561,7 +1622,7 @@ describe("GuidePage chat history deletion", () => {
     renderGuide();
 
     expect(await screen.findByRole("heading", {
-      name: "챗봇에게 무엇이든 물어보세요",
+      name: "연금계좌와 운용 방법을 물어보세요",
     })).toBeInTheDocument();
     const sectorCards = await screen.findByLabelText("ETF 섹터 카드 목록 (옆으로 넘겨 보기)");
     expect(ETF_THEME_CARDS).toHaveLength(21);

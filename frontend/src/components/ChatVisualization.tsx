@@ -3,14 +3,15 @@ import { donutArcPaths, TARGET_ALLOCATION_COLORS } from "../charts";
 import type { ChatVisualization as ChatVisualizationData, SourceEvidence } from "../api/types";
 
 const BOUNDARY_LABELS: Record<SourceEvidence["data_boundary"], string> = {
-  verified_knowledge: "검증 지식",
+  verified_knowledge: "공식 안내 근거",
   official_disclosure: "공식 공시",
   official_statistics: "공식 통계",
-  news_metadata: "뉴스 메타데이터",
-  mock: "계좌 데이터",
-  engine: "규칙 엔진",
-  user_input: "사용자 입력",
-  unavailable: "출처 확인 필요",
+  news_metadata: "기사 정보",
+  news_summary: "기사 요약",
+  mock: "계좌 정보",
+  engine: "계산 근거",
+  user_input: "입력한 정보",
+  unavailable: "확인 필요",
 };
 
 function numericText(value: string | number, unit: string): string {

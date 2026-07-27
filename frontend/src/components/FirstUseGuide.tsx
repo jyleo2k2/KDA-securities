@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import type { Session } from "@supabase/supabase-js";
 
 import { supabase } from "../auth/supabase";
+import { pickChatPromptCandidate } from "../chatPromptCandidates";
 import firstUseGuideStyles from "./FirstUseGuide.css?inline";
 import "./FirstUseGuide.css";
 
@@ -171,8 +172,8 @@ const STRATEGY_DETAIL_STEPS: GuideStep[] = [
 const CHAT_STEPS: GuideStep[] = [
   {
     selector: ".design-welcome h1",
-    title: "연그미에게 무엇이든 물어보세요",
-    accents: ["연그미"],
+    title: "연금 운용 질문을 쉽게 물어보세요",
+    accents: ["연금 운용 질문"],
     body: "연금계좌 운용, 세액공제, 리밸런싱, ETF 테마처럼 궁금한 내용을 대화로 쉽게 확인할 수 있어요.",
     bodyAccents: ["연금계좌 운용", "세액공제", "리밸런싱", "ETF 테마"],
     cta: "내 정보 카드 보기",
@@ -620,6 +621,7 @@ function guideText(text: string, accents: string[] = []): ReactNode {
 }
 
 export function FirstUseGuide(): JSX.Element | null {
+  const [chatPromptCandidate] = useState(pickChatPromptCandidate);
   const [phone, setPhone] = useState<HTMLElement | null>(null);
   const [contentDocument, setContentDocument] = useState<Document | null>(null);
   const [guide, setGuide] = useState<GuideConfig | null>(null);
@@ -903,7 +905,13 @@ export function FirstUseGuide(): JSX.Element | null {
     }
   }
 
-  const currentStep = guide.steps[stepIndex];
+  const baseStep = guide.steps[stepIndex];
+  const currentStep = guide.id === "chat" && stepIndex === 0
+    ? {
+        ...baseStep,
+        body: `${baseStep.body} 예를 들어 “${chatPromptCandidate}”처럼 시작해 보세요.`,
+      }
+    : baseStep;
   const spotlightPadding = currentStep.spotlightPadding ?? 0;
   const relativeTarget = targetRect && {
     height: targetRect.height + spotlightPadding * 2,

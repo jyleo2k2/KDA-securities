@@ -270,6 +270,11 @@ def blocked_response(reason: BlockedReason, *, user_message: str = "") -> ChatRe
             GracefulDeclineKind.CONTRIBUTION_AMOUNT_ADVICE,
             user_message,
         )
+    if reason == BlockedReason.FEE_TARGET_REQUIRED:
+        return graceful_decline_response(
+            GracefulDeclineKind.FEE_TARGET_REQUIRED,
+            user_message,
+        )
     if reason == BlockedReason.PROVIDER_CHOICE_ADVICE:
         return graceful_decline_response(
             GracefulDeclineKind.PROVIDER_CHOICE_ADVICE,

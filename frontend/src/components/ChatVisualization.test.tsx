@@ -22,7 +22,7 @@ const visualization: ChatVisualizationData = {
 
 const sources: SourceEvidence[] = [{
   evidence_id: "allocation-source",
-  label: "교육용 포트폴리오",
+  label: "포트폴리오",
   locator: "demo",
   data_boundary: "mock",
   publisher: "연금 코파일럿",
@@ -43,7 +43,7 @@ describe("ChatVisualization allocation donut", () => {
 
     expect(screen.getByText("국내주식 상세")).toBeInTheDocument();
     expect(screen.getByText("비중 45%")).toBeInTheDocument();
-    expect(screen.getByText(/계좌 데이터 · 교육용 포트폴리오 · 연금 코파일럿 · 2026-07-23/)).toBeInTheDocument();
+    expect(screen.getByText(/계좌 정보 · 포트폴리오 · 연금 코파일럿 · 2026-07-23/)).toBeInTheDocument();
 
     fireEvent.click(slice);
 
