@@ -22,7 +22,7 @@ export const USER_PICK_PORTFOLIOS: UserPickPortfolioPresentation[] = [
   {
     id: "꾸준한거북이",
     sector: "2차전지 종사자",
-    period: "운용 3년 8개월",
+    period: "3년 8개월",
     returnLabel: "+18.2%",
     returnColor: "#166f39",
     amount: "2,860만원",
@@ -34,7 +34,7 @@ export const USER_PICK_PORTFOLIOS: UserPickPortfolioPresentation[] = [
   {
     id: "배당모으미",
     sector: "금융업 종사자",
-    period: "운용 2년 6개월",
+    period: "2년 6개월",
     returnLabel: "+9.6%",
     returnColor: "#166f39",
     amount: "5,120만원",
@@ -46,7 +46,7 @@ export const USER_PICK_PORTFOLIOS: UserPickPortfolioPresentation[] = [
   {
     id: "느긋한바벨러",
     sector: "자산운용 종사자",
-    period: "운용 5년 2개월",
+    period: "5년 2개월",
     returnLabel: "+6.1%",
     returnColor: "#166f39",
     amount: "8,430만원",
@@ -58,7 +58,7 @@ export const USER_PICK_PORTFOLIOS: UserPickPortfolioPresentation[] = [
   {
     id: "중립러버",
     sector: "IT업 종사자",
-    period: "운용 1년 2개월",
+    period: "1년 2개월",
     returnLabel: "+3.8%",
     returnColor: "#166f39",
     amount: "3,270만원",
@@ -70,7 +70,7 @@ export const USER_PICK_PORTFOLIOS: UserPickPortfolioPresentation[] = [
   {
     id: "초보투자자",
     sector: "학생",
-    period: "운용 5개월",
+    period: "5개월",
     returnLabel: "-2.4%",
     returnColor: "#2e7ce0",
     amount: "540만원",

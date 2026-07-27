@@ -23,12 +23,6 @@ function formatFollowCount(value: number): string {
   return new Intl.NumberFormat("ko-KR").format(value);
 }
 
-function feasibilityLabel(value: UserPickPortfolioPresentation["feasibility"]): string | null {
-  if (value === "direct") return "직접 구현 가능";
-  if (value === "product") return "상품으로 구현";
-  return null;
-}
-
 export function ProfileFollowingScreen({
   accessToken,
   onBack,
@@ -100,8 +94,6 @@ export function ProfileFollowingScreen({
           )}
           <div className="profile-following-list">
             {followed.map(({ presentation, followCount }) => {
-              const feasibility = feasibilityLabel(presentation.feasibility);
-              const { allocations } = presentation;
               return (
                 <article className="profile-following-card" key={presentation.id}>
                   <div className="profile-following-card-top">
@@ -110,7 +102,8 @@ export function ProfileFollowingScreen({
                       <strong>{presentation.id}</strong>
                       <span>직업군</span>
                       <b>{presentation.sector}</b>
-                      <small>{presentation.period}</small>
+                      <span>운용 기간</span>
+                      <b>{presentation.period}</b>
                     </div>
                     <div className="profile-following-return">
                       <span>수익률</span>
@@ -122,31 +115,6 @@ export function ProfileFollowingScreen({
                   <div className="profile-following-amount">
                     <span>금액</span>
                     <strong>{presentation.amount}</strong>
-                  </div>
-                  <div className="profile-following-allocation">
-                    <span>포트폴리오 구성 비율</span>
-                    <div className="profile-following-allocation-bar" aria-hidden="true">
-                      <i style={{ width: `${allocations.domestic}%` }} />
-                      <i style={{ width: `${allocations.global}%` }} />
-                      <i style={{ width: `${allocations.bond}%` }} />
-                      <i style={{ width: `${allocations.cash}%` }} />
-                    </div>
-                    <p>
-                      국내주식 {allocations.domestic}% · 해외주식·ETF {allocations.global}% ·
-                      채권 {allocations.bond}% · 현금성자산 {allocations.cash}%
-                    </p>
-                  </div>
-                  <div className="profile-following-strategy">
-                    <span>투자전략</span>
-                    {presentation.strategyName ? (
-                      <>
-                        <strong>{presentation.strategyName}</strong>
-                        {feasibility && <b>{feasibility}</b>}
-                      </>
-                    ) : (
-                      <strong>설정 전</strong>
-                    )}
-                    {presentation.strategyDetail && <p>{presentation.strategyDetail}</p>}
                   </div>
                   <div className="profile-following-count" aria-label={`팔로우 ${formatFollowCount(followCount)}`}>
                     <span aria-hidden="true">♥</span>
