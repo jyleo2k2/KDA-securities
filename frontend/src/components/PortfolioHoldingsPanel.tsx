@@ -395,9 +395,7 @@ function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
       {complete ? (
         <div className="portfolio-risk-metrics">
           <div><span>1년 동안의 흔들림 크기</span><strong>{optionalPercent(risk.annualized_volatility_percent)}</strong></div>
-          <div><span>떨어질 때의 흔들림</span><strong>{optionalPercent(risk.annualized_downside_deviation_percent)}</strong></div>
           <div><span>과거 가장 크게 떨어진 폭</span><strong>{optionalPercent(risk.maximum_drawdown_percent)}</strong></div>
-          <div><span>나쁜 날 하루 손실 기준</span><strong>{optionalPercent(risk.historical_95pct_one_day_loss_percent)}</strong></div>
         </div>
       ) : (
         <p className="portfolio-risk-unavailable">
@@ -406,7 +404,7 @@ function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
       )}
 
       <div className="stress-scenario-grid" aria-label="정책 스트레스 시나리오">
-        {risk.stress_scenarios.map((scenario) => (
+        {risk.stress_scenarios.filter((scenario) => scenario.scenario_code !== "stagflation").map((scenario) => (
           <div key={scenario.scenario_code}>
             <span title={scenario.scenario_code}>{STRESS_SCENARIO_LABELS[scenario.scenario_code] ?? "기타 시장 충격"}</span>
             <strong>{lossPercent(scenario.estimated_loss_percent)}</strong>
