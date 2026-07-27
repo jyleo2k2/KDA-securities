@@ -79,7 +79,7 @@ const PIE_SELECT_OFFSET = 7;
 const STRATEGY_PLANNING_RETURN_RETRY_MS = 3_000;
 const PROMO_DRAG_START_THRESHOLD_PX = 5;
 const PROMO_DRAG_THRESHOLD_PX = 40;
-const PROMO_COUNT = 2;
+const PROMO_COUNT = 3;
 const PROMO_TRANSITION_MS = 380;
 const STRATEGY_DRAG_THRESHOLD_PX = 5;
 
@@ -528,10 +528,25 @@ export function MainHomeScreen({
               <div className="mhs-promo-slide" aria-hidden={activePromo !== 1}>
                 <button
                   type="button"
+                  className="mhs-strategy-promo-card"
+                  onClick={onOpenStrategyExplore}
+                  aria-label="또래 최다 운용 전략 보기"
+                  tabIndex={activePromo === 1 ? 0 : -1}
+                >
+                  <p className="mhs-strategy-promo-title">고객님 연령대가 가장 많이 운용하는 전략을 확인해봐요!</p>
+                  <span className="mhs-strategy-promo-cta">
+                    <i aria-hidden="true">₩</i>
+                    또래 <strong>최다 운용 전략 보기</strong> <b aria-hidden="true">›</b>
+                  </span>
+                </button>
+              </div>
+              <div className="mhs-promo-slide" aria-hidden={activePromo !== 2}>
+                <button
+                  type="button"
                   className="mhs-greeting-card mhs-greeting-card-button"
                   onClick={onOpenSlangi}
                   aria-label="연그미와 놀기 열기"
-                  tabIndex={activePromo === 1 ? 0 : -1}
+                  tabIndex={activePromo === 2 ? 0 : -1}
                 >
                   <div className="mhs-greeting-main">
                     <div className="mhs-greeting-copy">
@@ -561,7 +576,7 @@ export function MainHomeScreen({
             </div>
           </div>
           <div className="mhs-promo-dots" aria-label="추천 카드 선택">
-            {[0, 1].map((promoIndex, dotIndex) => (
+            {[0, 1, 2].map((promoIndex, dotIndex) => (
               <button
                 key={promoIndex}
                 type="button"
