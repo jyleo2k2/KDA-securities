@@ -1,8 +1,8 @@
 /* 프레임 치수는 index.css 폰 프레임 SSOT(.app-phone-stage/.app-phone-frame)를 재사용한다. */
-.se-stage { font-family: "Cafe24SsurroundAir", "Noto Sans KR", sans-serif; }
+.se-stage { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif; }
 .se-phone { overflow: hidden; }
 
-.se-page { width: 100%; height: 100%; display: flex; flex-direction: column; overflow-y: auto; position: relative; font-family: "Cafe24SsurroundAir", "Noto Sans KR", sans-serif; background: #fff; --se-brand: #18a860; --se-ink: #111; --se-muted: #8a9691; --se-hint: #b0b8b1; --se-line: #eaede7; --se-line-2: #e3e7df; }
+.se-page { width: 100%; height: 100%; display: flex; flex-direction: column; overflow-y: auto; position: relative; font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif; background: #fff; --se-brand: #18a860; --se-ink: #111; --se-muted: #8a9691; --se-hint: #b0b8b1; --se-line: #eaede7; --se-line-2: #e3e7df; }
 
 
 .se-back { flex: none; padding: 12px 24px 0; cursor: pointer; width: fit-content; }

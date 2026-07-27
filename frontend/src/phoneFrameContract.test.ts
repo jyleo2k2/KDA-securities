@@ -146,6 +146,24 @@ describe("상단바 SSOT (main-home 기준 통일)", () => {
 });
 
 describe("화면 타이포그래피 (main-home 기준 통일)", () => {
+  it("마이페이지는 Cafe24를 기본 글꼴로 사용한다", () => {
+    const profileHtml = Object.entries(embeddedHtmlModules)
+      .find(([path]) => path.endsWith("/profile-html/index.html"))?.[1];
+
+    expect(profileHtml).toMatch(
+      /id="profile-phone-stage"[^>]*font-family:\s*'Cafe24SsurroundAir',\s*Pretendard/,
+    );
+  });
+
+  it("이용자 Pick과 벤치마킹은 Pretendard를 기본 글꼴로 사용한다", () => {
+    const benchmarkHtml = Object.entries(embeddedHtmlModules)
+      .find(([path]) => path.endsWith("/투자 벤치마킹.dc.html"))?.[1];
+
+    expect(benchmarkHtml).toMatch(
+      /id="benchmark-phone"[^>]*font-family:\s*Pretendard,\s*'Cafe24SsurroundAir'/,
+    );
+  });
+
   it("연금 계산기는 Pretendard를 기본 글꼴로 사용한다", () => {
     const calculatorHtml = Object.entries(embeddedHtmlModules)
       .find(([path]) => path.endsWith("/연금계산기.dc.html"))?.[1];
