@@ -79,6 +79,8 @@ const PIE_SELECT_OFFSET = 7;
 const STRATEGY_PLANNING_RETURN_RETRY_MS = 3_000;
 const PROMO_DRAG_START_THRESHOLD_PX = 5;
 const PROMO_DRAG_THRESHOLD_PX = 40;
+const PROMO_COUNT = 2;
+const PROMO_TRANSITION_MS = 380;
 const STRATEGY_DRAG_THRESHOLD_PX = 5;
 
 function buildHoldingPieSlices(
@@ -270,6 +272,10 @@ export function MainHomeScreen({
   const [infoOpen, setInfoOpen] = useState(false);
   const [activePromo, setActivePromo] = useState(0);
   const [promoTimerKey, setPromoTimerKey] = useState(0);
+  // 마지막 카드에서 첫 카드로 갈 때도 오른쪽으로 흐르게 하려고 트랙 위치를 인덱스와 분리한다.
+  // 복제 슬라이드(PROMO_COUNT)까지 이동한 뒤 전환이 끝나면 애니메이션 없이 0으로 되돌린다.
+  const [promoOffset, setPromoOffset] = useState(0);
+  const [isPromoSnapping, setIsPromoSnapping] = useState(false);
   const [selectedHolding, setSelectedHolding] = useState<number | null>(null);
   const [strategyPlanningReturns, setStrategyPlanningReturns] = useState<StrategyPlanningReturnEvaluation[] | null>(null);
   const [isPromoDragging, setIsPromoDragging] = useState(false);
@@ -309,10 +315,18 @@ export function MainHomeScreen({
   };
   const selectPromo = (index: number) => {
     setActivePromo(index);
+    setPromoOffset(index);
+    setIsPromoSnapping(false);
     setPromoTimerKey((current) => current + 1);
   };
   const movePromo = (direction: -1 | 1) => {
-    selectPromo((activePromo + direction + 2) % 2);
+    const next = (activePromo + direction + PROMO_COUNT) % PROMO_COUNT;
+    setActivePromo(next);
+    setIsPromoSnapping(false);
+    // 끝에서 앞으로 넘어갈 때는 복제 슬라이드까지 계속 오른쪽으로 민다.
+    // 반대 방향으로 되감기면 뒤로 튕기는 모션이 보이기 때문이다.
+    setPromoOffset(direction === 1 && next === 0 ? PROMO_COUNT : next);
+    setPromoTimerKey((current) => current + 1);
   };
   const handlePromoPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if (event.pointerType !== "mouse" || event.button !== 0) return;
@@ -421,10 +435,23 @@ export function MainHomeScreen({
   useEffect(() => {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     const timer = window.setInterval(() => {
-      setActivePromo((current) => (current + 1) % 2);
+      setActivePromo((current) => (current + 1) % PROMO_COUNT);
+      setPromoOffset((current) => (current >= PROMO_COUNT ? 1 : current + 1));
+      setIsPromoSnapping(false);
     }, 2500);
     return () => window.clearInterval(timer);
   }, [promoTimerKey]);
+  // 복제 슬라이드에 도착하면 전환이 끝난 뒤 애니메이션 없이 원본 첫 카드로 되돌린다.
+  useEffect(() => {
+    if (promoOffset < PROMO_COUNT) return;
+    // 모션 축소 환경은 전환이 없으므로 기다리지 않고 곧바로 되돌린다.
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const timer = window.setTimeout(() => {
+      setIsPromoSnapping(true);
+      setPromoOffset(0);
+    }, reducedMotion ? 0 : PROMO_TRANSITION_MS);
+    return () => window.clearTimeout(timer);
+  }, [promoOffset]);
   const totalBalance = aggregation ? formatKrw(aggregation.total_amount_krw) : "-";
   const asOfDate = portfolio ? latestPortfolioDate(portfolio) : null;
 
@@ -470,8 +497,8 @@ export function MainHomeScreen({
         >
           <div className="mhs-promo-viewport">
             <div
-              className="mhs-promo-track"
-              style={{ transform: `translateX(-${activePromo * 100}%)` }}
+              className={`mhs-promo-track${isPromoSnapping ? " is-snapping" : ""}`}
+              style={{ transform: `translateX(-${promoOffset * 100}%)` }}
             >
               <div className="mhs-promo-slide" aria-hidden={activePromo !== 0}>
                 <div className="mhs-tax-card">
@@ -506,6 +533,21 @@ export function MainHomeScreen({
                   </div>
                   <img src={piggy} alt="슬랑이" className="mhs-greeting-img" />
                 </button>
+              </div>
+              {/* 끝에서 첫 카드로 이어지는 모션만을 위한 복제본. 보조기술과 탭 순서에서는 제외한다. */}
+              <div className="mhs-promo-slide" aria-hidden="true">
+                <div className="mhs-tax-card">
+                  <span className="mhs-tax-icon-wrap">
+                    <img src={taxCreditMissed} alt="" className="mhs-tax-icon" />
+                  </span>
+                  <div className="mhs-tax-copy">
+                    <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
+                    <p className="mhs-tax-sub">지금 놓치고 있는 세액공제액이 얼마인지 확인해 보세요.</p>
+                    <button type="button" className="mhs-tax-button" tabIndex={-1}>
+                      완료율 확인하기 <span>→</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

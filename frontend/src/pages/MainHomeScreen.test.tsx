@@ -237,8 +237,14 @@ describe("MainHomeScreen", () => {
     expect(track).toHaveStyle({ transform: "translateX(-0%)" });
     act(() => vi.advanceTimersByTime(2500));
     expect(track).toHaveStyle({ transform: "translateX(-100%)" });
+    // 마지막 카드 다음에는 되감지 않고 복제 슬라이드까지 같은 방향으로 이어간다.
     act(() => vi.advanceTimersByTime(2500));
+    expect(track).toHaveStyle({ transform: "translateX(-200%)" });
+    expect(track).not.toHaveClass("is-snapping");
+    // 전환이 끝나면 애니메이션 없이 원본 첫 카드로 되돌아간다.
+    act(() => vi.advanceTimersByTime(380));
     expect(track).toHaveStyle({ transform: "translateX(-0%)" });
+    expect(track).toHaveClass("is-snapping");
 
     vi.useRealTimers();
   });
@@ -284,6 +290,49 @@ describe("MainHomeScreen", () => {
     });
     expect(carousel).not.toHaveClass("is-dragging");
     expect(track).toHaveStyle({ transform: "translateX(-0%)" });
+  });
+
+  it("wraps forward past the last promo card without a reverse motion", () => {
+    vi.useFakeTimers();
+    const { container } = renderHome();
+    const carousel = screen.getByRole("region", { name: "홈 추천 카드" });
+    const track = container.querySelector(".mhs-promo-track");
+
+    fireEvent.keyDown(carousel, { key: "ArrowRight" });
+    expect(track).toHaveStyle({ transform: "translateX(-100%)" });
+
+    // 마지막 카드에서 오른쪽으로 넘기면 되감지 않고 복제 슬라이드로 이어간다.
+    fireEvent.keyDown(carousel, { key: "ArrowRight" });
+    expect(track).toHaveStyle({ transform: "translateX(-200%)" });
+    expect(track).not.toHaveClass("is-snapping");
+
+    act(() => vi.advanceTimersByTime(380));
+    expect(track).toHaveStyle({ transform: "translateX(-0%)" });
+    expect(track).toHaveClass("is-snapping");
+
+    // 첫 카드에서 왼쪽으로 넘기면 그대로 마지막 카드로 되돌아간다.
+    fireEvent.keyDown(carousel, { key: "ArrowLeft" });
+    expect(track).toHaveStyle({ transform: "translateX(-100%)" });
+
+    vi.useRealTimers();
+  });
+
+  it("keeps the first dot active while the wrap-around motion runs", () => {
+    vi.useFakeTimers();
+    renderHome();
+    const carousel = screen.getByRole("region", { name: "홈 추천 카드" });
+    const firstDot = screen.getByRole("button", { name: "1번째 카드 보기" });
+
+    fireEvent.keyDown(carousel, { key: "ArrowRight" });
+    expect(firstDot).not.toHaveAttribute("aria-current");
+
+    // 복제 슬라이드로 이동하는 동안에도 선택 상태는 첫 카드를 가리킨다.
+    fireEvent.keyDown(carousel, { key: "ArrowRight" });
+    expect(firstDot).toHaveAttribute("aria-current", "true");
+    act(() => vi.advanceTimersByTime(380));
+    expect(firstDot).toHaveAttribute("aria-current", "true");
+
+    vi.useRealTimers();
   });
 
   it("opens the supplied profile screen from the header icon", () => {
