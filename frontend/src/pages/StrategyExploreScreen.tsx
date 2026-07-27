@@ -83,9 +83,9 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
           </div>
 
           <p className="se-headline">
-            <span className="se-brandc">연금 KDA</span>에서
+            <span className="se-brandc">연금 KDA의</span>
             <br />
-            제공하는 <span className="se-accentc">추천 전략</span>들을 확인해보세요!
+            운용전략들을 따라 자산을 구성해보아요!
           </p>
           <p className="se-hint">좌우로 넘기거나 눌러서 전략을 선택하세요!</p>
 
