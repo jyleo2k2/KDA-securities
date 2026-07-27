@@ -427,6 +427,28 @@ export function MainHomeScreen({
   }, [promoTimerKey]);
   const totalBalance = aggregation ? formatKrw(aggregation.total_amount_krw) : "-";
   const asOfDate = portfolio ? latestPortfolioDate(portfolio) : null;
+  const renderInvestmentProfileSummary = (
+    tone: "green" | "neutral",
+  ): JSX.Element => {
+    const assessment = investmentProfile?.assessment;
+    const profileLabel = assessment
+      ? PROFILE_LABELS[assessment.risk_profile]
+      : "진단 전";
+    const assessedOn = assessment?.assessed_on ?? "진단 기록 없음";
+    return (
+      <div
+        className={`mhs-promo-profile mhs-promo-profile-${tone}`}
+        aria-label={`저장 투자성향 ${profileLabel}, 최근 진단 ${assessedOn}${assessment?.is_expired ? ", 만료" : ""}`}
+      >
+        <span className="mhs-promo-profile-label">저장 투자성향</span>
+        <strong className="mhs-promo-profile-value">{profileLabel}</strong>
+        <span className="mhs-promo-profile-divider" aria-hidden="true" />
+        <span className="mhs-promo-profile-label">최근 진단</span>
+        <strong className="mhs-promo-profile-value">{assessedOn}</strong>
+        {assessment?.is_expired && <strong className="mhs-promo-profile-expired">만료</strong>}
+      </div>
+    );
+  };
 
   return (
     <main className="app-phone-stage mhs-stage">
@@ -475,21 +497,24 @@ export function MainHomeScreen({
             >
               <div className="mhs-promo-slide" aria-hidden={activePromo !== 0}>
                 <div className="mhs-tax-card">
-                  <span className="mhs-tax-icon-wrap">
-                    <img src={taxCreditMissed} alt="놓친 세액공제액 찾기" className="mhs-tax-icon" />
-                  </span>
-                  <div className="mhs-tax-copy">
-                    <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
-                    <p className="mhs-tax-sub">지금 놓치고 있는 세액공제액이 얼마인지 확인해 보세요.</p>
-                    <button
-                      type="button"
-                      className="mhs-tax-button"
-                      onClick={onOpenPlanner}
-                      tabIndex={activePromo === 0 ? 0 : -1}
-                    >
-                      완료율 확인하기 <span>→</span>
-                    </button>
+                  <div className="mhs-tax-main">
+                    <span className="mhs-tax-icon-wrap">
+                      <img src={taxCreditMissed} alt="놓친 세액공제액 찾기" className="mhs-tax-icon" />
+                    </span>
+                    <div className="mhs-tax-copy">
+                      <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
+                      <p className="mhs-tax-sub">지금 놓치고 있는 세액공제액이 얼마인지 확인해 보세요.</p>
+                      <button
+                        type="button"
+                        className="mhs-tax-button"
+                        onClick={onOpenPlanner}
+                        tabIndex={activePromo === 0 ? 0 : -1}
+                      >
+                        완료율 확인하기 <span>→</span>
+                      </button>
+                    </div>
                   </div>
+                  {renderInvestmentProfileSummary("green")}
                 </div>
               </div>
               <div className="mhs-promo-slide" aria-hidden={activePromo !== 1}>
@@ -500,11 +525,14 @@ export function MainHomeScreen({
                   aria-label="연그미와 놀기 열기"
                   tabIndex={activePromo === 1 ? 0 : -1}
                 >
-                  <div className="mhs-greeting-copy">
-                    <p className="mhs-greeting-title">슬랑이를 <span className="mhs-greeting-title-accent">만져 보세요!</span></p>
-                    <p className="mhs-greeting-sub">톡톡 두드리면 오늘의 저축 팁을 알려드려요</p>
+                  <div className="mhs-greeting-main">
+                    <div className="mhs-greeting-copy">
+                      <p className="mhs-greeting-title">슬랑이를 <span className="mhs-greeting-title-accent">만져 보세요!</span></p>
+                      <p className="mhs-greeting-sub">톡톡 두드리면 오늘의 저축 팁을 알려드려요</p>
+                    </div>
+                    <img src={piggy} alt="슬랑이" className="mhs-greeting-img" />
                   </div>
-                  <img src={piggy} alt="슬랑이" className="mhs-greeting-img" />
+                  {renderInvestmentProfileSummary("neutral")}
                 </button>
               </div>
             </div>
@@ -522,7 +550,6 @@ export function MainHomeScreen({
             ))}
           </div>
         </section>
-        {investmentProfile?.assessment && <p className="mhs-greeting-sub">저장 투자성향 · {PROFILE_LABELS[investmentProfile.assessment.risk_profile]} · {investmentProfile.assessment.assessed_on} 진단{investmentProfile.assessment.is_expired ? " · 만료" : ""}</p>}
         <h2 className="mhs-section-title">내 연금 <span className="mhs-section-title-gold">자산</span></h2>
 
         <div className="mhs-asset-card">
