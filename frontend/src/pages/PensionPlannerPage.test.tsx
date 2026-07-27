@@ -63,6 +63,41 @@ describe("PensionPlannerPage", () => {
     ]);
   });
 
+  it("shows the calculated tax benefit headline on three fixed lines", () => {
+    const calculatorDocument = new DOMParser().parseFromString(
+      pensionCalculatorHtml,
+      "text/html",
+    );
+    const headline = calculatorDocument.querySelector(
+      "[data-tax-benefit-headline]",
+    );
+
+    expect(
+      Array.from(headline?.children ?? []).map((line) => line.textContent?.trim()),
+    ).toEqual([
+      "올해 안에 연금으로",
+      "{{ totalMoreText }}",
+      "더 공제 받을 수 있어요",
+    ]);
+  });
+
+  it("resets the tax sliders to the linked account amounts", () => {
+    const calculatorDocument = new DOMParser().parseFromString(
+      pensionCalculatorHtml,
+      "text/html",
+    );
+    const resetButton = calculatorDocument.querySelector(
+      "[data-tax-slider-reset]",
+    );
+
+    expect(resetButton?.textContent?.trim()).toBe("초기화");
+    expect(resetButton?.getAttribute("aria-label")).toBe("연동 금액으로 초기화");
+    expect(resetButton?.getAttribute("onclick")).toContain("resetTaxSliders");
+    expect(pensionCalculatorHtml).toContain("paidP:this.state.linkedPaidP");
+    expect(pensionCalculatorHtml).toContain("paidI:this.state.linkedPaidI");
+    expect(pensionCalculatorHtml).toContain("isa:this.state.linkedIsa");
+  });
+
   it("forwards the calculator back button to the supplied callback", () => {
     const onBack = vi.fn();
 
@@ -366,6 +401,7 @@ describe("PensionPlannerPage", () => {
             ownerId: "owner-1",
             paidP: 384,
             paidI: 492,
+            isa: 0,
           }),
         }),
       }),

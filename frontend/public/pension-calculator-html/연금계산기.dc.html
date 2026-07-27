@@ -179,9 +179,16 @@
             <div style="font-size:22px; font-weight:900; line-height:1.35;">소득을 입력하면<br><span style="color:#166F39;">내 공제율과 예상 혜택</span>을 확인할 수 있어요</div>
           </sc-if>
           <sc-if value="{{ incomeClassified }}" hint-placeholder-val="{{ false }}">
-            <div style="font-size:22px; font-weight:900; line-height:1.35;">올해 안에 연금으로<br><span style="background:#FDC526; border-radius:8px; padding:2px 8px;">{{ totalMoreText }}</span> 더 공제받을 수 있어요</div>
+            <div data-tax-benefit-headline style="font-size:22px; font-weight:900; line-height:1.35;">
+              <div>올해 안에 연금으로</div>
+              <div><span style="background:#FDC526; border-radius:8px; padding:2px 8px;">{{ totalMoreText }}</span></div>
+              <div>더 공제 받을 수 있어요</div>
+            </div>
           </sc-if>
           <div style="background:#EAF7F0; border-radius:12px; padding:12px 14px; margin-top:16px; font-size:13px; font-weight:600; color:#2E6B45; line-height:1.55;">총급여 5,500만원 이하(종합소득금액 4,500만원 이하)는 <b>16.5%</b>, 초과는 <b>13.2%</b>의 공제율이 적용돼요.</div>
+          <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+            <button type="button" data-tax-slider-reset aria-label="연동 금액으로 초기화" onClick="{{ resetTaxSliders }}" style="border:1px solid #BFE7CC; border-radius:99px; background:#fff; color:#166F39; padding:7px 13px; font-size:12.5px; font-weight:800; cursor:pointer;">초기화</button>
+          </div>
         </div>
 
         <div style="background:#fff; border-radius:18px; padding:22px 20px; margin-top:16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
@@ -335,6 +342,7 @@
 class Component extends DCLogic {
   state = {
     age:35, endAge:55, monthly:0, tab:'pension', paidP:0, paidI:0, isa:0,
+    linkedPaidP:0, linkedPaidI:0, linkedIsa:0,
     strategyId:null, themeId:'market-beta', accountId:'all', accounts:[], calculation:null,
     taxContextOwnerId:null, taxCalculation:null, taxLoading:false,
     incomeBasis:null, incomeAmountManwon:null, incomeSheetOpen:false,
@@ -374,10 +382,16 @@ class Component extends DCLogic {
           themeId: payload.themeId || 'market-beta',
           calculation: payload.calculation || null,
           taxCalculation: payload.taxCalculation || this.state.taxCalculation,
+          ...(taxContext ? {
+            linkedPaidP:Number(taxContext.paidP) || 0,
+            linkedPaidI:Number(taxContext.paidI) || 0,
+            linkedIsa:Number(taxContext.isa) || 0,
+          } : {}),
           ...(ownerChanged ? {
             taxContextOwnerId:taxContext.ownerId,
             paidP:Number(taxContext.paidP) || 0,
             paidI:Number(taxContext.paidI) || 0,
+            isa:Number(taxContext.isa) || 0,
             incomeBasis:null,
             incomeAmountManwon:null,
             incomeDraftBasis:taxContext.incomeBasis === 'comprehensive_income'
@@ -586,6 +600,15 @@ class Component extends DCLogic {
       onPaidI: (e) => {
         const value=Math.max(0, +e.target.value - eligibleP);
         this.setState({ paidI:value, taxCalculation:null }, () => this.requestTaxCalculation());
+      },
+      resetTaxSliders: () => {
+        const update={
+          paidP:this.state.linkedPaidP,
+          paidI:this.state.linkedPaidI,
+          isa:this.state.linkedIsa,
+          taxCalculation:null,
+        };
+        this.setState(update, () => this.requestTaxCalculation());
       },
       incomeSheetOpen,
       incomeDraftAmount,

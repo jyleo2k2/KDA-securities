@@ -133,6 +133,7 @@ export function PensionPlannerPage({
                 incomeAmountManwon: initialTaxRequest.incomeAmountManwon,
                 paidP: initialTaxRequest.paidP,
                 paidI: initialTaxRequest.paidI,
+                isa: initialTaxRequest.isa,
               }
             : null,
           taxCalculation: taxCalculationRef.current,
