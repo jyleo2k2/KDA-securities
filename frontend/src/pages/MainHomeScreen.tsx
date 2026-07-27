@@ -530,7 +530,6 @@ export function MainHomeScreen({
                     </span>
                     <div className="mhs-tax-copy">
                       <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
-                      <p className="mhs-tax-sub">지금 놓치고 있는 세액공제액이 얼마인지 확인해 보세요.</p>
                       <button
                         type="button"
                         className="mhs-tax-button"
@@ -555,7 +554,6 @@ export function MainHomeScreen({
                   <div className="mhs-greeting-main">
                     <div className="mhs-greeting-copy">
                       <p className="mhs-greeting-title">슬랑이를 <span className="mhs-greeting-title-accent">만져 보세요!</span></p>
-                      <p className="mhs-greeting-sub">톡톡 두드리면 오늘의 저축 팁을 알려드려요</p>
                     </div>
                     <img src={piggy} alt="슬랑이" className="mhs-greeting-img" />
                   </div>
@@ -570,7 +568,6 @@ export function MainHomeScreen({
                   </span>
                   <div className="mhs-tax-copy">
                     <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
-                    <p className="mhs-tax-sub">지금 놓치고 있는 세액공제액이 얼마인지 확인해 보세요.</p>
                     <button type="button" className="mhs-tax-button" tabIndex={-1}>
                       완료율 확인하기 <span>→</span>
                     </button>

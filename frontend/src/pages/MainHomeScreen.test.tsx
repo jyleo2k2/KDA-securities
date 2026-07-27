@@ -144,6 +144,13 @@ describe("MainHomeScreen", () => {
       .toBeInTheDocument();
   });
 
+  it("omits the supporting descriptions from both promo cards", () => {
+    renderHome();
+
+    expect(screen.queryByText("지금 놓치고 있는 세액공제액이 얼마인지 확인해 보세요.")).not.toBeInTheDocument();
+    expect(screen.queryByText("톡톡 두드리면 오늘의 저축 팁을 알려드려요")).not.toBeInTheDocument();
+  });
+
   it("shows an unassessed profile state inside both promo cards", () => {
     const { container } = renderHome();
 
