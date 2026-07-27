@@ -173,7 +173,7 @@ export function ChatEtfThemeCards({
       </header>
       <div
         className={`etf-theme-rail${isDragging ? " is-dragging" : ""}`}
-        role="list"
+        role="group"
         aria-label="ETF 섹터 카드 목록 (옆으로 넘겨 보기)"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
