@@ -819,6 +819,7 @@ describe("GuidePage chat history deletion", () => {
     fireEvent.change(composer, { target: { value: "내 성향에 맞는 포트폴리오를 보여줘" } });
     fireEvent.submit(composer.closest("form")!);
 
+    expect(await screen.findByText("위험중립형 기준으로 한 코어·위성 전략의 리밸런싱 결과입니다.")).toBeInTheDocument();
     expect(await screen.findByText("위험중립형의 코어·위성 전략")).toBeInTheDocument();
     expect(screen.queryByText("위험중립형 투자전략", { exact: true })).not.toBeInTheDocument();
     expect(screen.getByText("연금 운용전략")).toBeInTheDocument();
