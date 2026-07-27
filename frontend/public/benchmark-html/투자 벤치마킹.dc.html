@@ -56,6 +56,7 @@
           <div style="display:flex; justify-content:space-between; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">ID</span><span style="font-size:14px; font-weight:800; white-space:nowrap;">투자하는너구리</span></div>
           <div style="display:flex; justify-content:space-between; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">직업군</span><span style="font-size:14px; font-weight:700; white-space:nowrap;">반도체 종사자</span></div>
           <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">금액</span><span style="font-size:16px; font-weight:800; white-space:nowrap;">1,240만원</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">수익률</span><span id="owner-portfolio-return" style="font-size:16px; font-weight:800; color:#8B9096; white-space:nowrap;">-</span></div>
         </div>
       </div>
 
@@ -316,7 +317,44 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
 class Component extends DCLogic {
-  state = { filter:'rate', filterOpen:false, sheetId:null, followed:{}, detailId:null, reviewLikes:{}, reviewComments:{}, drafts:{}, openComments:{} };
+  state = { filter:'rate', filterOpen:false, sheetId:null, followed:{}, followCounts:{}, detailId:null, reviewLikes:{}, reviewComments:{}, drafts:{}, openComments:{} };
+
+  componentDidMount() {
+    this._followMessageHandler = (event) => {
+      if (event.source !== parent || event.origin !== window.location.origin) return;
+      const message = event.data;
+      if (!message || message.type !== 'benchmark-follow-state') return;
+      const items = Array.isArray(message.items) ? message.items : [];
+      this.setState(s => {
+        const followed = { ...(s.followed || {}) };
+        const followCounts = { ...(s.followCounts || {}) };
+        items.forEach(item => {
+          if (!item || typeof item.portfolio_id !== 'string') return;
+          const count = Number(item.follow_count);
+          if (!Number.isFinite(count) || count < 0) return;
+          followed[item.portfolio_id] = !!item.is_following;
+          followCounts[item.portfolio_id] = count;
+        });
+        return { followed, followCounts };
+      });
+    };
+    window.addEventListener('message', this._followMessageHandler);
+  }
+
+  componentWillUnmount() {
+    if (this._followMessageHandler) {
+      window.removeEventListener('message', this._followMessageHandler);
+    }
+  }
+
+  requestFollow(portfolioId, following) {
+    try {
+      parent.postMessage(
+        { type:'benchmark-follow-toggle', portfolioId, following },
+        window.location.origin,
+      );
+    } catch (e) {}
+  }
 
   REVIEWS = {
     _default: [
@@ -393,9 +431,10 @@ class Component extends DCLogic {
     });
     const on = !!(this.state.followed && this.state.followed[p.id]);
     const likesNum = s => parseInt(String(s).replace(/[^0-9]/g, ''), 10) || 0;
-    const likesDisplay = (likesNum(p.likes) + (on ? 1 : 0)).toLocaleString('en-US');
+    const storedCount = this.state.followCounts && this.state.followCounts[p.id];
+    const likesDisplay = (Number.isFinite(storedCount) ? storedCount : likesNum(p.likes)).toLocaleString('en-US');
     return { id:p.id, likes:p.likes, likesDisplay, rate:p.rate, rateColor:p.rateColor, donut, alloc, rows,
-      toggleFollow: () => this.setState(s => ({ followed: { ...s.followed, [p.id]: !(s.followed && s.followed[p.id]) } })),
+      toggleFollow: () => this.requestFollow(p.id, !on),
       starFill: on ? '#22A94D' : 'none',
       starStroke: on ? '#22A94D' : '#7FB894',
       followColor: on ? '#166F39' : '#8B9096',
@@ -445,7 +484,11 @@ class Component extends DCLogic {
     const sorted = [...raw].sort((a, b) => {
       if (f === 'period') return b.months - a.months;
       if (f === 'job') return a.sector.localeCompare(b.sector, 'ko') || b.rateNum - a.rateNum;
-      if (f === 'likes') return likesNum(b.likes) - likesNum(a.likes);
+      if (f === 'likes') {
+        const bCount = Number.isFinite(this.state.followCounts && this.state.followCounts[b.id]) ? this.state.followCounts[b.id] : likesNum(b.likes);
+        const aCount = Number.isFinite(this.state.followCounts && this.state.followCounts[a.id]) ? this.state.followCounts[a.id] : likesNum(a.likes);
+        return bCount - aCount;
+      }
       return b.rateNum - a.rateNum;
     });
     const labels = { rate:'수익률순', period:'운용기간순', job:'직업군별', likes:'좋아요순' };
@@ -470,7 +513,8 @@ class Component extends DCLogic {
       others: sorted.map(p => {
         const on = !!(this.state.followed && this.state.followed[p.id]);
         const base = likesNum(p.likes);
-        const display = (base + (on ? 1 : 0)).toLocaleString('en-US');
+        const storedCount = this.state.followCounts && this.state.followCounts[p.id];
+        const display = (Number.isFinite(storedCount) ? storedCount : base).toLocaleString('en-US');
         return {
         ...p,
         open: () => this.setState({ sheetId: p.id }),
@@ -478,7 +522,7 @@ class Component extends DCLogic {
         noStrategy: !p.strategyName,
         badgeText: p.feas === 'direct' ? '직접 구현 가능' : '상품 확인 후 가능',
         badgeStyle: this.badge(p.feas),
-        toggleFollow: (e) => { e.stopPropagation(); this.setState(s => ({ followed: { ...s.followed, [p.id]: !(s.followed && s.followed[p.id]) } })); },
+        toggleFollow: (e) => { e.stopPropagation(); this.requestFollow(p.id, !on); },
         likesDisplay: display,
         heartFill: on ? '#22A94D' : 'none',
         heartStroke: on ? '#22A94D' : '#7FB894',
@@ -489,6 +533,19 @@ class Component extends DCLogic {
     };
   }
 }
+</script>
+<script>
+window.addEventListener('message', (event) => {
+  if (event.source !== parent || event.origin !== window.location.origin) return;
+  const message = event.data;
+  if (!message || message.type !== 'benchmark-owner-return') return;
+  const returnPct = Number(message.trailing12mReturnPct);
+  if (!Number.isFinite(returnPct)) return;
+  const returnElement = document.getElementById('owner-portfolio-return');
+  if (!returnElement) return;
+  returnElement.textContent = `${returnPct > 0 ? '+' : ''}${returnPct.toFixed(2)}%`;
+  returnElement.style.color = returnPct < 0 ? '#2E7CE0' : '#166F39';
+});
 </script>
 </body>
 </html>

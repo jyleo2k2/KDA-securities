@@ -2,12 +2,19 @@
 
 from decimal import Decimal
 from typing import Annotated
+from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 
+from ..auth import require_supabase_user_id
+from ..benchmark_follow_repository import (
+    BenchmarkFollowRepository,
+    BenchmarkFollowState,
+    UnknownBenchmarkPortfolioError,
+)
 from ..benchmark_repository import BenchmarkRepository
-from .deps import get_benchmark_repository
+from .deps import get_benchmark_follow_repository, get_benchmark_repository
 
 router = APIRouter(tags=["benchmark"])
 
@@ -47,6 +54,12 @@ class BenchmarkSummaryResponse(BaseModel):
     account_type_stats: list[BenchmarkAccountTypeStatOut]
 
 
+class BenchmarkFollowPreferenceInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    following: bool
+
+
 @router.get("/benchmark/summary", response_model=BenchmarkSummaryResponse)
 def benchmark_summary(
     repository: Annotated[BenchmarkRepository, Depends(get_benchmark_repository)],
@@ -62,3 +75,43 @@ def benchmark_summary(
         risk_profiles=summary.risk_profiles,
         account_type_stats=summary.account_type_stats,
     )
+
+
+@router.get(
+    "/me/benchmark-follows",
+    response_model=list[BenchmarkFollowState],
+)
+def benchmark_follow_states(
+    owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
+    repository: Annotated[
+        BenchmarkFollowRepository,
+        Depends(get_benchmark_follow_repository),
+    ],
+) -> list[BenchmarkFollowState]:
+    return repository.list_states(owner_id)
+
+
+@router.put(
+    "/me/benchmark-follows/{portfolio_id}",
+    response_model=BenchmarkFollowState,
+)
+def update_benchmark_follow(
+    portfolio_id: str,
+    preference: BenchmarkFollowPreferenceInput,
+    owner_id: Annotated[UUID, Depends(require_supabase_user_id)],
+    repository: Annotated[
+        BenchmarkFollowRepository,
+        Depends(get_benchmark_follow_repository),
+    ],
+) -> BenchmarkFollowState:
+    try:
+        return repository.set_following(
+            owner_id,
+            portfolio_id=portfolio_id,
+            following=preference.following,
+        )
+    except UnknownBenchmarkPortfolioError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="해당 이용자 포트폴리오를 찾을 수 없어요.",
+        ) from exc

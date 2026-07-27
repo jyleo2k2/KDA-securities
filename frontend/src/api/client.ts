@@ -2,6 +2,7 @@ import type {
   AccountLinkOptionsResponse,
   AggregationEvaluation,
   AggregationInput,
+  BenchmarkFollowState,
   ChatCardCatalog,
   CompletedSurveyProfile,
   ConversationContext,
@@ -191,6 +192,19 @@ export async function apiPut<TBody, TResult>(path: string, body: TBody, accessTo
 export const getRebalancingReminder = (accessToken: string) => apiGet<RebalancingReminderState>("/me/rebalancing-reminder", accessToken);
 export const updateRebalancingReminder = (enabled: boolean, accessToken: string) => apiPut<{ enabled: boolean }, RebalancingReminderState>("/me/rebalancing-reminder", { enabled }, accessToken);
 export const completeRebalancingReview = (accessToken: string) => apiPost<Record<string, never>, RebalancingReminderState>("/me/rebalancing-reminder/complete", {}, accessToken);
+
+export const getBenchmarkFollows = (accessToken: string) =>
+  apiGet<BenchmarkFollowState[]>("/me/benchmark-follows", accessToken);
+
+export const setBenchmarkFollow = (
+  portfolioId: string,
+  following: boolean,
+  accessToken: string,
+) => apiPut<{ following: boolean }, BenchmarkFollowState>(
+  `/me/benchmark-follows/${encodeURIComponent(portfolioId)}`,
+  { following },
+  accessToken,
+);
 
 export async function apiDelete(
   path: string,

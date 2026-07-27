@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import Depends, status
 from psycopg_pool import ConnectionPool
 
+from ..benchmark_follow_repository import BenchmarkFollowRepository
 from ..benchmark_repository import BenchmarkRepository
 from ..chat.disclosures import DisclosureReadRepository as ChatDisclosureRepository
 from ..chat.etf_product_features import ClaudeEtfProductFeatureGenerator
@@ -172,6 +173,18 @@ def get_benchmark_repository(
         settings, detail="Benchmark database is not configured"
     )
     return BenchmarkRepository(
+        database_url,
+        pool=_database_pool(settings, database_url),
+    )
+
+
+def get_benchmark_follow_repository(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> BenchmarkFollowRepository:
+    database_url = _database_url_or_503(
+        settings, detail="Benchmark follow database is not configured"
+    )
+    return BenchmarkFollowRepository(
         database_url,
         pool=_database_pool(settings, database_url),
     )

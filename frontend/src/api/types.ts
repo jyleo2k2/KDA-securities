@@ -88,6 +88,12 @@ export interface RebalancingReminderState {
   next_review_at: string | null;
   is_due: boolean;
 }
+
+export interface BenchmarkFollowState {
+  portfolio_id: string;
+  is_following: boolean;
+  follow_count: number;
+}
 export type AgeBand =
   | "age_20s"
   | "age_30s"

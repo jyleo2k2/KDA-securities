@@ -2,11 +2,43 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-23 16:16 KST
-> 확인 기준: 리밸런싱 알림 설정 원격 migration·RLS·권한 재검증
+> 최종 확인: 2026-07-27 10:52 KST
+> 확인 기준: 이용자 Pick 팔로우 저장 migration 원격 적용·권한 검증
 > 원격 프로젝트: `KDA-securities`
-> 담당자: 김태형
+> 담당자: 최호택
 > 머지 승인: 이재용(총괄)
+
+## 0. 최신 작업 상태
+
+### 2026-07-27 10:52 KST — 이용자 Pick 팔로우 저장 (REMOTE-APPLIED)
+
+- 작업자/브랜치/시작 기준: 최호택 / `codex/최호택/user-pick-follow-persistence` /
+  `origin/main` `4755931`.
+- 변경 내용: 팔로우 대상의 화면 도입 전 기준 수를 보관하는
+  `benchmark_follow_targets`와 인증 이용자별 선택을 유일하게 저장하는
+  `user_benchmark_portfolio_follows` additive migration을 작성했다. FastAPI에는
+  `GET /me/benchmark-follows`와 멱등 `PUT /me/benchmark-follows/{portfolio_id}`를
+  추가했다.
+- 결정 및 근거: 표시 수를 직접 증감하지 않고
+  `initial_follow_count + 저장된 팔로우 행 수`로 계산한다. 동일 이용자의 중복
+  요청은 `(owner_id, portfolio_id)` 기본키와 `on conflict do nothing`으로
+  흡수한다.
+- 로컬 검증과 실제 결과:
+  `uv run pytest tests/test_benchmark_follows.py tests/test_schema_contract.py -q`
+  결과 `45 passed`. 프론트 `UserPickBenchmarkScreen.test.tsx`는 `5 passed`,
+  `npm run build`도 성공했다.
+- 원격 적용 여부와 migration version: 적용 완료(REMOTE-APPLIED).
+  로컬 파일은 `20260727012919_add_user_benchmark_portfolio_follows.sql`,
+  원격 migration version은 `20260727015120`이다.
+- 원격 검증: 대상 5행, 팔로우 0행, 두 테이블 RLS 활성, `anon`·
+  `authenticated` 테이블 권한 0건, `service_role` 두 테이블 권한을 확인했다.
+  보안 advisor의 신규 두 테이블 `RLS enabled no policy` INFO는 클라이언트
+  직접 접근을 막고 FastAPI 서비스 역할로만 접근하는 설계상 의도된 상태다.
+  성능 advisor의 신규 팔로우 인덱스 미사용 INFO는 적용 직후 조회 이력이 없는
+  정상 상태다.
+- 남은 위험 또는 blocker: 없음. 실제 로그인 세션으로 팔로우 → 메인 이동 →
+  재진입 흐름을 브라우저에서 최종 확인한다.
+- 다음 작업: 최신 서버를 재실행하고 로그인 계정으로 재진입 영속성을 확인한다.
 
 ## 1. 문서 운영 규칙
 

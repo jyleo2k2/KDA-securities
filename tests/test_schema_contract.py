@@ -114,11 +114,42 @@ REBALANCING_REMINDER_MIGRATION = next(
         "*_add_rebalancing_reminder_preferences.sql"
     )
 )
+BENCHMARK_FOLLOW_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob(
+        "*_add_user_benchmark_portfolio_follows.sql"
+    )
+)
 NEWS_EVENT_OUTCOME_LEDGER_MIGRATION = next(
     (ROOT / "supabase" / "migrations").glob(
         "*_add_news_event_outcome_ledger.sql"
     )
 )
+
+
+def test_benchmark_follows_are_owner_scoped_and_server_only() -> None:
+    sql = BENCHMARK_FOLLOW_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "create table public.benchmark_follow_targets" in sql
+    assert "create table public.user_benchmark_portfolio_follows" in sql
+    assert (
+        "primary key (owner_id, portfolio_id)" in sql
+    )
+    assert "references auth.users(id) on delete cascade" in sql
+    assert "references public.benchmark_follow_targets(portfolio_id)" in sql
+    assert "initial_follow_count integer not null" in sql
+    assert (
+        "alter table public.benchmark_follow_targets enable row level security"
+        in sql
+    )
+    assert (
+        "alter table public.user_benchmark_portfolio_follows "
+        "enable row level security"
+        in sql
+    )
+    assert sql.count("from public, anon, authenticated") == 2
+    assert sql.count("to service_role") == 2
+    assert "to authenticated" not in sql
+    assert "drop table" not in sql
 
 
 def test_news_event_outcome_ledger_is_server_only_and_descriptive() -> None:
