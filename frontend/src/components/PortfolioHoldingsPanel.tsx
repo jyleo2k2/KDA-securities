@@ -901,9 +901,6 @@ export function EducationalPortfolioReview({
                   <th>자산군</th>
                   <th>현재</th>
                   <th>목표</th>
-                  <th>이탈폭</th>
-                  <th>납입 후</th>
-                  <th>추가 납입 예시</th>
                   <th>상태</th>
                 </tr>
               </thead>
@@ -913,9 +910,6 @@ export function EducationalPortfolioReview({
                     <th title={sleeve.sleeve}>{sleeveLabel(sleeve.sleeve)}</th>
                     <td>{percent(sleeve.current_percent)}</td>
                     <td>{percent(sleeve.target_percent)}</td>
-                    <td>{Number(sleeve.drift_before_percent_points) > 0 ? "+" : ""}{percent(sleeve.drift_before_percent_points)}p</td>
-                    <td>{percent(sleeve.projected_percent_after_contribution)}</td>
-                    <td>{won(sleeve.contribution_example_krw)}</td>
                     <td><span className={`rebalance-status status-${sleeve.status}`} title={sleeve.status}>{REBALANCE_STATUS_LABELS[sleeve.status] ?? "추가 점검 필요"}</span></td>
                   </tr>
                 ))}
