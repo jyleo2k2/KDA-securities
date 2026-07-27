@@ -225,7 +225,7 @@ def _scenario_holdings_summary(
                     value=weight,
                     unit="%",
                     evidence_id="mock:scenario",
-                    basis="목시나리오 보유 금액 / 계좌별 보유 금액",
+                    basis="보유 금액 / 계좌별 보유 금액",
                 )
             )
         lines.append(f"{account.label}: " + " · ".join(entries))

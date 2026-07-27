@@ -153,7 +153,7 @@ class DemoUserFinancialContext(BaseModel):
             evidence_id="mock:user_context",
             label="내 연금 계좌 정보",
             locator="database://demo-user-financial-context/current",
-            publisher="연금 코파일럿 데모 DB",
+            publisher="연금 코파일럿 계좌 정보",
             as_of=self.as_of_date,
             data_boundary=DataBoundary.MOCK,
         )
@@ -179,8 +179,8 @@ class DemoUserFinancialContext(BaseModel):
             for label, value in fields
         ]
         default_note = (
-            f" DB에서 가져오지 못한 항목({', '.join(self.defaulted_fields)})은 "
-            "승인된 데모 기준에 따라 0원으로 표시했습니다."
+            f" 확인되지 않은 항목({', '.join(self.defaulted_fields)})은 "
+            "승인된 기준에 따라 0원으로 표시했어요."
             if self.defaulted_fields
             else ""
         )
@@ -428,7 +428,7 @@ def apply_demo_context_evidence(
                         "evidence_id": replacement_id,
                         "label": "내 연금 계좌 정보",
                         "locator": ("database://demo-user-financial-context/current"),
-                        "publisher": "연금 코파일럿 데모 DB",
+                        "publisher": "연금 코파일럿 계좌 정보",
                         "as_of": context.as_of_date,
                         "data_boundary": DataBoundary.MOCK,
                     }
@@ -438,9 +438,9 @@ def apply_demo_context_evidence(
             sources.append(
                 source.model_copy(
                     update={
-                        "label": "DB 목계좌 시나리오",
+                        "label": "내 연금 계좌 현황",
                         "locator": "database://mock-scenarios/current",
-                        "publisher": "연금 코파일럿 데모 DB",
+                        "publisher": "연금 코파일럿 계좌 정보",
                         "as_of": context.as_of_date,
                     }
                 )
@@ -453,7 +453,7 @@ def apply_demo_context_evidence(
                 evidence_id=replacement_id,
                 label="내 연금 계좌 자산군",
                 locator="database://demo-user-financial-context/current",
-                publisher="연금 코파일럿 데모 DB",
+                publisher="연금 코파일럿 계좌 정보",
                 as_of=context.as_of_date,
                 data_boundary=DataBoundary.MOCK,
             )
@@ -508,7 +508,7 @@ def apply_demo_context_evidence(
         scenario_evaluation = scenario_evaluation.model_copy(
             update={
                 "source": SourceChip(
-                    label="DB 목계좌 시나리오",
+                    label="내 연금 계좌 현황",
                     reference="database://mock-scenarios/current",
                     as_of=context.as_of_date,
                 )
@@ -521,7 +521,7 @@ def apply_demo_context_evidence(
         limitations.append(mock_notice)
     if uses_financial_context and context.defaulted_fields:
         limitations.append(
-            "DB에서 가져오지 못한 금액은 승인된 데모 기준에 따라 0원으로 처리했습니다."
+            "확인되지 않은 금액은 승인된 기준에 따라 0원으로 처리했어요."
         )
 
     return response.model_copy(
