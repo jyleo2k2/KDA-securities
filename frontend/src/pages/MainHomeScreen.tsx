@@ -706,11 +706,11 @@ export function MainHomeScreen({
 
         <div className="mhs-strategy-heading-row">
           <h2 className="mhs-section-title mhs-section-title-tight">
-            전략 설명<br />
-            <span className="mhs-section-title-gold">전략별 계획수익률</span>
+            연금KDA&apos;s <span className="mhs-section-title-gold">Pick</span>
           </h2>
           <button type="button" className="mhs-strategy-more" onClick={onOpenStrategyExplore}>시나리오·더보기 +</button>
         </div>
+        <p className="mhs-strategy-intro">연금 KDA가 운용하는 전략들을 따라해보세요!</p>
 
         <div
           className={`mhs-strategy-scroll${isStrategyDragging ? " is-dragging" : ""}`}
