@@ -8,6 +8,7 @@ import {
   calculateCombinedPension,
   calculatePensionTaxCredit,
 } from "../api/client";
+import pensionCalculatorHtml from "../../public/pension-calculator-html/연금계산기.dc.html?raw";
 import { PensionPlannerPage } from "./PensionPlannerPage";
 
 vi.mock("../api/client", () => ({
@@ -37,6 +38,29 @@ describe("PensionPlannerPage", () => {
     expect(screen.getByTitle("예상 연금 계산 및 세액공제 확인")).toHaveStyle({
       height: "100%",
     });
+  });
+
+  it("moves every monetary slider in 1만원 increments", () => {
+    const calculatorDocument = new DOMParser().parseFromString(
+      pensionCalculatorHtml,
+      "text/html",
+    );
+    const monetaryRanges = [
+      "onMonthly",
+      "onPaidP",
+      "onPaidI",
+      "onIsa",
+    ].map((handler) => calculatorDocument.querySelector<HTMLInputElement>(
+      `input[type="range"][oninput*="${handler}"]`,
+    ));
+
+    expect(monetaryRanges).not.toContain(null);
+    expect(monetaryRanges.map((range) => range?.step)).toEqual([
+      "1",
+      "1",
+      "1",
+      "1",
+    ]);
   });
 
   it("forwards the calculator back button to the supplied callback", () => {

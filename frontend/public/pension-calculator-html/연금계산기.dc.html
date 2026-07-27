@@ -129,7 +129,7 @@
               <span style="font-size:15.5px; font-weight:600; color:#4A5058;">월 납입액</span>
               <span style="font-size:19px; font-weight:800;">{{ monthlyText }}</span>
             </div>
-            <input type="range" class="brand-range" min="0" max="150" step="5" value="{{ monthly }}" onInput="{{ onMonthly }}" style="--fill:{{ monthlyFill }}; opacity:{{ monthlyOpacity }};">
+            <input type="range" class="brand-range" min="0" max="150" step="1" value="{{ monthly }}" onInput="{{ onMonthly }}" style="--fill:{{ monthlyFill }}; opacity:{{ monthlyOpacity }};">
           </div>
 
         </div>
@@ -203,7 +203,7 @@
             <span style="font-size:12px; color:#166F39; font-weight:700;">총한도의 {{ pPctText }}</span>
             <span style="font-size:12px; color:#9AA0A6; font-weight:600;">600만원</span>
           </div>
-          <input type="range" class="brand-range" min="0" max="600" step="10" value="{{ paidP }}" onInput="{{ onPaidP }}" style="--fill:{{ pFill }}; margin-top:16px;">
+          <input type="range" class="brand-range" min="0" max="600" step="1" value="{{ paidP }}" onInput="{{ onPaidP }}" style="--fill:{{ pFill }}; margin-top:16px;">
           <div style="background:#F6FBF7; border-radius:12px; padding:13px 15px; margin-top:16px; line-height:1.5;">
             <sc-if value="{{ pNotFull }}" hint-placeholder-val="{{ true }}"><span style="font-size:14px; font-weight:600; color:#333;">{{ remPText }} 더 납입하면 </span><span style="font-size:14px; font-weight:800; color:#166F39;">{{ moreDeductPText }}</span><span style="font-size:14px; font-weight:600; color:#333;"> 더 공제받아요</span></sc-if>
             <sc-if value="{{ pFull }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px; font-weight:700; color:#166F39;">연금저축 공제한도 600만원을 모두 채웠어요</span></sc-if>
@@ -230,7 +230,7 @@
             <span style="font-size:12px; color:#B7791F; font-weight:700;">합산 공제한도의 {{ iPctText }}</span>
             <span style="font-size:12px; color:#9AA0A6; font-weight:600;">900만원</span>
           </div>
-          <input type="range" class="brand-range tax-range-irp" min="{{ iSliderMin }}" max="900" step="10" value="{{ eligibleTotal }}" onInput="{{ onPaidI }}" style="--fill:{{ iFill }}; margin-top:16px;">
+          <input type="range" class="brand-range tax-range-irp" min="{{ iSliderMin }}" max="900" step="1" value="{{ eligibleTotal }}" onInput="{{ onPaidI }}" style="--fill:{{ iFill }}; margin-top:16px;">
           <div style="background:#F6FBF7; border-radius:12px; padding:13px 15px; margin-top:16px; line-height:1.5;">
             <sc-if value="{{ iNotFull }}" hint-placeholder-val="{{ true }}"><span style="font-size:14px; font-weight:600; color:#333;">{{ remIText }} 더 납입하면 </span><span style="font-size:14px; font-weight:800; color:#166F39;">{{ moreDeductIText }}</span><span style="font-size:14px; font-weight:600; color:#333;"> 더 공제받아요</span></sc-if>
             <sc-if value="{{ iFull }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px; font-weight:700; color:#166F39;">연금계좌 합산 공제한도 900만원을 모두 채웠어요</span></sc-if>
@@ -259,7 +259,7 @@
             <span style="font-size:14px; font-weight:700; color:#333;">ISA 계좌 전환(납입) 금액</span>
             <span style="font-size:17px; font-weight:800;">{{ isaText }}</span>
           </div>
-          <input type="range" class="brand-range" min="0" max="3000" step="100" value="{{ isa }}" onInput="{{ onIsa }}" style="--fill:{{ isaFill }};">
+          <input type="range" class="brand-range" min="0" max="3000" step="1" value="{{ isa }}" onInput="{{ onIsa }}" style="--fill:{{ isaFill }};">
 
           <div style="background:#F1F6FB; border-radius:12px; padding:14px 16px; margin-top:16px;">
             <div style="display:flex; justify-content:space-between; align-items:baseline;">
