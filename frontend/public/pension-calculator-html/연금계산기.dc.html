@@ -87,7 +87,35 @@
           <div style="font-size:12.5px; color:#9AA0A6; font-weight:500; margin-top:10px; line-height:1.5;">예상 수익률이 유지된다고 가정한 참고 수치이며, 실제 수령액은 운용 성과에 따라 달라질 수 있어요.</div>
         </div>
 
-        <div style="background:#fff; border-radius:18px; padding:22px 20px; margin-top:16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+        <div data-planner-section="strategy" style="background:#fff; border-radius:18px; padding:22px 20px; margin-top:16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+            <div style="width:4px; height:18px; border-radius:2px; background:#22A94D;"></div>
+            <span style="font-size:17px; font-weight:800;">투자 전략 선택</span>
+          </div>
+          <div data-strategy-strip style="display:flex; gap:8px; overflow-x:auto; margin:0 -20px; padding:0 20px 4px; scroll-behavior:smooth;">
+            <sc-for list="{{ strategies }}" as="s" hint-placeholder-count="4">
+              <button type="button" data-strategy-id="{{ s.id }}" onClick="{{ s.select }}" style="{{ s.chipStyle }}">{{ s.name }}</button>
+            </sc-for>
+            <div aria-hidden="true" style="flex:0 0 calc(100% - 64px);"></div>
+          </div>
+
+          <div style="background:#F6F7F8; border-radius:14px; padding:16px; margin-top:14px;">
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0;"><span style="font-size:12.5px; color:#8B9096; font-weight:700; flex:none;">ETF 구현 방식</span><span style="font-size:12.5px; font-weight:700; text-align:right;">{{ selEtf }}</span></div>
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0;"><span style="font-size:12.5px; color:#8B9096; font-weight:700; flex:none;">기본 CMA</span><span style="font-size:12.5px; font-weight:700; text-align:right;">{{ selCma }}</span></div>
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0;"><span style="font-size:12.5px; color:#8B9096; font-weight:700; flex:none;">불확실성 할인</span><span style="font-size:12.5px; font-weight:700; text-align:right;">{{ selDiscount }}</span></div>
+            <div style="height:1px; background:#E6E8EB; margin:6px 0;"></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0;"><span style="font-size:13px; color:#4A5058; font-weight:700; flex:none;">잠정 계획수익률¹</span><span style="font-size:16px; font-weight:800; color:#166F39; text-align:right;">{{ selRateText }}</span></div>
+          </div>
+
+          <sc-if value="{{ selWarn }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#FFF4D6; border-radius:12px; padding:12px 14px; margin-top:12px; font-size:12.5px; font-weight:600; color:#9A6B00; line-height:1.5;"><b>주의</b> · 상품 확인 전에는 정확한 수익률을 산출할 수 없어요. 아래 계산에는 임시로 연 5.0%를 적용했어요.</div>
+          </sc-if>
+          <sc-if value="{{ selEstimate }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:11.5px; color:#9AA0A6; font-weight:600; margin-top:10px; line-height:1.5;">¹ 실제 편입 자산 구성에 따라 계획수익률은 달라질 수 있어 추정치로 계산돼요.</div>
+          </sc-if>
+        </div>
+
+        <div data-planner-section="inputs" style="background:#fff; border-radius:18px; padding:22px 20px; margin-top:16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
           <div style="display:flex; align-items:center; gap:8px; margin-bottom:20px;">
             <div style="width:4px; height:18px; border-radius:2px; background:#22A94D;"></div>
             <span style="font-size:17px; font-weight:800;">입력 조건</span>
@@ -131,35 +159,6 @@
             </div>
             <input type="range" class="brand-range" min="0" max="150" step="1" value="{{ monthly }}" onInput="{{ onMonthly }}" style="--fill:{{ monthlyFill }}; opacity:{{ monthlyOpacity }};">
           </div>
-
-        </div>
-
-        <div style="background:#fff; border-radius:18px; padding:22px 20px; margin-top:16px; box-shadow:0 2px 10px rgba(0,0,0,0.04);">
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
-            <div style="width:4px; height:18px; border-radius:2px; background:#22A94D;"></div>
-            <span style="font-size:17px; font-weight:800;">투자 전략 선택</span>
-          </div>
-          <div data-strategy-strip style="display:flex; gap:8px; overflow-x:auto; margin:0 -20px; padding:0 20px 4px; scroll-behavior:smooth;">
-            <sc-for list="{{ strategies }}" as="s" hint-placeholder-count="4">
-              <button type="button" data-strategy-id="{{ s.id }}" onClick="{{ s.select }}" style="{{ s.chipStyle }}">{{ s.name }}</button>
-            </sc-for>
-            <div aria-hidden="true" style="flex:0 0 calc(100% - 64px);"></div>
-          </div>
-
-          <div style="background:#F6F7F8; border-radius:14px; padding:16px; margin-top:14px;">
-            <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0;"><span style="font-size:12.5px; color:#8B9096; font-weight:700; flex:none;">ETF 구현 방식</span><span style="font-size:12.5px; font-weight:700; text-align:right;">{{ selEtf }}</span></div>
-            <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0;"><span style="font-size:12.5px; color:#8B9096; font-weight:700; flex:none;">기본 CMA</span><span style="font-size:12.5px; font-weight:700; text-align:right;">{{ selCma }}</span></div>
-            <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0;"><span style="font-size:12.5px; color:#8B9096; font-weight:700; flex:none;">불확실성 할인</span><span style="font-size:12.5px; font-weight:700; text-align:right;">{{ selDiscount }}</span></div>
-            <div style="height:1px; background:#E6E8EB; margin:6px 0;"></div>
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0;"><span style="font-size:13px; color:#4A5058; font-weight:700; flex:none;">잠정 계획수익률¹</span><span style="font-size:16px; font-weight:800; color:#166F39; text-align:right;">{{ selRateText }}</span></div>
-          </div>
-
-          <sc-if value="{{ selWarn }}" hint-placeholder-val="{{ false }}">
-            <div style="background:#FFF4D6; border-radius:12px; padding:12px 14px; margin-top:12px; font-size:12.5px; font-weight:600; color:#9A6B00; line-height:1.5;"><b>주의</b> · 상품 확인 전에는 정확한 수익률을 산출할 수 없어요. 아래 계산에는 임시로 연 5.0%를 적용했어요.</div>
-          </sc-if>
-          <sc-if value="{{ selEstimate }}" hint-placeholder-val="{{ false }}">
-            <div style="font-size:11.5px; color:#9AA0A6; font-weight:600; margin-top:10px; line-height:1.5;">¹ 실제 편입 자산 구성에 따라 계획수익률은 달라질 수 있어 추정치로 계산돼요.</div>
-          </sc-if>
         </div>
 
       </div>
