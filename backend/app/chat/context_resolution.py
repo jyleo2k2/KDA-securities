@@ -103,6 +103,14 @@ _ACCOUNT_LABELS = {
     AccountType.PENSION_SAVINGS: "연금저축펀드",
 }
 _NEWS_ORDINALS = ("첫 번째 기사", "두 번째 기사", "세 번째 기사")
+_REFERENT_KIND_BY_INTENT = {
+    ChatIntent.ACCOUNT_RULE: ContextReferentKind.ACCOUNT,
+    ChatIntent.PENSION_TAX: ContextReferentKind.ACCOUNT,
+    ChatIntent.PROVIDER_DISCLOSURE: ContextReferentKind.ACCOUNT,
+    ChatIntent.NEWS: ContextReferentKind.NEWS,
+    ChatIntent.ETF_THEME: ContextReferentKind.ETF,
+    ChatIntent.ETF_DISTRIBUTION: ContextReferentKind.ETF,
+}
 
 
 def build_context_resolution_payload(
@@ -115,18 +123,12 @@ def build_context_resolution_payload(
     referents: list[ContextReferent] = []
     if context is not None:
         if context.referents is not None:
-            kind = (
-                ContextReferentKind.NEWS
-                if context.referents.intent is ChatIntent.NEWS
-                else ContextReferentKind.ETF
-                if context.referents.intent
-                in {ChatIntent.ETF_THEME, ChatIntent.ETF_DISTRIBUTION}
-                else ContextReferentKind.ACCOUNT
-            )
-            referents.extend(
-                ContextReferent(ref=item.ref, label=item.label, kind=kind)
-                for item in context.referents.items
-            )
+            kind = _REFERENT_KIND_BY_INTENT.get(context.referents.intent)
+            if kind is not None:
+                referents.extend(
+                    ContextReferent(ref=item.ref, label=item.label, kind=kind)
+                    for item in context.referents.items
+                )
         if context.account_type is not None:
             referents.append(
                 ContextReferent(

@@ -183,6 +183,24 @@ def test_candidate_gate_requires_server_owned_referents() -> None:
     assert not is_context_resolution_candidate(request, _plan(request.message))
 
 
+def test_payload_excludes_referent_intents_outside_the_allowlist() -> None:
+    request = ChatRequest(
+        message="그거 자세히 알려줘",
+        conversation_context=ConversationContext(
+            last_intent=ChatIntent.GLOSSARY,
+            referents=ReferentList(
+                intent=ChatIntent.GLOSSARY,
+                items=[ReferentItem(ref="duration", label="듀레이션")],
+            ),
+        ),
+    )
+
+    payload = build_context_resolution_payload(request, _plan(request.message))
+
+    assert payload.referents == ()
+    assert not is_context_resolution_candidate(request, _plan(request.message))
+
+
 def test_decision_validation_accepts_supplied_account_comparison() -> None:
     payload = _payload(
         ContextReferent(ref="dc", label="DC형", kind=ContextReferentKind.ACCOUNT),
