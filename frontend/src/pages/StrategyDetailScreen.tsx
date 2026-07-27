@@ -6,6 +6,7 @@ import "./StrategyDetailScreen.css";
 
 interface StrategyDetailScreenProps {
   onBack: () => void;
+  onPartnerBrokerClick?: () => void;
 }
 
 const EXAMPLE_ASSET_BARS = [
@@ -34,7 +35,10 @@ function selectedStrategy(): StrategyExploreItem {
   return STRATEGIES.find((item) => item.id === id) ?? STRATEGIES[0];
 }
 
-export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX.Element {
+export function StrategyDetailScreen({
+  onBack,
+  onPartnerBrokerClick,
+}: StrategyDetailScreenProps): JSX.Element {
   const strategy = selectedStrategy();
   const [allocationSelection, setAllocationSelection] = useState<AllocationSelection>(null);
   const selectedAsset = allocationSelection?.group === "asset"
@@ -222,6 +226,14 @@ export function StrategyDetailScreen({ onBack }: StrategyDetailScreenProps): JSX
           <section className="sd-card sd-note">
             <p>전략 설명입니다. 미래 수익률을 예측하거나 특정 상품을 추천하지 않으며, 실제 운용·주문은 이용자가 직접 결정합니다.</p>
           </section>
+
+          <button
+            type="button"
+            className="sd-partner-cta"
+            onClick={onPartnerBrokerClick}
+          >
+            제휴 증권사로 이동
+          </button>
         </div>
       </section>
     </main>
