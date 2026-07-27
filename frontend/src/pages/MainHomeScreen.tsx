@@ -713,7 +713,7 @@ export function MainHomeScreen({
           </h2>
           <button type="button" className="mhs-strategy-more" onClick={onOpenStrategyExplore}>시나리오·더보기 +</button>
         </div>
-        <p className="mhs-strategy-intro">연금 KDA가 운용하는 전략들을 따라해보세요!</p>
+        <p className="mhs-strategy-intro">연금 KDA와 제휴하는 전략들로 연금을 꾸려보세요!</p>
 
         <div
           className={`mhs-strategy-scroll${isStrategyDragging ? " is-dragging" : ""}`}
