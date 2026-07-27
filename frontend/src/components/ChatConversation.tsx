@@ -37,7 +37,7 @@ export function ChatMessageList({
   }, [conversationKey]);
 
   return (
-    <div className="message-list">
+    <div className="message-list" aria-live="polite" aria-atomic="false">
       {visibleMessageCount < messages.length && (
         <button
           className="retry-button"
@@ -87,6 +87,7 @@ export function ChatComposer({
   isSending,
   onChange,
   onKeyDown,
+  onStop,
   onSubmit,
   textareaRef,
 }: {
@@ -95,6 +96,7 @@ export function ChatComposer({
   isSending: boolean;
   onChange: (value: string) => void;
   onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onStop: () => void;
   onSubmit: (event: FormEvent) => void;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
 }) {
@@ -111,7 +113,19 @@ export function ChatComposer({
           aria-label="질문 입력"
           disabled={isSending || deletingSessionId !== null}
         />
-        <button type="submit" disabled={input.trim().length < 2 || isSending || deletingSessionId !== null} aria-label="질문 보내기"><ChatIcon name="send" size={20} /></button>
+        {isSending ? (
+          <button
+            type="button"
+            className="composer-stop"
+            onClick={onStop}
+            aria-label="답변 멈추기"
+            title="답변 멈추기"
+          >
+            <ChatIcon name="stop" size={20} />
+          </button>
+        ) : (
+          <button type="submit" disabled={input.trim().length < 2 || deletingSessionId !== null} aria-label="질문 보내기"><ChatIcon name="send" size={20} /></button>
+        )}
       </form>
       <p>AI 답변은 투자 판단을 돕는 정보이며, 미래 수익을 보장하지 않습니다.</p>
     </div>

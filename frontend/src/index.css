@@ -733,6 +733,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .guide-tab .composer button { width: 36px; height: 36px; background: var(--chat-brand); color: #fff; }
 .guide-tab .composer button:hover:not(:disabled) { background: #148a3c; }
 .guide-tab .composer button:disabled { background: #cfd4da; color: #fff; }
+.guide-tab .composer button.composer-stop { background: #2f3438; color: #fff; }
+.guide-tab .composer button.composer-stop:hover { background: #14181b; }
 .guide-tab .composer-wrap > p { margin: 8px auto 0; max-width: 340px; color: #b0b5bb; font-size: 10px; line-height: 1.5; }
 
 @media (min-width: 391px) {

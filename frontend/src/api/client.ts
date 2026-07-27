@@ -204,6 +204,30 @@ export async function apiDelete(
   if (!response.ok) await parseOrThrow<never>(path, response);
 }
 
+// 서버가 응답 없이 멎으면 무한 대기 대신 오류로 떨어뜨려 사용자가 재시도할 수 있게 한다.
+const CHAT_STREAM_IDLE_TIMEOUT_MS = 45_000;
+
+async function readWithIdleTimeout(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  signal?: AbortSignal,
+): Promise<ReadableStreamReadResult<Uint8Array>> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      reader.read(),
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          if (signal?.aborted) return;
+          void reader.cancel().catch(() => undefined);
+          reject(new ApiError(undefined, "답변이 도착하지 않았어요. 다시 시도해 주세요."));
+        }, CHAT_STREAM_IDLE_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function apiPostStream<TBody>(
   path: string,
   body: TBody,
@@ -212,6 +236,7 @@ async function apiPostStream<TBody>(
   onNarrationUpdate: (answer: string) => void,
   accessToken?: string,
   idempotencyKey?: string,
+  signal?: AbortSignal,
 ): Promise<ChatStreamResult> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
@@ -223,6 +248,7 @@ async function apiPostStream<TBody>(
       ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
     },
     body: JSON.stringify(body),
+    signal,
   });
   if (!response.ok) return parseOrThrow(path, response);
   if (!response.body) throw new Error("스트리밍 응답을 받을 수 없습니다.");
@@ -232,7 +258,7 @@ async function apiPostStream<TBody>(
   let buffer = "";
   let result: ChatStreamResult | null = null;
   while (true) {
-    const { done, value } = await reader.read();
+    const { done, value } = await readWithIdleTimeout(reader, signal);
     buffer += decoder.decode(value, { stream: !done });
     let boundary = buffer.indexOf("\n\n");
     while (boundary >= 0) {
@@ -396,6 +422,7 @@ export function sendAuthenticatedChatStream(
   pensionTax?: PensionTaxScenarioInput,
   surveyProfile?: CompletedSurveyProfile | null,
   educationalPortfolio?: EducationalPortfolioInput,
+  signal?: AbortSignal,
 ): Promise<ChatStreamResult> {
   return apiPostStream(
     "/chat/stream",
@@ -412,6 +439,7 @@ export function sendAuthenticatedChatStream(
     onNarrationUpdate,
     accessToken,
     idempotencyKey,
+    signal,
   );
 }
 

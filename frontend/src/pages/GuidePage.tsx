@@ -1035,6 +1035,7 @@ export function GuidePage({
     resetStream,
     sendingStage,
     setMessages,
+    stopStream,
     streamingAnswer,
     streamingAnswerIsNarration,
     submitPrompt,
@@ -1792,7 +1793,7 @@ export function GuidePage({
           </div>
         </header>
 
-        <div className="conversation" aria-live="polite" ref={conversationRef}>
+        <div className="conversation" ref={conversationRef}>
           {messages.length === 0 ? (
             <div className="welcome design-welcome">
               <div className="design-brand">
@@ -1879,7 +1880,7 @@ export function GuidePage({
                 />
               )}
               renderStreamingAnswer={() => streamingAnswer ? (
-                <div className="message-bubble" aria-live="polite">
+                <div className="message-bubble">
                   <ChatTypingAnswer
                     animate={!streamingAnswerIsNarration}
                     intervalMs={typingIntervalMs}
@@ -1905,6 +1906,7 @@ export function GuidePage({
           isSending={isSending}
           onChange={setInput}
           onKeyDown={handleKeyDown}
+          onStop={stopStream}
           onSubmit={handleSubmit}
           textareaRef={textareaRef}
         />
