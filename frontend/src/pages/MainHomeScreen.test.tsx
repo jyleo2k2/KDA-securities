@@ -131,7 +131,7 @@ describe("MainHomeScreen", () => {
   it("shows the authenticated owner's engine aggregation", () => {
     renderHome();
 
-    expect(screen.getByText(/슬랑이를/)).toBeInTheDocument();
+    expect(screen.getByText("만져 보세요!")).toBeInTheDocument();
     expect(screen.getByAltText("슬랑이")).toBeInTheDocument();
     expect(screen.getByText("60,000,000원")).toBeInTheDocument();
     expect(screen.getByText("박준호님 · 2026-07-23 기준")).toBeInTheDocument();
@@ -144,11 +144,11 @@ describe("MainHomeScreen", () => {
       .toBeInTheDocument();
   });
 
-  it("omits the supporting descriptions from both promo cards", () => {
+  it("shows only the Slangi supporting description", () => {
     renderHome();
 
     expect(screen.queryByText("지금 놓치고 있는 세액공제액이 얼마인지 확인해 보세요.")).not.toBeInTheDocument();
-    expect(screen.queryByText("톡톡 두드리면 오늘의 저축 팁을 알려드려요")).not.toBeInTheDocument();
+    expect(screen.getByText("슬랑이를 눌러 1원씩 적립해보세요")).toBeInTheDocument();
   });
 
   it("shows an unassessed profile state inside both promo cards", () => {
@@ -156,8 +156,8 @@ describe("MainHomeScreen", () => {
 
     expect(screen.getAllByLabelText(
       "저장 투자성향 진단 전, 최근 진단 진단 기록 없음",
-    )).toHaveLength(2);
-    expect(container.querySelector(".mhs-tax-card .mhs-promo-profile")).toBeInTheDocument();
+    )).toHaveLength(3);
+    expect(container.querySelectorAll(".mhs-tax-card .mhs-promo-profile")).toHaveLength(2);
     expect(container.querySelector(".mhs-greeting-card .mhs-promo-profile")).toBeInTheDocument();
   });
 
@@ -241,8 +241,8 @@ describe("MainHomeScreen", () => {
 
     expect(screen.getAllByLabelText(
       "저장 투자성향 적극투자형, 최근 진단 2026-07-22",
-    )).toHaveLength(2);
-    expect(container.querySelector(".mhs-tax-card .mhs-promo-profile")).toBeInTheDocument();
+    )).toHaveLength(3);
+    expect(container.querySelectorAll(".mhs-tax-card .mhs-promo-profile")).toHaveLength(2);
     expect(container.querySelector(".mhs-greeting-card .mhs-promo-profile")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /완료율 확인하기/ }));
     expect(onOpenPlanner).toHaveBeenCalledOnce();

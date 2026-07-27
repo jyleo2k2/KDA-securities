@@ -554,6 +554,7 @@ export function MainHomeScreen({
                   <div className="mhs-greeting-main">
                     <div className="mhs-greeting-copy">
                       <p className="mhs-greeting-title">슬랑이를 <span className="mhs-greeting-title-accent">만져 보세요!</span></p>
+                      <p className="mhs-greeting-sub">슬랑이를 눌러 1원씩 적립해보세요</p>
                     </div>
                     <img src={piggy} alt="슬랑이" className="mhs-greeting-img" />
                   </div>
@@ -563,15 +564,18 @@ export function MainHomeScreen({
               {/* 끝에서 첫 카드로 이어지는 모션만을 위한 복제본. 보조기술과 탭 순서에서는 제외한다. */}
               <div className="mhs-promo-slide" aria-hidden="true">
                 <div className="mhs-tax-card">
-                  <span className="mhs-tax-icon-wrap">
-                    <img src={taxCreditMissed} alt="" className="mhs-tax-icon" />
-                  </span>
-                  <div className="mhs-tax-copy">
-                    <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
-                    <button type="button" className="mhs-tax-button" tabIndex={-1}>
-                      완료율 확인하기 <span>→</span>
-                    </button>
+                  <div className="mhs-tax-main">
+                    <span className="mhs-tax-icon-wrap">
+                      <img src={taxCreditMissed} alt="" className="mhs-tax-icon" />
+                    </span>
+                    <div className="mhs-tax-copy">
+                      <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
+                      <button type="button" className="mhs-tax-button" tabIndex={-1}>
+                        완료율 확인하기 <span>→</span>
+                      </button>
+                    </div>
                   </div>
+                  {renderInvestmentProfileSummary("green")}
                 </div>
               </div>
             </div>
