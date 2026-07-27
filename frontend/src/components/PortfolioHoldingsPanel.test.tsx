@@ -559,9 +559,8 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.getByText("금리와 물가가 함께 오를 때")).toBeInTheDocument();
     expect(screen.queryByText("물가는 오르는데 경기는 나쁠 때")).not.toBeInTheDocument();
     expect(screen.getByText("-18.5%")).toBeInTheDocument();
-    expect(screen.getByText("내가 견딜 수 있다고 고른 범위 안")).toBeInTheDocument();
-    expect(screen.getByText(/내가 고른 손실 범위 20.0%/)).toBeInTheDocument();
-    expect(screen.getByText(/가장 큰 충격 가정 18.5%/)).toBeInTheDocument();
+    expect(screen.queryByLabelText("견딜 수 있는 손실 범위 점검")).not.toBeInTheDocument();
+    expect(screen.queryByText("내가 견딜 수 있다고 고른 범위 안")).not.toBeInTheDocument();
     expect(screen.getByText(/포트폴리오 위험정책/)).toBeInTheDocument();
     expect(screen.getByText(/미래 수익 예측은 아니에요/)).toBeInTheDocument();
     expect(screen.getAllByText(/미래 수익을 맞히는 값이 아닙니다/)).toHaveLength(2);
@@ -583,8 +582,9 @@ describe("EducationalPortfolioReview", () => {
         stress_loss_policy_status: "review_required",
       },
     }} />);
-    expect(screen.getByText("내가 고른 손실 범위를 다시 확인할 때")).toBeInTheDocument();
-    expect(screen.getAllByText(/자동 매도/)).toHaveLength(2);
+    expect(screen.queryByLabelText("견딜 수 있는 손실 범위 점검")).not.toBeInTheDocument();
+    expect(screen.queryByText("내가 고른 손실 범위를 다시 확인할 때")).not.toBeInTheDocument();
+    expect(screen.getAllByText(/자동 매도/)).toHaveLength(1);
 
     rerender(<EducationalPortfolioReview evaluation={{
       ...evaluation,

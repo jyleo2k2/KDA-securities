@@ -19,8 +19,9 @@ describe("StrategyExploreScreen", () => {
     const activeCard = screen.getByRole("button", { name: `1번째 전략 상세 보기: ${STRATEGIES[0].name}` });
 
     expect(document.querySelector(".se-brand-name")).toHaveTextContent("연금 KDA");
-    expect(document.querySelector(".se-brandc")).toHaveTextContent("연금 KDA의");
-    expect(document.querySelector(".se-headline")).toHaveTextContent("운용전략들을 따라 자산을 구성해봐요!");
+    expect(document.querySelector(".se-brandc")).toHaveTextContent("연금 KDA");
+    expect(document.querySelector(".se-headline")).toHaveTextContent("연금 KDA와 제휴하는");
+    expect(document.querySelector(".se-headline")).toHaveTextContent("증권사들의 전략들로 연금을 꾸려봐요!");
     expect(document.querySelector(".se-headline br")).not.toBeNull();
     expect(document.documentElement.style.getPropertyValue("--se-accent")).toBe(STRATEGIES[0].accent);
     fireEvent.click(activeCard);

@@ -42,12 +42,6 @@ const STRESS_SCENARIO_LABELS: Record<string, string> = {
   stagflation: "물가는 오르는데 경기는 나쁠 때",
 };
 
-const STRESS_POLICY_STATUS_LABELS = {
-  not_evaluated: "견딜 수 있는 손실과 아직 비교하지 않음",
-  within_user_limit: "내가 견딜 수 있다고 고른 범위 안",
-  review_required: "내가 고른 손실 범위를 다시 확인할 때",
-} as const;
-
 const STRATEGY_LABELS: Record<string, string> = {
   capital_preservation_core: "자본보전 중심 전략",
   defensive_diversified_core: "방어적 분산 전략",
@@ -375,12 +369,6 @@ function EducationalStrategyGuide({
 
 function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
   const complete = risk.status === "complete";
-  const hasStressPolicy = (
-    risk.stress_loss_limit_percent !== null
-    && risk.stress_loss_limit_percent !== undefined
-    && risk.worst_stress_loss_percent !== undefined
-  );
-  const reviewRequired = risk.stress_loss_policy_status === "review_required";
 
   return (
     <section className="portfolio-risk-review" aria-labelledby="portfolio-risk-title">
@@ -412,18 +400,6 @@ function PortfolioRiskReview({ risk }: { risk: PortfolioRiskEvaluation }) {
           </div>
         ))}
       </div>
-      {hasStressPolicy && (
-        <section
-          className={`portfolio-risk-policy ${reviewRequired ? "review-required" : "within-limit"}`}
-          aria-label="견딜 수 있는 손실 범위 점검"
-        >
-          <strong>{STRESS_POLICY_STATUS_LABELS[risk.stress_loss_policy_status]}</strong>
-          <p>
-            내가 고른 손실 범위 {percent(risk.stress_loss_limit_percent!)} · 가장 큰 충격 가정 {percent(risk.worst_stress_loss_percent)}
-          </p>
-          {reviewRequired && <small>목표 자산배분과 새 납입 계획을 다시 확인해 주세요. 자동 매도는 실행하지 않습니다.</small>}
-        </section>
-      )}
       <div className="planning-source-chips" aria-label="위험·스트레스 출처">
         {risk.sources.map((source) => (
           /^https?:\/\//.test(source.reference) ? (
