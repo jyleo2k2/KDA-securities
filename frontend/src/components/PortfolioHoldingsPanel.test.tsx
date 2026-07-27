@@ -563,16 +563,16 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.queryByText("내가 견딜 수 있다고 고른 범위 안")).not.toBeInTheDocument();
     expect(screen.getByText(/포트폴리오 위험정책/)).toBeInTheDocument();
     expect(screen.getByText(/미래 수익 예측은 아니에요/)).toBeInTheDocument();
-    expect(screen.getAllByText(/미래 수익을 맞히는 값이 아닙니다/)).toHaveLength(2);
-    expect(screen.getByText("현재 보유 ETF 장기 계산용 숫자")).toBeInTheDocument();
+    expect(screen.getAllByText(/미래 수익을 맞히는 값이 아닙니다/)).toHaveLength(1);
+    expect(screen.queryByText("현재 보유 ETF 장기 계산용 숫자")).not.toBeInTheDocument();
     expect(screen.getByText("목표 포트폴리오 장기 계산용 숫자")).toBeInTheDocument();
-    expect(screen.getAllByText("6.7%")).toHaveLength(2);
-    expect(screen.getAllByText("6.2%")).toHaveLength(4);
-    expect(screen.getAllByText(/비슷한 자산의 장기 전망 사용/)).toHaveLength(2);
-    expect(screen.getAllByText("-0.5%")).toHaveLength(2);
-    expect(screen.getAllByText("-0.1%")).toHaveLength(2);
-    expect(screen.getAllByText(/과거 수익률 미사용/)).toHaveLength(2);
-    expect(screen.getAllByRole("link", { name: /J.P. Morgan 2026/ })).toHaveLength(2);
+    expect(screen.getAllByText("6.7%")).toHaveLength(1);
+    expect(screen.getAllByText("6.2%")).toHaveLength(2);
+    expect(screen.getAllByText(/비슷한 자산의 장기 전망 사용/)).toHaveLength(1);
+    expect(screen.getAllByText("-0.5%")).toHaveLength(1);
+    expect(screen.getAllByText("-0.1%")).toHaveLength(1);
+    expect(screen.getAllByText(/과거 수익률 미사용/)).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: /J.P. Morgan 2026/ })).toHaveLength(1);
 
     rerender(<EducationalPortfolioReview evaluation={{
       ...evaluation,
