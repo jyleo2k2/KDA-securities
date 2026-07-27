@@ -335,8 +335,8 @@ _ACRONYM_ENDS_WITH_CONSONANT = {
     "ETF": False,
     "TDF": False,
     "IRP": False,
-    # "에스앤피오백"·"나스닥"으로 읽어 각각 받침이 없고 있다.
-    "S&P500": False,
+    # "에스앤피오백"·"나스닥"으로 읽어 둘 다 받침이 있다.
+    "S&P500": True,
     "나스닥": True,
 }
 

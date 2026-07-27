@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-type ChatIconName = "spark" | "send" | "book" | "database" | "chevron" | "shield" | "refresh" | "sun" | "chart" | "star" | "trash";
+type ChatIconName = "spark" | "send" | "book" | "database" | "chevron" | "shield" | "refresh" | "sun" | "chart" | "star" | "trash" | "stop";
 
 export function ChatIcon({ name, size = 20 }: { name: ChatIconName; size?: number }) {
   const paths: Record<ChatIconName, ReactNode> = {
@@ -15,6 +15,7 @@ export function ChatIcon({ name, size = 20 }: { name: ChatIconName; size?: numbe
     chart: <><path d="M4 20V4M4 20h16" /><path d="m8 15 3-4 3 2 5-6" /></>,
     star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />,
     trash: <path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6" />,
+    stop: <rect x="7" y="7" width="10" height="10" rx="2" />,
   };
   return <svg aria-hidden="true" viewBox="0 0 24 24" width={size} height={size}>{paths[name]}</svg>;
 }

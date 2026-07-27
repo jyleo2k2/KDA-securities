@@ -947,6 +947,36 @@ describe("GuidePage chat history deletion", () => {
                 { horizon_months: 6, reason: "end_observation_unavailable" },
                 { horizon_months: 12, reason: "end_observation_unavailable" },
               ],
+            }, {
+              isu_code: "snapshot:missing-etf",
+              isu_name: "관측값 없는 ETF",
+              history_source: "unavailable",
+              source: null,
+              history_start: null,
+              history_end: null,
+              horizons: [],
+              gaps: [
+                { horizon_months: 3, reason: "total_return_history_unavailable" },
+                { horizon_months: 6, reason: "total_return_history_unavailable" },
+                { horizon_months: 12, reason: "total_return_history_unavailable" },
+              ],
+            }],
+          }, {
+            regime_period: "2023-12-01",
+            distance: "0.3000",
+            etfs: [{
+              isu_code: "snapshot:missing-regime-etf",
+              isu_name: "전체 미관측 유사국면 ETF",
+              history_source: "unavailable",
+              source: null,
+              history_start: null,
+              history_end: null,
+              horizons: [],
+              gaps: [
+                { horizon_months: 3, reason: "total_return_history_unavailable" },
+                { horizon_months: 6, reason: "total_return_history_unavailable" },
+                { horizon_months: 12, reason: "total_return_history_unavailable" },
+              ],
             }],
           }],
           is_forecast: false,
@@ -976,6 +1006,7 @@ describe("GuidePage chat history deletion", () => {
     const outcomeCard = screen.getByLabelText("과거 유사국면 ETF 근거 카드");
     const outcomeDisclosure = within(outcomeCard).getByText("과거 실적은 필요할 때 확인").closest("details");
     expect(outcomeDisclosure).not.toHaveAttribute("open");
+    expect(within(outcomeCard).getByText("1개 유사국면")).toBeInTheDocument();
     fireEvent.click(within(outcomeCard).getByText("과거 실적은 필요할 때 확인").closest("summary")!);
     expect(outcomeDisclosure).toHaveAttribute("open");
     const regimeDisclosure = within(outcomeCard).getByText("2024년 1월 유사국면").closest("details");
@@ -985,7 +1016,11 @@ describe("GuidePage chat history deletion", () => {
     expect(within(outcomeCard).getByText("KODEX 200")).toBeInTheDocument();
     expect(within(outcomeCard).getByText("10.0000%")).toBeInTheDocument();
     expect(within(outcomeCard).getByText("최대낙폭 -25%")).toBeInTheDocument();
-    expect(within(outcomeCard).getAllByText("관측 부족")).toHaveLength(2);
+    expect(within(outcomeCard).queryByText("관측 부족")).not.toBeInTheDocument();
+    expect(within(outcomeCard).queryByText("총수익 이력 없음")).not.toBeInTheDocument();
+    expect(within(outcomeCard).queryByText("관측값 없는 ETF")).not.toBeInTheDocument();
+    expect(within(outcomeCard).queryByText("2023년 12월 유사국면")).not.toBeInTheDocument();
+    expect(within(outcomeCard).queryByText(/snapshot:/)).not.toBeInTheDocument();
     expect(within(outcomeCard).getByText(/KIND 현금분배/)).toBeInTheDocument();
   });
 

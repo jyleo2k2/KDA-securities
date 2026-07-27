@@ -33,6 +33,7 @@ from backend.app.chat.models import (
 )
 from backend.app.chat.narrator import (
     NARRATION_CACHE_VERSION,
+    NARRATION_MAX_CHARS,
     PREWARM_MODEL,
     REGISTER_RULE,
     SYSTEM_PROMPT,
@@ -264,13 +265,22 @@ def test_general_account_overview_uses_deterministic_verified_response() -> None
     assert response.numeric_evidence
 
 
-def test_explicit_pension_basics_question_returns_verified_overview() -> None:
+def test_explicit_pension_basics_question_returns_definition_first() -> None:
+    """제도의 뜻을 물으면 규칙 전문 대신 짧은 정의와 계좌 소개로 답한다."""
+
     response = service().ask(ChatRequest(message="연금이 뭐야?"))
 
     assert response.intent is ChatIntent.ACCOUNT_RULE
-    assert response.data_mode == "verified_pension_account_overview"
+    assert response.data_mode == "verified_pension_account_brief"
     assert response.answer
     assert response.sources
+
+
+def test_pension_overview_request_keeps_full_rules() -> None:
+    response = service().ask(ChatRequest(message="연금계좌 전체적으로 정리해줘"))
+
+    assert response.intent is ChatIntent.ACCOUNT_RULE
+    assert response.data_mode == "verified_pension_account_overview"
 
 
 @pytest.mark.parametrize(
@@ -396,13 +406,8 @@ def test_dc_account_card_uses_approved_copy() -> None:
     assert response.sections[0].blocks[0].text == (
         "한눈에 보면: 회사가 납입하는 퇴직급여를 근로자가 직접 투자하는 "
         "퇴직연금\n\n"
-        "핵심 특징: 근로자는 회사가 납입한 적립금을 직접 운용하고, 퇴직할 때 "
-        "회사가 납입한 원금과 운용손익을 합쳐 퇴직급여로 받습니다. 따라서 "
-        "운용을 잘하면 퇴직급여가 증가하지만, 반대로 손실이 나면 받을 금액도 "
-        "줄어들 수 있습니다. 근로자가 DC계좌에 자기 돈을 추가로 넣을 수도 "
-        "있으며, 이 추가납입액은 연금저축·IRP와 합산해 연 900만 원까지 "
-        "세액공제 대상이 됩니다. 그러나 회사가 의무적으로 낸 부담금은 본인의 "
-        "세액공제 대상이 아닙니다."
+        "핵심 특징: 회사가 넣어준 돈을 내가 직접 굴리고, 그 결과가 퇴직급여에 "
+        "그대로 반영돼요."
     )
     assert "12분의 1" not in response.sections[0].plain_text()
 
@@ -906,7 +911,7 @@ def test_narrator_prompt_targets_adult_beginners_with_defined_terms() -> None:
     assert "유아적인 비유나 과도한 단순화는 피하고" in SYSTEM_PROMPT
     assert "반말" not in SYSTEM_PROMPT
     assert "같은 내용을 반복하지 않는다" in SYSTEM_PROMPT
-    assert "본문은 두세 문장, 350자 이내" in SYSTEM_PROMPT
+    assert f"본문은 두 문장 이내, {NARRATION_MAX_CHARS}자 이내" in SYSTEM_PROMPT
 
 
 def test_disclosure_comparison_uses_only_repository_numbers() -> None:

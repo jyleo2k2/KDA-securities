@@ -512,12 +512,16 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.getByText(/실제 계산 결과나 계좌별 한도는 변경하지 않습니다/)).toBeInTheDocument();
     expect(screen.getByText("각 자산 유형별로 ±5.0%p만큼의 차이가 날 수 있어요.")).toBeInTheDocument();
     expect(screen.getByText("1개 자산군의 비중을 확인해 보세요")).toBeInTheDocument();
-    const allocationDetails = screen.getByText("자산 구성과 조정 기준").closest("details");
+    const allocationTitle = screen.getByText("자산 구성과 조정 기준");
+    const allocationSection = allocationTitle.closest("section");
     const evidenceDetails = screen.getByText("위험과 수익률 계산 근거").closest("details");
-    expect(allocationDetails).not.toHaveAttribute("open");
+    expect(allocationTitle.closest("details")).toBeNull();
+    expect(allocationSection).toHaveClass("portfolio-review-priority");
+    expect(
+      allocationTitle.compareDocumentPosition(sectorGuideTitle)
+      & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(evidenceDetails).not.toHaveAttribute("open");
-    fireEvent.click(screen.getByText("자산 구성과 조정 기준").closest("summary")!);
-    expect(allocationDetails).toHaveAttribute("open");
 
     expect(screen.getByText("70.0%")).toBeInTheDocument();
     expect(screen.getByText("핵심 주식")).toBeInTheDocument();

@@ -76,6 +76,32 @@ def pension_tax_credit_follow_ups() -> list[SuggestedFollowUp]:
     ]
 
 
+def pension_account_brief_follow_ups() -> list[SuggestedFollowUp]:
+    """계좌 소개 카드에서 덜어낸 세부를 골라 볼 수 있게 잇는다.
+
+    카드는 계좌마다 한 줄만 남기고, 세액공제·위험자산 한도·내 전략처럼
+    이어서 궁금해지는 주제는 사용자가 고를 때만 펼친다.
+    """
+
+    return [
+        SuggestedFollowUp(
+            follow_up_id="brief_to_tax",
+            label="세액공제 얼마나",
+            message="올해 연금저축에 600만원 넣으면 세액공제 얼마야?",
+        ),
+        SuggestedFollowUp(
+            follow_up_id="brief_to_risk_cap",
+            label="위험자산 한도",
+            message="IRP 위험자산 한도 기준이 궁금해",
+        ),
+        SuggestedFollowUp(
+            follow_up_id="brief_to_edu",
+            label="내 상황에 맞는 전략",
+            message="내 상황에 맞는 연금저축전략을 알려줘.",
+        ),
+    ]
+
+
 def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp]:
     stock_news_decline = graceful_decline(GracefulDeclineKind.STOCK_NEWS, "")
     if stock_news_decline.answer in response.limitations:
@@ -184,7 +210,7 @@ def build_suggested_follow_ups(response: ChatResponse) -> list[SuggestedFollowUp
     if response.data_mode == "verified_pension_tax_rule_brief":
         return pension_tax_credit_follow_ups()
     if response.data_mode == "verified_pension_account_brief":
-        return []
+        return pension_account_brief_follow_ups()
     if response.intent == ChatIntent.ACCOUNT_RULE:
         return [
             SuggestedFollowUp(

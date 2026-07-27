@@ -68,16 +68,28 @@ export function useChatStream({
 }: UseChatStreamOptions) {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [isSending, setIsSending] = useState(false);
-  const [sendingStage, setSendingStage] = useState("질문을 살펴보고 있어요.");
+  const [sendingStage, setSendingStage] = useState("질문을 이해하고 있어요.");
   const [streamingAnswer, setStreamingAnswer] = useState("");
   const [streamingAnswerIsNarration, setStreamingAnswerIsNarration] = useState(false);
   const sendingRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const stoppedByUserRef = useRef(false);
 
   function resetStream() {
+    // 화면 상태만 비우면 서버는 계속 답변을 만든다. 진행 중인 요청을 함께 끊는다.
+    abortRef.current?.abort();
     sendingRef.current = false;
+    abortRef.current = null;
     setIsSending(false);
     setStreamingAnswer("");
     setStreamingAnswerIsNarration(false);
+  }
+
+  // 사용자가 정지 버튼을 눌렀을 때만 안내 말풍선을 남긴다.
+  function stopStream() {
+    if (!sendingRef.current) return;
+    stoppedByUserRef.current = true;
+    abortRef.current?.abort();
   }
 
   async function submitPrompt(
@@ -129,6 +141,10 @@ export function useChatStream({
     setStreamingAnswer("");
     setStreamingAnswerIsNarration(false);
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+    stoppedByUserRef.current = false;
+
     const appendAnswerDelta = (delta: string) => {
       if (isCurrentOperation(
         authGeneration,
@@ -163,6 +179,7 @@ export function useChatStream({
         undefined,
         surveyProfile,
         educationalPortfolio,
+        controller.signal,
       );
       if (!isCurrentOperation(
         authGeneration,
@@ -190,6 +207,20 @@ export function useChatStream({
         requestToken,
         conversationGeneration,
       )) return;
+      // 사용자가 직접 멈춘 경우는 실패가 아니므로 오류 말풍선을 남기지 않는다.
+      if (stoppedByUserRef.current) {
+        setMessages((current) => [...current, {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          text: "답변을 멈췄어요. 다시 물어보시면 이어서 도와드릴게요.",
+          failedPrompt: normalized,
+          failedEducationalPortfolio: educationalPortfolio,
+          createdAt: new Date(),
+        }]);
+        return;
+      }
+      // 새 대화 시작이나 사용자 전환으로 끊긴 요청은 조용히 버린다.
+      if (controller.signal.aborted) return;
       const message = requestToken
         ? authenticatedErrorMessage(error)
         : "답변을 준비하지 못했어요. 잠시 후 다시 시도해 주세요.";
@@ -222,6 +253,7 @@ export function useChatStream({
     resetStream,
     sendingStage,
     setMessages,
+    stopStream,
     streamingAnswer,
     streamingAnswerIsNarration,
     submitPrompt,

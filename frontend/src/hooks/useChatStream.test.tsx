@@ -81,6 +81,54 @@ describe("useChatStream", () => {
     });
   });
 
+  it("aborts the in-flight request and reports the stop to the user", async () => {
+    let observedSignal: AbortSignal | undefined;
+    vi.mocked(sendAuthenticatedChatStream).mockImplementation(async (
+      ..._args: Parameters<typeof sendAuthenticatedChatStream>
+    ) => {
+      observedSignal = _args[12] as AbortSignal | undefined;
+      return new Promise<ChatStreamResult>((_resolve, reject) => {
+        observedSignal?.addEventListener("abort", () => {
+          reject(new DOMException("Aborted", "AbortError"));
+        });
+      });
+    });
+    const { result } = renderHook(() => useChatStream({
+      accessToken: "access-token",
+      authenticatedUserId: "user-1",
+      activeSessionId: null,
+      conversationContext: null,
+      conversationGenerationRef: { current: 0 },
+      deletingSessionId: null,
+      selectedScenario: "",
+      surveyProfile: null,
+      isCurrentOperation: () => true,
+      onAuthenticatedError: vi.fn(),
+      onConversationContext: vi.fn(),
+      onComplete: vi.fn(),
+      onInputClear: vi.fn(),
+      onPersistedSession: vi.fn(),
+      onServerReady: vi.fn(),
+      onStart: vi.fn(),
+      getAuthGeneration: () => 0,
+    }));
+
+    act(() => {
+      void result.current.submitPrompt("IRP 한도를 알려줘");
+    });
+    await waitFor(() => expect(result.current.isSending).toBe(true));
+
+    act(() => result.current.stopStream());
+
+    await waitFor(() => {
+      expect(observedSignal?.aborted).toBe(true);
+      expect(result.current.isSending).toBe(false);
+      expect(result.current.messages.at(-1)?.text).toBe(
+        "답변을 멈췄어요. 다시 물어보시면 이어서 도와드릴게요.",
+      );
+    });
+  });
+
   it("does not send an SSE request without a login session", async () => {
     const onAuthenticatedError = vi.fn();
     const { result } = renderHook(() => useChatStream({

@@ -325,7 +325,6 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .macro-regime-horizons > div { display: grid; gap: 3px; min-width: 0; padding: 8px 6px; border: 1px solid #e2ebe5; border-radius: 8px; background: #fff; }
 .macro-regime-horizons span, .macro-regime-horizons small, .macro-regime-horizons em { color: #77857d; font-size: 8px; font-style: normal; }
 .macro-regime-horizons strong { font-size: 12px; }.macro-regime-horizons strong.positive { color: #14784f; }.macro-regime-horizons strong.negative { color: #b84c4c; }
-.macro-regime-horizons .unavailable strong { color: #7e8983; font-size: 10px; }
 .macro-regime-source-chip { display: inline-block; margin-top: 8px; padding: 5px 7px; border-radius: 999px; background: #e4f0e8; color: #266448; font-size: 8px; font-weight: 700; }
 .macro-metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }.macro-metric-grid > a { color: inherit; text-decoration: none; }
 .macro-metric-item { min-height: 75px; display: flex; flex-direction: column; padding: 9px; border-radius: 9px; background: #f3f7f2; transition: background .15s ease; }.macro-metric-item:hover { background: #eaf3e9; }.macro-metric-item small { min-height: 25px; color: #6f7c74; font-size: 8px; line-height: 1.4; }.macro-metric-item > strong { margin: 4px 0 6px; color: #173f30; font-size: 16px; }.macro-metric-item > span { display: inline-flex; align-items: center; gap: 2px; margin-top: auto; color: #548064; font-size: 7px; font-weight: 700; }
@@ -502,6 +501,10 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .portfolio-review-details[open] > summary { border-bottom: 1px solid #e6eee7; }
 .portfolio-review-details[open] > summary em { font-size: 0; }
 .portfolio-review-details[open] > summary em::after { content: "접기"; font-size: 9px; }
+.portfolio-review-priority { min-width: 0; overflow: hidden; border: 1px solid #bcd8c2; border-radius: 12px; background: #fff; box-shadow: 0 6px 18px rgba(35, 81, 55, .08); }
+.portfolio-review-priority > header { display: grid; gap: 2px; padding: 12px; border-bottom: 1px solid #dbe8dc; background: #f0f8f1; }
+.portfolio-review-priority > header small { color: #16864e; font-size: 8px; font-weight: 800; }
+.portfolio-review-priority > header h4 { margin: 0; color: #294838; font-size: 12px; }
 .portfolio-review-details-body { display: grid; min-width: 0; gap: 12px; padding: 12px; }
 .portfolio-sector-guide { display: grid; gap: 11px; padding: 13px; border: 1px solid #d9e8dc; border-radius: 12px; background: #f7fbf6; }
 .portfolio-sector-guide > header { display: grid; gap: 3px; }.portfolio-sector-guide > header > span { color: #16864e; font-size: 9px; font-weight: 800; }.portfolio-sector-guide h4 { margin: 0; color: #203c2e; font-size: 12px; }.portfolio-sector-guide > header p, .portfolio-sector-guide-note { margin: 0; color: #748178; font-size: 9px; line-height: 1.5; }
@@ -734,6 +737,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .guide-tab .composer button { width: 36px; height: 36px; background: var(--chat-brand); color: #fff; }
 .guide-tab .composer button:hover:not(:disabled) { background: #148a3c; }
 .guide-tab .composer button:disabled { background: #cfd4da; color: #fff; }
+.guide-tab .composer button.composer-stop { background: #2f3438; color: #fff; }
+.guide-tab .composer button.composer-stop:hover { background: #14181b; }
 .guide-tab .composer-wrap > p { margin: 8px auto 0; max-width: 340px; color: #b0b5bb; font-size: 10px; line-height: 1.5; }
 
 @media (min-width: 391px) {

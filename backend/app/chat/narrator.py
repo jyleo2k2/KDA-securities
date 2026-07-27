@@ -6,6 +6,7 @@
 
 import json
 import logging
+import re
 import threading
 from collections import OrderedDict
 from collections.abc import Iterable
@@ -89,6 +90,46 @@ REGISTER_RULE = (
     "말투를 지키되 과장된 감탄이나 근거 없는 안심은 넣지 않는다.\n\n"
 )
 
+# 내레이션 상한은 프롬프트·구조화 출력 스키마·후검증 세 곳이 같은 값을 쓴다.
+# 한 곳만 바꾸면 정상 내레이션이 길이 검증에 걸려 통째로 폴백된다.
+#
+# 상한 자체는 안전장치이고, 실제 분량은 프롬프트의 문장 수 지시가 정한다.
+# 세액공제와 중도해지를 함께 묻는 결정론 원문이 342자까지 나오므로 상한을
+# 그보다 낮추면 정상 답변이 폴백된다(실측: 280자로 낮췄을 때 재현).
+NARRATION_MAX_CHARS = 350
+
+# 구조화 출력 검증용 상한. 표시 상한(NARRATION_MAX_CHARS)을 조금 넘긴 출력은
+# 여기서 통과시켜 문장 경계 트림으로 다듬는다. 두 값을 같게 두면 트림이
+# 무력화된다(실측: 355자 입력이 재시도 1회 후 폴백).
+NARRATION_SCHEMA_MAX_CHARS = NARRATION_MAX_CHARS * 2
+
+# 상한을 넘겼을 때 문장을 통째로 버리면 사용자는 해요체 설명 대신 '-한다'체
+# 근거 원문을 보게 되어 한 대화 안에서 말투가 튄다. 넘친 만큼만 문장 경계에서
+# 덜어내면 남은 문장은 그대로 완결이라 중간이 끊기지 않는다.
+#
+# 뒤에 공백이나 문자열 끝이 오는 종결 부호만 경계로 본다. 원문 숫자의 쉼표는
+# 애초에 대상이 아니고 '1.5%'처럼 소수점 뒤에 숫자가 붙는 경우도 걸리지 않는다.
+# handlers/account_rules._SENTENCE_END와 같은 판정이며, 그쪽은 행 단위로
+# 이쪽은 문자 상한에 맞춰 쓴다.
+_SENTENCE_END = re.compile(r"[.!?](?=\s|$)")
+
+
+def _trim_to_sentence_boundary(text: str, limit: int) -> str:
+    """상한 안에서 마지막으로 완결된 문장까지만 남긴다.
+
+    첫 문장부터 상한을 넘으면 자를 지점이 없다. 그때는 빈 문자열을 돌려
+    호출부가 기존 폴백을 그대로 타게 한다(문장 중간을 잘라 내보내지 않는다).
+    """
+
+    if len(text) <= limit:
+        return text
+    end = 0
+    for match in _SENTENCE_END.finditer(text):
+        if match.end() > limit:
+            break
+        end = match.end()
+    return text[:end].rstrip()
+
 SYSTEM_PROMPT = (
     REGISTER_RULE
     +
@@ -104,8 +145,11 @@ SYSTEM_PROMPT = (
     "때만 한 문장 안에서 "
     "짧게 안내한다. "
     "과도하게 친근하거나 가벼운 말투, 근거 없는 안심·격려는 쓰지 않는다. "
-    "본문은 두세 문장, 350자 이내로 쓰고 모든 문장은 중간에 끊지 말고 "
-    "완결한다. "
+    f"본문은 두 문장 이내, {NARRATION_MAX_CHARS}자 이내로 쓰고 모든 문장은 "
+    "중간에 끊지 말고 완결한다. 결론과 그 근거가 되는 숫자만 남기고, 검증 "
+    "답변의 나머지 세부는 사용자가 후속 질문으로 골라 보므로 여기서 함께 "
+    "옮기지 않는다. 다만 검증 답변이 서로 다른 계산 결과를 여러 건 담고 "
+    "있으면 어느 것도 빠뜨리지 않는다. "
     "사실·외부 의견·서비스 해석의 경계를 유지하고 숫자와 단위는 원문 "
     "그대로 둔다."
     " 연금세액 Tool 입력이 제공되면 검증 답변을 쓰기 전에 요청된 "
@@ -123,10 +167,14 @@ class NarrationOutput(BaseModel):
     """
 
     narration: str = Field(
-        max_length=350,
+        # 스키마 상한은 표시 상한보다 넉넉하게 둔다. 두 값을 같게 두면 351자
+        # 출력이 구조화 검증에서 먼저 거부돼(재시도 1회 낭비 후 폴백) 문장
+        # 경계 트림에 도달하지 못한다. 표시 분량은 프롬프트 지시와 트림이 맡고
+        # 이 값은 폭주 출력만 막는다.
+        max_length=NARRATION_SCHEMA_MAX_CHARS,
         description=(
             "검증 답변을 투자 입문 성인에게 맞는 한국어로 "
-            "350자 이내에 요약한 한 문단"
+            f"{NARRATION_MAX_CHARS}자 이내에 요약한 한 문단"
         )
     )
 
@@ -487,8 +535,20 @@ class ClaudeNarrator:
             result = self._agent_for_model(model).run_sync(prompt)
             output = result.output
             candidate = output.narration.strip()
-            if not candidate or len(candidate) > 350:
-                raise ValueError("Claude returned an invalid narration")
+            if not candidate:
+                raise ValueError("Claude returned an empty narration")
+            if len(candidate) > NARRATION_MAX_CHARS:
+                # 넘친 문장을 버리면 말투가 근거 원문체로 튄다. 완결 문장까지만
+                # 남기고, 첫 문장부터 넘쳐 남길 것이 없을 때만 폴백한다.
+                candidate = _trim_to_sentence_boundary(
+                    candidate, NARRATION_MAX_CHARS
+                )
+                if not candidate:
+                    return self._fallback(
+                        response,
+                        "Claude 설명이 길어 검증 원문을 표시합니다.",
+                        reason="narration_too_long",
+                    )
         except (AgentRunError, ValueError):
             return self._fallback(
                 response,

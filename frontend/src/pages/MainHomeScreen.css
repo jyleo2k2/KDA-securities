@@ -25,15 +25,18 @@
 .mhs-promo-viewport { overflow: hidden; border-radius: 22px; cursor: grab; }
 .mhs-promo-viewport:active { cursor: grabbing; }
 .mhs-promo-track { display: flex; align-items: stretch; transition: transform .38s cubic-bezier(.23, 1, .32, 1); }
+/* 복제 슬라이드에서 원본 첫 카드로 되돌릴 때는 이동이 보이면 안 된다 */
+.mhs-promo-track.is-snapping { transition: none; }
 .mhs-promo-slide { display: flex; flex: 0 0 100%; min-width: 0; }
 .mhs-promo-dots { display: flex; justify-content: center; gap: 6px; margin-top: 9px; }
 .mhs-promo-dot { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 999px; background: #D8DED9; cursor: pointer; transition: width .2s ease, background .2s ease; }
 .mhs-promo-dot.is-active { width: 20px; background: #18A860; }
 .mhs-promo-dot:focus-visible { outline: 2px solid #18A860; outline-offset: 3px; }
 
-.mhs-greeting-card { background: #F1F3EE; border-radius: 22px; padding: 20px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; overflow: hidden; }
+.mhs-greeting-card { background: #F1F3EE; border-radius: 22px; padding: 18px 20px 15px; display: flex; flex-direction: column; align-items: stretch; gap: 14px; overflow: hidden; }
 .mhs-greeting-card-button { width: 100%; border: 0; font: inherit; text-align: left; cursor: pointer; }
 .mhs-greeting-card-button:focus-visible { outline: 3px solid #18A860; outline-offset: 3px; }
+.mhs-greeting-main { min-height: 112px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .mhs-greeting-title { font-size: 18px; font-weight: 900; color: #333; margin: 0; line-height: 1.4; }
 .mhs-greeting-title-accent { color: #18A860; }
 .mhs-greeting-sub { font-size: 13px; font-weight: 600; color: #8A9691; margin: 8px 0 0; line-height: 1.5; }
@@ -93,7 +96,8 @@
 .mhs-summary-cta-button { border: none; background: none; padding: 0; font-family: inherit; }
 .mhs-summary-cta-chevron { font-size: 16px; }
 
-.mhs-tax-card { width: 100%; border-radius: 22px; padding: 22px 22px; display: flex; align-items: center; gap: 18px; background-color: #18A860; }
+.mhs-tax-card { width: 100%; border-radius: 22px; padding: 18px 20px 15px; display: flex; flex-direction: column; align-items: stretch; gap: 14px; background-color: #18A860; }
+.mhs-tax-main { display: flex; align-items: center; gap: 18px; }
 .mhs-tax-icon-wrap { flex-shrink: 0; width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; }
 .mhs-tax-icon { width: 100%; height: 100%; object-fit: contain; }
 .mhs-tax-copy { flex: 1; min-width: 0; }
@@ -101,6 +105,16 @@
 .mhs-tax-title-accent { color: #FFD860; }
 .mhs-tax-sub { font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, .85); margin: 5px 0 0; line-height: 1.45; }
 .mhs-tax-button { margin-top: 14px; width: 100%; border: none; background: #fff; color: #18A860; font-family: inherit; font-size: 15px; font-weight: 800; padding: 12px 16px; border-radius: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, .12); }
+.mhs-promo-profile { width: 100%; min-width: 0; display: grid; grid-template-columns: auto auto 1px auto auto auto; align-items: center; justify-content: start; column-gap: 7px; padding: 9px 11px; border-radius: 12px; font-size: 11px; line-height: 1.25; white-space: nowrap; }
+.mhs-promo-profile-green { background: rgba(255, 255, 255, .14); }
+.mhs-promo-profile-neutral { background: #fff; box-shadow: inset 0 0 0 1px rgba(31, 56, 44, .08); }
+.mhs-promo-profile-label { color: #7B8982; font-weight: 650; }
+.mhs-promo-profile-value { color: #24312B; font-size: 12px; font-weight: 900; }
+.mhs-promo-profile-divider { width: 1px; height: 13px; background: #D6DDD9; }
+.mhs-promo-profile-expired { color: #C84C4C; font-size: 10px; font-weight: 900; }
+.mhs-promo-profile-green .mhs-promo-profile-label { color: rgba(255, 255, 255, .75); }
+.mhs-promo-profile-green .mhs-promo-profile-value { color: #fff; }
+.mhs-promo-profile-green .mhs-promo-profile-divider { background: rgba(255, 255, 255, .3); }
 .mhs-strategy-heading-row { display: flex; align-items: baseline; justify-content: space-between; margin: 44px 0 14px; }
 .mhs-strategy-more { font-size: 13px; font-weight: 800; color: #18A860; white-space: nowrap; cursor: pointer; background: none; border: none; padding: 0; font-family: inherit; }
 

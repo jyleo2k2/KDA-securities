@@ -876,29 +876,14 @@ export function EducationalPortfolioReview({
         <p title={evaluation.strategy_label}>{ACCOUNT_LABELS[evaluation.evaluated_input.account_type]} · {strategyLabel(evaluation.strategy_label)}</p>
       </header>
 
-      <PortfolioSectorGuide riskProfile={evaluation.evaluated_input.risk_profile} />
-      <RebalancingCadenceGuide evaluation={evaluation} />
-
-      <div className="portfolio-review-lead">
-        <span>먼저 볼 내용</span>
-        <strong>{reviewHeadline}</strong>
-        <p>{reviewGuidance}</p>
-      </div>
-
-      <div className="portfolio-review-summary">
-        <div><span>현재 평가금액</span><strong>{won(rebalancing.current_total_krw)}</strong></div>
-        <div>
-          <span>계좌에서 허용하는 최대 비율</span>
-          <strong>{evaluation.account_risk_cap_percent == null ? "법정 총량한도 없음" : percent(evaluation.account_risk_cap_percent)}</strong>
-        </div>
-        <div><span>가격이 크게 움직일 수 있는 자산</span><strong>{percent(evaluation.final_general_risk_target_percent)}</strong></div>
-      </div>
-
-      <details className="portfolio-review-details">
-        <summary>
-          <span><small>1단계</small><strong>자산 구성과 조정 기준</strong></span>
-          <em>펼쳐보기</em>
-        </summary>
+      <section
+        className="portfolio-review-priority"
+        aria-labelledby="portfolio-review-priority-title"
+      >
+        <header>
+          <small>1단계</small>
+          <h4 id="portfolio-review-priority-title">자산 구성과 조정 기준</h4>
+        </header>
         <div className="portfolio-review-details-body">
           <div className="overlap-check">
             <strong>한곳에 너무 몰렸는지 보기</strong>
@@ -938,7 +923,25 @@ export function EducationalPortfolioReview({
             </table>
           </div>
         </div>
-      </details>
+      </section>
+
+      <PortfolioSectorGuide riskProfile={evaluation.evaluated_input.risk_profile} />
+      <RebalancingCadenceGuide evaluation={evaluation} />
+
+      <div className="portfolio-review-lead">
+        <span>먼저 볼 내용</span>
+        <strong>{reviewHeadline}</strong>
+        <p>{reviewGuidance}</p>
+      </div>
+
+      <div className="portfolio-review-summary">
+        <div><span>현재 평가금액</span><strong>{won(rebalancing.current_total_krw)}</strong></div>
+        <div>
+          <span>계좌에서 허용하는 최대 비율</span>
+          <strong>{evaluation.account_risk_cap_percent == null ? "법정 총량한도 없음" : percent(evaluation.account_risk_cap_percent)}</strong>
+        </div>
+        <div><span>가격이 크게 움직일 수 있는 자산</span><strong>{percent(evaluation.final_general_risk_target_percent)}</strong></div>
+      </div>
 
       <details className="portfolio-review-details">
         <summary>
