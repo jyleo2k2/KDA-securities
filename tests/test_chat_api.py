@@ -25,6 +25,8 @@ from backend.app.chat.models import (
     ChatResponse,
     ConversationContext,
     NewsConversationContext,
+    ReferentItem,
+    ReferentList,
 )
 from backend.app.chat.query_planner import BlockedReason, plan_question
 from backend.app.chat.repository import (
@@ -409,6 +411,50 @@ def test_authenticated_stream_uses_topic_guard_only_after_unsupported_plan() -> 
     ]
     assert payload["response"]["intent"] == "account_rule"
     assert payload["persisted"] is True
+
+
+def test_authenticated_stream_clarifies_referent_before_topic_guard() -> None:
+    repository = FakeChatRepository()
+    _override_authenticated_dependencies(repository)
+
+    class MustNotRunTopicGuard:
+        def refine_plan(self, message, plan):
+            raise AssertionError("topic guard must not run for referent clarification")
+
+    context = ConversationContext(
+        last_intent=ChatIntent.ACCOUNT_RULE,
+        referents=ReferentList(
+            intent=ChatIntent.ACCOUNT_RULE,
+            topic="pension_account_overview",
+            items=[
+                ReferentItem(label="DC형", ref="dc"),
+                ReferentItem(label="IRP", ref="irp"),
+                ReferentItem(label="연금저축펀드", ref="pension_savings"),
+            ],
+        ),
+    )
+    app.dependency_overrides[get_chat_topic_guard] = MustNotRunTopicGuard
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/chat/stream",
+                json={
+                    "message": "그거 좀 더 알려줘",
+                    "conversation_context": context.model_dump(mode="json"),
+                },
+                headers=CHAT_HEADERS,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = final_sse_response(response.text)
+    assert payload["response"]["data_mode"] == "context_clarification"
+    assert [
+        item["label"] for item in payload["response"]["suggested_follow_ups"]
+    ] == ["DC형", "IRP", "연금저축펀드"]
+    assert payload["persisted"] is False
+    assert repository.saved == []
 
 
 def test_authenticated_chat_stream_persists_final_response() -> None:

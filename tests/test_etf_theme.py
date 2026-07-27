@@ -191,6 +191,9 @@ def test_catalog_has_exactly_twenty_one_themes() -> None:
         for company in theme.representative_companies
     )
     assert repository.resolve("1번 테마의 특징은?").theme_id == "semiconductor"
+    assert repository.resolve("2번 테마 알려줘").theme_id == "renewable_green"
+    assert repository.resolve("2번꺼 수수료 얼마야") is None
+    assert repository.resolve("IRP 2번꺼 수수료 얼마야") is None
     assert repository.resolve("AI 소프트웨어 ETF") is None
     assert repository.resolve("코리아밸류업") is None
     assert repository.resolve("ESG 책임투자") is None

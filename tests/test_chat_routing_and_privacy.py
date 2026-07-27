@@ -179,6 +179,84 @@ def test_ordinal_account_referent_selects_irp() -> None:
     assert IntentRouter.contextual_message(request).startswith("IRP ")
 
 
+@pytest.mark.parametrize(
+    "message",
+    (
+        "그거 좀 더 알려줘",
+        "이건 좀 더 알려줘",
+        "그건 좀 더 알려줘",
+        "저건 좀 더 알려줘",
+        "그 상품은 어때?",
+        "아까 말한 계좌 알려줘",
+    ),
+)
+def test_single_referent_pronouns_resolve_without_guessing(message: str) -> None:
+    request = ChatRequest(
+        message=message,
+        conversation_context=_account_referent_context(AccountType.IRP),
+    )
+
+    referent = IntentRouter.resolve_referent(request)
+
+    assert referent is not None
+    assert referent.ref == "irp"
+
+
+def test_last_referent_selects_the_last_account() -> None:
+    request = ChatRequest(
+        message="마지막 거 수수료 얼마야",
+        conversation_context=_account_referent_context(
+            AccountType.DC,
+            AccountType.IRP,
+            AccountType.PENSION_SAVINGS,
+        ),
+    )
+
+    referent = IntentRouter.resolve_referent(request)
+
+    assert referent is not None
+    assert referent.ref == "pension_savings"
+
+
+@pytest.mark.parametrize(
+    "message",
+    (
+        "그거 좀 더 알려줘",
+        "이건 수수료가 얼마야?",
+        "그 상품은 어때?",
+        "뭐가 더 나아?",
+        "둘 중에는?",
+        "아까 말한 계좌 알려줘",
+        "네 번째 거 알려줘",
+    ),
+)
+def test_multiple_referents_request_clarification(message: str) -> None:
+    request = ChatRequest(
+        message=message,
+        conversation_context=_account_referent_context(
+            AccountType.DC,
+            AccountType.IRP,
+            AccountType.PENSION_SAVINGS,
+        ),
+    )
+
+    assert IntentRouter.resolve_referent(request) is None
+    assert IntentRouter.needs_referent_clarification(request)
+
+
+def test_explicit_referent_does_not_request_clarification() -> None:
+    request = ChatRequest(
+        message="DC와 IRP 차이를 비교해줘",
+        conversation_context=_account_referent_context(
+            AccountType.DC,
+            AccountType.IRP,
+            AccountType.PENSION_SAVINGS,
+        ),
+    )
+
+    assert not IntentRouter.needs_referent_clarification(request)
+
+
 def test_account_overview_response_carries_referents_into_irp_follow_up() -> None:
     initial = _service().ask(ChatRequest(message="연금 계좌 유형 뭐 있어?"))
 

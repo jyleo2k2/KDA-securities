@@ -26,7 +26,14 @@ _REFERENT_ORDINAL = re.compile(
     r"(?P<fourth>네\s*번째|넷째|4\s*번(?:째)?)"
 )
 _REFERENT_PRONOUN = re.compile(
-    r"그거|그\s*계좌|방금\s*그거|아까\s*그거|해당\s*계좌"
+    r"그거|이거|저거|그건|이건|저건|"
+    r"(?:그|이|저|해당)\s*(?:계좌|상품)|"
+    r"방금\s*(?:그거|그\s*계좌|그\s*상품)|"
+    r"아까\s*(?:그거|말한\s*계좌|말한\s*상품)"
+)
+_REFERENT_LAST = re.compile(r"마지막\s*(?:거|것|계좌|상품)")
+_REFERENT_COMPARISON = re.compile(
+    r"뭐가\s*더|무엇이\s*더|둘\s*중|셋\s*중|비교"
 )
 _NEWS_PRONOUN = re.compile(r"(?:그|이|해당|방금)\s*(?:뉴스|기사|소식)")
 _NEWS_COMPARE = re.compile(r"비교|차이")
@@ -105,7 +112,7 @@ class IntentRouter:
         if referents is None or referents.intent in {
             ChatIntent.NEWS,
             ChatIntent.ETF_THEME,
-        }:
+        } or "테마" in request.message:
             return None
 
         ordinal = cls._ordinal_index(request.message)
@@ -113,6 +120,14 @@ class IntentRouter:
             if ordinal >= len(referents.items):
                 return None
             item = referents.items[ordinal]
+            return ResolvedReferent(
+                intent=referents.intent,
+                topic=referents.topic,
+                ref=item.ref,
+                label=item.label,
+            )
+        if _REFERENT_LAST.search(request.message) is not None:
+            item = referents.items[-1]
             return ResolvedReferent(
                 intent=referents.intent,
                 topic=referents.topic,
@@ -129,6 +144,29 @@ class IntentRouter:
             topic=referents.topic,
             ref=item.ref,
             label=item.label,
+        )
+
+    @classmethod
+    def needs_referent_clarification(cls, request: ChatRequest) -> bool:
+        context = request.conversation_context
+        referents = context.referents if context is not None else None
+        if referents is None or cls.resolve_referent(request) is not None:
+            return False
+        message = request.message
+        if "테마" in message:
+            return False
+        normalized_message = message.upper()
+        if any(
+            item.label.upper() in normalized_message
+            or item.ref.upper() in normalized_message
+            for item in referents.items
+        ):
+            return False
+        return (
+            _REFERENT_ORDINAL.search(message) is not None
+            or _REFERENT_PRONOUN.search(message) is not None
+            or _REFERENT_LAST.search(message) is not None
+            or _REFERENT_COMPARISON.search(message) is not None
         )
 
     @classmethod
@@ -224,4 +262,6 @@ class IntentRouter:
         return (
             _REFERENT_ORDINAL.search(message) is not None
             or _REFERENT_PRONOUN.search(message) is not None
+            or _REFERENT_LAST.search(message) is not None
+            or _REFERENT_COMPARISON.search(message) is not None
         )
