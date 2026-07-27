@@ -6,6 +6,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import App from "./App";
 import {
   getInvestmentProfile,
+  getBenchmarkFollows,
+  getChatSessions,
   getMyPensionAccounts,
   getMyPensionContext,
 } from "./api/client";
@@ -15,6 +17,9 @@ vi.mock("./api/client", () => ({
   ApiError: class ApiError extends Error {},
   aggregatePensionAccounts: vi.fn(),
   apiErrorMessage: () => "요청에 실패했습니다.",
+  getBenchmarkFollows: vi.fn(),
+  getChatSessions: vi.fn(),
+  getStoredChatMessages: vi.fn(),
   getInvestmentProfile: vi.fn(),
   getMyPensionAccounts: vi.fn(),
   getMyPensionContext: vi.fn(),
@@ -49,6 +54,8 @@ describe("initial hash routing", () => {
       signOut: vi.fn(),
     } as never);
     vi.mocked(getInvestmentProfile).mockResolvedValue({ assessment: null, preferences: null });
+    vi.mocked(getBenchmarkFollows).mockResolvedValue([]);
+    vi.mocked(getChatSessions).mockResolvedValue([]);
     vi.mocked(getMyPensionAccounts).mockResolvedValue({ owner_id: "user-1", data_boundary: "unavailable", accounts: [] });
     vi.mocked(getMyPensionContext).mockRejectedValue(new Error("연동 데이터 없음"));
   });
@@ -90,7 +97,7 @@ describe("initial hash routing", () => {
     expect(await screen.findByRole("button", { name: "투자 성향 진단받기" })).toBeTruthy();
   });
 
-  it("opens the guide with saved conversations visible from the profile screen", async () => {
+  it("opens the account conversation history from the profile screen", async () => {
     window.history.replaceState(null, "", "#/profile-html");
 
     render(<App />);
@@ -106,8 +113,28 @@ describe("initial hash routing", () => {
     fireEvent.load(profileFrame);
     fireEvent.click(frameDocument.querySelector("[data-profile-html-chat-history]") as HTMLButtonElement);
 
-    expect(await screen.findByText("지난 대화 패널")).toBeTruthy();
-    expect(window.location.hash).toBe("#/guide");
+    expect(await screen.findByLabelText("대화 기록")).toBeTruthy();
+    expect(window.location.hash).toBe("#/profile-chat-history");
+  });
+
+  it("opens the account following list from the profile screen", async () => {
+    window.history.replaceState(null, "", "#/profile-html");
+
+    render(<App />);
+
+    const profileFrame = await screen.findByTitle("내 프로필") as HTMLIFrameElement;
+    const frameDocument = profileFrame.contentDocument;
+    expect(frameDocument).not.toBeNull();
+    if (!frameDocument) return;
+
+    frameDocument.open();
+    frameDocument.write('<!doctype html><body><button type="button" data-profile-html-following>내가 팔로우한 이용자</button></body>');
+    frameDocument.close();
+    fireEvent.load(profileFrame);
+    fireEvent.click(frameDocument.querySelector("[data-profile-html-following]") as HTMLButtonElement);
+
+    expect(await screen.findByLabelText("내가 팔로우한 이용자")).toBeTruthy();
+    expect(window.location.hash).toBe("#/profile-following");
   });
 
   it("loads the supplied slangi html from its explicit public file path", async () => {

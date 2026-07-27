@@ -93,6 +93,25 @@ describe("ProfileHtmlPage", () => {
     expect(onOpenChatHistory).toHaveBeenCalledOnce();
   });
 
+  it("forwards the following button to the supplied callback", () => {
+    const onOpenFollowing = vi.fn();
+
+    render(<ProfileHtmlPage {...props} onOpenFollowing={onOpenFollowing} />);
+
+    const iframe = screen.getByTitle("내 프로필") as HTMLIFrameElement;
+    const frameDocument = iframe.contentDocument;
+    expect(frameDocument).not.toBeNull();
+    if (!frameDocument) return;
+
+    frameDocument.open();
+    frameDocument.write('<!doctype html><body><button type="button" data-profile-html-following>내가 팔로우한 이용자</button></body>');
+    frameDocument.close();
+    fireEvent.load(iframe);
+    fireEvent.click(frameDocument.querySelector("[data-profile-html-following]") as HTMLButtonElement);
+
+    expect(onOpenFollowing).toHaveBeenCalledOnce();
+  });
+
   it("forwards the profile logout button to the supplied callback", () => {
     const onSignOut = vi.fn().mockResolvedValue(undefined);
 

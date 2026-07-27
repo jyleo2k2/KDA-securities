@@ -1,0 +1,243 @@
+/* 프레임 치수는 폰 프레임 SSOT(.app-phone-stage/.app-phone-frame)를 재사용한다. */
+.profile-following-phone {
+  display: flex;
+  flex-direction: column;
+  color: #151b18;
+  background: #f4f6f8;
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.profile-following-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  min-height: 68px;
+  padding: 0 20px;
+  border-bottom: 1px solid #edf0f1;
+  background: #fff;
+}
+
+.profile-following-header button {
+  width: 34px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #17201c;
+  font-size: 38px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.profile-following-header h1 {
+  position: absolute;
+  left: 50%;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -.04em;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.profile-following-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 16px 34px;
+  scrollbar-width: none;
+}
+
+.profile-following-scroll::-webkit-scrollbar { width: 0; }
+
+.profile-following-summary {
+  margin: 0 2px 14px;
+  color: #79847e;
+  font-size: 13px;
+}
+
+.profile-following-summary strong {
+  color: #18a860;
+  font-size: 15px;
+}
+
+.profile-following-list {
+  display: grid;
+  gap: 14px;
+}
+
+.profile-following-card {
+  position: relative;
+  padding: 19px 20px 18px;
+  border: 1px solid #e6e9eb;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 4px 13px rgba(35, 48, 42, .035);
+}
+
+.profile-following-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.profile-following-identity {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+  gap: 5px 4px;
+}
+
+.profile-following-identity span,
+.profile-following-amount span,
+.profile-following-allocation > span,
+.profile-following-strategy > span,
+.profile-following-return span {
+  color: #8d9691;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.profile-following-identity strong,
+.profile-following-identity b {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-following-identity small {
+  grid-column: 1 / -1;
+  margin-top: 1px;
+  color: #909b95;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.profile-following-return {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  flex: none;
+}
+
+.profile-following-return strong {
+  margin-top: 2px;
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.profile-following-amount {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 15px;
+}
+
+.profile-following-amount strong {
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.profile-following-allocation {
+  margin-top: 17px;
+}
+
+.profile-following-allocation-bar {
+  display: flex;
+  height: 11px;
+  margin-top: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.profile-following-allocation-bar i:nth-child(1) { background: #20aa50; }
+.profile-following-allocation-bar i:nth-child(2) { background: #82d7a0; }
+.profile-following-allocation-bar i:nth-child(3) { background: #ffc12f; }
+.profile-following-allocation-bar i:nth-child(4) { background: #d4dae0; }
+
+.profile-following-allocation p,
+.profile-following-strategy p {
+  margin: 6px 0 0;
+  color: #8c9690;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.profile-following-strategy {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px 8px;
+  margin-top: 17px;
+  padding-top: 15px;
+  border-top: 1px solid #edf0f1;
+}
+
+.profile-following-strategy strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.profile-following-strategy b {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #e7f6ec;
+  color: #166f39;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.profile-following-strategy p {
+  width: 100%;
+}
+
+.profile-following-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: fit-content;
+  min-width: 76px;
+  margin: 14px 0 0 auto;
+  padding: 7px 12px;
+  border: 1px solid #cfead7;
+  border-radius: 999px;
+  color: #22a94d;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.profile-following-count span {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.profile-following-state,
+.profile-following-empty {
+  margin: 40px 8px;
+  padding: 28px 18px;
+  border: 1px solid #e3e9e5;
+  border-radius: 18px;
+  background: #fff;
+  color: #76827b;
+  text-align: center;
+  font-size: 13px;
+}
+
+.profile-following-error { color: #b24c42; }
+
+.profile-following-empty strong {
+  color: #25332c;
+  font-size: 16px;
+}
+
+.profile-following-empty p {
+  margin: 9px 0 0;
+  line-height: 1.55;
+}

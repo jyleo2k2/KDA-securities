@@ -174,6 +174,8 @@
         <div class="noderow">
           <span class="node c-embed"><span class="path">#/planner</span><span class="name">연금계산기 (iframe)</span></span>
           <span class="node c-embed"><span class="path">#/profile-html</span><span class="name">내 프로필 (iframe)</span></span>
+          <span class="node c-react"><span class="path">#/profile-following</span><span class="name">내가 팔로우한 이용자</span></span>
+          <span class="node c-react"><span class="path">#/profile-chat-history</span><span class="name">내 대화 기록</span></span>
           <span class="node c-embed"><span class="path">#/slangi</span><span class="name">연그미 터치 놀이 (iframe)</span></span>
           <span class="node c-react"><span class="path">#/strategy-explore</span><span class="name">전략 탐색 캐러셀</span></span>
           <span class="node c-embed"><span class="path">#/strategy-detail</span><span class="name">전략 상세 (HTML)</span></span>
@@ -259,11 +261,33 @@
         <h3>ProfileHtmlPage <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 내 프로필</span></h3>
         <p class="file">pages/ProfileHtmlPage.tsx → iframe</p>
         <p class="purpose">정적 HTML 프로필에 인증 사용자와 소유 연금계좌 범위·기준일·저장 투자성향을 주입하는 래퍼.</p>
-        <div class="chips"><span>profile-html/index.html</span><span>사용자 데이터 주입</span><span>채팅 기록 → 지난 대화</span><span>로그아웃</span><span>전체화면 iframe</span><span>뒤로가기 감지</span></div>
+        <div class="chips"><span>profile-html/index.html</span><span>사용자 데이터 주입</span><span>내가 팔로우한 이용자</span><span>대화 기록</span><span>로그아웃</span><span>전체화면 iframe</span><span>뒤로가기 감지</span></div>
         <div class="meta">
           <div class="row"><span class="k">진입</span><span class="v">허브·챗봇 헤더 프로필 버튼</span></div>
           <div class="row"><span class="k">데이터</span><span class="v">Supabase Auth · <code>/me/pension-accounts</code> · <code>/me/investment-profile</code></span></div>
-          <div class="row"><span class="k">연결</span><span class="v">“채팅 기록” → <code>#/guide</code>의 지난 대화 패널</span></div>
+          <div class="row"><span class="k">연결</span><span class="v">“내가 팔로우한 이용자” → <code>#/profile-following</code> · “대화 기록” → <code>#/profile-chat-history</code></span></div>
+        </div>
+      </div></article>
+      <article class="card c-react"><div class="rail"></div><div class="body">
+        <div class="top"><span class="route-chip">#/profile-following</span><span class="type-badge">React 상세</span></div>
+        <h3>ProfileFollowingScreen <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 내가 팔로우한 이용자</span></h3>
+        <p class="file">pages/ProfileFollowingScreen.tsx</p>
+        <p class="purpose">로그인한 계정이 이용자 Pick에서 팔로우한 포트폴리오만 같은 카드 구성과 글꼴로 보여주는 화면.</p>
+        <div class="chips"><span>계정별 팔로우 목록</span><span>이용자 Pick 카드 구성</span><span>현재 팔로우 수</span><span>공통 폰 프레임</span></div>
+        <div class="meta">
+          <div class="row"><span class="k">진입</span><span class="v">내 프로필 “내가 팔로우한 이용자”</span></div>
+          <div class="row"><span class="k">데이터</span><span class="v"><code>GET /me/benchmark-follows</code> · 로그인 Bearer 토큰</span></div>
+        </div>
+      </div></article>
+      <article class="card c-react"><div class="rail"></div><div class="body">
+        <div class="top"><span class="route-chip">#/profile-chat-history</span><span class="type-badge">React 상세</span></div>
+        <h3>ProfileChatHistoryScreen <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 대화 기록</span></h3>
+        <p class="file">pages/ProfileChatHistoryScreen.tsx</p>
+        <p class="purpose">로그인한 계정의 챗봇 세션 목록과 선택한 대화의 사용자·답변 메시지를 확인하는 화면.</p>
+        <div class="chips"><span>계정별 세션</span><span>대화 상세</span><span>사용자·답변 메시지</span><span>공통 폰 프레임</span></div>
+        <div class="meta">
+          <div class="row"><span class="k">진입</span><span class="v">내 프로필 “대화 기록”</span></div>
+          <div class="row"><span class="k">데이터</span><span class="v"><code>GET /chat/sessions</code> · <code>GET /chat/sessions/{id}/messages</code> · 로그인 Bearer 토큰</span></div>
         </div>
       </div></article>
       <article class="card c-embed"><div class="rail"></div><div class="body">
@@ -293,10 +317,10 @@
         <h3>UserPickBenchmarkScreen <span style="font-weight:500;color:var(--muted);font-size:.8rem">— 이용자 Pick</span></h3>
         <p class="file">pages/UserPickBenchmarkScreen.tsx → iframe</p>
         <p class="purpose">다른 이용자 포트폴리오 “투자 벤치마킹하기”를 iframe으로 임베드하는 래퍼.</p>
-        <div class="chips"><span>투자 벤치마킹.dc.html</span><span>오버레이 뒤로가기</span><span>내 계좌와 분리된 데모 비교</span></div>
+        <div class="chips"><span>투자 벤치마킹.dc.html</span><span>오버레이 뒤로가기</span><span>계정별 팔로우 저장</span></div>
         <div class="meta">
           <div class="row"><span class="k">진입</span><span class="v">허브 “이용자 Pick · 지금 둘러보기 ›”</span></div>
-          <div class="row"><span class="k">데이터</span><span class="v">React 측 없음 (iframe 내부)</span></div>
+          <div class="row"><span class="k">데이터</span><span class="v"><code>GET/PUT /me/benchmark-follows</code> · iframe 메시지 계약</span></div>
         </div>
       </div></article>
     </div>
@@ -322,7 +346,7 @@
       </div>
     </div>
   </section>
-  <footer>출처: <code>frontend/src/App.tsx</code> (AppRoutes) 및 각 <code>pages/*.tsx</code> · 기준일 2026-07-23 · HashRouter 기준 <code>#/경로</code></footer>
+  <footer>출처: <code>frontend/src/App.tsx</code> (AppRoutes) 및 각 <code>pages/*.tsx</code> · 기준일 2026-07-27 · HashRouter 기준 <code>#/경로</code></footer>
 </div>
 </body>
 </html>

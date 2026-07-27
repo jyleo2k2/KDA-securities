@@ -17,6 +17,7 @@ interface ProfileHtmlPageProps {
   investmentProfile: InvestmentProfileResponse | null;
   portfolio: UserPensionPortfolio | null;
   onBack: () => void;
+  onOpenFollowing?: () => void;
   onOpenChatHistory?: () => void;
   onResurvey?: () => void;
   onSignOut?: () => Promise<void>;
@@ -36,22 +37,25 @@ export function ProfileHtmlPage({
   investmentProfile,
   portfolio,
   onBack,
+  onOpenFollowing,
   onOpenChatHistory,
   onResurvey,
   onSignOut,
 }: ProfileHtmlPageProps): JSX.Element {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const onBackRef = useRef(onBack);
+  const onOpenFollowingRef = useRef(onOpenFollowing);
   const onOpenChatHistoryRef = useRef(onOpenChatHistory);
   const onResurveyRef = useRef(onResurvey);
   const onSignOutRef = useRef(onSignOut ?? signOutFromProfile);
 
   useEffect(() => {
     onBackRef.current = onBack;
+    onOpenFollowingRef.current = onOpenFollowing;
     onOpenChatHistoryRef.current = onOpenChatHistory;
     onResurveyRef.current = onResurvey;
     onSignOutRef.current = onSignOut ?? signOutFromProfile;
-  }, [onBack, onOpenChatHistory, onResurvey, onSignOut]);
+  }, [onBack, onOpenChatHistory, onOpenFollowing, onResurvey, onSignOut]);
 
   useEffect(() => {
     const iframe = iframeRef.current;
@@ -63,6 +67,9 @@ export function ProfileHtmlPage({
         closest?: (selector: string) => Element | null;
       } | null;
       if (target?.closest?.("[data-profile-html-back]")) onBackRef.current();
+      if (target?.closest?.("[data-profile-html-following]")) {
+        onOpenFollowingRef.current?.();
+      }
       if (target?.closest?.("[data-profile-html-chat-history]")) {
         onOpenChatHistoryRef.current?.();
       }

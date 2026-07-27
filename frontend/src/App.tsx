@@ -32,6 +32,8 @@ import {
   PensionPlannerPage,
   type PensionPlannerProfile,
 } from "./pages/PensionPlannerPage";
+import { ProfileChatHistoryScreen } from "./pages/ProfileChatHistoryScreen";
+import { ProfileFollowingScreen } from "./pages/ProfileFollowingScreen";
 import { ProfileHtmlPage } from "./pages/ProfileHtmlPage";
 import { SlangiTouchPage } from "./pages/SlangiTouchPage";
 import { StrategyDetailScreen } from "./pages/StrategyDetailScreen";
@@ -330,11 +332,28 @@ function AppRoutes(): JSX.Element {
             email={email}
             investmentProfile={currentUserData.investmentProfile}
             onBack={goToMainHome}
-            onOpenChatHistory={() => {
-              navigate("/guide", { state: { openChatHistory: true } });
-            }}
+            onOpenChatHistory={() => navigate("/profile-chat-history")}
+            onOpenFollowing={() => navigate("/profile-following")}
             onResurvey={() => setResurveyPending(true)}
             portfolio={currentUserData.portfolio}
+          />
+        )}
+      />
+      <Route
+        path="/profile-following"
+        element={(
+          <ProfileFollowingScreen
+            accessToken={accessToken ?? ""}
+            onBack={() => navigate("/profile-html")}
+          />
+        )}
+      />
+      <Route
+        path="/profile-chat-history"
+        element={(
+          <ProfileChatHistoryScreen
+            accessToken={accessToken ?? ""}
+            onBack={() => navigate("/profile-html")}
           />
         )}
       />
