@@ -31,7 +31,7 @@ const onProfileSaved = vi.fn();
 let auth: SupabaseAuthState;
 const linkOptions: AccountLinkOptionsResponse = {
   data_boundary: "mock",
-  notice: "현재 MVP는 목데이터 기반 조회·분석 화면입니다. 실제 계좌 연결, 계좌 이전, 자동 매매는 발생하지 않습니다.",
+  notice: "이 화면에서는 실제 계좌 연결, 계좌 이전, 자동 매매가 발생하지 않아요.",
   options: [
     { code: "dc", display_name: "DC형 퇴직연금", category_label: "직접 운용 계좌", diagnosable: true, description: null },
     { code: "irp", display_name: "IRP", category_label: "개인 연금계좌", diagnosable: true, description: null },

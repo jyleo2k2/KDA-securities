@@ -238,11 +238,7 @@ def disclosure_response(
     if disclosures is None:
         return ChatResponse(
             intent=ChatIntent.PROVIDER_DISCLOSURE,
-            answer=(
-                "원격 Supabase에 실제 공시 데이터가 없어 회사·사업자 수치를 "
-                "표시하지 않았어요. fixture(테스트용 데이터)를 실제 데이터처럼 "
-                "쓰지 않아요."
-            ),
+            answer="확인되지 않은 회사·사업자 수치는 표시하지 않았어요.",
             data_mode="unavailable",
             limitations=["DATABASE_URL과 FSS 실적재가 필요합니다."],
         )
@@ -416,7 +412,7 @@ def news_response(
         limitations.append("증시 뉴스는 한 번에 최대 세 건까지 제공해요.")
     if is_market_news and preferred_topics:
         limitations.append(
-            "로그인 사용자의 가상 목계좌 자산군과 연관된 뉴스 주제를 우선 정렬했습니다."
+            "로그인한 사용자의 연금 계좌 자산군과 연관된 뉴스 주제를 우선 정렬했어요."
         )
     if scope_message is not None:
         limitations.append(scope_message)

@@ -33,7 +33,7 @@ def build_capabilities(*, scenarios: ScenarioRepository) -> ChatCapabilities:
     return ChatCapabilities(
         supported=[
             "DC형·IRP·연금저축 계좌 규칙 근거 Q&A",
-            "목계좌 시나리오 위험자산 한도와 통합 자산군 진단",
+            "연금 계좌별 위험자산 한도와 통합 자산군 진단",
         "연령·성향·수령개시연령별 포트폴리오 위험·계획가정",
             "ETF 테마 1~20의 구조·기회·위험 설명",
             "연금저축·IRP 당해연도 납입액 세액공제 간이 계산",
