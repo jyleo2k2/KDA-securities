@@ -19,7 +19,10 @@ describe("StrategyExploreScreen", () => {
     const activeCard = screen.getByRole("button", { name: `1번째 전략 상세 보기: ${STRATEGIES[0].name}` });
 
     expect(document.querySelector(".se-brand-name")).toHaveTextContent("연금 KDA");
-    expect(document.querySelector(".se-brandc")).toHaveTextContent("연금 KDA");
+    expect(document.querySelector(".se-brandc")).toHaveTextContent("연금 KDA의");
+    expect(document.querySelector(".se-headline")).toHaveTextContent("운용전략들을 따라 자산을 구성해보아요!");
+    expect(document.querySelector(".se-headline br")).not.toBeNull();
+    expect(document.documentElement.style.getPropertyValue("--se-accent")).toBe(STRATEGIES[0].accent);
     fireEvent.click(activeCard);
 
     expect(window.location.hash).toBe(`#/strategy-detail?strategy=${STRATEGIES[0].id}`);
@@ -34,6 +37,7 @@ describe("StrategyExploreScreen", () => {
     // 옆 카드 탭은 상세를 열지 않고 가운데로만 옮긴다.
     expect(window.location.hash).toBe("");
     expect(screen.getByLabelText(`2번째 전략 상세 보기: ${STRATEGIES[1].name}`)).toHaveAttribute("tabindex", "0");
+    expect(document.documentElement.style.getPropertyValue("--se-accent")).toBe(STRATEGIES[1].accent);
   });
 
   it("restores the last viewed strategy as the centered card", () => {

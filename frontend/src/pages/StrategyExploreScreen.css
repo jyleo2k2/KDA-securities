@@ -14,8 +14,7 @@
 .se-brand-name em { color: var(--se-brand); font-style: normal; }
 
 .se-headline { flex: none; font-size: 21px; line-height: 1.5; font-weight: 700; color: var(--se-ink); margin: 22px 0 0; padding: 0 26px; }
-.se-brandc { color: var(--se-brand); }
-.se-accentc { color: var(--se-accent, #f7c807); transition: color 320ms ease; }
+.se-brandc { color: var(--se-accent, #f7c807); transition: color 320ms ease; }
 .se-hint { flex: none; font-size: 12px; font-weight: 500; color: var(--se-hint); margin: 8px 0 0; padding: 0 26px; text-align: center; }
 
 .se-fan { flex: none; outline: none; touch-action: pan-y; }
@@ -63,7 +62,7 @@
 .se-intro-desc .se-kw { font-weight: 800; color: var(--se-accent, #f7c807); transition: color 320ms ease; }
 
 @media (prefers-reduced-motion: reduce) {
-  .se-fan-card, .se-fan-arrow, .se-fan-dots button, .se-accentc, .se-dot, .se-intro-label, .se-intro-desc .se-kw, .se-fan-frame {
+  .se-fan-card, .se-fan-arrow, .se-fan-dots button, .se-brandc, .se-dot, .se-intro-label, .se-intro-desc .se-kw, .se-fan-frame {
     transition-duration: .01ms;
   }
 }
