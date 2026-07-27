@@ -85,7 +85,7 @@ export function StrategyExploreScreen({ onBack }: StrategyExploreScreenProps): J
           <p className="se-headline">
             <span className="se-brandc">연금 KDA의</span>
             <br />
-            운용전략들을 따라 자산을 구성해보아요!
+            운용전략들을 따라 자산을 구성해봐요!
           </p>
           <p className="se-hint">좌우로 넘기거나 눌러서 전략을 선택하세요!</p>
 

@@ -20,7 +20,7 @@ describe("StrategyExploreScreen", () => {
 
     expect(document.querySelector(".se-brand-name")).toHaveTextContent("연금 KDA");
     expect(document.querySelector(".se-brandc")).toHaveTextContent("연금 KDA의");
-    expect(document.querySelector(".se-headline")).toHaveTextContent("운용전략들을 따라 자산을 구성해보아요!");
+    expect(document.querySelector(".se-headline")).toHaveTextContent("운용전략들을 따라 자산을 구성해봐요!");
     expect(document.querySelector(".se-headline br")).not.toBeNull();
     expect(document.documentElement.style.getPropertyValue("--se-accent")).toBe(STRATEGIES[0].accent);
     fireEvent.click(activeCard);
