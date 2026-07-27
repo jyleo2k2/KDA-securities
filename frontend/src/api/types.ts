@@ -81,6 +81,7 @@ export type RiskProfile =
 export interface RebalancingReminderState {
   profile_required: boolean;
   enabled: boolean;
+  review_available: boolean;
   risk_profile: RiskProfile | null;
   cadence: { review_interval_months: number; drift_threshold_percent_points: string; rationale: string } | null;
   last_reviewed_at: string | null;

@@ -577,6 +577,32 @@ def test_educational_portfolio_questions_reach_input_collection(
     assert plan.blocked_reason is None
 
 
+# 화면 버튼과 같은 말을 사용자가 직접 입력해도 LLM 가드 없이 전략 안내로 가야 한다.
+@pytest.mark.parametrize(
+    "message",
+    (
+        "리밸런싱 점검해줘",
+        "내 계좌 리밸런싱 점검해줘",
+        "비중 점검해줘",
+        "자산배분 검토해줘",
+    ),
+)
+def test_rebalancing_review_requests_reach_the_portfolio_engine(
+    message: str,
+) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent == ChatIntent.EDUCATIONAL_PORTFOLIO
+    assert plan.blocked_reason is None
+
+
+# 뜻풀이 질문은 그대로 용어 답변이어야 한다.
+def test_rebalancing_definition_still_reads_as_a_glossary_question() -> None:
+    plan = plan_question("리밸런싱이 뭐야?")
+
+    assert plan.intent == ChatIntent.GLOSSARY
+
+
 @pytest.mark.parametrize(
     "message",
     (

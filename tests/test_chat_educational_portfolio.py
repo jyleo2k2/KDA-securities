@@ -328,6 +328,45 @@ def test_actual_dc_holdings_with_cash_snapshot_return_rebalancing_review() -> No
     assert rebalancing.unclassified_holding_amount_krw == Decimal("0")
 
 
+def test_attached_holdings_outrank_a_glossary_reading_of_the_message() -> None:
+    """화면 버튼이 보내는 짧은 문장은 용어 질문으로도 읽힌다.
+
+    첨부된 보유내역이 있으면 문장 분류보다 첨부를 우선해야 실제 점검이 돌아간다.
+    """
+    service = ChatService(
+        knowledge=LocalMarkdownKnowledgeRepository(),
+        scenarios=LocalScenarioRepository(),
+        portfolio_universe_loader=lambda account: OutcomeUniverse(),
+        macro_evidence=MacroRepository(),
+    )
+    holdings = EducationalPortfolioInput(
+        account_type=AccountType.DC,
+        age=35,
+        retirement_start_age=60,
+        risk_profile=EducationalRiskProfile.RISK_NEUTRAL,
+        loss_tolerance_percent=Decimal("20"),
+        current_holdings=[
+            {
+                "isu_code": "EQ",
+                "amount_krw": Decimal("14748000"),
+                "asset_class": "global_equity",
+            },
+            {
+                "isu_code": "BOND",
+                "amount_krw": Decimal("4538000"),
+                "asset_class": "bond",
+            },
+        ],
+    )
+
+    for message in ("리밸런싱 점검해줘", "ETF가 뭐야?"):
+        response = service.ask(
+            ChatRequest(message=message, educational_portfolio=holdings)
+        )
+        assert response.intent == ChatIntent.EDUCATIONAL_PORTFOLIO
+        assert response.educational_portfolio_evaluation is not None
+
+
 def test_direct_future_return_prediction_remains_blocked() -> None:
     response = _service().ask(ChatRequest(message="내년 연금 수익률을 예측해줘"))
 
