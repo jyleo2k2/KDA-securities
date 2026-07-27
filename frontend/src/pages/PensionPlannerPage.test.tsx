@@ -166,11 +166,33 @@ describe("PensionPlannerPage", () => {
     await waitFor(() => expect(calculateCombinedPension).toHaveBeenCalledWith(
       expect.objectContaining({
         contribution_end_age: 60,
+        planning_strategy_id: "market_beta",
         accounts: [
           expect.objectContaining({ account_id: "dc-1" }),
           expect.objectContaining({ account_id: "irp-1" }),
         ],
       }),
+    ));
+
+    vi.mocked(calculateCombinedPension).mockClear();
+    window.dispatchEvent(new MessageEvent("message", {
+      data: {
+        type: "pension-planner-calculate",
+        payload: {
+          accountId: "all",
+          age: 35,
+          endAge: 60,
+          monthly: 0,
+          strategyId: null,
+          themeId: "factor",
+        },
+      },
+      origin: window.location.origin,
+      source: iframe.contentWindow,
+    }));
+
+    await waitFor(() => expect(calculateCombinedPension).toHaveBeenCalledWith(
+      expect.objectContaining({ planning_strategy_id: "factor" }),
     ));
   });
 

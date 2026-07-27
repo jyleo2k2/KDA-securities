@@ -352,6 +352,7 @@ class PensionCalculatorInput(BaseModel):
     account_type: AccountType
     risk_profile: RiskProfile
     strategy_id: str | None = None
+    planning_strategy_id: str | None = None
     payout_years: int = Field(default=20, ge=5, le=40)
     scenario: AssumptionScenario = AssumptionScenario.BASE
 
@@ -372,6 +373,17 @@ class PensionCalculatorInput(BaseModel):
             }
             if self.strategy_id not in known_strategy_ids:
                 raise ValueError("strategy_id is not a known educational strategy")
+        if self.planning_strategy_id is not None:
+            from .strategy_planning_return import calculate_strategy_planning_returns
+
+            known_planning_strategy_ids = {
+                evaluation.strategy_id
+                for evaluation in calculate_strategy_planning_returns()
+            }
+            if self.planning_strategy_id not in known_planning_strategy_ids:
+                raise ValueError(
+                    "planning_strategy_id is not a known planning strategy"
+                )
         return self
 
 
@@ -397,6 +409,7 @@ class PensionCalculatorCombinedInput(BaseModel):
     accounts: list[PensionCalculatorAccountBalance] = Field(min_length=1)
     risk_profile: RiskProfile
     strategy_id: str | None = None
+    planning_strategy_id: str | None = None
     payout_years: int = Field(default=20, ge=5, le=40)
     scenario: AssumptionScenario = AssumptionScenario.BASE
 
@@ -418,6 +431,17 @@ class PensionCalculatorCombinedInput(BaseModel):
             }
             if self.strategy_id not in known_strategy_ids:
                 raise ValueError("strategy_id is not a known educational strategy")
+        if self.planning_strategy_id is not None:
+            from .strategy_planning_return import calculate_strategy_planning_returns
+
+            known_planning_strategy_ids = {
+                evaluation.strategy_id
+                for evaluation in calculate_strategy_planning_returns()
+            }
+            if self.planning_strategy_id not in known_planning_strategy_ids:
+                raise ValueError(
+                    "planning_strategy_id is not a known planning strategy"
+                )
         return self
 
 

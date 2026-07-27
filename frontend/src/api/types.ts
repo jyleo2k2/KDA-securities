@@ -331,6 +331,7 @@ export interface PensionCalculatorInput {
   account_type: AccountType;
   risk_profile: RiskProfile;
   strategy_id?: string | null;
+  planning_strategy_id?: string | null;
   payout_years?: number;
   scenario?: AssumptionScenario;
 }
@@ -346,6 +347,7 @@ export interface PensionCalculatorCombinedInput {
   }>;
   risk_profile: RiskProfile;
   strategy_id?: string | null;
+  planning_strategy_id?: string | null;
   payout_years?: number;
   scenario?: AssumptionScenario;
 }

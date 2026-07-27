@@ -232,6 +232,28 @@ def test_portfolio_cma_override_changes_only_selected_strategy_rate() -> None:
     assert "current_holding_weights_held_constant" in result.warnings
 
 
+def test_planning_strategy_id_uses_the_strategy_planning_return() -> None:
+    market_beta = calculate_pension(
+        _input(planning_strategy_id="market_beta")
+    )
+    factor = calculate_pension(_input(planning_strategy_id="factor"))
+    selected_market_beta = next(
+        item
+        for item in market_beta.strategies
+        if item.risk_profile == RiskProfile.RISK_NEUTRAL
+    )
+    selected_factor = next(
+        item
+        for item in factor.strategies
+        if item.risk_profile == RiskProfile.RISK_NEUTRAL
+    )
+
+    assert selected_market_beta.net_annual_return_percent == Decimal("6.7500")
+    assert selected_factor.net_annual_return_percent == Decimal("6.6000")
+    assert market_beta.headline.total_krw > factor.headline.total_krw
+    assert "planning_strategy_selected:market_beta" in market_beta.warnings
+
+
 
 def test_educational_portfolio_120_case_allocation_regression() -> None:
     ages = (25, 35, 45, 52)
@@ -285,6 +307,7 @@ def test_api_contract_and_validation() -> None:
     for invalid in (
         {**payload, "payout_years": 4},
         {**payload, "strategy_id": "unknown"},
+        {**payload, "planning_strategy_id": "unknown"},
         {**payload, "contribution_end_age": 25},
         {
             **payload,
@@ -316,6 +339,7 @@ def test_combined_calculator_keeps_account_rules_separate() -> None:
             },
         ],
         risk_profile="risk_neutral",
+        planning_strategy_id="barbell",
     )
 
     result = calculate_combined_pension(inputs)
@@ -328,6 +352,7 @@ def test_combined_calculator_keeps_account_rules_separate() -> None:
                 current_balance_krw=account.current_balance_krw,
                 account_type=account.account_type,
                 risk_profile="risk_neutral",
+                planning_strategy_id="barbell",
             )
         )
         for account in inputs.accounts
@@ -337,6 +362,12 @@ def test_combined_calculator_keeps_account_rules_separate() -> None:
         (item.headline.total_krw for item in separate), Decimal("0")
     )
     assert result.yearly[-1].balance_krw == result.headline.total_krw
+    selected = next(
+        item
+        for item in result.strategies
+        if item.risk_profile == RiskProfile.RISK_NEUTRAL
+    )
+    assert selected.net_annual_return_percent == Decimal("4.7500")
     assert "combined_current_balances_only" in result.warnings
 
 

@@ -26,6 +26,10 @@ from .models import (
     RiskProfile,
     SourceChip,
 )
+from .strategy_planning_return import (
+    StrategyPlanningReturnEvaluation,
+    calculate_strategy_planning_returns,
+)
 from .strategy_presentation import get_strategy_presentation
 
 KRW_QUANTUM = Decimal("1")
@@ -62,6 +66,15 @@ def _strategy_profile(strategy_id: str) -> RiskProfile:
         if _strategy_id(profile) == strategy_id:
             return profile
     raise ValueError("strategy_id is not a known educational strategy")
+
+
+def _planning_strategy_evaluation(
+    planning_strategy_id: str,
+) -> StrategyPlanningReturnEvaluation:
+    for evaluation in calculate_strategy_planning_returns():
+        if evaluation.strategy_id == planning_strategy_id:
+            return evaluation
+    raise ValueError("planning_strategy_id is not a known planning strategy")
 
 
 def _allocation(
@@ -272,6 +285,24 @@ def calculate_pension(
 
     with localcontext() as context:
         context.prec = 50
+        if inputs.planning_strategy_id is not None:
+            if annual_return_override_percent is not None:
+                raise ValueError(
+                    "planning_strategy_id and annual return override cannot be combined"
+                )
+            planning_strategy = _planning_strategy_evaluation(
+                inputs.planning_strategy_id
+            )
+            annual_return_override_percent = (
+                planning_strategy.net_planning_return_percent
+            )
+            assumption_source = planning_strategy.sources[0]
+            assumption_version = planning_strategy.policy_version
+            additional_warnings = (
+                *additional_warnings,
+                *planning_strategy.warnings,
+                f"planning_strategy_selected:{planning_strategy.strategy_id}",
+            )
         if (
             annual_return_override_percent is not None
             and annual_return_override_percent <= Decimal("-100")
@@ -384,6 +415,7 @@ def calculate_combined_pension(
                 account_type=account.account_type,
                 risk_profile=inputs.risk_profile,
                 strategy_id=inputs.strategy_id,
+                planning_strategy_id=inputs.planning_strategy_id,
                 payout_years=inputs.payout_years,
                 scenario=inputs.scenario,
             )

@@ -23,6 +23,18 @@ const PLANNER_THEME_STRATEGIES = STRATEGIES.map((strategy) => ({
   implementation: strategy.directness,
   name: strategy.name,
 }));
+const PLANNER_RETURN_STRATEGY_IDS: Record<string, string> = {
+  "market-beta": "market_beta",
+  factor: "factor",
+  theme: "thematic",
+  topdown: "top_down",
+  bottomup: "bottom_up",
+  barbell: "barbell",
+  volatility: "volatility_managed",
+  longshort: "market_neutral",
+  eventdriven: "event_driven",
+  trend: "trend_global_macro",
+};
 
 export interface PensionPlannerProfile {
   current_age: number;
@@ -203,6 +215,8 @@ export function PensionPlannerPage({
               })),
               risk_profile: profile.risk_profile,
               strategy_id: request.strategyId,
+              planning_strategy_id:
+                PLANNER_RETURN_STRATEGY_IDS[request.themeId] ?? null,
               payout_years: 25,
               scenario: "base",
             })
@@ -219,6 +233,8 @@ export function PensionPlannerPage({
                 account_type: account.account_type,
                 risk_profile: profile.risk_profile,
                 strategy_id: request.strategyId,
+                planning_strategy_id:
+                  PLANNER_RETURN_STRATEGY_IDS[request.themeId] ?? null,
                 payout_years: 25,
                 scenario: "base",
               });
