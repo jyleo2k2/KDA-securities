@@ -917,18 +917,6 @@ export function EducationalPortfolioReview({
         </summary>
         <div className="portfolio-review-details-body">
           <PortfolioRiskReview risk={evaluation.portfolio_risk} />
-          {evaluation.current_holdings_planning_return ? (
-            <PortfolioPlanningReview
-              planning={evaluation.current_holdings_planning_return}
-              titleId="current-holdings-planning-title"
-              title="현재 보유 ETF 장기 계산용 숫자"
-              description="지금 가진 ETF 비율을 넣어 계산"
-            />
-          ) : evaluation.warnings.some((warning) => warning.startsWith("current_holdings_planning_return_unavailable:")) ? (
-            <p className="portfolio-review-warning">
-              현재 보유 ETF 중 확인할 자료가 부족한 항목이 있어 장기 계산용 숫자를 보여드리지 못했어요. 종목코드와 자료 기준일을 확인해 주세요.
-            </p>
-          ) : null}
           <PortfolioPlanningReview
             planning={evaluation.planning_return}
             titleId="target-portfolio-planning-title"
