@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, KeyboardEvent, ReactNode, RefObject } from "react";
 
+import { pickChatPromptCandidate } from "../chatPromptCandidates";
 import type { ConversationMessage } from "../hooks/useChatStream";
 import { ChatIcon } from "./ChatIcon";
 
@@ -100,6 +101,8 @@ export function ChatComposer({
   onSubmit: (event: FormEvent) => void;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
 }) {
+  const [promptCandidate] = useState(pickChatPromptCandidate);
+
   return (
     <div className="composer-wrap">
       <form className="composer" onSubmit={onSubmit}>
@@ -108,7 +111,7 @@ export function ChatComposer({
           value={input}
           onChange={(event) => onChange(event.target.value.slice(0, 1000))}
           onKeyDown={onKeyDown}
-          placeholder="연금에 대해 무엇이든 물어보세요"
+          placeholder={`예: ${promptCandidate}`}
           rows={1}
           aria-label="질문 입력"
           disabled={isSending || deletingSessionId !== null}

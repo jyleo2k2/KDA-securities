@@ -73,7 +73,7 @@ export function ChatQuestionRecommendations({
     <section className="chat-home-card-section" aria-labelledby="chat-question-heading">
       <header className="chat-home-section-heading">
         <p>추천 질문</p>
-        <h2 id="chat-question-heading">챗봇에게 무엇이든 물어보세요</h2>
+        <h2 id="chat-question-heading">연금계좌와 운용 방법을 물어보세요</h2>
       </header>
       {isLoading ? (
         <div

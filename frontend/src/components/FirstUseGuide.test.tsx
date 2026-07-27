@@ -725,6 +725,7 @@ describe("FirstUseGuide", () => {
   });
 
   it("walks through the complete chatbot guide and stores completion separately", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
     window.history.replaceState(null, "", "/#/guide");
     addChatFixture();
     render(<FirstUseGuide />);
@@ -742,12 +743,15 @@ describe("FirstUseGuide", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "연그미에게 무엇이든 물어보세요",
+        name: "연금 운용 질문을 쉽게 물어보세요",
       }),
     ).toBeInTheDocument();
     expect(
       document.querySelector(".fug-title-accent"),
-    ).toHaveTextContent("연그미");
+    ).toHaveTextContent("연금 운용 질문");
+    expect(
+      screen.getByText(/예를 들어 “IRP와 연금저축은 뭐가 달라\?”처럼 시작해 보세요\./),
+    ).toBeInTheDocument();
     expect(
       Array.from(document.querySelectorAll(".fug-title-accent"))
         .map((element) => element.textContent),

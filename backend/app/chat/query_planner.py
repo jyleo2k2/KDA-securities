@@ -22,6 +22,7 @@ class BlockedReason(StrEnum):
     PRODUCT_LEVEL_UNAVAILABLE = "product_level_unavailable"
     ACCOUNT_SELECTION_REQUIRED = "account_selection_required"
     CONTRIBUTION_AMOUNT_ADVICE = "contribution_amount_advice"
+    FEE_TARGET_REQUIRED = "fee_target_required"
     PROVIDER_CHOICE_ADVICE = "provider_choice_advice"
     PERSONAL_ALLOCATION_ADVICE = "personal_allocation_advice"
     PRINCIPAL_GUARANTEE_QUESTION = "principal_guarantee_question"
@@ -508,6 +509,13 @@ _CONTRIBUTION_AMOUNT_ADVICE = re.compile(
     r"|얼마(?:씩|나)?.{0,12}(?:넣|납입|저축|모으).{0,12}(?:좋|나은|될까|할까|괜찮)"
     r"|(?:넣|납입|저축).{0,12}얼마.{0,12}(?:좋|나은|될까|할까|적당)"
     r"|적정.{0,8}(?:납입|금액)",
+    re.I,
+)
+_FEE_TARGET_REQUIRED = re.compile(
+    r"(?:수수료|총\s*보수|보수|비용).{0,12}"
+    r"(?:얼마|몇\s*(?:퍼센트|%|원)|떼|나가|빠져)"
+    r"|(?:얼마|몇\s*(?:퍼센트|%|원)).{0,12}"
+    r"(?:수수료|총\s*보수|보수|비용)",
     re.I,
 )
 # 망설임이 담긴 질문. 감정을 단정하지 않고 승인된 사실로 답한다. 구체적인
@@ -1209,5 +1217,14 @@ def plan_question(
             normalized_message=normalized,
             intent=ChatIntent.GETTING_STARTED,
             max_results=max_results,
+        )
+    # 어느 계좌·상품 비용인지 없는 금액 질문은 숫자를 추정하지 않고, 사용자가
+    # 비교 대상을 고를 수 있도록 되묻는다. 구체적인 계좌·상품·공시 질문은 위의
+    # 기존 인텐트가 먼저 처리한다.
+    if _FEE_TARGET_REQUIRED.search(normalized):
+        return _blocked(
+            normalized,
+            BlockedReason.FEE_TARGET_REQUIRED,
+            max_results,
         )
     return _blocked(normalized, BlockedReason.UNSUPPORTED, max_results)

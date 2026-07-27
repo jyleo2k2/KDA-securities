@@ -76,20 +76,25 @@ const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   etf_distribution: "ETF 분배금",
   educational_portfolio: "연금 운용전략",
   macro_evidence: "거시지표 근거",
+  glossary: "용어 설명",
+  investing_principle: "투자 원리",
+  hesitation_support: "운용 고민",
+  getting_started: "시작 안내",
   out_of_scope: "지원 범위 안내",
 };
 
 const NUMBER_EVIDENCE_DEFAULT_LIMIT = 6;
 
 const BOUNDARY_LABELS: Record<DataBoundary, string> = {
-  verified_knowledge: "검증 지식",
+  verified_knowledge: "공식 안내 근거",
   official_disclosure: "공식 공시",
   official_statistics: "공식 통계",
-  news_metadata: "뉴스 메타데이터",
-  mock: "계좌 데이터",
-  engine: "규칙 엔진",
-  user_input: "사용자 입력",
-  unavailable: "미지원",
+  news_metadata: "기사 정보",
+  news_summary: "기사 요약",
+  mock: "계좌 정보",
+  engine: "계산 근거",
+  user_input: "입력한 정보",
+  unavailable: "확인 필요",
 };
 
 const DEFAULT_TYPING_INTERVAL_MS = 50;
@@ -706,9 +711,6 @@ function AssistantMessage({
     >
       <div className="answer-meta">
         <span className={`intent-pill intent-${response.intent}`}>{INTENT_LABELS[response.intent]}</span>
-        {!isEducationalPortfolio && (
-          <span>{response.narration_mode === "deterministic" ? "검증 답변" : "AI 서술"}</span>
-        )}
       </div>
       {response.intent !== "macro_evidence" && (response.data_mode !== "news_summary" || response.news_items.length === 0) && (
         <p className="message-copy">
