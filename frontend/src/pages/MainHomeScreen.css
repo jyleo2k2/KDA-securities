@@ -105,6 +105,13 @@
 .mhs-tax-title { font-size: 16px; font-weight: 800; color: #fff; margin: 0; line-height: 1.45; }
 .mhs-tax-title-accent { color: #FFD860; }
 .mhs-tax-button { margin-top: 14px; width: 100%; border: none; background: #fff; color: #18A860; font-family: inherit; font-size: 15px; font-weight: 800; padding: 12px 16px; border-radius: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, .12); }
+.mhs-strategy-promo-card { width: 100%; min-height: 112px; padding: 18px 20px 15px; border: 1px solid #EEF0EB; border-radius: 22px; background: #F8FAF7; box-shadow: 0 6px 18px rgba(31, 56, 44, .08); color: #2B302D; font: inherit; text-align: left; cursor: pointer; }
+.mhs-strategy-promo-card:focus-visible { outline: 3px solid #18A860; outline-offset: 3px; }
+.mhs-strategy-promo-title { margin: 0; font-size: 15px; font-weight: 900; letter-spacing: -.4px; line-height: 1.45; }
+.mhs-strategy-promo-cta { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 14px; font-size: 16px; font-weight: 900; line-height: 1; }
+.mhs-strategy-promo-cta i { display: grid; width: 20px; height: 20px; place-items: center; border-radius: 50%; background: #FFD860; color: #916C00; font-family: Arial, sans-serif; font-size: 14px; font-style: normal; font-weight: 900; }
+.mhs-strategy-promo-cta strong { color: #18A860; font-weight: 900; }
+.mhs-strategy-promo-cta b { color: #90A19A; font-size: 24px; font-weight: 500; line-height: .6; }
 .mhs-strategy-heading-row { display: flex; align-items: baseline; justify-content: space-between; margin: 44px 0 6px; }
 .mhs-strategy-more { font-size: 13px; font-weight: 800; color: #18A860; white-space: nowrap; cursor: pointer; background: none; border: none; padding: 0; font-family: inherit; }
 .mhs-strategy-intro { margin: 0 0 14px; font-size: 13px; font-weight: 600; color: #A0AAA4; }

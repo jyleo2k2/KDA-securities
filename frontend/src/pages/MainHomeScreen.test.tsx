@@ -256,6 +256,8 @@ describe("MainHomeScreen", () => {
     // 마지막 카드 다음에는 되감지 않고 복제 슬라이드까지 같은 방향으로 이어간다.
     act(() => vi.advanceTimersByTime(2500));
     expect(track).toHaveStyle({ transform: "translateX(-200%)" });
+    act(() => vi.advanceTimersByTime(2500));
+    expect(track).toHaveStyle({ transform: "translateX(-300%)" });
     expect(track).not.toHaveClass("is-snapping");
     // 전환이 끝나면 애니메이션 없이 원본 첫 카드로 되돌아간다.
     act(() => vi.advanceTimersByTime(380));
@@ -302,7 +304,7 @@ describe("MainHomeScreen", () => {
     fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 180 }] });
     expect(track).toHaveStyle({ transform: "translateX(-100%)" });
 
-    fireEvent.pointerDown(screen.getByRole("button", { name: "연그미와 놀기 열기" }), {
+    fireEvent.pointerDown(screen.getByRole("button", { name: "또래 최다 운용 전략 보기" }), {
       button: 0,
       clientX: 180,
       pointerId: 1,
@@ -337,6 +339,8 @@ describe("MainHomeScreen", () => {
     // 마지막 카드에서 오른쪽으로 넘기면 되감지 않고 복제 슬라이드로 이어간다.
     fireEvent.keyDown(carousel, { key: "ArrowRight" });
     expect(track).toHaveStyle({ transform: "translateX(-200%)" });
+    fireEvent.keyDown(carousel, { key: "ArrowRight" });
+    expect(track).toHaveStyle({ transform: "translateX(-300%)" });
     expect(track).not.toHaveClass("is-snapping");
 
     act(() => vi.advanceTimersByTime(380));
@@ -345,7 +349,7 @@ describe("MainHomeScreen", () => {
 
     // 첫 카드에서 왼쪽으로 넘기면 그대로 마지막 카드로 되돌아간다.
     fireEvent.keyDown(carousel, { key: "ArrowLeft" });
-    expect(track).toHaveStyle({ transform: "translateX(-100%)" });
+    expect(track).toHaveStyle({ transform: "translateX(-200%)" });
 
     vi.useRealTimers();
   });
@@ -360,6 +364,8 @@ describe("MainHomeScreen", () => {
     expect(firstDot).not.toHaveAttribute("aria-current");
 
     // 복제 슬라이드로 이동하는 동안에도 선택 상태는 첫 카드를 가리킨다.
+    fireEvent.keyDown(carousel, { key: "ArrowRight" });
+    expect(firstDot).not.toHaveAttribute("aria-current");
     fireEvent.keyDown(carousel, { key: "ArrowRight" });
     expect(firstDot).toHaveAttribute("aria-current", "true");
     act(() => vi.advanceTimersByTime(380));
@@ -380,9 +386,24 @@ describe("MainHomeScreen", () => {
     const onOpenSlangi = vi.fn();
     renderHome({ onOpenSlangi });
 
-    fireEvent.click(screen.getByRole("button", { name: "2번째 카드 보기" }));
+    fireEvent.click(screen.getByRole("button", { name: "3번째 카드 보기" }));
     fireEvent.click(screen.getByRole("button", { name: "연그미와 놀기 열기" }));
     expect(onOpenSlangi).toHaveBeenCalledOnce();
+  });
+
+  it("opens the strategy introduction from the age-group promo card", () => {
+    const onOpenStrategyExplore = vi.fn();
+    renderHome({ onOpenStrategyExplore });
+
+    fireEvent.click(screen.getByRole("button", { name: "2번째 카드 보기" }));
+    const card = screen.getByRole("button", { name: "또래 최다 운용 전략 보기" });
+    expect(card).toHaveTextContent("고객님 연령대가 가장 많이 운용하는 전략을 확인해봐요!");
+    expect(card).toHaveTextContent("또래 최다 운용 전략 보기");
+    expect(card.querySelector(".mhs-strategy-promo-cta i")).toHaveTextContent("₩");
+
+    fireEvent.click(card);
+
+    expect(onOpenStrategyExplore).toHaveBeenCalledOnce();
   });
 
   it("shows calculated planning returns for every approved strategy card", async () => {
