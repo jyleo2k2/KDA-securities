@@ -10,7 +10,7 @@ from ..etf_theme_repository import (
     EtfThemeRepository,
     get_default_etf_theme_repository,
 )
-from ..text_normalization import normalize_search_text
+from ..text_normalization import normalize_colloquial_text
 from .models import ChatIntent
 
 
@@ -900,7 +900,10 @@ def plan_question(
     structured_pension_tax: bool = False,
     theme_repository: EtfThemeRepository | None = None,
 ) -> QueryPlan:
-    normalized = normalize_search_text(message)
+    # 구어 표기를 표준형으로 접은 뒤 분류한다. "연금이 머야"를 미분류로 흘리면
+    # 문맥 보정이 엉뚱한 인텐트로 승격시키기 때문이다. 차단 규칙도 같은 표준형을
+    # 보므로 표기를 바꿔 가드를 우회할 수 없다.
+    normalized = normalize_colloquial_text(message)
     max_results = _max_results(normalized, default_max_results)
     if not normalized:
         return _blocked("질문 없음", BlockedReason.UNSUPPORTED, max_results)
