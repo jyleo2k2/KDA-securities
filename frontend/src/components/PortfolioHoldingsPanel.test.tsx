@@ -521,6 +521,10 @@ describe("EducationalPortfolioReview", () => {
       allocationTitle.compareDocumentPosition(sectorGuideTitle)
       & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "이탈폭" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "납입 후" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "추가 납입 예시" })).not.toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "상태" })).toBeInTheDocument();
     expect(evidenceDetails).not.toHaveAttribute("open");
 
     expect(screen.getByText("70.0%")).toBeInTheDocument();
