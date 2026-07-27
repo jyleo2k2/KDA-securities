@@ -29,7 +29,7 @@ def scenario_response(
     scenario = scenarios.get(scenario_code)
     if scenario is None:
         return scenario_selection_response(
-            limitation="선택한 예시 계좌를 찾지 못했어요.",
+            limitation="선택한 계좌를 찾지 못했어요.",
             scenarios=scenarios,
         )
     evaluation = evaluate_mock_scenario(scenario)
@@ -43,7 +43,7 @@ def scenario_response(
         ),
         SourceEvidence(
             evidence_id="engine:scenario",
-            label="목계좌 통합 집계 엔진",
+            label="계좌 통합 집계 엔진",
             locator=f"engine://{evaluation.engine_name}/{evaluation.engine_version}",
             as_of=evaluation.source.as_of,
             data_boundary=DataBoundary.ENGINE,
@@ -54,11 +54,11 @@ def scenario_response(
     risk_term_explained = False
     numeric = [
         NumericEvidence(
-            label="목시나리오 총자산",
+            label="총자산",
             value=evaluation.total_amount_krw,
             unit="KRW",
             evidence_id="engine:scenario",
-            basis="목계좌 합산",
+            basis="계좌 합산",
         )
     ]
     for result in evaluation.account_evaluations:
@@ -120,7 +120,7 @@ def scenario_response(
                 value=item.allocation_percent,
                 unit="%",
                 evidence_id="engine:scenario",
-                basis="목계좌 통합 집계 엔진 계산",
+                basis="계좌 통합 집계 계산",
             )
         )
     duplicate_text = (

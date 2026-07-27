@@ -530,7 +530,6 @@ export function MainHomeScreen({
                     </span>
                     <div className="mhs-tax-copy">
                       <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
-                      <p className="mhs-tax-sub">지금 놓치고 있는 세액공제액이 얼마인지 확인해 보세요.</p>
                       <button
                         type="button"
                         className="mhs-tax-button"
@@ -555,7 +554,6 @@ export function MainHomeScreen({
                   <div className="mhs-greeting-main">
                     <div className="mhs-greeting-copy">
                       <p className="mhs-greeting-title">슬랑이를 <span className="mhs-greeting-title-accent">만져 보세요!</span></p>
-                      <p className="mhs-greeting-sub">톡톡 두드리면 오늘의 저축 팁을 알려드려요</p>
                     </div>
                     <img src={piggy} alt="슬랑이" className="mhs-greeting-img" />
                   </div>
@@ -570,7 +568,6 @@ export function MainHomeScreen({
                   </span>
                   <div className="mhs-tax-copy">
                     <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
-                    <p className="mhs-tax-sub">지금 놓치고 있는 세액공제액이 얼마인지 확인해 보세요.</p>
                     <button type="button" className="mhs-tax-button" tabIndex={-1}>
                       완료율 확인하기 <span>→</span>
                     </button>
@@ -706,11 +703,11 @@ export function MainHomeScreen({
 
         <div className="mhs-strategy-heading-row">
           <h2 className="mhs-section-title mhs-section-title-tight">
-            전략 설명<br />
-            <span className="mhs-section-title-gold">전략별 계획수익률</span>
+            연금KDA&apos;s <span className="mhs-section-title-gold">Pick</span>
           </h2>
           <button type="button" className="mhs-strategy-more" onClick={onOpenStrategyExplore}>시나리오·더보기 +</button>
         </div>
+        <p className="mhs-strategy-intro">연금 KDA가 운용하는 전략들을 따라해보세요!</p>
 
         <div
           className={`mhs-strategy-scroll${isStrategyDragging ? " is-dragging" : ""}`}

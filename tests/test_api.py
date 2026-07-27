@@ -75,12 +75,10 @@ def test_account_link_options_are_static_mock_metadata() -> None:
     body = response.json()
     assert body["data_boundary"] == "mock"
     assert body["notice"] == (
-        "\ud604\uc7ac MVP\ub294 \ubaa9\ub370\uc774\ud130 "
-        "\uae30\ubc18 \uc870\ud68c\xb7\ubd84\uc11d "
-        "\ud654\uba74\uc785\ub2c8\ub2e4. \uc2e4\uc81c "
+        "\uc774 \ud654\uba74\uc5d0\uc11c\ub294 \uc2e4\uc81c "
         "\uacc4\uc88c \uc5f0\uacb0, \uacc4\uc88c \uc774\uc804, "
-        "\uc790\ub3d9 \ub9e4\ub9e4\ub294 \ubc1c\uc0dd\ud558\uc9c0 "
-        "\uc54a\uc2b5\ub2c8\ub2e4."
+        "\uc790\ub3d9 \ub9e4\ub9e4\uac00 \ubc1c\uc0dd\ud558\uc9c0 "
+        "\uc54a\uc544\uc694."
     )
     assert body["options"] == [
         {

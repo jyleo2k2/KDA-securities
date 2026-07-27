@@ -68,7 +68,7 @@ import { buildActualRebalancingReviewRequest } from "../rebalancingReviewRequest
 
 const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   account_rule: "계좌 규칙",
-  mock_portfolio: "목계좌 진단",
+  mock_portfolio: "내 계좌 진단",
   provider_disclosure: "공식 공시",
   news: "증시 뉴스",
   pension_tax: "세액공제·중도해지",

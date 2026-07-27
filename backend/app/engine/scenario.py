@@ -22,7 +22,7 @@ from .portfolio import evaluate_risk_cap
 ENGINE_NAME = "mock_scenario_diagnostic"
 ENGINE_VERSION = "2026-07-15.1"
 MOCK_SOURCE = SourceChip(
-    label="연금 코파일럿 목계좌 시나리오",
+    label="연금 코파일럿 계좌 시나리오",
     reference="data/mock/chatbot_scenarios.json",
     as_of=date(2026, 7, 14),
 )

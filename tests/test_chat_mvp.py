@@ -973,7 +973,8 @@ def test_unconfigured_disclosure_does_not_fall_back_to_fixture() -> None:
 
     assert response.intent == ChatIntent.PROVIDER_DISCLOSURE
     assert response.data_mode == "unavailable"
-    assert "fixture" in response.answer
+    assert response.answer == "확인되지 않은 회사·사업자 수치는 표시하지 않았어요."
+    assert "fixture" not in response.answer
     assert response.sources == []
 
 

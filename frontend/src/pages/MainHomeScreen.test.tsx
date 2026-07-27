@@ -144,6 +144,13 @@ describe("MainHomeScreen", () => {
       .toBeInTheDocument();
   });
 
+  it("omits the supporting descriptions from both promo cards", () => {
+    renderHome();
+
+    expect(screen.queryByText("지금 놓치고 있는 세액공제액이 얼마인지 확인해 보세요.")).not.toBeInTheDocument();
+    expect(screen.queryByText("톡톡 두드리면 오늘의 저축 팁을 알려드려요")).not.toBeInTheDocument();
+  });
+
   it("shows an unassessed profile state inside both promo cards", () => {
     const { container } = renderHome();
 
@@ -367,7 +374,12 @@ describe("MainHomeScreen", () => {
   it("shows calculated planning returns for every approved strategy card", async () => {
     renderHome();
 
-    expect(screen.getByText("전략별 계획수익률")).toBeInTheDocument();
+    const strategyHeading = screen.getByRole("heading", { name: "연금KDA's Pick" });
+    expect(strategyHeading).toBeInTheDocument();
+    expect(strategyHeading.querySelector(".mhs-section-title-gold")).toHaveTextContent("Pick");
+    expect(screen.getByText("연금 KDA가 운용하는 전략들을 따라해보세요!")).toBeInTheDocument();
+    expect(screen.queryByText("전략 설명")).not.toBeInTheDocument();
+    expect(screen.queryByText("전략별 계획수익률")).not.toBeInTheDocument();
     expect(screen.getByText("시장 베타 전략")).toBeInTheDocument();
     expect(screen.getByText("팩터 전략")).toBeInTheDocument();
     expect(screen.getByText("테마 전략")).toBeInTheDocument();
