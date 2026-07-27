@@ -1162,6 +1162,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .rebalancing-reminder-button:active:not(:disabled) { transform: scale(.97); }
 .rebalancing-reminder-button:focus-visible { outline: 3px solid rgba(24, 168, 96, .24); outline-offset: 2px; }
 .rebalancing-reminder-button:disabled { opacity: .55; cursor: default; box-shadow: none; }
+.rebalancing-reminder-hint { min-height: 36px; display: flex; align-items: center; margin: 0; color: #607161; }
 .rebalancing-reminder-card small { display: block; margin-top: 8px; color: #607161; }
 /* 리밸런싱 카드 로딩 스켈레톤 — 실제 카드와 동일 골격(strong 23·p 2줄 38·버튼 36·small 19)으로 높이를 맞춰 응답 도착 시 밀림이 없다. */
 .rebalancing-reminder-card.is-skeleton strong,

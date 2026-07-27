@@ -58,6 +58,7 @@ beforeEach(() => {
   vi.mocked(getRebalancingReminder).mockResolvedValue({
     profile_required: false,
     enabled: true,
+    review_available: true,
     risk_profile: "active",
     cadence: {
       review_interval_months: 1,
@@ -138,5 +139,36 @@ describe("actual rebalancing review", () => {
         }),
       );
     });
+  });
+
+  it("offers account linking instead of a review the user cannot run", async () => {
+    vi.mocked(getRebalancingReminder).mockResolvedValue({
+      profile_required: false,
+      enabled: true,
+      review_available: false,
+      risk_profile: "active",
+      cadence: {
+        review_interval_months: 1,
+        drift_threshold_percent_points: "3",
+        rationale: "목표 비중 이탈 여부를 점검해요.",
+      },
+      last_reviewed_at: null,
+      next_review_at: null,
+      is_due: false,
+    });
+
+    render(
+      <GuidePage
+        auth={auth}
+        onSignOut={vi.fn().mockResolvedValue(undefined)}
+        surveyProfile={null}
+        userContext={null}
+      />,
+    );
+
+    expect(
+      await screen.findByText("연동된 계좌가 있어야 실제 비중을 점검할 수 있어요."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "챗봇에 점검 요청" })).not.toBeInTheDocument();
   });
 });

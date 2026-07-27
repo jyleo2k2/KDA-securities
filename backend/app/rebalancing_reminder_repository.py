@@ -24,6 +24,7 @@ class RebalancingReminderState(BaseModel):
 
     profile_required: bool
     enabled: bool
+    review_available: bool = False
     risk_profile: RiskProfile | None = None
     cadence: RebalancingCadenceGuidance | None = None
     last_reviewed_at: datetime | None = None
@@ -69,7 +70,16 @@ class RebalancingReminderRepository:
             cursor.execute(
                 """
                 select assessment.risk_profile, assessment.assessed_at,
-                       preference.enabled, preference.last_reviewed_at
+                       preference.enabled, preference.last_reviewed_at,
+                       exists (
+                           select 1
+                           from public.demo_user_financial_context as context
+                           join public.pension_accounts as account
+                             on account.scenario_id = context.scenario_id
+                           join public.account_snapshots as snapshot
+                             on snapshot.account_id = account.id
+                           where context.auth_user_id = assessment.owner_id
+                       ) as review_available
                 from public.investment_profile_assessments as assessment
                 left join public.user_rebalancing_reminder_preferences as preference
                   on preference.owner_id = assessment.owner_id
@@ -87,6 +97,7 @@ class RebalancingReminderRepository:
         assessed_at = row[1]
         enabled = bool(row[2]) if row[2] is not None else False
         last_reviewed_at = row[3]
+        review_available = bool(row[4])
         cadence = rebalancing_cadence(risk_profile)
         anchor_at = last_reviewed_at or assessed_at
         next_review_at = _add_months(anchor_at, cadence.review_interval_months)
@@ -94,6 +105,7 @@ class RebalancingReminderRepository:
         return RebalancingReminderState(
             profile_required=False,
             enabled=enabled,
+            review_available=review_available,
             risk_profile=risk_profile,
             cadence=cadence,
             last_reviewed_at=last_reviewed_at,

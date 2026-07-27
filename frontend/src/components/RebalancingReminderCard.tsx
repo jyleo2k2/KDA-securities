@@ -9,6 +9,8 @@ export function RebalancingReminderCard({ reminder, busy, onEnable, onComplete, 
     <div className="rebalancing-reminder-actions">
       {!reminder.enabled ? (
         <button className="rebalancing-reminder-button is-primary" type="button" onClick={onEnable} disabled={busy}>점검 알림 켜기</button>
+      ) : !reminder.review_available ? (
+        <p className="rebalancing-reminder-hint">연동된 계좌가 있어야 실제 비중을 점검할 수 있어요.</p>
       ) : (
         <>
           <button className="rebalancing-reminder-button is-primary" type="button" onClick={onAsk} disabled={busy}>챗봇에 점검 요청</button>

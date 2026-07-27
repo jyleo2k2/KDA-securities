@@ -60,6 +60,7 @@ def test_due_state_uses_profile_cadence_and_last_completed_review() -> None:
             datetime(2026, 6, 15, tzinfo=UTC),
             True,
             datetime(2026, 6, 20, tzinfo=UTC),
+            True,
         )
     )
     repository = RebalancingReminderRepository(
@@ -87,3 +88,52 @@ def test_profile_required_has_no_schedule() -> None:
     assert state.profile_required is True
     assert state.enabled is False
     assert state.cadence is None
+
+
+# 카드의 점검 버튼은 실제로 점검이 가능한 소유자에게만 보여야 한다.
+def test_review_is_unavailable_without_linked_accounts() -> None:
+    cursor = FakeCursor(
+        (
+            "risk_neutral",
+            datetime(2026, 6, 15, tzinfo=UTC),
+            True,
+            None,
+            False,
+        )
+    )
+    repository = RebalancingReminderRepository(
+        "postgresql://test", pool=FakePool(cursor)  # type: ignore[arg-type]
+    )
+
+    state = repository.get_state(OWNER_ID, now=datetime(2026, 7, 20, tzinfo=UTC))
+
+    assert state.profile_required is False
+    assert state.enabled is True
+    assert state.review_available is False
+
+
+def test_review_is_available_when_accounts_are_linked() -> None:
+    cursor = FakeCursor(
+        (
+            "risk_neutral",
+            datetime(2026, 6, 15, tzinfo=UTC),
+            True,
+            None,
+            True,
+        )
+    )
+    repository = RebalancingReminderRepository(
+        "postgresql://test", pool=FakePool(cursor)  # type: ignore[arg-type]
+    )
+
+    state = repository.get_state(OWNER_ID, now=datetime(2026, 7, 20, tzinfo=UTC))
+
+    assert state.review_available is True
+
+
+def test_profile_required_state_cannot_offer_a_review() -> None:
+    repository = RebalancingReminderRepository(
+        "postgresql://test", pool=FakePool(FakeCursor(None))  # type: ignore[arg-type]
+    )
+
+    assert repository.get_state(OWNER_ID).review_available is False

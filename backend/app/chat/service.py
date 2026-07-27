@@ -273,6 +273,14 @@ class ChatService:
             )
             if request.portfolio is not None:
                 response = custom_portfolio(request)
+            elif request.educational_portfolio is not None:
+                # 첨부된 보유내역은 화면 버튼이 만든 명시적 의도다. 문장 분류가
+                # 용어·원리 질문으로 읽어도 첨부를 버리지 않는다.
+                response = educational_portfolio(
+                    request.educational_portfolio,
+                    portfolio_universe_loader=self._portfolio_universe_loader,
+                    macro_evidence=self._macro_evidence,
+                )
             elif resolved_plan.intent == ChatIntent.GETTING_STARTED:
                 response = getting_started_response()
             elif resolved_plan.intent == ChatIntent.GLOSSARY:
@@ -283,12 +291,6 @@ class ChatService:
                 )
             elif resolved_plan.intent == ChatIntent.HESITATION_SUPPORT:
                 response = _hesitation_response(resolved_plan, self._knowledge)
-            elif request.educational_portfolio is not None:
-                response = educational_portfolio(
-                    request.educational_portfolio,
-                    portfolio_universe_loader=self._portfolio_universe_loader,
-                    macro_evidence=self._macro_evidence,
-                )
             elif resolved_plan.intent == ChatIntent.EDUCATIONAL_PORTFOLIO:
                 survey_profile = original_request.survey_profile or (
                     original_request.conversation_context.survey_profile

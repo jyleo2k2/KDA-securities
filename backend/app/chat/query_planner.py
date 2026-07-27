@@ -675,6 +675,13 @@ _REBALANCING_CADENCE_QUESTION = re.compile(
     r"(?:언제|얼마나\s*자주|주기|자주\s*해|몇\s*(?:개월|달|번))"
     r"|(?:언제|얼마나\s*자주|주기)[^?]{0,12}(?:리\s*밸런싱|리밸런스)"
 )
+# 화면의 "챗봇에 점검 요청" 버튼이 보내는 문장. 보유내역 첨부가 없어도
+# 같은 말을 직접 입력하면 전략 안내로 잇는다.
+_REBALANCING_REVIEW_REQUEST = re.compile(
+    r"(?:리\s*밸런싱|리밸런스|비중|자산\s*배분)[^?]{0,12}"
+    r"(?:점검|검토|확인)"
+    r"|(?:점검|검토)[^?]{0,12}(?:리\s*밸런싱|리밸런스)"
+)
 # 나이를 밝히고 운용 방법을 묻는 표현. 타깃 사용자는 "35살인데 어떻게
 # 배분해?"처럼 전략·포트폴리오라는 말 없이 묻는다. 나이와 운용 동사가
 # 함께 있을 때만 전략 안내로 본다.
@@ -954,6 +961,7 @@ def plan_question(
             _EDUCATIONAL_PORTFOLIO_TERMS.search(normalized) is not None
             or _AGE_BASED_ALLOCATION_QUESTION.search(normalized) is not None
             or _REBALANCING_CADENCE_QUESTION.search(normalized) is not None
+            or _REBALANCING_REVIEW_REQUEST.search(normalized) is not None
         ),
         ChatIntent.PROVIDER_DISCLOSURE: bool(account_types)
         and _DISCLOSURE_TERMS.search(normalized) is not None,
