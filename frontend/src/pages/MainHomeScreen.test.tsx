@@ -144,6 +144,16 @@ describe("MainHomeScreen", () => {
       .toBeInTheDocument();
   });
 
+  it("shows an unassessed profile state inside both promo cards", () => {
+    const { container } = renderHome();
+
+    expect(screen.getAllByLabelText(
+      "저장 투자성향 진단 전, 최근 진단 진단 기록 없음",
+    )).toHaveLength(2);
+    expect(container.querySelector(".mhs-tax-card .mhs-promo-profile")).toBeInTheDocument();
+    expect(container.querySelector(".mhs-greeting-card .mhs-promo-profile")).toBeInTheDocument();
+  });
+
   it("shows the real holdings for the selected donut asset class", () => {
     const { container } = renderHome();
 
@@ -220,11 +230,13 @@ describe("MainHomeScreen", () => {
       preferences: null,
     } as InvestmentProfileResponse;
 
-    renderHome({ investmentProfile, onOpenPlanner });
+    const { container } = renderHome({ investmentProfile, onOpenPlanner });
 
-    expect(screen.getByText(
-      "저장 투자성향 · 적극투자형 · 2026-07-22 진단",
-    )).toBeInTheDocument();
+    expect(screen.getAllByLabelText(
+      "저장 투자성향 적극투자형, 최근 진단 2026-07-22",
+    )).toHaveLength(2);
+    expect(container.querySelector(".mhs-tax-card .mhs-promo-profile")).toBeInTheDocument();
+    expect(container.querySelector(".mhs-greeting-card .mhs-promo-profile")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /완료율 확인하기/ }));
     expect(onOpenPlanner).toHaveBeenCalledOnce();
   });
