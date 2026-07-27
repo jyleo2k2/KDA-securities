@@ -211,20 +211,27 @@
       </div>
 
       <div class="scrolly" style="flex:1; overflow-y:auto; padding:20px 16px 40px;">
-        <div style="font-size:13px; font-weight:700; color:#8B9096; margin:0 4px 12px;">이 회원의 운용 근거</div>
-        <div style="background:#fff; border:1.5px solid #C9EBD4; border-radius:20px; padding:22px 20px; box-shadow:0 4px 16px rgba(34,169,77,0.08);">
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:18px;">
-            <span style="font-size:12.5px; color:#8B9096; font-weight:700;">투자전략</span>
-            <span style="font-size:15px; font-weight:800;">{{ detail.strategyName }}</span>
+        <div style="font-size:16px; font-weight:800; margin:0 4px 12px;">자산군별 편입 비중</div>
+        <div style="background:#fff; border:1px solid #E6E8EB; border-radius:18px; overflow:hidden;">
+          <sc-for list="{{ detail.allocations }}" as="a" hint-placeholder-count="4">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:15px 17px; border-top:1px solid #EEF0F2;">
+              <span style="font-size:14px; font-weight:700; color:#4A5058;">{{ a.label }}</span>
+              <span style="font-size:15px; font-weight:800; color:#1E2124;">{{ a.pct }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="font-size:16px; font-weight:800; margin:26px 4px 12px;">운용근거</div>
+        <div style="background:#fff; border:1.5px solid #C9EBD4; border-radius:18px; padding:19px 18px; box-shadow:0 4px 16px rgba(34,169,77,0.08);">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:11px;">
+            <span style="font-size:12px; color:#8B9096; font-weight:700;">투자전략</span>
+            <span style="font-size:13px; font-weight:800; color:#166F39; background:#E7F6EC; border-radius:99px; padding:4px 9px;">{{ detail.strategyName }}</span>
           </div>
-          <div style="display:flex; flex-direction:column; gap:18px;">
-            <sc-for list="{{ detail.rationale }}" as="r" hint-placeholder-count="3">
-              <div style="display:flex; gap:12px;">
-                <div style="width:26px; height:26px; flex:none; border-radius:8px; background:#E7F6EC; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#166F39;">{{ r.no }}</div>
-                <div>
-                  <div style="font-size:14.5px; font-weight:800; margin-bottom:5px;">{{ r.t }}</div>
-                  <div style="font-size:13px; color:#6B7178; font-weight:600; line-height:1.6;">{{ r.b }}</div>
-                </div>
+          <div style="display:flex; flex-direction:column; gap:9px;">
+            <sc-for list="{{ detail.reasons }}" as="reason" hint-placeholder-count="3">
+              <div style="display:flex; gap:8px; font-size:13px; color:#4A5058; font-weight:600; line-height:1.5; word-break:keep-all;">
+                <span style="color:#22A94D; font-weight:800;">•</span>
+                <span>{{ reason }}</span>
               </div>
             </sc-for>
           </div>
@@ -338,10 +345,18 @@ class Component extends DCLogic {
   MINE = { 국내주식:'42%', '해외주식·ETF':'26%', 채권:'18%', 현금성자산:'14%' };
 
   detailData(p) {
-    const rationale = [
-      { no:1, t:'왜 이렇게 나눴냐면요', b:`저는 국내주식 ${p.a1}%, 해외주식·ETF ${p.a2}%, 채권 ${p.a3}%로 담고 있어요. 한 자산에 몰면 흔들릴 때 버티기 힘들더라고요. 그래서 성장에 기대는 부분과 지켜주는 부분을 일부러 갈라 놨어요.` },
-      { no:2, t:'이 전략을 고른 이유', b: (p.strategyDetail ? `${p.strategyName} 방식으로 가고 있는데, ${p.strategyDetail} 저한테는 이게 가장 마음 편하게 오래 끌고 갈 수 있는 방법이었어요.` : '저는 시장을 예측하기보다, 정해둔 비중을 지키는 게 결국 오래 남는 길이라고 믿어서 이렇게 운용해요.') },
-      { no:3, t:'언제 다시 맞추냐면요', b:'처음 정한 비중에서 5%포인트 넘게 벌어지면, 저는 그때 분기에 한 번씩 원래 비중으로 되돌려요. 오른 걸 조금 덜고 빠진 걸 채우는 식이라 자연스럽게 싸게 사고 비싸게 팔게 되더라고요.' },
+    const cash = 100 - p.a1 - p.a2 - p.a3;
+    const allocations = [
+      { label:'국내주식', pct:p.a1+'%' },
+      { label:'해외주식·ETF', pct:p.a2+'%' },
+      { label:'채권', pct:p.a3+'%' },
+      { label:'현금성자산', pct:cash+'%' },
+    ];
+    const strategy = p.strategyName || '분산 운용';
+    const reasons = [
+      `국내주식 ${p.a1}%·해외주식·ETF ${p.a2}%·채권 ${p.a3}%·현금성자산 ${cash}%로 분산해 담았어요.`,
+      `${strategy} 방식을 중심으로 성장 기회와 방어 자산을 함께 살펴봐요.`,
+      `처음 정한 비중에서 5%포인트 이상 벌어지면 분기에 한 번씩 다시 맞춰요.`,
     ];
     const baseReviews = this.REVIEWS[p.id] || this.REVIEWS._default;
     const reviews = baseReviews.map(rv => {
@@ -373,7 +388,7 @@ class Component extends DCLogic {
         },
       };
     });
-    return { id:p.id, strategyName: p.strategyName || '전략 미설정', rationale, reviews, reviewCount: reviews.length };
+    return { id:p.id, strategyName: p.strategyName || '전략 미설정', allocations, reasons, reviews, reviewCount: reviews.length };
   }
 
   sheetData(p) {
