@@ -431,7 +431,7 @@ describe("MainHomeScreen", () => {
     const strategyHeading = screen.getByRole("heading", { name: "연금KDA's Pick" });
     expect(strategyHeading).toBeInTheDocument();
     expect(strategyHeading.querySelector(".mhs-section-title-gold")).toHaveTextContent("Pick");
-    expect(screen.getByText("연금 KDA가 전략 별로 증권사와 연결시켜드려요!")).toBeInTheDocument();
+    expect(screen.getByText("연금 KDA가 연금 상황과 성향에 맞게 자문해드려요!")).toBeInTheDocument();
     expect(screen.queryByText("전략 설명")).not.toBeInTheDocument();
     expect(screen.queryByText("전략별 계획수익률")).not.toBeInTheDocument();
     expect(screen.getByText("시장 베타 전략")).toBeInTheDocument();

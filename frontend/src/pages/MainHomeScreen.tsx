@@ -713,7 +713,7 @@ export function MainHomeScreen({
             연금KDA&apos;s <span className="mhs-section-title-gold">Pick</span>
           </h2>
         </div>
-        <p className="mhs-strategy-intro">연금 KDA가 전략 별로 증권사와 연결시켜드려요!</p>
+        <p className="mhs-strategy-intro">연금 KDA가 연금 상황과 성향에 맞게 자문해드려요!</p>
 
         <div
           className={`mhs-strategy-scroll${isStrategyDragging ? " is-dragging" : ""}`}
