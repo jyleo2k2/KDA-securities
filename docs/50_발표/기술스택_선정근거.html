@@ -3,532 +3,289 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
-  <meta name="description" content="연금 코파일럿 기술 스택 선정 근거와 트레이드오프 발표 자료">
-  <title>연금 코파일럿 · 기술 스택 선정 근거</title>
+  <title>기술 스택 선정 근거 | 연금 코파일럿</title>
   <style>
     :root {
-      --bg: #f4f6f5;
-      --surface: #ffffff;
-      --surface-2: #eef2f0;
-      --ink: #17201b;
-      --ink-2: #4f5c55;
-      --line: #d8dfdb;
-      --green: #087a4f;
-      --green-soft: #e3f3e9;
-      --indigo: #4657d8;
-      --indigo-soft: #e8ebfb;
-      --amber: #9b5d08;
-      --amber-soft: #fbf0dc;
-      --red: #a33b36;
-      --red-soft: #f9e9e7;
-      --shadow: 0 10px 28px rgba(31, 50, 40, .08);
-      --font: Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
-      --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
-      --max: 1180px;
+      color-scheme: light;
+      --ink: #17211b;
+      --muted: #5e6b63;
+      --line: #d8e0da;
+      --green: #168347;
+      --green-soft: #eef8f1;
+      --blue: #245b9b;
+      --blue-soft: #f1f6fb;
+      --amber: #8a5a10;
+      --amber-soft: #fff8e9;
+      --paper: #ffffff;
+      --back: #f4f6f4;
     }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #0f1512;
-        --surface: #171f1b;
-        --surface-2: #202a25;
-        --ink: #edf4f0;
-        --ink-2: #adbab3;
-        --line: #303d36;
-        --green: #65d5a2;
-        --green-soft: #173629;
-        --indigo: #94a0ff;
-        --indigo-soft: #242947;
-        --amber: #e6b867;
-        --amber-soft: #382b18;
-        --red: #ee9790;
-        --red-soft: #3b211f;
-        --shadow: 0 12px 30px rgba(0, 0, 0, .25);
-      }
-    }
+
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
+
     body {
       margin: 0;
       color: var(--ink);
-      background: var(--bg);
-      font-family: var(--font);
-      line-height: 1.65;
-      word-break: keep-all;
-      -webkit-font-smoothing: antialiased;
+      background: var(--back);
+      font-family: Pretendard, "Noto Sans KR", system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      letter-spacing: 0;
     }
-    a { color: inherit; }
-    button { font: inherit; }
-    code { font-family: var(--mono); font-size: .9em; }
-    .skip {
-      position: fixed;
-      top: 8px;
-      left: 8px;
-      z-index: 100;
-      padding: 8px 12px;
-      color: #fff;
-      background: #111;
-      transform: translateY(-150%);
+
+    main {
+      width: min(1080px, calc(100% - 32px));
+      margin: 32px auto;
+      background: var(--paper);
+      border: 1px solid var(--line);
     }
-    .skip:focus { transform: translateY(0); }
-    .masthead {
-      border-bottom: 1px solid var(--line);
-      background: var(--surface);
+
+    header, section, footer { padding: 28px 32px; }
+    section, footer { border-top: 1px solid var(--line); }
+
+    .eyebrow {
+      margin: 0 0 6px;
+      color: var(--green);
+      font-size: 14px;
+      font-weight: 800;
     }
-    .masthead-inner {
-      width: min(var(--max), calc(100% - 40px));
-      margin: 0 auto;
-      padding: 46px 0 42px;
-    }
-    .topline {
+
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 10px; font-size: clamp(28px, 4vw, 42px); line-height: 1.25; }
+    h2 { margin-bottom: 16px; font-size: 22px; }
+    h3 { margin-bottom: 6px; font-size: 16px; }
+    p:last-child { margin-bottom: 0; }
+    .lead { max-width: 760px; margin-bottom: 22px; color: var(--muted); font-size: 17px; }
+
+    .stack {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 30px;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      white-space: nowrap;
     }
-    .brand { display: flex; align-items: center; gap: 10px; font-size: .84rem; font-weight: 800; }
-    .mark {
+
+    .stack strong {
+      padding: 9px 12px;
+      border: 1px solid #b8d8c3;
+      border-radius: 6px;
+      background: var(--green-soft);
+      color: #0d6736;
+      font-size: 14px;
+    }
+
+    .stack span { color: #809087; font-weight: 800; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 14px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: #f6f8f6; color: #46534b; font-size: 13px; }
+    tbody tr:last-child td { border-bottom: 0; }
+    td:first-child { width: 18%; font-weight: 800; }
+    td:nth-child(2) { width: 24%; color: var(--green); font-weight: 700; }
+    td:nth-child(3) { width: 22%; color: var(--muted); }
+    .limit { display: block; margin-top: 5px; color: var(--amber); font-size: 12px; }
+
+    .script {
       display: grid;
-      place-items: center;
-      width: 32px;
-      height: 32px;
-      border-radius: 7px;
-      color: #fff;
-      background: var(--green);
-      font-weight: 900;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
     }
-    .print-button {
-      min-height: 38px;
-      padding: 7px 12px;
-      border: 1px solid var(--line);
-      border-radius: 7px;
-      color: var(--ink);
-      background: var(--surface-2);
-      cursor: pointer;
-    }
-    .print-button:hover { border-color: var(--green); }
-    .eyebrow { margin: 0 0 8px; color: var(--green); font-size: .74rem; font-weight: 850; }
-    h1 { max-width: 850px; margin: 0; font-size: 3.2rem; line-height: 1.12; letter-spacing: 0; }
-    .lede { max-width: 780px; margin: 18px 0 0; color: var(--ink-2); font-size: 1.05rem; }
-    .thesis {
-      display: grid;
-      grid-template-columns: 130px 1fr;
-      gap: 20px;
-      max-width: 900px;
-      margin-top: 28px;
-      padding: 18px 20px;
-      border-left: 4px solid var(--green);
+
+    .script article {
+      padding: 16px;
+      border-left: 3px solid var(--green);
       background: var(--green-soft);
     }
-    .thesis strong { color: var(--green); }
-    .thesis p { margin: 0; }
-    .layout {
+
+    .script article:nth-child(2) { border-color: var(--blue); background: var(--blue-soft); }
+    .script article:nth-child(3) { border-color: var(--amber); background: var(--amber-soft); }
+    .script p { margin: 0; font-size: 14px; }
+
+    details { border-bottom: 1px solid var(--line); }
+    details:last-child { border-bottom: 0; }
+    summary { padding: 13px 0; cursor: pointer; font-weight: 800; }
+    details p { margin: -2px 0 15px; color: var(--muted); font-size: 14px; }
+
+    .say {
       display: grid;
-      grid-template-columns: 230px minmax(0, 1fr);
-      gap: 42px;
-      width: min(var(--max), calc(100% - 40px));
-      margin: 0 auto;
-      padding: 36px 0 80px;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
     }
-    nav {
-      position: sticky;
-      top: 20px;
-      align-self: start;
-      padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--surface);
+
+    .say > div { padding: 16px; border: 1px solid var(--line); }
+    .say .good { border-color: #b8d8c3; background: var(--green-soft); }
+    .say .care { border-color: #ead6af; background: var(--amber-soft); }
+    ul { margin: 8px 0 0; padding-left: 20px; }
+    li + li { margin-top: 6px; }
+
+    .sources { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0; padding: 0; list-style: none; }
+    .sources li + li { margin-top: 0; }
+    a { color: var(--blue); text-underline-offset: 3px; }
+    footer { color: var(--muted); font-size: 12px; }
+
+    @media (max-width: 760px) {
+      main { width: 100%; margin: 0; border: 0; }
+      header, section, footer { padding: 22px 18px; }
+      .script, .say { grid-template-columns: 1fr; }
+      th, td { min-width: 150px; }
+      td:nth-child(4) { min-width: 280px; }
     }
-    nav p { margin: 0 0 8px; color: var(--ink-2); font-size: .72rem; font-weight: 800; }
-    nav a {
-      display: block;
-      padding: 7px 8px;
-      border-left: 2px solid transparent;
-      color: var(--ink-2);
-      font-size: .82rem;
-      text-decoration: none;
-    }
-    nav a:hover, nav a.active { border-left-color: var(--green); color: var(--ink); background: var(--surface-2); }
-    main { min-width: 0; }
-    section { scroll-margin-top: 24px; }
-    section + section { margin-top: 64px; }
-    .section-kicker { margin: 0 0 5px; color: var(--indigo); font-size: .72rem; font-weight: 850; }
-    h2 { margin: 0; font-size: 1.8rem; line-height: 1.25; letter-spacing: 0; }
-    .section-copy { max-width: 760px; margin: 9px 0 20px; color: var(--ink-2); }
-    .criteria {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      border-top: 1px solid var(--line);
-      border-bottom: 1px solid var(--line);
-    }
-    .criterion { padding: 18px 14px; border-right: 1px solid var(--line); }
-    .criterion:last-child { border-right: 0; }
-    .criterion b { display: block; margin-bottom: 5px; color: var(--green); }
-    .criterion span { color: var(--ink-2); font-size: .82rem; }
-    .architecture {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(120px, 1fr));
-      gap: 8px;
-      align-items: stretch;
-    }
-    .arch-node {
-      position: relative;
-      min-height: 126px;
-      padding: 16px;
-      border: 1px solid var(--line);
-      border-top: 4px solid var(--tone, var(--green));
-      border-radius: 8px;
-      background: var(--surface);
-      box-shadow: var(--shadow);
-    }
-    .arch-node:not(:last-child)::after {
-      position: absolute;
-      top: 50%;
-      right: -9px;
-      z-index: 2;
-      color: var(--ink-2);
-      content: "›";
-      font-size: 1.2rem;
-      transform: translateY(-50%);
-    }
-    .arch-node b { display: block; margin-bottom: 7px; font-size: .9rem; }
-    .arch-node span { display: block; color: var(--ink-2); font-size: .76rem; }
-    .arch-node.engine { --tone: var(--amber); }
-    .arch-node.ai { --tone: var(--indigo); }
-    .arch-note { margin: 14px 0 0; color: var(--ink-2); font-size: .84rem; }
-    .stack-list { display: grid; gap: 18px; }
-    .stack-card {
-      display: grid;
-      grid-template-columns: 210px minmax(0, 1fr);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      overflow: hidden;
-      background: var(--surface);
-      box-shadow: var(--shadow);
-    }
-    .stack-title { padding: 22px 20px; background: var(--surface-2); }
-    .stack-title .num { color: var(--indigo); font-family: var(--mono); font-size: .72rem; font-weight: 800; }
-    .stack-title h3 { margin: 10px 0 5px; font-size: 1.12rem; line-height: 1.35; }
-    .stack-title p { margin: 0; color: var(--ink-2); font-size: .78rem; }
-    .grade { display: inline-block; margin-top: 14px; padding: 3px 7px; border-radius: 5px; color: var(--green); background: var(--green-soft); font-size: .7rem; font-weight: 800; }
-    .grade.medium { color: var(--amber); background: var(--amber-soft); }
-    .stack-body { padding: 22px; }
-    .decision-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .decision h4 { margin: 0 0 4px; color: var(--ink-2); font-size: .72rem; }
-    .decision p { margin: 0; font-size: .9rem; }
-    .decision.tradeoff { padding-left: 14px; border-left: 3px solid var(--amber); }
-    .script {
-      margin: 18px 0 0;
-      padding: 13px 15px;
-      border-left: 3px solid var(--indigo);
-      background: var(--indigo-soft);
-      font-size: .88rem;
-    }
-    .script b { color: var(--indigo); }
-    .matrix-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
-    table { width: 100%; border-collapse: collapse; min-width: 760px; background: var(--surface); }
-    th, td { padding: 12px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: .82rem; }
-    th { color: var(--ink-2); background: var(--surface-2); font-size: .74rem; }
-    tr:last-child td { border-bottom: 0; }
-    .strength { font-weight: 800; color: var(--green); }
-    .strength.conditional { color: var(--amber); }
-    .guard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .guard {
-      padding: 18px;
-      border: 1px solid var(--line);
-      border-top: 4px solid var(--green);
-      border-radius: 8px;
-      background: var(--surface);
-    }
-    .guard.no { border-top-color: var(--red); }
-    .guard h3 { margin: 0 0 10px; font-size: 1rem; }
-    .guard ul { margin: 0; padding-left: 20px; }
-    .guard li { margin: 7px 0; color: var(--ink-2); font-size: .86rem; }
-    details { border-top: 1px solid var(--line); }
-    details:last-child { border-bottom: 1px solid var(--line); }
-    summary { padding: 15px 4px; cursor: pointer; font-weight: 750; }
-    details p { margin: 0 0 16px; color: var(--ink-2); }
-    .sources { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .source-link {
-      display: block;
-      padding: 12px 14px;
-      border: 1px solid var(--line);
-      border-radius: 7px;
-      color: var(--ink-2);
-      background: var(--surface);
-      text-decoration: none;
-      font-size: .84rem;
-    }
-    .source-link:hover { border-color: var(--green); color: var(--ink); }
-    footer {
-      margin-top: 64px;
-      padding-top: 18px;
-      border-top: 1px solid var(--line);
-      color: var(--ink-2);
-      font-size: .76rem;
-    }
-    @media (max-width: 920px) {
-      h1 { font-size: 2.5rem; }
-      .layout { grid-template-columns: 1fr; }
-      nav { position: static; display: flex; gap: 4px; overflow-x: auto; }
-      nav p { display: none; }
-      nav a { flex: none; border-left: 0; border-bottom: 2px solid transparent; }
-      nav a:hover, nav a.active { border-left-color: transparent; border-bottom-color: var(--green); }
-      .criteria { grid-template-columns: repeat(2, 1fr); }
-      .criterion { border-bottom: 1px solid var(--line); }
-      .architecture { grid-template-columns: 1fr; }
-      .arch-node:not(:last-child)::after { top: auto; right: 50%; bottom: -17px; transform: rotate(90deg); }
-    }
-    @media (max-width: 680px) {
-      .masthead-inner, .layout { width: min(100% - 24px, var(--max)); }
-      .masthead-inner { padding: 28px 0 30px; }
-      h1 { font-size: 2rem; }
-      .lede { font-size: .96rem; }
-      .thesis { grid-template-columns: 1fr; gap: 4px; }
-      .criteria { grid-template-columns: 1fr; }
-      .criterion { border-right: 0; }
-      .stack-card { grid-template-columns: 1fr; }
-      .decision-grid, .guard-grid, .sources { grid-template-columns: 1fr; }
-      .stack-title, .stack-body { padding: 18px; }
-    }
+
     @media print {
-      :root { color-scheme: light; --bg: #fff; --surface: #fff; --surface-2: #f4f5f4; --ink: #111; --ink-2: #444; --line: #ccc; }
-      nav, .print-button { display: none; }
-      .layout { display: block; width: 100%; padding: 20px 0; }
-      .masthead-inner { width: 100%; padding: 20px 0; }
-      section + section { margin-top: 36px; }
-      .stack-card, .arch-node, .guard { break-inside: avoid; box-shadow: none; }
-      a { text-decoration: none; }
+      body { background: #fff; }
+      main { width: 100%; margin: 0; border: 0; }
+      details p { display: block; }
+      a { color: inherit; }
     }
   </style>
 </head>
 <body>
-  <a class="skip" href="#content">본문으로 이동</a>
-  <header class="masthead">
-    <div class="masthead-inner">
-      <div class="topline">
-        <div class="brand"><span class="mark">연</span><span>연금 코파일럿 · 발표 자료</span></div>
-        <button class="print-button" type="button" onclick="window.print()">인쇄</button>
-      </div>
-      <p class="eyebrow">TECH STACK DECISION BRIEF</p>
+  <main>
+    <header>
+      <p class="eyebrow">발표 참고용 · 2026.07.28</p>
       <h1>기술 스택 선정 근거</h1>
-      <p class="lede">기술의 유명세가 아니라 금융 규칙의 결정성, 데이터 소유권, 설명 가능성, 제한된 개발 기간을 기준으로 선택을 설명합니다. 비교 실험이 없는 부분은 우월성이 아니라 적합성으로 말합니다.</p>
-      <div class="thesis">
-        <strong>한 문장 결론</strong>
-        <p><b>React PWA → FastAPI → PostgreSQL</b>의 단방향 구조 위에서 Python 규칙 엔진이 계산하고, pydantic-ai와 Claude는 검증된 결과의 설명만 담당하도록 책임을 분리했습니다.</p>
+      <p class="lead">각 기술의 절대 우열보다, 연금 규칙·데이터·AI 설명을 한 서비스에서 안정적으로 연결하는 데 맞춘 선택입니다.</p>
+      <div class="stack" aria-label="선정 기술 스택">
+        <strong>React + TypeScript + Vite PWA</strong><span>→</span>
+        <strong>FastAPI + Python</strong><span>→</span>
+        <strong>Supabase PostgreSQL</strong><span>+</span>
+        <strong>pydantic-ai + Gemini</strong>
       </div>
-    </div>
-  </header>
+    </header>
 
-  <div class="layout">
-    <nav aria-label="문서 목차">
-      <p>CONTENTS</p>
-      <a href="#frame">판단 기준</a>
-      <a href="#architecture">전체 구조</a>
-      <a href="#decisions">스택별 근거</a>
-      <a href="#strength">근거 강도</a>
-      <a href="#guardrails">발표 경계</a>
-      <a href="#qna">꼬리질문</a>
-      <a href="#sources">근거 문서</a>
-    </nav>
+    <section aria-labelledby="summary-title">
+      <h2 id="summary-title">선택과 이유</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>영역</th>
+              <th>선택</th>
+              <th>비교 대상</th>
+              <th>선정 근거와 한계</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>프론트엔드</td>
+              <td>React + TypeScript + Vite PWA</td>
+              <td>Vue 3, Next.js, Flutter</td>
+              <td>API 중심 모바일 웹에 필요한 컴포넌트 생태계와 타입 안정성, 빠른 개발 서버를 확보했습니다. SSR·SEO나 네이티브 기기 기능이 핵심 요구는 아니어서 Next.js·Flutter의 추가 복잡도를 택하지 않았습니다.<span class="limit">현재 PWA 설치 아이콘 등 최종 설치 요건은 별도 보완이 필요합니다.</span></td>
+            </tr>
+            <tr>
+              <td>백엔드</td>
+              <td>Python + FastAPI + Pydantic</td>
+              <td>Node.js/NestJS, Spring Boot</td>
+              <td>연금 규칙, 데이터 처리, RAG, AI 에이전트를 같은 Python 런타임에서 다룹니다. 다른 언어도 가능하지만 핵심 계산을 재작성하거나 언어 간 API 경계를 하나 더 운영해야 합니다.</td>
+            </tr>
+            <tr>
+              <td>판단과 AI</td>
+              <td>규칙 엔진 + pydantic-ai + Gemini</td>
+              <td>LLM 단독, LangChain/LangGraph</td>
+              <td>수치 판단은 Python 규칙 엔진이 맡고, pydantic-ai는 구조화된 에이전트 연결, Gemini는 설명과 문답만 맡습니다. 계산 재현성과 AI 활용을 분리한 구조입니다.</td>
+            </tr>
+            <tr>
+              <td>데이터베이스</td>
+              <td>Supabase PostgreSQL + Auth + RLS</td>
+              <td>Firebase, AWS Amplify, 직접 운영 PostgreSQL</td>
+              <td>계좌·보유자산처럼 관계가 강한 데이터를 정규화하고 SQL·외래키로 무결성을 관리합니다. Vercel 프론트 배포에는 영속 DB 프로세스를 포함하지 않으므로 외부 관리형 PostgreSQL인 Supabase에 DB를 두었습니다.</td>
+            </tr>
+            <tr>
+              <td>검색</td>
+              <td>pgvector + BGE-M3</td>
+              <td>Pinecone, Qdrant</td>
+              <td>승인 문서와 메타데이터가 이미 PostgreSQL에 있어 벡터 검색도 같은 데이터 경계에 두었습니다.<span class="limit">임베딩 실행 환경이 없을 때는 전문 검색 폴백을 사용합니다.</span></td>
+            </tr>
+            <tr>
+              <td>배포</td>
+              <td>Vercel + Render + Supabase</td>
+              <td>단일 서버, AWS 직접 구성</td>
+              <td>정적 프론트, Python API·에이전트, 영속 DB를 각 역할에 맞는 관리형 환경으로 분리했습니다.<span class="limit">무료 인스턴스의 초기 기동 지연은 운영 비용과 함께 재검토 대상입니다.</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-    <main id="content">
-      <section id="frame">
-        <p class="section-kicker">01 · DECISION FRAME</p>
-        <h2>먼저 요구사항을 놓고 기술을 골랐습니다</h2>
-        <p class="section-copy">이 프로젝트의 핵심은 화면이나 생성형 AI 자체가 아니라, 연금계좌 규칙을 틀리지 않게 계산하고 사용자별 데이터 접근을 통제하면서 근거를 설명하는 것입니다.</p>
-        <div class="criteria">
-          <div class="criterion"><b>결정성</b><span>같은 입력은 같은 계산 결과</span></div>
-          <div class="criterion"><b>계약</b><span>API·엔진·화면 타입 일치</span></div>
-          <div class="criterion"><b>소유권</b><span>사용자별 행 접근 통제</span></div>
-          <div class="criterion"><b>설명성</b><span>수치와 출처를 역추적</span></div>
-          <div class="criterion"><b>개발 경계</b><span>중복 구현과 운영 지점 축소</span></div>
+    <section aria-labelledby="script-title">
+      <h2 id="script-title">30초 발표 문장</h2>
+      <div class="script">
+        <article>
+          <h3>프론트엔드</h3>
+          <p>로그인 후 API 데이터를 다루는 모바일 웹이어서 React·TypeScript로 화면과 타입을 관리하고, Vite로 개발·빌드를 단순화했습니다.</p>
+        </article>
+        <article>
+          <h3>백엔드와 AI</h3>
+          <p>연금 규칙부터 데이터 처리, RAG, 에이전트까지 Python 생태계에 있어 FastAPI와 pydantic-ai를 같은 환경에 두었습니다.</p>
+        </article>
+        <article>
+          <h3>DB와 배포</h3>
+          <p>관계형 데이터를 PostgreSQL로 정규화했고, Vercel 밖의 관리형 Supabase에 DB를 두어 Auth·RLS·pgvector까지 함께 운영합니다.</p>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="qa-title">
+      <h2 id="qa-title">예상 질문</h2>
+      <details>
+        <summary>왜 Node.js나 Spring 대신 Python인가요?</summary>
+        <p>AI라서 무조건 Python을 고른 것이 아닙니다. 현재 핵심인 규칙 계산·데이터 처리·검색·에이전트가 Python에 모여 있어, FastAPI를 쓰면 재작성과 언어 간 통신 비용을 줄일 수 있기 때문입니다.</p>
+      </details>
+      <details>
+        <summary>왜 Firebase가 아니라 Supabase인가요?</summary>
+        <p>계좌·자산·전략은 관계와 제약이 중요합니다. 문서 중심 DB보다 PostgreSQL의 정규화, 조인, 외래키가 모델에 더 잘 맞고 Auth·RLS도 함께 사용할 수 있습니다.</p>
+      </details>
+      <details>
+        <summary>왜 Vercel 안에 DB를 넣지 않았나요?</summary>
+        <p>Vercel은 프론트 배포를 담당하며 애플리케이션과 함께 장시간 실행되는 영속 DB 프로세스를 두는 구조가 아닙니다. 따라서 외부 관리형 DB인 Supabase에 연결했습니다.</p>
+      </details>
+      <details>
+        <summary>왜 LLM이 계산하지 않나요?</summary>
+        <p>연금 한도와 포트폴리오 수치는 같은 입력에 같은 결과가 필요합니다. 계산은 검증 가능한 규칙 엔진에 두고 LLM은 결과를 이해하기 쉽게 설명합니다.</p>
+      </details>
+      <details>
+        <summary>왜 Vue 3나 Next.js가 아닌가요?</summary>
+        <p>둘 다 가능한 선택입니다. 다만 팀이 React 기반 컴포넌트와 테스트를 이미 갖췄고, 이 서비스는 공개 검색 페이지보다 인증 후 API 화면이 중심이라 React SPA 구성이 충분했습니다.</p>
+      </details>
+    </section>
+
+    <section aria-labelledby="wording-title">
+      <h2 id="wording-title">발표 표현</h2>
+      <div class="say">
+        <div class="good">
+          <h3>이렇게 말하기</h3>
+          <ul>
+            <li>요구사항과 기존 코드에 가장 잘 맞았다.</li>
+            <li>Python 한 환경으로 계산·데이터·에이전트를 연결했다.</li>
+            <li>프론트와 영속 DB의 배포 역할을 분리했다.</li>
+          </ul>
         </div>
-      </section>
-
-      <section id="architecture">
-        <p class="section-kicker">02 · RESPONSIBILITY MAP</p>
-        <h2>스택보다 중요한 것은 책임 분리입니다</h2>
-        <p class="section-copy">의존 방향은 앞에서 뒤로만 흐르고, 규칙 엔진은 DB·네트워크·LLM과 분리합니다. LLM 장애가 나도 검증된 기본 답변은 남습니다.</p>
-        <div class="architecture" aria-label="기술 스택 흐름">
-          <div class="arch-node"><b>React + TypeScript</b><span>모바일 PWA 화면</span><span>사용자 입력과 시각화</span></div>
-          <div class="arch-node"><b>FastAPI</b><span>인증·SSE·API 계약</span><span>Pydantic 검증</span></div>
-          <div class="arch-node engine"><b>Python 규칙 엔진</b><span>계좌 규칙·세금·배분</span><span>Decimal 결정론</span></div>
-          <div class="arch-node"><b>Supabase</b><span>PostgreSQL·Auth·RLS</span><span>pgvector 검색 저장</span></div>
-          <div class="arch-node ai"><b>pydantic-ai + Claude</b><span>검증 답변 재서술</span><span>실패 시 원문 폴백</span></div>
+        <div class="care">
+          <h3>단정하지 않기</h3>
+          <ul>
+            <li>Python이 AI 백엔드에 항상 더 좋다.</li>
+            <li>Vercel은 DB를 사용할 수 없다.</li>
+            <li>Supabase가 언제나 더 싸고 안전하다.</li>
+          </ul>
         </div>
-        <p class="arch-note"><code>frontend → FastAPI → engine/data</code>. LLM은 엔진 뒤의 설명 계층이며 계산 권한이 없습니다.</p>
-      </section>
+      </div>
+    </section>
 
-      <section id="decisions">
-        <p class="section-kicker">03 · STACK DECISIONS</p>
-        <h2>스택별 선택 이유와 대가</h2>
-        <p class="section-copy">각 항목은 “요구사항 → 선택 이유 → 트레이드오프 → 발표 문장” 순서로 정리했습니다.</p>
-        <div class="stack-list">
-          <article class="stack-card">
-            <div class="stack-title"><span class="num">01</span><h3>React + TypeScript + Vite PWA</h3><p>사용자 경험 계층</p><span class="grade medium">근거 강도 · 중간</span></div>
-            <div class="stack-body">
-              <div class="decision-grid">
-                <div class="decision"><h4>왜 선택했나</h4><p>제한된 기간에 하나의 웹 코드베이스로 모바일 화면, 설치 경험, LAN 단말 테스트와 빠른 배포를 확보하기 위해서입니다. TypeScript는 API 응답과 화면 계약의 정적 오류를 줄이고 Vite는 개발 반복 경로를 단순화합니다.</p></div>
-                <div class="decision tradeoff"><h4>무엇을 감수했나</h4><p>네이티브 앱과의 정량 비교는 없습니다. 푸시, 백그라운드 처리, 기기 API가 핵심이 되면 네이티브 또는 하이브리드 전환을 다시 검토해야 합니다.</p></div>
-              </div>
-              <p class="script"><b>30초 문장</b> · “iOS와 Android를 따로 만들기보다 React PWA 하나로 모바일 경험을 구현했고, TypeScript와 Vite로 화면 계약과 개발 반복 속도를 관리했습니다.”</p>
-            </div>
-          </article>
+    <section aria-labelledby="sources-title">
+      <h2 id="sources-title">근거 자료</h2>
+      <ul class="sources">
+        <li><a href="../30_스펙/아키텍처.md">프로젝트 아키텍처</a></li>
+        <li><a href="../30_스펙/코드베이스_지도.md">코드베이스 지도</a></li>
+        <li><a href="../../supabase/DB_HANDOFF.md">DB 운영 인계</a></li>
+        <li><a href="https://vite.dev/guide/why.html">Vite 공식 문서</a></li>
+        <li><a href="https://fastapi.tiangolo.com/features/">FastAPI 공식 문서</a></li>
+        <li><a href="https://supabase.com/docs/guides/database/postgres/row-level-security">Supabase RLS 문서</a></li>
+        <li><a href="https://ai.pydantic.dev/">Pydantic AI 문서</a></li>
+        <li><a href="https://github.com/pgvector/pgvector">pgvector</a></li>
+      </ul>
+    </section>
 
-          <article class="stack-card">
-            <div class="stack-title"><span class="num">02</span><h3>FastAPI + Pydantic</h3><p>서비스 API 경계</p><span class="grade">근거 강도 · 중간 이상</span></div>
-            <div class="stack-body">
-              <div class="decision-grid">
-                <div class="decision"><h4>왜 선택했나</h4><p>규칙 엔진, 수집기, RAG가 모두 Python이므로 같은 런타임에서 API 입력·출력 검증, 비동기 연동, SSE 스트리밍을 연결할 수 있습니다. 계산 모델을 다른 언어로 다시 구현하는 경계를 줄였습니다.</p></div>
-                <div class="decision tradeoff"><h4>무엇을 감수했나</h4><p>Django·Flask보다 몇 배 빠르다는 자체 부하테스트는 없습니다. 관리자 화면보다 독립 규칙 엔진과 명시적인 API 계약을 우선한 선택입니다.</p></div>
-              </div>
-              <p class="script"><b>30초 문장</b> · “핵심 계산 엔진과 API를 같은 Python 런타임에 두어 재작성과 직렬화 경계를 줄였고, Pydantic 검증과 OpenAPI, SSE를 함께 활용했습니다.”</p>
-            </div>
-          </article>
-
-          <article class="stack-card">
-            <div class="stack-title"><span class="num">03</span><h3>Python 규칙 엔진</h3><p>금융 계산의 단일 진실 공급원</p><span class="grade">근거 강도 · 매우 강함</span></div>
-            <div class="stack-body">
-              <div class="decision-grid">
-                <div class="decision"><h4>왜 선택했나</h4><p>연금계좌 한도, 세액, 배분은 같은 입력에 같은 결과가 필요합니다. <code>Decimal</code> 기반 순수 함수로 계산하고 불변식 테스트로 규칙을 고정하면 결과와 근거를 재현할 수 있습니다.</p></div>
-                <div class="decision tradeoff"><h4>무엇을 감수했나</h4><p>자연어 유연성보다 명시적인 규칙 관리 비용을 선택했습니다. 법령과 가정이 바뀌면 버전형 규칙과 테스트를 함께 갱신해야 합니다.</p></div>
-              </div>
-              <p class="script"><b>30초 문장</b> · “LLM이 계산하게 하지 않고 규칙 엔진이 모든 수치를 확정합니다. LLM이 새 숫자를 만들거나 바꾸면 가드가 거부하고 결정론 답변으로 돌아갑니다.”</p>
-            </div>
-          </article>
-
-          <article class="stack-card">
-            <div class="stack-title"><span class="num">04</span><h3>Supabase PostgreSQL + Auth + RLS</h3><p>데이터와 사용자 소유권</p><span class="grade medium">근거 강도 · 중간</span></div>
-            <div class="stack-body">
-              <div class="decision-grid">
-                <div class="decision"><h4>왜 선택했나</h4><p>계좌·대화·투자성향은 관계와 소유권이 분명한 데이터입니다. PostgreSQL 관계형 모델과 Supabase Auth, 행 단위 보안(RLS)을 결합해 사용자별 접근을 DB 계층에서도 차단했습니다.</p></div>
-                <div class="decision tradeoff"><h4>무엇을 감수했나</h4><p>서비스 역할 키의 권한이 크므로 브라우저 노출을 금지하고, 테이블 접근 권한인 <code>GRANT</code>와 사용자 행 권한인 RLS를 별도로 검증해야 합니다. Firebase와 정량 비교한 자료는 없습니다.</p></div>
-              </div>
-              <p class="script"><b>30초 문장</b> · “관계형 데이터와 사용자별 소유권을 한 플랫폼에서 관리하고, 실제 두 사용자 Auth/RLS 흐름으로 타 사용자 행 차단을 검증했습니다.”</p>
-            </div>
-          </article>
-
-          <article class="stack-card">
-            <div class="stack-title"><span class="num">05</span><h3>pgvector + BGE-M3 하이브리드 검색</h3><p>검증 문서 RAG</p><span class="grade medium">근거 강도 · 조건부</span></div>
-            <div class="stack-body">
-              <div class="decision-grid">
-                <div class="decision"><h4>왜 선택했나</h4><p>현재 승인 지식 코퍼스가 작고 사용자·권한·검색 메타데이터가 이미 PostgreSQL에 있어 전문검색과 벡터검색을 한 DB에서 결합했습니다. BGE-M3는 로컬 임베딩으로 외부 모델 API 호출 의존을 줄일 수 있습니다.</p></div>
-                <div class="decision tradeoff"><h4>무엇을 감수했나</h4><p>BGE-M3는 첫 로드와 2GB 이상 메모리 비용이 있습니다. 모델이 없는 배포에서는 전문검색으로 폴백합니다. 별도 벡터 DB보다 항상 빠르다는 실험이나 한국어 모델 우위 벤치마크는 없습니다.</p></div>
-              </div>
-              <p class="script"><b>30초 문장</b> · “작은 승인 코퍼스와 권한 메타데이터를 PostgreSQL 안에서 함께 관리해 동기화 경계를 줄였고, 임베더가 없을 때도 전문검색으로 서비스가 유지되게 했습니다.”</p>
-            </div>
-          </article>
-
-          <article class="stack-card">
-            <div class="stack-title"><span class="num">06</span><h3>pydantic-ai + Claude</h3><p>검증 결과의 자연어 설명</p><span class="grade">근거 강도 · 매우 강함</span></div>
-            <div class="stack-body">
-              <div class="decision-grid">
-                <div class="decision"><h4>왜 선택했나</h4><p>pydantic-ai의 구조화 출력과 도구 계약으로 LLM 역할을 설명과 Q&amp;A에 제한했습니다. 모델 비교에서도 같은 가드 아래 안전성과 숫자 정확도가 같다면 사용자 대기 시간이 짧고 비용이 낮은 모델을 실시간 경로에 둔다는 기준을 적용했습니다.</p></div>
-                <div class="decision tradeoff"><h4>무엇을 감수했나</h4><p>외부 모델 호출 지연과 장애가 남습니다. 그래서 응답을 엔진 검증 결과부터 보내고, 내레이션은 교체 이벤트로 전달하며 실패 시 기본 답변을 유지합니다.</p></div>
-              </div>
-              <p class="script"><b>30초 문장</b> · “LLM은 답을 결정하지 않고 검증된 답을 읽기 쉽게 바꿉니다. 실시간 내레이션은 빠른 모델, 저빈도 배치 요약은 상위 모델로 역할을 나눴습니다.”</p>
-            </div>
-          </article>
-
-          <article class="stack-card">
-            <div class="stack-title"><span class="num">07</span><h3>Vercel + Render</h3><p>발표·검증 단계 배포</p><span class="grade medium">근거 강도 · 비용 강함</span></div>
-            <div class="stack-body">
-              <div class="decision-grid">
-                <div class="decision"><h4>왜 선택했나</h4><p>정적 프론트와 API 서버를 분리해 배포 경계를 단순화하고 초기 인프라 비용을 낮췄습니다. Vercel은 프론트를 CDN에, Render는 FastAPI를 실행합니다.</p></div>
-                <div class="decision tradeoff"><h4>무엇을 감수했나</h4><p>무료 Render는 유휴 후 콜드 스타트가 있습니다. 프리워밍은 프로세스 내부 첫 호출 비용을 줄일 뿐 플랫폼 재기동 자체를 없애지는 못합니다. 운영 전에는 상시 인스턴스와 부하테스트가 필요합니다.</p></div>
-              </div>
-              <p class="script"><b>30초 문장</b> · “검증 단계에서는 초기 비용을 낮추는 배포 구성을 택했고, 대신 콜드 스타트를 명시적인 운영 전환 과제로 남겼습니다.”</p>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section id="strength">
-        <p class="section-kicker">04 · EVIDENCE STRENGTH</p>
-        <h2>무엇을 얼마나 강하게 말할 수 있나</h2>
-        <p class="section-copy">공식 기술 특성과 프로젝트 내부 검증을 구분합니다. “좋은 기술”보다 “우리 요구사항과 검증에 맞는 기술”이라고 설명합니다.</p>
-        <div class="matrix-wrap">
-          <table>
-            <thead><tr><th>항목</th><th>프로젝트 직접 근거</th><th>아직 없는 근거</th><th>강도</th></tr></thead>
-            <tbody>
-              <tr><td>규칙 엔진·LLM 분리</td><td>결정론 계산, 숫자 가드, 폴백, 불변식 테스트</td><td>없음. 핵심 설계로 구현 검증</td><td class="strength">매우 강함</td></tr>
-              <tr><td>Claude 역할 분리</td><td>동일 가드 모델 비교, 프리워밍·thinking 실측</td><td>월 실제 청구액 집계</td><td class="strength">매우 강함</td></tr>
-              <tr><td>FastAPI</td><td>Python 엔진·Pydantic·SSE 단일 경계</td><td>Django·Flask 대비 부하테스트</td><td class="strength">중간 이상</td></tr>
-              <tr><td>Supabase</td><td>원격 Auth/RLS 및 DB E2E</td><td>Firebase 대비 지연·견적</td><td class="strength conditional">중간</td></tr>
-              <tr><td>pgvector</td><td>PostgreSQL 통합, HNSW, 하이브리드 검색</td><td>별도 벡터 DB 대비 성능</td><td class="strength conditional">비용 중간·속도 약함</td></tr>
-              <tr><td>BGE-M3</td><td>로컬 적재, 1024차원, 전문검색 폴백</td><td>한국어 모델 비교, 운영 전 경로 상시성</td><td class="strength conditional">조건부</td></tr>
-              <tr><td>React PWA</td><td>단일 코드베이스 모바일 흐름과 배포</td><td>네이티브 대비 개발시간·성능</td><td class="strength conditional">개발비 측면 중간</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section id="guardrails">
-        <p class="section-kicker">05 · PRESENTATION GUARDRAILS</p>
-        <h2>정확한 문장과 과장되는 문장</h2>
-        <div class="guard-grid">
-          <div class="guard">
-            <h3>이렇게 말합니다</h3>
-            <ul>
-              <li>“대안보다 우수하다”가 아니라 “현재 요구사항에 적합했다.”</li>
-              <li>속도는 스택 이름이 아니라 실제 측정한 프리워밍·연결 풀 결과로 설명합니다.</li>
-              <li>LLM은 계산자가 아니라 검증 결과의 설명 계층입니다.</li>
-              <li>Auth와 RLS는 실제 사용자 분리 흐름으로 검증했습니다.</li>
-              <li>운영 전환 시 다시 설계할 비용과 병목을 함께 말합니다.</li>
-            </ul>
-          </div>
-          <div class="guard no">
-            <h3>이렇게 말하지 않습니다</h3>
-            <ul>
-              <li>“FastAPI가 Django나 Flask보다 몇 배 빠르다.”</li>
-              <li>“pgvector가 별도 벡터 DB보다 항상 싸고 빠르다.”</li>
-              <li>“BGE-M3가 한국어에서 가장 좋다.”</li>
-              <li>“PWA가 네이티브 앱보다 항상 저렴하고 빠르다.”</li>
-              <li>“무료 인프라에서도 운영 성능 문제가 없다.”</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section id="qna">
-        <p class="section-kicker">06 · FOLLOW-UP Q&amp;A</p>
-        <h2>심사위원 꼬리질문 대응</h2>
-        <details><summary>왜 LLM이 아니라 규칙 엔진이 계산하나요?</summary><p>연금 한도와 세액은 같은 입력에 같은 결과가 필요하고 근거를 재현할 수 있어야 합니다. 규칙 엔진이 수치를 확정하고 LLM은 그 결과만 설명하게 해 생성형 모델의 숫자 변형 위험을 줄였습니다.</p></details>
-        <details><summary>왜 Firebase가 아니라 Supabase인가요?</summary><p>계좌·보유자산·성향·대화는 관계가 강하고 사용자별 소유권이 명확합니다. PostgreSQL 관계형 모델과 RLS를 한 플랫폼에서 운영하는 점이 요구사항에 맞았습니다. Firebase와 정량 비교한 결과는 없습니다.</p></details>
-        <details><summary>왜 별도 벡터 DB를 쓰지 않았나요?</summary><p>현재 승인 코퍼스가 작고 검색 메타데이터와 권한 데이터가 이미 PostgreSQL에 있습니다. 이 규모에서는 별도 동기화 경계를 만들지 않는 편이 단순했습니다. 규모와 트래픽이 커지면 별도 검색 계층을 재검토합니다.</p></details>
-        <details><summary>Claude에 종속된 구조 아닌가요?</summary><p>엔진 결과와 검증 가드는 모델 밖에 있고 pydantic-ai 계약 뒤에 모델을 둡니다. 내레이터가 실패해도 결정론 답변이 유지되며, 같은 가드 아래 다른 모델을 비교할 수 있는 구조입니다.</p></details>
-        <details><summary>무료 배포 구성이 실서비스에도 적합한가요?</summary><p>아닙니다. 발표와 검증 단계의 초기 비용을 낮춘 선택입니다. 운영 전에는 상시 인스턴스, 부하테스트, 실제 토큰 비용과 캐시 적중률 측정이 필요합니다.</p></details>
-      </section>
-
-      <section id="sources">
-        <p class="section-kicker">07 · SOURCE OF TRUTH</p>
-        <h2>근거 문서</h2>
-        <p class="section-copy">이 HTML은 아래 프로젝트 문서를 발표용으로 재구성했습니다. 세부 수치와 최신 상태는 원문을 우선합니다.</p>
-        <div class="sources">
-          <a class="source-link" href="./예상질문_QnA.md">예상질문 Q&amp;A · 기술 스택 선정 이유</a>
-          <a class="source-link" href="./발표_개요.md">발표 개요 · 아키텍처와 모델 검증</a>
-          <a class="source-link" href="../30_스펙/아키텍처.md">아키텍처 · 구현 및 검증 상태</a>
-          <a class="source-link" href="../30_스펙/코드베이스_지도.md">코드베이스 지도 · 파일별 책임</a>
-          <a class="source-link" href="../30_스펙/LLM_모델_비교.md">LLM 모델 비교 · 재현 가능한 실측</a>
-          <a class="source-link" href="../../supabase/DB_HANDOFF.md">DB 핸드오프 · 원격 상태와 RLS</a>
-        </div>
-      </section>
-
-      <footer>작성 기준: 2026-07-28 · 기술 우월성 비교가 아니라 프로젝트 요구사항, 구현, 내부 검증과 한계를 기준으로 정리했습니다.</footer>
-    </main>
-  </div>
-  <script>
-    const links = [...document.querySelectorAll('nav a')];
-    const sections = links.map((link) => document.querySelector(link.getAttribute('href'))).filter(Boolean);
-    const observer = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        links.forEach((link) => link.classList.toggle('active', link.getAttribute('href') === `#${entry.target.id}`));
-      }
-    }, { rootMargin: '-20% 0px -65% 0px' });
-    sections.forEach((section) => observer.observe(section));
-  </script>
+    <footer>연금 코파일럿 기술 스택 발표 참고 문서 · 최종 갱신 2026-07-28</footer>
+  </main>
 </body>
 </html>
