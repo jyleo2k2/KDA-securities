@@ -2,6 +2,8 @@ import re
 from datetime import date, timedelta
 from decimal import Decimal
 
+import pytest
+
 from backend.app.chat.knowledge import LocalMarkdownKnowledgeRepository
 from backend.app.chat.models import (
     ChatIntent,
@@ -865,6 +867,42 @@ def test_selected_chat_style_is_kept_for_follow_up_question() -> None:
         == EducationalRiskProfile.STABLE_SEEKING
     )
     assert second.sections[1].title == "DC형 · 안정추구형의 방어적 분산 전략"
+
+
+@pytest.mark.parametrize(
+    "message",
+    (
+        "왜 코어위성 전략을 선택했어?",
+        "왜 코어·위성 전략을 선택했어?",
+    ),
+)
+def test_named_strategy_rationale_follow_up_does_not_drift_to_etf_theme(
+    message: str,
+) -> None:
+    service = _service()
+    first = service.ask(
+        ChatRequest(
+            message="투자전략 추천해줘",
+            survey_profile=_completed_survey(),
+        )
+    )
+
+    second = service.ask(
+        ChatRequest(
+            message=message,
+            conversation_context=first.conversation_context,
+        )
+    )
+
+    assert second.intent is ChatIntent.EDUCATIONAL_PORTFOLIO
+    assert second.data_mode == "engine_strategy_rationale"
+    assert second.educational_portfolio_evaluation is None
+    assert second.educational_portfolio_evaluations == []
+    assert len(second.sections) == 1
+    assert second.sections[0].title == "코어·위성 전략을 선택한 이유"
+    assert "위험중립형" in second.answer
+    assert "방산" not in second.answer
+    assert "우주" not in second.answer
 
 
 def test_mvp_demo_profile_builds_only_its_irp_strategy_plan() -> None:

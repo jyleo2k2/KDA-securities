@@ -75,6 +75,7 @@ from .handlers.portfolio import (
     risk_profile_guardrail,
     risk_profile_portfolio_guide,
     risk_profile_selection_guide,
+    strategy_rationale_response,
 )
 from .handlers.presentation import build_capabilities, finalize_response
 from .handlers.scenarios import (
@@ -390,6 +391,8 @@ class ChatService:
                             portfolio_universe_loader=(self._portfolio_universe_loader),
                             macro_evidence=self._macro_evidence,
                         )
+                    if resolved_plan.requests_strategy_rationale:
+                        response = strategy_rationale_response(response)
                     response = response.model_copy(
                         update={
                             "conversation_context": ConversationContext(
