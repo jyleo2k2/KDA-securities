@@ -497,27 +497,6 @@ function PortfolioPlanningReview({
         <div><span>조심해서 계산한 경우</span><strong>{optionalPercent(planning.conservative_planning_return_percent)}</strong><small>여유 폭을 더 뺌</small></div>
       </div>
 
-      <div className="portfolio-planning-table-wrap">
-        <table className="portfolio-planning-table">
-          <thead>
-            <tr>
-              <th>ETF</th>
-              <th>목표 비율</th>
-              <th>장기 전망</th>
-            </tr>
-          </thead>
-          <tbody>
-            {planning.components.map((component) => (
-              <tr key={component.isu_code}>
-                <th>{component.isu_name}<small>{component.isu_code}{component.proxy_used ? " · 비슷한 자산의 장기 전망 사용" : ""}</small></th>
-                <td>{percent(component.target_percent)}</td>
-                <td>{percent(component.cma_percent)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
       <div className="planning-source-chips" aria-label="장기 수익률 가정 출처">
         {planning.sources.map((source) => (
           /^https?:\/\//.test(source.reference) ? (
