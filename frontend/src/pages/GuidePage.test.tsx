@@ -2145,6 +2145,24 @@ describe("GuidePage chat history deletion", () => {
   it("collapses matching account strategy guides without treating them as rebalancing results", async () => {
     const accountStrategyResponse = {
       ...STRUCTURED_PORTFOLIO_RESPONSE,
+      numeric_evidence: ["DC형", "IRP", "연금저축펀드"].flatMap(
+        (accountLabel) => [
+          {
+            label: `${accountLabel} · 조심해서 계산한 수익률 가정`,
+            value: "4.5",
+            unit: "%",
+            evidence_id: `engine:return:${accountLabel}`,
+            basis: "장기 전망·ETF 비용·여유 폭을 넣은 계산",
+          },
+          {
+            label: `${accountLabel} · 기본으로 계산한 수익률 가정`,
+            value: "4.8",
+            unit: "%",
+            evidence_id: `engine:return:${accountLabel}`,
+            basis: "장기 전망과 ETF 비용을 넣은 계산",
+          },
+        ],
+      ),
       sections: ["DC형", "IRP", "연금저축펀드"].flatMap((accountLabel) => [
         {
           ...STRUCTURED_PORTFOLIO_RESPONSE.sections[0],
@@ -2194,9 +2212,23 @@ describe("GuidePage chat history deletion", () => {
       "보유 계좌 공통 · 장기 계산에 쓰는 수익률 가정",
     )).toBeInTheDocument();
     expect(screen.getAllByText("35년의 장기 운용기간을 고려한 전략이에요. 목표비중을 확인해 보세요.")).toHaveLength(1);
-    expect(screen.getAllByText(
+    expect(screen.queryByText(
       "보수적으로 본 경우 약 4.5%, 기본으로 본 경우 약 4.8%예요.",
-    )).toHaveLength(1);
+    )).not.toBeInTheDocument();
+    const planningReturnSummary = screen.getByLabelText("장기 수익률 가정");
+    expect(within(planningReturnSummary).getByText("기본 수익률")).toBeInTheDocument();
+    expect(within(planningReturnSummary).getByText("4.8%")).toBeInTheDocument();
+    expect(within(planningReturnSummary).getByText(
+      "장기 전망·ETF 비용 반영",
+    )).toBeInTheDocument();
+    expect(within(planningReturnSummary).getByText("보수적 수익률")).toBeInTheDocument();
+    expect(within(planningReturnSummary).getByText("4.5%")).toBeInTheDocument();
+    expect(within(planningReturnSummary).getByText(
+      "장기 전망·ETF 비용·여유 폭 반영",
+    )).toBeInTheDocument();
+    expect(within(planningReturnSummary).getByText(
+      /미래 수익을 보장하는 값은 아니에요/,
+    )).toBeInTheDocument();
     expect(document.querySelector(".holdings-required-panel")).toBeNull();
   });
 });
