@@ -59,6 +59,10 @@ interface GuideNavigationState {
   strategyPickRequestId?: string;
 }
 
+interface PlannerNavigationState {
+  initialTab?: "tax";
+}
+
 const EMPTY_USER_DATA: CurrentUserData = {
   portfolio: null,
   aggregation: null,
@@ -102,6 +106,7 @@ function AppRoutes(): JSX.Element {
   const location = useLocation();
   const navigate = useNavigate();
   const guideNavigationState = location.state as GuideNavigationState | null;
+  const plannerNavigationState = location.state as PlannerNavigationState | null;
   const [loginSuccessPending, setLoginSuccessPending] = useState(false);
   const [resurveyPending, setResurveyPending] = useState(false);
   const [selectedScenarioCode, setSelectedScenarioCode] = useState(
@@ -308,7 +313,9 @@ function AppRoutes(): JSX.Element {
             initialScrollTop={mainHomeScrollTopRef.current}
             loading={currentUserData.loading}
             onOpenChat={() => navigate("/guide")}
-            onOpenPlanner={() => navigate("/planner")}
+            onOpenPlanner={(initialTab) => navigate("/planner", {
+              state: initialTab === "tax" ? { initialTab } : null,
+            })}
             onOpenProfile={() => navigate("/profile-html")}
             onRequestPortfolioDiagnosis={() => {
               navigate("/guide", {
@@ -331,6 +338,7 @@ function AppRoutes(): JSX.Element {
           <PensionPlannerPage
             aggregation={currentUserData.aggregation}
             financialContext={guideContext}
+            initialTab={plannerNavigationState?.initialTab}
             onBack={goToMainHome}
             portfolio={currentUserData.portfolio}
             profile={plannerProfile}

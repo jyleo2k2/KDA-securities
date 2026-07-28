@@ -53,7 +53,7 @@ vi.mock("./pages/MainHomeScreen", () => ({
     investmentProfile: InvestmentProfileResponse | null;
     loading: boolean;
     onOpenChat: () => void;
-    onOpenPlanner: () => void;
+    onOpenPlanner: (initialTab?: "tax") => void;
     onRequestPortfolioDiagnosis: () => void;
     onScrollPositionChange: (scrollTop: number) => void;
     portfolio: UserPensionPortfolio | null;
@@ -70,7 +70,7 @@ vi.mock("./pages/MainHomeScreen", () => ({
         type="button"
         onClick={() => {
           onScrollPositionChange(384);
-          onOpenPlanner();
+          onOpenPlanner("tax");
         }}
       >
         계산기 열기
@@ -130,8 +130,11 @@ vi.mock("./pages/GuidePage", () => ({
   ),
 }));
 vi.mock("./pages/PensionPlannerPage", () => ({
-  PensionPlannerPage: ({ onBack }: { onBack: () => void }) => (
-    <button type="button" onClick={onBack}>계산기 뒤로 가기</button>
+  PensionPlannerPage: ({ initialTab, onBack }: { initialTab?: "tax"; onBack: () => void }) => (
+    <>
+      <span data-testid="planner-initial-tab">{initialTab ?? "pension"}</span>
+      <button type="button" onClick={onBack}>계산기 뒤로 가기</button>
+    </>
   ),
 }));
 
@@ -261,6 +264,7 @@ describe("App owned pension data", () => {
     expect(await screen.findByText("user-a:60000000")).toBeInTheDocument();
     expect(screen.getByTestId("home-scroll-top")).toHaveTextContent("0");
     fireEvent.click(screen.getByRole("button", { name: "계산기 열기" }));
+    expect(await screen.findByTestId("planner-initial-tab")).toHaveTextContent("tax");
     fireEvent.click(await screen.findByRole("button", { name: "계산기 뒤로 가기" }));
 
     expect(await screen.findByTestId("home-scroll-top")).toHaveTextContent("384");

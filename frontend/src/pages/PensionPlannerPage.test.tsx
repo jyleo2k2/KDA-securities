@@ -40,6 +40,18 @@ describe("PensionPlannerPage", () => {
     });
   });
 
+  it("opens the tax credit tab when requested", () => {
+    render(<PensionPlannerPage {...props} initialTab="tax" />);
+
+    expect(screen.getByTitle("예상 연금 계산 및 세액공제 확인")).toHaveAttribute(
+      "src",
+      "/pension-calculator-html/연금계산기.dc.html?tab=tax",
+    );
+    expect(pensionCalculatorHtml).toContain(
+      "new URLSearchParams(window.location.search).get('tab') === 'tax'",
+    );
+  });
+
   it("moves every monetary slider in 1만원 increments", () => {
     const calculatorDocument = new DOMParser().parseFromString(
       pensionCalculatorHtml,

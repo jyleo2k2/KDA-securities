@@ -55,6 +55,7 @@ interface PensionPlannerPageProps {
   portfolio: UserPensionPortfolio | null;
   aggregation: AggregationEvaluation | null;
   financialContext: DemoUserFinancialContext | null;
+  initialTab?: "tax";
   onBack: () => void;
 }
 
@@ -71,6 +72,7 @@ export function PensionPlannerPage({
   portfolio,
   aggregation,
   financialContext,
+  initialTab,
   onBack,
 }: PensionPlannerPageProps): JSX.Element {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -316,7 +318,7 @@ export function PensionPlannerPage({
       <section className="app-phone-frame pension-planner-frame" aria-label="연금 계산기">
     <iframe
       ref={iframeRef}
-      src={`${import.meta.env.BASE_URL}pension-calculator-html/연금계산기.dc.html`}
+      src={`${import.meta.env.BASE_URL}pension-calculator-html/연금계산기.dc.html${initialTab === "tax" ? "?tab=tax" : ""}`}
       style={{ border: 0, display: "block", height: "100%", width: "100%" }}
       title="예상 연금 계산 및 세액공제 확인"
     />

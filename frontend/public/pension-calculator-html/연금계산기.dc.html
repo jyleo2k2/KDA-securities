@@ -340,7 +340,7 @@
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844},&quot;taxRateLow&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:16.5,&quot;min&quot;:0,&quot;max&quot;:20,&quot;step&quot;:0.1,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;세액공제율&quot;},&quot;taxRateHigh&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:13.2,&quot;min&quot;:0,&quot;max&quot;:20,&quot;step&quot;:0.1,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;세액공제율&quot;}}">
 class Component extends DCLogic {
   state = {
-    age:35, endAge:55, monthly:0, tab:'pension', paidP:0, paidI:0, isa:0,
+    age:35, endAge:55, monthly:0, tab:new URLSearchParams(window.location.search).get('tab') === 'tax' ? 'tax' : 'pension', paidP:0, paidI:0, isa:0,
     linkedPaidP:0, linkedPaidI:0, linkedIsa:0,
     strategyId:null, themeId:'market-beta', accountId:'all', accounts:[], calculation:null,
     taxContextOwnerId:null, taxCalculation:null, taxLoading:false,

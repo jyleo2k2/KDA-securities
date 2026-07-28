@@ -261,7 +261,7 @@ describe("MainHomeScreen", () => {
       .toHaveTextContent("박준호님 · 적극투자형 · 2026-07-23 기준");
     expect(container.querySelector(".mhs-promo-profile")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /완료율 확인하기/ }));
-    expect(onOpenPlanner).toHaveBeenCalledOnce();
+    expect(onOpenPlanner).toHaveBeenCalledWith("tax");
   });
 
   it("shows the tax credit card first and loops every 2.5 seconds", () => {

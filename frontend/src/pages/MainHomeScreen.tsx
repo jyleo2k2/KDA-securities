@@ -35,7 +35,7 @@ interface MainHomeScreenProps {
   initialScrollTop?: number;
   loading: boolean;
   onOpenChat: () => void;
-  onOpenPlanner: () => void;
+  onOpenPlanner: (initialTab?: "tax") => void;
   onOpenProfile: () => void;
   onRequestPortfolioDiagnosis: () => void;
   onOpenSlangi: () => void;
@@ -635,7 +635,7 @@ export function MainHomeScreen({
                       <button
                         type="button"
                         className="mhs-tax-button"
-                        onClick={onOpenPlanner}
+                        onClick={() => onOpenPlanner("tax")}
                         tabIndex={activePromo === 0 ? 0 : -1}
                       >
                         완료율 확인하기 <span>→</span>
