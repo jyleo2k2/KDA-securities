@@ -788,7 +788,17 @@ describe("GuidePage chat history deletion", () => {
           evidence_ids: ["user:completed_survey_profile"],
         }, {
           kind: "service_explanation",
-          title: "위험중립형 투자전략",
+          title: "DC형 · 위험중립형의 코어·위성 전략",
+          content: "목표 자산배분과 운용 원칙을 확인하세요.",
+          evidence_ids: ["engine:portfolio"],
+        }, {
+          kind: "service_explanation",
+          title: "IRP · 위험중립형의 코어·위성 전략",
+          content: "목표 자산배분과 운용 원칙을 확인하세요.",
+          evidence_ids: ["engine:portfolio"],
+        }, {
+          kind: "service_explanation",
+          title: "연금저축펀드 · 위험중립형의 코어·위성 전략",
           content: "목표 자산배분과 운용 원칙을 확인하세요.",
           evidence_ids: ["engine:portfolio"],
         }, {
@@ -891,7 +901,8 @@ describe("GuidePage chat history deletion", () => {
 
     expect(await screen.findByText("현재 투자성향 설문 결과(위험중립형)를 기준으로 한 예시 전략은 코어·위성 전략입니다.")).toBeInTheDocument();
     expect(await screen.findByText("위험중립형의 코어·위성 전략")).toBeInTheDocument();
-    expect(screen.getByText("위험중립형 투자전략", { exact: true })).toBeInTheDocument();
+    expect(screen.queryByText("보유 계좌 공통 · 위험중립형의 코어·위성 전략")).not.toBeInTheDocument();
+    expect(screen.queryByText("목표 자산배분과 운용 원칙을 확인하세요.")).not.toBeInTheDocument();
     expect(screen.getByText("연금 운용전략")).toBeInTheDocument();
     const orderedStrategyContent = [
       screen.getByText("코어·위성 전략"),
