@@ -44,6 +44,7 @@ from ..etf_universe_database import (
 )
 from ..ingestion.embeddings import get_query_embedder
 from ..investment_profile_repository import InvestmentProfileRepository
+from ..llm_models import api_key_for_model
 from ..macro_evidence import MacroEvidenceRepository
 from ..market_evidence_repository import KrxMarketEvidenceRepository
 from ..news_event_outcome_repository import PostgresNewsEventOutcomeRepository
@@ -329,8 +330,8 @@ def _chat_service(
     database_pool_max_size: int,
     naver_client_id: str = "",
     naver_client_secret: str = "",
-    anthropic_api_key: str = "",
-    anthropic_model: str = "",
+    feature_api_key: str = "",
+    feature_model: str = "",
 ) -> ChatService:
     pool: ConnectionPool | None = (
         get_database_pool(database_url, max_size=database_pool_max_size)
@@ -390,10 +391,10 @@ def _chat_service(
         product_descriptions=get_default_etf_product_description_repository(),
         product_feature_generator=(
             ClaudeEtfProductFeatureGenerator(
-                api_key=anthropic_api_key,
-                model=anthropic_model,
+                api_key=feature_api_key,
+                model=feature_model,
             )
-            if anthropic_api_key and anthropic_model
+            if feature_api_key and feature_model
             else None
         ),
         component_snapshots=(
@@ -439,10 +440,10 @@ def get_chat_service(
         if settings.naver_api_hub_client_secret is not None
         else ""
     )
-    anthropic_api_key = (
-        settings.anthropic_api_key.get_secret_value().strip()
+    feature_model = settings.chat_model
+    feature_api_key = (
+        api_key_for_model(feature_model, settings)
         if settings.enable_etf_product_feature_generation
-        and settings.anthropic_api_key is not None
         else ""
     )
     return _chat_service(
@@ -451,8 +452,8 @@ def get_chat_service(
         settings.database_pool_max_size,
         naver_client_id,
         naver_client_secret,
-        anthropic_api_key,
-        settings.anthropic_model,
+        feature_api_key,
+        feature_model,
     )
 
 
@@ -474,17 +475,15 @@ def _chat_narrator(
 def get_chat_narrator(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> ClaudeNarrator | None:
-    if not settings.enable_claude_narration:
+    if not settings.enable_llm_narration:
         return None
-    if settings.anthropic_api_key is None:
-        return None
-    api_key = settings.anthropic_api_key.get_secret_value().strip()
+    api_key = api_key_for_model(settings.chat_model, settings)
     if not api_key:
         return None
     return _chat_narrator(
         api_key,
-        settings.anthropic_model,
-        settings.anthropic_narration_upgraded_model,
+        settings.chat_model,
+        settings.narration_upgraded_model,
         settings.narration_cache_path,
     )
 
@@ -497,14 +496,12 @@ def _chat_topic_guard(api_key: str, model: str) -> ClaudeTopicGuard:
 def get_chat_topic_guard(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> ClaudeTopicGuard | None:
-    if not settings.enable_claude_topic_guard:
+    if not settings.enable_llm_topic_guard:
         return None
-    if settings.anthropic_api_key is None:
-        return None
-    api_key = settings.anthropic_api_key.get_secret_value().strip()
+    api_key = api_key_for_model(settings.topic_guard_model, settings)
     if not api_key:
         return None
-    return _chat_topic_guard(api_key, settings.anthropic_topic_guard_model)
+    return _chat_topic_guard(api_key, settings.topic_guard_model)
 
 
 def precompute_chat_narrations(settings: Settings) -> None:

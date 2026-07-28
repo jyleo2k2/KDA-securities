@@ -19,12 +19,11 @@ import psycopg
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_ai import Agent, NativeOutput
 from pydantic_ai.exceptions import AgentRunError
-from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
-from pydantic_ai.providers.anthropic import AnthropicProvider
 
 from backend.app.settings import get_settings
 
-from ._secrets import require_secret
+from ..llm_models import build_model, build_model_settings
+from ._secrets import require_model_api_key, require_secret
 from .news_article import NewsArticleFetchError, fetch_news_article
 
 Decision = Literal["keep", "delete", "review"]
@@ -196,21 +195,19 @@ class NewsCleanupClassifier:
     def __init__(self, *, api_key: str, model: str) -> None:
         if not api_key.strip() or not model.strip():
             raise ValueError("api_key and model are required")
-        anthropic_model = AnthropicModel(
-            model.strip(),
-            provider=AnthropicProvider(api_key=api_key.strip()),
-        )
+        model_name = model.strip()
+        llm_model = build_model(model_name, api_key=api_key.strip())
         self.batch_agent: Agent[None, ModelDecisionBatch] = Agent(
-            anthropic_model,
+            llm_model,
             output_type=NativeOutput(ModelDecisionBatch),
             instructions=RELEVANCE_PROMPT,
-            model_settings=AnthropicModelSettings(max_tokens=5000),
+            model_settings=build_model_settings(model_name, max_tokens=5000),
         )
         self.article_agent: Agent[None, ModelDecision] = Agent(
-            anthropic_model,
+            llm_model,
             output_type=NativeOutput(ModelDecision),
             instructions=RELEVANCE_PROMPT,
-            model_settings=AnthropicModelSettings(max_tokens=1000),
+            model_settings=build_model_settings(model_name, max_tokens=1000),
         )
 
     def classify_metadata(
@@ -548,7 +545,7 @@ def main() -> int:
     args = _parser().parse_args()
     settings = get_settings()
     database_url = require_secret(settings.database_url, "DATABASE_URL")
-    api_key = require_secret(settings.anthropic_api_key, "ANTHROPIC_API_KEY")
+    api_key = require_model_api_key(settings.news_summary_model, settings)
     items = load_news_items(database_url)
     decisions = audit_news_items(
         items=items,
