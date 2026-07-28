@@ -570,17 +570,21 @@ function AssistantMessage({
     && educationalEvaluation != null
     && educationalEvaluation.evaluated_input.current_holdings.length === 0
   );
+  const hiddenEducationalAllocationVisualizations = isEducationalPortfolio
+    ? response.visualizations.filter((item) => item.kind === "sleeve_allocation")
+    : [];
   const educationalStrategyVisualizations = embedsEducationalStrategyVisualizations
-    ? response.visualizations.filter((item) => (
-      item.kind === "sleeve_allocation" || item.kind === "stress_scenarios"
-    ))
+    ? response.visualizations.filter((item) => item.kind === "stress_scenarios")
     : [];
   const remainingVisualizations = (isMissedTaxCredit
     ? response.visualizations.filter((item) => item.kind !== "tax_summary")
     : taxSummaryVisualization
       ? response.visualizations.filter((item) => item !== taxSummaryVisualization)
       : response.visualizations
-  ).filter((item) => !educationalStrategyVisualizations.includes(item));
+  ).filter((item) => (
+    !educationalStrategyVisualizations.includes(item)
+    && !hiddenEducationalAllocationVisualizations.includes(item)
+  ));
   const visibleNumericEvidence = isMissedTaxCredit
     ? []
     : isPensionTaxCredit

@@ -37,7 +37,11 @@ from .handlers._shared import (
 from .handlers._shared import (  # noqa: F401
     _scenario_holdings_summary as _scenario_holdings_summary,
 )
-from .handlers.account_rules import blocked_response, handle_account_rule
+from .handlers.account_rules import (
+    blocked_response,
+    handle_account_rule,
+    referent_clarification_response,
+)
 from .handlers.disclosures_news import (
     disclosure_response,
     event_strategy_response,
@@ -192,8 +196,35 @@ class ChatService:
                 intent=ChatIntent.MOCK_PORTFOLIO,
                 max_results=direct_plan.max_results,
             )
-        if direct_plan.blocked_reason not in {None, BlockedReason.UNSUPPORTED}:
+        if direct_plan.blocked_reason not in {
+            None,
+            BlockedReason.UNSUPPORTED,
+            BlockedReason.FEE_TARGET_REQUIRED,
+            BlockedReason.ACCOUNT_SELECTION_REQUIRED,
+        }:
             return direct_plan
+        referent = self._router.resolve_referent(request)
+        contextual_message = self._router.contextual_message(request)
+        if contextual_message != request.message:
+            contextual_plan = plan_question(
+                contextual_message,
+                default_max_results=request.max_results,
+                structured_pension_tax=request.pension_tax is not None,
+                theme_repository=self._theme_repository,
+            )
+            if not (
+                contextual_plan.intent == ChatIntent.ACCOUNT_RULE
+                and _knowledge_topic(request.message, contextual_plan)[0] == "general"
+                and referent is None
+            ):
+                return contextual_plan
+        if self._router.needs_referent_clarification(request):
+            return QueryPlan(
+                normalized_message=direct_plan.normalized_message,
+                intent=ChatIntent.OUT_OF_SCOPE,
+                max_results=direct_plan.max_results,
+                blocked_reason=BlockedReason.REFERENT_SELECTION_REQUIRED,
+            )
         can_use_news_context = (
             direct_plan.intent == ChatIntent.NEWS
             or direct_plan.blocked_reason == BlockedReason.UNSUPPORTED
@@ -224,23 +255,7 @@ class ChatService:
             )
         if direct_plan.blocked_reason != BlockedReason.UNSUPPORTED:
             return direct_plan
-        referent = self._router.resolve_referent(request)
-        contextual_message = self._router.contextual_message(request)
-        if contextual_message == request.message:
-            return direct_plan
-        contextual_plan = plan_question(
-            contextual_message,
-            default_max_results=request.max_results,
-            structured_pension_tax=request.pension_tax is not None,
-            theme_repository=self._theme_repository,
-        )
-        if (
-            contextual_plan.intent == ChatIntent.ACCOUNT_RULE
-            and _knowledge_topic(request.message, contextual_plan)[0] == "general"
-            and referent is None
-        ):
-            return direct_plan
-        return contextual_plan
+        return direct_plan
 
     def ask(
         self,
@@ -252,7 +267,12 @@ class ChatService:
     ) -> ChatResponse:
         original_request = request
         resolved_plan = plan or self.plan(request)
-        if resolved_plan.blocked_reason is not None and not (
+        if (
+            resolved_plan.blocked_reason
+            is BlockedReason.REFERENT_SELECTION_REQUIRED
+        ):
+            response = referent_clarification_response(request)
+        elif resolved_plan.blocked_reason is not None and not (
             resolved_plan.blocked_reason == BlockedReason.UNSUPPORTED
             and (
                 request.portfolio is not None
@@ -493,4 +513,12 @@ class ChatService:
                     BlockedReason.UNSUPPORTED,
                     user_message=request.message,
                 )
-        return finalize_response(response, original_request, resolved_plan)
+        finalized = finalize_response(response, original_request, resolved_plan)
+        if (
+            resolved_plan.blocked_reason
+            is BlockedReason.REFERENT_SELECTION_REQUIRED
+        ):
+            return finalized.model_copy(
+                update={"conversation_context": original_request.conversation_context}
+            )
+        return finalized

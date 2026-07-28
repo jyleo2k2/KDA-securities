@@ -15,6 +15,7 @@ import { UserPickBenchmarkScreen } from "./UserPickBenchmarkScreen";
 const mocks = vi.hoisted(() => ({
   getBenchmarkFollows: vi.fn(),
   getDemoHeroes: vi.fn(),
+  getMyPensionAccounts: vi.fn(),
   getMyPensionContext: vi.fn(),
   getSession: vi.fn(),
   setBenchmarkFollow: vi.fn(),
@@ -23,6 +24,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../api/client", () => ({
   getBenchmarkFollows: mocks.getBenchmarkFollows,
   getDemoHeroes: mocks.getDemoHeroes,
+  getMyPensionAccounts: mocks.getMyPensionAccounts,
   getMyPensionContext: mocks.getMyPensionContext,
   setBenchmarkFollow: mocks.setBenchmarkFollow,
 }));
@@ -39,6 +41,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.getSession.mockResolvedValue({ data: { session: null } });
   mocks.getBenchmarkFollows.mockResolvedValue([]);
+  mocks.getMyPensionAccounts.mockResolvedValue({ accounts: [] });
 });
 
 afterEach(() => {
@@ -80,7 +83,21 @@ describe("UserPickBenchmarkScreen", () => {
       data: { session: { access_token: "owner-access-token" } },
     });
     mocks.getMyPensionContext.mockResolvedValue({
+      nickname: "정민재",
       scenario_code: "owner-scenario",
+    });
+    mocks.getMyPensionAccounts.mockResolvedValue({
+      accounts: [
+        {
+          holdings: [
+            { asset_class: "domestic_equity", amount_krw: "38500000" },
+            { asset_class: "global_equity", amount_krw: "42800000" },
+            { asset_class: "deposit", amount_krw: "16600000" },
+            { asset_class: "bond", amount_krw: "29800000" },
+            { asset_class: "cash", amount_krw: "15000000" },
+          ],
+        },
+      ],
     });
     mocks.getDemoHeroes.mockResolvedValue([
       {
@@ -105,6 +122,21 @@ describe("UserPickBenchmarkScreen", () => {
           type: "benchmark-owner-return",
           trailing12mReturnPct: 7.72,
         },
+        window.location.origin,
+      );
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "benchmark-owner-portfolio",
+          nickname: "정민재",
+          totalAmountKrw: 142700000,
+          allocations: expect.arrayContaining([
+            expect.objectContaining({ label: "국내주식", color: "#2F8F6B" }),
+            expect.objectContaining({ label: "글로벌주식", color: "#3F7BC4" }),
+            expect.objectContaining({ label: "원리금보장", color: "#D28A24" }),
+            expect.objectContaining({ label: "채권", color: "#D96F3D" }),
+            expect.objectContaining({ label: "현금성", color: "#7C5BC4" }),
+          ]),
+        }),
         window.location.origin,
       );
     });

@@ -49,30 +49,21 @@
         <span style="font-size:16px; font-weight:800;">현재 포트폴리오</span>
       </div>
       <div style="display:flex; gap:16px;">
-        <div style="width:88px; height:88px; flex:none; border-radius:50%; background:conic-gradient(#22A94D 0 42%, #7FD79A 42% 68%, #FDC526 68% 86%, #E6E8EB 86% 100%); display:flex; align-items:center; justify-content:center;">
-          <div style="width:44px; height:44px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:800; color:#4A5058;">4자산군</div>
+        <div id="owner-portfolio-donut" style="width:88px; height:88px; flex:none; border-radius:50%; background:#EEF0F2; display:flex; align-items:center; justify-content:center;">
+          <div id="owner-portfolio-count" style="width:44px; height:44px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:800; color:#4A5058;">-</div>
         </div>
         <div style="flex:1; display:flex; flex-direction:column; gap:11px;">
-          <div style="display:flex; justify-content:space-between; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">ID</span><span style="font-size:14px; font-weight:800; white-space:nowrap;">투자하는너구리</span></div>
-          <div style="display:flex; justify-content:space-between; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">직업군</span><span style="font-size:14px; font-weight:700; white-space:nowrap;">반도체 종사자</span></div>
-          <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">금액</span><span style="font-size:16px; font-weight:800; white-space:nowrap;">1,240만원</span></div>
+          <div style="display:flex; justify-content:space-between; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">ID</span><span id="owner-portfolio-name" style="font-size:14px; font-weight:800; white-space:nowrap;">-</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">금액</span><span id="owner-portfolio-amount" style="font-size:16px; font-weight:800; white-space:nowrap;">-</span></div>
           <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">수익률</span><span id="owner-portfolio-return" style="font-size:16px; font-weight:800; color:#8B9096; white-space:nowrap;">-</span></div>
         </div>
       </div>
 
       <div style="margin-top:18px;">
         <div style="font-size:12.5px; color:#8B9096; font-weight:700; margin-bottom:8px;">포트폴리오 구성 비율</div>
-        <div style="display:flex; height:14px; border-radius:99px; overflow:hidden; background:#EEF0F2;">
-          <div style="width:42%; background:#22A94D;"></div>
-          <div style="width:26%; background:#7FD79A;"></div>
-          <div style="width:18%; background:#FDC526;"></div>
-          <div style="width:14%; background:#CFD4DA;"></div>
+        <div id="owner-portfolio-bar" style="display:flex; height:14px; border-radius:99px; overflow:hidden; background:#EEF0F2;">
         </div>
-        <div style="display:flex; flex-wrap:wrap; gap:10px 16px; margin-top:10px;">
-          <span style="font-size:11.5px; font-weight:700; color:#4A5058;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#22A94D;margin-right:5px;"></span>국내주식 42%</span>
-          <span style="font-size:11.5px; font-weight:700; color:#4A5058;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#7FD79A;margin-right:5px;"></span>해외주식·ETF 26%</span>
-          <span style="font-size:11.5px; font-weight:700; color:#4A5058;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#FDC526;margin-right:5px;"></span>채권 18%</span>
-          <span style="font-size:11.5px; font-weight:700; color:#4A5058;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#CFD4DA;margin-right:5px;"></span>현금성자산 14%</span>
+        <div id="owner-portfolio-legend" style="display:flex; flex-wrap:wrap; gap:10px 16px; margin-top:10px;">
         </div>
       </div>
 
@@ -211,20 +202,60 @@
       </div>
 
       <div class="scrolly" style="flex:1; overflow-y:auto; padding:20px 16px 40px;">
-        <div style="font-size:13px; font-weight:700; color:#8B9096; margin:0 4px 12px;">이 회원의 운용 근거</div>
-        <div style="background:#fff; border:1.5px solid #C9EBD4; border-radius:20px; padding:22px 20px; box-shadow:0 4px 16px rgba(34,169,77,0.08);">
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:18px;">
-            <span style="font-size:12.5px; color:#8B9096; font-weight:700;">투자전략</span>
-            <span style="font-size:15px; font-weight:800;">{{ detail.strategyName }}</span>
+        <div style="font-size:16px; font-weight:800; margin:0 4px 12px;">자산군별 편입 비중</div>
+        <div style="background:#fff; border:1px solid #E6E8EB; border-radius:18px; padding:18px;">
+          <div onClick="{{ detail.toggleHoldings }}" style="display:flex; flex-direction:column; align-items:center; cursor:pointer;">
+            <div style="width:142px; height:142px; border-radius:50%; background:{{ detail.donut }}; display:flex; align-items:center; justify-content:center;">
+              <div style="width:87px; height:87px; border-radius:50%; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:8px;">
+                <span style="font-size:11px; font-weight:800; color:#4A5058;">구성 보기</span>
+                <span style="font-size:10px; font-weight:700; color:#8B9096; margin-top:3px;">눌러서 종목 확인</span>
+              </div>
+            </div>
           </div>
-          <div style="display:flex; flex-direction:column; gap:18px;">
-            <sc-for list="{{ detail.rationale }}" as="r" hint-placeholder-count="3">
-              <div style="display:flex; gap:12px;">
-                <div style="width:26px; height:26px; flex:none; border-radius:8px; background:#E7F6EC; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#166F39;">{{ r.no }}</div>
-                <div>
-                  <div style="font-size:14.5px; font-weight:800; margin-bottom:5px;">{{ r.t }}</div>
-                  <div style="font-size:13px; color:#6B7178; font-weight:600; line-height:1.6;">{{ r.b }}</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px 8px; margin-top:18px;">
+            <sc-for list="{{ detail.allocations }}" as="a" hint-placeholder-count="4">
+              <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                <span style="width:10px; height:10px; flex:none; border-radius:50%; background:{{ a.color }};"></span>
+                <span style="font-size:12.5px; color:#4A5058; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ a.label }}</span>
+                <span style="font-size:12.5px; color:#1E2124; font-weight:800; margin-left:auto;">{{ a.pct }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <sc-if value="{{ detail.holdingsOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:16px; font-weight:800; margin:26px 4px 12px;">자산별 투자 종목</div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <sc-for list="{{ detail.holdingGroups }}" as="group" hint-placeholder-count="4">
+              <div style="background:#F4FAF6; border:1px solid #E0F0E5; border-radius:16px; padding:14px 15px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; padding-bottom:10px; border-bottom:1px solid #DDEFE2;">
+                  <span style="display:flex; align-items:center; gap:7px; font-size:13px; font-weight:800; color:#285D3A;"><span style="width:9px; height:9px; border-radius:50%; background:{{ group.color }};"></span>{{ group.label }}</span>
+                  <span style="font-size:13px; font-weight:800; color:#166F39;">{{ group.pct }}</span>
                 </div>
+                <div style="display:flex; flex-direction:column; gap:9px; padding-top:11px;">
+                  <sc-for list="{{ group.items }}" as="item" hint-placeholder-count="2">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                      <span style="font-size:12.5px; font-weight:700; color:#3A4047; line-height:1.35;">{{ item.name }}</span>
+                      <span style="font-size:12.5px; font-weight:800; color:#1E2124; white-space:nowrap;">{{ item.pct }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <div style="font-size:16px; font-weight:800; margin:26px 4px 12px;">운용근거</div>
+        <div style="background:#fff; border:1.5px solid #C9EBD4; border-radius:18px; padding:19px 18px; box-shadow:0 4px 16px rgba(34,169,77,0.08);">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:11px;">
+            <span style="font-size:12px; color:#8B9096; font-weight:700;">투자전략</span>
+            <span style="font-size:13px; font-weight:800; color:#166F39; background:#E7F6EC; border-radius:99px; padding:4px 9px;">{{ detail.strategyName }}</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:9px;">
+            <sc-for list="{{ detail.reasons }}" as="reason" hint-placeholder-count="3">
+              <div style="display:flex; gap:8px; font-size:13px; color:#4A5058; font-weight:600; line-height:1.5; word-break:keep-all;">
+                <span style="color:#22A94D; font-weight:800;">•</span>
+                <span>{{ reason }}</span>
               </div>
             </sc-for>
           </div>
@@ -284,7 +315,7 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
 class Component extends DCLogic {
-  state = { filter:'rate', filterOpen:false, sheetId:null, followed:{}, followCounts:{}, detailId:null, reviewLikes:{}, reviewComments:{}, drafts:{}, openComments:{} };
+  state = { filter:'rate', filterOpen:false, sheetId:null, followed:{}, followCounts:{}, detailId:null, holdingsVisible:false, reviewLikes:{}, reviewComments:{}, drafts:{}, openComments:{} };
 
   componentDidMount() {
     this._followMessageHandler = (event) => {
@@ -335,13 +366,55 @@ class Component extends DCLogic {
     ],
   };
 
-  MINE = { 국내주식:'42%', '해외주식·ETF':'26%', 채권:'18%', 현금성자산:'14%' };
+  MINE = { 국내주식ETF:'42%', 해외주식ETF:'26%', 채권:'18%', 현금성자산:'14%' };
 
   detailData(p) {
-    const rationale = [
-      { no:1, t:'왜 이렇게 나눴냐면요', b:`저는 국내주식 ${p.a1}%, 해외주식·ETF ${p.a2}%, 채권 ${p.a3}%로 담고 있어요. 한 자산에 몰면 흔들릴 때 버티기 힘들더라고요. 그래서 성장에 기대는 부분과 지켜주는 부분을 일부러 갈라 놨어요.` },
-      { no:2, t:'이 전략을 고른 이유', b: (p.strategyDetail ? `${p.strategyName} 방식으로 가고 있는데, ${p.strategyDetail} 저한테는 이게 가장 마음 편하게 오래 끌고 갈 수 있는 방법이었어요.` : '저는 시장을 예측하기보다, 정해둔 비중을 지키는 게 결국 오래 남는 길이라고 믿어서 이렇게 운용해요.') },
-      { no:3, t:'언제 다시 맞추냐면요', b:'처음 정한 비중에서 5%포인트 넘게 벌어지면, 저는 그때 분기에 한 번씩 원래 비중으로 되돌려요. 오른 걸 조금 덜고 빠진 걸 채우는 식이라 자연스럽게 싸게 사고 비싸게 팔게 되더라고요.' },
+    const cash = 100 - p.a1 - p.a2 - p.a3;
+    const allocations = [
+      { label:'국내주식ETF', pct:p.a1+'%', color:'#2F8F6B' },
+      { label:'해외주식ETF', pct:p.a2+'%', color:'#3F7BC4' },
+      { label:'채권', pct:p.a3+'%', color:'#D9743F' },
+      { label:'현금성자산', pct:cash+'%', color:'#7B5FC0' },
+    ];
+    const portfolioExamples = {
+      '꾸준한거북이': [
+        [{ name:'HANARO 2차전지', pct:'23%' }, { name:'TIGER 2차전지TOP10', pct:'18%' }, { name:'KODEX 200', pct:'14%' }],
+        [{ name:'TIGER 미국S&P500', pct:'12%' }, { name:'KODEX 미국AI테크TOP10', pct:'7%' }],
+        [{ name:'KODEX 국고채10년', pct:'10%' }, { name:'TIGER 단기채권액티브', pct:'8%' }],
+        [{ name:'IRP 예수금', pct:'8%' }],
+      ],
+      '배당모으미': [
+        [{ name:'HANARO 고배당', pct:'16%' }, { name:'TIGER 은행고배당플러스TOP10', pct:'10%' }, { name:'KODEX 배당가치', pct:'8%' }],
+        [{ name:'TIGER 미국배당다우존스', pct:'18%' }, { name:'KODEX 미국S&P500', pct:'12%' }],
+        [{ name:'KODEX 국고채30년', pct:'12%' }, { name:'TIGER 단기채권액티브', pct:'10%' }],
+        [{ name:'IRP 예수금', pct:'14%' }],
+      ],
+      '느긋한바벨러': [
+        [{ name:'KODEX 200', pct:'15%' }, { name:'TIGER 200 IT', pct:'8%' }, { name:'KODEX 고배당', pct:'7%' }],
+        [{ name:'TIGER 미국S&P500', pct:'12%' }, { name:'KODEX 미국나스닥100', pct:'8%' }],
+        [{ name:'KODEX 국고채10년', pct:'18%' }, { name:'TIGER 단기채권액티브', pct:'16%' }],
+        [{ name:'IRP 예수금', pct:'16%' }],
+      ],
+      '중립러버': [
+        [{ name:'KODEX 200', pct:'14%' }, { name:'TIGER 200', pct:'12%' }],
+        [{ name:'TIGER 미국S&P500', pct:'14%' }, { name:'KODEX 미국나스닥100', pct:'10%' }],
+        [{ name:'KODEX 국고채10년', pct:'16%' }, { name:'TIGER 단기채권액티브', pct:'12%' }],
+        [{ name:'IRP 예수금', pct:'22%' }],
+      ],
+      '초보투자자': [
+        [{ name:'KODEX 200', pct:'34%' }, { name:'TIGER 2차전지TOP10', pct:'28%' }],
+        [{ name:'TIGER 미국S&P500', pct:'12%' }],
+        [{ name:'KODEX 국고채10년', pct:'8%' }],
+        [{ name:'IRP 예수금', pct:'18%' }],
+      ],
+    };
+    const holdingGroups = allocations.map((allocation, index) => ({ ...allocation, items: portfolioExamples[p.id][index] }));
+    const donut = `conic-gradient(#2F8F6B 0 ${p.a1}%, #3F7BC4 ${p.a1}% ${p.a1+p.a2}%, #D9743F ${p.a1+p.a2}% ${p.a1+p.a2+p.a3}%, #7B5FC0 ${p.a1+p.a2+p.a3}% 100%)`;
+    const strategy = p.strategyName || '분산 운용';
+    const reasons = [
+      `국내주식ETF ${p.a1}%·해외주식ETF ${p.a2}%·채권 ${p.a3}%·현금성자산 ${cash}%로 분산해 담았어요.`,
+      `${strategy} 방식을 중심으로 성장 기회와 방어 자산을 함께 살펴봐요.`,
+      `처음 정한 비중에서 5%포인트 이상 벌어지면 분기에 한 번씩 다시 맞춰요.`,
     ];
     const baseReviews = this.REVIEWS[p.id] || this.REVIEWS._default;
     const reviews = baseReviews.map(rv => {
@@ -373,21 +446,23 @@ class Component extends DCLogic {
         },
       };
     });
-    return { id:p.id, strategyName: p.strategyName || '전략 미설정', rationale, reviews, reviewCount: reviews.length };
+    return { id:p.id, strategyName: p.strategyName || '전략 미설정', allocations, donut, holdingGroups,
+      holdingsOpen:this.state.holdingsVisible, toggleHoldings: () => this.setState(s => ({ holdingsVisible:!s.holdingsVisible })),
+      reasons, reviews, reviewCount: reviews.length };
   }
 
   sheetData(p) {
     const donut = `conic-gradient(#22A94D 0 ${p.a1}%, #7FD79A ${p.a1}% ${p.a1+p.a2}%, #FDC526 ${p.a1+p.a2}% ${p.a1+p.a2+p.a3}%, #E6E8EB ${p.a1+p.a2+p.a3}% 100%)`;
     const alloc = [
-      { color:'#22A94D', label:'국내주식', pct:p.a1+'%' },
-      { color:'#7FD79A', label:'해외주식·ETF', pct:p.a2+'%' },
-      { color:'#FDC526', label:'채권', pct:p.a3+'%' },
-      { color:'#CFD4DA', label:'현금성자산', pct:(100-p.a1-p.a2-p.a3)+'%' },
+      { color:'#2F8F6B', label:'국내주식ETF', pct:p.a1+'%' },
+      { color:'#3F7BC4', label:'해외주식ETF', pct:p.a2+'%' },
+      { color:'#D9743F', label:'채권', pct:p.a3+'%' },
+      { color:'#7B5FC0', label:'현금성자산', pct:(100-p.a1-p.a2-p.a3)+'%' },
     ];
-    const mineNums = { 국내주식:42, '해외주식·ETF':26, 채권:18, 현금성자산:14 };
+    const mineNums = { 국내주식ETF:42, 해외주식ETF:26, 채권:18, 현금성자산:14 };
     const rows = [
-      { name:'국내주식형', cat:'연금저축·IRP', mineN:42, theirsN:p.a1 },
-      { name:'해외주식·ETF형', cat:'연금저축·IRP', mineN:26, theirsN:p.a2 },
+      { name:'국내주식ETF', cat:'연금저축·IRP', mineN:42, theirsN:p.a1 },
+      { name:'해외주식ETF', cat:'연금저축·IRP', mineN:26, theirsN:p.a2 },
       { name:'채권형', cat:'연금저축·IRP', mineN:18, theirsN:p.a3 },
       { name:'현금성', cat:'IRP 예수금', mineN:14, theirsN:100-p.a1-p.a2-p.a3 },
     ].map(r => {
@@ -407,7 +482,7 @@ class Component extends DCLogic {
       starFill: on ? '#22A94D' : 'none',
       starStroke: on ? '#22A94D' : '#7FB894',
       followColor: on ? '#166F39' : '#8B9096',
-      openDetail: () => this.setState({ detailId: p.id }) };
+      openDetail: () => this.setState({ detailId: p.id, holdingsVisible:false }) };
   }
 
   badge(kind) {
@@ -425,27 +500,27 @@ class Component extends DCLogic {
       { id:'꾸준한거북이', sector:'2차전지 종사자', rate:'+18.2%', rateNum:18.2, rateColor:'#166F39',
         months:44, period:'3년 8개월', job:'직장인', a1:55, a2:19, a3:18,
         amount:'2,860만원', s1:'38%', s2:'27%', s3:'20%',
-        holdings:'국내주식 38% · 해외주식·ETF 27% · 채권 20% · 현금성자산 15%',
+        holdings:'국내주식ETF 38% · 해외주식ETF 27% · 채권 20% · 현금성자산 15%',
         feas:'direct', strategyName:'테마', strategyDetail:'테마 선정·교체 규칙 일부 정의, 모델 비중 미정', likes:'1,204' },
       { id:'배당모으미', sector:'금융업 종사자', rate:'+9.6%', rateNum:9.6, rateColor:'#166F39',
         months:30, period:'2년 6개월', job:'자영업자', a1:34, a2:30, a3:22,
         amount:'5,120만원', s1:'34%', s2:'30%', s3:'22%',
-        holdings:'국내주식 34% · 해외주식·ETF 30% · 채권 22% · 현금성자산 14%',
+        holdings:'국내주식ETF 34% · 해외주식ETF 30% · 채권 22% · 현금성자산 14%',
         feas:'direct', strategyName:'팩터', strategyDetail:'가치·퀄리티·모멘텀 비중 미정', likes:'876' },
       { id:'느긋한바벨러', sector:'자산운용 종사자', rate:'+6.1%', rateNum:6.1, rateColor:'#166F39',
         months:62, period:'5년 2개월', job:'전문직', a1:30, a2:20, a3:34,
         amount:'8,430만원', s1:'30%', s2:'20%', s3:'34%',
-        holdings:'국내주식 30% · 해외주식·ETF 20% · 채권 34% · 현금성자산 16%',
+        holdings:'국내주식ETF 30% · 해외주식ETF 20% · 채권 34% · 현금성자산 16%',
         feas:'direct', strategyName:'바벨', strategyDetail:'성장·안전자산 구성 비중을 연령별로만 일부 정의', likes:'642' },
       { id:'중립러버', sector:'IT업 종사자', rate:'+3.8%', rateNum:3.8, rateColor:'#166F39',
         months:14, period:'1년 2개월', job:'직장인', a1:26, a2:24, a3:28,
         amount:'3,270만원', s1:'26%', s2:'24%', s3:'28%',
-        holdings:'국내주식 26% · 해외주식·ETF 24% · 채권 28% · 현금성자산 22%',
+        holdings:'국내주식ETF 26% · 해외주식ETF 24% · 채권 28% · 현금성자산 22%',
         feas:'product', strategyName:'롱숏·시장중립', strategyDetail:'계좌 적격 상품과 실제 성과 데이터 없음', likes:'415' },
       { id:'초보투자자', sector:'학생', rate:'-2.4%', rateNum:-2.4, rateColor:'#2E7CE0',
         months:5, period:'5개월', job:'학생', a1:62, a2:12, a3:8,
         amount:'540만원', s1:'62%', s2:'12%', s3:'8%',
-        holdings:'국내주식 62% · 해외주식·ETF 12% · 채권 8% · 현금성자산 18%',
+        holdings:'국내주식ETF 62% · 해외주식ETF 12% · 채권 8% · 현금성자산 18%',
         feas:null, strategyName:null, strategyDetail:null, likes:'37' },
     ];
     const f = this.state.filter;
@@ -470,7 +545,7 @@ class Component extends DCLogic {
       closeSheet: () => this.setState({ sheetId:null }),
       detailOpen: !!detailSel,
       detail: detailSel ? this.detailData(detailSel) : {},
-      closeDetail: () => this.setState({ detailId:null }),
+      closeDetail: () => this.setState({ detailId:null, holdingsVisible:false }),
       goHome: () => { try { parent.postMessage({ type: 'benchmark-html-back' }, '*'); } catch (e) {} },
       filterLabel: labels[f],
       toggleFilter: () => this.setState(s => ({ filterOpen: !s.filterOpen })),
@@ -507,13 +582,63 @@ class Component extends DCLogic {
 window.addEventListener('message', (event) => {
   if (event.source !== parent || event.origin !== window.location.origin) return;
   const message = event.data;
-  if (!message || message.type !== 'benchmark-owner-return') return;
-  const returnPct = Number(message.trailing12mReturnPct);
-  if (!Number.isFinite(returnPct)) return;
-  const returnElement = document.getElementById('owner-portfolio-return');
-  if (!returnElement) return;
-  returnElement.textContent = `${returnPct > 0 ? '+' : ''}${returnPct.toFixed(2)}%`;
-  returnElement.style.color = returnPct < 0 ? '#2E7CE0' : '#166F39';
+  if (!message) return;
+  if (message.type === 'benchmark-owner-return') {
+    const returnPct = Number(message.trailing12mReturnPct);
+    if (!Number.isFinite(returnPct)) return;
+    const returnElement = document.getElementById('owner-portfolio-return');
+    if (!returnElement) return;
+    returnElement.textContent = `${returnPct > 0 ? '+' : ''}${returnPct.toFixed(2)}%`;
+    returnElement.style.color = returnPct < 0 ? '#2E7CE0' : '#166F39';
+    return;
+  }
+  if (message.type !== 'benchmark-owner-portfolio') return;
+
+  const nickname = typeof message.nickname === 'string' ? message.nickname : '';
+  const totalAmountKrw = Number(message.totalAmountKrw);
+  const allocations = Array.isArray(message.allocations)
+    ? message.allocations.filter((item) => (
+      item
+      && typeof item.label === 'string'
+      && typeof item.color === 'string'
+      && Number.isFinite(Number(item.percent))
+      && Number(item.percent) > 0
+    ))
+    : [];
+  if (!nickname || !Number.isFinite(totalAmountKrw) || totalAmountKrw < 0 || allocations.length === 0) return;
+
+  const nameElement = document.getElementById('owner-portfolio-name');
+  const amountElement = document.getElementById('owner-portfolio-amount');
+  const countElement = document.getElementById('owner-portfolio-count');
+  const donutElement = document.getElementById('owner-portfolio-donut');
+  const barElement = document.getElementById('owner-portfolio-bar');
+  const legendElement = document.getElementById('owner-portfolio-legend');
+  if (!nameElement || !amountElement || !countElement || !donutElement || !barElement || !legendElement) return;
+
+  nameElement.textContent = nickname;
+  amountElement.textContent = `${Math.round(totalAmountKrw / 10000).toLocaleString('ko-KR')}만원`;
+  countElement.textContent = `${allocations.length}자산군`;
+  let offset = 0;
+  donutElement.style.background = `conic-gradient(${allocations.map((item) => {
+    const start = offset;
+    offset += Number(item.percent);
+    return `${item.color} ${start}% ${offset}%`;
+  }).join(', ')})`;
+  barElement.replaceChildren();
+  legendElement.replaceChildren();
+  allocations.forEach((item) => {
+    const percent = Number(item.percent);
+    const segment = document.createElement('div');
+    segment.style.cssText = `width:${percent}%;background:${item.color};`;
+    barElement.appendChild(segment);
+
+    const legend = document.createElement('span');
+    legend.style.cssText = 'font-size:11.5px;font-weight:700;color:#4A5058;';
+    const marker = document.createElement('span');
+    marker.style.cssText = `display:inline-block;width:8px;height:8px;border-radius:2px;background:${item.color};margin-right:5px;`;
+    legend.append(marker, `${item.label} ${Math.round(percent)}%`);
+    legendElement.appendChild(legend);
+  });
 });
 </script>
 </body>

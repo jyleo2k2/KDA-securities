@@ -197,6 +197,20 @@ def test_pension_order_request_stays_blocked_before_basics_routing() -> None:
 
 
 @pytest.mark.parametrize(
+    "message",
+    (
+        "그 계좌에서 주문 넣어줘",
+        "그중 하나로 갈아타게 매도와 매수 실행해줘",
+    ),
+)
+def test_order_execution_phrases_are_blocked(message: str) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent is ChatIntent.OUT_OF_SCOPE
+    assert plan.blocked_reason is BlockedReason.ORDER_REQUEST
+
+
+@pytest.mark.parametrize(
     ("message", "tax_credit", "withdrawal"),
     (
         ("연금저축 600만원 납입 시 세액공제액을 계산해줘", True, False),
