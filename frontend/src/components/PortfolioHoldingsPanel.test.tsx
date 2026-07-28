@@ -401,8 +401,6 @@ describe("EducationalPortfolioReview", () => {
       screen.getByText("DC형 스트레스 점검"),
       screen.getByText("연금저축펀드 목표 자산배분"),
       screen.getByText("연금저축펀드 스트레스 점검"),
-      screen.getByText(/^리밸런싱 주기:/),
-      screen.getByText("두 가지 수익률 가정"),
     ];
     for (let index = 1; index < orderedStrategyContent.length; index += 1) {
       expect(
@@ -411,9 +409,10 @@ describe("EducationalPortfolioReview", () => {
         ) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     }
-    expect(screen.getByText("조심해서 계산한 경우")).toBeInTheDocument();
-    expect(screen.getByText("기본으로 계산한 경우")).toBeInTheDocument();
-    expect(screen.getByText(/CMA는 여러 자산의 10년 이상 장기 전망/)).toBeInTheDocument();
+    expect(screen.queryByText(/^리밸런싱 주기:/)).not.toBeInTheDocument();
+    expect(screen.queryByText("두 가지 수익률 가정")).not.toBeInTheDocument();
+    expect(screen.queryByText("조심해서 계산한 경우")).not.toBeInTheDocument();
+    expect(screen.queryByText("기본으로 계산한 경우")).not.toBeInTheDocument();
     expect(screen.queryByText("어떤 ETF 분야를 살펴볼까?")).not.toBeInTheDocument();
     expect(screen.queryByText(/이 서비스는 “이 ETF를 사세요”라고 정해 주지 않아요/)).not.toBeInTheDocument();
     expect(screen.queryByText("스태그플레이션")).not.toBeInTheDocument();
@@ -515,18 +514,23 @@ describe("EducationalPortfolioReview", () => {
       & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
-      cadenceTitle.compareDocumentPosition(reviewLeadTitle)
+      reviewLeadTitle.compareDocumentPosition(sectorGuideTitle)
       & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(screen.getByRole("img", { name: /채권 25%, 반도체 17%, 바이오·헬스케어 14%/ })).toBeInTheDocument();
     expect(screen.getByText(/실제 계산 결과나 계좌별 한도는 변경하지 않습니다/)).toBeInTheDocument();
     expect(screen.getByText("각 자산 유형별로 ±5.0%p만큼의 차이가 날 수 있어요.")).toBeInTheDocument();
-    expect(screen.getByText("1개 자산군의 비중을 확인해 보세요")).toBeInTheDocument();
+    expect(screen.getByText("핵심 주식, 목표보다 45.9%p 많아요")).toBeInTheDocument();
+    expect(screen.getByText("점검 대상 1개")).toBeInTheDocument();
     const allocationTitle = screen.getByText("자산 구성과 조정 기준");
     const allocationSection = allocationTitle.closest("section");
     const evidenceDetails = screen.getByText("위험과 수익률 계산 근거").closest("details");
     expect(allocationTitle.closest("details")).toBeNull();
     expect(allocationSection).toHaveClass("portfolio-review-priority");
+    expect(
+      reviewLeadTitle.compareDocumentPosition(allocationTitle)
+      & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(
       allocationTitle.compareDocumentPosition(sectorGuideTitle)
       & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -538,7 +542,8 @@ describe("EducationalPortfolioReview", () => {
     expect(evidenceDetails).not.toHaveAttribute("open");
 
     expect(screen.getByText("70.0%")).toBeInTheDocument();
-    expect(screen.getByText("핵심 주식")).toBeInTheDocument();
+    // 이탈 자산군은 드리프트 바와 숫자 표에 함께 나온다.
+    expect(screen.getAllByText("핵심 주식")).toHaveLength(2);
     expect(screen.queryByText("AI소프트웨어")).not.toBeInTheDocument();
     expect(screen.queryByText("코리아밸류업")).not.toBeInTheDocument();
     expect(screen.queryByText("ESG")).not.toBeInTheDocument();
@@ -565,12 +570,17 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.getByText(/미래 수익 예측은 아니에요/)).toBeInTheDocument();
     expect(screen.getAllByText(/미래 수익을 맞히는 값이 아닙니다/)).toHaveLength(1);
     expect(screen.queryByText("현재 보유 ETF 장기 계산용 숫자")).not.toBeInTheDocument();
-    expect(screen.getByText("목표 포트폴리오 장기 계산용 숫자")).toBeInTheDocument();
+    expect(screen.getByText("목표 포트폴리오 장기계획 수익률")).toBeInTheDocument();
+    expect(screen.getByText("장기계획 수익률")).toBeInTheDocument();
+    expect(screen.queryByText("ETF 비용 빼기 전")).not.toBeInTheDocument();
+    expect(screen.queryByText("ETF 비용 뺀 뒤")).not.toBeInTheDocument();
+    expect(screen.queryByText("여유 폭")).not.toBeInTheDocument();
+    expect(screen.queryByText("연간 비용")).not.toBeInTheDocument();
     expect(screen.getAllByText("6.7%")).toHaveLength(1);
-    expect(screen.getAllByText("6.2%")).toHaveLength(2);
+    expect(screen.getAllByText("6.2%")).toHaveLength(1);
     expect(screen.getAllByText(/비슷한 자산의 장기 전망 사용/)).toHaveLength(1);
-    expect(screen.getAllByText("-0.5%")).toHaveLength(1);
-    expect(screen.getAllByText("-0.1%")).toHaveLength(1);
+    expect(screen.queryByText("-0.5%")).not.toBeInTheDocument();
+    expect(screen.queryByText("-0.1%")).not.toBeInTheDocument();
     expect(screen.getAllByText(/과거 수익률 미사용/)).toHaveLength(1);
     expect(screen.getAllByRole("link", { name: /J.P. Morgan 2026/ })).toHaveLength(1);
 
@@ -628,7 +638,7 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.getByText("공격투자형 ETF 분야 예시")).toBeInTheDocument();
     expect(screen.getByText("양자컴퓨팅")).toBeInTheDocument();
     expect(screen.getByText("기타 시장 충격")).toBeInTheDocument();
-    expect(screen.getByText("기타 자산군")).toBeInTheDocument();
+    expect(screen.getAllByText("기타 자산군")).toHaveLength(2);
     expect(screen.getByText("추가 점검 필요")).toBeInTheDocument();
     expect(screen.queryByText("unmapped_market_shock")).not.toBeInTheDocument();
     expect(screen.queryByText("unmapped_sleeve")).not.toBeInTheDocument();

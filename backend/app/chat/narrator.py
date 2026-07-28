@@ -18,10 +18,9 @@ from pydantic import BaseModel, Field
 from pydantic_ai import Agent, NativeOutput
 from pydantic_ai.exceptions import AgentRunError
 from pydantic_ai.messages import ModelResponse, ThinkingPart, ToolCallPart
-from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
-from pydantic_ai.providers.anthropic import AnthropicProvider
 
 from ..engine import PensionTaxScenarioInput
+from ..llm_models import GOOGLE, build_model, build_model_settings, resolve_vendor
 from .models import ChatIntent, ChatResponse, DataBoundary
 from .narration_guard import (
     _adds_unverified_content as _adds_unverified_content,
@@ -55,8 +54,27 @@ NARRATION_CACHE_VERSION = 4
 NARRATION_CACHE_PERSIST_DEBOUNCE_SECONDS = 5.0
 _NARRATION_CACHE_FILE_LOCK = threading.Lock()
 
-# 워밍업은 응답을 버리므로 서비스 모델과 무관하게 최저가 모델로 호출한다.
+# 워밍업은 응답을 버리므로 서비스 모델과 무관하게 벤더별 최저가 모델로
+# 호출한다. 다만 API 키는 벤더마다 다르므로 서비스 모델과 같은 벤더를 쓴다.
 PREWARM_MODEL = "claude-haiku-4-5"
+PREWARM_MODEL_BY_VENDOR = {
+    GOOGLE: "gemini-3.5-flash-lite",
+}
+
+# thinking을 켜면 오히려 느려지는 저지연 모델 계열.
+_LOW_LATENCY_MODEL_PREFIXES = ("claude-haiku", "gemini-3.5-flash-lite")
+
+
+def _is_low_latency_model(model: str) -> bool:
+    name = model.strip().lower()
+    _, _, bare = name.rpartition(":")
+    return (bare or name).startswith(_LOW_LATENCY_MODEL_PREFIXES)
+
+
+def prewarm_model_for(model: str) -> str:
+    """서비스 모델과 같은 벤더의 워밍업용 모델 이름."""
+
+    return PREWARM_MODEL_BY_VENDOR.get(resolve_vendor(model), PREWARM_MODEL)
 
 NARRATABLE_INTENTS = {
     ChatIntent.ACCOUNT_RULE,
@@ -243,30 +261,24 @@ class ClaudeNarrator:
             return self._upgraded_agent
 
     def _build_agent_for(self, model: str) -> Agent[None, NarrationOutput]:
-        settings = AnthropicModelSettings(
+        # 저지연 모델(Haiku 계열·Flash Lite 계열)에서는 thinking을 끈다.
+        # Haiku 계열은 adaptive thinking 미지원(400)이고, 고정 예산 thinking은
+        # 매번 추론을 강제 생성해 오히려 느리다(실측: enabled 7.2초 vs OFF
+        # 3.6초, 2026-07-18). Flash Lite도 같은 이유로 끈다. thinking을 끈
+        # 모델에서는 숫자 가드가 품질을 보장한다. 그 외 모델은 검토 과정을
+        # thinking 요약으로만 사용한다(NarrationOutput 참고).
+        settings = build_model_settings(
+            model,
             # 출력 길이는 시스템프롬프트의 문장 수 제한으로 관리한다.
             # max_tokens는 안전 상한일 뿐이며, 초과 절단 시 구조화 출력이
             # 깨져 결정론 폴백으로 빠지므로 끊긴 문장이 노출되지 않는다.
             max_tokens=2500,
             # 고정부(시스템프롬프트·툴 정의) 서버측 프롬프트 캐싱.
-            anthropic_cache_instructions=True,
-            anthropic_cache_tool_definitions=True,
+            cache_static_prompt=True,
+            thinking=not _is_low_latency_model(model),
         )
-        if not model.startswith("claude-haiku"):
-            # Haiku 계열은 adaptive thinking 미지원(400)이고, enabled(고정
-            # 예산)는 매번 thinking을 강제 생성해 오히려 느리다(실측:
-            # enabled 7.2초 vs OFF 3.6초, 2026-07-18). Haiku에서는 thinking을
-            # 끄고 숫자 가드가 품질을 보장한다. 그 외 모델은 검토 과정을
-            # 이 thinking 요약만 사용한다(NarrationOutput 참고).
-            settings["anthropic_thinking"] = {
-                "type": "adaptive",
-                "display": "summarized",
-            }
         return Agent(
-            AnthropicModel(
-                model,
-                provider=AnthropicProvider(api_key=self._api_key),
-            ),
+            build_model(model, api_key=self._api_key),
             output_type=NativeOutput(NarrationOutput),
             instructions=SYSTEM_PROMPT,
             tools=CHAT_AGENT_TOOLS,
@@ -283,10 +295,10 @@ class ClaudeNarrator:
         동작하므로 경고만 남긴다.
 
         워밍업은 프로세스·연결 초기화가 목적이라 답변 품질을 쓰지 않고
-        버린다. 그래서 서비스 모델과 무관하게 항상 최저가 모델로 호출한다.
+        버린다. 그래서 서비스 모델과 같은 벤더의 최저가 모델로 호출한다.
         """
         try:
-            self._build_agent_for(PREWARM_MODEL).run_sync(
+            self._build_agent_for(prewarm_model_for(self._model)).run_sync(
                 "검증 답변:\n연금 코파일럿 내레이터 워밍업 호출이다.\n\n"
                 "제한사항:\n한 문장으로만 답한다."
             )

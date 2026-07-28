@@ -27,18 +27,29 @@ services:
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
+      # 챗봇 기본 모델의 벤더 키. CHAT_MODEL이 gemini 계열일 때 필요하다.
+      - key: GOOGLE_API_KEY
+        sync: false
+      # 챗봇 기본 모델. 이름 접두사로 벤더를 고른다(claude -> Anthropic,
+      # gemini -> Google). 단가·지연 실측 근거는 배포 가이드를 따른다.
+      - key: CHAT_MODEL
+        value: "gemini-3.5-flash-lite"
+      - key: TOPIC_GUARD_MODEL
+        value: "gemini-3.5-flash-lite"
       - key: CORS_ORIGINS
         sync: false
-      # 검증 답변을 Claude가 자연어로 다시 쓰는 단계. false면 규칙 엔진의
+      # 검증 답변을 LLM이 자연어로 다시 쓰는 단계. false면 규칙 엔진의
       # 결정론 답변이 그대로 나가며 수치·출처는 동일하다. 시연 품질을 위해
       # true로 두되, 과금이 붙는 값이므로 변경 시 배포 가이드 §3-1을 따른다.
-      - key: ENABLE_CLAUDE_NARRATION
+      - key: ENABLE_LLM_NARRATION
         value: "true"
-      # 규칙 분류기가 놓친 질문만 작은 Haiku 분류기로 되살린다. 명백한 잡담은
+      # 규칙 분류기가 놓친 질문만 작은 분류기로 되살린다. 명백한 잡담은
       # 정규식으로, 반복 질문은 캐시로 먼저 걸러서 실제 호출은 드물다.
       # 과금이 붙는 값이므로 변경 시 배포 가이드 §3-1을 따른다.
-      - key: ENABLE_CLAUDE_TOPIC_GUARD
+      - key: ENABLE_LLM_TOPIC_GUARD
         value: "true"
       # 시연·테스트 계정(설문 결과를 저장하지 않음). 값은 Render 대시보드에서 주입.
       - key: EPHEMERAL_INVESTMENT_PROFILE_OWNER_IDS
         sync: false
+      - key: GOOGLE_API_KEY
+        value: "true"

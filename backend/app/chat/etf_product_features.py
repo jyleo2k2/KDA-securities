@@ -10,9 +10,8 @@ from typing import Any, Protocol
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic_ai import Agent, NativeOutput
 from pydantic_ai.exceptions import AgentRunError
-from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
-from pydantic_ai.providers.anthropic import AnthropicProvider
 
+from ..llm_models import build_model, build_model_settings
 from .narration_guard import contains_unsafe_financial_claim
 
 logger = logging.getLogger(__name__)
@@ -140,13 +139,10 @@ class ClaudeEtfProductFeatureGenerator:
             self._research_text = ""
         self._cache: OrderedDict[str, dict[str, str]] = OrderedDict()
         self.agent: Agent[None, EtfProductFeatureBatch] = Agent(
-            AnthropicModel(
-                self._model,
-                provider=AnthropicProvider(api_key=api_key.strip()),
-            ),
+            build_model(self._model, api_key=api_key.strip()),
             output_type=NativeOutput(EtfProductFeatureBatch),
             instructions=SYSTEM_PROMPT,
-            model_settings=AnthropicModelSettings(max_tokens=1200),
+            model_settings=build_model_settings(self._model, max_tokens=1200),
         )
 
     def _research_excerpt(self, facts: EtfProductFeatureFacts) -> str:

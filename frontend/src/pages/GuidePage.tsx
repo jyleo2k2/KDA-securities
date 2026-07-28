@@ -13,6 +13,7 @@ import {
 } from "react";
 
 import profileIcon from "../assets/chatbot/profile-icon.webp";
+import yeongeumiProfile from "../assets/login/piggy-clean.png";
 import {
   ApiError,
   apiErrorMessage,
@@ -47,6 +48,7 @@ import type {
   AnswerBlock,
   CompletedSurveyProfile,
   ChatCard,
+  ChatVisualization as ChatVisualizationData,
   ConversationContext,
   ChatResponse,
   ChatSessionSummary,
@@ -77,6 +79,7 @@ const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   educational_portfolio: "연금 운용전략",
   macro_evidence: "거시지표 근거",
   glossary: "용어 설명",
+  strategy_glossary: "투자 전략",
   investing_principle: "투자 원리",
   hesitation_support: "운용 고민",
   getting_started: "시작 안내",
@@ -102,6 +105,65 @@ const CHAT_SESSION_PAGE_SIZE = 20;
 const SERVER_READY_RETRY_DELAYS_MS = [3000, 6000, 12000] as const;
 const PENSION_TAX_LOCAL_INCOME_TAX_NOTICE =
   "세액공제율과 세액공제액은 지방소득세를 고려해서 계산했어요.";
+
+function allocationItemsMatch(
+  left: ChatVisualizationData,
+  right: ChatVisualizationData,
+): boolean {
+  if (left.items.length !== right.items.length) return false;
+  const ordered = (visualization: ChatVisualizationData) => [...visualization.items]
+    .sort((a, b) => a.label.localeCompare(b.label, "ko"));
+
+  return ordered(left).every((item, index) => {
+    const other = ordered(right)[index];
+    if (
+      item.label !== other.label
+      || item.unit !== other.unit
+      || item.role !== other.role
+    ) return false;
+    const itemValue = Number(item.value);
+    const otherValue = Number(other.value);
+    return Number.isFinite(itemValue) && Number.isFinite(otherValue)
+      ? Math.abs(itemValue - otherValue) < 0.0001
+      : String(item.value) === String(other.value);
+  });
+}
+
+export function collapseSharedStrategyAllocation(
+  visualizations: ChatVisualizationData[],
+): ChatVisualizationData[] {
+  const allocations = visualizations.filter(
+    (item) => item.kind === "sleeve_allocation",
+  );
+  if (
+    allocations.length < 2
+    || !allocations.every((item) => allocationItemsMatch(allocations[0], item))
+  ) return visualizations;
+
+  return [
+    {
+      ...allocations[0],
+      title: "보유 계좌 공통 목표 자산배분",
+      description: "현재 조건에서는 보유한 연금계좌의 목표 비중이 같아요.",
+      evidence_ids: Array.from(
+        new Set(allocations.flatMap((item) => item.evidence_ids)),
+      ),
+    },
+    ...visualizations.filter((item) => item.kind !== "sleeve_allocation"),
+  ];
+}
+
+function withoutStagflationStressScenario(
+  visualizations: ChatVisualizationData[],
+): ChatVisualizationData[] {
+  return visualizations.flatMap((visualization) => {
+    if (visualization.kind !== "stress_scenarios") return [visualization];
+    const items = visualization.items.filter(
+      (item) => item.label !== "스태그플레이션",
+    );
+    return items.length > 0 ? [{ ...visualization, items }] : [];
+  });
+}
 
 export const ETF_THEME_CARDS = [
   { number: 1, title: "반도체", message: "반도체 테마가 뭐야?" },
@@ -418,16 +480,21 @@ function MacroRegimeOutcomeCards({ response }: { response: ChatResponse }) {
         <h3>유사국면 이후 ETF 총수익률·최대낙폭</h3>
         <p>국면 다음 달 첫 거래일부터 계산한 실제 관측값이며 미래 예측이나 자동 리밸런싱 신호가 아니에요.</p>
       </header>
-      <details className="macro-regime-disclosure">
+      <details className="macro-regime-disclosure" open>
         <summary>
           <span><strong>과거 실적은 필요할 때 확인</strong><small>{visibleGroups.length}개 유사국면</small></span>
           <em>펼쳐보기</em>
         </summary>
         <div className="macro-regime-list">
-          {visibleGroups.map((group) => (
-            <details key={group.regime_period}>
+          {visibleGroups.map((group) => {
+            const outcomeStartDate = group.etfs
+              .flatMap((etf) => etf.horizons)
+              .map((horizon) => horizon.start_date)
+              .sort()[0];
+            return (
+              <details key={group.regime_period} open>
               <summary>
-                <strong>{regimeMonth(group.regime_period)} 유사국면</strong>
+                <strong>{regimeMonth(outcomeStartDate ?? group.regime_period)} 시작 구간</strong>
                 <span>유사도 거리 {Number(group.distance).toFixed(4)}</span>
               </summary>
               <div className="macro-regime-etfs">
@@ -459,8 +526,9 @@ function MacroRegimeOutcomeCards({ response }: { response: ChatResponse }) {
                   </article>
                 ))}
               </div>
-            </details>
-          ))}
+              </details>
+            );
+          })}
         </div>
       </details>
     </section>
@@ -514,24 +582,35 @@ function AssistantMessage({
     && Number.isFinite(educationalFinalRiskTarget)
     && Number.isFinite(educationalRawRiskTarget)
   );
+  const educationalHasCurrentHoldings = (
+    educationalEvaluation?.evaluated_input.current_holdings.length ?? 0
+  ) > 0;
   const educationalResultLead = (
     isEducationalPortfolio
+    && educationalHasCurrentHoldings
     && educationalProfileLabel
     && educationalEvaluation?.strategy_label
   )
     ? `${educationalProfileLabel} 기준으로 한 ${educationalEvaluation.strategy_label}의 리밸런싱 결과입니다.`
     : undefined;
+  const educationalStrategyLead = (
+    isEducationalPortfolio
+    && educationalProfileLabel
+    && educationalEvaluation?.strategy_label
+  )
+    ? `현재 투자성향 설문 결과(${educationalProfileLabel})를 기준으로 한 예시 전략은 ${educationalEvaluation.strategy_label}입니다.`
+    : undefined;
   const educationalLead = (
-    educationalResultLead
+    educationalResultLead ?? educationalStrategyLead
   )
     ? educationalLossToleranceAdjusted
       ? (
-        `${educationalResultLead} 선택한 손실감내율 `
+        `${educationalResultLead ?? educationalStrategyLead} 선택한 손실감내율 `
         + `${Number(educationalEvaluation.evaluated_input.loss_tolerance_percent).toFixed(1)}%를 함께 반영했습니다. `
         + `손실감내율을 우선 적용해 성장자산 비중을 ${educationalRawRiskTarget.toFixed(1)}%에서 `
         + `${educationalFinalRiskTarget.toFixed(1)}%로 낮췄습니다.`
       )
-      : educationalResultLead
+      : educationalResultLead ?? educationalStrategyLead
     : undefined;
   const isPensionTaxCredit = (
     response.intent === "pension_tax"
@@ -565,16 +644,27 @@ function AssistantMessage({
       item.kind === "tax_summary" && item.title === "세액공제 요약"
     ))
     : undefined;
-  const embedsEducationalStrategyVisualizations = (
+  const isEducationalStrategyGuide = (
     isEducationalPortfolio
-    && educationalEvaluation != null
-    && educationalEvaluation.evaluated_input.current_holdings.length === 0
+    && !educationalHasCurrentHoldings
   );
-  const hiddenEducationalAllocationVisualizations = isEducationalPortfolio
-    ? response.visualizations.filter((item) => item.kind === "sleeve_allocation")
+  const hiddenEducationalSummaryVisualizations = (
+    isEducationalPortfolio
+    && educationalHasCurrentHoldings
+  )
+    ? response.visualizations.filter((item) => (
+      item.kind === "sleeve_allocation" || item.kind === "stress_scenarios"
+    ))
     : [];
-  const educationalStrategyVisualizations = embedsEducationalStrategyVisualizations
-    ? response.visualizations.filter((item) => item.kind === "stress_scenarios")
+  const educationalStrategySourceVisualizations = isEducationalStrategyGuide
+    ? response.visualizations.filter((item) => (
+      item.kind === "sleeve_allocation" || item.kind === "stress_scenarios"
+    ))
+    : [];
+  const educationalStrategyVisualizations = isEducationalStrategyGuide
+    ? withoutStagflationStressScenario(
+      collapseSharedStrategyAllocation(educationalStrategySourceVisualizations),
+    )
     : [];
   const remainingVisualizations = (isMissedTaxCredit
     ? response.visualizations.filter((item) => item.kind !== "tax_summary")
@@ -582,8 +672,8 @@ function AssistantMessage({
       ? response.visualizations.filter((item) => item !== taxSummaryVisualization)
       : response.visualizations
   ).filter((item) => (
-    !educationalStrategyVisualizations.includes(item)
-    && !hiddenEducationalAllocationVisualizations.includes(item)
+    !hiddenEducationalSummaryVisualizations.includes(item)
+    && !educationalStrategySourceVisualizations.includes(item)
   ));
   const visibleNumericEvidence = isMissedTaxCredit
     ? []
@@ -592,7 +682,11 @@ function AssistantMessage({
       (item) => !item.label.endsWith("법정 세액공제액"),
     )
     : response.numeric_evidence;
-  const visibleSections = isEducationalPortfolio
+  const visibleSections = isEducationalPortfolio && !educationalHasCurrentHoldings
+    ? response.sections.filter(
+      (section) => !section.title.endsWith("ETF 분야 살펴보기"),
+    )
+    : isEducationalPortfolio
     ? []
     : isPensionTaxCredit
     ? response.sections.filter(
@@ -776,7 +870,7 @@ function AssistantMessage({
 
       {response.data_mode !== "news_summary" && visibleSections.map((section, index) => (
         <Fragment key={`${section.title}-${index}`}>
-          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "verified_pension_account_brief" || response.data_mode === "verified_pension_tax_rule_brief" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
+          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={isEducationalStrategyGuide || response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "verified_pension_account_brief" || response.data_mode === "verified_pension_tax_rule_brief" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
             <summary>
               <span>{section.title}</span>
               <small>내용 보기</small>
@@ -973,11 +1067,6 @@ export function GuidePage({
       )
     );
   }
-
-  const selectedScenarioData = useMemo(
-    () => scenarios.find((scenario) => scenario.code === selectedScenario),
-    [scenarios, selectedScenario],
-  );
 
   const visibleChatCards = useMemo(() => filterChatCards(chatCards, {
     hasScenario: Boolean(selectedScenario || userContext?.scenario_code),
@@ -1808,30 +1897,14 @@ export function GuidePage({
           {messages.length === 0 ? (
             <div className="welcome design-welcome">
               <div className="design-brand">
-                <span className="design-brand-mark">연</span>
+                <span className="design-brand-avatar" aria-hidden="true">
+                  <img src={yeongeumiProfile} alt="" />
+                </span>
                 <strong>연그미</strong>
               </div>
-              <h1>{userContext?.nickname ?? selectedScenarioData?.name ?? "고객"}님 ! 막막한 노후 준비, <em><br />연그미</em>와 대화하며 풀어보세요.</h1>
 
-              {/* 정민재 박스는 로그인 컨텍스트로 즉시 채워진다. 리밸런싱 카드는 API 응답이 늦으므로 로딩 중 같은 골격의 스켈레톤으로 자리를 잡아 아래 추천 질문이 밀리지 않게 한다. */}
+              {/* 리밸런싱 카드는 API 응답이 늦으므로 로딩 중 같은 골격의 스켈레톤으로 자리를 잡아 아래 추천 질문이 밀리지 않게 한다. */}
               <div className="welcome-intro-cards">
-                {(userContext || selectedScenarioData) ? (
-                  <div className="selected-scenario-card">
-                    <div><Icon name="database" size={19} /></div>
-                    <span>
-                      <strong>{userContext?.nickname ?? selectedScenarioData?.name}</strong>
-                      <small>{userContext?.customer_context ?? selectedScenarioData?.description}</small>
-                    </span>
-                  </div>
-                ) : accessToken && (
-                  <div className="selected-scenario-card is-skeleton" aria-hidden="true">
-                    <div className="scenario-skeleton-icon" />
-                    <span>
-                      <strong><span className="skeleton-line" style={{ width: "40%" }} /></strong>
-                      <small><span className="skeleton-line" /><span className="skeleton-line" style={{ width: "76%" }} /></small>
-                    </span>
-                  </div>
-                )}
                 {reminderLoading ? (
                   <div className="rebalancing-reminder-card is-skeleton" aria-hidden="true">
                     <strong><span className="skeleton-line" style={{ width: "58%" }} /></strong>

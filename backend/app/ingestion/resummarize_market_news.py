@@ -11,7 +11,7 @@ import httpx
 
 from backend.app.settings import get_settings
 
-from ._secrets import require_secret
+from ._secrets import require_model_api_key, require_secret
 from .naver_news_repository import (
     NaverNewsRepository,
     PreparedMarketNewsSummary,
@@ -168,7 +168,7 @@ def main() -> int:
     settings = get_settings()
     result = run_market_news_resummary(
         database_url=require_secret(settings.database_url, "DATABASE_URL"),
-        api_key=require_secret(settings.anthropic_api_key, "ANTHROPIC_API_KEY"),
+        api_key=require_model_api_key(settings.news_summary_model, settings),
         model=settings.news_summary_model,
         prompt_version=settings.news_summary_prompt_version,
         expected_count=args.expected_count,

@@ -155,9 +155,11 @@ function addChatFixture(): void {
           <main class="chat-main">
             <div class="conversation">
               <div class="welcome design-welcome">
-                <h1>이정수님! 막막한 노후 준비, 연그미와 대화하며 풀어보세요.</h1>
+                <div class="design-brand">
+                  <img class="design-brand-avatar" alt="" />
+                  <strong>연그미</strong>
+                </div>
                 <div class="welcome-intro-cards">
-                  <div class="selected-scenario-card">내 연금 상황</div>
                   <section class="rebalancing-reminder-card">리밸런싱 점검</section>
                 </div>
                 <section class="chat-home-card-section">추천 질문</section>
@@ -172,8 +174,8 @@ function addChatFixture(): void {
   );
   const phone = document.querySelector(".guide-phone") as HTMLElement;
   const appShell = document.querySelector(".app-shell") as HTMLElement;
-  const headline = document.querySelector(".design-welcome h1") as HTMLElement;
-  const introCards = document.querySelector(".welcome-intro-cards") as HTMLElement;
+  const brand = document.querySelector(".design-brand") as HTMLElement;
+  const reminder = document.querySelector(".rebalancing-reminder-card") as HTMLElement;
   const recommendations = document.querySelector(
     ".chat-home-card-section:not(.etf-theme-section)",
   ) as HTMLElement;
@@ -181,13 +183,13 @@ function addChatFixture(): void {
   const composer = document.querySelector(".composer-wrap") as HTMLElement;
   phone.getBoundingClientRect = () => rect(0, 0, 390, 844);
   appShell.getBoundingClientRect = () => rect(54, 0, 390, 790);
-  headline.getBoundingClientRect = () => rect(140, 22, 346, 105);
-  introCards.getBoundingClientRect = () => rect(265, 22, 346, 240);
+  brand.getBoundingClientRect = () => rect(140, 22, 346, 48);
+  reminder.getBoundingClientRect = () => rect(205, 22, 346, 150);
   recommendations.getBoundingClientRect = () => rect(530, 22, 346, 210);
   themes.getBoundingClientRect = () => rect(760, 22, 346, 240);
   composer.getBoundingClientRect = () => rect(770, 18, 354, 68);
-  headline.scrollIntoView = vi.fn();
-  introCards.scrollIntoView = vi.fn();
+  brand.scrollIntoView = vi.fn();
+  reminder.scrollIntoView = vi.fn();
   recommendations.scrollIntoView = vi.fn();
   themes.scrollIntoView = vi.fn();
   composer.scrollIntoView = vi.fn();
@@ -269,7 +271,7 @@ function addUserPickFixture(
       <div style="cursor:pointer"><span>꾸준한거북이</span></div>
       <div style="cursor:pointer">상세히 보기</div>
       <div>내 포트폴리오와 비교</div>
-      <div>이 회원의 운용 근거</div>
+      <div>운용근거</div>
     </x-dc>
     <div id="benchmark-phone"></div>
   `;
@@ -281,9 +283,8 @@ function addUserPickFixture(
       <div style="position: absolute; inset: 0; z-index: 30">
         <header><svg data-close-detail style="cursor: pointer"></svg></header>
         <div class="scrolly">
-          <section data-rationale style="background: #fff; border-radius: 20px">
-            <div>이 회원의 운용 근거</div>
-            <div>왜 이렇게 나눴냐면요</div>
+          <section data-rationale style="background: #fff; border:1.5px solid #C9EBD4; border-radius: 18px">
+            <div>운용근거</div>
             <div>이 전략을 고른 이유</div>
             <div>언제 다시 맞추냐면요</div>
           </section>
@@ -332,7 +333,7 @@ function addUserPickFixture(
           >
             <div><span>꾸준한거북이</span>님</div>
           </div>
-          <div data-comparison>내 포트폴리오와 <span>비교</span></div>
+          <div data-comparison>내 포트폴리오와 구성 일치도</div>
           <div
             data-comparison-table
             style="border: 1px solid #EDEFF1; border-radius: 16px"
@@ -749,12 +750,12 @@ describe("FirstUseGuide", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "연금 운용 질문을 쉽게 물어보세요",
+        name: "연그미에게 편하게 물어보세요",
       }),
     ).toBeInTheDocument();
     expect(
       document.querySelector(".fug-title-accent"),
-    ).toHaveTextContent("연금 운용 질문");
+    ).toHaveTextContent("연그미");
     expect(
       screen.getByText(/예를 들어 “IRP와 연금저축은 뭐가 달라\?”처럼 시작해 보세요\./),
     ).toBeInTheDocument();
@@ -768,10 +769,10 @@ describe("FirstUseGuide", () => {
       "ETF 테마",
     ]));
 
-    fireEvent.click(screen.getByRole("button", { name: "내 정보 카드 보기" }));
+    fireEvent.click(screen.getByRole("button", { name: "점검 알림 보기" }));
     expect(
       await screen.findByRole("heading", {
-        name: "내 연금 상황과 점검 알림을 확인해요",
+        name: "리밸런싱 점검 알림을 확인해요",
       }),
     ).toBeInTheDocument();
 
@@ -928,12 +929,12 @@ describe("FirstUseGuide", () => {
     expect(onPortfolioOpen).toHaveBeenCalledTimes(1);
     expect(
       await userPickGuide.findByRole("heading", {
-        name: "내 비중과 달라지는 부분을 비교해요",
+        name: "비중 변화를 비교하고 상세히 보기를 눌러요",
       }),
     ).toBeInTheDocument();
     expect(
       userPickFrame.contentDocument?.querySelector<HTMLElement>(
-        "[data-comparison-table]",
+        "[data-open-detail]",
       )?.scrollIntoView,
     ).toHaveBeenCalledWith({
       block: "center",
@@ -941,33 +942,38 @@ describe("FirstUseGuide", () => {
     });
     expect(
       userPickGuide.getByRole("heading", {
-        name: "내 비중과 달라지는 부분을 비교해요",
+        name: "비중 변화를 비교하고 상세히 보기를 눌러요",
       }).closest("section"),
     ).toHaveClass("is-top");
+    expect(
+      userPickFrame.contentDocument?.querySelector(".fug-root-user-pick"),
+    ).toHaveClass("is-awaiting-user-pick-detail");
 
-    fireEvent.click(userPickGuide.getByRole("button", {
-      name: "운용 근거 보기",
-    }));
+    fireEvent.click(
+      userPickFrame.contentDocument!.querySelector(
+        "[data-open-detail]",
+      ) as HTMLElement,
+    );
     expect(onDetailOpen).toHaveBeenCalledTimes(1);
     expect(
       await userPickGuide.findByRole("heading", {
-        name: "운용 근거를 읽고 판단해요",
+        name: "운용 근거를 확인하고 판단해요",
       }),
     ).toBeInTheDocument();
     const rationale = Array.from(
       userPickFrame.contentDocument!.querySelectorAll<HTMLElement>("section"),
-    ).find((element) => element.textContent?.includes("왜 이렇게 나눴냐면요"));
+    ).find((element) => element.textContent?.includes("운용근거"));
     expect(rationale?.scrollIntoView).toHaveBeenCalledWith({
       block: "start",
       behavior: "smooth",
     });
 
     fireEvent.click(userPickGuide.getByRole("button", {
-      name: "따라하기 후기 보기",
+      name: "이용자 후기 보기",
     }));
     expect(
       await userPickGuide.findByRole("heading", {
-        name: "따라한 이용자의 후기도 확인해요",
+        name: "따라한 이용자의 후기를 살펴봐요",
       }),
     ).toBeInTheDocument();
     const reviewHeading = userPickFrame.contentDocument?.querySelector<HTMLElement>(
@@ -979,7 +985,7 @@ describe("FirstUseGuide", () => {
     });
     expect(
       userPickGuide.getByRole("heading", {
-        name: "따라한 이용자의 후기도 확인해요",
+        name: "따라한 이용자의 후기를 살펴봐요",
       }).closest("section"),
     ).toHaveClass("is-top");
     expect(
@@ -1019,13 +1025,20 @@ describe("FirstUseGuide", () => {
     fireEvent.click(userPickGuide.getByRole("button", {
       name: "내 비중과 비교하기",
     }));
-    fireEvent.click(userPickGuide.getByRole("button", {
-      name: "운용 근거 보기",
-    }));
+    expect(
+      await userPickGuide.findByRole("heading", {
+        name: "비중 변화를 비교하고 상세히 보기를 눌러요",
+      }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      userPickFrame.contentDocument!.querySelector(
+        "[data-open-detail]",
+      ) as HTMLElement,
+    );
 
     expect(
       await userPickGuide.findByRole("heading", {
-        name: "운용 근거를 읽고 판단해요",
+        name: "운용 근거를 확인하고 판단해요",
       }),
     ).toBeInTheDocument();
     expect(
@@ -1036,7 +1049,7 @@ describe("FirstUseGuide", () => {
 
     expect(
       await userPickGuide.findByRole("heading", {
-        name: "내 비중과 달라지는 부분을 비교해요",
+        name: "비중 변화를 비교하고 상세히 보기를 눌러요",
       }),
     ).toBeInTheDocument();
     await waitFor(() => {

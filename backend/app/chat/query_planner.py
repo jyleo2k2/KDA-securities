@@ -90,9 +90,11 @@ class QueryPlan(BaseModel):
     theme_content_topic: ThemeContentTopic | None = None
     requests_theme_candidates: bool = False
     requests_theme_holdings: bool = False
+    requests_strategy_rationale: bool = False
     distribution_isu_code: str | None = None
     distribution_reinvestment: DistributionReinvestmentRequest | None = None
     glossary_term_id: str | None = None
+    strategy_id: str | None = None
     investing_principle_id: str | None = None
     hesitation_answer_id: str | None = None
     blocked_reason: BlockedReason | None = None
@@ -105,6 +107,10 @@ class QueryPlan(BaseModel):
             raise ValueError("glossary intent requires glossary_term_id")
         if self.intent != ChatIntent.GLOSSARY and self.glossary_term_id is not None:
             raise ValueError("glossary_term_id is only valid for glossary intent")
+        if self.intent == ChatIntent.STRATEGY_GLOSSARY and self.strategy_id is None:
+            raise ValueError("strategy glossary intent requires strategy_id")
+        if self.intent != ChatIntent.STRATEGY_GLOSSARY and self.strategy_id is not None:
+            raise ValueError("strategy_id is only valid for strategy glossary intent")
         if (
             self.intent == ChatIntent.INVESTING_PRINCIPLE
             and self.investing_principle_id is None
@@ -164,6 +170,13 @@ class QueryPlan(BaseModel):
             or self.requests_theme_holdings
         ):
             raise ValueError("theme fields require etf_theme intent")
+        if (
+            self.requests_strategy_rationale
+            and self.intent != ChatIntent.EDUCATIONAL_PORTFOLIO
+        ):
+            raise ValueError(
+                "strategy rationale requires educational_portfolio intent"
+            )
         if self.intent != ChatIntent.ETF_DISTRIBUTION and (
             self.distribution_isu_code or self.distribution_reinvestment is not None
         ):
@@ -304,7 +317,7 @@ _GLOSSARY_TERM_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
             re.I,
         ),
     ),
-    ("etf", re.compile(r"ETF", re.I)),
+    ("etf", re.compile(r"ETF|이\s*티\s*에\s*프", re.I)),
     ("irp", re.compile(r"IRP", re.I)),
     ("pension_savings", re.compile(r"연금\s*저축")),
 )
@@ -318,6 +331,63 @@ def _glossary_term_id(message: str) -> str | None:
     for term_id, pattern in _GLOSSARY_TERM_PATTERNS:
         if pattern.search(message) is not None:
             return term_id
+    return None
+
+
+# 사전이 아는 용어가 문장에 있는지만 본다. 정의 어미(_GLOSSARY_QUESTION)까지
+# 요구하는 _glossary_term_id와 달리, 토픽 가드가 "이 질문을 용어 설명으로
+# 되돌려도 되는가"를 판단할 때 쓴다.
+def mentions_glossary_term(message: str) -> bool:
+    """Report whether the message names a term the glossary can answer."""
+
+    normalized = normalize_colloquial_text(message)
+    return any(
+        pattern.search(normalized) is not None
+        for _, pattern in _GLOSSARY_TERM_PATTERNS
+    )
+
+
+# 전략 탐색 화면에 있는 전략 10종. 챗봇이 이 어휘를 몰라서 "탑다운 전략이
+# 뭐야?"가 엉뚱한 용어 정의로 샜다. 표기 흔들림(탑다운·톱다운·top-down)을
+# 함께 받고, 더 구체적인 이름이 짧은 이름에 먹히지 않도록 앞에 둔다.
+_STRATEGY_NAME_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("market-beta", re.compile(r"시장\s*베타|마켓\s*베타|market\s*beta", re.I)),
+    ("topdown", re.compile(r"탑\s*다운|톱\s*다운|top[\s-]*down", re.I)),
+    ("bottomup", re.compile(r"바텀\s*업|보텀\s*업|bottom[\s-]*up", re.I)),
+    (
+        "longshort",
+        re.compile(r"롱\s*숏|롱\s*앤\s*숏|시장\s*중립|long[\s-]*short", re.I),
+    ),
+    (
+        "eventdriven",
+        re.compile(r"이벤트\s*드리븐|이벤트\s*driven|event[\s-]*driven", re.I),
+    ),
+    (
+        "trend",
+        re.compile(r"추세\s*추종|글로벌\s*매크로|트렌드\s*팔로", re.I),
+    ),
+    ("volatility", re.compile(r"변동성\s*관리|저\s*변동성\s*전략")),
+    ("barbell", re.compile(r"바벨|바\s*벨형|barbell", re.I)),
+    ("factor", re.compile(r"팩터|팩타|factor", re.I)),
+    ("theme", re.compile(r"테마\s*전략")),
+)
+# 전략 이름만 나온 문장이 아니라 그 전략을 묻는 문장일 때만 받는다.
+# "반도체 테마 ETF 추천해줘"는 기존 카탈로그 인텐트가 답해야 한다.
+_STRATEGY_QUESTION = re.compile(
+    r"전략|어떤\s*(?:거|것|방식)|무슨\s*방식"
+)
+
+
+def _strategy_id(message: str) -> str | None:
+    """Identify a strategy question such as "탑다운 전략이 뭐야?"."""
+
+    if _STRATEGY_QUESTION.search(message) is None:
+        return None
+    if _GLOSSARY_QUESTION.search(message) is None:
+        return None
+    for strategy_id, pattern in _STRATEGY_NAME_PATTERNS:
+        if pattern.search(message) is not None:
+            return strategy_id
     return None
 
 
@@ -678,6 +748,14 @@ _EDUCATIONAL_PORTFOLIO_TERMS = re.compile(
     r"안정\s*추구형|위험\s*중립형|적극\s*투자형|"
     r"공격\s*투자형|안정형"
 )
+_PORTFOLIO_STRATEGY_LABEL = re.compile(
+    r"(?:자본\s*보전\s*중심|방어적\s*분산|"
+    r"(?:성장\s*)?코어\s*[·ㆍ\-\s]?\s*위성|"
+    r"바벨형\s*성장\s*[·ㆍ\-\s]?\s*전술)\s*전략"
+)
+_STRATEGY_RATIONALE_QUESTION = re.compile(
+    r"왜|이유|근거|선택|적합|맞(?:아|는|나요)"
+)
 # 리밸런싱을 "언제·얼마나 자주" 하는지는 성향별 점검 주기가 답이다.
 # 엔진이 이미 성향마다 주기를 계산하므로 안내 경로로 잇는다.
 _REBALANCING_CADENCE_QUESTION = re.compile(
@@ -916,6 +994,21 @@ def plan_question(
             theme = get_default_etf_theme_repository().resolve(normalized)
         except (FileNotFoundError, ValueError):
             theme = None
+    named_portfolio_strategy = (
+        _PORTFOLIO_STRATEGY_LABEL.search(normalized) is not None
+    )
+    requests_strategy_rationale = (
+        named_portfolio_strategy
+        and _STRATEGY_RATIONALE_QUESTION.search(normalized) is not None
+    )
+    if (
+        named_portfolio_strategy
+        and "테마" not in normalized
+        and _PRODUCT_LOOKUP_CONTEXT.search(normalized) is None
+    ):
+        # "코어·위성 전략"의 위성은 포트폴리오 역할을 뜻한다. 방산·우주
+        # 테마의 별칭으로 먼저 해석하면 직전 전략 설명이 엉뚱한 ETF 답변으로 샌다.
+        theme = None
     blocking_rules = (
         (
             _contains_sensitive_information(normalized),
@@ -972,6 +1065,7 @@ def plan_question(
         ),
         ChatIntent.EDUCATIONAL_PORTFOLIO: (
             _EDUCATIONAL_PORTFOLIO_TERMS.search(normalized) is not None
+            or named_portfolio_strategy
             or _AGE_BASED_ALLOCATION_QUESTION.search(normalized) is not None
             or _REBALANCING_CADENCE_QUESTION.search(normalized) is not None
             or _REBALANCING_REVIEW_REQUEST.search(normalized) is not None
@@ -1054,6 +1148,30 @@ def plan_question(
                 intent=ChatIntent.GLOSSARY,
                 max_results=max_results,
                 glossary_term_id=definition_term_id,
+            )
+
+    # 전략 탐색 화면에 있는 전략을 이름으로 물으면 그 전략을 설명한다.
+    # 화면에는 설명이 있는데 챗봇만 몰라서 엉뚱한 답을 주던 구간이다.
+    # 성향별 포트폴리오 전략 이름(코어·위성 등)과 상품 카탈로그 질문은
+    # 각각 기존 인텐트가 답해야 하므로 먼저 양보한다.
+    # 뉴스·계좌·세액처럼 더 구체적인 인텐트가 이미 잡혔으면 그쪽이 답이다.
+    # "이벤트 드리븐 운용전략"은 실시간 뉴스 안내가 답이지 개념 설명이 아니다.
+    if (
+        (intent is None or intent in _DEFINITION_OVERRIDABLE_INTENTS)
+        and not named_portfolio_strategy
+        and _THEME_CANDIDATE_TERMS.search(normalized) is None
+    ):
+        strategy_id = _strategy_id(normalized)
+        # "반도체 테마 전략"처럼 특정 테마를 지목했으면 카탈로그가 답이다.
+        # 테마 없이 "테마 전략"만 물었을 때가 전략 설명이다.
+        if strategy_id is not None and not (
+            strategy_id == "theme" and theme is not None
+        ):
+            return QueryPlan(
+                normalized_message=normalized,
+                intent=ChatIntent.STRATEGY_GLOSSARY,
+                max_results=max_results,
+                strategy_id=strategy_id,
             )
 
     if intent == ChatIntent.MOCK_PORTFOLIO:
@@ -1157,6 +1275,7 @@ def plan_question(
             intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
             account_types=account_types,
             max_results=max_results,
+            requests_strategy_rationale=requests_strategy_rationale,
         )
     if intent == ChatIntent.PROVIDER_DISCLOSURE:
         if len(account_types) > 1:

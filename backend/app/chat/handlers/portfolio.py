@@ -1776,6 +1776,55 @@ def educational_portfolios(
     )
 
 
+def strategy_rationale_response(response: ChatResponse) -> ChatResponse:
+    evaluation = response.educational_portfolio_evaluation or next(
+        iter(response.educational_portfolio_evaluations),
+        None,
+    )
+    if evaluation is None:
+        return response
+
+    strategy_label = evaluation.strategy_label
+    profile_label = _RISK_PROFILE_LABELS[
+        evaluation.evaluated_input.risk_profile.value
+    ]
+    strategy_section = next(
+        (
+            section
+            for section in response.sections
+            if strategy_label in section.title
+        ),
+        None,
+    )
+    if strategy_section is None:
+        return response
+
+    evidence_ids = set(strategy_section.evidence_ids)
+    return ChatResponse(
+        intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+        answer=(
+            f"현재 설문에서 {profile_label}으로 평가되어 {strategy_label}을 "
+            "적용했어요. 선택한 손실감내도와 연금 수령까지 남은 기간을 "
+            "함께 반영한 결과예요."
+        ),
+        data_mode="engine_strategy_rationale",
+        sections=[
+            strategy_section.model_copy(
+                update={"title": f"{strategy_label}을 선택한 이유"}
+            )
+        ],
+        sources=[
+            source
+            for source in response.sources
+            if source.evidence_id in evidence_ids
+        ],
+        limitations=[
+            "설문 입력과 규칙 엔진 결과를 기준으로 설명합니다.",
+            "특정 ETF의 선택·주문·자동 리밸런싱은 수행하지 않습니다.",
+        ],
+    )
+
+
 def macro_evidence_response(
     request: ChatRequest,
     *,

@@ -489,7 +489,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .portfolio-theme-next-step { display: grid; gap: 5px; padding: 12px; border: 1px solid #d9e8dc; border-radius: 11px; background: #edf7ee; }.portfolio-theme-next-step strong { color: #1f5137; font-size: 11px; }.portfolio-theme-next-step p { margin: 0; color: #607268; font-size: 9px; line-height: 1.55; }
 .portfolio-review { display: grid; width: 100%; min-width: 0; max-width: 100%; gap: 14px; margin-top: 15px; padding: 16px; border: 1px solid #dce8dc; border-radius: 16px; background: #f8fcf7; }
 .portfolio-review > header { display: grid; gap: 3px; }.portfolio-review > header > span { color: #16864e; font-size: 9px; font-weight: 800; }.portfolio-review h3 { margin: 0; color: #1c3327; font-size: 15px; }.portfolio-review > header p { margin: 0; color: #748178; font-size: 10px; }
-.portfolio-review-lead { display: grid; gap: 5px; padding: 13px; border-radius: 12px; background: #e8f5ea; }.portfolio-review-lead > span { color: #16864e; font-size: 9px; font-weight: 800; }.portfolio-review-lead > strong { color: #1f5137; font-size: 13px; line-height: 1.4; }.portfolio-review-lead > p { margin: 0; color: #56695e; font-size: 10px; line-height: 1.6; }
+.portfolio-review-lead { display: grid; gap: 6px; padding: 0 0 13px; border-bottom: 1px solid #dbe8dc; }.portfolio-review-lead > span { color: #16864e; font-size: 9px; font-weight: 800; }.portfolio-review-lead > strong { color: #1f5137; font-size: 15px; line-height: 1.38; }.portfolio-review-lead > p { margin: 0; color: #4f6257; font-size: 11px; line-height: 1.6; }
+.portfolio-review-lead-meta { display: flex; flex-wrap: wrap; gap: 5px 8px; color: #6d7d73; font-size: 9px; line-height: 1.4; }
 .portfolio-review-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }.portfolio-review-summary div { display: grid; min-width: 0; gap: 4px; padding: 9px; border-radius: 10px; background: #fff; }.portfolio-review-summary span { color: #7b887f; font-size: 8px; line-height: 1.35; }.portfolio-review-summary strong { color: #214333; font-size: 10px; line-height: 1.4; overflow-wrap: anywhere; }
 .portfolio-review-details { min-width: 0; overflow: hidden; border: 1px solid #dbe8dc; border-radius: 12px; background: #fff; }
 .portfolio-review-details > summary { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 10px; padding: 12px; color: #294838; cursor: pointer; list-style: none; }
@@ -501,18 +502,32 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .portfolio-review-details[open] > summary { border-bottom: 1px solid #e6eee7; }
 .portfolio-review-details[open] > summary em { font-size: 0; }
 .portfolio-review-details[open] > summary em::after { content: "접기"; font-size: 9px; }
-.portfolio-review-priority { min-width: 0; overflow: hidden; border: 1px solid #bcd8c2; border-radius: 12px; background: #fff; box-shadow: 0 6px 18px rgba(35, 81, 55, .08); }
-.portfolio-review-priority > header { display: grid; gap: 2px; padding: 12px; border-bottom: 1px solid #dbe8dc; background: #f0f8f1; }
+.portfolio-review-priority { min-width: 0; overflow: visible; }
+.portfolio-review-priority > header { display: grid; gap: 2px; padding: 10px 0; border-bottom: 1px solid #dbe8dc; }
 .portfolio-review-priority > header small { color: #16864e; font-size: 8px; font-weight: 800; }
 .portfolio-review-priority > header h4 { margin: 0; color: #294838; font-size: 12px; }
 .portfolio-review-details-body { display: grid; min-width: 0; gap: 12px; padding: 12px; }
+.portfolio-review-priority > .portfolio-review-details-body { padding: 12px 0 0; }
 .portfolio-sector-guide { display: grid; gap: 11px; padding: 13px; border: 1px solid #d9e8dc; border-radius: 12px; background: #f7fbf6; }
 .portfolio-sector-guide > header { display: grid; gap: 3px; }.portfolio-sector-guide > header > span { color: #16864e; font-size: 9px; font-weight: 800; }.portfolio-sector-guide h4 { margin: 0; color: #203c2e; font-size: 12px; }.portfolio-sector-guide > header p, .portfolio-sector-guide-note { margin: 0; color: #748178; font-size: 9px; line-height: 1.5; }
 .portfolio-sector-guide-layout { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .portfolio-sector-donut { display: grid; width: 126px; height: 126px; justify-self: center; place-items: center; border-radius: 50%; }.portfolio-sector-donut::before { grid-area: 1 / 1; width: 76px; height: 76px; border-radius: 50%; background: #f7fbf6; content: ""; }.portfolio-sector-donut > span { z-index: 1; grid-area: 1 / 1; color: #596d61; font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 10px; font-weight: 600; line-height: 1.55; }.portfolio-sector-donut strong { color: #183d2c; font-size: 15px; font-weight: 800; letter-spacing: -.3px; }
 .portfolio-sector-legend { display: grid; width: 100%; min-width: 0; gap: 7px; margin: 0; padding: 0; list-style: none; }.portfolio-sector-legend li { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; align-items: center; gap: 7px; color: #45594e; font-size: 10px; line-height: 1.3; }.portfolio-sector-legend i { width: 9px; height: 9px; border-radius: 50%; }.portfolio-sector-legend span { min-width: 0; overflow-wrap: anywhere; }.portfolio-sector-legend strong { color: #183d2c; font-size: 10px; font-weight: 800; }
 .portfolio-sector-guide-note { padding-top: 9px; border-top: 1px solid #e4eee5; }
-.overlap-check { display: grid; gap: 6px; padding: 12px; border-radius: 11px; background: #eef6ec; }.overlap-check strong { color: #234634; font-size: 11px; }.overlap-check p, .overlap-check small { margin: 0; color: #607268; font-size: 9px; line-height: 1.55; }.overlap-check small { color: #7d8b83; }
+.overlap-check { display: grid; gap: 6px; padding: 0 0 12px; border-bottom: 1px solid #dbe8dc; }.overlap-check strong { color: #234634; font-size: 11px; }.overlap-check p, .overlap-check small { margin: 0; color: #607268; font-size: 9px; line-height: 1.55; }.overlap-check small { color: #7d8b83; }
+.drift-panel { display: grid; gap: 11px; padding: 2px 0 0; }
+.drift-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }.drift-heading strong { color: #294838; font-size: 11px; }.drift-heading span { color: #7b887f; font-size: 9px; }
+.drift-scale { display: grid; grid-template-columns: 1fr 1px 1fr; align-items: center; color: #8a958e; font-size: 8px; text-align: center; }.drift-scale::before { justify-self: end; padding-right: 8px; content: "부족"; }.drift-scale::after { justify-self: start; padding-left: 8px; content: "초과"; }.drift-scale i { width: 1px; height: 12px; background: #aebbb1; }
+.drift-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.drift-row { display: grid; gap: 5px; }
+.drift-row-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: #44574c; font-size: 10px; line-height: 1.35; }.drift-row-head strong { color: #284536; font-size: 10px; }.drift-row-head span { text-align: right; }
+.drift-track { position: relative; display: grid; grid-template-columns: 1fr 1fr; height: 12px; overflow: hidden; border-radius: 3px; background: #edf1ed; }.drift-track::after { position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: #9fada3; content: ""; }
+.drift-bar { height: 100%; min-width: 3px; }.drift-bar.is-negative { justify-self: end; border-radius: 3px 0 0 3px; background: #d8a45e; }.drift-bar.is-positive { grid-column: 2; border-radius: 0 3px 3px 0; background: #bf7d70; }
+.drift-empty { margin: 0; color: #607268; font-size: 10px; line-height: 1.55; }
+.within-band-summary { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-top: 1px solid #e6ece6; color: #637269; font-size: 9px; line-height: 1.4; }.within-band-summary strong { color: #277049; font-size: 9px; }
+.numeric-table-details { min-width: 0; border-top: 1px solid #e6ece6; }
+.numeric-table-details > summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 0; color: #294838; font-size: 10px; font-weight: 700; cursor: pointer; list-style: none; }.numeric-table-details > summary::-webkit-details-marker { display: none; }.numeric-table-details > summary em { flex: 0 0 auto; color: #16864e; font-size: 9px; font-style: normal; }.numeric-table-details[open] > summary em { font-size: 0; }.numeric-table-details[open] > summary em::after { content: "접기"; font-size: 9px; }
+.numeric-table-details .portfolio-review-table-wrap { margin-bottom: 10px; }
 .portfolio-review-table-wrap { min-width: 0; max-width: 100%; overflow: hidden; border: 1px solid #e2e9df; border-radius: 11px; background: #fff; }
 .portfolio-review-table { width: 100%; min-width: 0; table-layout: fixed; border-collapse: collapse; color: #53655b; font-size: 9px; }.portfolio-review-table th, .portfolio-review-table td { padding: 9px 4px; border-bottom: 1px solid #edf1eb; text-align: right; white-space: nowrap; }.portfolio-review-table th:first-child { width: 25%; padding-left: 8px; text-align: left; white-space: normal; overflow-wrap: anywhere; }.portfolio-review-table th:nth-child(2), .portfolio-review-table td:nth-child(2), .portfolio-review-table th:nth-child(3), .portfolio-review-table td:nth-child(3) { width: 14%; }.portfolio-review-table th:last-child, .portfolio-review-table td:last-child { width: 39%; padding-right: 8px; text-align: center; white-space: normal; }.portfolio-review-table thead th { background: #f3f7f1; color: #617067; font-weight: 800; }.portfolio-review-table tbody tr:last-child th, .portfolio-review-table tbody tr:last-child td { border-bottom: 0; }
 .portfolio-risk-review { display: grid; gap: 11px; padding: 13px; border: 1px solid #dbe6e0; border-radius: 12px; background: #fff; }
@@ -525,7 +540,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .portfolio-planning-review { display: grid; gap: 11px; padding: 13px; border: 1px solid #d9e5d6; border-radius: 12px; background: #fff; }
 .portfolio-planning-review > header { display: grid; gap: 3px; }.portfolio-planning-review > header span { color: #876400; font-size: 9px; font-weight: 800; }.portfolio-planning-review h4 { margin: 0; color: #203c2e; font-size: 12px; }.portfolio-planning-review > header p { margin: 0; color: #78867e; font-size: 9px; line-height: 1.45; }
 .portfolio-planning-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }.portfolio-planning-metrics div { display: grid; gap: 3px; padding: 9px; border-radius: 9px; background: #f7f5e9; }.portfolio-planning-metrics span { color: #746f55; font-size: 9px; }.portfolio-planning-metrics strong { color: #4e4a28; font-size: 13px; }.portfolio-planning-metrics small { color: #8a866e; font-size: 8px; }
-.portfolio-planning-table-wrap { min-width: 0; max-width: 100%; overflow-x: auto; border: 1px solid #e6e5d9; border-radius: 9px; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }.portfolio-planning-table { width: 100%; min-width: 500px; border-collapse: collapse; color: #5d625b; font-size: 9px; }.portfolio-planning-table th, .portfolio-planning-table td { padding: 8px 7px; border-bottom: 1px solid #eeeee6; text-align: right; white-space: nowrap; }.portfolio-planning-table th:first-child { text-align: left; }.portfolio-planning-table thead th { background: #f8f8f1; color: #6e705f; }.portfolio-planning-table tbody tr:last-child th, .portfolio-planning-table tbody tr:last-child td { border-bottom: 0; }.portfolio-planning-table tbody th { color: #38483e; }.portfolio-planning-table tbody th small { display: block; margin-top: 2px; color: #8a958e; font-size: 8px; font-weight: 500; }
+.portfolio-planning-table-wrap { min-width: 0; max-width: 100%; overflow: hidden; border: 1px solid #e6e5d9; border-radius: 9px; }.portfolio-planning-table { width: 100%; min-width: 0; table-layout: fixed; border-collapse: collapse; color: #5d625b; font-size: 9px; }.portfolio-planning-table th, .portfolio-planning-table td { padding: 8px 7px; border-bottom: 1px solid #eeeee6; text-align: right; white-space: normal; overflow-wrap: anywhere; }.portfolio-planning-table th:first-child { width: 48%; text-align: left; }.portfolio-planning-table thead th { background: #f8f8f1; color: #6e705f; }.portfolio-planning-table tbody tr:last-child th, .portfolio-planning-table tbody tr:last-child td { border-bottom: 0; }.portfolio-planning-table tbody th { color: #38483e; }.portfolio-planning-table tbody th small { display: block; margin-top: 2px; color: #8a958e; font-size: 8px; font-weight: 500; }
 .planning-source-chips { display: flex; flex-wrap: wrap; gap: 5px; }.planning-source-chips a, .planning-source-chips span { display: inline-flex; padding: 5px 7px; border: 1px solid #dfe5d8; border-radius: 999px; background: #f7faf4; color: #5f6d64; font-size: 8px; line-height: 1.35; text-decoration: none; }.planning-source-chips a:hover { border-color: #9ec9aa; color: #187048; }
 .portfolio-planning-note { margin: 0; padding: 9px; border-radius: 9px; background: #eef2ef; color: #66756c; font-size: 9px; line-height: 1.55; }
 .rebalance-status { display: inline-flex; justify-content: center; max-width: 100%; padding: 3px 6px; border-radius: 999px; background: #eef2ec; color: #526359; line-height: 1.35; text-align: center; white-space: normal; }.status-underweight_after_contribution { background: #fff0cf; color: #8a6110; }.status-overweight_review_only { background: #ffebe7; color: #9b4638; }.status-within_drift_band { background: #e3f5e8; color: #197149; }
@@ -817,7 +832,14 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   background: #fff;
 }
 .guide-tab .design-avatar img { width: 100%; height: 100%; display: block; object-fit: cover; }
-.guide-tab .conversation { background: #fff; scrollbar-width: thin; scrollbar-color: #d4d8dc transparent; }
+.guide-tab .conversation {
+  background:
+    radial-gradient(circle at 94% 7%, rgba(34, 169, 77, .07) 0 46px, transparent 47px),
+    radial-gradient(circle at 4% 29%, rgba(34, 169, 77, .045) 0 34px, transparent 35px),
+    linear-gradient(180deg, #f7fbf8 0, #fff 360px);
+  scrollbar-width: thin;
+  scrollbar-color: #d4d8dc transparent;
+}
 .guide-tab .conversation::-webkit-scrollbar { width: 4px; }
 .guide-tab .conversation::-webkit-scrollbar-thumb { border-radius: 999px; background: #d4d8dc; }
 .guide-tab .welcome.design-welcome {
@@ -825,7 +847,46 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   padding: 14px 22px 8px;
   text-align: left;
 }
-.guide-tab .design-brand { gap: 12px; }
+.guide-tab .design-brand {
+  position: relative;
+  width: fit-content;
+  gap: 10px;
+  padding: 8px 16px 8px 8px;
+  border: 1px solid #dceee1;
+  border-radius: 20px 20px 20px 7px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 8px 24px rgba(27, 145, 66, .08);
+}
+.guide-tab .design-brand::after {
+  position: absolute;
+  bottom: -5px;
+  left: 8px;
+  width: 10px;
+  height: 10px;
+  border-bottom: 1px solid #dceee1;
+  border-left: 1px solid #dceee1;
+  background: #fff;
+  content: "";
+  transform: rotate(-45deg);
+}
+.guide-tab .design-brand-avatar {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1.5px solid #e2e8e1;
+  border-radius: 50%;
+  background: #fff;
+  overflow: hidden;
+}
+.guide-tab .design-brand-avatar img {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  object-position: center;
+}
 .guide-tab .design-brand-mark {
   width: 40px;
   height: 40px;
@@ -837,10 +898,13 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   font-weight: 800;
 }
 .guide-tab .design-brand strong {
-  color: #1b9142;
-  font-size: 27px;
+  color: #0a813f;
+  font-family: "Cafe24SsurroundAir", "Noto Sans KR", sans-serif;
+  font-size: 30px;
   font-weight: 900;
-  letter-spacing: 0;
+  line-height: 1;
+  letter-spacing: -1px;
+  -webkit-text-stroke: .6px currentColor;
 }
 .guide-tab .design-welcome h1 {
   margin: 26px 0 0;
@@ -1006,7 +1070,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   margin: 0;
   padding: 12px 0 8px;
   color: #1b9142;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
   line-height: normal;
 }

@@ -639,6 +639,31 @@ def test_explicit_macro_request_takes_priority_over_etf_theme() -> None:
     assert plan.blocked_reason is None
 
 
+@pytest.mark.parametrize(
+    "message",
+    (
+        "왜 코어위성 전략을 선택했어?",
+        "왜 코어·위성 전략을 선택했어?",
+    ),
+)
+def test_named_portfolio_strategy_rationale_beats_etf_theme_alias(
+    message: str,
+) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent is ChatIntent.EDUCATIONAL_PORTFOLIO
+    assert plan.theme_id is None
+    assert plan.requests_strategy_rationale is True
+
+
+def test_explicit_satellite_etf_theme_request_stays_on_theme_route() -> None:
+    plan = plan_question("위성 ETF 테마 알려줘")
+
+    assert plan.intent is ChatIntent.ETF_THEME
+    assert plan.theme_id == "defense_space"
+    assert plan.requests_strategy_rationale is False
+
+
 def test_accumulation_question_redirects_to_pension_planner() -> None:
     response = _service(RecordingKnowledgeRepository()).ask(
         ChatRequest(message="적립하면 얼마 모여요?")

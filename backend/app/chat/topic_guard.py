@@ -10,11 +10,15 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, model_validator
 from pydantic_ai import Agent, NativeOutput
 from pydantic_ai.exceptions import AgentRunError
-from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
-from pydantic_ai.providers.anthropic import AnthropicProvider
 
+from ..llm_models import build_model, build_model_settings
 from ..text_normalization import normalize_colloquial_text
-from .query_planner import BlockedReason, QueryPlan, plan_question
+from .query_planner import (
+    BlockedReason,
+    QueryPlan,
+    mentions_glossary_term,
+    plan_question,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -108,16 +112,13 @@ class ClaudeTopicGuard:
         self._cache: OrderedDict[str, TopicGuardDecision] = OrderedDict()
         self._cache_lock = threading.Lock()
         self.agent: Agent[None, TopicGuardDecision] = Agent(
-            AnthropicModel(
-                self._model,
-                provider=AnthropicProvider(api_key=api_key.strip()),
-            ),
+            build_model(self._model, api_key=api_key.strip()),
             output_type=NativeOutput(TopicGuardDecision),
             instructions=SYSTEM_PROMPT,
-            model_settings=AnthropicModelSettings(
+            model_settings=build_model_settings(
+                self._model,
                 max_tokens=TOPIC_GUARD_MAX_OUTPUT_TOKENS,
-                anthropic_cache_instructions=True,
-                anthropic_cache_tool_definitions=True,
+                cache_static_prompt=True,
             ),
             retries=0,
         )
@@ -160,6 +161,12 @@ class ClaudeTopicGuard:
             return plan
         decision = self.classify(message)
         if not decision.allowed:
+            return plan
+        # 용어를 특정할 수 없는데 대표 질문("ETF가 뭐야?")으로 되돌리면
+        # 모른다고 말하는 대신 엉뚱한 정의를 확신 있게 답하게 된다.
+        if decision.route is TopicGuardRoute.GLOSSARY and not mentions_glossary_term(
+            plan.normalized_message
+        ):
             return plan
         canonical_question = _CANONICAL_ROUTE_QUESTIONS.get(decision.route)
         if canonical_question is None:

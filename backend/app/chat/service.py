@@ -75,12 +75,17 @@ from .handlers.portfolio import (
     risk_profile_guardrail,
     risk_profile_portfolio_guide,
     risk_profile_selection_guide,
+    strategy_rationale_response,
 )
 from .handlers.presentation import build_capabilities, finalize_response
 from .handlers.scenarios import (
     scenario_code,
     scenario_response,
     scenario_selection_response,
+)
+from .handlers.strategy_glossary import (
+    build_strategy_glossary_response,
+    find_investing_strategy,
 )
 from .models import (
     ChatIntent,
@@ -112,6 +117,18 @@ def _glossary_response(
             user_message=plan.normalized_message,
         )
     return build_glossary_response(term, knowledge)
+
+
+def _strategy_glossary_response(plan: QueryPlan) -> ChatResponse:
+    """Answer a strategy question with the wording already shown on screen."""
+
+    strategy = find_investing_strategy(plan.strategy_id or "")
+    if strategy is None:
+        return blocked_response(
+            BlockedReason.UNSUPPORTED,
+            user_message=plan.normalized_message,
+        )
+    return build_strategy_glossary_response(strategy)
 
 
 def _investing_principle_response(
@@ -305,6 +322,8 @@ class ChatService:
                 response = getting_started_response()
             elif resolved_plan.intent == ChatIntent.GLOSSARY:
                 response = _glossary_response(resolved_plan, self._knowledge)
+            elif resolved_plan.intent == ChatIntent.STRATEGY_GLOSSARY:
+                response = _strategy_glossary_response(resolved_plan)
             elif resolved_plan.intent == ChatIntent.INVESTING_PRINCIPLE:
                 response = _investing_principle_response(
                     resolved_plan, self._knowledge
@@ -390,6 +409,8 @@ class ChatService:
                             portfolio_universe_loader=(self._portfolio_universe_loader),
                             macro_evidence=self._macro_evidence,
                         )
+                    if resolved_plan.requests_strategy_rationale:
+                        response = strategy_rationale_response(response)
                     response = response.model_copy(
                         update={
                             "conversation_context": ConversationContext(

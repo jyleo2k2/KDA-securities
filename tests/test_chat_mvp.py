@@ -1913,7 +1913,11 @@ def test_warm_chat_dependencies_prewarms_enabled_narrator(monkeypatch) -> None:
 
 def test_narration_precompute_is_noop_without_api_key(monkeypatch) -> None:
     settings = get_settings().model_copy(
-        update={"enable_claude_narration": True, "anthropic_api_key": None}
+        update={
+            "enable_llm_narration": True,
+            "anthropic_api_key": None,
+            "google_api_key": None,
+        }
     )
     monkeypatch.setattr(
         deps,

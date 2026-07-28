@@ -755,6 +755,7 @@ export type ChatIntent =
   | "educational_portfolio"
   | "macro_evidence"
   | "glossary"
+  | "strategy_glossary"
   | "investing_principle"
   | "hesitation_support"
   | "getting_started"
