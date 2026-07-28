@@ -851,15 +851,17 @@ export function PortfolioHoldingsPanel({
 
 export function EducationalPortfolioReview({
   evaluation,
+  showStrategyGuide = false,
   visualizations = [],
   sources = [],
 }: {
   evaluation?: EducationalPortfolioEvaluation | null;
+  showStrategyGuide?: boolean;
   visualizations?: ChatVisualizationData[];
   sources?: SourceEvidence[];
 }) {
   if (!evaluation) return null;
-  if (!evaluation.evaluated_input.current_holdings.length) {
+  if (showStrategyGuide || !evaluation.evaluated_input.current_holdings.length) {
     return (
       <EducationalStrategyGuide
         evaluation={evaluation}

@@ -536,6 +536,7 @@ function MacroRegimeOutcomeCards({ response }: { response: ChatResponse }) {
 }
 
 function AssistantMessage({
+  requestPrompt,
   response,
   text,
   onFollowUp,
@@ -546,6 +547,7 @@ function AssistantMessage({
   disabled,
   usedFollowUpMessages,
 }: {
+  requestPrompt?: string;
   response?: ChatResponse;
   text: string;
   onFollowUp?: (message: string) => void;
@@ -584,12 +586,13 @@ function AssistantMessage({
     && Number.isFinite(educationalFinalRiskTarget)
     && Number.isFinite(educationalRawRiskTarget)
   );
-  const educationalHasCurrentHoldings = (
-    educationalEvaluation?.evaluated_input.current_holdings.length ?? 0
-  ) > 0;
+  const isEducationalRebalancing = (
+    isEducationalPortfolio
+    && /리밸런싱|목표\s*비중.*(?:비교|이탈)|이탈폭/.test(requestPrompt ?? "")
+  );
   const educationalResultLead = (
     isEducationalPortfolio
-    && educationalHasCurrentHoldings
+    && isEducationalRebalancing
     && educationalProfileLabel
     && educationalEvaluation?.strategy_label
   )
@@ -648,11 +651,11 @@ function AssistantMessage({
     : undefined;
   const isEducationalStrategyGuide = (
     isEducationalPortfolio
-    && !educationalHasCurrentHoldings
+    && !isEducationalRebalancing
   );
   const hiddenEducationalSummaryVisualizations = (
     isEducationalPortfolio
-    && educationalHasCurrentHoldings
+    && isEducationalRebalancing
   )
     ? response.visualizations.filter((item) => (
       item.kind === "sleeve_allocation" || item.kind === "stress_scenarios"
@@ -684,7 +687,7 @@ function AssistantMessage({
       (item) => !item.label.endsWith("법정 세액공제액"),
     )
     : response.numeric_evidence;
-  const visibleSections = isEducationalPortfolio && !educationalHasCurrentHoldings
+  const visibleSections = isEducationalStrategyGuide
     ? response.sections.filter(
       (section) => !section.title.endsWith("ETF 분야 살펴보기"),
     )
@@ -850,6 +853,7 @@ function AssistantMessage({
 
       <EducationalPortfolioReview
         evaluation={response.educational_portfolio_evaluation}
+        showStrategyGuide={isEducationalStrategyGuide}
         visualizations={educationalStrategyVisualizations}
         sources={response.sources}
       />
@@ -1481,6 +1485,9 @@ export function GuidePage({
           id: message.message_id,
           role: message.role,
           text: message.content,
+          requestPrompt: message.question_message_id
+            ? stored.find((candidate) => candidate.message_id === message.question_message_id)?.content
+            : undefined,
           response: message.response ?? undefined,
           createdAt: new Date(message.created_at),
         }));
@@ -1955,6 +1962,7 @@ export function GuidePage({
               onRetry={(message) => void submitPrompt(message.failedPrompt!, message.failedEducationalPortfolio)}
               renderMessage={(message) => (
                 <AssistantMessage
+                  requestPrompt={message.requestPrompt}
                   onFollowUp={(prompt) => void submitPrompt(prompt)}
                   onOpenPlanner={onOpenPlanner}
                   onOpenStrategyPick={onOpenStrategyPick}
