@@ -11,6 +11,7 @@ import type {
   PensionCalculatorPortfolioCmaEvaluation,
   PortfolioPlanningEvaluation,
   PortfolioRiskEvaluation,
+  RebalancingSleeveGuidance,
   RiskProfile,
   SourceEvidence,
 } from "../api/types";
@@ -250,6 +251,93 @@ function RebalancingCadenceGuide({
       <p className="portfolio-target-allocation-note">
         각 자산 유형별로 ±{Number(cadence.drift_threshold_percent_points).toFixed(1)}%p만큼의 차이가 날 수 있어요.
       </p>
+    </section>
+  );
+}
+
+function RebalancingDriftPanel({
+  sleeves,
+  driftSleeves,
+  withinBandCount,
+}: {
+  sleeves: RebalancingSleeveGuidance[];
+  driftSleeves: RebalancingSleeveGuidance[];
+  withinBandCount: number;
+}) {
+  // 막대 길이는 이탈폭 20%p를 최대치로 두고 좌우 절반 폭에 매핑한다.
+  const barWidth = (value: number) => `${Math.min((Math.abs(value) / 20) * 100, 100).toFixed(1)}%`;
+
+  return (
+    <section className="drift-panel" aria-labelledby="drift-panel-title">
+      <div className="drift-heading">
+        <strong id="drift-panel-title">목표에서 벗어난 자산군</strong>
+        <span>0을 기준으로 비교</span>
+      </div>
+      {driftSleeves.length > 0 ? (
+        <>
+          <div className="drift-scale" aria-hidden="true"><i /></div>
+          <ul className="drift-list">
+            {driftSleeves.map((sleeve) => {
+              const drift = Number(sleeve.drift_after_percent_points);
+              const safeDrift = Number.isFinite(drift) ? drift : 0;
+              return (
+                <li className="drift-row" key={sleeve.sleeve}>
+                  <div className="drift-row-head">
+                    <strong title={sleeve.sleeve}>{sleeveLabel(sleeve.sleeve)}</strong>
+                    <span>{safeDrift > 0 ? "+" : ""}{safeDrift.toFixed(1)}%p</span>
+                  </div>
+                  <div
+                    className="drift-track"
+                    role="img"
+                    aria-label={`${sleeveLabel(sleeve.sleeve)} 목표 대비 ${Math.abs(safeDrift).toFixed(1)}퍼센트포인트 ${safeDrift < 0 ? "부족" : "초과"}`}
+                  >
+                    <span
+                      className={`drift-bar ${safeDrift < 0 ? "is-negative" : "is-positive"}`}
+                      style={{ width: barWidth(safeDrift) }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      ) : (
+        <p className="drift-empty">모든 자산군이 점검 범위 안에 있어요.</p>
+      )}
+      {withinBandCount > 0 && (
+        <div className="within-band-summary">
+          <span>나머지 자산군</span>
+          <strong>점검 범위 안 {withinBandCount}개</strong>
+        </div>
+      )}
+      <details className="numeric-table-details">
+        <summary>
+          <span>숫자로 보기</span>
+          <em>펼쳐보기</em>
+        </summary>
+        <div className="portfolio-review-table-wrap">
+          <table className="portfolio-review-table">
+            <thead>
+              <tr>
+                <th>자산군</th>
+                <th>현재</th>
+                <th>목표</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sleeves.map((sleeve) => (
+                <tr key={sleeve.sleeve}>
+                  <th title={sleeve.sleeve}>{sleeveLabel(sleeve.sleeve)}</th>
+                  <td>{percent(sleeve.current_percent)}</td>
+                  <td>{percent(sleeve.target_percent)}</td>
+                  <td><span className={`rebalance-status status-${sleeve.status}`} title={sleeve.status}>{REBALANCE_STATUS_LABELS[sleeve.status] ?? "추가 점검 필요"}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
     </section>
   );
 }
@@ -826,15 +914,25 @@ export function EducationalPortfolioReview({
     if (!Number.isFinite(current)) return highest;
     return highest === null ? current : Math.max(highest, current);
   }, null);
-  const reviewSleeveCount = rebalancing.sleeves.filter(
+  const driftSleeves = rebalancing.sleeves.filter(
     (sleeve) => sleeve.status !== "within_drift_band",
-  ).length;
-  const reviewHeadline = reviewSleeveCount > 0
-    ? `${reviewSleeveCount}개 자산군의 비중을 확인해 보세요`
-    : "현재 자산 비중은 점검 범위 안에 있어요";
-  const reviewGuidance = reviewSleeveCount > 0
-    ? "먼저 비중이 벗어난 자산군을 확인하고, 새 납입금으로 차이를 줄이는 순서로 보면 돼요."
-    : "지금 구성을 유지하면서 정기 점검 시점에 다시 확인하면 돼요.";
+  );
+  const reviewSleeveCount = driftSleeves.length;
+  const withinBandCount = rebalancing.sleeves.length - driftSleeves.length;
+  // 결론 문장은 이탈폭이 가장 큰 자산군 하나를 기준으로 만든다.
+  const widestSleeve = driftSleeves.reduce<typeof driftSleeves[number] | null>((widest, sleeve) => {
+    const current = Math.abs(Number(sleeve.drift_after_percent_points));
+    if (!Number.isFinite(current)) return widest;
+    if (widest === null) return sleeve;
+    return current > Math.abs(Number(widest.drift_after_percent_points)) ? sleeve : widest;
+  }, null);
+  const widestDrift = widestSleeve === null ? 0 : Number(widestSleeve.drift_after_percent_points);
+  const reviewHeadline = widestSleeve === null
+    ? "현재 자산 비중은 점검 범위 안에 있어요"
+    : `${sleeveLabel(widestSleeve.sleeve)}, 목표보다 ${Math.abs(widestDrift).toFixed(1)}%p ${widestDrift < 0 ? "적어요" : "많아요"}`;
+  const reviewGuidance = widestSleeve === null
+    ? "지금 구성을 유지하면서 정기 점검 시점에 다시 확인하면 돼요."
+    : `현재 ${percent(widestSleeve.current_percent)}, 목표 ${percent(widestSleeve.target_percent)}예요. 새 납입금으로 목표보다 부족한 비중부터 채우는 순서로 확인해 보세요.`;
 
   return (
     <section className="portfolio-review" aria-labelledby="portfolio-review-title">
@@ -843,6 +941,16 @@ export function EducationalPortfolioReview({
         <h3 id="portfolio-review-title">보유 ETF 비율 점검</h3>
         <p title={evaluation.strategy_label}>{ACCOUNT_LABELS[evaluation.evaluated_input.account_type]} · {strategyLabel(evaluation.strategy_label)}</p>
       </header>
+
+      <div className="portfolio-review-lead">
+        <span>먼저 볼 내용</span>
+        <strong>{reviewHeadline}</strong>
+        <p>{reviewGuidance}</p>
+        <div className="portfolio-review-lead-meta">
+          <span>{RISK_PROFILE_LABELS[evaluation.evaluated_input.risk_profile]}</span>
+          <span>점검 대상 {reviewSleeveCount}개</span>
+        </div>
+      </div>
 
       <section
         className="portfolio-review-priority"
@@ -861,39 +969,16 @@ export function EducationalPortfolioReview({
             )}
           </div>
 
-          <div className="portfolio-review-table-wrap">
-            <table className="portfolio-review-table">
-              <thead>
-                <tr>
-                  <th>자산군</th>
-                  <th>현재</th>
-                  <th>목표</th>
-                  <th>상태</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rebalancing.sleeves.map((sleeve) => (
-                  <tr key={sleeve.sleeve}>
-                    <th title={sleeve.sleeve}>{sleeveLabel(sleeve.sleeve)}</th>
-                    <td>{percent(sleeve.current_percent)}</td>
-                    <td>{percent(sleeve.target_percent)}</td>
-                    <td><span className={`rebalance-status status-${sleeve.status}`} title={sleeve.status}>{REBALANCE_STATUS_LABELS[sleeve.status] ?? "추가 점검 필요"}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <RebalancingDriftPanel
+            sleeves={rebalancing.sleeves}
+            driftSleeves={driftSleeves}
+            withinBandCount={withinBandCount}
+          />
         </div>
       </section>
 
       <PortfolioSectorGuide riskProfile={evaluation.evaluated_input.risk_profile} />
       <RebalancingCadenceGuide evaluation={evaluation} />
-
-      <div className="portfolio-review-lead">
-        <span>먼저 볼 내용</span>
-        <strong>{reviewHeadline}</strong>
-        <p>{reviewGuidance}</p>
-      </div>
 
       <div className="portfolio-review-summary">
         <div><span>현재 평가금액</span><strong>{won(rebalancing.current_total_krw)}</strong></div>
