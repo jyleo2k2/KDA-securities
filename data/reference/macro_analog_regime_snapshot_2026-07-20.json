@@ -1,0 +1,158 @@
+{
+  "as_of": "2026-07-20",
+  "dataset_policy_version": "macro-regime-dataset-2026-07-20.1",
+  "period_start": "2008-01-01",
+  "period_end": "2026-06-01",
+  "complete_month_count": 221,
+  "metrics": [],
+  "analysis": {
+    "engine_name": "historical_macro_regime_similarity",
+    "engine_version": "2026-07-20.1",
+    "policy_version": "macro-analog-regime-2026-07-20.1",
+    "current_period": "2026-06-01",
+    "current_values": {
+      "kr_base_rate": "2.5",
+      "kr_cpi_yoy": "3.1639583870690396354569684",
+      "us_federal_funds_rate": "3.63",
+      "us_cpi_yoy": "3.46353",
+      "us_treasury_10y": "4.47047619047619047619047619",
+      "us_breakeven_inflation_10y": "2.291428571428571428571428571"
+    },
+    "current_expanding_z_scores": {
+      "kr_base_rate": "0.2402",
+      "kr_cpi_yoy": "0.6208",
+      "us_federal_funds_rate": "1.2531",
+      "us_cpi_yoy": "0.4786",
+      "us_treasury_10y": "1.7124",
+      "us_breakeven_inflation_10y": "0.6284"
+    },
+    "metric_ids": [
+      "kr_base_rate",
+      "kr_cpi_yoy",
+      "us_federal_funds_rate",
+      "us_cpi_yoy",
+      "us_treasury_10y",
+      "us_breakeven_inflation_10y"
+    ],
+    "frequency": "monthly",
+    "standardization": "expanding_window_z_score",
+    "distance_metric": "equal_weight_root_mean_square_distance",
+    "top_n": 5,
+    "minimum_history_months": 36,
+    "minimum_separation_months": 12,
+    "excluded_recent_months": 12,
+    "matches": [
+      {
+        "period": "2025-06-01",
+        "distance": "0.3867",
+        "values": {
+          "kr_base_rate": "2.5",
+          "kr_cpi_yoy": "2.1697118763176387912860155",
+          "us_federal_funds_rate": "4.33",
+          "us_cpi_yoy": "2.68045",
+          "us_treasury_10y": "4.3835",
+          "us_breakeven_inflation_10y": "2.297"
+        },
+        "expanding_z_scores": {
+          "kr_base_rate": "0.2468",
+          "kr_cpi_yoy": "-0.0694",
+          "us_federal_funds_rate": "1.7705",
+          "us_cpi_yoy": "0.0947",
+          "us_treasury_10y": "1.7711",
+          "us_breakeven_inflation_10y": "0.6745"
+        }
+      },
+      {
+        "period": "2024-06-01",
+        "distance": "0.7687",
+        "values": {
+          "kr_base_rate": "3.5",
+          "kr_cpi_yoy": "2.4109391867578265563152213",
+          "us_federal_funds_rate": "5.33",
+          "us_cpi_yoy": "2.97026",
+          "us_treasury_10y": "4.305263157894736842105263158",
+          "us_breakeven_inflation_10y": "2.255263157894736842105263158"
+        },
+        "expanding_z_scores": {
+          "kr_base_rate": "1.2066",
+          "kr_cpi_yoy": "0.0795",
+          "us_federal_funds_rate": "2.7436",
+          "us_cpi_yoy": "0.2358",
+          "us_treasury_10y": "1.9052",
+          "us_breakeven_inflation_10y": "0.5998"
+        }
+      },
+      {
+        "period": "2018-11-01",
+        "distance": "0.7712",
+        "values": {
+          "kr_base_rate": "1.75",
+          "kr_cpi_yoy": "2.0370427439982742149218774",
+          "us_federal_funds_rate": "2.2",
+          "us_cpi_yoy": "2.14733",
+          "us_treasury_10y": "3.117",
+          "us_breakeven_inflation_10y": "2.004"
+        },
+        "expanding_z_scores": {
+          "kr_base_rate": "-0.6079",
+          "kr_cpi_yoy": "-0.1347",
+          "us_federal_funds_rate": "2.2587",
+          "us_cpi_yoy": "0.2829",
+          "us_treasury_10y": "0.7437",
+          "us_breakeven_inflation_10y": "0.0889"
+        }
+      },
+      {
+        "period": "2011-02-01",
+        "distance": "0.9385",
+        "values": {
+          "kr_base_rate": "2.75",
+          "kr_cpi_yoy": "3.9392911848274733112729909",
+          "us_federal_funds_rate": "0.16",
+          "us_cpi_yoy": "2.1249",
+          "us_treasury_10y": "3.576315789473684210526315789",
+          "us_breakeven_inflation_10y": "2.338421052631578947368421053"
+        },
+        "expanding_z_scores": {
+          "kr_base_rate": "-0.1717",
+          "kr_cpi_yoy": "0.4395",
+          "us_federal_funds_rate": "-0.5658",
+          "us_cpi_yoy": "0.1937",
+          "us_treasury_10y": "0.4278",
+          "us_breakeven_inflation_10y": "0.8339"
+        }
+      },
+      {
+        "period": "2017-03-01",
+        "distance": "1.0833",
+        "values": {
+          "kr_base_rate": "1.25",
+          "kr_cpi_yoy": "2.2768966276351514262052771",
+          "us_federal_funds_rate": "0.79",
+          "us_cpi_yoy": "2.4412",
+          "us_treasury_10y": "2.481739130434782608695652174",
+          "us_breakeven_inflation_10y": "1.996086956521739130434782609"
+        },
+        "expanding_z_scores": {
+          "kr_base_rate": "-1.2845",
+          "kr_cpi_yoy": "-0.0265",
+          "us_federal_funds_rate": "0.6509",
+          "us_cpi_yoy": "0.5287",
+          "us_treasury_10y": "-0.1897",
+          "us_breakeven_inflation_10y": "0.0676"
+        }
+      }
+    ],
+    "is_forecast": false,
+    "planning_return_input": false,
+    "allocation_weight_input": false,
+    "rebalancing_trigger_input": false,
+    "historical_outcomes_included": false,
+    "limitations": [
+      "historical_similarity_does_not_imply_future_return",
+      "historical_outcomes_are_not_part_of_this_contract",
+      "macro_similarity_does_not_cover_all_market_risk_factors"
+    ]
+  },
+  "etf_outcomes": null
+}
