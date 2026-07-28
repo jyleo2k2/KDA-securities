@@ -866,7 +866,11 @@ function AssistantMessage({
           && !section.title.endsWith("ETF 분야 살펴보기")
         ),
       ),
-    )
+    ).filter((section) => !(
+      educationalEvaluation?.strategy_label
+      && section.title.startsWith("보유 계좌 공통 · ")
+      && section.title.endsWith("전략")
+    ))
     : isEducationalPortfolio
     ? []
     : isPensionTaxCredit
