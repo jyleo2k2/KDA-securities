@@ -1922,7 +1922,14 @@ describe("GuidePage chat history deletion", () => {
     expect(limitations).toHaveLength(2);
   });
 
-  it("hides educational portfolio detail sections while retaining the review panel", async () => {
+  it("shows account-specific strategy guides without treating them as rebalancing results", async () => {
+    const accountStrategyResponse = {
+      ...STRUCTURED_PORTFOLIO_RESPONSE,
+      sections: ["DC형", "IRP", "연금저축펀드"].map((accountLabel) => ({
+        ...STRUCTURED_PORTFOLIO_RESPONSE.sections[0],
+        title: `${accountLabel} · 위험중립형 투자전략`,
+      })),
+    };
     vi.mocked(getStoredChatMessages).mockResolvedValue([
       {
         message_id: "portfolio-question",
@@ -1938,8 +1945,8 @@ describe("GuidePage chat history deletion", () => {
         message_id: "portfolio-answer",
         question_message_id: "portfolio-question",
         role: "assistant",
-        content: STRUCTURED_PORTFOLIO_RESPONSE.answer,
-        response: STRUCTURED_PORTFOLIO_RESPONSE,
+        content: accountStrategyResponse.answer,
+        response: accountStrategyResponse,
         model_name: null,
         created_at: "2026-07-20T00:00:01Z",
         evidence: [],
@@ -1948,8 +1955,11 @@ describe("GuidePage chat history deletion", () => {
     renderGuide();
 
     await openStoredSession();
-    await screen.findByText(STRUCTURED_PORTFOLIO_RESPONSE.answer);
-    expect(screen.queryByText("위험중립형 투자전략", { exact: true })).not.toBeInTheDocument();
+    await screen.findByText(accountStrategyResponse.answer);
+    for (const accountLabel of ["DC형", "IRP", "연금저축펀드"]) {
+      expect(screen.getByText(`${accountLabel} · 위험중립형 투자전략`)).toBeInTheDocument();
+    }
+    expect(screen.getAllByText("35년의 장기 운용기간을 고려한 전략이에요. 목표비중을 확인해 보세요.")).toHaveLength(3);
     expect(document.querySelector(".holdings-required-panel")).toBeNull();
   });
 });

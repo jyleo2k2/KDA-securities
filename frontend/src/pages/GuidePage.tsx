@@ -604,7 +604,9 @@ function AssistantMessage({
       (item) => !item.label.endsWith("법정 세액공제액"),
     )
     : response.numeric_evidence;
-  const visibleSections = isEducationalPortfolio
+  const visibleSections = isEducationalPortfolio && !educationalHasCurrentHoldings
+    ? response.sections
+    : isEducationalPortfolio
     ? []
     : isPensionTaxCredit
     ? response.sections.filter(
