@@ -371,7 +371,10 @@ function AppRoutes(): JSX.Element {
         path="/strategy-detail"
         element={(
           <StrategyDetailScreen
+            aggregation={currentUserData.aggregation}
             onBack={() => navigate("/strategy-explore")}
+            pensionDataLoading={currentUserData.loading}
+            portfolio={currentUserData.portfolio}
           />
         )}
       />
