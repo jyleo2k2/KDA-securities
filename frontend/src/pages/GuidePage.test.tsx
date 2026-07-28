@@ -2307,6 +2307,9 @@ describe("GuidePage chat history deletion", () => {
       "장기 전망·ETF 비용·여유 폭 반영",
     )).toBeInTheDocument();
     expect(within(planningReturnSummary).getByText(
+      "여유 폭: 시장 전망이 빗나갈 가능성을 고려해 ETF 전략별 불확실성만큼 낮춘 값이에요.",
+    )).toBeInTheDocument();
+    expect(within(planningReturnSummary).getByText(
       /미래 수익을 보장하는 값은 아니에요/,
     )).toBeInTheDocument();
     expect(document.querySelector(".holdings-required-panel")).toBeNull();

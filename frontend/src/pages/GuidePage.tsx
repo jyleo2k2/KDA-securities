@@ -353,6 +353,12 @@ function PlanningReturnAssumptionCards({
             <span>{label}</span>
             <strong>{numericText(evidence!.value, evidence!.unit)}</strong>
             <small>{compactPlanningReturnBasis(evidence!.basis)}</small>
+            {label === "보수적 수익률" && (
+              <small>
+                여유 폭: 시장 전망이 빗나갈 가능성을 고려해 ETF 전략별
+                불확실성만큼 낮춘 값이에요.
+              </small>
+            )}
           </div>
         ))}
       </div>
