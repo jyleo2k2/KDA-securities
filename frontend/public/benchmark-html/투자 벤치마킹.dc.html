@@ -49,30 +49,21 @@
         <span style="font-size:16px; font-weight:800;">현재 포트폴리오</span>
       </div>
       <div style="display:flex; gap:16px;">
-        <div style="width:88px; height:88px; flex:none; border-radius:50%; background:conic-gradient(#22A94D 0 42%, #7FD79A 42% 68%, #FDC526 68% 86%, #E6E8EB 86% 100%); display:flex; align-items:center; justify-content:center;">
-          <div style="width:44px; height:44px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:800; color:#4A5058;">4자산군</div>
+        <div id="owner-portfolio-donut" style="width:88px; height:88px; flex:none; border-radius:50%; background:#EEF0F2; display:flex; align-items:center; justify-content:center;">
+          <div id="owner-portfolio-count" style="width:44px; height:44px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:800; color:#4A5058;">-</div>
         </div>
         <div style="flex:1; display:flex; flex-direction:column; gap:11px;">
-          <div style="display:flex; justify-content:space-between; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">ID</span><span style="font-size:14px; font-weight:800; white-space:nowrap;">투자하는너구리</span></div>
-          <div style="display:flex; justify-content:space-between; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">직업군</span><span style="font-size:14px; font-weight:700; white-space:nowrap;">반도체 종사자</span></div>
-          <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">금액</span><span style="font-size:16px; font-weight:800; white-space:nowrap;">1,240만원</span></div>
+          <div style="display:flex; justify-content:space-between; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">ID</span><span id="owner-portfolio-name" style="font-size:14px; font-weight:800; white-space:nowrap;">-</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">금액</span><span id="owner-portfolio-amount" style="font-size:16px; font-weight:800; white-space:nowrap;">-</span></div>
           <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;"><span style="font-size:13px; color:#8B9096; font-weight:700; flex:none; white-space:nowrap;">수익률</span><span id="owner-portfolio-return" style="font-size:16px; font-weight:800; color:#8B9096; white-space:nowrap;">-</span></div>
         </div>
       </div>
 
       <div style="margin-top:18px;">
         <div style="font-size:12.5px; color:#8B9096; font-weight:700; margin-bottom:8px;">포트폴리오 구성 비율</div>
-        <div style="display:flex; height:14px; border-radius:99px; overflow:hidden; background:#EEF0F2;">
-          <div style="width:42%; background:#22A94D;"></div>
-          <div style="width:26%; background:#7FD79A;"></div>
-          <div style="width:18%; background:#FDC526;"></div>
-          <div style="width:14%; background:#CFD4DA;"></div>
+        <div id="owner-portfolio-bar" style="display:flex; height:14px; border-radius:99px; overflow:hidden; background:#EEF0F2;">
         </div>
-        <div style="display:flex; flex-wrap:wrap; gap:10px 16px; margin-top:10px;">
-          <span style="font-size:11.5px; font-weight:700; color:#4A5058;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#2F8F6B;margin-right:5px;"></span>국내주식ETF 42%</span>
-          <span style="font-size:11.5px; font-weight:700; color:#4A5058;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#3F7BC4;margin-right:5px;"></span>해외주식ETF 26%</span>
-          <span style="font-size:11.5px; font-weight:700; color:#4A5058;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#FDC526;margin-right:5px;"></span>채권 18%</span>
-          <span style="font-size:11.5px; font-weight:700; color:#4A5058;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#CFD4DA;margin-right:5px;"></span>현금성자산 14%</span>
+        <div id="owner-portfolio-legend" style="display:flex; flex-wrap:wrap; gap:10px 16px; margin-top:10px;">
         </div>
       </div>
 
@@ -591,13 +582,63 @@ class Component extends DCLogic {
 window.addEventListener('message', (event) => {
   if (event.source !== parent || event.origin !== window.location.origin) return;
   const message = event.data;
-  if (!message || message.type !== 'benchmark-owner-return') return;
-  const returnPct = Number(message.trailing12mReturnPct);
-  if (!Number.isFinite(returnPct)) return;
-  const returnElement = document.getElementById('owner-portfolio-return');
-  if (!returnElement) return;
-  returnElement.textContent = `${returnPct > 0 ? '+' : ''}${returnPct.toFixed(2)}%`;
-  returnElement.style.color = returnPct < 0 ? '#2E7CE0' : '#166F39';
+  if (!message) return;
+  if (message.type === 'benchmark-owner-return') {
+    const returnPct = Number(message.trailing12mReturnPct);
+    if (!Number.isFinite(returnPct)) return;
+    const returnElement = document.getElementById('owner-portfolio-return');
+    if (!returnElement) return;
+    returnElement.textContent = `${returnPct > 0 ? '+' : ''}${returnPct.toFixed(2)}%`;
+    returnElement.style.color = returnPct < 0 ? '#2E7CE0' : '#166F39';
+    return;
+  }
+  if (message.type !== 'benchmark-owner-portfolio') return;
+
+  const nickname = typeof message.nickname === 'string' ? message.nickname : '';
+  const totalAmountKrw = Number(message.totalAmountKrw);
+  const allocations = Array.isArray(message.allocations)
+    ? message.allocations.filter((item) => (
+      item
+      && typeof item.label === 'string'
+      && typeof item.color === 'string'
+      && Number.isFinite(Number(item.percent))
+      && Number(item.percent) > 0
+    ))
+    : [];
+  if (!nickname || !Number.isFinite(totalAmountKrw) || totalAmountKrw < 0 || allocations.length === 0) return;
+
+  const nameElement = document.getElementById('owner-portfolio-name');
+  const amountElement = document.getElementById('owner-portfolio-amount');
+  const countElement = document.getElementById('owner-portfolio-count');
+  const donutElement = document.getElementById('owner-portfolio-donut');
+  const barElement = document.getElementById('owner-portfolio-bar');
+  const legendElement = document.getElementById('owner-portfolio-legend');
+  if (!nameElement || !amountElement || !countElement || !donutElement || !barElement || !legendElement) return;
+
+  nameElement.textContent = nickname;
+  amountElement.textContent = `${Math.round(totalAmountKrw / 10000).toLocaleString('ko-KR')}만원`;
+  countElement.textContent = `${allocations.length}자산군`;
+  let offset = 0;
+  donutElement.style.background = `conic-gradient(${allocations.map((item) => {
+    const start = offset;
+    offset += Number(item.percent);
+    return `${item.color} ${start}% ${offset}%`;
+  }).join(', ')})`;
+  barElement.replaceChildren();
+  legendElement.replaceChildren();
+  allocations.forEach((item) => {
+    const percent = Number(item.percent);
+    const segment = document.createElement('div');
+    segment.style.cssText = `width:${percent}%;background:${item.color};`;
+    barElement.appendChild(segment);
+
+    const legend = document.createElement('span');
+    legend.style.cssText = 'font-size:11.5px;font-weight:700;color:#4A5058;';
+    const marker = document.createElement('span');
+    marker.style.cssText = `display:inline-block;width:8px;height:8px;border-radius:2px;background:${item.color};margin-right:5px;`;
+    legend.append(marker, `${item.label} ${Math.round(percent)}%`);
+    legendElement.appendChild(legend);
+  });
 });
 </script>
 </body>
