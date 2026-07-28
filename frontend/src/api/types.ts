@@ -125,12 +125,28 @@ export interface StrategyPlanningReturnComponent {
   cma_percent: string;
 }
 
+export interface StrategyStressScenarioResult {
+  scenario_code: string;
+  estimated_loss_percent: string;
+}
+
+export interface StrategyStressRiskEvaluation {
+  worst_scenario_code: string;
+  worst_estimated_loss_percent: string;
+  scenarios: StrategyStressScenarioResult[];
+  policy_version: string;
+  source: SourceChip;
+  representative_basket_only: boolean;
+  is_forecast: boolean;
+}
+
 export interface StrategyPlanningReturnEvaluation {
   strategy_id: string;
   cma_weighted_return_percent: string;
   uncertainty_discount_percent: string;
   net_planning_return_percent: string;
   components: StrategyPlanningReturnComponent[];
+  stress_risk: StrategyStressRiskEvaluation;
   cma_policy_id: string;
   policy_version: string;
   sources: SourceChip[];

@@ -693,6 +693,115 @@
   word-break: keep-all;
 }
 
+.sd-stress-risk {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid #efdcca;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #fffaf6 0%, #fff6ef 100%);
+}
+
+.sd-stress-risk-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sd-stress-risk-heading > div > span {
+  color: #9a684b;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.sd-stress-risk-heading h3 {
+  margin: 3px 0 0;
+  color: #39251a;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.2px;
+}
+
+.sd-stress-risk-heading > strong {
+  flex: none;
+  color: #b9582c;
+  font-size: 25px;
+  font-weight: 950;
+  line-height: 1;
+  text-align: right;
+}
+
+.sd-stress-risk-heading small {
+  display: block;
+  margin-top: 5px;
+  color: #8c6a59;
+  font-size: 8px;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.sd-stress-explanation,
+.sd-stress-state {
+  margin: 12px 0 0;
+  color: #6a5144;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+  word-break: keep-all;
+}
+
+.sd-stress-state {
+  padding: 10px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.sd-stress-state.is-error {
+  color: #a44837;
+}
+
+.sd-stress-details {
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid #edddd1;
+}
+
+.sd-stress-details summary {
+  color: #705346;
+  font-size: 10px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sd-stress-details summary:focus-visible {
+  outline: 2px solid rgba(185, 88, 44, 0.28);
+  outline-offset: 3px;
+}
+
+.sd-stress-details ul {
+  display: grid;
+  gap: 7px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sd-stress-details li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #69554a;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.sd-stress-details li strong {
+  color: #493127;
+  font-size: 11px;
+  font-weight: 900;
+}
+
 .sd-check-title {
   margin: 16px 0 10px;
   color: #202a25;
