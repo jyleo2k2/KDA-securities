@@ -432,7 +432,7 @@ function PortfolioPlanningReview({
   return (
     <section className="portfolio-planning-review" aria-labelledby={titleId}>
       <header>
-        <span>장기 계산에 쓰는 숫자</span>
+        <span>장기계획 수익률</span>
         <h4 id={titleId}>{title}</h4>
         <p>
           {description} · 장기 전망(CMA) {planning.cma_source_horizon_min_years}~{planning.cma_source_horizon_max_years}년 기준
@@ -443,8 +443,6 @@ function PortfolioPlanningReview({
       <div className="portfolio-planning-metrics">
         <div><span>기본으로 계산한 경우</span><strong>{optionalPercent(planning.base_planning_return_percent)}</strong><small>장기 전망·비용 반영</small></div>
         <div><span>조심해서 계산한 경우</span><strong>{optionalPercent(planning.conservative_planning_return_percent)}</strong><small>여유 폭을 더 뺌</small></div>
-        <div><span>ETF 비용 빼기 전</span><strong>{optionalPercent(planning.gross_planning_return_percent)}</strong><small>불확실성 반영</small></div>
-        <div><span>ETF 비용 뺀 뒤</span><strong>{optionalPercent(planning.net_planning_return_percent)}</strong><small>1년 비용까지 뺌</small></div>
       </div>
 
       <div className="portfolio-planning-table-wrap">
@@ -920,7 +918,7 @@ export function EducationalPortfolioReview({
           <PortfolioPlanningReview
             planning={evaluation.planning_return}
             titleId="target-portfolio-planning-title"
-            title="목표 포트폴리오 장기 계산용 숫자"
+            title="목표 포트폴리오 장기계획 수익률"
             description="목표로 정한 ETF 비율을 넣어 계산"
           />
         </div>
