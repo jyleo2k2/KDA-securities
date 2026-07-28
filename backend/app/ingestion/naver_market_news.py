@@ -11,6 +11,7 @@ import psycopg
 
 from backend.app.settings import get_settings
 
+from ._secrets import require_model_api_key
 from .embeddings import EMBEDDING_MODEL, get_query_embedder
 from .market_news_policy import (
     MARKET_QUERIES,
@@ -327,16 +328,16 @@ def main() -> int:
         "NAVER_API_HUB_CLIENT_ID": settings.naver_api_hub_client_id,
         "NAVER_API_HUB_CLIENT_SECRET": settings.naver_api_hub_client_secret,
         "DATABASE_URL": settings.database_url,
-        "ANTHROPIC_API_KEY": settings.anthropic_api_key,
     }
     missing = [name for name, value in required.items() if value is None]
     if missing:
         raise SystemExit(f"missing required configuration: {', '.join(missing)}")
+    summary_api_key = require_model_api_key(settings.news_summary_model, settings)
     result = run_market_news_ingestion(
         client_id=required["NAVER_API_HUB_CLIENT_ID"].get_secret_value(),
         client_secret=required["NAVER_API_HUB_CLIENT_SECRET"].get_secret_value(),
         database_url=required["DATABASE_URL"].get_secret_value(),
-        api_key=required["ANTHROPIC_API_KEY"].get_secret_value(),
+        api_key=summary_api_key,
         model=settings.news_summary_model,
         prompt_version=settings.news_summary_prompt_version,
     )

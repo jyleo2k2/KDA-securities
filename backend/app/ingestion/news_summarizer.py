@@ -5,8 +5,8 @@ import re
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_ai import Agent, NativeOutput
 from pydantic_ai.exceptions import AgentRunError
-from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
-from pydantic_ai.providers.anthropic import AnthropicProvider
+
+from ..llm_models import build_model, build_model_settings
 
 SUMMARY_SYSTEM_PROMPT = """
 당신은 한국·미국 증시 주요 뉴스 기사 원문을 투자자가 빠르게 확인할 수 있도록
@@ -86,13 +86,10 @@ class NewsSummarizer:
         self.model = model.strip()
         self.prompt_version = prompt_version.strip()
         self.agent: Agent[None, NewsSummaryOutput] = Agent(
-            AnthropicModel(
-                self.model,
-                provider=AnthropicProvider(api_key=api_key.strip()),
-            ),
+            build_model(self.model, api_key=api_key.strip()),
             output_type=NativeOutput(NewsSummaryOutput),
             instructions=SUMMARY_SYSTEM_PROMPT,
-            model_settings=AnthropicModelSettings(max_tokens=600),
+            model_settings=build_model_settings(self.model, max_tokens=600),
         )
 
     def summarize(

@@ -38,14 +38,14 @@ def test_topic_guard_decision_requires_consistent_allowed_route() -> None:
         TopicGuardDecision(allowed=False, route=TopicGuardRoute.ACCOUNT_RULE)
 
 
-def test_topic_guard_dependency_uses_dedicated_haiku_model() -> None:
+def test_topic_guard_dependency_uses_dedicated_small_model() -> None:
     _chat_topic_guard.cache_clear()
     settings = Settings(
         _env_file=None,
         anthropic_api_key=SecretStr("test-key"),
-        anthropic_model="claude-sonnet-5",
-        anthropic_topic_guard_model="claude-haiku-4-5",
-        enable_claude_topic_guard=True,
+        chat_model="claude-sonnet-5",
+        topic_guard_model="claude-haiku-4-5",
+        enable_llm_topic_guard=True,
     )
 
     guard = get_chat_topic_guard(settings)
