@@ -234,6 +234,11 @@ export function StrategyDetailScreen({
           >
             제휴 증권사로 이동
           </button>
+          <p className="sd-partner-fee-note">
+            투자자문 이용료가 발생할 수 있어요.
+            <br />
+            가입 전 수수료와 서비스 범위를 확인할 수 있습니다.
+          </p>
         </div>
       </section>
     </main>
