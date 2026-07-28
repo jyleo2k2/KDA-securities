@@ -722,7 +722,7 @@ describe("GuidePage chat history deletion", () => {
     expect(sendAuthenticatedChatStream).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps educational portfolio answers focused by hiding duplicate numeric evidence cards", async () => {
+  it("shows strategy visualizations while hiding duplicate numeric evidence cards", async () => {
     vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
       persisted: false,
       response: {
@@ -824,7 +824,7 @@ describe("GuidePage chat history deletion", () => {
 
     expect(await screen.findByText("현재 투자성향 설문 결과(위험중립형)를 기준으로 한 예시 전략은 코어·위성 전략입니다.")).toBeInTheDocument();
     expect(await screen.findByText("위험중립형의 코어·위성 전략")).toBeInTheDocument();
-    expect(screen.queryByText("위험중립형 투자전략", { exact: true })).not.toBeInTheDocument();
+    expect(screen.getByText("위험중립형 투자전략", { exact: true })).toBeInTheDocument();
     expect(screen.getByText("연금 운용전략")).toBeInTheDocument();
     const orderedStrategyContent = [
       screen.getByText("코어·위성 전략"),
@@ -843,7 +843,7 @@ describe("GuidePage chat history deletion", () => {
       "연금저축펀드 목표 자산배분",
       "연금저축펀드 스트레스 점검",
     ]) {
-      expect(screen.queryByText(title)).not.toBeInTheDocument();
+      expect(screen.getByText(title)).toBeInTheDocument();
     }
     expect(screen.queryByLabelText("수치 근거")).not.toBeInTheDocument();
     expect(screen.queryByText("검증 답변")).not.toBeInTheDocument();
