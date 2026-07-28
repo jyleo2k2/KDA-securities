@@ -56,6 +56,7 @@ interface CurrentUserData {
 interface GuideNavigationState {
   openChatHistory?: boolean;
   portfolioDiagnosisRequestId?: string;
+  strategyPickRequestId?: string;
 }
 
 const EMPTY_USER_DATA: CurrentUserData = {
@@ -275,6 +276,12 @@ function AppRoutes(): JSX.Element {
               onBack={goToMainHome}
               onOpenPlanner={() => navigate("/planner")}
               onOpenProfile={() => navigate("/profile-html")}
+              onOpenStrategyPick={(prompt) => {
+                if (prompt !== "ㅇㅇ") return;
+                navigate("/main-home", {
+                  state: { strategyPickRequestId: crypto.randomUUID() },
+                });
+              }}
               onPortfolioDiagnosisConsumed={() => {
                 navigate("/guide", { replace: true, state: null });
               }}
@@ -296,6 +303,7 @@ function AppRoutes(): JSX.Element {
             aggregation={currentUserData.aggregation}
             displayName={displayName}
             error={currentUserData.error}
+            focusStrategyPickRequestId={guideNavigationState?.strategyPickRequestId}
             investmentProfile={currentUserData.investmentProfile}
             initialScrollTop={mainHomeScrollTopRef.current}
             loading={currentUserData.loading}

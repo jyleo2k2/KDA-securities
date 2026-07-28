@@ -30,6 +30,7 @@ interface MainHomeScreenProps {
   aggregation: AggregationEvaluation | null;
   displayName: string;
   error: string | null;
+  focusStrategyPickRequestId?: string;
   investmentProfile: InvestmentProfileResponse | null;
   initialScrollTop?: number;
   loading: boolean;
@@ -249,6 +250,7 @@ export function MainHomeScreen({
   aggregation,
   displayName,
   error,
+  focusStrategyPickRequestId,
   investmentProfile,
   initialScrollTop = 0,
   loading,
@@ -274,6 +276,7 @@ export function MainHomeScreen({
   const [isPromoDragging, setIsPromoDragging] = useState(false);
   const [isStrategyDragging, setIsStrategyDragging] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const strategyPickRef = useRef<HTMLDivElement>(null);
   const promoTouchStartX = useRef<number | null>(null);
   const promoPointerDrag = useRef<{
     moved: boolean;
@@ -398,6 +401,10 @@ export function MainHomeScreen({
   useLayoutEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = initialScrollTop;
   }, [initialScrollTop]);
+  useEffect(() => {
+    if (!focusStrategyPickRequestId) return;
+    strategyPickRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [focusStrategyPickRequestId]);
   useEffect(() => {
     if (selectedHolding === null) return;
     const clear = () => setSelectedHolding(null);
@@ -700,7 +707,7 @@ export function MainHomeScreen({
           </div>
         </div>
 
-        <div className="mhs-strategy-heading-row">
+        <div className="mhs-strategy-heading-row" ref={strategyPickRef}>
           <h2 className="mhs-section-title mhs-section-title-tight">
             연금KDA&apos;s <span className="mhs-section-title-gold">Pick</span>
           </h2>

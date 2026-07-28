@@ -540,6 +540,7 @@ function AssistantMessage({
   text,
   onFollowUp,
   onOpenPlanner,
+  onOpenStrategyPick,
   onAnalyzeHoldings,
   surveyProfile,
   disabled,
@@ -549,6 +550,7 @@ function AssistantMessage({
   text: string;
   onFollowUp?: (message: string) => void;
   onOpenPlanner?: () => void;
+  onOpenStrategyPick?: (prompt: string) => void;
   onAnalyzeHoldings?: (portfolio: EducationalPortfolioInput) => void;
   surveyProfile: CompletedSurveyProfile | null;
   userName: string | null;
@@ -799,6 +801,13 @@ function AssistantMessage({
       ))}
     </div>
   ) : null;
+  const strategyPickCta = isEducationalPortfolio ? (
+    <div className="follow-up-cards" aria-label="연금KDA 전략 더보기">
+      <button type="button" onClick={() => onOpenStrategyPick?.("ㅇㅇ")} disabled={disabled}>
+        연금KDA의 전략 더 보여드릴까요?<Icon name="chevron" size={14} />
+      </button>
+    </div>
+  ) : null;
 
   return (
     <div
@@ -888,6 +897,8 @@ function AssistantMessage({
         </Fragment>
       ))}
 
+      {strategyPickCta}
+
       {visibleLimitations.length > 0 && (
         <details className="limitation-box">
           <summary>
@@ -946,6 +957,7 @@ export function GuidePage({
   onBack,
   onOpenPlanner,
   onOpenProfile,
+  onOpenStrategyPick,
   onPortfolioDiagnosisConsumed,
   onSignOut,
   portfolioDiagnosisRequestId,
@@ -959,6 +971,7 @@ export function GuidePage({
   onBack?: () => void;
   onOpenPlanner?: () => void;
   onOpenProfile?: () => void;
+  onOpenStrategyPick?: (prompt: string) => void;
   onPortfolioDiagnosisConsumed?: () => void;
   onSignOut: () => Promise<void>;
   portfolioDiagnosisRequestId?: string;
@@ -1944,6 +1957,7 @@ export function GuidePage({
                 <AssistantMessage
                   onFollowUp={(prompt) => void submitPrompt(prompt)}
                   onOpenPlanner={onOpenPlanner}
+                  onOpenStrategyPick={onOpenStrategyPick}
                   onAnalyzeHoldings={(portfolio) => void submitPrompt(
                     "현재 보유 ETF의 중복도와 계좌 한도, 리밸런싱 가이드를 보여줘",
                     portfolio,

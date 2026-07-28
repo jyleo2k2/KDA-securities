@@ -68,6 +68,7 @@ function renderGuide(
   },
   onOpenProfile?: () => void,
   initialHistoryOpen = false,
+  onOpenStrategyPick?: (prompt: string) => void,
 ): ReturnType<typeof render> {
   const auth = {
     session: { access_token: "access-token", user: { id: "user-1", email: "owner@example.com" } },
@@ -83,6 +84,7 @@ function renderGuide(
       initialHistoryOpen={initialHistoryOpen}
       onOpenPlanner={onOpenPlanner}
       onOpenProfile={onOpenProfile}
+      onOpenStrategyPick={onOpenStrategyPick}
       onPortfolioDiagnosisConsumed={portfolioDiagnosis?.onConsumed}
       onSignOut={onSignOut}
       portfolioDiagnosisRequestId={portfolioDiagnosis?.requestId}
@@ -417,6 +419,28 @@ describe("GuidePage chat history deletion", () => {
 
     await screen.findByText(STRUCTURED_PORTFOLIO_RESPONSE.answer);
     expect(sendAuthenticatedChatStream).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the home strategy Pick from any educational portfolio answer", async () => {
+    const onOpenStrategyPick = vi.fn();
+    vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
+      persisted: false,
+      session_id: null,
+      response: STRUCTURED_PORTFOLIO_RESPONSE,
+    });
+
+    renderGuide(undefined, undefined, undefined, undefined, false, onOpenStrategyPick);
+
+    fireEvent.change(screen.getByLabelText("질문 입력"), {
+      target: { value: "내 성향에 맞는 연금 전략을 알려줘" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "질문 보내기" }));
+    const strategyPickCta = await screen.findByRole("button", {
+      name: "연금KDA의 전략 더 보여드릴까요?",
+    });
+    fireEvent.click(strategyPickCta);
+
+    expect(onOpenStrategyPick).toHaveBeenCalledWith("ㅇㅇ");
   });
 
   it("renders the attached Canvas-2 conversation shell", async () => {
