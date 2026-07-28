@@ -20,8 +20,8 @@ describe("StrategyExploreScreen", () => {
 
     expect(document.querySelector(".se-brand-name")).toHaveTextContent("연금 KDA");
     expect(document.querySelector(".se-brandc")).toHaveTextContent("연금 KDA");
-    expect(document.querySelector(".se-headline")).toHaveTextContent("연금 KDA와 제휴하는");
-    expect(document.querySelector(".se-headline")).toHaveTextContent("증권사들의 전략들로 연금을 꾸려봐요!");
+    expect(document.querySelector(".se-headline")).toHaveTextContent("연금 KDA가 맞춤 전략의");
+    expect(document.querySelector(".se-headline")).toHaveTextContent("증권사와 연결시켜드려요!");
     expect(document.querySelector(".se-headline br")).not.toBeNull();
     expect(document.documentElement.style.getPropertyValue("--se-accent")).toBe(STRATEGIES[0].accent);
     const fanStage = document.querySelector(".se-fan-stage");

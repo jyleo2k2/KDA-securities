@@ -14,7 +14,7 @@
 .se-brand-name em { color: var(--se-brand); font-style: normal; }
 
 .se-headline { flex: none; font-size: 21px; line-height: 1.5; font-weight: 700; color: var(--se-ink); margin: 22px 0 0; padding: 0 26px; }
-.se-brandc { color: var(--se-accent, #f7c807); transition: color 320ms ease; }
+.se-brandc { color: var(--se-brand); }
 .se-hint { flex: none; font-size: 12px; font-weight: 500; color: var(--se-hint); margin: 8px 0 0; padding: 0 26px; text-align: center; }
 
 .se-fan { flex: none; outline: none; touch-action: pan-y; }
