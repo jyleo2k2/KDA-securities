@@ -452,8 +452,6 @@ function PortfolioPlanningReview({
               <th>ETF</th>
               <th>목표 비율</th>
               <th>장기 전망</th>
-              <th>여유 폭</th>
-              <th>연간 비용</th>
             </tr>
           </thead>
           <tbody>
@@ -462,8 +460,6 @@ function PortfolioPlanningReview({
                 <th>{component.isu_name}<small>{component.isu_code}{component.proxy_used ? " · 비슷한 자산의 장기 전망 사용" : ""}</small></th>
                 <td>{percent(component.target_percent)}</td>
                 <td>{percent(component.cma_percent)}</td>
-                <td>-{percent(component.uncertainty_discount_percent)}</td>
-                <td>-{percent(component.annual_cost_drag_percent)}</td>
               </tr>
             ))}
           </tbody>
