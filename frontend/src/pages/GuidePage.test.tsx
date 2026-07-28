@@ -2229,8 +2229,11 @@ describe("GuidePage chat history deletion", () => {
             title: "목표 비율",
             text: "",
             items: [],
-            headers: ["무엇에 둘까", "얼마나 둘까"],
-            rows: [["핵심 주식", "38.7%"], ["채권", "44.5%"]],
+            headers: ["무엇에 둘까", "얼마나 둘까", "ETF 예시"],
+            rows: [
+              ["핵심 주식", "38.7%", "분산 주식 ETF"],
+              ["채권", "44.5%", "국채 ETF"],
+            ],
           }],
         },
         {
@@ -2277,7 +2280,14 @@ describe("GuidePage chat history deletion", () => {
     expect(screen.getByText(
       "보유 계좌 공통 · 장기 계산에 쓰는 수익률 가정",
     )).toBeInTheDocument();
-    expect(screen.getByText("보유 계좌 공통 · 목표 자산배분")).toBeInTheDocument();
+    const commonAllocationTitle = screen.getByText("보유 계좌 공통 · 목표 자산배분");
+    expect(commonAllocationTitle).toBeInTheDocument();
+    expect(
+      commonAllocationTitle.closest(".answer-section")?.querySelector(
+        ".answer-target-allocation-table",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "ETF 예시" })).toBeInTheDocument();
     expect(screen.getAllByText(
       "위험중립형의 연금계좌 자산을 자산군별로 배분하는 기준입니다.",
     )).toHaveLength(1);

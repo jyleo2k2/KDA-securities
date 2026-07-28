@@ -286,6 +286,16 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .answer-table-wrap th, .answer-table-wrap td { padding: 8px 9px; border-bottom: 1px solid #e7ece5; text-align: left; vertical-align: top; }
 .answer-table-wrap th { background: #eef4e7; color: #355342; font-weight: 700; }
 .answer-table-wrap tr:last-child td { border-bottom: 0; }
+.answer-target-allocation-table { overflow-x: hidden; }
+.answer-target-allocation-table table { min-width: 0; table-layout: fixed; }
+.answer-target-allocation-table th,
+.answer-target-allocation-table td { white-space: normal; word-break: keep-all; overflow-wrap: anywhere; }
+.answer-target-allocation-table th:first-child,
+.answer-target-allocation-table td:first-child { width: 34%; }
+.answer-target-allocation-table th:nth-child(2),
+.answer-target-allocation-table td:nth-child(2) { width: 22%; text-align: center; }
+.answer-target-allocation-table th:last-child,
+.answer-target-allocation-table td:last-child { width: 44%; }
 .holdings-answer-content { min-width: 0; }
 .holdings-answer-content .answer-table-wrap { overflow-x: hidden; }
 .holdings-answer-content .answer-table-wrap table { min-width: 0; table-layout: fixed; }

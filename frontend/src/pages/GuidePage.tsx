@@ -474,7 +474,12 @@ function AnswerBlocks({ blocks }: { blocks: AnswerBlock[] }) {
           );
         }
         return (
-          <div className="answer-table-wrap" key={key}>
+          <div
+            className={`answer-table-wrap${
+              block.title === "목표 비율" ? " answer-target-allocation-table" : ""
+            }`}
+            key={key}
+          >
             {block.title && <strong className="answer-table-title">{displayText(block.title)}</strong>}
             <table>
               <thead>
