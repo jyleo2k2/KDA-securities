@@ -42,3 +42,5 @@ services:
       # 시연·테스트 계정(설문 결과를 저장하지 않음). 값은 Render 대시보드에서 주입.
       - key: EPHEMERAL_INVESTMENT_PROFILE_OWNER_IDS
         sync: false
+      - key: GOOGLE_API_KEY
+        value: "true"
