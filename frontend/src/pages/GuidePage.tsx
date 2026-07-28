@@ -1074,7 +1074,7 @@ function AssistantMessage({
 
       {response.data_mode !== "news_summary" && visibleSections.map((section, index) => (
         <Fragment key={`${section.title}-${index}`}>
-          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}${section.title.endsWith(PLANNING_RETURN_SECTION_SUFFIX) ? " return-assumption-section" : ""}`} open={isEducationalStrategyGuide || response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "verified_pension_account_brief" || response.data_mode === "verified_pension_tax_rule_brief" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
+          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}${section.title.endsWith(PLANNING_RETURN_SECTION_SUFFIX) ? " return-assumption-section" : ""}`} open={(isEducationalStrategyGuide && section.title.endsWith(PLANNING_RETURN_SECTION_SUFFIX)) || response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "verified_pension_account_brief" || response.data_mode === "verified_pension_tax_rule_brief" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
             <summary>
               <span>{section.title}</span>
               <small>내용 보기</small>

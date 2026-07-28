@@ -2282,6 +2282,7 @@ describe("GuidePage chat history deletion", () => {
     )).toBeInTheDocument();
     const commonAllocationTitle = screen.getByText("보유 계좌 공통 · 목표 자산배분");
     expect(commonAllocationTitle).toBeInTheDocument();
+    expect(commonAllocationTitle.closest("details")).not.toHaveAttribute("open");
     expect(
       commonAllocationTitle.closest(".answer-section")?.querySelector(
         ".answer-target-allocation-table",
@@ -2296,6 +2297,7 @@ describe("GuidePage chat history deletion", () => {
       "보수적으로 본 경우 약 4.5%, 기본으로 본 경우 약 4.8%예요.",
     )).not.toBeInTheDocument();
     const planningReturnSummary = screen.getByLabelText("장기 수익률 가정");
+    expect(planningReturnSummary.closest("details")).toHaveAttribute("open");
     expect(within(planningReturnSummary).getByText("기본 수익률")).toBeInTheDocument();
     expect(within(planningReturnSummary).getByText("4.8%")).toBeInTheDocument();
     expect(within(planningReturnSummary).getByText(
