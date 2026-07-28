@@ -90,6 +90,7 @@ class QueryPlan(BaseModel):
     theme_content_topic: ThemeContentTopic | None = None
     requests_theme_candidates: bool = False
     requests_theme_holdings: bool = False
+    requests_strategy_rationale: bool = False
     distribution_isu_code: str | None = None
     distribution_reinvestment: DistributionReinvestmentRequest | None = None
     glossary_term_id: str | None = None
@@ -164,6 +165,13 @@ class QueryPlan(BaseModel):
             or self.requests_theme_holdings
         ):
             raise ValueError("theme fields require etf_theme intent")
+        if (
+            self.requests_strategy_rationale
+            and self.intent != ChatIntent.EDUCATIONAL_PORTFOLIO
+        ):
+            raise ValueError(
+                "strategy rationale requires educational_portfolio intent"
+            )
         if self.intent != ChatIntent.ETF_DISTRIBUTION and (
             self.distribution_isu_code or self.distribution_reinvestment is not None
         ):
@@ -678,6 +686,14 @@ _EDUCATIONAL_PORTFOLIO_TERMS = re.compile(
     r"안정\s*추구형|위험\s*중립형|적극\s*투자형|"
     r"공격\s*투자형|안정형"
 )
+_PORTFOLIO_STRATEGY_LABEL = re.compile(
+    r"(?:자본\s*보전\s*중심|방어적\s*분산|"
+    r"(?:성장\s*)?코어\s*[·ㆍ\-\s]?\s*위성|"
+    r"바벨형\s*성장\s*[·ㆍ\-\s]?\s*전술)\s*전략"
+)
+_STRATEGY_RATIONALE_QUESTION = re.compile(
+    r"왜|이유|근거|선택|적합|맞(?:아|는|나요)"
+)
 # 리밸런싱을 "언제·얼마나 자주" 하는지는 성향별 점검 주기가 답이다.
 # 엔진이 이미 성향마다 주기를 계산하므로 안내 경로로 잇는다.
 _REBALANCING_CADENCE_QUESTION = re.compile(
@@ -916,6 +932,21 @@ def plan_question(
             theme = get_default_etf_theme_repository().resolve(normalized)
         except (FileNotFoundError, ValueError):
             theme = None
+    named_portfolio_strategy = (
+        _PORTFOLIO_STRATEGY_LABEL.search(normalized) is not None
+    )
+    requests_strategy_rationale = (
+        named_portfolio_strategy
+        and _STRATEGY_RATIONALE_QUESTION.search(normalized) is not None
+    )
+    if (
+        named_portfolio_strategy
+        and "테마" not in normalized
+        and _PRODUCT_LOOKUP_CONTEXT.search(normalized) is None
+    ):
+        # "코어·위성 전략"의 위성은 포트폴리오 역할을 뜻한다. 방산·우주
+        # 테마의 별칭으로 먼저 해석하면 직전 전략 설명이 엉뚱한 ETF 답변으로 샌다.
+        theme = None
     blocking_rules = (
         (
             _contains_sensitive_information(normalized),
@@ -972,6 +1003,7 @@ def plan_question(
         ),
         ChatIntent.EDUCATIONAL_PORTFOLIO: (
             _EDUCATIONAL_PORTFOLIO_TERMS.search(normalized) is not None
+            or named_portfolio_strategy
             or _AGE_BASED_ALLOCATION_QUESTION.search(normalized) is not None
             or _REBALANCING_CADENCE_QUESTION.search(normalized) is not None
             or _REBALANCING_REVIEW_REQUEST.search(normalized) is not None
@@ -1157,6 +1189,7 @@ def plan_question(
             intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
             account_types=account_types,
             max_results=max_results,
+            requests_strategy_rationale=requests_strategy_rationale,
         )
     if intent == ChatIntent.PROVIDER_DISCLOSURE:
         if len(account_types) > 1:
