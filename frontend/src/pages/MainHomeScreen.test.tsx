@@ -128,6 +128,16 @@ describe("MainHomeScreen", () => {
     expect(container.querySelector(".mhs-header-title-accent")).toHaveTextContent("KDA");
   });
 
+  it("places the pension asset section before the promo carousel", () => {
+    renderHome();
+
+    const assetHeading = screen.getByRole("heading", { name: "내 연금 자산" });
+    const carousel = screen.getByRole("region", { name: "홈 추천 카드" });
+
+    expect(assetHeading.compareDocumentPosition(carousel) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it("scrolls the 연금KDA Pick section into view when opened from chat", () => {
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;

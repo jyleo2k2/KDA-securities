@@ -475,119 +475,6 @@ export function MainHomeScreen({
       </div>
 
       <div className="mhs-body" ref={bodyRef} onScroll={handleBodyScroll}>
-        <section
-          className={`mhs-promo-carousel${isPromoDragging ? " is-dragging" : ""}`}
-          aria-label="홈 추천 카드"
-          aria-roledescription="캐러셀"
-          tabIndex={0}
-          onKeyDown={(event) => {
-            if (event.key === "ArrowLeft") movePromo(-1);
-            if (event.key === "ArrowRight") movePromo(1);
-          }}
-          onPointerDown={handlePromoPointerDown}
-          onPointerMove={handlePromoPointerMove}
-          onPointerUp={finishPromoPointerDrag}
-          onPointerCancel={(event) => finishPromoPointerDrag(event, true)}
-          onDragStart={(event) => event.preventDefault()}
-          onTouchStart={(event) => {
-            promoTouchStartX.current = event.touches[0]?.clientX ?? null;
-          }}
-          onTouchEnd={(event) => {
-            const startX = promoTouchStartX.current;
-            const endX = event.changedTouches[0]?.clientX;
-            promoTouchStartX.current = null;
-            if (startX === null || endX === undefined || Math.abs(endX - startX) < PROMO_DRAG_THRESHOLD_PX) return;
-            movePromo(endX < startX ? 1 : -1);
-          }}
-        >
-          <div className="mhs-promo-viewport">
-            <div
-              className={`mhs-promo-track${isPromoSnapping ? " is-snapping" : ""}`}
-              style={{ transform: `translateX(-${promoOffset * 100}%)` }}
-            >
-              <div className="mhs-promo-slide" aria-hidden={activePromo !== 0}>
-                <div className="mhs-tax-card">
-                  <div className="mhs-tax-main">
-                    <span className="mhs-tax-icon-wrap">
-                      <img src={taxCreditMissed} alt="놓친 세액공제액 찾기" className="mhs-tax-icon" />
-                    </span>
-                    <div className="mhs-tax-copy">
-                      <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
-                      <button
-                        type="button"
-                        className="mhs-tax-button"
-                        onClick={onOpenPlanner}
-                        tabIndex={activePromo === 0 ? 0 : -1}
-                      >
-                        완료율 확인하기 <span>→</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="mhs-promo-slide" aria-hidden={activePromo !== 1}>
-                <button
-                  type="button"
-                  className="mhs-strategy-promo-card"
-                  onClick={onOpenStrategyExplore}
-                  aria-label="또래 최다 운용 전략 보기"
-                  tabIndex={activePromo === 1 ? 0 : -1}
-                >
-                  <p className="mhs-strategy-promo-title">고객님 연령대가 가장 많이 운용하는 전략을 확인해봐요!</p>
-                  <span className="mhs-strategy-promo-cta">
-                    <i aria-hidden="true">₩</i>
-                    또래 <strong>최다 운용 전략 보기</strong> <b aria-hidden="true">›</b>
-                  </span>
-                </button>
-              </div>
-              <div className="mhs-promo-slide" aria-hidden={activePromo !== 2}>
-                <button
-                  type="button"
-                  className="mhs-greeting-card mhs-greeting-card-button"
-                  onClick={onOpenSlangi}
-                  aria-label="연그미와 놀기 열기"
-                  tabIndex={activePromo === 2 ? 0 : -1}
-                >
-                  <div className="mhs-greeting-main">
-                    <div className="mhs-greeting-copy">
-                      <p className="mhs-greeting-title">슬랑이를 <span className="mhs-greeting-title-accent">만져 보세요!</span></p>
-                      <p className="mhs-greeting-sub">슬랑이를 눌러 1원씩 적립해보세요</p>
-                    </div>
-                    <img src={piggy} alt="슬랑이" className="mhs-greeting-img" />
-                  </div>
-                </button>
-              </div>
-              {/* 끝에서 첫 카드로 이어지는 모션만을 위한 복제본. 보조기술과 탭 순서에서는 제외한다. */}
-              <div className="mhs-promo-slide" aria-hidden="true">
-                <div className="mhs-tax-card">
-                  <div className="mhs-tax-main">
-                    <span className="mhs-tax-icon-wrap">
-                      <img src={taxCreditMissed} alt="" className="mhs-tax-icon" />
-                    </span>
-                    <div className="mhs-tax-copy">
-                      <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
-                      <button type="button" className="mhs-tax-button" tabIndex={-1}>
-                        완료율 확인하기 <span>→</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="mhs-promo-dots" aria-label="추천 카드 선택">
-            {[0, 1, 2].map((promoIndex, dotIndex) => (
-              <button
-                key={promoIndex}
-                type="button"
-                className={`mhs-promo-dot${activePromo === promoIndex ? " is-active" : ""}`}
-                onClick={() => selectPromo(promoIndex)}
-                aria-label={`${dotIndex + 1}번째 카드 보기`}
-                aria-current={activePromo === promoIndex ? "true" : undefined}
-              />
-            ))}
-          </div>
-        </section>
         <h2 className="mhs-section-title">내 연금 <span className="mhs-section-title-gold">자산</span></h2>
 
         <div className="mhs-asset-card">
@@ -706,6 +593,120 @@ export function MainHomeScreen({
             </div>
           </div>
         </div>
+
+        <section
+          className={`mhs-promo-carousel${isPromoDragging ? " is-dragging" : ""}`}
+          aria-label="홈 추천 카드"
+          aria-roledescription="캐러셀"
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowLeft") movePromo(-1);
+            if (event.key === "ArrowRight") movePromo(1);
+          }}
+          onPointerDown={handlePromoPointerDown}
+          onPointerMove={handlePromoPointerMove}
+          onPointerUp={finishPromoPointerDrag}
+          onPointerCancel={(event) => finishPromoPointerDrag(event, true)}
+          onDragStart={(event) => event.preventDefault()}
+          onTouchStart={(event) => {
+            promoTouchStartX.current = event.touches[0]?.clientX ?? null;
+          }}
+          onTouchEnd={(event) => {
+            const startX = promoTouchStartX.current;
+            const endX = event.changedTouches[0]?.clientX;
+            promoTouchStartX.current = null;
+            if (startX === null || endX === undefined || Math.abs(endX - startX) < PROMO_DRAG_THRESHOLD_PX) return;
+            movePromo(endX < startX ? 1 : -1);
+          }}
+        >
+          <div className="mhs-promo-viewport">
+            <div
+              className={`mhs-promo-track${isPromoSnapping ? " is-snapping" : ""}`}
+              style={{ transform: `translateX(-${promoOffset * 100}%)` }}
+            >
+              <div className="mhs-promo-slide" aria-hidden={activePromo !== 0}>
+                <div className="mhs-tax-card">
+                  <div className="mhs-tax-main">
+                    <span className="mhs-tax-icon-wrap">
+                      <img src={taxCreditMissed} alt="놓친 세액공제액 찾기" className="mhs-tax-icon" />
+                    </span>
+                    <div className="mhs-tax-copy">
+                      <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
+                      <button
+                        type="button"
+                        className="mhs-tax-button"
+                        onClick={onOpenPlanner}
+                        tabIndex={activePromo === 0 ? 0 : -1}
+                      >
+                        완료율 확인하기 <span>→</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="mhs-promo-slide" aria-hidden={activePromo !== 1}>
+                <button
+                  type="button"
+                  className="mhs-strategy-promo-card"
+                  onClick={onOpenStrategyExplore}
+                  aria-label="또래 최다 운용 전략 보기"
+                  tabIndex={activePromo === 1 ? 0 : -1}
+                >
+                  <p className="mhs-strategy-promo-title">고객님 연령대가 가장 많이 운용하는 전략을 확인해봐요!</p>
+                  <span className="mhs-strategy-promo-cta">
+                    <i aria-hidden="true">₩</i>
+                    또래 <strong>최다 운용 전략 보기</strong> <b aria-hidden="true">›</b>
+                  </span>
+                </button>
+              </div>
+              <div className="mhs-promo-slide" aria-hidden={activePromo !== 2}>
+                <button
+                  type="button"
+                  className="mhs-greeting-card mhs-greeting-card-button"
+                  onClick={onOpenSlangi}
+                  aria-label="연그미와 놀기 열기"
+                  tabIndex={activePromo === 2 ? 0 : -1}
+                >
+                  <div className="mhs-greeting-main">
+                    <div className="mhs-greeting-copy">
+                      <p className="mhs-greeting-title">슬랑이를 <span className="mhs-greeting-title-accent">만져 보세요!</span></p>
+                      <p className="mhs-greeting-sub">슬랑이를 눌러 1원씩 적립해보세요</p>
+                    </div>
+                    <img src={piggy} alt="슬랑이" className="mhs-greeting-img" />
+                  </div>
+                </button>
+              </div>
+              {/* 끝에서 첫 카드로 이어지는 모션만을 위한 복제본. 보조기술과 탭 순서에서는 제외한다. */}
+              <div className="mhs-promo-slide" aria-hidden="true">
+                <div className="mhs-tax-card">
+                  <div className="mhs-tax-main">
+                    <span className="mhs-tax-icon-wrap">
+                      <img src={taxCreditMissed} alt="" className="mhs-tax-icon" />
+                    </span>
+                    <div className="mhs-tax-copy">
+                      <p className="mhs-tax-title">세액공제 준비, 지금 몇 <span className="mhs-tax-title-accent">%</span>?</p>
+                      <button type="button" className="mhs-tax-button" tabIndex={-1}>
+                        완료율 확인하기 <span>→</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="mhs-promo-dots" aria-label="추천 카드 선택">
+            {[0, 1, 2].map((promoIndex, dotIndex) => (
+              <button
+                key={promoIndex}
+                type="button"
+                className={`mhs-promo-dot${activePromo === promoIndex ? " is-active" : ""}`}
+                onClick={() => selectPromo(promoIndex)}
+                aria-label={`${dotIndex + 1}번째 카드 보기`}
+                aria-current={activePromo === promoIndex ? "true" : undefined}
+              />
+            ))}
+          </div>
+        </section>
 
         <div className="mhs-strategy-heading-row" ref={strategyPickRef}>
           <h2 className="mhs-section-title mhs-section-title-tight">
