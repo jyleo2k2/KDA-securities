@@ -656,6 +656,32 @@ def test_named_portfolio_strategy_rationale_beats_etf_theme_alias(
     assert plan.requests_strategy_rationale is True
 
 
+@pytest.mark.parametrize(
+    ("message", "expected_strategy_id", "expected_topic"),
+    (
+        ("자본보전중심 전략이 머임?", "capital_preservation_core", "overview"),
+        ("안정 중심 전략 설명 좀", "capital_preservation_core", "overview"),
+        ("방어분산 전략 누구한테 맞아?", "defensive_diversified_core", "suitability"),
+        ("균형코어위성 장단점 알려줘", "balanced_core_satellite", "risks"),
+        ("성장 코어 위성은 어떻게 굴려?", "growth_core_satellite", "operation"),
+        ("테마집중전략이 뭐야", "barbell_growth_tactical", "overview"),
+        ("바벨형 성장전술 왜 쓰는 거야?", "barbell_growth_tactical", "rationale"),
+    ),
+)
+def test_named_strategy_aliases_and_spoken_questions_are_structured(
+    message: str,
+    expected_strategy_id: str,
+    expected_topic: str,
+) -> None:
+    plan = plan_question(message)
+
+    assert plan.intent is ChatIntent.EDUCATIONAL_PORTFOLIO
+    assert plan.portfolio_strategy_id is not None
+    assert plan.portfolio_strategy_id.value == expected_strategy_id
+    assert plan.strategy_question_topic is not None
+    assert plan.strategy_question_topic.value == expected_topic
+
+
 def test_explicit_satellite_etf_theme_request_stays_on_theme_route() -> None:
     plan = plan_question("위성 ETF 테마 알려줘")
 

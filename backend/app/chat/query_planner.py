@@ -52,6 +52,23 @@ class ThemeContentTopic(StrEnum):
     RISKS = "risks"
 
 
+class PortfolioStrategyId(StrEnum):
+    CAPITAL_PRESERVATION_CORE = "capital_preservation_core"
+    DEFENSIVE_DIVERSIFIED_CORE = "defensive_diversified_core"
+    BALANCED_CORE_SATELLITE = "balanced_core_satellite"
+    GROWTH_CORE_SATELLITE = "growth_core_satellite"
+    BARBELL_GROWTH_TACTICAL = "barbell_growth_tactical"
+
+
+class StrategyQuestionTopic(StrEnum):
+    OVERVIEW = "overview"
+    RATIONALE = "rationale"
+    SUITABILITY = "suitability"
+    COMPOSITION = "composition"
+    OPERATION = "operation"
+    RISKS = "risks"
+
+
 class DistributionReinvestmentRequest(BaseModel):
     """Explicit chat inputs for an educational distribution-reinvestment guide."""
 
@@ -90,6 +107,8 @@ class QueryPlan(BaseModel):
     theme_content_topic: ThemeContentTopic | None = None
     requests_theme_candidates: bool = False
     requests_theme_holdings: bool = False
+    portfolio_strategy_id: PortfolioStrategyId | None = None
+    strategy_question_topic: StrategyQuestionTopic | None = None
     requests_strategy_rationale: bool = False
     distribution_isu_code: str | None = None
     distribution_reinvestment: DistributionReinvestmentRequest | None = None
@@ -171,6 +190,13 @@ class QueryPlan(BaseModel):
         ):
             raise ValueError(
                 "strategy rationale requires educational_portfolio intent"
+            )
+        if self.intent != ChatIntent.EDUCATIONAL_PORTFOLIO and (
+            self.portfolio_strategy_id is not None
+            or self.strategy_question_topic is not None
+        ):
+            raise ValueError(
+                "portfolio strategy fields require educational_portfolio intent"
             )
         if self.intent != ChatIntent.ETF_DISTRIBUTION and (
             self.distribution_isu_code or self.distribution_reinvestment is not None
@@ -686,14 +712,87 @@ _EDUCATIONAL_PORTFOLIO_TERMS = re.compile(
     r"안정\s*추구형|위험\s*중립형|적극\s*투자형|"
     r"공격\s*투자형|안정형"
 )
-_PORTFOLIO_STRATEGY_LABEL = re.compile(
-    r"(?:자본\s*보전\s*중심|방어적\s*분산|"
-    r"(?:성장\s*)?코어\s*[·ㆍ\-\s]?\s*위성|"
-    r"바벨형\s*성장\s*[·ㆍ\-\s]?\s*전술)\s*전략"
+_PORTFOLIO_STRATEGY_PATTERNS = (
+    (
+        PortfolioStrategyId.CAPITAL_PRESERVATION_CORE,
+        re.compile(
+            r"(?:자본\s*보전(?:\s*중심)?|안정\s*중심)\s*(?:전략)?"
+        ),
+    ),
+    (
+        PortfolioStrategyId.DEFENSIVE_DIVERSIFIED_CORE,
+        re.compile(r"방어(?:적)?\s*분산\s*(?:전략)?"),
+    ),
+    # 성장형을 먼저 검사해야 "성장 코어·위성"이 균형형으로 잘리지 않는다.
+    (
+        PortfolioStrategyId.GROWTH_CORE_SATELLITE,
+        re.compile(
+            r"성장\s*코어\s*[·ㆍ\-\s]?\s*위성\s*(?:전략)?"
+        ),
+    ),
+    (
+        PortfolioStrategyId.BALANCED_CORE_SATELLITE,
+        re.compile(
+            r"(?:균형\s*)?코어\s*[·ㆍ\-\s]?\s*위성\s*(?:전략)?"
+        ),
+    ),
+    (
+        PortfolioStrategyId.BARBELL_GROWTH_TACTICAL,
+        re.compile(
+            r"(?:바벨(?:형)?(?:\s*성장\s*[·ㆍ\-\s]?\s*전술)?|"
+            r"테마\s*집중)\s*(?:전략)?"
+        ),
+    ),
 )
-_STRATEGY_RATIONALE_QUESTION = re.compile(
-    r"왜|이유|근거|선택|적합|맞(?:아|는|나요)"
+_STRATEGY_QUESTION_PATTERNS = (
+    (StrategyQuestionTopic.RATIONALE, re.compile(r"왜|이유|근거|선택")),
+    (
+        StrategyQuestionTopic.RISKS,
+        re.compile(r"장단점|단점|주의|위험|손실|문제점"),
+    ),
+    (
+        StrategyQuestionTopic.SUITABILITY,
+        re.compile(
+            r"누구|어떤\s*사람|나한테|저한테|내게|맞(?:아|는|나요|을까)|적합|성향"
+        ),
+    ),
+    (
+        StrategyQuestionTopic.COMPOSITION,
+        re.compile(r"구성|뭘\s*(?:담|사)|무엇을\s*(?:담|사)|자산|비중"),
+    ),
+    (
+        StrategyQuestionTopic.OPERATION,
+        re.compile(
+            r"어떻게|운용\s*(?:법|방법|은|을|해|할|하)|"
+            r"굴려|굴리|관리|리\s*밸런싱|점검"
+        ),
+    ),
 )
+_STRATEGY_REFERENT_QUESTION = re.compile(
+    r"(?:그|이|위|방금|아까)\s*전략|(?:그거|이거|저거)"
+)
+
+
+def _selected_portfolio_strategy(
+    message: str,
+) -> PortfolioStrategyId | None:
+    for strategy_id, pattern in _PORTFOLIO_STRATEGY_PATTERNS:
+        if pattern.search(message):
+            return strategy_id
+    return None
+
+
+def _strategy_question_topic(
+    message: str,
+) -> StrategyQuestionTopic | None:
+    for topic, pattern in _STRATEGY_QUESTION_PATTERNS:
+        if pattern.search(message):
+            return topic
+    if re.search(r"계획\s*수익률|수익률", message):
+        return None
+    if re.search(r"뭐|무엇|설명|알려|궁금|뜻", message):
+        return StrategyQuestionTopic.OVERVIEW
+    return None
 # 리밸런싱을 "언제·얼마나 자주" 하는지는 성향별 점검 주기가 답이다.
 # 엔진이 이미 성향마다 주기를 계산하므로 안내 경로로 잇는다.
 _REBALANCING_CADENCE_QUESTION = re.compile(
@@ -932,16 +1031,21 @@ def plan_question(
             theme = get_default_etf_theme_repository().resolve(normalized)
         except (FileNotFoundError, ValueError):
             theme = None
-    named_portfolio_strategy = (
-        _PORTFOLIO_STRATEGY_LABEL.search(normalized) is not None
-    )
+    portfolio_strategy_id = _selected_portfolio_strategy(normalized)
+    named_portfolio_strategy = portfolio_strategy_id is not None
+    strategy_question_topic = None
+    if named_portfolio_strategy:
+        strategy_question_topic = (
+            _strategy_question_topic(normalized)
+            or StrategyQuestionTopic.OVERVIEW
+        )
+    elif _STRATEGY_REFERENT_QUESTION.search(normalized) is not None:
+        strategy_question_topic = _strategy_question_topic(normalized)
     requests_strategy_rationale = (
-        named_portfolio_strategy
-        and _STRATEGY_RATIONALE_QUESTION.search(normalized) is not None
+        strategy_question_topic is StrategyQuestionTopic.RATIONALE
     )
     if (
         named_portfolio_strategy
-        and "테마" not in normalized
         and _PRODUCT_LOOKUP_CONTEXT.search(normalized) is None
     ):
         # "코어·위성 전략"의 위성은 포트폴리오 역할을 뜻한다. 방산·우주
@@ -1189,6 +1293,8 @@ def plan_question(
             intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
             account_types=account_types,
             max_results=max_results,
+            portfolio_strategy_id=portfolio_strategy_id,
+            strategy_question_topic=strategy_question_topic,
             requests_strategy_rationale=requests_strategy_rationale,
         )
     if intent == ChatIntent.PROVIDER_DISCLOSURE:

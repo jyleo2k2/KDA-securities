@@ -18,6 +18,8 @@ from ..retrieval.repository import KnowledgeSearch
 from .etf_product_features import EtfProductFeatureGenerator
 from .handlers._shared import (
     _RISK_PROFILE_RANKS,
+    _RISK_PROFILE_STRATEGIES,
+    _STRATEGY_RISK_PROFILES,
     DisclosureSearch,
     LiveNewsSearch,
     NewsSearch,
@@ -75,6 +77,7 @@ from .handlers.portfolio import (
     risk_profile_guardrail,
     risk_profile_portfolio_guide,
     risk_profile_selection_guide,
+    strategy_guide_response,
     strategy_rationale_response,
 )
 from .handlers.presentation import build_capabilities, finalize_response
@@ -92,6 +95,7 @@ from .models import (
 )
 from .query_planner import (
     BlockedReason,
+    PortfolioStrategyId,
     QueryPlan,
     plan_question,
 )
@@ -318,10 +322,53 @@ class ChatService:
                     if original_request.conversation_context is not None
                     else None
                 )
+                strategy_id = resolved_plan.portfolio_strategy_id
+                if (
+                    strategy_id is None
+                    and resolved_plan.strategy_question_topic is not None
+                    and original_request.conversation_context is not None
+                    and original_request.conversation_context.last_intent
+                    == ChatIntent.EDUCATIONAL_PORTFOLIO
+                    and original_request.conversation_context.selected_risk_profile
+                    is not None
+                ):
+                    strategy_id = PortfolioStrategyId(
+                        _RISK_PROFILE_STRATEGIES[
+                            original_request.conversation_context.selected_risk_profile
+                        ]
+                    )
+                strategy_topic = resolved_plan.strategy_question_topic
+                direct_strategy_response = None
+                if strategy_id is not None and strategy_topic is not None:
+                    strategy_profile = _STRATEGY_RISK_PROFILES[strategy_id.value]
+                    direct_strategy_response = strategy_guide_response(
+                        strategy_id,
+                        strategy_topic,
+                        assessed_profile=(
+                            survey_profile.risk_profile
+                            if survey_profile is not None
+                            else None
+                        ),
+                    ).model_copy(
+                        update={
+                            "conversation_context": ConversationContext(
+                                account_type=(
+                                    survey_profile.account_type
+                                    if survey_profile is not None
+                                    else None
+                                ),
+                                last_intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+                                survey_profile=survey_profile,
+                                selected_risk_profile=strategy_profile,
+                            )
+                        }
+                    )
                 retirement_start_age = _mentioned_retirement_start_age(
                     original_request.message
                 )
-                if retirement_start_age is not None and not (
+                if direct_strategy_response is not None:
+                    response = direct_strategy_response
+                elif retirement_start_age is not None and not (
                     55 <= retirement_start_age <= 60
                 ):
                     response = retirement_age_selection_guide()
@@ -332,8 +379,9 @@ class ChatService:
                     original_request = original_request.model_copy(
                         update={"survey_profile": survey_profile}
                     )
-                if retirement_start_age is not None and not (
-                    55 <= retirement_start_age <= 60
+                if direct_strategy_response is not None or (
+                    retirement_start_age is not None
+                    and not 55 <= retirement_start_age <= 60
                 ):
                     pass
                 elif _requests_age_style_portfolio_guide(original_request.message):
