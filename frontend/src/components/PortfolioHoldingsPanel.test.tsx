@@ -401,8 +401,6 @@ describe("EducationalPortfolioReview", () => {
       screen.getByText("DC형 스트레스 점검"),
       screen.getByText("연금저축펀드 목표 자산배분"),
       screen.getByText("연금저축펀드 스트레스 점검"),
-      screen.getByText(/^리밸런싱 주기:/),
-      screen.getByText("두 가지 수익률 가정"),
     ];
     for (let index = 1; index < orderedStrategyContent.length; index += 1) {
       expect(
@@ -411,9 +409,10 @@ describe("EducationalPortfolioReview", () => {
         ) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     }
-    expect(screen.getByText("조심해서 계산한 경우")).toBeInTheDocument();
-    expect(screen.getByText("기본으로 계산한 경우")).toBeInTheDocument();
-    expect(screen.getByText(/CMA는 여러 자산의 10년 이상 장기 전망/)).toBeInTheDocument();
+    expect(screen.queryByText(/^리밸런싱 주기:/)).not.toBeInTheDocument();
+    expect(screen.queryByText("두 가지 수익률 가정")).not.toBeInTheDocument();
+    expect(screen.queryByText("조심해서 계산한 경우")).not.toBeInTheDocument();
+    expect(screen.queryByText("기본으로 계산한 경우")).not.toBeInTheDocument();
     expect(screen.queryByText("어떤 ETF 분야를 살펴볼까?")).not.toBeInTheDocument();
     expect(screen.queryByText(/이 서비스는 “이 ETF를 사세요”라고 정해 주지 않아요/)).not.toBeInTheDocument();
     expect(screen.queryByText("스태그플레이션")).not.toBeInTheDocument();
