@@ -669,6 +669,17 @@ _STRATEGY_LABELS = {
     "growth_core_satellite": "성장 코어·위성 전략",
     "barbell_growth_tactical": "바벨형 성장·전술 전략",
 }
+_STRATEGY_RISK_PROFILES = {
+    "capital_preservation_core": EducationalRiskProfile.STABLE,
+    "defensive_diversified_core": EducationalRiskProfile.STABLE_SEEKING,
+    "balanced_core_satellite": EducationalRiskProfile.RISK_NEUTRAL,
+    "growth_core_satellite": EducationalRiskProfile.ACTIVE,
+    "barbell_growth_tactical": EducationalRiskProfile.AGGRESSIVE,
+}
+_RISK_PROFILE_STRATEGIES = {
+    profile: strategy_id
+    for strategy_id, profile in _STRATEGY_RISK_PROFILES.items()
+}
 _STRATEGY_EXPLANATIONS = {
     "capital_preservation_core": (
         "변동성 관리에 초점을 둔 전략입니다. 채권과 현금성 자산 비중을 "
@@ -694,6 +705,24 @@ _STRATEGY_EXPLANATIONS = {
         "주식과 전술 자산(테마·팩터 ETF 등) 비중을 높이되, 채권과 현금성 자산을 남겨 "
         "변동성과 유동성을 함께 관리합니다.",
         "성장 자산과 방어 자산의 역할을 분리해 한 방향으로의 쏠림을 줄입니다.",
+    ),
+}
+_STRATEGY_CAUTIONS = {
+    "capital_preservation_core": (
+        "가격 변동을 낮추는 대신 성장 자산의 상승에 참여하는 폭도 제한될 수 있어요."
+    ),
+    "defensive_diversified_core": (
+        "방어 자산이 중심이라 주식시장이 강하게 오를 때 "
+        "상승 참여 폭이 제한될 수 있어요."
+    ),
+    "balanced_core_satellite": (
+        "위성 자산의 비중을 키우면 특정 테마 쏠림과 가격 변동이 커질 수 있어요."
+    ),
+    "growth_core_satellite": (
+        "주식 비중이 높은 만큼 시장 하락기에는 가격 변동과 손실 폭이 커질 수 있어요."
+    ),
+    "barbell_growth_tactical": (
+        "테마·전술 자산의 쏠림과 큰 가격 변동을 감내할 수 있는지 계속 확인해야 해요."
     ),
 }
 _SLEEVE_LABELS = {

@@ -53,13 +53,21 @@ from ..models import (
     SectionKind,
     SourceEvidence,
 )
-from ..query_planner import QueryPlan, ThemeContentTopic
+from ..query_planner import (
+    PortfolioStrategyId,
+    QueryPlan,
+    StrategyQuestionTopic,
+    ThemeContentTopic,
+)
 from ._shared import (
     _ACCOUNT_TYPE_LABELS,
     _MACRO_ANALOG_OUTCOME_TERMS,
     _RISK_PROFILE_LABELS,
     _SLEEVE_LABELS,
+    _STRATEGY_CAUTIONS,
+    _STRATEGY_EXPLANATIONS,
     _STRATEGY_LABELS,
+    _STRATEGY_RISK_PROFILES,
     _STRESS_SCENARIO_LABELS,
     PortfolioUniverseLoader,
     ThemeProductUniverseLoader,
@@ -1821,6 +1829,83 @@ def strategy_rationale_response(response: ChatResponse) -> ChatResponse:
         limitations=[
             "설문 입력과 규칙 엔진 결과를 기준으로 설명합니다.",
             "특정 ETF의 선택·주문·자동 리밸런싱은 수행하지 않습니다.",
+        ],
+    )
+
+
+def strategy_guide_response(
+    strategy_id: PortfolioStrategyId,
+    topic: StrategyQuestionTopic,
+    *,
+    assessed_profile: EducationalRiskProfile | None = None,
+) -> ChatResponse:
+    strategy_key = strategy_id.value
+    strategy_label = _STRATEGY_LABELS[strategy_key]
+    target_profile = _STRATEGY_RISK_PROFILES[strategy_key]
+    target_profile_label = _RISK_PROFILE_LABELS[target_profile.value]
+    explanation, principle = _STRATEGY_EXPLANATIONS[strategy_key]
+    caution = _STRATEGY_CAUTIONS[strategy_key]
+
+    if topic is StrategyQuestionTopic.RATIONALE:
+        if assessed_profile is target_profile:
+            answer = (
+                f"현재 설문 결과가 {target_profile_label}이라 "
+                f"{strategy_label}을 적용해요. {explanation}"
+            )
+        elif assessed_profile is not None:
+            assessed_label = _RISK_PROFILE_LABELS[assessed_profile.value]
+            answer = (
+                f"{strategy_label}은 {target_profile_label} 기준의 전략이에요. "
+                f"현재 설문 결과는 {assessed_label}이라 지금 적용된 전략과는 "
+                "다를 수 있어요."
+            )
+        else:
+            answer = (
+                f"{strategy_label}은 {target_profile_label}의 손실 감내 범위와 "
+                f"운용 목표를 반영한 전략이에요. {explanation}"
+            )
+    elif topic is StrategyQuestionTopic.SUITABILITY:
+        answer = (
+            f"{strategy_label}은 {target_profile_label}을 기준으로 설계한 전략이에요. "
+            f"{principle}"
+        )
+        if assessed_profile is not None and assessed_profile is not target_profile:
+            assessed_label = _RISK_PROFILE_LABELS[assessed_profile.value]
+            answer += (
+                f" 현재 설문 결과는 {assessed_label}이므로 개인 전략으로 바로 "
+                "적용하기보다 현재 결과와 비교해서 봐야 해요."
+            )
+    elif topic is StrategyQuestionTopic.COMPOSITION:
+        answer = f"{strategy_label}의 기본 구성은 이래요. {explanation}"
+    elif topic is StrategyQuestionTopic.OPERATION:
+        answer = f"{strategy_label}은 이렇게 운용해요. {principle}"
+    elif topic is StrategyQuestionTopic.RISKS:
+        answer = f"{strategy_label}은 {explanation} 다만 {caution}"
+    else:
+        answer = (
+            f"{strategy_label}은 {target_profile_label} 기준의 연금 운용 전략이에요. "
+            f"{explanation}"
+        )
+
+    return ChatResponse(
+        intent=ChatIntent.EDUCATIONAL_PORTFOLIO,
+        answer=answer,
+        data_mode="strategy_guide",
+        sections=[
+            AnswerSection(
+                kind=SectionKind.SERVICE_EXPLANATION,
+                title=strategy_label,
+                content=(
+                    f"기준 투자성향: {target_profile_label}\n"
+                    f"구성: {explanation}\n"
+                    f"운용 원칙: {principle}\n"
+                    f"확인할 점: {caution}"
+                ),
+            )
+        ],
+        limitations=[
+            "전략 설명은 투자성향별 운용 기준이며 개인별 상품 선택을 뜻하지 않습니다.",
+            "미래 수익을 예측하거나 보장하지 않으며 상품 주문을 수행하지 않습니다.",
         ],
     )
 

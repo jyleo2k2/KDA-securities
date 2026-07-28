@@ -895,14 +895,88 @@ def test_named_strategy_rationale_follow_up_does_not_drift_to_etf_theme(
     )
 
     assert second.intent is ChatIntent.EDUCATIONAL_PORTFOLIO
-    assert second.data_mode == "engine_strategy_rationale"
+    assert second.data_mode == "strategy_guide"
     assert second.educational_portfolio_evaluation is None
     assert second.educational_portfolio_evaluations == []
     assert len(second.sections) == 1
-    assert second.sections[0].title == "코어·위성 전략을 선택한 이유"
+    assert second.sections[0].title == "코어·위성 전략"
     assert "위험중립형" in second.answer
     assert "방산" not in second.answer
     assert "우주" not in second.answer
+
+
+@pytest.mark.parametrize(
+    ("message", "expected_strategy", "expected_profile"),
+    (
+        ("자본보전 전략이 머임?", "자본보전 중심 전략", "안정형"),
+        ("방어 분산 전략 설명좀", "방어적 분산 전략", "안정추구형"),
+        ("균형 코어위성 누구한테 맞아?", "코어·위성 전략", "위험중립형"),
+        ("성장코어위성 어떻게 굴려?", "성장 코어·위성 전략", "적극투자형"),
+        ("테마 집중 전략 장단점 뭐임?", "바벨형 성장·전술 전략", "공격투자형"),
+    ),
+)
+def test_each_named_strategy_question_is_answered_without_a_survey(
+    message: str,
+    expected_strategy: str,
+    expected_profile: str,
+) -> None:
+    response = _service().ask(ChatRequest(message=message))
+
+    assert response.intent is ChatIntent.EDUCATIONAL_PORTFOLIO
+    assert response.data_mode == "strategy_guide"
+    assert expected_strategy in response.answer
+    assert response.sections[0].title == expected_strategy
+    assert expected_profile in response.sections[0].content
+    assert response.educational_portfolio_evaluation is None
+
+
+def test_named_strategy_question_does_not_answer_with_the_survey_strategy() -> None:
+    response = _service().ask(
+        ChatRequest(
+            message="자본보전 전략이 나한테 맞아?",
+            survey_profile=_completed_survey(),
+        )
+    )
+
+    assert response.data_mode == "strategy_guide"
+    assert "자본보전 중심 전략" in response.answer
+    assert "안정형" in response.answer
+    assert "현재 설문 결과는 위험중립형" in response.answer
+    assert "코어·위성 전략" not in response.answer
+
+
+@pytest.mark.parametrize(
+    ("message", "expected_answer"),
+    (
+        ("그거 장단점 뭐임?", "위성 자산의 비중을 키우면"),
+        ("그거 왜 나한테 맞는 건데?", "현재 설문 결과가 위험중립형"),
+        ("이거 어떻게 굴리는 거야?", "코어는 장기 분산투자"),
+    ),
+)
+def test_spoken_pronoun_follow_up_keeps_the_previously_explained_strategy(
+    message: str,
+    expected_answer: str,
+) -> None:
+    service = _service()
+    first = service.ask(
+        ChatRequest(
+            message="투자전략 추천해줘",
+            survey_profile=_completed_survey(),
+        )
+    )
+
+    second = service.ask(
+        ChatRequest(
+            message=message,
+            conversation_context=first.conversation_context,
+        )
+    )
+
+    assert second.intent is ChatIntent.EDUCATIONAL_PORTFOLIO
+    assert second.data_mode == "strategy_guide"
+    assert "코어·위성 전략" in second.answer
+    assert expected_answer in second.answer
+    assert "방산" not in second.answer
 
 
 def test_mvp_demo_profile_builds_only_its_irp_strategy_plan() -> None:
