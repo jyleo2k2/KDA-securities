@@ -425,7 +425,8 @@ describe("MainHomeScreen", () => {
     expect(screen.getByText("롱숏·시장중립 전략")).toBeInTheDocument();
     expect(screen.getByText("이벤트드리븐 전략")).toBeInTheDocument();
     expect(screen.getByText("추세추종·글로벌 매크로 전략")).toBeInTheDocument();
-    expect(screen.getByText(/재무 건전성·가격 수준·추세/)).toBeInTheDocument();
+    expect(screen.getByText("기업 특징 따라 ETF 고르는 전략입니다.")).toBeInTheDocument();
+    expect(screen.queryByText(/장기 계산용 가정/)).not.toBeInTheDocument();
     expect(screen.queryByText("시장 전체 따라가기")).not.toBeInTheDocument();
     expect(await screen.findByText("6.75%")).toBeInTheDocument();
     expect(screen.getByText("4.75%")).toBeInTheDocument();

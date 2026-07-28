@@ -182,24 +182,17 @@ interface StrategyCard {
 }
 
 const STRATEGY_CARDS: StrategyCard[] = [
-  { strategyId: "market_beta", title: "시장 베타 전략", valueColor: "#4FB6E6", desc: "시장 수익률을 포트폴리오의 기준 수익원으로 활용하는 장기 분산 전략입니다.", bg: "#EAF7FC" },
-  { strategyId: "factor", title: "팩터 전략", valueColor: "#24386E", desc: "재무 건전성·가격 수준·추세 등 기업 특성을 기준으로 ETF를 선택하는 전략입니다.", bg: "#EAEDF3" },
-  { strategyId: "thematic", title: "테마 전략", valueColor: "#F5871F", desc: "산업 구조 변화가 예상되는 분야에 집중해 성장 기회를 찾는 위성 전략입니다.", bg: "#FFF3E6" },
-  { strategyId: "top_down", title: "탑다운 전략", valueColor: "#3B4148", desc: "금리·물가·경기 같은 거시 환경을 분석해 국가·산업·자산군 비중을 조정합니다.", bg: "#EEF0F1" },
-  { strategyId: "bottom_up", title: "바텀업 전략", valueColor: "#1E9E5D", desc: "개별 기업의 경쟁력·재무상태·성장성을 분석해 투자 대상을 선별하는 전략입니다.", bg: "#E9F8EF" },
-  { strategyId: "barbell", title: "바벨 전략", valueColor: "#1E2124", desc: "성장자산과 단기채·현금성자산을 함께 배분해 상·하방 위험에 대응합니다.", bg: "#F5F5F5" },
-  { strategyId: "volatility_managed", title: "변동성 관리 전략", valueColor: "#9CA7AE", desc: "목표 변동성에 맞춰 주식·채권·현금성자산 비중을 조절하는 위험관리 전략입니다.", bg: "#F1F2F3" },
-  { strategyId: "market_neutral", title: "롱숏·시장중립 전략", valueColor: "#7B4FC0", desc: "매수와 헤지 포지션을 함께 활용해 시장 방향성 노출을 낮추는 전략입니다.", bg: "#F3EEFB" },
-  { strategyId: "event_driven", title: "이벤트드리븐 전략", valueColor: "#B8860B", desc: "합병·분할·자사주 매입 등 기업 이벤트가 가격에 반영되는 과정을 활용합니다.", bg: "#FFF8DE" },
-  { strategyId: "trend_global_macro", title: "추세추종·글로벌 매크로 전략", valueColor: "#2F6FE0", desc: "자산 가격 추세와 글로벌 거시 환경을 규칙에 따라 활용하는 멀티에셋 전략입니다.", bg: "#EAF1FE" },
+  { strategyId: "market_beta", title: "시장 베타 전략", valueColor: "#4FB6E6", desc: "시장 전체에 넓게 투자하는 전략입니다.", bg: "#EAF7FC" },
+  { strategyId: "factor", title: "팩터 전략", valueColor: "#24386E", desc: "기업 특징 따라 ETF 고르는 전략입니다.", bg: "#EAEDF3" },
+  { strategyId: "thematic", title: "테마 전략", valueColor: "#F5871F", desc: "유망 산업에 나눠 투자하는 전략입니다.", bg: "#FFF3E6" },
+  { strategyId: "top_down", title: "탑다운 전략", valueColor: "#3B4148", desc: "경제 흐름 따라 비중 조절하는 전략입니다.", bg: "#EEF0F1" },
+  { strategyId: "bottom_up", title: "바텀업 전략", valueColor: "#1E9E5D", desc: "기업을 분석해 투자 대상 고르는 전략입니다.", bg: "#E9F8EF" },
+  { strategyId: "barbell", title: "바벨 전략", valueColor: "#1E2124", desc: "성장자산과 안전자산을 함께 담는 전략입니다.", bg: "#F5F5F5" },
+  { strategyId: "volatility_managed", title: "변동성 관리 전략", valueColor: "#9CA7AE", desc: "주식·채권 비중을 조절하는 전략입니다.", bg: "#F1F2F3" },
+  { strategyId: "market_neutral", title: "롱숏·시장중립 전략", valueColor: "#7B4FC0", desc: "상승과 하락 위험을 함께 관리하는 전략입니다.", bg: "#F3EEFB" },
+  { strategyId: "event_driven", title: "이벤트드리븐 전략", valueColor: "#B8860B", desc: "기업 이벤트 기회를 살피는 전략입니다.", bg: "#FFF8DE" },
+  { strategyId: "trend_global_macro", title: "추세추종·글로벌 매크로 전략", valueColor: "#2F6FE0", desc: "추세와 세계 경제 흐름을 활용하는 전략입니다.", bg: "#EAF1FE" },
 ];
-
-function strategyPlanningFootnote(
-  planningReturn: StrategyPlanningReturnEvaluation | undefined,
-): string {
-  if (!planningReturn) return "장기 계산용 가정을 불러오는 중이에요.";
-  return `장기 계산용 가정 · 대표 구성 전망 ${formatPlanningPercent(planningReturn.cma_weighted_return_percent)} · 여유 폭 ${formatPlanningPercent(planningReturn.uncertainty_discount_percent)}p`;
-}
 
 function formatPlanningPercent(value: string): string {
   const [whole, decimal = ""] = value.split(".");
@@ -749,7 +742,6 @@ export function MainHomeScreen({
               <span className="mhs-strategy-card-title">{card.title}</span>
               <p className="mhs-strategy-card-value" style={{ color: card.valueColor }}>{value}</p>
               <p className="mhs-strategy-card-desc">{card.desc}</p>
-              <p className="mhs-strategy-card-footnote">{strategyPlanningFootnote(planningReturn)}</p>
             </button>
             );
           })}
