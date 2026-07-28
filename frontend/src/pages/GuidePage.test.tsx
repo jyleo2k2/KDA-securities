@@ -20,6 +20,7 @@ import { CHAT_PROMPT_CANDIDATES } from "../chatPromptCandidates";
 import {
   ETF_THEME_CARDS,
   collapseSharedStrategyAllocation,
+  collapseSharedStrategyStressScenarios,
   filterChatCards,
   GuidePage,
 } from "./GuidePage";
@@ -934,6 +935,63 @@ describe("GuidePage chat history deletion", () => {
     ];
 
     expect(collapseSharedStrategyAllocation(visualizations)).toEqual(visualizations);
+  });
+
+  it("collapses account stress charts when their visible results match", () => {
+    const accountTitles = ["DC형", "IRP", "연금저축펀드"];
+    const visualizations: ChatVisualization[] = accountTitles.map((accountTitle) => ({
+      kind: "stress_scenarios",
+      title: `${accountTitle} 스트레스 점검`,
+      description: "규칙 엔진의 스트레스 시나리오별 손실 추정치예요.",
+      data_boundary: "engine",
+      evidence_ids: [`engine:${accountTitle}`],
+      items: [
+        { label: "주식시장 급락", value: "20.6", unit: "%", role: "value" },
+        { label: "금리·물가 충격", value: "11.8", unit: "%", role: "value" },
+      ],
+      series: [],
+    }));
+
+    expect(collapseSharedStrategyStressScenarios(visualizations)).toEqual([{
+      ...visualizations[0],
+      title: "보유 계좌 공통 스트레스 점검",
+      description: "현재 조건에서는 보유한 연금계좌의 스트레스 손실 추정치가 같아요.",
+      evidence_ids: ["engine:DC형", "engine:IRP", "engine:연금저축펀드"],
+    }]);
+  });
+
+  it("keeps three account stress charts when one result differs", () => {
+    const visualizations: ChatVisualization[] = [
+      {
+        kind: "stress_scenarios",
+        title: "DC형 스트레스 점검",
+        description: "",
+        data_boundary: "engine",
+        evidence_ids: [],
+        items: [{ label: "주식시장 급락", value: "20.6", unit: "%", role: "value" }],
+        series: [],
+      },
+      {
+        kind: "stress_scenarios",
+        title: "IRP 스트레스 점검",
+        description: "",
+        data_boundary: "engine",
+        evidence_ids: [],
+        items: [{ label: "주식시장 급락", value: "20.6", unit: "%", role: "value" }],
+        series: [],
+      },
+      {
+        kind: "stress_scenarios",
+        title: "연금저축펀드 스트레스 점검",
+        description: "",
+        data_boundary: "engine",
+        evidence_ids: [],
+        items: [{ label: "주식시장 급락", value: "24.1", unit: "%", role: "value" }],
+        series: [],
+      },
+    ];
+
+    expect(collapseSharedStrategyStressScenarios(visualizations)).toEqual(visualizations);
   });
 
   it("does not refresh hidden session history after a persisted answer", async () => {
