@@ -515,24 +515,35 @@ function AssistantMessage({
     && Number.isFinite(educationalFinalRiskTarget)
     && Number.isFinite(educationalRawRiskTarget)
   );
+  const educationalHasCurrentHoldings = (
+    educationalEvaluation?.evaluated_input.current_holdings.length ?? 0
+  ) > 0;
   const educationalResultLead = (
     isEducationalPortfolio
+    && educationalHasCurrentHoldings
     && educationalProfileLabel
     && educationalEvaluation?.strategy_label
   )
     ? `${educationalProfileLabel} 기준으로 한 ${educationalEvaluation.strategy_label}의 리밸런싱 결과입니다.`
     : undefined;
+  const educationalStrategyLead = (
+    isEducationalPortfolio
+    && educationalProfileLabel
+    && educationalEvaluation?.strategy_label
+  )
+    ? `현재 투자성향 설문 결과(${educationalProfileLabel})를 기준으로 한 예시 전략은 ${educationalEvaluation.strategy_label}입니다.`
+    : undefined;
   const educationalLead = (
-    educationalResultLead
+    educationalResultLead ?? educationalStrategyLead
   )
     ? educationalLossToleranceAdjusted
       ? (
-        `${educationalResultLead} 선택한 손실감내율 `
+        `${educationalResultLead ?? educationalStrategyLead} 선택한 손실감내율 `
         + `${Number(educationalEvaluation.evaluated_input.loss_tolerance_percent).toFixed(1)}%를 함께 반영했습니다. `
         + `손실감내율을 우선 적용해 성장자산 비중을 ${educationalRawRiskTarget.toFixed(1)}%에서 `
         + `${educationalFinalRiskTarget.toFixed(1)}%로 낮췄습니다.`
       )
-      : educationalResultLead
+      : educationalResultLead ?? educationalStrategyLead
     : undefined;
   const isPensionTaxCredit = (
     response.intent === "pension_tax"
