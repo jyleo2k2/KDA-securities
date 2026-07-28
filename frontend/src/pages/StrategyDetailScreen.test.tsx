@@ -361,6 +361,12 @@ describe("StrategyDetailScreen", () => {
     expect(onPartnerBrokerClick).toHaveBeenCalledOnce();
   });
 
+  it("shows the final confirmation below the partner broker action", () => {
+    render(<StrategyDetailScreen onBack={vi.fn()} />);
+
+    expect(screen.getByText("비용·수수료와 제휴 관계를 확인했습니다. 투자 결과에 따라 원금 손실이 발생할 수 있으며, 실제 거래는 고객님의 판단으로 진행됩니다.")).toBeInTheDocument();
+  });
+
   it("falls back to the first strategy when the hash has no valid id", () => {
     window.location.hash = "#/strategy-detail";
 
