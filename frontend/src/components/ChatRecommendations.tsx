@@ -72,8 +72,9 @@ export function ChatQuestionRecommendations({
   return (
     <section className="chat-home-card-section" aria-labelledby="chat-question-heading">
       <header className="chat-home-section-heading">
-        <p>추천 질문</p>
-        <h2 id="chat-question-heading">연금계좌와 운용 방법을 물어보세요</h2>
+        <p>빠른 시작</p>
+        <h2 id="chat-question-heading">이런 질문부터 시작해 보세요</h2>
+        <span>궁금한 카드를 누르면 연그미가 바로 설명해 드려요.</span>
       </header>
       {isLoading ? (
         <div
@@ -89,9 +90,13 @@ export function ChatQuestionRecommendations({
         </div>
       ) : cards.length > 0 ? (
         <div className="chat-question-grid chat-question-grid-ready" aria-label="챗봇 추천 질문">
-          {cards.map((card) => (
+          {cards.map((card, index) => (
             <button type="button" key={card.card_id} onClick={() => onSubmit(card.message)}>
-              <span className="design-prompt-copy"><small>추천 질문</small><strong>{card.title}</strong><em>{card.message}</em></span>
+              <span className="chat-question-icon">
+                <ChatIcon name={index === 0 ? "book" : index === 1 ? "shield" : "spark"} size={18} />
+              </span>
+              <span className="design-prompt-copy"><small>추천 {index + 1}</small><strong>{card.title}</strong><em>{card.message}</em></span>
+              <ChatIcon name="chevron" size={17} />
             </button>
           ))}
         </div>

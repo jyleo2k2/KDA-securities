@@ -446,9 +446,9 @@ describe("GuidePage chat history deletion", () => {
   it("renders the attached Canvas-2 conversation shell", async () => {
     renderGuide();
 
-    expect(await screen.findByText("연그미", {
-      selector: ".design-brand strong",
-    })).toBeInTheDocument();
+    expect(document.querySelector("#chat-welcome-title")).toHaveTextContent(
+      "고객님,어떤 연금 고민이 있으세요?",
+    );
     expect(document.querySelector(".design-brand-avatar img")).toHaveAttribute(
       "src",
       expect.stringContaining("piggy-clean"),
@@ -1619,7 +1619,7 @@ describe("GuidePage chat history deletion", () => {
     });
   });
 
-  it("renders the three home recommendation cards without a carousel", async () => {
+  it("renders the three home recommendation cards in a horizontal rail", async () => {
     vi.mocked(getChatCards).mockResolvedValue({ cards: RECOMMENDED_CHAT_CARDS });
     renderGuide();
 
@@ -1629,7 +1629,7 @@ describe("GuidePage chat history deletion", () => {
     expect(buttons).toHaveLength(3);
     expect(buttons.map((button) => button.textContent)).toEqual(
       RECOMMENDED_CHAT_CARDS.map(
-        (card) => `추천 질문${card.title}${card.message}`,
+        (card, index) => `추천 ${index + 1}${card.title}${card.message}`,
       ),
     );
     expect(recommendationGrid).toHaveClass("chat-question-grid");
@@ -1725,7 +1725,7 @@ describe("GuidePage chat history deletion", () => {
     renderGuide();
 
     expect(await screen.findByRole("heading", {
-      name: "연금계좌와 운용 방법을 물어보세요",
+      name: "이런 질문부터 시작해 보세요",
     })).toBeInTheDocument();
     const sectorCards = await screen.findByLabelText("ETF 섹터 카드 목록 (옆으로 넘겨 보기)");
     expect(ETF_THEME_CARDS).toHaveLength(21);

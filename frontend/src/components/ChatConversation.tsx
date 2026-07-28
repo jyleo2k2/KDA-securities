@@ -3,9 +3,18 @@ import type { FormEvent, KeyboardEvent, ReactNode, RefObject } from "react";
 
 import { pickChatPromptCandidate } from "../chatPromptCandidates";
 import type { ConversationMessage } from "../hooks/useChatStream";
+import yeongeumiProfile from "../assets/login/piggy-clean.png";
 import { ChatIcon } from "./ChatIcon";
 
 const CHAT_MESSAGE_PAGE_SIZE = 40;
+
+function AssistantAvatar() {
+  return (
+    <div className="assistant-avatar" aria-hidden="true">
+      <img src={yeongeumiProfile} alt="" />
+    </div>
+  );
+}
 
 export function ChatMessageList({
   conversationEndRef,
@@ -56,8 +65,9 @@ export function ChatMessageList({
           key={message.id}
           ref={message.id === messages[messages.length - 1]?.id ? latestMessageRef : undefined}
         >
-          {message.role === "assistant" && <div className="assistant-avatar"><span>연금</span></div>}
+          {message.role === "assistant" && <AssistantAvatar />}
           <div className="message-group">
+            {message.role === "assistant" && <span className="message-sender">연그미</span>}
             <div className="message-bubble">{renderMessage(message)}</div>
             {message.failedPrompt && (
               <button className="retry-button" type="button" onClick={() => onRetry(message)} disabled={isSending || deletingSessionId !== null}>
@@ -69,12 +79,15 @@ export function ChatMessageList({
       ))}
       {isSending && (
         <div className="message-row assistant">
-          <div className="assistant-avatar"><span>연금</span></div>
-          {renderStreamingAnswer() ?? (
-            <div className="message-bubble typing" aria-label={sendingStage}>
-              <span /><span /><span /><small>{sendingStage}</small>
-            </div>
-          )}
+          <AssistantAvatar />
+          <div className="message-group">
+            <span className="message-sender">연그미</span>
+            {renderStreamingAnswer() ?? (
+              <div className="message-bubble typing" aria-label={sendingStage}>
+                <span /><span /><span /><small>{sendingStage}</small>
+              </div>
+            )}
+          </div>
         </div>
       )}
       <div ref={conversationEndRef} />
@@ -130,7 +143,7 @@ export function ChatComposer({
           <button type="submit" disabled={input.trim().length < 2 || deletingSessionId !== null} aria-label="질문 보내기"><ChatIcon name="send" size={20} /></button>
         )}
       </form>
-      <p>AI 답변은 투자 판단을 돕는 정보이며, 미래 수익을 보장하지 않습니다.</p>
+      <p><ChatIcon name="shield" size={12} /> AI 답변은 투자 판단을 돕는 정보이며, 미래 수익을 보장하지 않습니다.</p>
     </div>
   );
 }
