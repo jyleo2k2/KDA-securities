@@ -416,7 +416,7 @@ def test_naver_completion_requires_one_running_row_and_rolls_back(
     monkeypatch.setattr(
         naver_repository_module.psycopg,
         "connect",
-        lambda _: connection,
+        lambda _, **__: connection,
     )
     repository = NaverNewsRepository("postgresql://example.invalid/db")
 
@@ -439,7 +439,7 @@ def test_naver_completion_inserts_only_new_urls_and_records_duplicates(
     monkeypatch.setattr(
         naver_repository_module.psycopg,
         "connect",
-        lambda _: connection,
+        lambda _, **__: connection,
     )
     repository = NaverNewsRepository("postgresql://example.invalid/db")
     published_at = datetime(2026, 7, 16, 10, tzinfo=UTC)
@@ -486,7 +486,7 @@ def test_naver_fail_run_returns_exact_result_and_preserves_rejections(
     monkeypatch.setattr(
         naver_repository_module.psycopg,
         "connect",
-        lambda _: connection,
+        lambda _, **__: connection,
     )
     repository = NaverNewsRepository("postgresql://example.invalid/db")
 

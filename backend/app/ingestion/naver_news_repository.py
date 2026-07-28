@@ -108,11 +108,16 @@ class NaverNewsRepository:
             raise ValueError("database_url is required")
         self._database_url = database_url
 
+    def _connect(self) -> psycopg.Connection:
+        # Supabase transaction pooler reuses server connections across clients.
+        # Disable psycopg automatic prepared statements to avoid duplicate names.
+        return psycopg.connect(self._database_url, prepare_threshold=None)
+
     def _start_run(
         self, *, metadata: dict[str, Any], requested_params: dict[str, Any]
     ) -> tuple[UUID, int]:
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connect() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
@@ -249,7 +254,7 @@ class NaverNewsRepository:
             for item in response.items
         ]
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connect() as connection,
             connection.cursor() as cursor,
         ):
             if rows:
@@ -342,7 +347,7 @@ class NaverNewsRepository:
         if not 1 <= retry_after_minutes <= 1440:
             raise ValueError("retry_after_minutes must be between 1 and 1440")
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connect() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
@@ -410,7 +415,7 @@ class NaverNewsRepository:
         ):
             raise ValueError("content_sha256 must be a SHA-256 hex digest")
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connect() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
@@ -454,7 +459,7 @@ class NaverNewsRepository:
         if not error_code or len(error_code) > 100:
             raise ValueError("error_code must contain between 1 and 100 characters")
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connect() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
@@ -479,7 +484,7 @@ class NaverNewsRepository:
 
     def load_market_identities(self) -> list[StoredMarketNewsIdentity]:
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connect() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
@@ -510,7 +515,7 @@ class NaverNewsRepository:
 
     def load_active_market_news_summaries(self) -> list[ActiveMarketNewsSummary]:
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connect() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
@@ -546,7 +551,7 @@ class NaverNewsRepository:
             raise ValueError("market-news summaries must contain three non-empty lines")
 
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connect() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
@@ -625,7 +630,7 @@ class NaverNewsRepository:
             raise ValueError("market-news summaries must contain three non-empty lines")
 
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connect() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
@@ -741,7 +746,7 @@ class NaverNewsRepository:
             for article in articles
         ]
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connect() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(
@@ -908,7 +913,7 @@ class NaverNewsRepository:
                 }
             )
         with (
-            psycopg.connect(self._database_url) as connection,
+            self._connect() as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute(

@@ -117,7 +117,7 @@ def _run_rotation(
     monkeypatch.setattr(
         repository_module.psycopg,
         "connect",
-        lambda _: connection,
+        lambda _, **__: connection,
     )
     result = NaverNewsRepository("postgresql://test").complete_market_run(
         run_id=UUID(int=1),
@@ -130,6 +130,28 @@ def _run_rotation(
         processing_failures={},
     )
     return result, cursor, connection
+
+
+def test_repository_disables_prepared_statements_for_transaction_pooler(
+    monkeypatch,
+) -> None:
+    captured: dict[str, object] = {}
+    sentinel = object()
+
+    def connect(database_url: str, **kwargs: object) -> object:
+        captured["database_url"] = database_url
+        captured.update(kwargs)
+        return sentinel
+
+    monkeypatch.setattr(repository_module.psycopg, "connect", connect)
+
+    repository = NaverNewsRepository("postgresql://test")
+
+    assert repository._connect() is sentinel
+    assert captured == {
+        "database_url": "postgresql://test",
+        "prepare_threshold": None,
+    }
 
 
 def test_full_store_waits_without_deleting_for_partial_batch(monkeypatch) -> None:
