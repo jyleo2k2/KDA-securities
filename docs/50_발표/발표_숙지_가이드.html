@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="연금 코파일럿 발표 흐름, 시연, Q&A를 숙지하는 리허설 가이드">
+  <title>연금 코파일럿 · 발표 숙지 가이드</title>
+  <style>
+    :root {
+      --bg: #f5f6f4;
+      --surface: #ffffff;
+      --surface-2: #eef1ee;
+      --ink: #182019;
+      --ink-2: #536057;
+      --line: #d9dfda;
+      --green: #087a4f;
+      --green-soft: #e3f3e9;
+      --blue: #4059c7;
+      --blue-soft: #e8ecfb;
+      --yellow: #97600a;
+      --yellow-soft: #fbf0d9;
+      --red: #a33c35;
+      --red-soft: #f8e9e7;
+      --shadow: 0 10px 26px rgba(31, 50, 40, .07);
+      --font: Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+      --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+      --max: 1160px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #101512;
+        --surface: #18201b;
+        --surface-2: #222b25;
+        --ink: #eef4ef;
+        --ink-2: #acb9b0;
+        --line: #303d35;
+        --green: #65d5a2;
+        --green-soft: #18372a;
+        --blue: #93a2ff;
+        --blue-soft: #252a47;
+        --yellow: #e7bb6a;
+        --yellow-soft: #392d1a;
+        --red: #ed9790;
+        --red-soft: #3b2220;
+        --shadow: 0 12px 28px rgba(0, 0, 0, .25);
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: var(--font);
+      line-height: 1.65;
+      word-break: keep-all;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    button, input { font: inherit; }
+    code { font-family: var(--mono); font-size: .9em; }
+    .skip { position: fixed; top: 8px; left: 8px; z-index: 100; padding: 8px 12px; color: #fff; background: #111; transform: translateY(-150%); }
+    .skip:focus { transform: translateY(0); }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 92%, transparent);
+      backdrop-filter: blur(14px);
+    }
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      width: min(var(--max), calc(100% - 40px));
+      min-height: 58px;
+      margin: 0 auto;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-size: .84rem; font-weight: 850; }
+    .mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 7px; color: #fff; background: var(--green); }
+    .top-actions { display: flex; gap: 7px; }
+    .button {
+      min-height: 36px;
+      padding: 7px 11px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--ink);
+      background: var(--surface-2);
+      cursor: pointer;
+    }
+    .button:hover { border-color: var(--green); }
+    .intro {
+      width: min(var(--max), calc(100% - 40px));
+      margin: 0 auto;
+      padding: 48px 0 38px;
+    }
+    .eyebrow { margin: 0 0 8px; color: var(--green); font-size: .74rem; font-weight: 850; }
+    h1 { max-width: 850px; margin: 0; font-size: 3.1rem; line-height: 1.12; letter-spacing: 0; }
+    .lede { max-width: 760px; margin: 16px 0 0; color: var(--ink-2); font-size: 1.03rem; }
+    .storyline {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 7px;
+      margin-top: 30px;
+    }
+    .story-step {
+      position: relative;
+      min-height: 86px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-top: 4px solid var(--tone, var(--green));
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    .story-step:not(:last-child)::after { position: absolute; top: 50%; right: -8px; z-index: 2; color: var(--ink-2); content: "›"; transform: translateY(-50%); }
+    .story-step b { display: block; margin-bottom: 4px; font-size: .83rem; }
+    .story-step span { display: block; color: var(--ink-2); font-size: .72rem; }
+    .story-step:nth-child(2) { --tone: var(--blue); }
+    .story-step:nth-child(3) { --tone: var(--yellow); }
+    .story-step:nth-child(4) { --tone: var(--green); }
+    .story-step:nth-child(5) { --tone: var(--blue); }
+    .story-step:nth-child(6) { --tone: var(--red); }
+    .layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 40px;
+      width: min(var(--max), calc(100% - 40px));
+      margin: 0 auto;
+      padding: 12px 0 80px;
+    }
+    nav {
+      position: sticky;
+      top: 78px;
+      align-self: start;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    nav p { margin: 0 0 8px; color: var(--ink-2); font-size: .72rem; font-weight: 850; }
+    nav a { display: block; padding: 7px 8px; border-left: 2px solid transparent; color: var(--ink-2); font-size: .82rem; text-decoration: none; }
+    nav a:hover, nav a.active { border-left-color: var(--green); color: var(--ink); background: var(--surface-2); }
+    main { min-width: 0; }
+    section { scroll-margin-top: 82px; }
+    section + section { margin-top: 64px; }
+    .section-kicker { margin: 0 0 5px; color: var(--blue); font-size: .72rem; font-weight: 850; }
+    h2 { margin: 0; font-size: 1.78rem; line-height: 1.25; letter-spacing: 0; }
+    .section-copy { max-width: 760px; margin: 9px 0 20px; color: var(--ink-2); }
+    .one-liner { padding: 20px; border-left: 4px solid var(--green); background: var(--green-soft); font-size: 1.08rem; font-weight: 720; }
+    .anchor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .anchor {
+      min-height: 150px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .anchor .num { color: var(--green); font-family: var(--mono); font-size: .72rem; font-weight: 850; }
+    .anchor h3 { margin: 8px 0 6px; font-size: 1rem; }
+    .anchor p { margin: 0; color: var(--ink-2); font-size: .86rem; }
+    .fact-strip { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .fact { padding: 18px 14px; border-right: 1px solid var(--line); }
+    .fact:last-child { border-right: 0; }
+    .fact strong { display: block; color: var(--green); font-size: 1.15rem; }
+    .fact span { display: block; margin-top: 4px; color: var(--ink-2); font-size: .75rem; }
+    .fact small { display: block; margin-top: 8px; color: var(--ink-2); font-size: .67rem; }
+    .flow-list { display: grid; gap: 0; border-top: 1px solid var(--line); }
+    .flow-row { display: grid; grid-template-columns: 90px 170px 1fr; gap: 18px; padding: 18px 4px; border-bottom: 1px solid var(--line); }
+    .flow-row .phase { color: var(--blue); font-family: var(--mono); font-size: .73rem; font-weight: 850; }
+    .flow-row h3 { margin: 0; font-size: .96rem; }
+    .flow-row p { margin: 0; color: var(--ink-2); font-size: .86rem; }
+    .demo {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 9px;
+    }
+    .demo-step { position: relative; min-height: 132px; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+    .demo-step:not(:last-child)::after { position: absolute; top: 50%; right: -9px; z-index: 2; color: var(--green); content: "›"; font-size: 1.2rem; transform: translateY(-50%); }
+    .demo-step b { display: block; margin-bottom: 7px; color: var(--green); font-size: .82rem; }
+    .demo-step p { margin: 0; color: var(--ink-2); font-size: .8rem; }
+    .demo-script { margin: 14px 0 0; padding: 15px 17px; border-left: 3px solid var(--blue); background: var(--blue-soft); font-size: .88rem; }
+    .boundary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .boundary { padding: 18px; border: 1px solid var(--line); border-top: 4px solid var(--green); border-radius: 8px; background: var(--surface); }
+    .boundary.no { border-top-color: var(--red); }
+    .boundary h3 { margin: 0 0 10px; font-size: 1rem; }
+    .boundary ul { margin: 0; padding-left: 20px; }
+    .boundary li { margin: 7px 0; color: var(--ink-2); font-size: .84rem; }
+    .qna-list details { border-top: 1px solid var(--line); }
+    .qna-list details:last-child { border-bottom: 1px solid var(--line); }
+    .qna-list summary { padding: 15px 4px; cursor: pointer; font-weight: 760; }
+    .answer-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0 0 16px; }
+    .answer-step { padding: 11px; border-radius: 7px; background: var(--surface-2); }
+    .answer-step b { display: block; margin-bottom: 3px; color: var(--blue); font-size: .72rem; }
+    .answer-step span { color: var(--ink-2); font-size: .76rem; }
+    .role-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+    table { width: 100%; min-width: 760px; border-collapse: collapse; background: var(--surface); }
+    th, td { padding: 12px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: .82rem; }
+    th { color: var(--ink-2); background: var(--surface-2); font-size: .73rem; }
+    tr:last-child td { border-bottom: 0; }
+    .check-panel { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); box-shadow: var(--shadow); }
+    .progress-head { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; padding: 18px; border-bottom: 1px solid var(--line); }
+    .progress-head h3 { margin: 0 0 5px; font-size: 1rem; }
+    .progress-head p { margin: 0; color: var(--ink-2); font-size: .8rem; }
+    .progress-value { color: var(--green); font-size: 1.35rem; font-weight: 850; }
+    .progress-track { height: 8px; margin: 0 18px 16px; overflow: hidden; border-radius: 4px; background: var(--surface-2); }
+    .progress-bar { width: 0; height: 100%; background: var(--green); transition: width .22s ease; }
+    .checklist { display: grid; grid-template-columns: 1fr 1fr; }
+    .check-item { display: flex; align-items: flex-start; gap: 11px; min-height: 76px; padding: 15px 18px; border-top: 1px solid var(--line); }
+    .check-item:nth-child(odd) { border-right: 1px solid var(--line); }
+    .check-item input { width: 18px; height: 18px; margin-top: 3px; accent-color: var(--green); }
+    .check-item label { cursor: pointer; }
+    .check-item b { display: block; font-size: .86rem; }
+    .check-item span { display: block; margin-top: 3px; color: var(--ink-2); font-size: .75rem; }
+    .reset-wrap { display: flex; justify-content: flex-end; padding: 14px 18px; border-top: 1px solid var(--line); }
+    .links { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .doc-link { display: block; padding: 12px 14px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink-2); background: var(--surface); text-decoration: none; font-size: .83rem; }
+    .doc-link:hover { border-color: var(--green); color: var(--ink); }
+    footer { margin-top: 62px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: .75rem; }
+    @media (max-width: 920px) {
+      h1 { font-size: 2.45rem; }
+      .storyline { grid-template-columns: repeat(3, 1fr); }
+      .story-step:not(:last-child)::after { display: none; }
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; display: flex; gap: 4px; overflow-x: auto; }
+      nav p { display: none; }
+      nav a { flex: none; border-left: 0; border-bottom: 2px solid transparent; }
+      nav a:hover, nav a.active { border-left-color: transparent; border-bottom-color: var(--green); }
+      .demo { grid-template-columns: 1fr 1fr; }
+      .demo-step:not(:last-child)::after { display: none; }
+    }
+    @media (max-width: 680px) {
+      .topbar-inner, .intro, .layout { width: min(100% - 24px, var(--max)); }
+      .intro { padding: 30px 0; }
+      h1 { font-size: 2rem; }
+      .lede { font-size: .95rem; }
+      .storyline, .anchor-grid, .demo, .boundary-grid, .links, .checklist { grid-template-columns: 1fr; }
+      .fact-strip { grid-template-columns: 1fr 1fr; }
+      .fact { border-bottom: 1px solid var(--line); }
+      .flow-row { grid-template-columns: 1fr; gap: 5px; }
+      .answer-steps { grid-template-columns: 1fr 1fr; }
+      .check-item:nth-child(odd) { border-right: 0; }
+      .top-actions .button:first-child { display: none; }
+    }
+    @media print {
+      :root { color-scheme: light; --bg: #fff; --surface: #fff; --surface-2: #f4f5f4; --ink: #111; --ink-2: #444; --line: #ccc; }
+      .topbar, nav, .reset-wrap { display: none; }
+      .intro, .layout { width: 100%; }
+      .layout { display: block; padding-top: 0; }
+      section + section { margin-top: 34px; }
+      .anchor, .demo-step, .boundary, .check-panel { break-inside: avoid; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#content">본문으로 이동</a>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><span class="mark">연</span><span>연금 코파일럿 · 발표 숙지</span></div>
+      <div class="top-actions">
+        <button class="button" type="button" id="open-all">Q&amp;A 모두 열기</button>
+        <button class="button" type="button" onclick="window.print()">인쇄</button>
+      </div>
+    </div>
+  </div>
+
+  <header class="intro">
+    <p class="eyebrow">PRESENTATION REHEARSAL GUIDE</p>
+    <h1>발표 숙지 가이드</h1>
+    <p class="lede">슬라이드를 외우는 자료가 아니라, 프로젝트의 논리를 같은 순서로 설명하고 예상 질문에 근거와 한계를 함께 답하기 위한 팀 공용 리허설 도구입니다.</p>
+    <div class="storyline" aria-label="발표 흐름">
+      <div class="story-step"><b>문제</b><span>방법을 몰라 방치되는 연금</span></div>
+      <div class="story-step"><b>데이터</b><span>공식 원천과 사용자 경계</span></div>
+      <div class="story-step"><b>모델</b><span>규칙 엔진과 검증 게이트</span></div>
+      <div class="story-step"><b>서비스</b><span>진단·설명·사용자 실행</span></div>
+      <div class="story-step"><b>가치</b><span>조회와 일임 사이 설명 계층</span></div>
+      <div class="story-step"><b>한계</b><span>운영 전환 과제를 정직하게</span></div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="문서 목차">
+      <p>REHEARSAL</p>
+      <a href="#identity">한 줄 정체성</a>
+      <a href="#anchors">핵심 주장</a>
+      <a href="#numbers">숫자 앵커</a>
+      <a href="#flow">발표 흐름</a>
+      <a href="#demo">시연 순서</a>
+      <a href="#boundaries">표현 경계</a>
+      <a href="#qna">Q&amp;A 훈련</a>
+      <a href="#roles">팀 역할</a>
+      <a href="#checklist">최종 체크</a>
+      <a href="#documents">원문 자료</a>
+    </nav>
+
+    <main id="content">
+      <section id="identity">
+        <p class="section-kicker">01 · IDENTITY</p>
+        <h2>가장 먼저 맞춰야 할 한 문장</h2>
+        <p class="section-copy">발표자마다 표현이 달라도 아래 의미는 같아야 합니다.</p>
+        <div class="one-liner">DC형·IRP·연금저축의 계좌 규칙과 자산구성을 규칙 엔진으로 계산하고, LLM이 검증된 결과를 쉽게 설명해 사용자가 스스로 운용 결정을 내리도록 돕는 연금계좌 운용 가이드입니다.</div>
+      </section>
+
+      <section id="anchors">
+        <p class="section-kicker">02 · SIX ANCHORS</p>
+        <h2>어떤 질문에서도 돌아올 여섯 축</h2>
+        <div class="anchor-grid">
+          <article class="anchor"><span class="num">A1</span><h3>문제는 무관심보다 정보 부족</h3><p>관심은 있지만 운용 방법을 모르는 이용자가 핵심 대상입니다. 조회 기능이나 자동화만으로 방치가 해결되지 않는 이유를 여기서 설명합니다.</p></article>
+          <article class="anchor"><span class="num">A2</span><h3>계산과 설명을 분리</h3><p>규칙 엔진이 수치를 결정하고 LLM은 설명만 합니다. 이 구조가 금융 정확성과 설명 가능성의 중심입니다.</p></article>
+          <article class="anchor"><span class="num">A3</span><h3>세 계좌 규칙을 섞지 않음</h3><p>DC형·IRP의 일반 위험자산 한도와 연금저축의 상품 적격성 규칙을 계좌별로 적용합니다.</p></article>
+          <article class="anchor"><span class="num">A4</span><h3>데이터 경계를 유지</h3><p>시장·제도·상품은 공식 원천, 뉴스는 메타데이터와 파생 요약, RAG는 검증 문서, 사용자 계좌는 서비스 시나리오 구조로 분리합니다.</p></article>
+          <article class="anchor"><span class="num">A5</span><h3>조회와 일임 사이의 설명 계층</h3><p>서비스가 주문을 대신하지 않습니다. 통합 진단과 근거 설명을 제공하고 실제 선택과 실행은 이용자가 합니다.</p></article>
+          <article class="anchor"><span class="num">A6</span><h3>한계도 설계의 일부</h3><p>미래 수익을 보장하지 않고, 비교 실험이 없는 기술은 우월하다고 말하지 않으며, 실서비스 전환 과제를 분리해 공개합니다.</p></article>
+        </div>
+      </section>
+
+      <section id="numbers">
+        <p class="section-kicker">03 · NUMBER ANCHORS</p>
+        <h2>숫자는 분모와 기준을 함께 말합니다</h2>
+        <p class="section-copy">아래 숫자는 발표 개요의 핵심 앵커입니다. 최신 기준일과 정확한 출처는 원문 슬라이드 노트를 우선합니다.</p>
+        <div class="fact-strip">
+          <div class="fact"><strong>75.2%</strong><span>퇴직연금 원리금보장형 비중</span><small>문제 규모를 설명할 때 사용</small></div>
+          <div class="fact"><strong>57.1%</strong><span>관심은 있으나 방법을 모름</span><small>핵심 페르소나 근거</small></div>
+          <div class="fact"><strong>19%p</strong><span>가입자 수익률 상·하위 격차</span><small>운용 격차를 설명할 때 사용</small></div>
+          <div class="fact"><strong>70%</strong><span>DC형·IRP 일반 위험자산 한도</span><small>연금저축에는 동일 적용 금지</small></div>
+        </div>
+      </section>
+
+      <section id="flow">
+        <p class="section-kicker">04 · TALK TRACK</p>
+        <h2>발표는 이 순서로 연결합니다</h2>
+        <div class="flow-list">
+          <div class="flow-row"><span class="phase">OPEN</span><h3>문제 정의</h3><p>“연금이 없는 것이 아니라 운용 방법을 몰라 방치되는 것이 문제입니다.” 방치 통계에서 정보부족형 페르소나로 연결합니다.</p></div>
+          <div class="flow-row"><span class="phase">WHY US</span><h3>시장 빈칸</h3><p>마이데이터 조회와 로보어드바이저 일임 사이에, 계좌를 진단하고 이유를 설명해 이용자 실행으로 잇는 계층이 비어 있다고 정의합니다.</p></div>
+          <div class="flow-row"><span class="phase">DATA</span><h3>공식 근거</h3><p>FSS·KRX·KIS·KIND·DART·법령과 NAVER 뉴스의 역할을 구분하고, 원본·기준일·해시·정규화 결과를 연결한다고 설명합니다.</p></div>
+          <div class="flow-row"><span class="phase">MODEL</span><h3>규칙 엔진</h3><p>예측 모델의 정확도 경쟁이 아니라 계좌 규칙과 계산 불변식을 검증하는 문제로 바꿨다는 점을 강조합니다.</p></div>
+          <div class="flow-row"><span class="phase">AI</span><h3>LLM 통제</h3><p>엔진 답변 → 숫자·출처 검증 → LLM 재서술 → 실패 시 결정론 답변 유지 순서로 설명합니다.</p></div>
+          <div class="flow-row"><span class="phase">DEMO</span><h3>사용자 경험</h3><p>로그인과 계좌 흐름 뒤에 홈, 챗봇, 전략, 계산기가 같은 사용자·성향·계좌 문맥으로 이어지는 장면을 보여줍니다.</p></div>
+          <div class="flow-row"><span class="phase">VALUE</span><h3>비즈니스 가치</h3><p>방치 계좌의 운용지시를 돕고, 실물이전과 연금 고객 유치에서 설명 가능한 진단 도구가 될 수 있다고 연결합니다.</p></div>
+          <div class="flow-row"><span class="phase">CLOSE</span><h3>한계와 다음 단계</h3><p>실계좌 연동, 운영 부하, 비용 계측, 실서비스 규제 절차를 다음 단계로 분리해 과장 없이 마칩니다.</p></div>
+        </div>
+      </section>
+
+      <section id="demo">
+        <p class="section-kicker">05 · DEMO RUNBOOK</p>
+        <h2>시연은 기능 목록이 아니라 한 사용자 여정입니다</h2>
+        <p class="section-copy">각 화면에서 “무엇을 보여주는지”보다 “앞 단계의 정보가 다음 판단에 어떻게 이어지는지”를 말합니다.</p>
+        <div class="demo">
+          <div class="demo-step"><b>1 · 진입</b><p>로그인 → 계좌 연동 동의 → 투자정보 입력. 사용자와 설문 문맥이 생성되는 지점을 보여줍니다.</p></div>
+          <div class="demo-step"><b>2 · 통합 홈</b><p>계좌·보유자산과 투자성향이 한 화면에서 연결되는 모습을 보여줍니다.</p></div>
+          <div class="demo-step"><b>3 · 챗봇</b><p>계좌 차이 또는 전략 질문을 입력하고, 결론·근거·출처·후속 질문 흐름을 확인합니다.</p></div>
+          <div class="demo-step"><b>4 · 확장 기능</b><p>MY투자 전략, 타 고객 참고, 연금계산기 중 하나를 골라 같은 데이터 계약이 이어짐을 보여줍니다.</p></div>
+        </div>
+        <p class="demo-script"><b>시연 멘트</b> · “이 화면이 추천의 끝이 아닙니다. 사용자가 왜 이런 결과가 나왔는지 챗봇에 이어 묻고, 전략과 계산 결과를 비교한 뒤 공식 채널에서 직접 실행하도록 돕는 흐름입니다.”</p>
+      </section>
+
+      <section id="boundaries">
+        <p class="section-kicker">06 · CLAIM BOUNDARIES</p>
+        <h2>서비스 범위와 표현 경계</h2>
+        <div class="boundary-grid">
+          <div class="boundary">
+            <h3>반드시 말할 것</h3>
+            <ul>
+              <li>자문·정보 제공형이며 실제 주문은 이용자가 직접 실행합니다.</li>
+              <li>일임 구조가 아니고 미래 수익을 예측하거나 보장하지 않습니다.</li>
+              <li>DC형·IRP와 연금저축의 계좌 규칙을 분리합니다.</li>
+              <li>모든 계산은 규칙 엔진이 하고 LLM은 설명만 합니다.</li>
+              <li>공식 데이터와 사용자 데이터의 내부 경계를 유지합니다.</li>
+            </ul>
+          </div>
+          <div class="boundary no">
+            <h3>피해야 할 주장</h3>
+            <ul>
+              <li>“AI가 알아서 가장 좋은 상품을 골라 줍니다.”</li>
+              <li>“이 전략으로 미래 수익이 보장됩니다.”</li>
+              <li>“연금저축도 위험자산 한도가 70%입니다.”</li>
+              <li>“현재 화면이 실제 금융사 계좌를 이미 이전하거나 주문합니다.”</li>
+              <li>비교 실험이 없는 기술을 “가장 빠르다” 또는 “가장 싸다”고 단정합니다.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="qna">
+        <p class="section-kicker">07 · Q&amp;A DRILL</p>
+        <h2>답변은 네 단계로 맞춥니다</h2>
+        <p class="section-copy">결론부터 말하고, 선택 이유와 프로젝트 근거를 붙인 뒤 한계를 닫습니다.</p>
+        <div class="answer-steps">
+          <div class="answer-step"><b>1 · 결론</b><span>한 문장으로 직접 답변</span></div>
+          <div class="answer-step"><b>2 · 이유</b><span>요구사항과 선택 연결</span></div>
+          <div class="answer-step"><b>3 · 근거</b><span>코드·테스트·실측 제시</span></div>
+          <div class="answer-step"><b>4 · 한계</b><span>미검증과 다음 단계</span></div>
+        </div>
+        <div class="qna-list">
+          <details><summary>왜 LLM이 직접 포트폴리오를 만들지 않나요?</summary><div class="answer-steps"><div class="answer-step"><b>결론</b><span>금융 계산은 규칙 엔진이 합니다.</span></div><div class="answer-step"><b>이유</b><span>같은 입력에 같은 결과가 필요합니다.</span></div><div class="answer-step"><b>근거</b><span>Decimal 순수 함수와 숫자 검증 가드가 있습니다.</span></div><div class="answer-step"><b>한계</b><span>규칙 변경 시 버전과 테스트를 갱신해야 합니다.</span></div></div></details>
+          <details><summary>이 서비스는 투자자문인가요, 투자권유인가요?</summary><div class="answer-steps"><div class="answer-step"><b>결론</b><span>현재는 자문·정보 제공형 운용 가이드입니다.</span></div><div class="answer-step"><b>이유</b><span>계좌 원리와 비교·시뮬레이션·자문형 콘텐츠를 제공합니다.</span></div><div class="answer-step"><b>근거</b><span>상품 선택과 주문은 이용자가 공식 채널에서 직접 합니다.</span></div><div class="answer-step"><b>한계</b><span>실서비스화 시 등록·적합성·설명의무를 재검토합니다.</span></div></div></details>
+          <details><summary>추천 근거를 어떻게 검증하나요?</summary><div class="answer-steps"><div class="answer-step"><b>결론</b><span>수치와 출처를 응답 계약으로 연결합니다.</span></div><div class="answer-step"><b>이유</b><span>설명만 그럴듯하고 근거가 없는 상태를 막기 위해서입니다.</span></div><div class="answer-step"><b>근거</b><span>숫자는 NumericEvidence, 문장은 출처 ID와 연결됩니다.</span></div><div class="answer-step"><b>한계</b><span>외부 원천의 단위와 갱신 상태도 계속 감사해야 합니다.</span></div></div></details>
+          <details><summary>왜 FastAPI와 Supabase를 골랐나요?</summary><div class="answer-steps"><div class="answer-step"><b>결론</b><span>Python 계산과 관계형 소유권 모델에 맞았습니다.</span></div><div class="answer-step"><b>이유</b><span>엔진 재작성 경계를 줄이고 Auth·RLS를 통합했습니다.</span></div><div class="answer-step"><b>근거</b><span>Pydantic 계약과 원격 Auth/RLS E2E를 검증했습니다.</span></div><div class="answer-step"><b>한계</b><span>대안 대비 부하·비용 비교는 아직 없습니다.</span></div></div></details>
+          <details><summary>실제 계좌 데이터인가요?</summary><div class="answer-steps"><div class="answer-step"><b>결론</b><span>시장·제도·상품은 공식 데이터이고 사용자 계좌는 연동 구조를 검증하는 사전구성 데이터입니다.</span></div><div class="answer-step"><b>이유</b><span>데이터 종류를 섞지 않고 실계좌 연동 계약을 먼저 구현했습니다.</span></div><div class="answer-step"><b>근거</b><span>시장 원천, 뉴스, RAG, 사용자 계좌를 별도 저장·처리합니다.</span></div><div class="answer-step"><b>한계</b><span>현재 금융사 마이데이터 실연동과 주문 실행은 없습니다.</span></div></div></details>
+          <details><summary>가장 큰 기술적 한계는 무엇인가요?</summary><div class="answer-steps"><div class="answer-step"><b>결론</b><span>검증 단계 인프라와 운영 계측이 아직 제한적입니다.</span></div><div class="answer-step"><b>이유</b><span>무료 인스턴스 콜드 스타트와 외부 LLM 지연이 있습니다.</span></div><div class="answer-step"><b>근거</b><span>프리워밍과 캐시를 적용했지만 운영 SLA는 아닙니다.</span></div><div class="answer-step"><b>한계</b><span>상시 인스턴스, 부하테스트, 실제 비용 계측이 필요합니다.</span></div></div></details>
+        </div>
+      </section>
+
+      <section id="roles">
+        <p class="section-kicker">08 · TEAM HANDOFF</p>
+        <h2>질문을 받은 사람이 답변의 주인을 압니다</h2>
+        <div class="role-table-wrap">
+          <table>
+            <thead><tr><th>이름</th><th>발표 역할</th><th>우선 답변 영역</th><th>핵심 문장</th></tr></thead>
+            <tbody>
+              <tr><td>이재용</td><td>총괄·AI 서비스 아키텍처</td><td>전체 구조, 엔진·LLM 분리, 통합 검증</td><td>“계산·데이터·설명을 단방향 책임으로 나눴습니다.”</td></tr>
+              <tr><td>이호연</td><td>조장·챗봇 백엔드</td><td>뉴스·ETF·연금 질문, 세액공제 연동</td><td>“질문을 결정론 도구와 검증 데이터로 라우팅합니다.”</td></tr>
+              <tr><td>김태형</td><td>연금 엔진·ETF 데이터</td><td>계좌 규칙, CMA, 위험·스트레스, ETF</td><td>“계좌별 규칙과 공식 데이터를 엔진 불변식으로 고정했습니다.”</td></tr>
+              <tr><td>최호택</td><td>프론트엔드·서비스 UI</td><td>로그인·온보딩·챗봇·홈 UX</td><td>“복잡한 연금 정보를 모바일 흐름 안에서 비교 가능하게 만들었습니다.”</td></tr>
+              <tr><td>진재현</td><td>프론트엔드·서비스 UI</td><td>화면 연결, 상호작용, 데모 UX</td><td>“진단 결과가 전략과 후속 행동으로 이어지게 구성했습니다.”</td></tr>
+              <tr><td>정인성</td><td>데이터·서비스 통합 및 고객 UX</td><td>고객 시나리오, Auth, 통합 QA</td><td>“같은 고객 데이터가 인증·화면·챗봇에서 일관되게 흐르게 했습니다.”</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="checklist">
+        <p class="section-kicker">09 · FINAL CHECK</p>
+        <h2>리허설 체크리스트</h2>
+        <p class="section-copy">체크 상태는 이 브라우저에 저장됩니다. 발표 전 팀원이 각자 한 번씩 완료합니다.</p>
+        <div class="check-panel">
+          <div class="progress-head"><div><h3>숙지 진행률</h3><p>모든 항목을 말로 설명할 수 있을 때 체크합니다.</p></div><span class="progress-value" id="progress-value">0%</span></div>
+          <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+          <div class="checklist" id="rehearsal-checklist">
+            <div class="check-item"><input id="c1" type="checkbox"><label for="c1"><b>프로젝트를 한 문장으로 설명</b><span>규칙 엔진 계산, LLM 설명, 사용자 직접 실행을 포함한다.</span></label></div>
+            <div class="check-item"><input id="c2" type="checkbox"><label for="c2"><b>문제 통계의 분모와 의미 확인</b><span>75.2%, 57.1%, 19%p를 섞지 않는다.</span></label></div>
+            <div class="check-item"><input id="c3" type="checkbox"><label for="c3"><b>세 계좌 규칙 차이를 설명</b><span>연금저축에 DC·IRP 70% 한도를 적용하지 않는다.</span></label></div>
+            <div class="check-item"><input id="c4" type="checkbox"><label for="c4"><b>엔진과 LLM 책임을 설명</b><span>프롬프트가 아니라 실행 순서와 가드로 통제한다.</span></label></div>
+            <div class="check-item"><input id="c5" type="checkbox"><label for="c5"><b>데이터 경계를 설명</b><span>공식 시장 데이터, 뉴스, RAG, 사용자 계좌를 구분한다.</span></label></div>
+            <div class="check-item"><input id="c6" type="checkbox"><label for="c6"><b>시연 골든패스 완주</b><span>로그인부터 챗봇 후속 질문까지 끊김 없이 확인한다.</span></label></div>
+            <div class="check-item"><input id="c7" type="checkbox"><label for="c7"><b>기술 스택 선택과 한계를 답변</b><span>우월성이 아니라 적합성과 트레이드오프로 답한다.</span></label></div>
+            <div class="check-item"><input id="c8" type="checkbox"><label for="c8"><b>자문·정보 제공형 경계를 설명</b><span>일임·자동 주문·미래 수익 보장 표현을 피한다.</span></label></div>
+            <div class="check-item"><input id="c9" type="checkbox"><label for="c9"><b>내 역할과 인접 역할을 숙지</b><span>내 답변 범위와 넘겨줄 팀원을 안다.</span></label></div>
+            <div class="check-item"><input id="c10" type="checkbox"><label for="c10"><b>한계와 다음 단계를 말로 마무리</b><span>실계좌 연동, 운영 인프라, 비용·부하 계측을 구분한다.</span></label></div>
+          </div>
+          <div class="reset-wrap"><button class="button" type="button" id="reset-progress">진행률 초기화</button></div>
+        </div>
+      </section>
+
+      <section id="documents">
+        <p class="section-kicker">10 · SOURCE MATERIALS</p>
+        <h2>발표 원문과 상세 근거</h2>
+        <div class="links">
+          <a class="doc-link" href="./발표_개요.md">발표 개요 · 전체 발표자 노트</a>
+          <a class="doc-link" href="./예상질문_QnA.md">예상질문 Q&amp;A · 상세 답변</a>
+          <a class="doc-link" href="./다이어그램.md">다이어그램 · 아키텍처와 데이터 흐름</a>
+          <a class="doc-link" href="./ERD.md">ERD · 데이터 구조</a>
+          <a class="doc-link" href="./기술스택_선정근거.html">기술 스택 선정 근거 · 발표용 HTML</a>
+          <a class="doc-link" href="../30_스펙/챗봇_테스트_가이드.md">챗봇 테스트 가이드 · 시연 검증</a>
+          <a class="doc-link" href="../30_스펙/아키텍처.md">아키텍처 · 구현 상태 SSOT</a>
+          <a class="doc-link" href="../10_기획/기획서.md">기획서 · 제품 청사진</a>
+        </div>
+      </section>
+
+      <footer>작성 기준: 2026-07-28 · 세부 수치와 구현 상태가 충돌하면 코드, 아키텍처 문서, 발표 개요 순으로 최신 근거를 확인합니다.</footer>
+    </main>
+  </div>
+
+  <script>
+    const storageKey = 'pension-copilot-presentation-rehearsal-v1';
+    const checks = [...document.querySelectorAll('#rehearsal-checklist input[type="checkbox"]')];
+    const progressValue = document.getElementById('progress-value');
+    const progressBar = document.getElementById('progress-bar');
+
+    function loadProgress() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        checks.forEach((check) => { check.checked = Boolean(saved[check.id]); });
+      } catch (_) {
+        localStorage.removeItem(storageKey);
+      }
+      renderProgress();
+    }
+
+    function saveProgress() {
+      const state = Object.fromEntries(checks.map((check) => [check.id, check.checked]));
+      localStorage.setItem(storageKey, JSON.stringify(state));
+      renderProgress();
+    }
+
+    function renderProgress() {
+      const done = checks.filter((check) => check.checked).length;
+      const percent = Math.round((done / checks.length) * 100);
+      progressValue.textContent = `${percent}%`;
+      progressBar.style.width = `${percent}%`;
+    }
+
+    checks.forEach((check) => check.addEventListener('change', saveProgress));
+    document.getElementById('reset-progress').addEventListener('click', () => {
+      checks.forEach((check) => { check.checked = false; });
+      localStorage.removeItem(storageKey);
+      renderProgress();
+    });
+
+    const qnaItems = [...document.querySelectorAll('.qna-list details')];
+    const openAllButton = document.getElementById('open-all');
+    let allOpen = false;
+    openAllButton.addEventListener('click', () => {
+      allOpen = !allOpen;
+      qnaItems.forEach((item) => { item.open = allOpen; });
+      openAllButton.textContent = allOpen ? 'Q&A 모두 닫기' : 'Q&A 모두 열기';
+    });
+
+    const navLinks = [...document.querySelectorAll('nav a')];
+    const sections = navLinks.map((link) => document.querySelector(link.getAttribute('href'))).filter(Boolean);
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        navLinks.forEach((link) => link.classList.toggle('active', link.getAttribute('href') === `#${entry.target.id}`));
+      }
+    }, { rootMargin: '-20% 0px -65% 0px' });
+    sections.forEach((section) => observer.observe(section));
+    loadProgress();
+  </script>
+</body>
+</html>
