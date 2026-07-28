@@ -14,11 +14,18 @@ import {
   getStoredChatMessages,
   sendAuthenticatedChatStream,
 } from "../api/client";
-import type { ChatCard, ChatResponse, ChatSessionSummary, ChatVisualization } from "../api/types";
+import type {
+  AnswerSection,
+  ChatCard,
+  ChatResponse,
+  ChatSessionSummary,
+  ChatVisualization,
+} from "../api/types";
 import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
 import { CHAT_PROMPT_CANDIDATES } from "../chatPromptCandidates";
 import {
   ETF_THEME_CARDS,
+  collapseSharedAccountStrategySections,
   collapseSharedStrategyAllocation,
   collapseSharedStrategyStressScenarios,
   filterChatCards,
@@ -999,6 +1006,38 @@ describe("GuidePage chat history deletion", () => {
     ];
 
     expect(collapseSharedStrategyStressScenarios(visualizations)).toEqual(visualizations);
+  });
+
+  it("collapses account strategy sections when their visible content matches", () => {
+    const accountLabels = ["DC형", "IRP", "연금저축펀드"];
+    const sections: AnswerSection[] = accountLabels.map((accountLabel) => ({
+      kind: "service_explanation",
+      title: `${accountLabel} · 위험중립형의 코어·위성 전략`,
+      content: "위험중립형의 코어·위성 전략이에요.",
+      evidence_ids: [`engine:${accountLabel}`],
+      blocks: [],
+    }));
+
+    expect(collapseSharedAccountStrategySections(sections)).toEqual([{
+      ...sections[0],
+      title: "보유 계좌 공통 · 위험중립형의 코어·위성 전략",
+      evidence_ids: ["engine:DC형", "engine:IRP", "engine:연금저축펀드"],
+    }]);
+  });
+
+  it("keeps account strategy sections when one description differs", () => {
+    const sections: AnswerSection[] = ["DC형", "IRP", "연금저축펀드"].map(
+      (accountLabel) => ({
+        kind: "service_explanation",
+        title: `${accountLabel} · 위험중립형의 코어·위성 전략`,
+        content: accountLabel === "연금저축펀드"
+          ? "연금저축펀드에는 별도 운용 설명이 있어요."
+          : "위험중립형의 코어·위성 전략이에요.",
+        evidence_ids: [],
+      }),
+    );
+
+    expect(collapseSharedAccountStrategySections(sections)).toEqual(sections);
   });
 
   it("does not refresh hidden session history after a persisted answer", async () => {
@@ -2072,7 +2111,7 @@ describe("GuidePage chat history deletion", () => {
     expect(limitations).toHaveLength(2);
   });
 
-  it("shows account-specific strategy guides without treating them as rebalancing results", async () => {
+  it("collapses matching account strategy guides without treating them as rebalancing results", async () => {
     const accountStrategyResponse = {
       ...STRUCTURED_PORTFOLIO_RESPONSE,
       sections: ["DC형", "IRP", "연금저축펀드"].map((accountLabel) => ({
@@ -2107,9 +2146,10 @@ describe("GuidePage chat history deletion", () => {
     await openStoredSession();
     await screen.findByText(accountStrategyResponse.answer);
     for (const accountLabel of ["DC형", "IRP", "연금저축펀드"]) {
-      expect(screen.getByText(`${accountLabel} · 위험중립형 투자전략`)).toBeInTheDocument();
+      expect(screen.queryByText(`${accountLabel} · 위험중립형 투자전략`)).not.toBeInTheDocument();
     }
-    expect(screen.getAllByText("35년의 장기 운용기간을 고려한 전략이에요. 목표비중을 확인해 보세요.")).toHaveLength(3);
+    expect(screen.getByText("보유 계좌 공통 · 위험중립형 투자전략")).toBeInTheDocument();
+    expect(screen.getAllByText("35년의 장기 운용기간을 고려한 전략이에요. 목표비중을 확인해 보세요.")).toHaveLength(1);
     expect(document.querySelector(".holdings-required-panel")).toBeNull();
   });
 });
