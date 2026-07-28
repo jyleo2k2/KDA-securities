@@ -16,6 +16,25 @@ def test_home_strategy_returns_are_calculated_from_complete_reference_baskets() 
     assert by_id["volatility_managed"].net_planning_return_percent == Decimal("4.6300")
     assert by_id["market_neutral"].net_planning_return_percent == Decimal("3.4000")
     assert by_id["event_driven"].net_planning_return_percent == Decimal("4.3000")
+    assert by_id["market_beta"].stress_risk.worst_scenario_code == "equity_drawdown"
+    assert by_id["market_beta"].stress_risk.worst_estimated_loss_percent == Decimal(
+        "35.0000"
+    )
+    assert by_id["top_down"].stress_risk.worst_estimated_loss_percent == Decimal(
+        "24.2000"
+    )
+    assert by_id["barbell"].stress_risk.worst_estimated_loss_percent == Decimal(
+        "19.9000"
+    )
+    assert by_id["volatility_managed"].stress_risk.worst_estimated_loss_percent == (
+        Decimal("17.2000")
+    )
+    assert by_id["market_neutral"].stress_risk.worst_scenario_code == (
+        "rate_inflation_shock"
+    )
+    assert by_id["market_neutral"].stress_risk.worst_estimated_loss_percent == Decimal(
+        "5.0000"
+    )
     assert all(
         sum(component.target_percent for component in outcome.components)
         == Decimal("100")
@@ -23,3 +42,6 @@ def test_home_strategy_returns_are_calculated_from_complete_reference_baskets() 
     )
     assert all(outcome.annual_review_required for outcome in outcomes)
     assert all(outcome.is_forecast is False for outcome in outcomes)
+    assert all(len(outcome.stress_risk.scenarios) == 3 for outcome in outcomes)
+    assert all(outcome.stress_risk.is_forecast is False for outcome in outcomes)
+    assert all(outcome.stress_risk.representative_basket_only for outcome in outcomes)

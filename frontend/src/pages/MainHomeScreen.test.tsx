@@ -34,6 +34,23 @@ const strategyPlanningReturns = [
   uncertainty_discount_percent,
   net_planning_return_percent,
   components: [],
+  stress_risk: {
+    worst_scenario_code: "equity_drawdown",
+    worst_estimated_loss_percent: "35.0000",
+    scenarios: [
+      { scenario_code: "equity_drawdown", estimated_loss_percent: "35.0000" },
+      { scenario_code: "rate_inflation_shock", estimated_loss_percent: "15.0000" },
+      { scenario_code: "stagflation", estimated_loss_percent: "20.0000" },
+    ],
+    policy_version: "2026-07-23.1",
+    source: {
+      label: "연금 코파일럿 포트폴리오 스트레스 정책",
+      reference: "portfolio-risk-policy",
+      as_of: "2026-07-22",
+    },
+    representative_basket_only: true,
+    is_forecast: false,
+  },
   cma_policy_id: "jpm_2026_usd_educational_v2",
   policy_version: "2026-07-24.1",
   sources: [],

@@ -102,6 +102,12 @@ const STRATEGY_ENGINE_IDS: Record<string, string> = {
   trend: "trend_global_macro",
 };
 
+const STRESS_SCENARIO_LABELS: Record<string, string> = {
+  equity_drawdown: "주식 급락",
+  rate_inflation_shock: "금리·물가 충격",
+  stagflation: "경기 둔화·고물가",
+};
+
 const ASSET_CLASS_PRESENTATION: Record<string, { label: string; color: string }> = {
   global_equity: { label: "국내 상장 해외주식형 ETF·공모펀드", color: "#3d92d0" },
   global_60_40: { label: "국내 상장 글로벌 혼합형 ETF·공모펀드", color: "#607d8b" },
@@ -307,6 +313,7 @@ export function StrategyDetailScreen({
   const compositionSource = planningReturn?.sources.find(
     (source) => source.label === "홈 전략 카드 대표구성 정책",
   );
+  const stressRisk = planningReturn?.stress_risk;
   const pensionAllocation = currentPensionAllocation(aggregation);
   const representativeAllocation = strategyAllocation(planningReturn);
   const pensionAsOfDate = latestPortfolioDate(portfolio);
@@ -539,6 +546,60 @@ export function StrategyDetailScreen({
                     <dd>{tradeoffs.risk}</dd>
                   </div>
                 </dl>
+                <section className="sd-stress-risk" aria-labelledby="strategy-stress-title">
+                  <div className="sd-stress-risk-heading">
+                    <div>
+                      <span>대표 구성 위험 점검</span>
+                      <h3 id="strategy-stress-title">정책 스트레스 시나리오</h3>
+                    </div>
+                    {stressRisk && (
+                      <strong>
+                        {formatPercent(stressRisk.worst_estimated_loss_percent)}
+                        <small>
+                          가장 큰 손실 · {STRESS_SCENARIO_LABELS[stressRisk.worst_scenario_code]
+                            ?? stressRisk.worst_scenario_code}
+                        </small>
+                      </strong>
+                    )}
+                  </div>
+
+                  {compositionStatus === "loading" && (
+                    <p className="sd-stress-state">손실 추정치를 확인하고 있어요.</p>
+                  )}
+
+                  {compositionStatus === "error" && (
+                    <p className="sd-stress-state is-error">
+                      손실 추정치를 불러오지 못했어요. 잠시 후 다시 확인해주세요.
+                    </p>
+                  )}
+
+                  {stressRisk && (
+                    <>
+                      <p className="sd-stress-explanation">
+                        정해진 시장충격을 {strategy.name}의 대표 구성에 적용한 참고값이에요.
+                        발생 확률이나 미래 최대손실, 손실 한도를 뜻하지 않으며 실제 손실은
+                        더 커질 수 있어요.
+                      </p>
+                      <details className="sd-stress-details">
+                        <summary>시나리오별 손실 추정치 보기</summary>
+                        <ul>
+                          {stressRisk.scenarios.map((scenario) => (
+                            <li key={scenario.scenario_code}>
+                              <span>
+                                {STRESS_SCENARIO_LABELS[scenario.scenario_code]
+                                  ?? scenario.scenario_code}
+                              </span>
+                              <strong>{formatPercent(scenario.estimated_loss_percent)}</strong>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                      <span className="sd-source-chip">
+                        기준: {stressRisk.source.label} · {formatSourceDate(stressRisk.source.as_of)}
+                      </span>
+                    </>
+                  )}
+                </section>
                 <h3 className="sd-check-title">결정 전에 확인할 3가지</h3>
                 <ul className="sd-check-list">
                   <li>
