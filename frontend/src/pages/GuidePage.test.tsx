@@ -745,6 +745,21 @@ describe("GuidePage chat history deletion", () => {
           title: "위험중립형 투자전략",
           content: "목표 자산배분과 운용 원칙을 확인하세요.",
           evidence_ids: ["engine:portfolio"],
+        }, {
+          kind: "service_explanation",
+          title: "DC형 · ETF 분야 살펴보기",
+          content: "ETF 섹터를 살펴보세요.",
+          evidence_ids: ["engine:portfolio"],
+        }, {
+          kind: "service_explanation",
+          title: "IRP · ETF 분야 살펴보기",
+          content: "ETF 섹터를 살펴보세요.",
+          evidence_ids: ["engine:portfolio"],
+        }, {
+          kind: "service_explanation",
+          title: "연금저축펀드 · ETF 분야 살펴보기",
+          content: "ETF 섹터를 살펴보세요.",
+          evidence_ids: ["engine:portfolio"],
         }],
         sources: [],
         warnings: [],
@@ -849,6 +864,9 @@ describe("GuidePage chat history deletion", () => {
     expect(screen.queryByText("검증 답변")).not.toBeInTheDocument();
     expect(screen.queryByText("equity_drawdown 스트레스 손실 추정치")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("이어서 물어보기")).not.toBeInTheDocument();
+    expect(screen.queryByText("DC형 · ETF 분야 살펴보기")).not.toBeInTheDocument();
+    expect(screen.queryByText("IRP · ETF 분야 살펴보기")).not.toBeInTheDocument();
+    expect(screen.queryByText("연금저축펀드 · ETF 분야 살펴보기")).not.toBeInTheDocument();
   });
 
   it("does not refresh hidden session history after a persisted answer", async () => {
