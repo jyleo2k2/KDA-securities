@@ -153,6 +153,18 @@ export function collapseSharedStrategyAllocation(
   ];
 }
 
+function withoutStagflationStressScenario(
+  visualizations: ChatVisualizationData[],
+): ChatVisualizationData[] {
+  return visualizations.flatMap((visualization) => {
+    if (visualization.kind !== "stress_scenarios") return [visualization];
+    const items = visualization.items.filter(
+      (item) => item.label !== "스태그플레이션",
+    );
+    return items.length > 0 ? [{ ...visualization, items }] : [];
+  });
+}
+
 export const ETF_THEME_CARDS = [
   { number: 1, title: "반도체", message: "반도체 테마가 뭐야?" },
   { number: 2, title: "신재생·친환경", message: "신재생·친환경 테마가 뭐야?" },
@@ -650,7 +662,9 @@ function AssistantMessage({
     ))
     : [];
   const educationalStrategyVisualizations = isEducationalStrategyGuide
-    ? collapseSharedStrategyAllocation(educationalStrategySourceVisualizations)
+    ? withoutStagflationStressScenario(
+      collapseSharedStrategyAllocation(educationalStrategySourceVisualizations),
+    )
     : [];
   const remainingVisualizations = (isMissedTaxCredit
     ? response.visualizations.filter((item) => item.kind !== "tax_summary")
