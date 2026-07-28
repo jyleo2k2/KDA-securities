@@ -4,13 +4,17 @@ RAG 전용 복사본을 따로 두지 않는다. 사용자 대상 원문은
 `docs/20_리서치`, `docs/40_규제`에 두고,
 `approved_documents.json`을 단일 승인 목록으로 사용한다.
 
-## 현재 운영 상태 (2026-07-19)
+## 현재 운영 상태 (2026-07-28)
 
 - PR #56으로 거버넌스 스키마 v2와 공식 문서 5종을 main에 반영했다.
-- 승인 문서 10개, 원격 총 청크 45개(활성 41·비활성 4), 활성 미임베딩 0개다.
+- 로컬 승인 매니페스트는 문서 16개·청크 69개다. 원격 실제 문서·청크 수는
+  적재 후 DB 조회로 별도 확인하며 로컬 수치를 원격 수치로 간주하지 않는다.
 - 원격 `knowledge_chunks.embedding`은 `vector(1024)`이며 HNSW 인덱스가 적용돼 있다.
 - 문서별 대표 질의 18케이스는 로컬 Hit@5=1·Hit@1=1·MRR@5=1을 통과했다.
-- `uv run python scripts/ingest_knowledge.py --validate-only`는 PR과 `main` push CI에서 실행된다. 정기 검토 cron은 아직 없다.
+- `uv run python scripts/ingest_knowledge.py --validate-only`는 PR과 `main` push CI에서 실행된다.
+- 매주 월요일 09:15 KST에 `rag-governance.yml`이 검토기한과 공식 출처 60개의
+  정규화 지문을 점검한다. 변경·조회실패·검토 임박/만료가 있으면 GitHub 이슈를
+  생성하거나 갱신하며 문서와 엔진 규칙은 자동 변경하지 않는다.
 
 ## 역할
 
@@ -41,13 +45,18 @@ RAG 전용 복사본을 따로 두지 않는다. 사용자 대상 원문은
 
 | 검토 기한 | 문서 ID |
 |---|---|
-| 2026-10-14 | `default-option`, `pension-tax-credit`, `retirement-pension-receipt-withdrawal` |
+| 2026-10-14 | `default-option`, `pension-tax-credit` |
 | 2026-10-16 | `pension-deposit-protection`, `pension-receipt-taxation`, `retirement-pension-in-kind-transfer` |
+| 2026-10-18 | `retirement-benefit-irp-transfer-exceptions`, `retirement-pension-participant-education`, `retirement-pension-receipt-withdrawal`, `retirement-pension-unpaid-contributions`, `small-business-retirement-pension-fund` |
 | 2027-01-12 | `pension-basics`, `provider-disclosure-reading` |
 | 2027-01-14 | `etf-comparison-metrics`, `retirement-pension-2025-performance` |
+| 2027-01-16 | `etf-theme-23-approved-basis` |
+| 2027-01-17 | `approved-etf-product-database` |
 
-가장 가까운 기한은 2026-10-14다. 정기 실행이 도입되기 전까지 `project_owner`가
-수동 일정으로 검토를 시작하고, 갱신 PR에서 `--validate-only` 결과를 확인한다.
+가장 가까운 기한은 2026-10-14다. 정기 실행은 검토 신호만 만들며,
+`project_owner`가 공식 원문을 대조하고 갱신 PR에서 `--validate-only` 결과를
+확인해야 한다. 세금·한도 등 계산 규칙에 영향이 있으면 RAG 문서만 바꾸지 않고
+규칙 엔진 버전과 골든 테스트를 같은 변경에서 갱신한다.
 
 ## 원격 동기화와 복구
 

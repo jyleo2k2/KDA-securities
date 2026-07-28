@@ -21,6 +21,7 @@ from backend.app.ingestion.news_summarizer import (
     NewsSummarizer,
     NewsSummaryError,
     NewsSummaryOutput,
+    source_spans,
     validate_summary_against_source,
 )
 
@@ -85,16 +86,14 @@ def test_summary_output_requires_exactly_three_clean_lines() -> None:
 
 
 def test_summary_output_rejects_a_line_that_exceeds_mobile_contract() -> None:
-    summary = NewsSummaryOutput(
-        summary_lines=(
-            "가" * (MAX_SUMMARY_LINE_CHARS + 1),
-            "둘째 문장",
-            "셋째 문장",
+    with pytest.raises(ValueError):
+        NewsSummaryOutput(
+            summary_lines=(
+                "가" * (MAX_SUMMARY_LINE_CHARS + 1),
+                "둘째 문장입니다.",
+                "셋째 문장입니다.",
+            )
         )
-    )
-
-    with pytest.raises(NewsSummaryError, match="validation_failed"):
-        validate_summary_against_source(summary, "가" * (MAX_SUMMARY_LINE_CHARS + 1))
 
 
 def test_summary_validation_rejects_recommendations_even_when_source_has_them() -> None:
@@ -136,13 +135,7 @@ def test_summarizer_parses_native_three_line_output() -> None:
         prompt_version="test-v1",
     )
     payload = json.dumps(
-        {
-            "summary_lines": [
-                "기관이 연금 제도 개선안을 발표했다.",
-                "가입자 교육을 강화한다고 설명했다.",
-                "세부 일정은 추후 공개한다고 밝혔다.",
-            ]
-        },
+        {"selected_indices": [0, 1, 2]},
         ensure_ascii=False,
     )
 
@@ -161,6 +154,70 @@ def test_summarizer_parses_native_three_line_output() -> None:
         "가입자 교육을 강화한다고 설명했다.",
         "세부 일정은 추후 공개한다고 밝혔다.",
     )
+
+
+def test_source_spans_are_unique_extractive_and_within_mobile_limit() -> None:
+    article = (
+        "기관은 매우 긴 설명을 발표했고, 가입자 교육과 자산운용 정보 제공을 "
+        "강화하며 세부 일정을 다음 달에 공개할 예정이라고 관계자가 밝혔다. "
+        "둘째 문장은 짧지만 의미가 충분하다. 셋째 문장도 충분히 길다."
+    )
+
+    spans = source_spans(article)
+
+    assert len(spans) >= 3
+    assert len(spans) == len(set(spans))
+    assert all(len(span) <= MAX_SUMMARY_LINE_CHARS for span in spans)
+    normalized_article = " ".join(article.split())
+    assert all(span.rstrip(".!?。") in normalized_article for span in spans)
+
+
+def test_gemini_36_summary_uses_minimal_thinking() -> None:
+    summarizer = NewsSummarizer(
+        api_key="test-key",
+        model="gemini-3.6-flash",
+        prompt_version="test-v1",
+    )
+
+    assert summarizer.agent.model_settings["google_thinking_config"] == {
+        "thinking_level": "minimal"
+    }
+
+
+def test_summary_rejects_source_unrelated_market_template() -> None:
+    summary = NewsSummaryOutput(
+        summary_lines=(
+            "주요 지수가 하락세를 보이며 시장 거래가 마감됐다.",
+            "해당 지수는 전일 대비 2.5% 감소한 수치를 기록했다.",
+            "금융 시장과 관련 업종 전반에 불확실성이 증대되고 있다.",
+        )
+    )
+    article = (
+        "한국은행은 기준금리를 연 2.5%로 유지했다고 발표했다. "
+        "위원회는 물가와 금융안정 상황을 더 확인할 필요가 있다고 설명했다. "
+        "향후 결정은 국내외 경제 지표에 따라 달라질 수 있다고 밝혔다."
+    )
+
+    with pytest.raises(NewsSummaryError, match="validation_failed"):
+        validate_summary_against_source(summary, article)
+
+
+def test_summary_requires_each_line_to_be_an_extractive_source_span() -> None:
+    summary = NewsSummaryOutput(
+        summary_lines=(
+            "한국은행이 기준금리를 2.5%로 동결했다.",
+            "위원회는 물가와 금융안정 상황을 확인했다.",
+            "향후 결정은 경제 지표에 따라 달라질 수 있다.",
+        )
+    )
+    article = (
+        "한국은행은 기준금리를 연 2.5%로 유지했다고 발표했다. "
+        "위원회는 물가와 금융안정 상황을 더 확인할 필요가 있다고 설명했다. "
+        "향후 결정은 국내외 경제 지표에 따라 달라질 수 있다고 밝혔다."
+    )
+
+    with pytest.raises(NewsSummaryError, match="validation_failed"):
+        validate_summary_against_source(summary, article)
 
 
 def test_summary_worker_isolates_fetch_failures(
