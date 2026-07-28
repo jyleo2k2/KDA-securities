@@ -128,6 +128,15 @@ describe("MainHomeScreen", () => {
     expect(container.querySelector(".mhs-header-title-accent")).toHaveTextContent("KDA");
   });
 
+  it("scrolls the 연금KDA Pick section into view when opened from chat", () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+
+    renderHome({ focusStrategyPickRequestId: "strategy-pick-request-1" });
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
+  });
+
   it("shows the authenticated owner's engine aggregation", () => {
     renderHome();
 
