@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>리밸런싱 답변 UX 검토</title>
+<link rel="stylesheet" href="./preview.css" />
+</head>
+<body>
+<header class="lab-top">
+  <div class="lab-top-inner">
+    <div class="lab-title">
+      <strong>리밸런싱 답변 UX 검토</strong>
+      <span>실제 렌더 순서를 그대로 옮긴 비교 화면 · 390 x 844</span>
+    </div>
+    <div class="lab-top-actions">
+      <div class="seg" role="group" aria-label="화면 폭">
+        <button type="button" class="seg-btn is-on" data-width="390">390px</button>
+        <button type="button" class="seg-btn" data-width="360">360px</button>
+      </div>
+      <button type="button" class="ghost-btn" id="reset-btn">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+        초기화
+      </button>
+      <button type="button" class="solid-btn" id="all-btn">제안 전부 적용</button>
+    </div>
+  </div>
+</header>
+
+<main class="lab">
+  <section class="lab-controls" aria-label="제안 토글">
+    <p class="lab-controls-intro">
+      각 항목을 켜면 오른쪽 화면이 바로 바뀌어요. 왼쪽은 현재 배포된 모습으로 고정입니다.
+    </p>
+    <ul class="toggle-list" id="toggle-list">
+      <li>
+        <label class="toggle" for="fix-lead">
+          <input type="checkbox" id="fix-lead" data-fix="lead" />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-body">
+            <span class="toggle-head"><em class="prio p1">P1</em>결론을 맨 위로</span>
+            <span class="toggle-desc">이탈 자산군 수를 첫 줄에 놓고, 전략 이름은 아래로 내려요.</span>
+          </span>
+        </label>
+      </li>
+      <li>
+        <label class="toggle" for="fix-bars">
+          <input type="checkbox" id="fix-bars" data-fix="bars" />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-body">
+            <span class="toggle-head"><em class="prio p1">P1</em>7열 표를 드리프트 바로</span>
+            <span class="toggle-desc">가로 스크롤을 없애고 목표 대비 차이를 막대로 봐요.</span>
+          </span>
+        </label>
+      </li>
+      <li>
+        <label class="toggle" for="fix-nest">
+          <input type="checkbox" id="fix-nest" data-fix="nest" />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-body">
+            <span class="toggle-head"><em class="prio p1">P1</em>카드 3겹 해소</span>
+            <span class="toggle-desc">중첩된 테두리를 걷어내고 구분선 밴드로 바꿔요.</span>
+          </span>
+        </label>
+      </li>
+      <li>
+        <label class="toggle" for="fix-defer">
+          <input type="checkbox" id="fix-defer" data-fix="defer" />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-body">
+            <span class="toggle-head"><em class="prio p2">P2</em>일반 예시는 후순위로</span>
+            <span class="toggle-desc">성향별 섹터 도넛과 점검 주기를 접어둬요.</span>
+          </span>
+        </label>
+      </li>
+      <li>
+        <label class="toggle" for="fix-hedge">
+          <input type="checkbox" id="fix-hedge" data-fix="hedge" />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-body">
+            <span class="toggle-head"><em class="prio p2">P2</em>단서 문구 압축</span>
+            <span class="toggle-desc">문단 4개를 한 줄로 줄이고 나머지는 펼쳐보기로.</span>
+          </span>
+        </label>
+      </li>
+      <li>
+        <label class="toggle" for="fix-type">
+          <input type="checkbox" id="fix-type" data-fix="type" />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-body">
+            <span class="toggle-head"><em class="prio p3">P3</em>글자 크기와 금액</span>
+            <span class="toggle-desc">8~10px을 11px 이상으로 올리고 부족 금액을 같이 표시해요.</span>
+          </span>
+        </label>
+      </li>
+    </ul>
+
+    <div class="metrics" aria-live="polite">
+      <div class="metric">
+        <span>첫 화면까지 스크롤</span>
+        <strong id="metric-scroll">—</strong>
+        <small>결론이 보이기까지</small>
+      </div>
+      <div class="metric">
+        <span>가로 스크롤</span>
+        <strong id="metric-hscroll">—</strong>
+        <small>표 잘림 여부</small>
+      </div>
+      <div class="metric">
+        <span>전체 높이</span>
+        <strong id="metric-height">—</strong>
+        <small>답변 한 건 기준</small>
+      </div>
+    </div>
+  </section>
+
+  <section class="lab-stages" aria-label="비교 화면">
+    <article class="stage">
+      <header class="stage-head">
+        <span class="stage-tag before">지금</span>
+        <p>배포된 화면</p>
+      </header>
+      <div class="phone-shell">
+        <div class="app-phone-frame" id="frame-before"></div>
+      </div>
+      <footer class="stage-foot" id="foot-before">—</footer>
+    </article>
+
+    <article class="stage">
+      <header class="stage-head">
+        <span class="stage-tag after">제안</span>
+        <p id="after-caption">토글을 켜보세요</p>
+      </header>
+      <div class="phone-shell">
+        <div class="app-phone-frame" id="frame-after"></div>
+      </div>
+      <footer class="stage-foot" id="foot-after">—</footer>
+    </article>
+  </section>
+</main>
+
+<script type="module" src="./preview.js"></script>
+</body>
+</html>
