@@ -19,7 +19,7 @@ describe("ChatQuestionRecommendations", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: "연금계좌와 운용 방법을 물어보세요",
+        name: "이런 질문부터 시작해 보세요",
       }),
     ).toBeInTheDocument();
   });

@@ -1681,6 +1681,13 @@ export function GuidePage({
     }
   }
 
+  const welcomeName = userContext?.nickname
+    ?? (
+      typeof auth.session?.user?.user_metadata?.name === "string"
+        ? withoutDemoNameMarker(auth.session.user.user_metadata.name)
+        : "고객"
+    );
+
   return (
     <div className="app-shell">
       <aside className={`sidebar ${isSidebarOpen ? "sidebar-open" : ""}`}>
@@ -1891,15 +1898,20 @@ export function GuidePage({
           <button className="menu-button design-back-button" type="button" aria-label="뒤로 가기" onClick={onBack ?? (() => setIsSidebarOpen(true))}>
             <svg aria-hidden="true" width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M9.5 1L1.5 10L9.5 19" /></svg>
           </button>
+          <div className="chat-screen-title">
+            <strong>연금 가이드</strong>
+            <span><i aria-hidden="true" /> 연그미와 대화 중</span>
+          </div>
+          <div className="design-topbar-actions">
           <button
             className="design-history-button"
             type="button"
             onClick={() => setIsSidebarOpen(true)}
             aria-label="지난 대화 열기"
+            title="지난 대화"
           >
-            지난 대화
+            <Icon name="book" size={19} />
           </button>
-          <div className="design-topbar-actions">
             {auth.session && <button type="button" className="design-logout" onClick={() => void handleLogout()} disabled={authSubmitting}>로그아웃</button>}
             <button
               className={`design-avatar ${auth.session ? "authenticated" : "anonymous"}`}
@@ -1916,11 +1928,20 @@ export function GuidePage({
         <div className="conversation" ref={conversationRef}>
           {messages.length === 0 ? (
             <div className="welcome design-welcome">
-              <div className="design-brand">
+              <section className="chat-welcome-hero" aria-labelledby="chat-welcome-title">
                 <span className="design-brand-avatar" aria-hidden="true">
                   <img src={yeongeumiProfile} alt="" />
                 </span>
-                <strong>연그미</strong>
+                <div className="chat-welcome-copy">
+                  <span className="chat-welcome-eyebrow"><i aria-hidden="true" /> AI 연금 도우미 연그미</span>
+                  <h1 id="chat-welcome-title">{welcomeName}님,<br />어떤 연금 고민이 있으세요?</h1>
+                  <p>계좌별 규칙부터 절세, ETF 정보까지 근거와 함께 쉽게 설명해 드려요.</p>
+                </div>
+              </section>
+              <div className="chat-welcome-scope" aria-label="연금 가이드 지원 영역">
+                <span><Icon name="book" size={14} /> 계좌별 규칙</span>
+                <span><Icon name="shield" size={14} /> 절세 점검</span>
+                <span><Icon name="chart" size={14} /> ETF 정보</span>
               </div>
 
               {/* 리밸런싱 카드는 API 응답이 늦으므로 로딩 중 같은 골격의 스켈레톤으로 자리를 잡아 아래 추천 질문이 밀리지 않게 한다. */}

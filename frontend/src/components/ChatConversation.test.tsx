@@ -6,7 +6,7 @@ import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CHAT_PROMPT_CANDIDATES } from "../chatPromptCandidates";
-import { ChatComposer } from "./ChatConversation";
+import { ChatComposer, ChatMessageList } from "./ChatConversation";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -38,6 +38,36 @@ describe("ChatComposer", () => {
     expect(screen.getByLabelText("질문 입력")).toHaveAttribute(
       "placeholder",
       `예: ${CHAT_PROMPT_CANDIDATES[0]}`,
+    );
+  });
+});
+
+describe("ChatMessageList", () => {
+  it("keeps the Yeongeumi identity beside assistant messages", () => {
+    render(
+      <ChatMessageList
+        conversationEndRef={createRef<HTMLDivElement>()}
+        conversationKey={null}
+        deletingSessionId={null}
+        isSending={false}
+        latestMessageRef={createRef<HTMLDivElement>()}
+        messages={[{
+          id: "assistant-1",
+          role: "assistant",
+          text: "연금계좌 차이를 설명해 드릴게요.",
+          createdAt: new Date("2026-07-28T00:00:00Z"),
+        }]}
+        onRetry={vi.fn()}
+        renderMessage={(message) => <p>{message.text}</p>}
+        renderStreamingAnswer={() => null}
+        sendingStage="답변 준비 중"
+      />,
+    );
+
+    expect(screen.getByText("연그미")).toBeInTheDocument();
+    expect(document.querySelector(".assistant-avatar img")).toHaveAttribute(
+      "src",
+      expect.stringContaining("piggy-clean"),
     );
   });
 });
