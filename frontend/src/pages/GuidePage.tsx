@@ -50,7 +50,6 @@ import type {
   ConversationContext,
   ChatResponse,
   ChatSessionSummary,
-  ChatVisualization as ChatVisualizationData,
   DataBoundary,
   DemoUserFinancialContext,
   EducationalPortfolioInput,
@@ -583,12 +582,23 @@ function AssistantMessage({
       item.kind === "tax_summary" && item.title === "세액공제 요약"
     ))
     : undefined;
-  const hiddenEducationalSummaryVisualizations = isEducationalPortfolio
+  const isEducationalStrategyGuide = (
+    isEducationalPortfolio
+    && !educationalHasCurrentHoldings
+  );
+  const hiddenEducationalSummaryVisualizations = (
+    isEducationalPortfolio
+    && educationalHasCurrentHoldings
+  )
     ? response.visualizations.filter((item) => (
       item.kind === "sleeve_allocation" || item.kind === "stress_scenarios"
     ))
     : [];
-  const educationalStrategyVisualizations: ChatVisualizationData[] = [];
+  const educationalStrategyVisualizations = isEducationalStrategyGuide
+    ? response.visualizations.filter((item) => (
+      item.kind === "sleeve_allocation" || item.kind === "stress_scenarios"
+    ))
+    : [];
   const remainingVisualizations = (isMissedTaxCredit
     ? response.visualizations.filter((item) => item.kind !== "tax_summary")
     : taxSummaryVisualization
@@ -596,6 +606,7 @@ function AssistantMessage({
       : response.visualizations
   ).filter((item) => (
     !hiddenEducationalSummaryVisualizations.includes(item)
+    && !educationalStrategyVisualizations.includes(item)
   ));
   const visibleNumericEvidence = isMissedTaxCredit
     ? []
@@ -790,7 +801,7 @@ function AssistantMessage({
 
       {response.data_mode !== "news_summary" && visibleSections.map((section, index) => (
         <Fragment key={`${section.title}-${index}`}>
-          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "verified_pension_account_brief" || response.data_mode === "verified_pension_tax_rule_brief" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
+          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={isEducationalStrategyGuide || response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "verified_pension_account_brief" || response.data_mode === "verified_pension_tax_rule_brief" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
             <summary>
               <span>{section.title}</span>
               <small>내용 보기</small>
