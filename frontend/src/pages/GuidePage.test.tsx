@@ -849,7 +849,7 @@ describe("GuidePage chat history deletion", () => {
             retirement_start_age: 60,
             risk_profile: "risk_neutral",
             loss_tolerance_percent: "20",
-            current_holdings: [],
+            current_holdings: [{ isu_code: "069500", amount_krw: "10000000" }],
             new_contribution_krw: "0",
           },
           strategy_label: "코어·위성 전략",

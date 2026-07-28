@@ -16,6 +16,7 @@ export interface ConversationMessage {
   id: string;
   role: "user" | "assistant";
   text: string;
+  requestPrompt?: string;
   response?: ChatResponse;
   failedPrompt?: string;
   failedEducationalPortfolio?: EducationalPortfolioInput;
@@ -192,6 +193,7 @@ export function useChatStream({
         id: crypto.randomUUID(),
         role: "assistant",
         text: response.answer,
+        requestPrompt: normalized,
         response,
         createdAt: new Date(),
       }]);
