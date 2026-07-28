@@ -801,7 +801,9 @@ _PORTFOLIO_STRATEGY_PATTERNS = (
     (
         PortfolioStrategyId.BARBELL_GROWTH_TACTICAL,
         re.compile(
-            r"(?:바벨(?:형)?(?:\s*성장\s*[·ㆍ\-\s]?\s*전술)?|"
+            # "바벨"만 나오면 전략 탐색 화면의 개념 설명이 답이다. 성향별
+            # 포트폴리오 전략은 "성장·전술"이나 "테마 집중"을 특정할 때만 가져간다.
+            r"(?:바벨(?:형)?\s*(?:성장|전술)(?:\s*[·ㆍ\-\s]?\s*전술)?|"
             r"테마\s*집중)\s*(?:전략)?"
         ),
     ),

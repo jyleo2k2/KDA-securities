@@ -42,6 +42,7 @@ def _service() -> ChatService:
         ("바텀업 전략이 뭐야?", "bottomup"),
         ("팩터 전략 설명해줘", "factor"),
         ("바벨 전략이 뭐야", "barbell"),
+        ("바벨형 전략이 뭐야?", "barbell"),
         ("시장 베타 전략이 뭐야", "market-beta"),
         ("롱숏 전략이 뭐야", "longshort"),
         ("시장중립 전략이 뭐야", "longshort"),
@@ -69,6 +70,12 @@ def test_strategy_questions_route_to_strategy_glossary(
         ("코어 위성 전략이 뭐야?", ChatIntent.EDUCATIONAL_PORTFOLIO),
         (
             "성장 코어·위성 전략이 왜 나한테 맞아?",
+            ChatIntent.EDUCATIONAL_PORTFOLIO,
+        ),
+        # "바벨" 개념과 성향별 "바벨형 성장·전술"은 이름이 비슷해도
+        # 서로 다른 답변 경로를 사용한다.
+        (
+            "바벨형 성장·전술 전략이 뭐야?",
             ChatIntent.EDUCATIONAL_PORTFOLIO,
         ),
         # 특정 테마를 지목하면 상품 카탈로그가 답이다.
