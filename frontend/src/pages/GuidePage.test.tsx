@@ -14,11 +14,12 @@ import {
   getStoredChatMessages,
   sendAuthenticatedChatStream,
 } from "../api/client";
-import type { ChatCard, ChatResponse, ChatSessionSummary } from "../api/types";
+import type { ChatCard, ChatResponse, ChatSessionSummary, ChatVisualization } from "../api/types";
 import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
 import { CHAT_PROMPT_CANDIDATES } from "../chatPromptCandidates";
 import {
   ETF_THEME_CARDS,
+  collapseSharedStrategyAllocation,
   filterChatCards,
   GuidePage,
 } from "./GuidePage";
@@ -788,7 +789,7 @@ describe("GuidePage chat history deletion", () => {
             description: "규칙 엔진이 계산한 목표비중이에요.",
             data_boundary: "engine",
             evidence_ids: [],
-            items: [{ label: "주식", value: "57.4", unit: "%", role: "segment" }],
+            items: [{ label: "주식", value: "48", unit: "%", role: "segment" }],
             series: [],
           },
           {
@@ -852,14 +853,16 @@ describe("GuidePage chat history deletion", () => {
         ) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     }
+    expect(screen.getByText("보유 계좌 공통 목표 자산배분")).toBeInTheDocument();
+    expect(screen.getByText("현재 조건에서는 보유한 연금계좌의 목표 비중이 같아요.")).toBeInTheDocument();
     for (const title of [
-      "DC형 목표 자산배분",
       "DC형 스트레스 점검",
-      "연금저축펀드 목표 자산배분",
       "연금저축펀드 스트레스 점검",
     ]) {
       expect(screen.getByText(title)).toBeInTheDocument();
     }
+    expect(screen.queryByText("DC형 목표 자산배분")).not.toBeInTheDocument();
+    expect(screen.queryByText("연금저축펀드 목표 자산배분")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("수치 근거")).not.toBeInTheDocument();
     expect(screen.queryByText("검증 답변")).not.toBeInTheDocument();
     expect(screen.queryByText("equity_drawdown 스트레스 손실 추정치")).not.toBeInTheDocument();
@@ -867,6 +870,31 @@ describe("GuidePage chat history deletion", () => {
     expect(screen.queryByText("DC형 · ETF 분야 살펴보기")).not.toBeInTheDocument();
     expect(screen.queryByText("IRP · ETF 분야 살펴보기")).not.toBeInTheDocument();
     expect(screen.queryByText("연금저축펀드 · ETF 분야 살펴보기")).not.toBeInTheDocument();
+  });
+
+  it("keeps individual allocation charts when account targets differ", () => {
+    const visualizations: ChatVisualization[] = [
+      {
+        kind: "sleeve_allocation",
+        title: "DC형 목표 자산배분",
+        description: "",
+        data_boundary: "engine",
+        evidence_ids: [],
+        items: [{ label: "주식", value: "48", unit: "%", role: "segment" }],
+        series: [],
+      },
+      {
+        kind: "sleeve_allocation",
+        title: "연금저축펀드 목표 자산배분",
+        description: "",
+        data_boundary: "engine",
+        evidence_ids: [],
+        items: [{ label: "주식", value: "57.4", unit: "%", role: "segment" }],
+        series: [],
+      },
+    ];
+
+    expect(collapseSharedStrategyAllocation(visualizations)).toEqual(visualizations);
   });
 
   it("does not refresh hidden session history after a persisted answer", async () => {
