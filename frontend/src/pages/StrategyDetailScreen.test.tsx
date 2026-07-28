@@ -88,10 +88,10 @@ const pensionAggregation: AggregationEvaluation = {
   engine_version: "2026-07-15.1",
   total_amount_krw: "12400000",
   asset_class_totals: [
-    { asset_class: "domestic_equity", amount_krw: "5208000", weight_percent: "42" },
-    { asset_class: "global_equity", amount_krw: "3224000", weight_percent: "26" },
     { asset_class: "bond", amount_krw: "2232000", weight_percent: "18" },
+    { asset_class: "domestic_equity", amount_krw: "5208000", weight_percent: "42" },
     { asset_class: "cash", amount_krw: "1736000", weight_percent: "14" },
+    { asset_class: "global_equity", amount_krw: "3224000", weight_percent: "26" },
   ],
   per_account: [],
   overlaps: [],
@@ -230,6 +230,24 @@ describe("StrategyDetailScreen", () => {
       "aria-label",
       expect.stringContaining("국내주식형 ETF·펀드 42%"),
     );
+    const currentPensionPanel = screen
+      .getByRole("heading", { name: "내 연금 현재 구성" })
+      .closest(".sd-comparison-panel");
+    expect(currentPensionPanel).not.toBeNull();
+    expect(
+      within(currentPensionPanel as HTMLElement)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual([
+      "국내주식형 ETF·펀드42%",
+      "해외주식형 ETF·펀드26%",
+      "채권형 ETF·펀드18%",
+      "현금성14%",
+    ]);
+    expect(
+      [...(currentPensionPanel as HTMLElement).querySelectorAll(".sd-composition-bar > span")]
+        .map((segment) => (segment as HTMLElement).style.width),
+    ).toEqual(["42%", "26%", "18%", "14%"]);
     expect(screen.getByText(/기준: 연결된 연금계좌 합산 · 2026.07.26/)).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "바벨 전략 편입 상품군" })).toBeInTheDocument();
     expect(screen.getByLabelText(/바벨 전략 연금계좌 편입 상품군 구성/)).toHaveAttribute(

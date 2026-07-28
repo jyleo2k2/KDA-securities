@@ -200,12 +200,14 @@ function latestPortfolioDate(portfolio?: UserPensionPortfolio | null): string | 
 function currentPensionAllocation(
   aggregation?: AggregationEvaluation | null,
 ): AllocationDisplayItem[] {
-  return aggregation?.asset_class_totals.map((item) => ({
-    color: PENSION_ASSET_PRESENTATION[item.asset_class].color,
-    key: item.asset_class,
-    label: PENSION_ASSET_PRESENTATION[item.asset_class].label,
-    percent: item.weight_percent,
-  })) ?? [];
+  return aggregation?.asset_class_totals
+    .map((item) => ({
+      color: PENSION_ASSET_PRESENTATION[item.asset_class].color,
+      key: item.asset_class,
+      label: PENSION_ASSET_PRESENTATION[item.asset_class].label,
+      percent: item.weight_percent,
+    }))
+    .sort((left, right) => Number(right.percent) - Number(left.percent)) ?? [];
 }
 
 function strategyAllocation(
