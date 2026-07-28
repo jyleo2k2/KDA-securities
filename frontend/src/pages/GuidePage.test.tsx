@@ -1019,7 +1019,7 @@ describe("GuidePage chat history deletion", () => {
     expect(collapseSharedStrategyStressScenarios(visualizations)).toEqual(visualizations);
   });
 
-  it("collapses matching account strategy and return assumption sections independently", () => {
+  it("collapses matching account strategy, return assumption, and target allocation sections independently", () => {
     const accountLabels = ["DC형", "IRP", "연금저축펀드"];
     const sections: AnswerSection[] = accountLabels.flatMap((accountLabel) => [
       {
@@ -1036,6 +1036,20 @@ describe("GuidePage chat history deletion", () => {
         evidence_ids: [`return:${accountLabel}`],
         blocks: [],
       },
+      {
+        kind: "service_explanation",
+        title: `${accountLabel} · 목표 자산배분`,
+        content: "위험중립형의 연금계좌 자산을 자산군별로 배분하는 기준입니다.",
+        evidence_ids: [`allocation:${accountLabel}`],
+        blocks: [{
+          kind: "table",
+          title: "목표 비율",
+          text: "",
+          items: [],
+          headers: ["무엇에 둘까", "얼마나 둘까"],
+          rows: [["핵심 주식", "38.7%"], ["채권", "44.5%"]],
+        }],
+      },
     ]);
 
     expect(collapseSharedAccountSections(sections)).toEqual([
@@ -1048,6 +1062,11 @@ describe("GuidePage chat history deletion", () => {
         ...sections[1],
         title: "보유 계좌 공통 · 장기 계산에 쓰는 수익률 가정",
         evidence_ids: ["return:DC형", "return:IRP", "return:연금저축펀드"],
+      },
+      {
+        ...sections[2],
+        title: "보유 계좌 공통 · 목표 자산배분",
+        evidence_ids: ["allocation:DC형", "allocation:IRP", "allocation:연금저축펀드"],
       },
     ]);
   });
@@ -1076,6 +1095,27 @@ describe("GuidePage chat history deletion", () => {
           ? "연금저축펀드의 기본 시나리오는 연 5.0%예요."
           : "기본 시나리오는 연 4.8%예요.",
         evidence_ids: [],
+      }),
+    );
+
+    expect(collapseSharedAccountSections(sections)).toEqual(sections);
+  });
+
+  it("keeps account target allocations separate when one table differs", () => {
+    const sections: AnswerSection[] = ["DC형", "IRP", "연금저축펀드"].map(
+      (accountLabel) => ({
+        kind: "service_explanation",
+        title: `${accountLabel} · 목표 자산배분`,
+        content: "연금계좌 자산을 자산군별로 배분하는 기준입니다.",
+        evidence_ids: [],
+        blocks: [{
+          kind: "table",
+          title: "목표 비율",
+          text: "",
+          items: [],
+          headers: ["무엇에 둘까", "얼마나 둘까"],
+          rows: [["핵심 주식", accountLabel === "연금저축펀드" ? "48.7%" : "38.7%"]],
+        }],
       }),
     );
 
@@ -2154,7 +2194,7 @@ describe("GuidePage chat history deletion", () => {
   });
 
   it("collapses matching account strategy guides without treating them as rebalancing results", async () => {
-    const accountStrategyResponse = {
+    const accountStrategyResponse: ChatResponse = {
       ...STRUCTURED_PORTFOLIO_RESPONSE,
       numeric_evidence: ["DC형", "IRP", "연금저축펀드"].flatMap(
         (accountLabel) => [
@@ -2178,6 +2218,20 @@ describe("GuidePage chat history deletion", () => {
         {
           ...STRUCTURED_PORTFOLIO_RESPONSE.sections[0],
           title: `${accountLabel} · 위험중립형 투자전략`,
+        },
+        {
+          kind: "service_explanation",
+          title: `${accountLabel} · 목표 자산배분`,
+          content: "위험중립형의 연금계좌 자산을 자산군별로 배분하는 기준입니다.",
+          evidence_ids: [`allocation:${accountLabel}`],
+          blocks: [{
+            kind: "table",
+            title: "목표 비율",
+            text: "",
+            items: [],
+            headers: ["무엇에 둘까", "얼마나 둘까"],
+            rows: [["핵심 주식", "38.7%"], ["채권", "44.5%"]],
+          }],
         },
         {
           ...STRUCTURED_PORTFOLIO_RESPONSE.sections[0],
@@ -2217,11 +2271,16 @@ describe("GuidePage chat history deletion", () => {
       expect(screen.queryByText(
         `${accountLabel} · 장기 계산에 쓰는 수익률 가정`,
       )).not.toBeInTheDocument();
+      expect(screen.queryByText(`${accountLabel} · 목표 자산배분`)).not.toBeInTheDocument();
     }
     expect(screen.getByText("보유 계좌 공통 · 위험중립형 투자전략")).toBeInTheDocument();
     expect(screen.getByText(
       "보유 계좌 공통 · 장기 계산에 쓰는 수익률 가정",
     )).toBeInTheDocument();
+    expect(screen.getByText("보유 계좌 공통 · 목표 자산배분")).toBeInTheDocument();
+    expect(screen.getAllByText(
+      "위험중립형의 연금계좌 자산을 자산군별로 배분하는 기준입니다.",
+    )).toHaveLength(1);
     expect(screen.getAllByText("35년의 장기 운용기간을 고려한 전략이에요. 목표비중을 확인해 보세요.")).toHaveLength(1);
     expect(screen.queryByText(
       "보수적으로 본 경우 약 4.5%, 기본으로 본 경우 약 4.8%예요.",

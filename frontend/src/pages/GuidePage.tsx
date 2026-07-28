@@ -188,7 +188,7 @@ export function collapseSharedStrategyStressScenarios(
 }
 
 const ACCOUNT_SHARED_SECTION_TITLE_PATTERN = (
-  /^(DC형|IRP|연금저축펀드) · (.+(?:전략|수익률 가정))$/
+  /^(DC형|IRP|연금저축펀드) · (.+(?:전략|수익률 가정)|목표 자산배분)$/
 );
 
 export function collapseSharedAccountSections(
