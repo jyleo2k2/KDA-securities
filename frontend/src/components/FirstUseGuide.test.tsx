@@ -155,9 +155,11 @@ function addChatFixture(): void {
           <main class="chat-main">
             <div class="conversation">
               <div class="welcome design-welcome">
-                <h1>이정수님! 막막한 노후 준비, 연그미와 대화하며 풀어보세요.</h1>
+                <div class="design-brand">
+                  <img class="design-brand-avatar" alt="" />
+                  <strong>연그미</strong>
+                </div>
                 <div class="welcome-intro-cards">
-                  <div class="selected-scenario-card">내 연금 상황</div>
                   <section class="rebalancing-reminder-card">리밸런싱 점검</section>
                 </div>
                 <section class="chat-home-card-section">추천 질문</section>
@@ -172,8 +174,8 @@ function addChatFixture(): void {
   );
   const phone = document.querySelector(".guide-phone") as HTMLElement;
   const appShell = document.querySelector(".app-shell") as HTMLElement;
-  const headline = document.querySelector(".design-welcome h1") as HTMLElement;
-  const introCards = document.querySelector(".welcome-intro-cards") as HTMLElement;
+  const brand = document.querySelector(".design-brand") as HTMLElement;
+  const reminder = document.querySelector(".rebalancing-reminder-card") as HTMLElement;
   const recommendations = document.querySelector(
     ".chat-home-card-section:not(.etf-theme-section)",
   ) as HTMLElement;
@@ -181,13 +183,13 @@ function addChatFixture(): void {
   const composer = document.querySelector(".composer-wrap") as HTMLElement;
   phone.getBoundingClientRect = () => rect(0, 0, 390, 844);
   appShell.getBoundingClientRect = () => rect(54, 0, 390, 790);
-  headline.getBoundingClientRect = () => rect(140, 22, 346, 105);
-  introCards.getBoundingClientRect = () => rect(265, 22, 346, 240);
+  brand.getBoundingClientRect = () => rect(140, 22, 346, 48);
+  reminder.getBoundingClientRect = () => rect(205, 22, 346, 150);
   recommendations.getBoundingClientRect = () => rect(530, 22, 346, 210);
   themes.getBoundingClientRect = () => rect(760, 22, 346, 240);
   composer.getBoundingClientRect = () => rect(770, 18, 354, 68);
-  headline.scrollIntoView = vi.fn();
-  introCards.scrollIntoView = vi.fn();
+  brand.scrollIntoView = vi.fn();
+  reminder.scrollIntoView = vi.fn();
   recommendations.scrollIntoView = vi.fn();
   themes.scrollIntoView = vi.fn();
   composer.scrollIntoView = vi.fn();
@@ -748,12 +750,12 @@ describe("FirstUseGuide", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "연금 운용 질문을 쉽게 물어보세요",
+        name: "연그미에게 편하게 물어보세요",
       }),
     ).toBeInTheDocument();
     expect(
       document.querySelector(".fug-title-accent"),
-    ).toHaveTextContent("연금 운용 질문");
+    ).toHaveTextContent("연그미");
     expect(
       screen.getByText(/예를 들어 “IRP와 연금저축은 뭐가 달라\?”처럼 시작해 보세요\./),
     ).toBeInTheDocument();
@@ -767,10 +769,10 @@ describe("FirstUseGuide", () => {
       "ETF 테마",
     ]));
 
-    fireEvent.click(screen.getByRole("button", { name: "내 정보 카드 보기" }));
+    fireEvent.click(screen.getByRole("button", { name: "점검 알림 보기" }));
     expect(
       await screen.findByRole("heading", {
-        name: "내 연금 상황과 점검 알림을 확인해요",
+        name: "리밸런싱 점검 알림을 확인해요",
       }),
     ).toBeInTheDocument();
 

@@ -17,7 +17,7 @@ import "./FirstUseGuide.css";
 
 const HOME_GUIDE_VERSION = "v3";
 const STRATEGY_DETAIL_GUIDE_VERSION = "v2";
-const CHAT_GUIDE_VERSION = "v5";
+const CHAT_GUIDE_VERSION = "v6";
 const PENSION_PLANNER_GUIDE_VERSION = "v2";
 const USER_PICK_GUIDE_VERSION = "v5";
 const COMPLETE_KEY =
@@ -172,19 +172,19 @@ const STRATEGY_DETAIL_STEPS: GuideStep[] = [
 
 const CHAT_STEPS: GuideStep[] = [
   {
-    selector: ".design-welcome h1",
-    title: "연금 운용 질문을 쉽게 물어보세요",
-    accents: ["연금 운용 질문"],
+    selector: ".design-brand",
+    title: "연그미에게 편하게 물어보세요",
+    accents: ["연그미"],
     body: "연금계좌 운용, 세액공제, 리밸런싱, ETF 테마처럼 궁금한 내용을 대화로 쉽게 확인할 수 있어요.",
     bodyAccents: ["연금계좌 운용", "세액공제", "리밸런싱", "ETF 테마"],
-    cta: "내 정보 카드 보기",
+    cta: "점검 알림 보기",
   },
   {
-    selector: ".welcome-intro-cards",
-    title: "내 연금 상황과 점검 알림을 확인해요",
-    accents: ["내 연금 상황", "점검 알림"],
-    body: "고객 카드에서 연결된 계좌 상황을 보고, 리밸런싱 카드에서 점검 주기와 필요한 행동을 확인할 수 있어요.",
-    bodyAccents: ["연결된 계좌 상황", "점검 주기"],
+    selector: ".rebalancing-reminder-card",
+    title: "리밸런싱 점검 알림을 확인해요",
+    accents: ["리밸런싱", "점검 알림"],
+    body: "점검 주기와 필요한 행동을 확인하고, 필요할 때 연그미에게 실제 계좌 상태를 물어볼 수 있어요.",
+    bodyAccents: ["점검 주기", "필요한 행동", "실제 계좌 상태"],
     cta: "추천 질문 보기",
   },
   {
