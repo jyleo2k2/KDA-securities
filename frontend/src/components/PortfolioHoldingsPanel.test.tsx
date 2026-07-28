@@ -569,11 +569,13 @@ describe("EducationalPortfolioReview", () => {
     expect(screen.getByText("장기계획 수익률")).toBeInTheDocument();
     expect(screen.queryByText("ETF 비용 빼기 전")).not.toBeInTheDocument();
     expect(screen.queryByText("ETF 비용 뺀 뒤")).not.toBeInTheDocument();
+    expect(screen.queryByText("여유 폭")).not.toBeInTheDocument();
+    expect(screen.queryByText("연간 비용")).not.toBeInTheDocument();
     expect(screen.getAllByText("6.7%")).toHaveLength(1);
     expect(screen.getAllByText("6.2%")).toHaveLength(1);
     expect(screen.getAllByText(/비슷한 자산의 장기 전망 사용/)).toHaveLength(1);
-    expect(screen.getAllByText("-0.5%")).toHaveLength(1);
-    expect(screen.getAllByText("-0.1%")).toHaveLength(1);
+    expect(screen.queryByText("-0.5%")).not.toBeInTheDocument();
+    expect(screen.queryByText("-0.1%")).not.toBeInTheDocument();
     expect(screen.getAllByText(/과거 수익률 미사용/)).toHaveLength(1);
     expect(screen.getAllByRole("link", { name: /J.P. Morgan 2026/ })).toHaveLength(1);
 
