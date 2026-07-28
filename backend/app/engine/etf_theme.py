@@ -158,7 +158,7 @@ def resolve_theme(
         if any(_contains_term(text, alias) for alias in (theme.name, *theme.aliases))
     ]
     if not matches:
-        number_match = re.search(r"(?<!\d)(\d{1,2})\s*번\s*(?:테마)?", message)
+        number_match = re.search(r"(?<!\d)(\d{1,2})\s*번\s*테마", message)
         if number_match is not None:
             number = int(number_match.group(1))
             return next(

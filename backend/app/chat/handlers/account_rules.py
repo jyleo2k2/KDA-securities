@@ -2,6 +2,7 @@
 
 
 import re
+from itertools import combinations
 
 from ...engine import AccountType
 from ...retrieval.repository import KnowledgeSearch
@@ -240,6 +241,48 @@ def _unsupported_answer(user_message: str) -> str:
         if pattern.search(user_message) is not None:
             return answer
     return _DEFAULT_UNSUPPORTED_ANSWER
+
+
+def referent_clarification_response(request: ChatRequest) -> ChatResponse:
+    context = request.conversation_context
+    referents = context.referents if context is not None else None
+    if referents is None:
+        raise ValueError("referent clarification requires server-owned referents")
+
+    asks_comparison = re.search(
+        r"뭐가\s*더|무엇이\s*더|둘\s*중|셋\s*중|비교",
+        request.message,
+    )
+    if asks_comparison is not None and len(referents.items) >= 2:
+        pairs = list(combinations(referents.items, 2))[:3]
+        follow_ups = [
+            SuggestedFollowUp(
+                follow_up_id=f"clarify_compare_{index}",
+                label=f"{left.label} · {right.label}",
+                message=f"{left.label}, {right.label} 비교해줘",
+            )
+            for index, (left, right) in enumerate(pairs, start=1)
+        ]
+        answer = "어느 두 대상을 비교할까요? 아래에서 비교 조합을 골라주세요."
+    else:
+        follow_ups = [
+            SuggestedFollowUp(
+                follow_up_id=f"clarify_referent_{index}",
+                label=item.label,
+                message=f"{item.label} {request.message}",
+            )
+            for index, item in enumerate(referents.items, start=1)
+        ]
+        answer = "어느 대상을 말씀하시는지 아래에서 골라주세요."
+
+    return ChatResponse(
+        intent=ChatIntent.OUT_OF_SCOPE,
+        answer=answer,
+        data_mode="context_clarification",
+        suggested_follow_ups=follow_ups,
+        limitations=["후보가 여러 개라 임의로 선택하지 않았어요."],
+        conversation_context=context,
+    )
 
 
 def blocked_response(reason: BlockedReason, *, user_message: str = "") -> ChatResponse:

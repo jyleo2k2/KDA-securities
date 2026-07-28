@@ -172,4 +172,13 @@ describe("화면 타이포그래피 (main-home 기준 통일)", () => {
       /id="pension-phone"[^>]*font-family:Pretendard,\s*'Cafe24SsurroundAir'/,
     );
   });
+
+  it("연금 계산기는 투자 전략 선택을 입력 조건보다 먼저 표시한다", () => {
+    const calculatorHtml = Object.entries(embeddedHtmlModules)
+      .find(([path]) => path.endsWith("/연금계산기.dc.html"))?.[1];
+
+    expect(calculatorHtml).toBeDefined();
+    expect(calculatorHtml!.indexOf('data-planner-section="strategy"'))
+      .toBeLessThan(calculatorHtml!.indexOf('data-planner-section="inputs"'));
+  });
 });

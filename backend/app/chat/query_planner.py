@@ -26,6 +26,7 @@ class BlockedReason(StrEnum):
     PROVIDER_CHOICE_ADVICE = "provider_choice_advice"
     PERSONAL_ALLOCATION_ADVICE = "personal_allocation_advice"
     PRINCIPAL_GUARANTEE_QUESTION = "principal_guarantee_question"
+    REFERENT_SELECTION_REQUIRED = "referent_selection_required"
     UNSUPPORTED = "unsupported"
 
 
@@ -200,7 +201,8 @@ _SENSITIVE_VALUE_PATTERNS = (
     re.compile(_TOKEN_VALUE + _VALUE_BINDER + _TOKEN_LABEL, re.I),
 )
 _ORDER_REQUEST = re.compile(
-    r"매수해|매도해|주문해|사\s*줘|팔아\s*줘|대신\s*사|대신\s*팔|자동\s*투자"
+    r"매수해|매도해|주문해|사\s*줘|팔아\s*줘|대신\s*사|대신\s*팔|자동\s*투자|"
+    r"주문\s*(?:넣|실행|처리)|(?:매수|매도).{0,12}(?:실행|진행|처리)"
 )
 _FUTURE_PREDICTION = re.compile(
     r"(?:향후|내년|다음\s*분기).{0,15}(?:수익률|오를|내릴|예측|전망|보장)"

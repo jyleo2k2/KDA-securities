@@ -1,0 +1,622 @@
+[
+  {
+    "case_id": "pronoun_etf_fee",
+    "category": "pronoun",
+    "current_message": "그거 보수는 얼마야?",
+    "context": {
+      "account_type": "irp",
+      "last_intent": "etf_theme",
+      "referents": null,
+      "news": null,
+      "etf_theme": {
+        "theme_id": "us_index",
+        "candidate_isu_codes": ["360750"],
+        "candidate_names": ["TIGER 미국S&P500"]
+      }
+    },
+    "expected_intent": "out_of_scope",
+    "expected_blocked_reason": "fee_target_required",
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "pronoun_account_risk_cap",
+    "category": "pronoun",
+    "current_message": "이건 위험자산 한도만 다시 알려줘.",
+    "context": {
+      "account_type": "irp",
+      "last_intent": "account_rule",
+      "referents": {
+        "intent": "account_rule",
+        "topic": "risk_asset_cap",
+        "items": [{"ref": "irp", "label": "IRP"}]
+      },
+      "news": null,
+      "etf_theme": null
+    },
+    "expected_intent": "account_rule",
+    "expected_blocked_reason": null,
+    "expected_account_types": ["irp"],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "pronoun_account_withdrawal",
+    "category": "pronoun",
+    "current_message": "그건 중도인출 기준으로 다시 설명해줘.",
+    "context": {
+      "account_type": "irp",
+      "last_intent": "account_rule",
+      "referents": {
+        "intent": "account_rule",
+        "topic": "withdrawal",
+        "items": [{"ref": "irp_early_withdrawal", "label": "IRP 중도인출"}]
+      },
+      "news": null,
+      "etf_theme": null
+    },
+    "expected_intent": "account_rule",
+    "expected_blocked_reason": null,
+    "expected_account_types": ["irp"],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "pronoun_news_source",
+    "category": "pronoun",
+    "current_message": "저건 출처도 보여줘.",
+    "context": {
+      "account_type": null,
+      "last_intent": "news",
+      "referents": null,
+      "news": {
+        "news_item_ids": ["news-rate-1"],
+        "focus_news_item_id": "news-rate-1",
+        "market_region": "kr"
+      },
+      "etf_theme": null
+    },
+    "expected_intent": "news",
+    "expected_blocked_reason": null,
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "pronoun_etf_product_detail",
+    "category": "pronoun",
+    "current_message": "그 상품은 어떤 지수를 따라가?",
+    "context": {
+      "account_type": "dc",
+      "last_intent": "etf_theme",
+      "referents": null,
+      "news": null,
+      "etf_theme": {
+        "theme_id": "bond",
+        "candidate_isu_codes": ["152380"],
+        "candidate_names": ["KODEX 국고채10년"]
+      }
+    },
+    "expected_intent": "out_of_scope",
+    "expected_blocked_reason": "unsupported",
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "pronoun_prior_account",
+    "category": "pronoun",
+    "current_message": "아까 말한 계좌를 IRP 기준으로 다시 비교해줘.",
+    "context": {
+      "account_type": "irp",
+      "last_intent": "account_rule",
+      "referents": {
+        "intent": "account_rule",
+        "topic": "account_overview",
+        "items": [{"ref": "irp", "label": "IRP"}]
+      },
+      "news": null,
+      "etf_theme": null
+    },
+    "expected_intent": "account_rule",
+    "expected_blocked_reason": null,
+    "expected_account_types": ["irp"],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "ordinal_second_account",
+    "category": "ordinal",
+    "current_message": "두 번째 계좌의 위험자산 한도 알려줘.",
+    "context": {
+      "account_type": null,
+      "last_intent": "account_rule",
+      "referents": {
+        "intent": "account_rule",
+        "topic": "account_overview",
+        "items": [
+          {"ref": "dc", "label": "DC형"},
+          {"ref": "irp", "label": "IRP"},
+          {"ref": "pension_savings", "label": "연금저축펀드"}
+        ]
+      },
+      "news": null,
+      "etf_theme": null
+    },
+    "expected_intent": "account_rule",
+    "expected_blocked_reason": null,
+    "expected_account_types": ["irp"],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "ordinal_second_etf",
+    "category": "ordinal",
+    "current_message": "두번째거 보수 알려줘.",
+    "context": {
+      "account_type": "pension_savings",
+      "last_intent": "etf_theme",
+      "referents": null,
+      "news": null,
+      "etf_theme": {
+        "theme_id": "us_index",
+        "candidate_isu_codes": ["360750", "379800", "360200"],
+        "candidate_names": ["TIGER 미국S&P500", "KODEX 미국S&P500TR", "ACE 미국S&P500"]
+      }
+    },
+    "expected_intent": "out_of_scope",
+    "expected_blocked_reason": "unsupported",
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "ordinal_second_news_source",
+    "category": "ordinal",
+    "current_message": "2번꺼 기사 출처 보여줘.",
+    "context": {
+      "account_type": null,
+      "last_intent": "news",
+      "referents": null,
+      "news": {
+        "news_item_ids": ["news-rate-1", "news-fx-2"],
+        "focus_news_item_id": null,
+        "market_region": "kr"
+      },
+      "etf_theme": null
+    },
+    "expected_intent": "news",
+    "expected_blocked_reason": null,
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "ordinal_last_etf",
+    "category": "ordinal",
+    "current_message": "마지막 거 구성종목을 알려줘.",
+    "context": {
+      "account_type": "irp",
+      "last_intent": "etf_theme",
+      "referents": null,
+      "news": null,
+      "etf_theme": {
+        "theme_id": "bond",
+        "candidate_isu_codes": ["114260", "152380", "305080"],
+        "candidate_names": ["KODEX 국고채3년", "KODEX 국고채10년", "TIGER 미국채10년"]
+      }
+    },
+    "expected_intent": "out_of_scope",
+    "expected_blocked_reason": "unsupported",
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "ambiguous_single_pronoun_multiple_etfs",
+    "category": "ambiguous",
+    "current_message": "그거 보수는?",
+    "context": {
+      "account_type": "irp",
+      "last_intent": "etf_theme",
+      "referents": null,
+      "news": null,
+      "etf_theme": {
+        "theme_id": "us_index",
+        "candidate_isu_codes": ["360750", "379800"],
+        "candidate_names": ["TIGER 미국S&P500", "KODEX 미국S&P500TR"]
+      }
+    },
+    "expected_intent": "out_of_scope",
+    "expected_blocked_reason": "unsupported",
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "ambiguous_single_pronoun_multiple_accounts",
+    "category": "ambiguous",
+    "current_message": "아까 말한 계좌는 다시 설명해줘.",
+    "context": {
+      "account_type": null,
+      "last_intent": "account_rule",
+      "referents": {
+        "intent": "account_rule",
+        "topic": "account_overview",
+        "items": [
+          {"ref": "dc", "label": "DC형"},
+          {"ref": "irp", "label": "IRP"},
+          {"ref": "pension_savings", "label": "연금저축펀드"}
+        ]
+      },
+      "news": null,
+      "etf_theme": null
+    },
+    "expected_intent": "out_of_scope",
+    "expected_blocked_reason": "referent_selection_required",
+    "expected_account_types": [],
+    "expected_clarification": true,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "ambiguous_three_etf_recommendation",
+    "category": "ambiguous",
+    "current_message": "뭐가 더 나아?",
+    "context": {
+      "account_type": "pension_savings",
+      "last_intent": "etf_theme",
+      "referents": null,
+      "news": null,
+      "etf_theme": {
+        "theme_id": "dividend",
+        "candidate_isu_codes": ["325020", "292150", "329200"],
+        "candidate_names": ["KODEX 배당가치", "TIGER 고배당", "KODEX 리츠인컴"]
+      }
+    },
+    "expected_intent": "out_of_scope",
+    "expected_blocked_reason": "unsupported",
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "ambiguous_two_news_follow_up",
+    "category": "ambiguous",
+    "current_message": "둘 중에는 어느 건지 모르겠어.",
+    "context": {
+      "account_type": null,
+      "last_intent": "news",
+      "referents": null,
+      "news": {
+        "news_item_ids": ["news-rate-1", "news-fx-2"],
+        "focus_news_item_id": null,
+        "market_region": "kr"
+      },
+      "etf_theme": null
+    },
+    "expected_intent": "out_of_scope",
+    "expected_blocked_reason": "unsupported",
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "ambiguous_article_source",
+    "category": "ambiguous",
+    "current_message": "어느 기사 출처야?",
+    "context": {
+      "account_type": null,
+      "last_intent": "news",
+      "referents": null,
+      "news": {
+        "news_item_ids": ["news-rate-1", "news-fx-2", "news-chip-3"],
+        "focus_news_item_id": null,
+        "market_region": "kr"
+      },
+      "etf_theme": null
+    },
+    "expected_intent": "news",
+    "expected_blocked_reason": null,
+    "expected_account_types": [],
+    "expected_clarification": true,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "safety_order_overrides_etf_context",
+    "category": "safety",
+    "current_message": "그 ETF를 주문해줘.",
+    "context": {
+      "account_type": "irp",
+      "last_intent": "etf_theme",
+      "referents": null,
+      "news": null,
+      "etf_theme": {
+        "theme_id": "us_index",
+        "candidate_isu_codes": ["360750"],
+        "candidate_names": ["TIGER 미국S&P500"]
+      }
+    },
+    "expected_intent": "out_of_scope",
+    "expected_blocked_reason": "order_request",
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "safety_prediction_overrides_etf_context",
+    "category": "safety",
+    "current_message": "그 ETF가 내년에 몇 퍼센트 오를지 예측해줘.",
+    "context": {
+      "account_type": "irp",
+      "last_intent": "etf_theme",
+      "referents": null,
+      "news": null,
+      "etf_theme": {
+        "theme_id": "us_index",
+        "candidate_isu_codes": ["360750"],
+        "candidate_names": ["TIGER 미국S&P500"]
+      }
+    },
+    "expected_intent": "out_of_scope",
+    "expected_blocked_reason": "future_prediction",
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "safety_sensitive_information_overrides_account_context",
+    "category": "safety",
+    "current_message": "아까 말한 계좌의 계좌번호 123-45-678901로 진행해줘.",
+    "context": {
+      "account_type": "irp",
+      "last_intent": "account_rule",
+      "referents": {
+        "intent": "account_rule",
+        "topic": "account_overview",
+        "items": [{"ref": "irp", "label": "IRP"}]
+      },
+      "news": null,
+      "etf_theme": null
+    },
+    "expected_intent": "out_of_scope",
+    "expected_blocked_reason": "sensitive_information",
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "safety_individual_stock_overrides_etf_context",
+    "category": "safety",
+    "current_message": "그 상품 말고 삼성전자 주식을 편입해도 돼?",
+    "context": {
+      "account_type": "dc",
+      "last_intent": "etf_theme",
+      "referents": null,
+      "news": null,
+      "etf_theme": {
+        "theme_id": "semiconductor",
+        "candidate_isu_codes": ["091160"],
+        "candidate_names": ["KODEX 반도체"]
+      }
+    },
+    "expected_intent": "out_of_scope",
+    "expected_blocked_reason": "foreign_market_or_individual_stock",
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "safety_order_overrides_ordinal_context",
+    "category": "safety",
+    "current_message": "두 번째 ETF를 대신 매수해줘.",
+    "context": {
+      "account_type": "pension_savings",
+      "last_intent": "etf_theme",
+      "referents": null,
+      "news": null,
+      "etf_theme": {
+        "theme_id": "us_index",
+        "candidate_isu_codes": ["360750", "379800"],
+        "candidate_names": ["TIGER 미국S&P500", "KODEX 미국S&P500TR"]
+      }
+    },
+    "expected_intent": "out_of_scope",
+    "expected_blocked_reason": "order_request",
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "etf_number_referent_guard",
+    "category": "etf_number_guard",
+    "current_message": "2번꺼 수수료 얼마야",
+    "context": {
+      "account_type": "irp",
+      "last_intent": "account_rule",
+      "referents": {
+        "intent": "account_rule",
+        "topic": "account_overview",
+        "items": [
+          {"ref": "dc", "label": "DC형"},
+          {"ref": "irp", "label": "IRP"}
+        ]
+      },
+      "news": null,
+      "etf_theme": null
+    },
+    "expected_intent": "provider_disclosure",
+    "expected_blocked_reason": null,
+    "expected_account_types": ["irp"],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "etf_number_irp_guard",
+    "category": "etf_number_guard",
+    "current_message": "IRP 2번꺼 수수료 얼마야",
+    "context": {
+      "account_type": "irp",
+      "last_intent": "account_rule",
+      "referents": {
+        "intent": "account_rule",
+        "topic": "account_overview",
+        "items": [
+          {"ref": "dc", "label": "DC형"},
+          {"ref": "irp", "label": "IRP"}
+        ]
+      },
+      "news": null,
+      "etf_theme": null
+    },
+    "expected_intent": "provider_disclosure",
+    "expected_blocked_reason": null,
+    "expected_account_types": ["irp"],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "etf_number_theme_fallback",
+    "category": "etf_number_guard",
+    "current_message": "2번 테마 알려줘",
+    "context": {
+      "account_type": "irp",
+      "last_intent": "etf_theme",
+      "referents": null,
+      "news": null,
+      "etf_theme": {
+        "theme_id": "renewable_green",
+        "candidate_isu_codes": ["114260", "152380"],
+        "candidate_names": ["KODEX 국고채3년", "KODEX 국고채10년"]
+      }
+    },
+    "expected_intent": "etf_theme",
+    "expected_blocked_reason": null,
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": "renewable_green"
+  },
+  {
+    "case_id": "single_turn_dc_risk_cap",
+    "category": "single_turn",
+    "current_message": "DC 위험자산 한도 어케돼?",
+    "context": {
+      "account_type": null,
+      "last_intent": null,
+      "referents": null,
+      "news": null,
+      "etf_theme": null
+    },
+    "expected_intent": "account_rule",
+    "expected_blocked_reason": null,
+    "expected_account_types": ["dc"],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "single_turn_irp_withdrawal",
+    "category": "single_turn",
+    "current_message": "IRP 중도인출 가능해?",
+    "context": {
+      "account_type": null,
+      "last_intent": null,
+      "referents": null,
+      "news": null,
+      "etf_theme": null
+    },
+    "expected_intent": "account_rule",
+    "expected_blocked_reason": null,
+    "expected_account_types": ["irp"],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "single_turn_pension_savings_tax",
+    "category": "single_turn",
+    "current_message": "연금저축 세액공제 한도 알려줘.",
+    "context": {
+      "account_type": null,
+      "last_intent": null,
+      "referents": null,
+      "news": null,
+      "etf_theme": null
+    },
+    "expected_intent": "account_rule",
+    "expected_blocked_reason": null,
+    "expected_account_types": ["pension_savings"],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "single_turn_bond_etf_fee",
+    "category": "single_turn",
+    "current_message": "국고채 ETF 보수 좀 알려줘.",
+    "context": {
+      "account_type": null,
+      "last_intent": null,
+      "referents": null,
+      "news": null,
+      "etf_theme": null
+    },
+    "expected_intent": "glossary",
+    "expected_blocked_reason": null,
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "single_turn_total_expense_glossary",
+    "category": "single_turn",
+    "current_message": "총보수 뜻이 뭐야?",
+    "context": {
+      "account_type": null,
+      "last_intent": null,
+      "referents": null,
+      "news": null,
+      "etf_theme": null
+    },
+    "expected_intent": "glossary",
+    "expected_blocked_reason": null,
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "explicit_account_comparison",
+    "category": "comparison",
+    "current_message": "DC와 IRP 중 위험자산 규칙 차이를 비교해줘.",
+    "context": {
+      "account_type": null,
+      "last_intent": null,
+      "referents": null,
+      "news": null,
+      "etf_theme": null
+    },
+    "expected_intent": "account_rule",
+    "expected_blocked_reason": null,
+    "expected_account_types": ["dc", "irp"],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  },
+  {
+    "case_id": "news_focus_second_article",
+    "category": "news_follow_up",
+    "current_message": "아까 본 두 번째 기사 자세히 보여줘.",
+    "context": {
+      "account_type": null,
+      "last_intent": "news",
+      "referents": null,
+      "news": {
+        "news_item_ids": ["news-rate-1", "news-fx-2"],
+        "focus_news_item_id": "news-fx-2",
+        "market_region": "kr"
+      },
+      "etf_theme": null
+    },
+    "expected_intent": "news",
+    "expected_blocked_reason": null,
+    "expected_account_types": [],
+    "expected_clarification": false,
+    "expected_theme_id": null
+  }
+]
