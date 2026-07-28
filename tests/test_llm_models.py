@@ -82,7 +82,14 @@ def test_build_model_rejects_a_missing_api_key() -> None:
         build_model("gemini-3.5-flash-lite", api_key="  ")
 
 
-def test_google_settings_disable_thinking_when_not_requested() -> None:
+def test_google_settings_omit_thinking_config_when_not_requested() -> None:
+    """끌 때는 옵션을 아예 싣지 않는다.
+
+    thinking_budget=0을 실으면 gemini-3.5-flash-lite가 400
+    INVALID_ARGUMENT로 거절해 모든 요청이 폴백된다(2026-07-28 실호출 재현).
+    실호출 회귀는 tests/test_llm_live_smoke.py가 잡는다.
+    """
+
     settings = build_model_settings(
         "gemini-3.5-flash-lite",
         max_tokens=2500,
@@ -91,10 +98,20 @@ def test_google_settings_disable_thinking_when_not_requested() -> None:
     )
 
     assert settings["max_tokens"] == 2500
-    assert settings["google_thinking_config"] == {"thinking_budget": 0}
+    assert "google_thinking_config" not in settings
     # Anthropic 전용 옵션이 Google 요청에 섞이면 400이 난다.
     assert "anthropic_cache_instructions" not in settings
     assert "anthropic_thinking" not in settings
+
+
+def test_google_settings_enable_thinking_when_requested() -> None:
+    settings = build_model_settings(
+        "gemini-3.5-flash-lite",
+        max_tokens=2500,
+        thinking=True,
+    )
+
+    assert settings["google_thinking_config"] == {"include_thoughts": True}
 
 
 def test_anthropic_settings_keep_prompt_caching_and_thinking() -> None:

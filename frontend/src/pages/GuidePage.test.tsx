@@ -14,11 +14,12 @@ import {
   getStoredChatMessages,
   sendAuthenticatedChatStream,
 } from "../api/client";
-import type { ChatCard, ChatResponse, ChatSessionSummary } from "../api/types";
+import type { ChatCard, ChatResponse, ChatSessionSummary, ChatVisualization } from "../api/types";
 import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
 import { CHAT_PROMPT_CANDIDATES } from "../chatPromptCandidates";
 import {
   ETF_THEME_CARDS,
+  collapseSharedStrategyAllocation,
   filterChatCards,
   GuidePage,
 } from "./GuidePage";
@@ -730,7 +731,7 @@ describe("GuidePage chat history deletion", () => {
     expect(sendAuthenticatedChatStream).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps educational portfolio answers focused by hiding duplicate numeric evidence cards", async () => {
+  it("shows strategy visualizations while hiding duplicate numeric evidence cards", async () => {
     vi.mocked(sendAuthenticatedChatStream).mockResolvedValue({
       persisted: false,
       response: {
@@ -752,6 +753,21 @@ describe("GuidePage chat history deletion", () => {
           kind: "service_explanation",
           title: "위험중립형 투자전략",
           content: "목표 자산배분과 운용 원칙을 확인하세요.",
+          evidence_ids: ["engine:portfolio"],
+        }, {
+          kind: "service_explanation",
+          title: "DC형 · ETF 분야 살펴보기",
+          content: "ETF 섹터를 살펴보세요.",
+          evidence_ids: ["engine:portfolio"],
+        }, {
+          kind: "service_explanation",
+          title: "IRP · ETF 분야 살펴보기",
+          content: "ETF 섹터를 살펴보세요.",
+          evidence_ids: ["engine:portfolio"],
+        }, {
+          kind: "service_explanation",
+          title: "연금저축펀드 · ETF 분야 살펴보기",
+          content: "ETF 섹터를 살펴보세요.",
           evidence_ids: ["engine:portfolio"],
         }],
         sources: [],
@@ -781,7 +797,7 @@ describe("GuidePage chat history deletion", () => {
             description: "규칙 엔진이 계산한 목표비중이에요.",
             data_boundary: "engine",
             evidence_ids: [],
-            items: [{ label: "주식", value: "57.4", unit: "%", role: "segment" }],
+            items: [{ label: "주식", value: "48", unit: "%", role: "segment" }],
             series: [],
           },
           {
@@ -832,7 +848,7 @@ describe("GuidePage chat history deletion", () => {
 
     expect(await screen.findByText("현재 투자성향 설문 결과(위험중립형)를 기준으로 한 예시 전략은 코어·위성 전략입니다.")).toBeInTheDocument();
     expect(await screen.findByText("위험중립형의 코어·위성 전략")).toBeInTheDocument();
-    expect(screen.queryByText("위험중립형 투자전략", { exact: true })).not.toBeInTheDocument();
+    expect(screen.getByText("위험중립형 투자전략", { exact: true })).toBeInTheDocument();
     expect(screen.getByText("연금 운용전략")).toBeInTheDocument();
     const orderedStrategyContent = [
       screen.getByText("코어·위성 전략"),
@@ -845,18 +861,48 @@ describe("GuidePage chat history deletion", () => {
         ) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     }
+    expect(screen.getByText("보유 계좌 공통 목표 자산배분")).toBeInTheDocument();
+    expect(screen.getByText("현재 조건에서는 보유한 연금계좌의 목표 비중이 같아요.")).toBeInTheDocument();
     for (const title of [
-      "DC형 목표 자산배분",
       "DC형 스트레스 점검",
-      "연금저축펀드 목표 자산배분",
       "연금저축펀드 스트레스 점검",
     ]) {
-      expect(screen.queryByText(title)).not.toBeInTheDocument();
+      expect(screen.getByText(title)).toBeInTheDocument();
     }
+    expect(screen.queryByText("DC형 목표 자산배분")).not.toBeInTheDocument();
+    expect(screen.queryByText("연금저축펀드 목표 자산배분")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("수치 근거")).not.toBeInTheDocument();
     expect(screen.queryByText("검증 답변")).not.toBeInTheDocument();
     expect(screen.queryByText("equity_drawdown 스트레스 손실 추정치")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("이어서 물어보기")).not.toBeInTheDocument();
+    expect(screen.queryByText("DC형 · ETF 분야 살펴보기")).not.toBeInTheDocument();
+    expect(screen.queryByText("IRP · ETF 분야 살펴보기")).not.toBeInTheDocument();
+    expect(screen.queryByText("연금저축펀드 · ETF 분야 살펴보기")).not.toBeInTheDocument();
+  });
+
+  it("keeps individual allocation charts when account targets differ", () => {
+    const visualizations: ChatVisualization[] = [
+      {
+        kind: "sleeve_allocation",
+        title: "DC형 목표 자산배분",
+        description: "",
+        data_boundary: "engine",
+        evidence_ids: [],
+        items: [{ label: "주식", value: "48", unit: "%", role: "segment" }],
+        series: [],
+      },
+      {
+        kind: "sleeve_allocation",
+        title: "연금저축펀드 목표 자산배분",
+        description: "",
+        data_boundary: "engine",
+        evidence_ids: [],
+        items: [{ label: "주식", value: "57.4", unit: "%", role: "segment" }],
+        series: [],
+      },
+    ];
+
+    expect(collapseSharedStrategyAllocation(visualizations)).toEqual(visualizations);
   });
 
   it("does not refresh hidden session history after a persisted answer", async () => {

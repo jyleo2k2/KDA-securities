@@ -48,10 +48,10 @@ import type {
   AnswerBlock,
   CompletedSurveyProfile,
   ChatCard,
+  ChatVisualization as ChatVisualizationData,
   ConversationContext,
   ChatResponse,
   ChatSessionSummary,
-  ChatVisualization as ChatVisualizationData,
   DataBoundary,
   DemoUserFinancialContext,
   EducationalPortfolioInput,
@@ -79,6 +79,7 @@ const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   educational_portfolio: "연금 운용전략",
   macro_evidence: "거시지표 근거",
   glossary: "용어 설명",
+  strategy_glossary: "투자 전략",
   investing_principle: "투자 원리",
   hesitation_support: "운용 고민",
   getting_started: "시작 안내",
@@ -104,6 +105,53 @@ const CHAT_SESSION_PAGE_SIZE = 20;
 const SERVER_READY_RETRY_DELAYS_MS = [3000, 6000, 12000] as const;
 const PENSION_TAX_LOCAL_INCOME_TAX_NOTICE =
   "세액공제율과 세액공제액은 지방소득세를 고려해서 계산했어요.";
+
+function allocationItemsMatch(
+  left: ChatVisualizationData,
+  right: ChatVisualizationData,
+): boolean {
+  if (left.items.length !== right.items.length) return false;
+  const ordered = (visualization: ChatVisualizationData) => [...visualization.items]
+    .sort((a, b) => a.label.localeCompare(b.label, "ko"));
+
+  return ordered(left).every((item, index) => {
+    const other = ordered(right)[index];
+    if (
+      item.label !== other.label
+      || item.unit !== other.unit
+      || item.role !== other.role
+    ) return false;
+    const itemValue = Number(item.value);
+    const otherValue = Number(other.value);
+    return Number.isFinite(itemValue) && Number.isFinite(otherValue)
+      ? Math.abs(itemValue - otherValue) < 0.0001
+      : String(item.value) === String(other.value);
+  });
+}
+
+export function collapseSharedStrategyAllocation(
+  visualizations: ChatVisualizationData[],
+): ChatVisualizationData[] {
+  const allocations = visualizations.filter(
+    (item) => item.kind === "sleeve_allocation",
+  );
+  if (
+    allocations.length < 2
+    || !allocations.every((item) => allocationItemsMatch(allocations[0], item))
+  ) return visualizations;
+
+  return [
+    {
+      ...allocations[0],
+      title: "보유 계좌 공통 목표 자산배분",
+      description: "현재 조건에서는 보유한 연금계좌의 목표 비중이 같아요.",
+      evidence_ids: Array.from(
+        new Set(allocations.flatMap((item) => item.evidence_ids)),
+      ),
+    },
+    ...visualizations.filter((item) => item.kind !== "sleeve_allocation"),
+  ];
+}
 
 export const ETF_THEME_CARDS = [
   { number: 1, title: "반도체", message: "반도체 테마가 뭐야?" },
@@ -584,12 +632,26 @@ function AssistantMessage({
       item.kind === "tax_summary" && item.title === "세액공제 요약"
     ))
     : undefined;
-  const hiddenEducationalSummaryVisualizations = isEducationalPortfolio
+  const isEducationalStrategyGuide = (
+    isEducationalPortfolio
+    && !educationalHasCurrentHoldings
+  );
+  const hiddenEducationalSummaryVisualizations = (
+    isEducationalPortfolio
+    && educationalHasCurrentHoldings
+  )
     ? response.visualizations.filter((item) => (
       item.kind === "sleeve_allocation" || item.kind === "stress_scenarios"
     ))
     : [];
-  const educationalStrategyVisualizations: ChatVisualizationData[] = [];
+  const educationalStrategySourceVisualizations = isEducationalStrategyGuide
+    ? response.visualizations.filter((item) => (
+      item.kind === "sleeve_allocation" || item.kind === "stress_scenarios"
+    ))
+    : [];
+  const educationalStrategyVisualizations = isEducationalStrategyGuide
+    ? collapseSharedStrategyAllocation(educationalStrategySourceVisualizations)
+    : [];
   const remainingVisualizations = (isMissedTaxCredit
     ? response.visualizations.filter((item) => item.kind !== "tax_summary")
     : taxSummaryVisualization
@@ -597,6 +659,7 @@ function AssistantMessage({
       : response.visualizations
   ).filter((item) => (
     !hiddenEducationalSummaryVisualizations.includes(item)
+    && !educationalStrategySourceVisualizations.includes(item)
   ));
   const visibleNumericEvidence = isMissedTaxCredit
     ? []
@@ -606,7 +669,9 @@ function AssistantMessage({
     )
     : response.numeric_evidence;
   const visibleSections = isEducationalPortfolio && !educationalHasCurrentHoldings
-    ? response.sections
+    ? response.sections.filter(
+      (section) => !section.title.endsWith("ETF 분야 살펴보기"),
+    )
     : isEducationalPortfolio
     ? []
     : isPensionTaxCredit
@@ -791,7 +856,7 @@ function AssistantMessage({
 
       {response.data_mode !== "news_summary" && visibleSections.map((section, index) => (
         <Fragment key={`${section.title}-${index}`}>
-          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "verified_pension_account_brief" || response.data_mode === "verified_pension_tax_rule_brief" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
+          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={isEducationalStrategyGuide || response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "verified_pension_account_brief" || response.data_mode === "verified_pension_tax_rule_brief" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
             <summary>
               <span>{section.title}</span>
               <small>내용 보기</small>
