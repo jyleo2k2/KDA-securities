@@ -21,9 +21,9 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       NAVER_API_HUB_CLIENT_ID: ${{ secrets.NAVER_API_HUB_CLIENT_ID }}
       NAVER_API_HUB_CLIENT_SECRET: ${{ secrets.NAVER_API_HUB_CLIENT_SECRET }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      NEWS_SUMMARY_MODEL: claude-sonnet-5
-      NEWS_SUMMARY_PROMPT_VERSION: news-summary-v3
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      NEWS_SUMMARY_MODEL: gemini-3.6-flash
+      NEWS_SUMMARY_PROMPT_VERSION: news-summary-v4
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

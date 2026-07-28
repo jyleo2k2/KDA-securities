@@ -67,6 +67,14 @@ def test_api_key_is_empty_when_the_vendor_key_is_missing() -> None:
     assert api_key_for_model("gemini-3.5-flash-lite", settings) == ""
 
 
+def test_news_summary_defaults_to_gemini_36_flash() -> None:
+    settings = Settings(_env_file=None)
+
+    assert settings.news_summary_model == "gemini-3.6-flash"
+    assert settings.news_summary_prompt_version == "news-summary-v4"
+    assert required_api_key_name(settings.news_summary_model) == "GOOGLE_API_KEY"
+
+
 def test_build_model_returns_the_vendor_specific_client() -> None:
     google_model = build_model("gemini-3.5-flash-lite", api_key="dummy")
     anthropic_model = build_model("claude-haiku-4-5", api_key="dummy")

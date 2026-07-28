@@ -262,5 +262,7 @@ def test_knowledge_search_sql_uses_one_verified_eligibility_predicate(
     assert len(statements) == 2
     assert _VERIFIED_KNOWLEDGE_ELIGIBILITY_SQL in statements[0]
     assert statements[1].count(_VERIFIED_KNOWLEDGE_ELIGIBILITY_SQL) == 2
+    assert "review_due_date" in _VERIFIED_KNOWLEDGE_ELIGIBILITY_SQL
+    assert ">= current_date" in _VERIFIED_KNOWLEDGE_ELIGIBILITY_SQL
     assert "order by text_score desc, kc.id" in statements[1]
     assert "kc.embedding <=> %(query_vector)s::extensions.vector" in statements[1]

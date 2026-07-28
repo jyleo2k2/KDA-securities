@@ -40,12 +40,14 @@ def _summarize_with_retry(
             if exc.draft is not None:
                 correction = (
                     "아래 초안의 사실은 원문 범위에서만 유지하고, 각 문장을 60자 "
-                    "이하로 고치세요. 전망에는 발언 주체를 넣으세요.\n"
+                    "이하의 원문 연속 문자열로 고치세요. "
+                    "전망에는 발언 주체를 넣으세요.\n"
                     f"<draft>{chr(10).join(exc.draft.summary_lines)}</draft>"
                 )
             else:
                 correction = (
-                    "각 문장을 60자 이하로 줄이세요. 전망에는 발언 주체를 넣으세요."
+                    "각 줄은 60자 이하의 원문 연속 문자열을 그대로 사용하세요. "
+                    "전망에는 발언 주체를 넣으세요."
                 )
     raise AssertionError("summary retry loop must return or raise")
 

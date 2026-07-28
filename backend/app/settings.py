@@ -52,8 +52,9 @@ class Settings(BaseSettings):
     )
     enable_etf_product_feature_generation: bool = True
     narration_cache_path: Path = Path("data/cache/narration_cache.json")
-    news_summary_model: str = "claude-sonnet-5"
-    news_summary_prompt_version: str = "news-summary-v3"
+    # Google 공식 안정판 모델 ID. 뉴스 요약은 모델명에 맞는 벤더 키를 사용한다.
+    news_summary_model: str = "gemini-3.6-flash"
+    news_summary_prompt_version: str = "news-summary-v4"
     krx_api_key: SecretStr | None = None
     kis_app_key: SecretStr | None = None
     kis_app_secret: SecretStr | None = None

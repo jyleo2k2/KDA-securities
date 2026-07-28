@@ -19,7 +19,7 @@ from .search_ranking import (
 # RRF(reciprocal rank fusion) 상수 — 관행값 60, 순위 융합의 완만함을 조절한다.
 RRF_K = 60
 
-# 챗봇 RAG에 들어갈 수 있는 검증 문서의 단일 자격 술어다. 현재 코퍼스는 46청크라
+# 챗봇 RAG에 들어갈 수 있는 검증 문서의 단일 자격 술어다. 현재 코퍼스는 69청크라
 # VIEW·partial index를 추가할 성능상 이득이 없고, DB 세션 마이그레이션도 필요하다.
 # 코퍼스가 커질 때 그 대안을 재검토한다. 이 문자열은 순수 SQL 리터럴만 포함하며,
 # 사용자 입력은 각 쿼리의 %(name)s 바인딩 파라미터로만 전달한다.
@@ -34,6 +34,13 @@ _VERIFIED_KNOWLEDGE_ELIGIBILITY_SQL = """
                   and kd.metadata ->> 'data_boundary' = 'verified_knowledge'
                   and kd.metadata ->> 'contains_personal_data' = 'false'
                   and kd.metadata ->> 'is_mock' = 'false'
+                  and case
+                      when kd.metadata ->> 'review_due_date'
+                          ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+                      then (kd.metadata ->> 'review_due_date')::date
+                          >= current_date
+                      else false
+                  end
                   and kc.metadata ->> 'data_boundary' = 'verified_knowledge'
                   and kc.metadata ->> 'contains_personal_data' = 'false'
                   and kc.metadata ->> 'is_mock' = 'false'
