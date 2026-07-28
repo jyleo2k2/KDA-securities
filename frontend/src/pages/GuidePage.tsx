@@ -106,7 +106,7 @@ const SERVER_READY_RETRY_DELAYS_MS = [3000, 6000, 12000] as const;
 const PENSION_TAX_LOCAL_INCOME_TAX_NOTICE =
   "세액공제율과 세액공제액은 지방소득세를 고려해서 계산했어요.";
 
-function allocationItemsMatch(
+function visualizationItemsMatch(
   left: ChatVisualizationData,
   right: ChatVisualizationData,
 ): boolean {
@@ -137,7 +137,7 @@ export function collapseSharedStrategyAllocation(
   );
   if (
     allocations.length < 2
-    || !allocations.every((item) => allocationItemsMatch(allocations[0], item))
+    || !allocations.every((item) => visualizationItemsMatch(allocations[0], item))
   ) return visualizations;
 
   return [
@@ -151,6 +151,35 @@ export function collapseSharedStrategyAllocation(
     },
     ...visualizations.filter((item) => item.kind !== "sleeve_allocation"),
   ];
+}
+
+export function collapseSharedStrategyStressScenarios(
+  visualizations: ChatVisualizationData[],
+): ChatVisualizationData[] {
+  const stressScenarios = visualizations.filter(
+    (item) => item.kind === "stress_scenarios",
+  );
+  if (
+    stressScenarios.length < 2
+    || !stressScenarios.every((item) => (
+      visualizationItemsMatch(stressScenarios[0], item)
+    ))
+  ) return visualizations;
+
+  let insertedCommonScenario = false;
+  return visualizations.flatMap((item) => {
+    if (item.kind !== "stress_scenarios") return [item];
+    if (insertedCommonScenario) return [];
+    insertedCommonScenario = true;
+    return [{
+      ...stressScenarios[0],
+      title: "보유 계좌 공통 스트레스 점검",
+      description: "현재 조건에서는 보유한 연금계좌의 스트레스 손실 추정치가 같아요.",
+      evidence_ids: Array.from(
+        new Set(stressScenarios.flatMap((scenario) => scenario.evidence_ids)),
+      ),
+    }];
+  });
 }
 
 function withoutStagflationStressScenario(
@@ -667,8 +696,10 @@ function AssistantMessage({
     ))
     : [];
   const educationalStrategyVisualizations = isEducationalStrategyGuide
-    ? withoutStagflationStressScenario(
-      collapseSharedStrategyAllocation(educationalStrategySourceVisualizations),
+    ? collapseSharedStrategyStressScenarios(
+      withoutStagflationStressScenario(
+        collapseSharedStrategyAllocation(educationalStrategySourceVisualizations),
+      ),
     )
     : [];
   const remainingVisualizations = (isMissedTaxCredit
