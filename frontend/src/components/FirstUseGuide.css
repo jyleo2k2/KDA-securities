@@ -212,6 +212,23 @@
   outline-color: #55C77D;
 }
 
+.fug-root-user-pick.is-awaiting-user-pick-detail {
+  pointer-events: none;
+}
+
+.fug-root-user-pick.is-awaiting-user-pick-detail .fug-panel {
+  pointer-events: auto;
+}
+
+.fug-user-pick-detail-hint {
+  align-self: center;
+  color: #16884E;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: right;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .fug-spotlight {
     transition: none;
