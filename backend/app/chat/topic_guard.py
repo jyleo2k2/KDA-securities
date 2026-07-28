@@ -13,7 +13,12 @@ from pydantic_ai.exceptions import AgentRunError
 
 from ..llm_models import build_model, build_model_settings
 from ..text_normalization import normalize_colloquial_text
-from .query_planner import BlockedReason, QueryPlan, plan_question
+from .query_planner import (
+    BlockedReason,
+    QueryPlan,
+    mentions_glossary_term,
+    plan_question,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +161,12 @@ class ClaudeTopicGuard:
             return plan
         decision = self.classify(message)
         if not decision.allowed:
+            return plan
+        # 용어를 특정할 수 없는데 대표 질문("ETF가 뭐야?")으로 되돌리면
+        # 모른다고 말하는 대신 엉뚱한 정의를 확신 있게 답하게 된다.
+        if decision.route is TopicGuardRoute.GLOSSARY and not mentions_glossary_term(
+            plan.normalized_message
+        ):
             return plan
         canonical_question = _CANONICAL_ROUTE_QUESTIONS.get(decision.route)
         if canonical_question is None:

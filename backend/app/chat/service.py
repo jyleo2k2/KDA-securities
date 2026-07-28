@@ -83,6 +83,10 @@ from .handlers.scenarios import (
     scenario_response,
     scenario_selection_response,
 )
+from .handlers.strategy_glossary import (
+    build_strategy_glossary_response,
+    find_investing_strategy,
+)
 from .models import (
     ChatIntent,
     ChatRequest,
@@ -113,6 +117,18 @@ def _glossary_response(
             user_message=plan.normalized_message,
         )
     return build_glossary_response(term, knowledge)
+
+
+def _strategy_glossary_response(plan: QueryPlan) -> ChatResponse:
+    """Answer a strategy question with the wording already shown on screen."""
+
+    strategy = find_investing_strategy(plan.strategy_id or "")
+    if strategy is None:
+        return blocked_response(
+            BlockedReason.UNSUPPORTED,
+            user_message=plan.normalized_message,
+        )
+    return build_strategy_glossary_response(strategy)
 
 
 def _investing_principle_response(
@@ -306,6 +322,8 @@ class ChatService:
                 response = getting_started_response()
             elif resolved_plan.intent == ChatIntent.GLOSSARY:
                 response = _glossary_response(resolved_plan, self._knowledge)
+            elif resolved_plan.intent == ChatIntent.STRATEGY_GLOSSARY:
+                response = _strategy_glossary_response(resolved_plan)
             elif resolved_plan.intent == ChatIntent.INVESTING_PRINCIPLE:
                 response = _investing_principle_response(
                     resolved_plan, self._knowledge

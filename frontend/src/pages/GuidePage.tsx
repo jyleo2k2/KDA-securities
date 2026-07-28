@@ -78,6 +78,7 @@ const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   educational_portfolio: "연금 운용전략",
   macro_evidence: "거시지표 근거",
   glossary: "용어 설명",
+  strategy_glossary: "투자 전략",
   investing_principle: "투자 원리",
   hesitation_support: "운용 고민",
   getting_started: "시작 안내",

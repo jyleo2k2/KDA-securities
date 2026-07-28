@@ -136,6 +136,44 @@ def test_topic_guard_refines_only_unsupported_plan() -> None:
     assert refined.account_rule_topic is None
 
 
+def test_topic_guard_keeps_unsupported_when_glossary_term_is_unknown() -> None:
+    guard = ClaudeTopicGuard(api_key="test-key", model="claude-haiku-4-5")
+    # 사전에 없는 말을 물었을 때 대표 질문("ETF가 뭐야?")으로 되돌리면
+    # 모른다고 말하는 대신 엉뚱한 정의를 확신 있게 답하게 된다.
+    message = "스마트베타가 뭐야?"
+    unsupported = plan_question(message)
+    assert unsupported.blocked_reason is BlockedReason.UNSUPPORTED
+
+    with guard.agent.override(
+        model=_fake_guard_model(
+            {"allowed": True, "route": TopicGuardRoute.GLOSSARY.value}
+        )
+    ):
+        refined = guard.refine_plan(message, unsupported)
+
+    assert refined is unsupported
+    assert refined.blocked_reason is BlockedReason.UNSUPPORTED
+    assert refined.glossary_term_id is None
+
+
+@pytest.mark.parametrize("message", ["ETF 이해하고 싶어", "이티에프 이해하고 싶어"])
+def test_topic_guard_routes_glossary_when_term_is_known(message: str) -> None:
+    guard = ClaudeTopicGuard(api_key="test-key", model="claude-haiku-4-5")
+    unsupported = plan_question(message)
+    assert unsupported.blocked_reason is BlockedReason.UNSUPPORTED
+
+    with guard.agent.override(
+        model=_fake_guard_model(
+            {"allowed": True, "route": TopicGuardRoute.GLOSSARY.value}
+        )
+    ):
+        refined = guard.refine_plan(message, unsupported)
+
+    assert refined.intent is ChatIntent.GLOSSARY
+    assert refined.blocked_reason is None
+    assert refined.glossary_term_id == "etf"
+
+
 @pytest.mark.parametrize(
     ("route", "expected_intent", "expected_tax_flag"),
     [
