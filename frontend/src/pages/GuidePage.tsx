@@ -46,6 +46,7 @@ import {
 } from "../components/PortfolioHoldingsPanel";
 import type {
   AnswerBlock,
+  AnswerSection,
   CompletedSurveyProfile,
   ChatCard,
   ChatVisualization as ChatVisualizationData,
@@ -177,6 +178,41 @@ export function collapseSharedStrategyStressScenarios(
       description: "현재 조건에서는 보유한 연금계좌의 스트레스 손실 추정치가 같아요.",
       evidence_ids: Array.from(
         new Set(stressScenarios.flatMap((scenario) => scenario.evidence_ids)),
+      ),
+    }];
+  });
+}
+
+const ACCOUNT_STRATEGY_TITLE_PATTERN = /^(DC형|IRP|연금저축펀드) · (.+전략)$/;
+
+export function collapseSharedAccountStrategySections(
+  sections: AnswerSection[],
+): AnswerSection[] {
+  const accountStrategySections = sections.flatMap((section) => {
+    const titleMatch = section.title.match(ACCOUNT_STRATEGY_TITLE_PATTERN);
+    return titleMatch ? [{ section, sharedTitle: titleMatch[2] }] : [];
+  });
+  if (accountStrategySections.length < 2) return sections;
+
+  const first = accountStrategySections[0];
+  const allSectionsMatch = accountStrategySections.every(({ section, sharedTitle }) => (
+    sharedTitle === first.sharedTitle
+    && section.kind === first.section.kind
+    && section.content === first.section.content
+    && JSON.stringify(section.blocks ?? []) === JSON.stringify(first.section.blocks ?? [])
+  ));
+  if (!allSectionsMatch) return sections;
+
+  let insertedCommonSection = false;
+  return sections.flatMap((section) => {
+    if (!ACCOUNT_STRATEGY_TITLE_PATTERN.test(section.title)) return [section];
+    if (insertedCommonSection) return [];
+    insertedCommonSection = true;
+    return [{
+      ...first.section,
+      title: `보유 계좌 공통 · ${first.sharedTitle}`,
+      evidence_ids: Array.from(
+        new Set(accountStrategySections.flatMap(({ section: item }) => item.evidence_ids)),
       ),
     }];
   });
@@ -719,10 +755,12 @@ function AssistantMessage({
     )
     : response.numeric_evidence;
   const visibleSections = isEducationalStrategyGuide
-    ? response.sections.filter(
-      (section) => (
-        section.title !== "적용한 MVP 설문 조건"
-        && !section.title.endsWith("ETF 분야 살펴보기")
+    ? collapseSharedAccountStrategySections(
+      response.sections.filter(
+        (section) => (
+          section.title !== "적용한 MVP 설문 조건"
+          && !section.title.endsWith("ETF 분야 살펴보기")
+        ),
       ),
     )
     : isEducationalPortfolio
