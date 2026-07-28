@@ -832,7 +832,14 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   background: #fff;
 }
 .guide-tab .design-avatar img { width: 100%; height: 100%; display: block; object-fit: cover; }
-.guide-tab .conversation { background: #fff; scrollbar-width: thin; scrollbar-color: #d4d8dc transparent; }
+.guide-tab .conversation {
+  background:
+    radial-gradient(circle at 94% 7%, rgba(34, 169, 77, .07) 0 46px, transparent 47px),
+    radial-gradient(circle at 4% 29%, rgba(34, 169, 77, .045) 0 34px, transparent 35px),
+    linear-gradient(180deg, #f7fbf8 0, #fff 360px);
+  scrollbar-width: thin;
+  scrollbar-color: #d4d8dc transparent;
+}
 .guide-tab .conversation::-webkit-scrollbar { width: 4px; }
 .guide-tab .conversation::-webkit-scrollbar-thumb { border-radius: 999px; background: #d4d8dc; }
 .guide-tab .welcome.design-welcome {
@@ -840,7 +847,46 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   padding: 14px 22px 8px;
   text-align: left;
 }
-.guide-tab .design-brand { gap: 12px; }
+.guide-tab .design-brand {
+  position: relative;
+  width: fit-content;
+  gap: 10px;
+  padding: 8px 16px 8px 8px;
+  border: 1px solid #dceee1;
+  border-radius: 20px 20px 20px 7px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 8px 24px rgba(27, 145, 66, .08);
+}
+.guide-tab .design-brand::after {
+  position: absolute;
+  bottom: -5px;
+  left: 8px;
+  width: 10px;
+  height: 10px;
+  border-bottom: 1px solid #dceee1;
+  border-left: 1px solid #dceee1;
+  background: #fff;
+  content: "";
+  transform: rotate(-45deg);
+}
+.guide-tab .design-brand-avatar {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1.5px solid #e2e8e1;
+  border-radius: 50%;
+  background: #fff;
+  overflow: hidden;
+}
+.guide-tab .design-brand-avatar img {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  object-position: center;
+}
 .guide-tab .design-brand-mark {
   width: 40px;
   height: 40px;
@@ -852,10 +898,13 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   font-weight: 800;
 }
 .guide-tab .design-brand strong {
-  color: #1b9142;
-  font-size: 27px;
+  color: #0a813f;
+  font-family: "Cafe24SsurroundAir", "Noto Sans KR", sans-serif;
+  font-size: 30px;
   font-weight: 900;
-  letter-spacing: 0;
+  line-height: 1;
+  letter-spacing: -1px;
+  -webkit-text-stroke: .6px currentColor;
 }
 .guide-tab .design-welcome h1 {
   margin: 26px 0 0;
@@ -1021,7 +1070,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   margin: 0;
   padding: 12px 0 8px;
   color: #1b9142;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
   line-height: normal;
 }

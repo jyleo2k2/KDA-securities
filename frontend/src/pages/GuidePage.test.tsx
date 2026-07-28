@@ -422,7 +422,15 @@ describe("GuidePage chat history deletion", () => {
   it("renders the attached Canvas-2 conversation shell", async () => {
     renderGuide();
 
-    expect(await screen.findByText("고객님 ! 막막한 노후 준비,", { exact: false })).toBeInTheDocument();
+    expect(await screen.findByText("연그미", {
+      selector: ".design-brand strong",
+    })).toBeInTheDocument();
+    expect(document.querySelector(".design-brand-avatar img")).toHaveAttribute(
+      "src",
+      expect.stringContaining("piggy-clean"),
+    );
+    expect(screen.queryByText(/막막한 노후 준비/)).not.toBeInTheDocument();
+    expect(document.querySelector(".selected-scenario-card")).not.toBeInTheDocument();
     const historyButton = screen.getByRole("button", { name: "지난 대화 열기" });
     const historySidebar = screen.getByRole("complementary");
     expect(historyButton).toBeInTheDocument();

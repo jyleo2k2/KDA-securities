@@ -109,15 +109,20 @@ def build_model_settings(
     켤 옵션이 없다.
 
     ``thinking``이 꺼져 있으면 지연을 줄이기 위해 추론 토큰을 쓰지 않는다.
+    벤더 공통으로 "끄기"는 옵션을 싣지 않는 것으로 표현한다.
     """
 
     if resolve_vendor(model_name) == GOOGLE:
         from pydantic_ai.models.google import GoogleModelSettings
 
         google_settings = GoogleModelSettings(max_tokens=max_tokens)
-        google_settings["google_thinking_config"] = (
-            {"include_thoughts": True} if thinking else {"thinking_budget": 0}
-        )
+        # 끌 때 thinking_budget=0을 실으면 안 된다. gemini-3.5-flash-lite가
+        # 400 INVALID_ARGUMENT로 거절해서 내레이션·주제가드·ETF 특징 생성이
+        # 전부 조용히 폴백된다(2026-07-28 실호출 재현: budget 0만 실패하고
+        # 512·-1은 성공). 이 모델은 thinking이 기본 꺼짐이라 옵션을 생략하면
+        # 그대로 저지연이다(실측 평균 1.08초, 동적 thinking은 4.14초).
+        if thinking:
+            google_settings["google_thinking_config"] = {"include_thoughts": True}
         return google_settings
 
     from pydantic_ai.models.anthropic import AnthropicModelSettings

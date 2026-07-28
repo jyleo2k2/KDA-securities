@@ -13,6 +13,7 @@ import {
 } from "react";
 
 import profileIcon from "../assets/chatbot/profile-icon.webp";
+import yeongeumiProfile from "../assets/login/piggy-clean.png";
 import {
   ApiError,
   apiErrorMessage,
@@ -78,6 +79,7 @@ const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
   educational_portfolio: "연금 운용전략",
   macro_evidence: "거시지표 근거",
   glossary: "용어 설명",
+  strategy_glossary: "투자 전략",
   investing_principle: "투자 원리",
   hesitation_support: "운용 고민",
   getting_started: "시작 안내",
@@ -1052,11 +1054,6 @@ export function GuidePage({
     );
   }
 
-  const selectedScenarioData = useMemo(
-    () => scenarios.find((scenario) => scenario.code === selectedScenario),
-    [scenarios, selectedScenario],
-  );
-
   const visibleChatCards = useMemo(() => filterChatCards(chatCards, {
     hasScenario: Boolean(selectedScenario || userContext?.scenario_code),
     hasSurvey: surveyProfile !== null,
@@ -1886,30 +1883,14 @@ export function GuidePage({
           {messages.length === 0 ? (
             <div className="welcome design-welcome">
               <div className="design-brand">
-                <span className="design-brand-mark">연</span>
+                <span className="design-brand-avatar" aria-hidden="true">
+                  <img src={yeongeumiProfile} alt="" />
+                </span>
                 <strong>연그미</strong>
               </div>
-              <h1>{userContext?.nickname ?? selectedScenarioData?.name ?? "고객"}님 ! 막막한 노후 준비, <em><br />연그미</em>와 대화하며 풀어보세요.</h1>
 
-              {/* 정민재 박스는 로그인 컨텍스트로 즉시 채워진다. 리밸런싱 카드는 API 응답이 늦으므로 로딩 중 같은 골격의 스켈레톤으로 자리를 잡아 아래 추천 질문이 밀리지 않게 한다. */}
+              {/* 리밸런싱 카드는 API 응답이 늦으므로 로딩 중 같은 골격의 스켈레톤으로 자리를 잡아 아래 추천 질문이 밀리지 않게 한다. */}
               <div className="welcome-intro-cards">
-                {(userContext || selectedScenarioData) ? (
-                  <div className="selected-scenario-card">
-                    <div><Icon name="database" size={19} /></div>
-                    <span>
-                      <strong>{userContext?.nickname ?? selectedScenarioData?.name}</strong>
-                      <small>{userContext?.customer_context ?? selectedScenarioData?.description}</small>
-                    </span>
-                  </div>
-                ) : accessToken && (
-                  <div className="selected-scenario-card is-skeleton" aria-hidden="true">
-                    <div className="scenario-skeleton-icon" />
-                    <span>
-                      <strong><span className="skeleton-line" style={{ width: "40%" }} /></strong>
-                      <small><span className="skeleton-line" /><span className="skeleton-line" style={{ width: "76%" }} /></small>
-                    </span>
-                  </div>
-                )}
                 {reminderLoading ? (
                   <div className="rebalancing-reminder-card is-skeleton" aria-hidden="true">
                     <strong><span className="skeleton-line" style={{ width: "58%" }} /></strong>
