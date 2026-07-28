@@ -114,6 +114,7 @@
 .mhs-strategy-promo-cta b { color: #90A19A; font-size: 24px; font-weight: 500; line-height: .6; }
 .mhs-strategy-heading-row { display: flex; align-items: baseline; justify-content: space-between; margin: 44px 0 6px; }
 .mhs-strategy-more { font-size: 13px; font-weight: 800; color: #18A860; white-space: nowrap; cursor: pointer; background: none; border: none; padding: 0; font-family: inherit; }
+.mhs-strategy-more-row { display: flex; justify-content: flex-end; margin-top: 8px; }
 .mhs-strategy-intro { margin: 0 0 14px; font-size: 13px; font-weight: 600; color: #A0AAA4; }
 
 .mhs-strategy-scroll { display: flex; gap: 12px; overflow-x: auto; margin: 0; padding: 0 0 6px; scroll-padding-inline: 0; scroll-snap-type: x mandatory; scrollbar-width: none; cursor: grab; }

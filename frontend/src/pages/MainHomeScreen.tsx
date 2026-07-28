@@ -704,7 +704,6 @@ export function MainHomeScreen({
           <h2 className="mhs-section-title mhs-section-title-tight">
             연금KDA&apos;s <span className="mhs-section-title-gold">Pick</span>
           </h2>
-          <button type="button" className="mhs-strategy-more" onClick={onOpenStrategyExplore}>시나리오·더보기 +</button>
         </div>
         <p className="mhs-strategy-intro">연금 KDA와 제휴하는 전략들로 연금을 꾸려보세요!</p>
 
@@ -745,6 +744,9 @@ export function MainHomeScreen({
             </button>
             );
           })}
+        </div>
+        <div className="mhs-strategy-more-row">
+          <button type="button" className="mhs-strategy-more" onClick={onOpenStrategyExplore}>시나리오·더보기 +</button>
         </div>
         <p className="mhs-strategy-disclaimer">계획수익률은 운용 가정이며 미래 수익을 보장하지 않아요.</p>
 
