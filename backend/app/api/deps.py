@@ -45,6 +45,7 @@ from ..etf_universe_database import (
 from ..ingestion.embeddings import get_query_embedder
 from ..investment_profile_repository import InvestmentProfileRepository
 from ..llm_models import api_key_for_model
+from ..llm_usage import get_llm_usage_recorder
 from ..macro_evidence import MacroEvidenceRepository
 from ..market_evidence_repository import KrxMarketEvidenceRepository
 from ..news_event_outcome_repository import PostgresNewsEventOutcomeRepository
@@ -393,6 +394,10 @@ def _chat_service(
             ClaudeEtfProductFeatureGenerator(
                 api_key=feature_api_key,
                 model=feature_model,
+                usage_recorder=get_llm_usage_recorder(
+                    database_url,
+                    database_pool_max_size=database_pool_max_size,
+                ),
             )
             if feature_api_key and feature_model
             else None
@@ -463,12 +468,18 @@ def _chat_narrator(
     model: str,
     upgraded_model: str,
     cache_path: Path,
+    database_url: str,
+    database_pool_max_size: int,
 ) -> ClaudeNarrator:
     return ClaudeNarrator(
         api_key=api_key,
         model=model,
         upgraded_model=upgraded_model,
         cache_path=cache_path,
+        usage_recorder=get_llm_usage_recorder(
+            database_url,
+            database_pool_max_size=database_pool_max_size,
+        ),
     )
 
 
@@ -480,17 +491,36 @@ def get_chat_narrator(
     api_key = api_key_for_model(settings.chat_model, settings)
     if not api_key:
         return None
+    database_url = (
+        settings.database_url.get_secret_value().strip()
+        if settings.database_url is not None
+        else ""
+    )
     return _chat_narrator(
         api_key,
         settings.chat_model,
         settings.narration_upgraded_model,
         settings.narration_cache_path,
+        database_url,
+        settings.database_pool_max_size,
     )
 
 
 @lru_cache(maxsize=1)
-def _chat_topic_guard(api_key: str, model: str) -> ClaudeTopicGuard:
-    return ClaudeTopicGuard(api_key=api_key, model=model)
+def _chat_topic_guard(
+    api_key: str,
+    model: str,
+    database_url: str,
+    database_pool_max_size: int,
+) -> ClaudeTopicGuard:
+    return ClaudeTopicGuard(
+        api_key=api_key,
+        model=model,
+        usage_recorder=get_llm_usage_recorder(
+            database_url,
+            database_pool_max_size=database_pool_max_size,
+        ),
+    )
 
 
 def get_chat_topic_guard(
@@ -501,7 +531,17 @@ def get_chat_topic_guard(
     api_key = api_key_for_model(settings.topic_guard_model, settings)
     if not api_key:
         return None
-    return _chat_topic_guard(api_key, settings.topic_guard_model)
+    database_url = (
+        settings.database_url.get_secret_value().strip()
+        if settings.database_url is not None
+        else ""
+    )
+    return _chat_topic_guard(
+        api_key,
+        settings.topic_guard_model,
+        database_url,
+        settings.database_pool_max_size,
+    )
 
 
 def precompute_chat_narrations(settings: Settings) -> None:
@@ -571,5 +611,6 @@ def warm_chat_dependencies(settings: Settings) -> None:
 def clear_chat_dependencies() -> None:
     _chat_service.cache_clear()
     _chat_narrator.cache_clear()
+    _chat_topic_guard.cache_clear()
     get_portfolio_universe_repository.cache_clear()
     get_etf_theme_product_universe.cache_clear()

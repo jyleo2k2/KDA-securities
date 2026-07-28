@@ -21,6 +21,11 @@ from pydantic_ai.messages import ModelResponse, ThinkingPart, ToolCallPart
 
 from ..engine import PensionTaxScenarioInput
 from ..llm_models import GOOGLE, build_model, build_model_settings, resolve_vendor
+from ..llm_usage import (
+    LlmCallKind,
+    LlmUsageRecorder,
+    record_llm_usage,
+)
 from .models import ChatIntent, ChatResponse, DataBoundary
 from .narration_guard import (
     _adds_unverified_content as _adds_unverified_content,
@@ -210,6 +215,7 @@ class ClaudeNarrator:
         cache_persist_debounce_seconds: float = (
             NARRATION_CACHE_PERSIST_DEBOUNCE_SECONDS
         ),
+        usage_recorder: LlmUsageRecorder | None = None,
     ) -> None:
         if not api_key.strip() or not model.strip():
             raise ValueError("api_key and model are required")
@@ -221,6 +227,7 @@ class ClaudeNarrator:
         self._api_key = api_key.strip()
         self._cache_path = cache_path
         self._cache_persist_debounce_seconds = cache_persist_debounce_seconds
+        self._usage_recorder = usage_recorder
         # 검증 통과 내레이션만 저장하는 LRU 캐시(폴백은 저장하지 않는다).
         self._narration_cache: OrderedDict[str, tuple[str, str | None]] = (
             OrderedDict()
@@ -297,12 +304,31 @@ class ClaudeNarrator:
         워밍업은 프로세스·연결 초기화가 목적이라 답변 품질을 쓰지 않고
         버린다. 그래서 서비스 모델과 같은 벤더의 최저가 모델로 호출한다.
         """
+        model = prewarm_model_for(self._model)
+        started_at = monotonic()
         try:
-            self._build_agent_for(prewarm_model_for(self._model)).run_sync(
+            result = self._build_agent_for(model).run_sync(
                 "검증 답변:\n연금 코파일럿 내레이터 워밍업 호출이다.\n\n"
                 "제한사항:\n한 문장으로만 답한다."
             )
+            record_llm_usage(
+                self._usage_recorder,
+                call_kind=LlmCallKind.NARRATION_PREWARM,
+                model_name=model,
+                outcome="accepted",
+                outcome_detail="discarded_warmup",
+                result=result,
+                started_at=started_at,
+            )
         except Exception:  # noqa: BLE001 — 워밍업 실패는 서비스에 영향 없음
+            record_llm_usage(
+                self._usage_recorder,
+                call_kind=LlmCallKind.NARRATION_PREWARM,
+                model_name=model,
+                outcome="provider_error",
+                outcome_detail="prewarm_failed",
+                started_at=started_at,
+            )
             logger.warning("narrator_prewarm_failed")
 
     def _cache_key(self, intent: ChatIntent, prompt: str, model: str) -> str:
@@ -449,6 +475,7 @@ class ClaudeNarrator:
                 upgraded_model=self._upgraded_model,
                 cache_path=self._cache_path,
                 cache_persist_debounce_seconds=self._cache_persist_debounce_seconds,
+                usage_recorder=self._usage_recorder,
             )
             for response in responses:
                 warmer.narrate(response)
@@ -532,6 +559,16 @@ class ClaudeNarrator:
         cache_key = self._cache_key(response.intent, prompt, model)
         cached = self._cache_lookup(cache_key)
         if cached is not None:
+            record_llm_usage(
+                self._usage_recorder,
+                call_kind=LlmCallKind.NARRATION,
+                model_name=model,
+                outcome="cache_hit",
+                outcome_detail="narration_cache",
+                intent=response.intent.value,
+                provider_called=False,
+                application_cache_hit=True,
+            )
             cached_answer, cached_reasoning = cached
             data = response.model_dump()
             data.update(
@@ -543,6 +580,8 @@ class ClaudeNarrator:
                 }
             )
             return ChatResponse.model_validate(data)
+        started_at = monotonic()
+        result = None
         try:
             result = self._agent_for_model(model).run_sync(prompt)
             output = result.output
@@ -556,12 +595,48 @@ class ClaudeNarrator:
                     candidate, NARRATION_MAX_CHARS
                 )
                 if not candidate:
+                    record_llm_usage(
+                        self._usage_recorder,
+                        call_kind=LlmCallKind.NARRATION,
+                        model_name=model,
+                        outcome="validation_rejected",
+                        outcome_detail="narration_too_long",
+                        result=result,
+                        started_at=started_at,
+                        intent=response.intent.value,
+                    )
                     return self._fallback(
                         response,
                         "Claude 설명이 길어 검증 원문을 표시합니다.",
                         reason="narration_too_long",
                     )
-        except (AgentRunError, ValueError):
+        except AgentRunError:
+            record_llm_usage(
+                self._usage_recorder,
+                call_kind=LlmCallKind.NARRATION,
+                model_name=model,
+                outcome="provider_error",
+                outcome_detail="agent_error",
+                result=result,
+                started_at=started_at,
+                intent=response.intent.value,
+            )
+            return self._fallback(
+                response,
+                "Claude 설명 호출 실패로 검증 원문을 표시합니다.",
+                reason="agent_error",
+            )
+        except ValueError:
+            record_llm_usage(
+                self._usage_recorder,
+                call_kind=LlmCallKind.NARRATION,
+                model_name=model,
+                outcome="validation_rejected",
+                outcome_detail="invalid_output",
+                result=result,
+                started_at=started_at,
+                intent=response.intent.value,
+            )
             return self._fallback(
                 response,
                 "Claude 설명 호출 실패로 검증 원문을 표시합니다.",
@@ -583,6 +658,16 @@ class ClaudeNarrator:
                 if isinstance(part, ToolCallPart)
             }
             if not required_tools.issubset(called_tools):
+                record_llm_usage(
+                    self._usage_recorder,
+                    call_kind=LlmCallKind.NARRATION,
+                    model_name=model,
+                    outcome="validation_rejected",
+                    outcome_detail="required_tool_not_called",
+                    result=result,
+                    started_at=started_at,
+                    intent=response.intent.value,
+                )
                 return self._fallback(
                     response,
                     "Claude가 필요한 연금세액 Tool을 호출하지 않아 검증 원문을 "
@@ -597,6 +682,16 @@ class ClaudeNarrator:
             guard_source += f"\n{PENSION_TAX_CLOSING_NOTICE}"
 
         if _adds_unverified_content(candidate, guard_source):
+            record_llm_usage(
+                self._usage_recorder,
+                call_kind=LlmCallKind.NARRATION,
+                model_name=model,
+                outcome="validation_rejected",
+                outcome_detail="unverified_content",
+                result=result,
+                started_at=started_at,
+                intent=response.intent.value,
+            )
             return self._fallback(
                 response,
                 "Claude 설명에서 새로운 숫자·전망·보장·추천 주장을 감지해 "
@@ -624,7 +719,18 @@ class ClaudeNarrator:
                 "narration_reasoning": reasoning,
             }
         )
-        return ChatResponse.model_validate(data)
+        narrated = ChatResponse.model_validate(data)
+        record_llm_usage(
+            self._usage_recorder,
+            call_kind=LlmCallKind.NARRATION,
+            model_name=model,
+            outcome="accepted",
+            outcome_detail=None,
+            result=result,
+            started_at=started_at,
+            intent=response.intent.value,
+        )
+        return narrated
 
     @staticmethod
     def _safe_reasoning(reasoning: str | None, source: str) -> str | None:

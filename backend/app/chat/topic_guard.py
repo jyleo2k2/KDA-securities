@@ -6,12 +6,14 @@ import re
 import threading
 from collections import OrderedDict
 from enum import StrEnum
+from time import monotonic
 
 from pydantic import BaseModel, ConfigDict, model_validator
 from pydantic_ai import Agent, NativeOutput
 from pydantic_ai.exceptions import AgentRunError
 
 from ..llm_models import build_model, build_model_settings
+from ..llm_usage import LlmCallKind, LlmUsageRecorder, record_llm_usage
 from ..text_normalization import normalize_colloquial_text
 from .query_planner import (
     BlockedReason,
@@ -105,10 +107,17 @@ _CANONICAL_ROUTE_QUESTIONS = {
 class ClaudeTopicGuard:
     """Refine only deterministic ``UNSUPPORTED`` plans with a tiny schema."""
 
-    def __init__(self, *, api_key: str, model: str) -> None:
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        model: str,
+        usage_recorder: LlmUsageRecorder | None = None,
+    ) -> None:
         if not api_key.strip() or not model.strip():
             raise ValueError("api_key and model are required")
         self._model = model.strip()
+        self._usage_recorder = usage_recorder
         self._cache: OrderedDict[str, TopicGuardDecision] = OrderedDict()
         self._cache_lock = threading.Lock()
         self.agent: Agent[None, TopicGuardDecision] = Agent(
@@ -137,16 +146,58 @@ class ClaudeTopicGuard:
             cached = self._cache.get(normalized)
             if cached is not None:
                 self._cache.move_to_end(normalized)
+                record_llm_usage(
+                    self._usage_recorder,
+                    call_kind=LlmCallKind.TOPIC_GUARD,
+                    model_name=self._model,
+                    outcome="cache_hit",
+                    outcome_detail="topic_guard_cache",
+                    provider_called=False,
+                    application_cache_hit=True,
+                )
                 return cached
         prompt = "사용자 질문(JSON 문자열):\n" + json.dumps(
             normalized,
             ensure_ascii=False,
         )
+        started_at = monotonic()
+        result = None
         try:
-            decision = self.agent.run_sync(prompt).output
-        except (AgentRunError, ValueError):
+            result = self.agent.run_sync(prompt)
+            decision = result.output
+        except AgentRunError:
+            record_llm_usage(
+                self._usage_recorder,
+                call_kind=LlmCallKind.TOPIC_GUARD,
+                model_name=self._model,
+                outcome="provider_error",
+                outcome_detail="agent_error",
+                result=result,
+                started_at=started_at,
+            )
             logger.warning("topic_guard_classification_failed")
             return _UNSUPPORTED_DECISION
+        except ValueError:
+            record_llm_usage(
+                self._usage_recorder,
+                call_kind=LlmCallKind.TOPIC_GUARD,
+                model_name=self._model,
+                outcome="validation_rejected",
+                outcome_detail="invalid_output",
+                result=result,
+                started_at=started_at,
+            )
+            logger.warning("topic_guard_classification_failed")
+            return _UNSUPPORTED_DECISION
+        record_llm_usage(
+            self._usage_recorder,
+            call_kind=LlmCallKind.TOPIC_GUARD,
+            model_name=self._model,
+            outcome="accepted",
+            outcome_detail=None,
+            result=result,
+            started_at=started_at,
+        )
         with self._cache_lock:
             self._cache[normalized] = decision
             self._cache.move_to_end(normalized)
