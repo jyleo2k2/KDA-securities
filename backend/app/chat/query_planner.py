@@ -243,6 +243,17 @@ _ORDER_REQUEST = re.compile(
     r"매수해|매도해|주문해|사\s*줘|팔아\s*줘|대신\s*사|대신\s*팔|자동\s*투자|"
     r"주문\s*(?:넣|실행|처리)|(?:매수|매도).{0,12}(?:실행|진행|처리)"
 )
+# 매수 시점을 묻는 질문. "지금 살까요"처럼 대상이 없으면 UNSUPPORTED로 걸리지만
+# "지금 반도체 ETF 사야 할까요"는 테마 인텐트로 통과해 후보 목록이 답처럼 보인다.
+# 취득 시기 판단은 제공 범위 밖이므로 대상 유무와 무관하게 먼저 차단한다.
+_MARKET_TIMING_ADVICE = re.compile(
+    r"(?:사야|살까|살까요|사도|매수해도|들어가도|들어갈까|담아도|담을까|"
+    r"진입해도|진입할까)\s*(?:하|되|될|괜찮|좋)"
+    r"|(?:지금|이번\s*주|이번\s*달|오늘|당장|올해)[^?]{0,20}"
+    r"(?:사야|살까|사도\s*되|매수해도\s*되|들어가도\s*되|들어갈|담아도\s*되|타이밍)"
+    r"|(?:매수|매도|진입|투자)\s*(?:타이밍|시점|시기)"
+    r"|언제\s*(?:사|팔|매수|매도|들어가|진입)"
+)
 _FUTURE_PREDICTION = re.compile(
     r"(?:향후|내년|다음\s*분기).{0,15}(?:수익률|오를|내릴|예측|전망|보장)"
     r"|미래\s*(?:수익률|가격|주가|오를|내릴|예측|전망|보장)"
@@ -1124,6 +1135,13 @@ def plan_question(
         (
             _FUTURE_PREDICTION.search(normalized) is not None,
             BlockedReason.FUTURE_PREDICTION,
+        ),
+        (
+            # 대상을 명시한 시점 질문만 여기서 잡는다. 대상 없는 "지금 사도 될까"는
+            # 뒤의 개인 배분·원금 보장 분류가 더 알맞은 대안을 주므로 넘긴다.
+            _MARKET_TIMING_ADVICE.search(normalized) is not None
+            and _PRODUCT_LOOKUP_CONTEXT.search(normalized) is not None,
+            BlockedReason.ORDER_REQUEST,
         ),
         (
             _FOREIGN_MARKET_OR_INDIVIDUAL_STOCK.search(normalized) is not None

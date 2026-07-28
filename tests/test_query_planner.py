@@ -211,6 +211,45 @@ def test_order_execution_phrases_are_blocked(message: str) -> None:
 
 
 @pytest.mark.parametrize(
+    "message",
+    (
+        "지금 반도체 ETF 사야 할까요?",
+        "반도체 ETF 지금 들어가도 될까요?",
+        "금 ETF 지금 담아도 되나요?",
+        "반도체 ETF 오늘 매수해도 괜찮을까요?",
+        "이 ETF 지금이 들어갈 타이밍인가요?",
+        "방산 테마 상품 언제 사는 게 좋아요?",
+        "반도체 ETF 매수 시점을 알려줘",
+    ),
+)
+def test_market_timing_questions_are_blocked(message: str) -> None:
+    """테마 이름이 붙어도 취득 시기 판단 요청은 답하지 않는다."""
+
+    plan = plan_question(message)
+
+    assert plan.intent is ChatIntent.OUT_OF_SCOPE
+    assert plan.blocked_reason is BlockedReason.ORDER_REQUEST
+
+
+@pytest.mark.parametrize(
+    "message",
+    (
+        "반도체 테마 ETF 알려줘",
+        "반도체 ETF 종목을 비교해줘",
+        "연금 수령은 언제부터 가능해?",
+        "분배금 지급 기준일이 언제야?",
+        "리밸런싱 주기는 언제가 좋아?",
+    ),
+)
+def test_information_questions_survive_market_timing_guard(message: str) -> None:
+    """시기를 담은 정보성 질문까지 막지 않는다."""
+
+    plan = plan_question(message)
+
+    assert plan.blocked_reason is None
+
+
+@pytest.mark.parametrize(
     ("message", "tax_credit", "withdrawal"),
     (
         ("연금저축 600만원 납입 시 세액공제액을 계산해줘", True, False),
