@@ -10,7 +10,7 @@ import httpx
 
 from backend.app.settings import get_settings
 
-from ._secrets import require_secret
+from ._secrets import require_model_api_key, require_secret
 from .naver_news_repository import NaverNewsRepository, PendingNewsSummary
 from .news_article import NewsArticleFetchError, fetch_news_article
 from .news_summarizer import NewsSummarizer, NewsSummaryError
@@ -136,7 +136,7 @@ def main() -> int:
     args = _parser().parse_args()
     settings = get_settings()
     database_url = require_secret(settings.database_url, "DATABASE_URL")
-    api_key = require_secret(settings.anthropic_api_key, "ANTHROPIC_API_KEY")
+    api_key = require_model_api_key(settings.news_summary_model, settings)
 
     result = run_summary_worker(
         database_url=database_url,

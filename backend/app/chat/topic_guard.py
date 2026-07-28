@@ -10,9 +10,8 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, model_validator
 from pydantic_ai import Agent, NativeOutput
 from pydantic_ai.exceptions import AgentRunError
-from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
-from pydantic_ai.providers.anthropic import AnthropicProvider
 
+from ..llm_models import build_model, build_model_settings
 from ..text_normalization import normalize_colloquial_text
 from .query_planner import BlockedReason, QueryPlan, plan_question
 
@@ -108,16 +107,13 @@ class ClaudeTopicGuard:
         self._cache: OrderedDict[str, TopicGuardDecision] = OrderedDict()
         self._cache_lock = threading.Lock()
         self.agent: Agent[None, TopicGuardDecision] = Agent(
-            AnthropicModel(
-                self._model,
-                provider=AnthropicProvider(api_key=api_key.strip()),
-            ),
+            build_model(self._model, api_key=api_key.strip()),
             output_type=NativeOutput(TopicGuardDecision),
             instructions=SYSTEM_PROMPT,
-            model_settings=AnthropicModelSettings(
+            model_settings=build_model_settings(
+                self._model,
                 max_tokens=TOPIC_GUARD_MAX_OUTPUT_TOKENS,
-                anthropic_cache_instructions=True,
-                anthropic_cache_tool_definitions=True,
+                cache_static_prompt=True,
             ),
             retries=0,
         )

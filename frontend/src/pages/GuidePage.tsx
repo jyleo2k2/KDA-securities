@@ -419,16 +419,21 @@ function MacroRegimeOutcomeCards({ response }: { response: ChatResponse }) {
         <h3>유사국면 이후 ETF 총수익률·최대낙폭</h3>
         <p>국면 다음 달 첫 거래일부터 계산한 실제 관측값이며 미래 예측이나 자동 리밸런싱 신호가 아니에요.</p>
       </header>
-      <details className="macro-regime-disclosure">
+      <details className="macro-regime-disclosure" open>
         <summary>
           <span><strong>과거 실적은 필요할 때 확인</strong><small>{visibleGroups.length}개 유사국면</small></span>
           <em>펼쳐보기</em>
         </summary>
         <div className="macro-regime-list">
-          {visibleGroups.map((group) => (
-            <details key={group.regime_period}>
+          {visibleGroups.map((group) => {
+            const outcomeStartDate = group.etfs
+              .flatMap((etf) => etf.horizons)
+              .map((horizon) => horizon.start_date)
+              .sort()[0];
+            return (
+              <details key={group.regime_period} open>
               <summary>
-                <strong>{regimeMonth(group.regime_period)} 유사국면</strong>
+                <strong>{regimeMonth(outcomeStartDate ?? group.regime_period)} 시작 구간</strong>
                 <span>유사도 거리 {Number(group.distance).toFixed(4)}</span>
               </summary>
               <div className="macro-regime-etfs">
@@ -460,8 +465,9 @@ function MacroRegimeOutcomeCards({ response }: { response: ChatResponse }) {
                   </article>
                 ))}
               </div>
-            </details>
-          ))}
+              </details>
+            );
+          })}
         </div>
       </details>
     </section>
@@ -598,7 +604,9 @@ function AssistantMessage({
       (item) => !item.label.endsWith("법정 세액공제액"),
     )
     : response.numeric_evidence;
-  const visibleSections = isEducationalPortfolio
+  const visibleSections = isEducationalPortfolio && !educationalHasCurrentHoldings
+    ? response.sections
+    : isEducationalPortfolio
     ? []
     : isPensionTaxCredit
     ? response.sections.filter(

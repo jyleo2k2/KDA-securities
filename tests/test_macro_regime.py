@@ -393,10 +393,32 @@ def test_macro_analog_regime_etf_outcome_api_links_selected_codes(
     )
 
 
-def test_macro_analog_regime_api_fails_closed_without_history(
+def test_macro_analog_regime_api_uses_packaged_snapshot_without_runtime_report(
     tmp_path: Path,
 ) -> None:
     repository = MacroEvidenceRepository(tmp_path / "missing.json")
+    app.dependency_overrides[get_macro_evidence_repository] = lambda: repository
+    try:
+        response = TestClient(app).get("/macro/analog-regimes")
+    finally:
+        app.dependency_overrides.pop(get_macro_evidence_repository, None)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["as_of"] == "2026-07-20"
+    assert [
+        match["period"] for match in body["analysis"]["matches"][:2]
+    ] == ["2025-06-01", "2024-06-01"]
+    assert body["analysis"]["rebalancing_trigger_input"] is False
+
+
+def test_macro_analog_regime_api_fails_closed_without_any_snapshot(
+    tmp_path: Path,
+) -> None:
+    repository = MacroEvidenceRepository(
+        tmp_path / "missing.json",
+        analog_snapshot_path=tmp_path / "missing-snapshot.json",
+    )
     app.dependency_overrides[get_macro_evidence_repository] = lambda: repository
     try:
         response = TestClient(app).get("/macro/analog-regimes")

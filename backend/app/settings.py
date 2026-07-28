@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from uuid import UUID
 
-from pydantic import Field, SecretStr
+from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,13 +16,40 @@ class Settings(BaseSettings):
 
     pension_portal_api_key: SecretStr | None = None
     anthropic_api_key: SecretStr | None = None
-    anthropic_model: str = "claude-haiku-4-5"
+    google_api_key: SecretStr | None = None
+    # 챗봇 기본 모델. 이름 접두사로 벤더를 고른다(claude -> Anthropic,
+    # gemini -> Google). 벤더에 맞는 API 키가 있어야 호출된다.
+    # 이전 이름(ANTHROPIC_MODEL 등)도 그대로 읽어 배포 환경변수를 깨지 않는다.
+    chat_model: str = Field(
+        default="gemini-3.5-flash-lite",
+        validation_alias=AliasChoices("chat_model", "anthropic_model"),
+    )
     # 근거 여러 건을 묶어 설명하는 계좌 비교 답변에만 쓰는 상위 모델.
-    # 비우면 anthropic_model 하나로만 동작한다.
-    anthropic_narration_upgraded_model: str = "claude-sonnet-5"
-    anthropic_topic_guard_model: str = "claude-haiku-4-5"
-    enable_claude_narration: bool = False
-    enable_claude_topic_guard: bool = False
+    # 비우면 chat_model 하나로만 동작한다.
+    narration_upgraded_model: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "narration_upgraded_model", "anthropic_narration_upgraded_model"
+        ),
+    )
+    topic_guard_model: str = Field(
+        default="gemini-3.5-flash-lite",
+        validation_alias=AliasChoices(
+            "topic_guard_model", "anthropic_topic_guard_model"
+        ),
+    )
+    enable_llm_narration: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "enable_llm_narration", "enable_claude_narration"
+        ),
+    )
+    enable_llm_topic_guard: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "enable_llm_topic_guard", "enable_claude_topic_guard"
+        ),
+    )
     enable_etf_product_feature_generation: bool = True
     narration_cache_path: Path = Path("data/cache/narration_cache.json")
     news_summary_model: str = "claude-sonnet-5"

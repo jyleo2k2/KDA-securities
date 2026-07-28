@@ -109,6 +109,9 @@ _PUBLISHERS = {
     "FRED": "Federal Reserve Bank of St. Louis",
 }
 _KIS_MARKET_DATA_REFERENCE = "https://openapi.koreainvestment.com/"
+DEFAULT_ANALOG_REGIME_SNAPSHOT_PATH = Path(
+    "data/reference/macro_analog_regime_snapshot_2026-07-20.json"
+)
 
 
 def attach_etf_outcomes(
@@ -174,8 +177,14 @@ def _mapping(value: object, *, field: str) -> dict[str, Any]:
 class MacroEvidenceRepository:
     """Read only the public subset of a collector-produced JSON report."""
 
-    def __init__(self, report_path: Path) -> None:
+    def __init__(
+        self,
+        report_path: Path,
+        *,
+        analog_snapshot_path: Path = DEFAULT_ANALOG_REGIME_SNAPSHOT_PATH,
+    ) -> None:
         self._report_path = report_path
+        self._analog_snapshot_path = analog_snapshot_path
 
     def _root(self) -> dict[str, Any]:
         try:
@@ -229,6 +238,21 @@ class MacroEvidenceRepository:
             ) from exc
 
     def analog_regimes(self) -> MacroAnalogRegimeSnapshot:
+        if not self._report_path.is_file():
+            try:
+                payload = json.loads(
+                    self._analog_snapshot_path.read_text(encoding="utf-8")
+                )
+                return MacroAnalogRegimeSnapshot.model_validate(payload)
+            except (
+                OSError,
+                json.JSONDecodeError,
+                TypeError,
+                ValidationError,
+            ) as exc:
+                raise MacroEvidenceUnavailable(
+                    "historical macro regime evidence is unavailable"
+                ) from exc
         try:
             root = self._root()
             dataset = _mapping(

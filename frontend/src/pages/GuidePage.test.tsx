@@ -828,8 +828,7 @@ describe("GuidePage chat history deletion", () => {
     expect(screen.getByText("연금 운용전략")).toBeInTheDocument();
     const orderedStrategyContent = [
       screen.getByText("코어·위성 전략"),
-      screen.getByText("리밸런싱 주기: 1개월마다"),
-      screen.getByText("두 가지 수익률 가정"),
+      screen.getByText("현재 설문 결과를 기준으로 연금자산을 아래처럼 나눠 볼 수 있어요."),
     ];
     for (let index = 1; index < orderedStrategyContent.length; index += 1) {
       expect(
@@ -923,7 +922,7 @@ describe("GuidePage chat history deletion", () => {
           outcome_start_rule: "first_trading_day_of_month_after_regime",
           boundary_lag_days: 7,
           groups: [{
-            regime_period: "2024-01-01",
+            regime_period: "2025-06-01",
             distance: "0.2500",
             etfs: [{
               isu_code: "069500",
@@ -932,14 +931,14 @@ describe("GuidePage chat history deletion", () => {
               source: {
                 label: "한투 수정주가·KIND 현금분배 반영 원화 총수익지수",
                 reference: "https://openapi.koreainvestment.com/",
-                as_of: "2025-02-03",
+                as_of: "2026-07-01",
               },
-              history_start: "2024-02-01",
-              history_end: "2025-02-03",
+              history_start: "2025-07-01",
+              history_end: "2026-07-01",
               horizons: [{
                 horizon_months: 3,
-                start_date: "2024-02-01",
-                end_date: "2024-05-01",
+                start_date: "2025-07-01",
+                end_date: "2025-10-01",
                 total_return_percent: "10.0000",
                 maximum_drawdown_percent: "25.0000",
               }],
@@ -962,8 +961,34 @@ describe("GuidePage chat history deletion", () => {
               ],
             }],
           }, {
-            regime_period: "2023-12-01",
+            regime_period: "2024-06-01",
             distance: "0.3000",
+            etfs: [{
+              isu_code: "069500",
+              isu_name: "KODEX 200",
+              history_source: "kis_adjusted_close_plus_kind_cash_distribution",
+              source: {
+                label: "한투 수정주가·KIND 현금분배 반영 원화 총수익지수",
+                reference: "https://openapi.koreainvestment.com/",
+                as_of: "2026-07-01",
+              },
+              history_start: "2024-07-01",
+              history_end: "2026-07-01",
+              horizons: [{
+                horizon_months: 3,
+                start_date: "2024-07-01",
+                end_date: "2024-10-01",
+                total_return_percent: "8.0000",
+                maximum_drawdown_percent: "12.0000",
+              }],
+              gaps: [
+                { horizon_months: 6, reason: "end_observation_unavailable" },
+                { horizon_months: 12, reason: "end_observation_unavailable" },
+              ],
+            }],
+          }, {
+            regime_period: "2023-12-01",
+            distance: "0.4000",
             etfs: [{
               isu_code: "snapshot:missing-regime-etf",
               isu_name: "전체 미관측 유사국면 ETF",
@@ -1005,23 +1030,20 @@ describe("GuidePage chat history deletion", () => {
     expect(within(card).getAllByText(/공식 출처/)).toHaveLength(3);
     const outcomeCard = screen.getByLabelText("과거 유사국면 ETF 근거 카드");
     const outcomeDisclosure = within(outcomeCard).getByText("과거 실적은 필요할 때 확인").closest("details");
-    expect(outcomeDisclosure).not.toHaveAttribute("open");
-    expect(within(outcomeCard).getByText("1개 유사국면")).toBeInTheDocument();
-    fireEvent.click(within(outcomeCard).getByText("과거 실적은 필요할 때 확인").closest("summary")!);
     expect(outcomeDisclosure).toHaveAttribute("open");
-    const regimeDisclosure = within(outcomeCard).getByText("2024년 1월 유사국면").closest("details");
-    expect(regimeDisclosure).not.toHaveAttribute("open");
-    fireEvent.click(within(outcomeCard).getByText("2024년 1월 유사국면").closest("summary")!);
-    expect(regimeDisclosure).toHaveAttribute("open");
-    expect(within(outcomeCard).getByText("KODEX 200")).toBeInTheDocument();
+    expect(within(outcomeCard).getByText("2개 유사국면")).toBeInTheDocument();
+    expect(within(outcomeCard).getByText("2025년 7월 시작 구간").closest("details")).toHaveAttribute("open");
+    expect(within(outcomeCard).getByText("2024년 7월 시작 구간").closest("details")).toHaveAttribute("open");
+    expect(within(outcomeCard).getAllByText("KODEX 200")).toHaveLength(2);
     expect(within(outcomeCard).getByText("10.0000%")).toBeInTheDocument();
+    expect(within(outcomeCard).getByText("8.0000%")).toBeInTheDocument();
     expect(within(outcomeCard).getByText("최대낙폭 -25%")).toBeInTheDocument();
     expect(within(outcomeCard).queryByText("관측 부족")).not.toBeInTheDocument();
     expect(within(outcomeCard).queryByText("총수익 이력 없음")).not.toBeInTheDocument();
     expect(within(outcomeCard).queryByText("관측값 없는 ETF")).not.toBeInTheDocument();
     expect(within(outcomeCard).queryByText("2023년 12월 유사국면")).not.toBeInTheDocument();
     expect(within(outcomeCard).queryByText(/snapshot:/)).not.toBeInTheDocument();
-    expect(within(outcomeCard).getByText(/KIND 현금분배/)).toBeInTheDocument();
+    expect(within(outcomeCard).getAllByText(/KIND 현금분배/)).toHaveLength(2);
   });
 
   it("shows six numeric evidence cards first and expands the remaining cards", async () => {
@@ -1900,7 +1922,14 @@ describe("GuidePage chat history deletion", () => {
     expect(limitations).toHaveLength(2);
   });
 
-  it("hides educational portfolio detail sections while retaining the review panel", async () => {
+  it("shows account-specific strategy guides without treating them as rebalancing results", async () => {
+    const accountStrategyResponse = {
+      ...STRUCTURED_PORTFOLIO_RESPONSE,
+      sections: ["DC형", "IRP", "연금저축펀드"].map((accountLabel) => ({
+        ...STRUCTURED_PORTFOLIO_RESPONSE.sections[0],
+        title: `${accountLabel} · 위험중립형 투자전략`,
+      })),
+    };
     vi.mocked(getStoredChatMessages).mockResolvedValue([
       {
         message_id: "portfolio-question",
@@ -1916,8 +1945,8 @@ describe("GuidePage chat history deletion", () => {
         message_id: "portfolio-answer",
         question_message_id: "portfolio-question",
         role: "assistant",
-        content: STRUCTURED_PORTFOLIO_RESPONSE.answer,
-        response: STRUCTURED_PORTFOLIO_RESPONSE,
+        content: accountStrategyResponse.answer,
+        response: accountStrategyResponse,
         model_name: null,
         created_at: "2026-07-20T00:00:01Z",
         evidence: [],
@@ -1926,8 +1955,11 @@ describe("GuidePage chat history deletion", () => {
     renderGuide();
 
     await openStoredSession();
-    await screen.findByText(STRUCTURED_PORTFOLIO_RESPONSE.answer);
-    expect(screen.queryByText("위험중립형 투자전략", { exact: true })).not.toBeInTheDocument();
+    await screen.findByText(accountStrategyResponse.answer);
+    for (const accountLabel of ["DC형", "IRP", "연금저축펀드"]) {
+      expect(screen.getByText(`${accountLabel} · 위험중립형 투자전략`)).toBeInTheDocument();
+    }
+    expect(screen.getAllByText("35년의 장기 운용기간을 고려한 전략이에요. 목표비중을 확인해 보세요.")).toHaveLength(3);
     expect(document.querySelector(".holdings-required-panel")).toBeNull();
   });
 });
