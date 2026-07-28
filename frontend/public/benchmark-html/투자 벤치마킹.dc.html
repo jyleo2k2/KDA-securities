@@ -367,13 +367,13 @@ class Component extends DCLogic {
 
   REVIEWS = {
     _default: [
-      { rid:'a', name:'따라가는다람쥐', date:'2026.06.14', tag:'3개월째 따라하는 중', text:'처음엔 그냥 따라만 했는데 생각보다 안 흔들려서 계속 보는 중이에요.', likes:24, comments:[{name:'배당모으미', text:'저도 같은 생각이에요!'}] },
-      { rid:'b', name:'느긋한초보', date:'2026.05.29', tag:'입문자', text:'설명 보니까 왜 이렇게 담는지 알겠네요. 나도 천천히 따라가 봐야겠어요.', likes:11, comments:[] },
+      { rid:'a', name:'따라가는다람쥐', date:'2026.06.14', tag:'3개월째 따라하는 중', returnRate:'+4.2%', text:'처음엔 그냥 따라만 했는데 생각보다 안 흔들려서 계속 보는 중이에요.', likes:24, comments:[{name:'배당모으미', text:'저도 같은 생각이에요!'}] },
+      { rid:'b', name:'느긋한초보', date:'2026.05.29', tag:'입문자', returnRate:'+3.3%', text:'설명 보니까 왜 이렇게 담는지 알겠네요. 나도 천천히 따라가 봐야겠어요.', likes:11, comments:[] },
     ],
     '꾸준한거북이': [
-      { rid:'a', name:'장기러버', date:'2026.06.20', tag:'8개월째 팔로우 중', text:'와, 이거 급락장에도 버텼다. ㅋㅋ 형은 꿀통 풀었다.', likes:58, comments:[{name:'꾸준한거북이', text:'맞아요, 하단을 채권으로 받치는 게 핵심이에요.'}, {name:'순동이', text:'계좌 개설하고 바로 따라했습니다 🙏'}] },
-      { rid:'b', name:'거북팬1호', date:'2026.06.11', tag:'미러복제 성공', text:'한 달에 한 번만 보면 되니까 생각보다 안 귀찮고, 이 정도면 맘 편하게 갈 만하네요.', likes:32, comments:[] },
-      { rid:'c', name:'안정형직장인', date:'2026.05.30', tag:'6개월째', text:'막 화끈하진 않아도 장 흔들릴 때 덜 쫄려서 저는 이쪽이 더 맞는 듯해요.', likes:19, comments:[] },
+      { rid:'a', name:'장기러버', date:'2026.06.20', tag:'8개월째 팔로우 중', returnRate:'+6.7%', text:'와, 이거 급락장에도 버텼다. ㅋㅋ 형은 꿀통 풀었다.', likes:58, comments:[{name:'꾸준한거북이', text:'맞아요, 하단을 채권으로 받치는 게 핵심이에요.'}, {name:'순동이', text:'계좌 개설하고 바로 따라했습니다 🙏'}] },
+      { rid:'b', name:'거북팬1호', date:'2026.06.11', tag:'미러복제 성공', returnRate:'+3.8%', text:'한 달에 한 번만 보면 되니까 생각보다 안 귀찮고, 이 정도면 맘 편하게 갈 만하네요.', likes:32, comments:[] },
+      { rid:'c', name:'안정형직장인', date:'2026.05.30', tag:'6개월째', returnRate:'+5.4%', text:'막 화끈하진 않아도 장 흔들릴 때 덜 쫄려서 저는 이쪽이 더 맞는 듯해요.', likes:19, comments:[] },
     ],
   };
 
@@ -450,7 +450,7 @@ class Component extends DCLogic {
       const open = !!this.state.openComments[key];
       return {
         initial: rv.name.slice(0,1), name: rv.name, date: rv.date, tag: rv.tag, text: rv.text,
-        returnRate: p.rate, returnRateColor: p.rateColor,
+        returnRate: rv.returnRate, returnRateColor: p.rateColor,
         likeCount: rv.likes + (liked ? 1 : 0),
         heartFill: liked ? '#E8503A' : 'none',
         heartStroke: liked ? '#E8503A' : '#B8BDC2',
