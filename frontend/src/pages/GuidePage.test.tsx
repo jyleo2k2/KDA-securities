@@ -788,7 +788,10 @@ describe("GuidePage chat history deletion", () => {
             description: "규칙 엔진이 계산한 손실 추정치예요.",
             data_boundary: "engine",
             evidence_ids: [],
-            items: [{ label: "주식시장 급락", value: "27.5", unit: "%", role: "value" }],
+            items: [
+              { label: "주식시장 급락", value: "27.5", unit: "%", role: "value" },
+              { label: "스태그플레이션", value: "12.8", unit: "%", role: "value" },
+            ],
             series: [],
           },
           {
@@ -806,7 +809,10 @@ describe("GuidePage chat history deletion", () => {
             description: "규칙 엔진이 계산한 손실 추정치예요.",
             data_boundary: "engine",
             evidence_ids: [],
-            items: [{ label: "주식시장 급락", value: "30", unit: "%", role: "value" }],
+            items: [
+              { label: "주식시장 급락", value: "30", unit: "%", role: "value" },
+              { label: "스태그플레이션", value: "12.8", unit: "%", role: "value" },
+            ],
             series: [],
           },
         ],
@@ -871,6 +877,7 @@ describe("GuidePage chat history deletion", () => {
     }
     expect(screen.queryByText("DC형 목표 자산배분")).not.toBeInTheDocument();
     expect(screen.queryByText("연금저축펀드 목표 자산배분")).not.toBeInTheDocument();
+    expect(screen.queryByText("스태그플레이션")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("수치 근거")).not.toBeInTheDocument();
     expect(screen.queryByText("검증 답변")).not.toBeInTheDocument();
     expect(screen.queryByText("equity_drawdown 스트레스 손실 추정치")).not.toBeInTheDocument();
