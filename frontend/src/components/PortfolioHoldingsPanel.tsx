@@ -353,7 +353,6 @@ function EducationalStrategyGuide({
 }) {
   const profile = evaluation.evaluated_input.risk_profile;
   const guide = STRATEGY_GUIDES[profile];
-  const planning = evaluation.planning_return;
   const finalRiskTarget = Number(evaluation.final_general_risk_target_percent);
   const lossToleranceAdjusted = (
     evaluation.loss_tolerance_binding
@@ -416,41 +415,6 @@ function EducationalStrategyGuide({
             key={`${visualization.kind}-${visualization.title}-${index}`}
           />
         ))}
-      <RebalancingCadenceGuide evaluation={evaluation} />
-
-      <section className="portfolio-strategy-planning" aria-labelledby="portfolio-strategy-planning-title">
-        <header>
-          <span>장기 계산에 쓰는 숫자</span>
-          <h4 id="portfolio-strategy-planning-title">두 가지 수익률 가정</h4>
-        </header>
-        <div className="portfolio-planning-metrics">
-          <div>
-            <span>조심해서 계산한 경우</span>
-            <strong>{optionalPercent(planning.conservative_planning_return_percent)}</strong>
-            <small>장기 전망·비용·여유 폭 반영</small>
-          </div>
-          <div>
-            <span>기본으로 계산한 경우</span>
-            <strong>{optionalPercent(planning.base_planning_return_percent)}</strong>
-            <small>장기 전망·ETF 비용 반영</small>
-          </div>
-        </div>
-        <div className="planning-source-chips" aria-label="장기 수익률 가정 출처">
-          {planning.sources.map((source) => (
-            /^https?:\/\//.test(source.reference) ? (
-              <a href={source.reference} target="_blank" rel="noreferrer" key={`${source.label}-${source.reference}`}>
-                {source.label} · {dateText(source.as_of)}
-              </a>
-            ) : (
-              <span key={`${source.label}-${source.reference}`}>{source.label} · {dateText(source.as_of)}</span>
-            )
-          ))}
-        </div>
-        <p className="portfolio-planning-note">
-          *CMA는 여러 자산의 10년 이상 장기 전망을 정리한 계산용 가정이에요. ETF 비용도 넣어 계산하지만, 미래 수익을 맞히거나 약속하는 숫자는 아니에요.
-        </p>
-      </section>
-
     </section>
   );
 }
