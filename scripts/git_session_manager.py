@@ -642,9 +642,29 @@ def _claim_for_worktree(root: Path) -> dict[str, Any] | None:
 
 
 def _hook_file_from_stdin() -> str:
+    """hook stdin JSON에서 대상 파일 경로를 읽는다.
+
+    hook 입력은 항상 UTF-8 JSON이다. 그런데 Windows에서 ``sys.stdin``은
+    콘솔 기본 코드페이지로 디코딩하므로, 한글이 들어간 워크트리 경로
+    (``...-claude-이재용-작업명``)가 대리 문자로 깨진다. 그러면 뒤이은
+    ``normalize_repo_path``의 ``relative_to`` 비교가 실패해서 정상 편집까지
+    "작업 범위가 워크트리 밖"으로 차단된다. 바이트로 읽어 UTF-8로 명시
+    디코딩하면 팀 규칙대로 한글 실명을 브랜치에 써도 가드가 동작한다.
+    """
+
+    stream = getattr(sys.stdin, "buffer", sys.stdin)
     try:
-        payload = json.load(sys.stdin)
-    except (json.JSONDecodeError, OSError):
+        raw = stream.read()
+    except OSError:
+        raise SessionError("hook 입력 JSON을 읽지 못했습니다.") from None
+    if isinstance(raw, bytes):
+        try:
+            raw = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            raise SessionError("hook 입력 JSON을 읽지 못했습니다.") from None
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
         raise SessionError("hook 입력 JSON을 읽지 못했습니다.") from None
     tool_input = payload.get("tool_input")
     if not isinstance(tool_input, dict):

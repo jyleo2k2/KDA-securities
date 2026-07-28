@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import io
 import json
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from scripts.git_session_manager import (
     BranchIdentity,
     SessionError,
     _ensure_claim_identity,
+    _hook_file_from_stdin,
     build_parser,
     command_check_start,
     command_guard,
@@ -19,6 +21,53 @@ from scripts.git_session_manager import (
     parse_branch_identity,
     validate_session_identity,
 )
+
+
+class _StdinStub:
+    """hook stdin을 흉내 낸다.
+
+    실제 Claude Code hook은 UTF-8 바이트를 보내고 Python은 ``sys.stdin``의
+    텍스트 래퍼로 그것을 디코딩한다. 그래서 바이트 스트림을 ``buffer``로
+    노출한다.
+    """
+
+    def __init__(self, payload: bytes, *, text_encoding: str = "utf-8") -> None:
+        self.buffer = io.BytesIO(payload)
+        self._text_encoding = text_encoding
+        self._payload = payload
+
+    def read(self) -> str:
+        # buffer를 쓰지 않고 텍스트로 읽으면 코드페이지 디코딩이 일어난다.
+        return self._payload.decode(self._text_encoding, errors="replace")
+
+
+def test_hook_reads_korean_worktree_paths_as_utf8(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """한글 워크트리 경로가 깨지지 않아야 한다.
+
+    브랜치 규칙이 한글 실명을 요구하므로 워크트리 경로에 한글이 항상 들어간다.
+    Windows 콘솔 코드페이지로 디코딩하면 경로가 대리 문자로 깨져서 정상 편집도
+    "워크트리 밖"으로 차단됐다.
+    """
+
+    path = r"C:\dev\finance-project-1-claude-이재용-narrator-fix\backend\app.py"
+    # 실제 hook은 한글을 이스케이프하지 않은 원시 UTF-8로 보낸다.
+    # ensure_ascii=True로 만들면 페이로드가 전부 ASCII라 코드페이지
+    # 디코딩 결함이 재현되지 않는다.
+    payload = json.dumps(
+        {"tool_input": {"file_path": path}}, ensure_ascii=False
+    ).encode("utf-8")
+    monkeypatch.setattr("sys.stdin", _StdinStub(payload, text_encoding="cp949"))
+
+    assert _hook_file_from_stdin() == path
+
+
+def test_hook_rejects_malformed_json(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("sys.stdin", _StdinStub(b"{not json"))
+
+    with pytest.raises(SessionError, match="hook 입력 JSON"):
+        _hook_file_from_stdin()
 
 
 def test_new_branch_policy_accepts_only_tool_worker_task() -> None:
