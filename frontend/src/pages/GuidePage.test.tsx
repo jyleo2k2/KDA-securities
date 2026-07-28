@@ -25,7 +25,7 @@ import type { SupabaseAuthState } from "../auth/useSupabaseAuth";
 import { CHAT_PROMPT_CANDIDATES } from "../chatPromptCandidates";
 import {
   ETF_THEME_CARDS,
-  collapseSharedAccountStrategySections,
+  collapseSharedAccountSections,
   collapseSharedStrategyAllocation,
   collapseSharedStrategyStressScenarios,
   filterChatCards,
@@ -1008,21 +1008,37 @@ describe("GuidePage chat history deletion", () => {
     expect(collapseSharedStrategyStressScenarios(visualizations)).toEqual(visualizations);
   });
 
-  it("collapses account strategy sections when their visible content matches", () => {
+  it("collapses matching account strategy and return assumption sections independently", () => {
     const accountLabels = ["DC형", "IRP", "연금저축펀드"];
-    const sections: AnswerSection[] = accountLabels.map((accountLabel) => ({
-      kind: "service_explanation",
-      title: `${accountLabel} · 위험중립형의 코어·위성 전략`,
-      content: "위험중립형의 코어·위성 전략이에요.",
-      evidence_ids: [`engine:${accountLabel}`],
-      blocks: [],
-    }));
+    const sections: AnswerSection[] = accountLabels.flatMap((accountLabel) => [
+      {
+        kind: "service_explanation",
+        title: `${accountLabel} · 위험중립형의 코어·위성 전략`,
+        content: "위험중립형의 코어·위성 전략이에요.",
+        evidence_ids: [`strategy:${accountLabel}`],
+        blocks: [],
+      },
+      {
+        kind: "service_explanation",
+        title: `${accountLabel} · 장기 계산에 쓰는 수익률 가정`,
+        content: "보수적 시나리오는 연 4.5%, 기본 시나리오는 연 4.8%예요.",
+        evidence_ids: [`return:${accountLabel}`],
+        blocks: [],
+      },
+    ]);
 
-    expect(collapseSharedAccountStrategySections(sections)).toEqual([{
-      ...sections[0],
-      title: "보유 계좌 공통 · 위험중립형의 코어·위성 전략",
-      evidence_ids: ["engine:DC형", "engine:IRP", "engine:연금저축펀드"],
-    }]);
+    expect(collapseSharedAccountSections(sections)).toEqual([
+      {
+        ...sections[0],
+        title: "보유 계좌 공통 · 위험중립형의 코어·위성 전략",
+        evidence_ids: ["strategy:DC형", "strategy:IRP", "strategy:연금저축펀드"],
+      },
+      {
+        ...sections[1],
+        title: "보유 계좌 공통 · 장기 계산에 쓰는 수익률 가정",
+        evidence_ids: ["return:DC형", "return:IRP", "return:연금저축펀드"],
+      },
+    ]);
   });
 
   it("keeps account strategy sections when one description differs", () => {
@@ -1037,7 +1053,22 @@ describe("GuidePage chat history deletion", () => {
       }),
     );
 
-    expect(collapseSharedAccountStrategySections(sections)).toEqual(sections);
+    expect(collapseSharedAccountSections(sections)).toEqual(sections);
+  });
+
+  it("keeps account return assumptions separate when one assumption differs", () => {
+    const sections: AnswerSection[] = ["DC형", "IRP", "연금저축펀드"].map(
+      (accountLabel) => ({
+        kind: "service_explanation",
+        title: `${accountLabel} · 장기 계산에 쓰는 수익률 가정`,
+        content: accountLabel === "연금저축펀드"
+          ? "연금저축펀드의 기본 시나리오는 연 5.0%예요."
+          : "기본 시나리오는 연 4.8%예요.",
+        evidence_ids: [],
+      }),
+    );
+
+    expect(collapseSharedAccountSections(sections)).toEqual(sections);
   });
 
   it("does not refresh hidden session history after a persisted answer", async () => {
@@ -2114,10 +2145,17 @@ describe("GuidePage chat history deletion", () => {
   it("collapses matching account strategy guides without treating them as rebalancing results", async () => {
     const accountStrategyResponse = {
       ...STRUCTURED_PORTFOLIO_RESPONSE,
-      sections: ["DC형", "IRP", "연금저축펀드"].map((accountLabel) => ({
-        ...STRUCTURED_PORTFOLIO_RESPONSE.sections[0],
-        title: `${accountLabel} · 위험중립형 투자전략`,
-      })),
+      sections: ["DC형", "IRP", "연금저축펀드"].flatMap((accountLabel) => [
+        {
+          ...STRUCTURED_PORTFOLIO_RESPONSE.sections[0],
+          title: `${accountLabel} · 위험중립형 투자전략`,
+        },
+        {
+          ...STRUCTURED_PORTFOLIO_RESPONSE.sections[0],
+          title: `${accountLabel} · 장기 계산에 쓰는 수익률 가정`,
+          content: "보수적으로 본 경우 약 4.5%, 기본으로 본 경우 약 4.8%예요.",
+        },
+      ]),
     };
     vi.mocked(getStoredChatMessages).mockResolvedValue([
       {
@@ -2147,9 +2185,18 @@ describe("GuidePage chat history deletion", () => {
     await screen.findByText(accountStrategyResponse.answer);
     for (const accountLabel of ["DC형", "IRP", "연금저축펀드"]) {
       expect(screen.queryByText(`${accountLabel} · 위험중립형 투자전략`)).not.toBeInTheDocument();
+      expect(screen.queryByText(
+        `${accountLabel} · 장기 계산에 쓰는 수익률 가정`,
+      )).not.toBeInTheDocument();
     }
     expect(screen.getByText("보유 계좌 공통 · 위험중립형 투자전략")).toBeInTheDocument();
+    expect(screen.getByText(
+      "보유 계좌 공통 · 장기 계산에 쓰는 수익률 가정",
+    )).toBeInTheDocument();
     expect(screen.getAllByText("35년의 장기 운용기간을 고려한 전략이에요. 목표비중을 확인해 보세요.")).toHaveLength(1);
+    expect(screen.getAllByText(
+      "보수적으로 본 경우 약 4.5%, 기본으로 본 경우 약 4.8%예요.",
+    )).toHaveLength(1);
     expect(document.querySelector(".holdings-required-panel")).toBeNull();
   });
 });

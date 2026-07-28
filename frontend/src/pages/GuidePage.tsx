@@ -183,36 +183,54 @@ export function collapseSharedStrategyStressScenarios(
   });
 }
 
-const ACCOUNT_STRATEGY_TITLE_PATTERN = /^(DC형|IRP|연금저축펀드) · (.+전략)$/;
+const ACCOUNT_SHARED_SECTION_TITLE_PATTERN = (
+  /^(DC형|IRP|연금저축펀드) · (.+(?:전략|수익률 가정))$/
+);
 
-export function collapseSharedAccountStrategySections(
+export function collapseSharedAccountSections(
   sections: AnswerSection[],
 ): AnswerSection[] {
-  const accountStrategySections = sections.flatMap((section) => {
-    const titleMatch = section.title.match(ACCOUNT_STRATEGY_TITLE_PATTERN);
-    return titleMatch ? [{ section, sharedTitle: titleMatch[2] }] : [];
+  const sectionsBySharedTitle = new Map<string, AnswerSection[]>();
+  sections.forEach((section) => {
+    const titleMatch = section.title.match(ACCOUNT_SHARED_SECTION_TITLE_PATTERN);
+    if (!titleMatch) return;
+    const sharedTitle = titleMatch[2];
+    sectionsBySharedTitle.set(
+      sharedTitle,
+      [...(sectionsBySharedTitle.get(sharedTitle) ?? []), section],
+    );
   });
-  if (accountStrategySections.length < 2) return sections;
 
-  const first = accountStrategySections[0];
-  const allSectionsMatch = accountStrategySections.every(({ section, sharedTitle }) => (
-    sharedTitle === first.sharedTitle
-    && section.kind === first.section.kind
-    && section.content === first.section.content
-    && JSON.stringify(section.blocks ?? []) === JSON.stringify(first.section.blocks ?? [])
-  ));
-  if (!allSectionsMatch) return sections;
+  const collapsibleSectionsByTitle = new Map<string, AnswerSection[]>();
+  sectionsBySharedTitle.forEach((accountSections, sharedTitle) => {
+    if (accountSections.length < 2) return;
+    const first = accountSections[0];
+    const allSectionsMatch = accountSections.every((section) => (
+      section.kind === first.kind
+      && section.content === first.content
+      && JSON.stringify(section.blocks ?? []) === JSON.stringify(first.blocks ?? [])
+    ));
+    if (allSectionsMatch) {
+      collapsibleSectionsByTitle.set(sharedTitle, accountSections);
+    }
+  });
+  if (collapsibleSectionsByTitle.size === 0) return sections;
 
-  let insertedCommonSection = false;
+  const insertedSharedTitles = new Set<string>();
   return sections.flatMap((section) => {
-    if (!ACCOUNT_STRATEGY_TITLE_PATTERN.test(section.title)) return [section];
-    if (insertedCommonSection) return [];
-    insertedCommonSection = true;
+    const titleMatch = section.title.match(ACCOUNT_SHARED_SECTION_TITLE_PATTERN);
+    if (!titleMatch) return [section];
+    const sharedTitle = titleMatch[2];
+    const accountSections = collapsibleSectionsByTitle.get(sharedTitle);
+    if (!accountSections) return [section];
+    if (insertedSharedTitles.has(sharedTitle)) return [];
+    insertedSharedTitles.add(sharedTitle);
+    const first = accountSections[0];
     return [{
-      ...first.section,
-      title: `보유 계좌 공통 · ${first.sharedTitle}`,
+      ...first,
+      title: `보유 계좌 공통 · ${sharedTitle}`,
       evidence_ids: Array.from(
-        new Set(accountStrategySections.flatMap(({ section: item }) => item.evidence_ids)),
+        new Set(accountSections.flatMap((item) => item.evidence_ids)),
       ),
     }];
   });
@@ -755,7 +773,7 @@ function AssistantMessage({
     )
     : response.numeric_evidence;
   const visibleSections = isEducationalStrategyGuide
-    ? collapseSharedAccountStrategySections(
+    ? collapseSharedAccountSections(
       response.sections.filter(
         (section) => (
           section.title !== "적용한 MVP 설문 조건"
