@@ -776,6 +776,11 @@ describe("GuidePage chat history deletion", () => {
         }],
         sections: [{
           kind: "service_explanation",
+          title: "적용한 MVP 설문 조건",
+          content: "현재 나이 42세, 연금수령 개시 60세, 투자성향 위험중립형을 적용했어요.",
+          evidence_ids: ["user:completed_survey_profile"],
+        }, {
+          kind: "service_explanation",
           title: "위험중립형 투자전략",
           content: "목표 자산배분과 운용 원칙을 확인하세요.",
           evidence_ids: ["engine:portfolio"],
@@ -907,6 +912,8 @@ describe("GuidePage chat history deletion", () => {
     expect(screen.queryByText("검증 답변")).not.toBeInTheDocument();
     expect(screen.queryByText("equity_drawdown 스트레스 손실 추정치")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("이어서 물어보기")).not.toBeInTheDocument();
+    expect(screen.queryByText("적용한 MVP 설문 조건")).not.toBeInTheDocument();
+    expect(screen.queryByText(/현재 나이 42세/)).not.toBeInTheDocument();
     expect(screen.queryByText("DC형 · ETF 분야 살펴보기")).not.toBeInTheDocument();
     expect(screen.queryByText("IRP · ETF 분야 살펴보기")).not.toBeInTheDocument();
     expect(screen.queryByText("연금저축펀드 · ETF 분야 살펴보기")).not.toBeInTheDocument();

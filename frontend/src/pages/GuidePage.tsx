@@ -720,7 +720,10 @@ function AssistantMessage({
     : response.numeric_evidence;
   const visibleSections = isEducationalStrategyGuide
     ? response.sections.filter(
-      (section) => !section.title.endsWith("ETF 분야 살펴보기"),
+      (section) => (
+        section.title !== "적용한 MVP 설문 조건"
+        && !section.title.endsWith("ETF 분야 살펴보기")
+      ),
     )
     : isEducationalPortfolio
     ? []
