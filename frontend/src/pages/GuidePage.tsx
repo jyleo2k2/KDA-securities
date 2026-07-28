@@ -59,6 +59,7 @@ import type {
   IncomeBasis,
   IrpDeferredIncomeStatus,
   IsaTransferEligibilityStatus,
+  NumericEvidence,
   PensionTaxScenarioInput,
   ScenarioSummary,
   StoredChatMessage,
@@ -88,6 +89,9 @@ const INTENT_LABELS: Record<ChatResponse["intent"], string> = {
 };
 
 const NUMBER_EVIDENCE_DEFAULT_LIMIT = 6;
+const PLANNING_RETURN_SECTION_SUFFIX = "장기 계산에 쓰는 수익률 가정";
+const BASE_PLANNING_RETURN_LABEL = "기본으로 계산한 수익률 가정";
+const CONSERVATIVE_PLANNING_RETURN_LABEL = "조심해서 계산한 수익률 가정";
 
 const BOUNDARY_LABELS: Record<DataBoundary, string> = {
   verified_knowledge: "공식 안내 근거",
@@ -276,6 +280,88 @@ function numericText(value: string | number, unit: string): string {
     return `${Number(value).toLocaleString("ko-KR")}원`;
   }
   return `${value}${unit}`;
+}
+
+function compactPlanningReturnBasis(basis: string): string {
+  return basis
+    .replace("과 ", "·")
+    .replace("을 넣은 계산", " 반영");
+}
+
+function planningReturnEvidenceForSection(
+  numericEvidence: NumericEvidence[],
+  sectionTitle: string,
+  evidenceLabel: string,
+): NumericEvidence | undefined {
+  const accountLabel = sectionTitle.match(/^(DC형|IRP|연금저축펀드) · /)?.[1];
+  if (accountLabel) {
+    return numericEvidence.find(
+      (item) => item.label === `${accountLabel} · ${evidenceLabel}`,
+    );
+  }
+
+  const matchingEvidence = numericEvidence.filter((item) => (
+    item.label === evidenceLabel || item.label.endsWith(` · ${evidenceLabel}`)
+  ));
+  const first = matchingEvidence[0];
+  if (!first) return undefined;
+  return matchingEvidence.every((item) => (
+    String(item.value) === String(first.value)
+    && item.unit === first.unit
+    && item.basis === first.basis
+  ))
+    ? first
+    : undefined;
+}
+
+function PlanningReturnAssumptionCards({
+  numericEvidence,
+  sectionTitle,
+  fallback,
+}: {
+  numericEvidence: NumericEvidence[];
+  sectionTitle: string;
+  fallback: string;
+}) {
+  const cards = [
+    {
+      label: "기본 수익률",
+      evidence: planningReturnEvidenceForSection(
+        numericEvidence,
+        sectionTitle,
+        BASE_PLANNING_RETURN_LABEL,
+      ),
+    },
+    {
+      label: "보수적 수익률",
+      evidence: planningReturnEvidenceForSection(
+        numericEvidence,
+        sectionTitle,
+        CONSERVATIVE_PLANNING_RETURN_LABEL,
+      ),
+    },
+  ];
+  if (cards.some(({ evidence }) => !evidence)) {
+    return <p>{displayText(fallback)}</p>;
+  }
+
+  return (
+    <div className="return-assumption-summary" aria-label="장기 수익률 가정">
+      <div className="return-assumption-grid">
+        {cards.map(({ label, evidence }) => (
+          <div className="return-assumption-card" key={label}>
+            <span>{label}</span>
+            <strong>{numericText(evidence!.value, evidence!.unit)}</strong>
+            <small>{compactPlanningReturnBasis(evidence!.basis)}</small>
+          </div>
+        ))}
+      </div>
+      <p className="return-assumption-note">
+        두 값 모두 장기 전망(CMA)과 ETF 비용을 반영하며, 보수적 수익률에는
+        여유 폭을 더 적용해요. 미래 수익을 보장하는 값은 아니에요.
+      </p>
+    </div>
+  );
 }
 
 function displayText(value: string): string {
@@ -973,12 +1059,18 @@ function AssistantMessage({
 
       {response.data_mode !== "news_summary" && visibleSections.map((section, index) => (
         <Fragment key={`${section.title}-${index}`}>
-          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}`} open={isEducationalStrategyGuide || response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "verified_pension_account_brief" || response.data_mode === "verified_pension_tax_rule_brief" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
+          <details className={`answer-section section-${section.kind}${section.blocks?.length ? " rich-answer-section" : ""}${section.title.endsWith(PLANNING_RETURN_SECTION_SUFFIX) ? " return-assumption-section" : ""}`} open={isEducationalStrategyGuide || response.data_mode === "verified_pension_account_overview" || response.data_mode === "verified_pension_account_deferred_topic" || response.data_mode === "verified_pension_account_brief" || response.data_mode === "verified_pension_tax_rule_brief" || response.data_mode === "theme_candidates" || response.data_mode === "theme_component_holdings" || section.kind === "limitation"}>
             <summary>
               <span>{section.title}</span>
               <small>내용 보기</small>
             </summary>
-            {section.blocks?.length ? (
+            {section.title.endsWith(PLANNING_RETURN_SECTION_SUFFIX) ? (
+              <PlanningReturnAssumptionCards
+                numericEvidence={response.numeric_evidence}
+                sectionTitle={section.title}
+                fallback={section.content}
+              />
+            ) : section.blocks?.length ? (
               <>
                 {section.content && <p>{displayText(section.content)}</p>}
                 <AnswerBlocks blocks={section.blocks} />
