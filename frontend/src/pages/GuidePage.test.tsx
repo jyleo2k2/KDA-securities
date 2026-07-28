@@ -828,8 +828,6 @@ describe("GuidePage chat history deletion", () => {
     expect(screen.getByText("연금 운용전략")).toBeInTheDocument();
     const orderedStrategyContent = [
       screen.getByText("코어·위성 전략"),
-      screen.getByText("DC형 스트레스 점검"),
-      screen.getByText("연금저축펀드 스트레스 점검"),
       screen.getByText("리밸런싱 주기: 1개월마다"),
       screen.getByText("두 가지 수익률 가정"),
     ];
@@ -840,11 +838,14 @@ describe("GuidePage chat history deletion", () => {
         ) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     }
-    for (const title of ["DC형 스트레스 점검", "연금저축펀드 스트레스 점검"]) {
-      expect(screen.getAllByText(title)).toHaveLength(1);
+    for (const title of [
+      "DC형 목표 자산배분",
+      "DC형 스트레스 점검",
+      "연금저축펀드 목표 자산배분",
+      "연금저축펀드 스트레스 점검",
+    ]) {
+      expect(screen.queryByText(title)).not.toBeInTheDocument();
     }
-    expect(screen.queryByText("DC형 목표 자산배분")).not.toBeInTheDocument();
-    expect(screen.queryByText("연금저축펀드 목표 자산배분")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("수치 근거")).not.toBeInTheDocument();
     expect(screen.queryByText("검증 답변")).not.toBeInTheDocument();
     expect(screen.queryByText("equity_drawdown 스트레스 손실 추정치")).not.toBeInTheDocument();

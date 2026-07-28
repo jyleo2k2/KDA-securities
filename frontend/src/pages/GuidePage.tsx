@@ -50,6 +50,7 @@ import type {
   ConversationContext,
   ChatResponse,
   ChatSessionSummary,
+  ChatVisualization as ChatVisualizationData,
   DataBoundary,
   DemoUserFinancialContext,
   EducationalPortfolioInput,
@@ -565,25 +566,19 @@ function AssistantMessage({
       item.kind === "tax_summary" && item.title === "세액공제 요약"
     ))
     : undefined;
-  const embedsEducationalStrategyVisualizations = (
-    isEducationalPortfolio
-    && educationalEvaluation != null
-    && educationalEvaluation.evaluated_input.current_holdings.length === 0
-  );
-  const hiddenEducationalAllocationVisualizations = isEducationalPortfolio
-    ? response.visualizations.filter((item) => item.kind === "sleeve_allocation")
+  const hiddenEducationalSummaryVisualizations = isEducationalPortfolio
+    ? response.visualizations.filter((item) => (
+      item.kind === "sleeve_allocation" || item.kind === "stress_scenarios"
+    ))
     : [];
-  const educationalStrategyVisualizations = embedsEducationalStrategyVisualizations
-    ? response.visualizations.filter((item) => item.kind === "stress_scenarios")
-    : [];
+  const educationalStrategyVisualizations: ChatVisualizationData[] = [];
   const remainingVisualizations = (isMissedTaxCredit
     ? response.visualizations.filter((item) => item.kind !== "tax_summary")
     : taxSummaryVisualization
       ? response.visualizations.filter((item) => item !== taxSummaryVisualization)
       : response.visualizations
   ).filter((item) => (
-    !educationalStrategyVisualizations.includes(item)
-    && !hiddenEducationalAllocationVisualizations.includes(item)
+    !hiddenEducationalSummaryVisualizations.includes(item)
   ));
   const visibleNumericEvidence = isMissedTaxCredit
     ? []
