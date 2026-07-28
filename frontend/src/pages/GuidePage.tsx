@@ -616,7 +616,9 @@ function AssistantMessage({
     )
     : response.numeric_evidence;
   const visibleSections = isEducationalPortfolio && !educationalHasCurrentHoldings
-    ? response.sections
+    ? response.sections.filter(
+      (section) => !section.title.endsWith("ETF 분야 살펴보기"),
+    )
     : isEducationalPortfolio
     ? []
     : isPensionTaxCredit
