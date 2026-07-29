@@ -1299,7 +1299,22 @@ describe("GuidePage chat history deletion", () => {
     expect(within(card).getByText("23.6년")).toBeInTheDocument();
     expect(within(card).getByText("4.57%")).toBeInTheDocument();
     expect(within(card).getAllByText(/공식 출처/)).toHaveLength(3);
-    expect(screen.queryByLabelText("과거 유사국면 ETF 근거 카드")).not.toBeInTheDocument();
+    const outcomeCard = screen.getByLabelText("과거 유사국면 ETF 근거 카드");
+    const outcomeDisclosure = within(outcomeCard).getByText("과거 실적은 필요할 때 확인").closest("details");
+    expect(outcomeDisclosure).toHaveAttribute("open");
+    expect(within(outcomeCard).getByText("2개 유사국면")).toBeInTheDocument();
+    expect(within(outcomeCard).getByText("2025년 7월 시작 구간").closest("details")).toHaveAttribute("open");
+    expect(within(outcomeCard).getByText("2024년 7월 시작 구간").closest("details")).toHaveAttribute("open");
+    expect(within(outcomeCard).getAllByText("KODEX 200")).toHaveLength(2);
+    expect(within(outcomeCard).getByText("10.0000%")).toBeInTheDocument();
+    expect(within(outcomeCard).getByText("8.0000%")).toBeInTheDocument();
+    expect(within(outcomeCard).getByText("최대낙폭 -25%")).toBeInTheDocument();
+    expect(within(outcomeCard).queryByText("관측 부족")).not.toBeInTheDocument();
+    expect(within(outcomeCard).queryByText("총수익 이력 없음")).not.toBeInTheDocument();
+    expect(within(outcomeCard).queryByText("관측값 없는 ETF")).not.toBeInTheDocument();
+    expect(within(outcomeCard).queryByText("2023년 12월 유사국면")).not.toBeInTheDocument();
+    expect(within(outcomeCard).queryByText(/snapshot:/)).not.toBeInTheDocument();
+    expect(within(outcomeCard).getAllByText(/KIND 현금분배/)).toHaveLength(2);
   });
 
   it("shows six numeric evidence cards first and expands the remaining cards", async () => {
