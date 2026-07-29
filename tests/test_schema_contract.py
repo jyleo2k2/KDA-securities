@@ -124,6 +124,27 @@ NEWS_EVENT_OUTCOME_LEDGER_MIGRATION = next(
         "*_add_news_event_outcome_ledger.sql"
     )
 )
+LLM_USAGE_COST_LEDGER_MIGRATION = next(
+    (ROOT / "supabase" / "migrations").glob("*_add_llm_usage_cost_ledger.sql")
+)
+
+
+def test_llm_usage_cost_ledger_is_private_and_aggregatable() -> None:
+    sql = LLM_USAGE_COST_LEDGER_MIGRATION.read_text(encoding="utf-8").lower()
+
+    assert "create table public.llm_usage_events" in sql
+    assert "estimated_list_cost_usd numeric(20, 12)" in sql
+    assert "application_cache_hit boolean not null" in sql
+    assert "usage_available boolean not null" in sql
+    assert "create view public.llm_usage_daily_summary" in sql
+    assert "security_invoker = true" in sql
+    assert "alter table public.llm_usage_events enable row level security" in sql
+    assert "from public, anon, authenticated" in sql
+    assert "to service_role" in sql
+    assert "owner_id" not in sql
+    assert "prompt text" not in sql
+    assert "response text" not in sql
+    assert "drop table" not in sql
 
 
 def test_benchmark_follows_are_owner_scoped_and_server_only() -> None:

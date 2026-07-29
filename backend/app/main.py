@@ -36,6 +36,7 @@ from .api.engine import (
 )
 from .api.system import health
 from .database import close_pool, get_database_pool
+from .llm_usage import close_llm_usage_recorders
 from .settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -109,6 +110,7 @@ async def lifespan(app: FastAPI):
         if narrator is not None:
             await asyncio.to_thread(narrator.flush_cache)
         clear_chat_dependencies()
+        await asyncio.to_thread(close_llm_usage_recorders)
         close_pool(pool)
         get_database_pool.cache_clear()
         await auth_http_client.aclose()

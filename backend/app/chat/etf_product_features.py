@@ -5,6 +5,7 @@ import re
 from collections import OrderedDict
 from hashlib import sha256
 from pathlib import Path
+from time import monotonic
 from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -12,6 +13,7 @@ from pydantic_ai import Agent, NativeOutput
 from pydantic_ai.exceptions import AgentRunError
 
 from ..llm_models import build_model, build_model_settings
+from ..llm_usage import LlmCallKind, LlmUsageRecorder, record_llm_usage
 from .narration_guard import contains_unsafe_financial_claim
 
 logger = logging.getLogger(__name__)
@@ -128,10 +130,12 @@ class ClaudeEtfProductFeatureGenerator:
         api_key: str,
         model: str,
         research_path: Path = DEFAULT_ETF_PRODUCT_RESEARCH_PATH,
+        usage_recorder: LlmUsageRecorder | None = None,
     ) -> None:
         if not api_key.strip() or not model.strip():
             raise ValueError("api_key and model are required")
         self._model = model.strip()
+        self._usage_recorder = usage_recorder
         self._research_path = research_path
         try:
             self._research_text = research_path.read_text(encoding="utf-8")
@@ -249,16 +253,66 @@ class ClaudeEtfProductFeatureGenerator:
         cached = self._cache.get(key)
         if cached is not None:
             self._cache.move_to_end(key)
+            record_llm_usage(
+                self._usage_recorder,
+                call_kind=LlmCallKind.ETF_PRODUCT_FEATURE,
+                model_name=self._model,
+                outcome="cache_hit",
+                outcome_detail="etf_product_feature_cache",
+                provider_called=False,
+                application_cache_hit=True,
+            )
             return dict(cached)
+        started_at = monotonic()
+        result = None
         try:
             result = self.agent.run_sync(prompt)
             generated = self._validate(result.output, facts)
-        except (AgentRunError, OSError, ValueError):
+        except (AgentRunError, OSError):
+            record_llm_usage(
+                self._usage_recorder,
+                call_kind=LlmCallKind.ETF_PRODUCT_FEATURE,
+                model_name=self._model,
+                outcome="provider_error",
+                outcome_detail="agent_error",
+                result=result,
+                started_at=started_at,
+            )
+            logger.warning("etf_product_feature_generation_failed")
+            return {}
+        except ValueError:
+            record_llm_usage(
+                self._usage_recorder,
+                call_kind=LlmCallKind.ETF_PRODUCT_FEATURE,
+                model_name=self._model,
+                outcome="validation_rejected",
+                outcome_detail="invalid_output",
+                result=result,
+                started_at=started_at,
+            )
             logger.warning("etf_product_feature_generation_failed")
             return {}
         if not generated:
+            record_llm_usage(
+                self._usage_recorder,
+                call_kind=LlmCallKind.ETF_PRODUCT_FEATURE,
+                model_name=self._model,
+                outcome="validation_rejected",
+                outcome_detail="evidence_validation_failed",
+                result=result,
+                started_at=started_at,
+            )
             logger.warning("etf_product_feature_validation_failed")
             return {}
+        record_llm_usage(
+            self._usage_recorder,
+            call_kind=LlmCallKind.ETF_PRODUCT_FEATURE,
+            model_name=self._model,
+            outcome="accepted",
+            outcome_detail=None,
+            result=result,
+            started_at=started_at,
+        )
         self._cache[key] = generated
         while len(self._cache) > ETF_FEATURE_CACHE_MAX_ENTRIES:
             self._cache.popitem(last=False)

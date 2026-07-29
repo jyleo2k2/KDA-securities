@@ -2,13 +2,41 @@
 
 > DB 작업의 단일 현황판이자 인수인계 문서다. 작업자는 시작 전 읽고, 의미 있는 변경을 마칠 때마다 이 문서를 최신화한다.
 >
-> 최종 확인: 2026-07-27 10:52 KST
-> 확인 기준: 이용자 Pick 팔로우 저장 migration 원격 적용·권한 검증
+> 최종 확인: 2026-07-28 23:00 KST
+> 확인 기준: 챗봇 LLM 사용량·예상 비용 장부 로컬 구현·전체 회귀
 > 원격 프로젝트: `KDA-securities`
 > 담당자: 최호택
 > 머지 승인: 이재용(총괄)
 
 ## 0. 최신 작업 상태
+
+### 2026-07-28 23:00 KST — 챗봇 LLM 사용량·예상 비용 장부 (LOCAL-VERIFIED)
+
+- 작업자/브랜치/시작 기준: 이재용 / `codex/이재용/llm-cost-pipeline` /
+  `origin/main` `5f5fec7`.
+- 변경 내용: 프롬프트·답변·사용자 식별자를 저장하지 않는 append-only
+  `llm_usage_events`와 KST 일별 집계 view `llm_usage_daily_summary` migration을
+  추가했다. 내레이션·주제 분류·ETF 특징 생성·부팅 워밍업에서 공급자 반환
+  토큰, 지연, 애플리케이션 캐시 적중, 검증 폐기 여부를 수집한다.
+- 성능 경계: 요청 스레드는 bounded queue에 `put_nowait`만 수행하고 단가 계산과
+  DB batch insert는 별도 daemon thread에서 실행한다. 큐 포화·DB 장애 때는
+  이벤트를 버리고 경고만 남겨 챗봇 응답을 막지 않는다.
+- 비용 의미: `scripts/data/model_pricing.json`의 검증일자별 정가로 계산한
+  `estimated_list_cost_usd`이며 실제 청구액이 아니다. 단가 또는 공급자 사용량이
+  없으면 0원으로 단정하지 않고 `NULL`로 보존한다.
+- 로컬 검증: `uv run pytest -q` 결과 `1740 passed, 2 skipped`, 변경 파일 대상
+  Ruff와 `git diff --check` 통과. 전체 `uv run ruff check .`은 이번 변경과 무관한
+  기존 `backend/app/engine/strategy_planning_return.py:7` import 정렬 1건으로
+  실패했다. 합성 10,000회 사용량 추출·enqueue 측정은 평균 5.04µs, 드롭 0건이었다.
+- 원격 적용 여부와 migration version: 미적용. 로컬 파일은
+  `20260728134829_add_llm_usage_cost_ledger.sql`이며 별도 승인 전에는 원격에
+  적용하지 않는다.
+- 남은 위험 또는 blocker: 로컬 PostgreSQL 실행 환경에 Docker/Podman이 없어
+  `supabase db reset`은 실행하지 못했다. SQL 파싱은 스키마 계약 테스트로
+  검증한다. 장부는 응답 우선 best-effort라 프로세스 강제 종료·큐 포화 때 일부
+  이벤트가 누락될 수 있다.
+- 다음 작업: Draft PR 리뷰 후, 병합·배포 전 승인된 DB 세션에서 migration
+  원격 적용과 RLS·권한·view 조회를 검증한다.
 
 ### 2026-07-27 10:52 KST — 이용자 Pick 팔로우 저장 (REMOTE-APPLIED)
 
