@@ -1,9 +1,12 @@
 name: Daily NAVER market news ingestion
 
+# 일일 자동 수집은 2026-07-29부터 중단한다.
+# 다시 켜려면 아래 schedule 블록의 주석을 해제한다.
+# 중단 중에도 workflow_dispatch로 수동 실행할 수 있다.
 on:
-  schedule:
-    - cron: "17 3 * * *"
-      timezone: "Asia/Seoul"
+  # schedule:
+  #   - cron: "17 3 * * *"
+  #     timezone: "Asia/Seoul"
   workflow_dispatch:
 
 permissions:
