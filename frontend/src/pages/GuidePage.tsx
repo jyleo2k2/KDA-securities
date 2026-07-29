@@ -632,6 +632,89 @@ const SCENARIO_RISK_PROFILE_LABELS: Record<string, string> = {
   aggressive: "공격투자형",
 };
 
+function regimeMonth(value: string): string {
+  const [year, month] = value.split("-");
+  return `${year}년 ${Number(month)}월`;
+}
+
+function drawdownText(value: string | number): string {
+  const parsed = Math.abs(Number(value));
+  return parsed === 0 ? "0%" : `-${numericText(parsed, "%")}`;
+}
+
+function MacroRegimeOutcomeCards({ response }: { response: ChatResponse }) {
+  const evaluation = response.macro_regime_etf_outcomes;
+  if (!evaluation) return null;
+  const visibleGroups = evaluation.groups
+    .map((group) => ({
+      ...group,
+      etfs: group.etfs.filter((etf) => etf.horizons.length > 0),
+    }))
+    .filter((group) => group.etfs.length > 0);
+  if (visibleGroups.length === 0) return null;
+
+  return (
+    <section className="macro-regime-card" aria-label="과거 유사국면 ETF 근거 카드">
+      <header>
+        <span>과거 실적 근거</span>
+        <h3>유사국면 이후 ETF 총수익률·최대낙폭</h3>
+        <p>국면 다음 달 첫 거래일부터 계산한 실제 관측값이며 미래 예측이나 자동 리밸런싱 신호가 아니에요.</p>
+      </header>
+      <details className="macro-regime-disclosure" open>
+        <summary>
+          <span><strong>과거 실적은 필요할 때 확인</strong><small>{visibleGroups.length}개 유사국면</small></span>
+          <em>펼쳐보기</em>
+        </summary>
+        <div className="macro-regime-list">
+          {visibleGroups.map((group) => {
+            const outcomeStartDate = group.etfs
+              .flatMap((etf) => etf.horizons)
+              .map((horizon) => horizon.start_date)
+              .sort()[0];
+            return (
+              <details key={group.regime_period} open>
+              <summary>
+                <strong>{regimeMonth(outcomeStartDate ?? group.regime_period)} 시작 구간</strong>
+                <span>유사도 거리 {Number(group.distance).toFixed(4)}</span>
+              </summary>
+              <div className="macro-regime-etfs">
+                {group.etfs.map((etf) => (
+                  <article key={`${group.regime_period}-${etf.isu_code}`}>
+                    <div className="macro-regime-etf-heading">
+                      <strong>{etf.isu_name}</strong>
+                      <span>{etf.isu_code}</span>
+                    </div>
+                    <div className="macro-regime-horizons">
+                      {etf.horizons.map((horizon) => (
+                        <div key={horizon.horizon_months}>
+                          <span>{horizon.horizon_months}개월</span>
+                          <strong className={Number(horizon.total_return_percent) >= 0 ? "positive" : "negative"}>
+                            {numericText(horizon.total_return_percent, "%")}
+                          </strong>
+                          <small>최대낙폭 {drawdownText(horizon.maximum_drawdown_percent)}</small>
+                          <em>{horizon.start_date} ~ {horizon.end_date}</em>
+                        </div>
+                      ))}
+                    </div>
+                    {etf.source && (
+                      <SourceLink locator={etf.source.reference}>
+                        <span className="macro-regime-source-chip">
+                          {etf.source.label} · {etf.source.as_of}
+                        </span>
+                      </SourceLink>
+                    )}
+                  </article>
+                ))}
+              </div>
+              </details>
+            );
+          })}
+        </div>
+      </details>
+    </section>
+  );
+}
+
 function AssistantMessage({
   requestPrompt,
   response,
@@ -955,6 +1038,7 @@ function AssistantMessage({
       {showPensionTaxBreakdown && numericEvidenceCards}
 
       <MacroEvidenceCards response={response} />
+      <MacroRegimeOutcomeCards response={response} />
 
       {!showPensionTaxBreakdown && numericEvidenceCards}
 
