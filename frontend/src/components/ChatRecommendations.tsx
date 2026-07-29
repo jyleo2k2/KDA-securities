@@ -8,6 +8,7 @@ import type { ChatCard } from "../api/types";
 import { ChatIcon } from "./ChatIcon";
 
 const ETF_THEME_DRAG_THRESHOLD_PX = 5;
+const CHAT_QUESTION_DRAG_THRESHOLD_PX = 5;
 
 const ETF_THEME_RAIL_CSS = `
 .etf-theme-rail {
@@ -69,6 +70,52 @@ export function ChatQuestionRecommendations({
   onSubmit: (message: string) => void;
   onRetry: () => void;
 }) {
+  const [isDragging, setIsDragging] = useState(false);
+  const suppressClick = useRef(false);
+  const drag = useRef<{
+    moved: boolean;
+    pointerId: number;
+    startScrollLeft: number;
+    startX: number;
+  } | null>(null);
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "mouse" || event.button !== 0) return;
+    drag.current = {
+      moved: false,
+      pointerId: event.pointerId,
+      startScrollLeft: event.currentTarget.scrollLeft,
+      startX: event.clientX,
+    };
+  };
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const currentDrag = drag.current;
+    if (!currentDrag || currentDrag.pointerId !== event.pointerId) return;
+    const deltaX = event.clientX - currentDrag.startX;
+    if (!currentDrag.moved && Math.abs(deltaX) < CHAT_QUESTION_DRAG_THRESHOLD_PX) return;
+    if (!currentDrag.moved) {
+      currentDrag.moved = true;
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      setIsDragging(true);
+    }
+    event.preventDefault();
+    event.currentTarget.scrollLeft = currentDrag.startScrollLeft - deltaX;
+  };
+  const finishPointerDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const currentDrag = drag.current;
+    if (!currentDrag || currentDrag.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    suppressClick.current = currentDrag.moved;
+    if (currentDrag.moved) {
+      window.setTimeout(() => {
+        suppressClick.current = false;
+      }, 0);
+    }
+    drag.current = null;
+    setIsDragging(false);
+  };
+
   return (
     <section className="chat-home-card-section" aria-labelledby="chat-question-heading">
       <header className="chat-home-section-heading">
@@ -89,9 +136,32 @@ export function ChatQuestionRecommendations({
           ))}
         </div>
       ) : cards.length > 0 ? (
-        <div className="chat-question-grid chat-question-grid-ready" aria-label="챗봇 추천 질문">
+        <div
+          className={`chat-question-grid chat-question-grid-ready${isDragging ? " is-dragging" : ""}`}
+          aria-label="챗봇 추천 질문"
+          style={{
+            cursor: isDragging ? "grabbing" : "grab",
+            scrollSnapType: isDragging ? "none" : undefined,
+            userSelect: isDragging ? "none" : undefined,
+          }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={finishPointerDrag}
+          onPointerCancel={finishPointerDrag}
+        >
           {cards.map((card, index) => (
-            <button type="button" key={card.card_id} onClick={() => onSubmit(card.message)}>
+            <button
+              type="button"
+              key={card.card_id}
+              style={{ cursor: isDragging ? "grabbing" : undefined }}
+              onClick={() => {
+                if (suppressClick.current) {
+                  suppressClick.current = false;
+                  return;
+                }
+                onSubmit(card.message);
+              }}
+            >
               <span className="chat-question-icon">
                 <ChatIcon name={index === 0 ? "book" : index === 1 ? "shield" : "spark"} size={18} />
               </span>
