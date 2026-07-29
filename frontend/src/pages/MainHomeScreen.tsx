@@ -180,6 +180,7 @@ interface StrategyCard {
   valueColor: string;
   desc: string;
   bg: string;
+  planningStatus?: string;
 }
 
 const STRATEGY_CARDS: StrategyCard[] = [
@@ -190,8 +191,8 @@ const STRATEGY_CARDS: StrategyCard[] = [
   { strategyId: "bottom_up", title: "바텀업 전략", valueColor: "#1E9E5D", desc: "기업을 분석해 투자 대상 고르는 전략입니다.", bg: "#E9F8EF" },
   { strategyId: "barbell", title: "바벨 전략", valueColor: "#1E2124", desc: "성장자산과 안전자산을 함께 담는 전략입니다.", bg: "#F5F5F5" },
   { strategyId: "volatility_managed", title: "변동성 관리 전략", valueColor: "#9CA7AE", desc: "주식·채권 비중을 조절하는 전략입니다.", bg: "#F1F2F3" },
-  { strategyId: "market_neutral", title: "롱숏·시장중립 전략", valueColor: "#7B4FC0", desc: "상승과 하락 위험을 함께 관리하는 전략입니다.", bg: "#F3EEFB" },
-  { strategyId: "event_driven", title: "이벤트드리븐 전략", valueColor: "#B8860B", desc: "기업 이벤트 기회를 살피는 전략입니다.", bg: "#FFF8DE" },
+  { strategyId: "market_neutral", title: "롱숏·시장중립 전략", valueColor: "#7B4FC0", desc: "상승과 하락 위험을 함께 관리하는 전략입니다.", bg: "#F3EEFB", planningStatus: "알파 미산정 · 상품 확인 필요" },
+  { strategyId: "event_driven", title: "이벤트드리븐 전략", valueColor: "#B8860B", desc: "기업 이벤트 기회를 살피는 전략입니다.", bg: "#FFF8DE", planningStatus: "알파 미산정 · 상품 확인 필요" },
   { strategyId: "trend_global_macro", title: "추세추종·글로벌 매크로 전략", valueColor: "#2F6FE0", desc: "추세와 세계 경제 흐름을 활용하는 전략입니다.", bg: "#EAF1FE" },
 ];
 
@@ -747,7 +748,10 @@ export function MainHomeScreen({
               aria-label={`${card.title} 소개 화면 열기`}
             >
               <span className="mhs-strategy-card-title">{card.title}</span>
-              <p className="mhs-strategy-card-value" style={{ color: card.valueColor }}>{value}</p>
+              <div className="mhs-strategy-card-value-row">
+                <p className="mhs-strategy-card-value" style={{ color: card.valueColor }}>{value}</p>
+                {card.planningStatus && <span className="mhs-strategy-card-status">{card.planningStatus}</span>}
+              </div>
               <p className="mhs-strategy-card-desc">{card.desc}</p>
             </button>
             );
