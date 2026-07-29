@@ -13,13 +13,17 @@ from .educational_portfolio import (
     CMA_ASSUMPTIONS_PERCENT,
     CMA_POLICY_ID,
     CMA_SOURCE_AS_OF,
-    POLICY_VERSION as PORTFOLIO_RISK_POLICY_VERSION,
-    STRESS_POLICY,
 )
 from .models import SourceChip
 
 PERCENT_QUANTUM = Decimal("0.0001")
-STRATEGY_PLANNING_RETURN_POLICY_VERSION = "2026-07-28.1"
+STRATEGY_PLANNING_RETURN_POLICY_VERSION = "2026-07-29.1"
+STRATEGY_STRESS_POLICY_VERSION = "strategy-common-stress-2026-07-29.1"
+STRATEGY_COMPARISON_STRESS_LOSS_PERCENT = {
+    "equity_drawdown": Decimal("15"),
+    "rate_inflation_shock": Decimal("10"),
+    "stagflation": Decimal("12"),
+}
 
 
 class StrategyStressScenarioResult(BaseModel):
@@ -143,21 +147,6 @@ _PRESETS = (
 )
 
 
-# The strategy cards use CMA reference buckets, while the approved stress policy
-# uses portfolio sleeves. Keep the translation explicit so the UI never infers it.
-_CMA_STRESS_SLEEVE_WEIGHTS = {
-    "global_equity": {"core_equity": Decimal("100")},
-    "us_large_cap_equity": {"core_equity": Decimal("100")},
-    "us_10y_treasury": {"fixed_income": Decimal("100")},
-    "us_investment_grade_credit": {"fixed_income": Decimal("100")},
-    "cash": {"cash": Decimal("100")},
-    "global_60_40": {
-        "core_equity": Decimal("60"),
-        "fixed_income": Decimal("40"),
-    },
-}
-
-
 def _quantize(value: Decimal) -> Decimal:
     return value.quantize(PERCENT_QUANTUM, rounding=ROUND_HALF_UP)
 
@@ -182,47 +171,31 @@ def _source_chips() -> list[SourceChip]:
 
 def _stress_source_chip() -> SourceChip:
     return SourceChip(
-        label="연금 코파일럿 포트폴리오 스트레스 정책",
+        label="연금 전략 공통 스트레스 비교 기준",
         reference="docs/30_스펙/포트폴리오_위험정책_계약.md",
-        as_of=date(2026, 7, 22),
+        as_of=date(2026, 7, 29),
     )
 
 
-def _calculate_stress_risk(
-    weights: dict[str, Decimal],
-) -> StrategyStressRiskEvaluation:
-    scenarios: list[StrategyStressScenarioResult] = []
-    for scenario_code, sleeve_shocks in STRESS_POLICY.items():
-        estimated_return = Decimal("0")
-        for cma_bucket, bucket_weight in weights.items():
-            sleeve_weights = _CMA_STRESS_SLEEVE_WEIGHTS[cma_bucket]
-            if sum(sleeve_weights.values(), Decimal("0")) != Decimal("100"):
-                raise ValueError(f"{cma_bucket} stress sleeve weights must sum to 100")
-            estimated_return += sum(
-                (
-                    bucket_weight
-                    * sleeve_weight
-                    * sleeve_shocks[sleeve]
-                    / Decimal("10000")
-                    for sleeve, sleeve_weight in sleeve_weights.items()
-                ),
-                Decimal("0"),
-            )
-        scenarios.append(
-            StrategyStressScenarioResult(
-                scenario_code=scenario_code,
-                estimated_loss_percent=_quantize(-estimated_return),
-            )
+def _calculate_stress_risk() -> StrategyStressRiskEvaluation:
+    scenarios = [
+        StrategyStressScenarioResult(
+            scenario_code=scenario_code,
+            estimated_loss_percent=_quantize(estimated_loss_percent),
         )
+        for scenario_code, estimated_loss_percent in (
+            STRATEGY_COMPARISON_STRESS_LOSS_PERCENT.items()
+        )
+    ]
 
     worst = max(scenarios, key=lambda scenario: scenario.estimated_loss_percent)
     return StrategyStressRiskEvaluation(
         worst_scenario_code=worst.scenario_code,
         worst_estimated_loss_percent=worst.estimated_loss_percent,
         scenarios=scenarios,
-        policy_version=PORTFOLIO_RISK_POLICY_VERSION,
+        policy_version=STRATEGY_STRESS_POLICY_VERSION,
         source=_stress_source_chip(),
-        representative_basket_only=True,
+        representative_basket_only=False,
         is_forecast=False,
     )
 
@@ -260,7 +233,7 @@ def calculate_strategy_planning_returns() -> list[StrategyPlanningReturnEvaluati
                     weighted_return - preset.uncertainty_discount_percent
                 ),
                 components=components,
-                stress_risk=_calculate_stress_risk(preset.weights),
+                stress_risk=_calculate_stress_risk(),
                 cma_policy_id=CMA_POLICY_ID,
                 policy_version=STRATEGY_PLANNING_RETURN_POLICY_VERSION,
                 sources=_source_chips(),
@@ -268,6 +241,7 @@ def calculate_strategy_planning_returns() -> list[StrategyPlanningReturnEvaluati
                 is_forecast=False,
                 warnings=[
                     "fixed_reference_basket",
+                    "shared_stress_policy_across_strategies",
                     "not_a_forecast_or_product_recommendation",
                     *preset.warnings,
                 ],

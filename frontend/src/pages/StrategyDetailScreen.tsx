@@ -103,7 +103,7 @@ const STRATEGY_ENGINE_IDS: Record<string, string> = {
 };
 
 const STRESS_SCENARIO_LABELS: Record<string, string> = {
-  equity_drawdown: "주식 급락",
+  equity_drawdown: "주식시장 조정",
   rate_inflation_shock: "금리·물가 충격",
   stagflation: "경기 둔화·고물가",
 };
@@ -549,14 +549,14 @@ export function StrategyDetailScreen({
                 <section className="sd-stress-risk" aria-labelledby="strategy-stress-title">
                   <div className="sd-stress-risk-heading">
                     <div>
-                      <span>대표 구성 위험 점검</span>
+                      <span>공통 기준 위험 점검</span>
                       <h3 id="strategy-stress-title">정책 스트레스 시나리오</h3>
                     </div>
                     {stressRisk && (
                       <strong>
                         {formatPercent(stressRisk.worst_estimated_loss_percent)}
                         <small>
-                          가장 큰 손실 · {STRESS_SCENARIO_LABELS[stressRisk.worst_scenario_code]
+                          공통 기준 손실 · {STRESS_SCENARIO_LABELS[stressRisk.worst_scenario_code]
                             ?? stressRisk.worst_scenario_code}
                         </small>
                       </strong>
@@ -576,12 +576,12 @@ export function StrategyDetailScreen({
                   {stressRisk && (
                     <>
                       <p className="sd-stress-explanation">
-                        정해진 시장충격을 {strategy.name}의 대표 구성에 적용한 참고값이에요.
-                        발생 확률이나 미래 최대손실, 손실 한도를 뜻하지 않으며 실제 손실은
-                        더 커질 수 있어요.
+                        연금 전략을 같은 기준으로 비교하기 위해 모든 전략에 동일한
+                        시장충격을 적용한 참고값이에요. 전략마다 수치가 같은 것은 정상이며,
+                        실제 손실은 상품과 자산배분에 따라 달라질 수 있어요.
                       </p>
                       <details className="sd-stress-details">
-                        <summary>시나리오별 손실 추정치 보기</summary>
+                        <summary>공통 시나리오 기준 보기</summary>
                         <ul>
                           {stressRisk.scenarios.map((scenario) => (
                             <li key={scenario.scenario_code}>
