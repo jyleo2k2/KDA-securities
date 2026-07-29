@@ -25,36 +25,32 @@ const planningReturnSources = [
 ];
 
 const stressSource = {
-  label: "연금 코파일럿 포트폴리오 스트레스 정책",
+  label: "연금 전략 공통 스트레스 비교 기준",
   reference: "portfolio-risk-policy",
-  as_of: "2026-07-22",
+  as_of: "2026-07-29",
 };
 
-function stressRisk(
-  worstEstimatedLossPercent: string,
-  rateInflationLossPercent: string,
-  stagflationLossPercent: string,
-): StrategyPlanningReturnEvaluation["stress_risk"] {
+function stressRisk(): StrategyPlanningReturnEvaluation["stress_risk"] {
   return {
     worst_scenario_code: "equity_drawdown",
-    worst_estimated_loss_percent: worstEstimatedLossPercent,
+    worst_estimated_loss_percent: "15.0000",
     scenarios: [
       {
         scenario_code: "equity_drawdown",
-        estimated_loss_percent: worstEstimatedLossPercent,
+        estimated_loss_percent: "15.0000",
       },
       {
         scenario_code: "rate_inflation_shock",
-        estimated_loss_percent: rateInflationLossPercent,
+        estimated_loss_percent: "10.0000",
       },
       {
         scenario_code: "stagflation",
-        estimated_loss_percent: stagflationLossPercent,
+        estimated_loss_percent: "12.0000",
       },
     ],
-    policy_version: "2026-07-23.1",
+    policy_version: "strategy-common-stress-2026-07-29.1",
     source: stressSource,
-    representative_basket_only: true,
+    representative_basket_only: false,
     is_forecast: false,
   };
 }
@@ -66,7 +62,7 @@ const planningReturns: StrategyPlanningReturnEvaluation[] = [
     uncertainty_discount_percent: "0.2500",
     net_planning_return_percent: "5.7500",
     components: [{ cma_bucket: "global_equity", target_percent: "100", cma_percent: "6" }],
-    stress_risk: stressRisk("35.0000", "15.0000", "20.0000"),
+    stress_risk: stressRisk(),
     cma_policy_id: "policy",
     policy_version: "2026-07-24.1",
     sources: planningReturnSources,
@@ -80,7 +76,7 @@ const planningReturns: StrategyPlanningReturnEvaluation[] = [
     uncertainty_discount_percent: "0.4000",
     net_planning_return_percent: "5.6000",
     components: [{ cma_bucket: "global_equity", target_percent: "100", cma_percent: "6" }],
-    stress_risk: stressRisk("35.0000", "15.0000", "20.0000"),
+    stress_risk: stressRisk(),
     cma_policy_id: "policy",
     policy_version: "2026-07-24.1",
     sources: planningReturnSources,
@@ -94,7 +90,7 @@ const planningReturns: StrategyPlanningReturnEvaluation[] = [
     uncertainty_discount_percent: "1.0000",
     net_planning_return_percent: "5.0000",
     components: [{ cma_bucket: "global_equity", target_percent: "100", cma_percent: "6" }],
-    stress_risk: stressRisk("35.0000", "15.0000", "20.0000"),
+    stress_risk: stressRisk(),
     cma_policy_id: "policy",
     policy_version: "2026-07-24.1",
     sources: planningReturnSources,
@@ -112,7 +108,7 @@ const planningReturns: StrategyPlanningReturnEvaluation[] = [
       { cma_bucket: "us_10y_treasury", target_percent: "30", cma_percent: "4" },
       { cma_bucket: "cash", target_percent: "20", cma_percent: "3" },
     ],
-    stress_risk: stressRisk("19.9000", "10.5000", "12.4000"),
+    stress_risk: stressRisk(),
     cma_policy_id: "policy",
     policy_version: "2026-07-24.1",
     sources: planningReturnSources,
@@ -251,7 +247,7 @@ describe("StrategyDetailScreen", () => {
     expect(screen.queryByText("global_equity")).not.toBeInTheDocument();
   });
 
-  it("shows the policy stress loss for every strategy without presenting it as a limit", async () => {
+  it("shows one common pension stress baseline for every strategy", async () => {
     window.location.hash = "#/strategy-detail?strategy=barbell";
 
     render(<StrategyDetailScreen onBack={vi.fn()} />);
@@ -259,22 +255,22 @@ describe("StrategyDetailScreen", () => {
     const riskCard = (await screen.findByRole("heading", { name: "정책 스트레스 시나리오" }))
       .closest(".sd-stress-risk");
     expect(riskCard).not.toBeNull();
-    expect(riskCard).toHaveTextContent("19.9%");
-    expect(riskCard).toHaveTextContent("가장 큰 손실 · 주식 급락");
-    expect(riskCard).toHaveTextContent(/바벨 전략의 대표 구성에 적용한 참고값/);
-    expect(riskCard).toHaveTextContent(/미래 최대손실, 손실 한도를 뜻하지 않으며/);
-    expect(riskCard).toHaveTextContent(/실제 손실은 더 커질 수 있어요/);
+    expect(riskCard).toHaveTextContent("15%");
+    expect(riskCard).toHaveTextContent("공통 기준 손실 · 주식시장 조정");
+    expect(riskCard).toHaveTextContent(/모든 전략에 동일한 시장충격을 적용한 참고값/);
+    expect(riskCard).toHaveTextContent(/전략마다 수치가 같은 것은 정상/);
+    expect(riskCard).toHaveTextContent(/실제 손실은 상품과 자산배분에 따라 달라질 수 있어요/);
     expect(riskCard).toHaveTextContent(
-      "기준: 연금 코파일럿 포트폴리오 스트레스 정책 · 2026.07.22",
+      "기준: 연금 전략 공통 스트레스 비교 기준 · 2026.07.29",
     );
 
-    fireEvent.click(within(riskCard as HTMLElement).getByText("시나리오별 손실 추정치 보기"));
-    expect(within(riskCard as HTMLElement).getByText("주식 급락").parentElement)
-      .toHaveTextContent("19.9%");
+    fireEvent.click(within(riskCard as HTMLElement).getByText("공통 시나리오 기준 보기"));
+    expect(within(riskCard as HTMLElement).getByText("주식시장 조정").parentElement)
+      .toHaveTextContent("15%");
     expect(within(riskCard as HTMLElement).getByText("금리·물가 충격").parentElement)
-      .toHaveTextContent("10.5%");
+      .toHaveTextContent("10%");
     expect(within(riskCard as HTMLElement).getByText("경기 둔화·고물가").parentElement)
-      .toHaveTextContent("12.4%");
+      .toHaveTextContent("12%");
   });
 
   it("connects the strategy composition with the signed-in owner's pension allocation", async () => {
