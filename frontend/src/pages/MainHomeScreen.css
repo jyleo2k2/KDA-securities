@@ -125,7 +125,9 @@
 .mhs-strategy-card-button { color: inherit; cursor: pointer; font: inherit; text-align: left; }
 .mhs-strategy-card-button:focus-visible { outline: 3px solid #18A860; outline-offset: 2px; }
 .mhs-strategy-card-title { font-size: 16px; font-weight: 900; color: #111; }
-.mhs-strategy-card-value { font-size: 29px; font-weight: 900; margin: 12px 0 4px; }
+.mhs-strategy-card-value-row { display: flex; align-items: center; gap: 5px; margin: 12px 0 4px; }
+.mhs-strategy-card-value { font-size: 29px; font-weight: 900; margin: 0; }
+.mhs-strategy-card-status { max-width: 48px; color: #7E877F; font-size: 8px; font-weight: 800; line-height: 1.35; }
 .mhs-strategy-card-desc { font-size: 13px; font-weight: 600; color: #8A9691; margin: 0; line-height: 1.5; }
 .mhs-strategy-card-warning { font-size: 12px; font-weight: 800; color: #E8A600; margin: 8px 0 0; line-height: 1.4; }
 .mhs-strategy-card-footnote { font-size: 12px; font-weight: 600; color: #B8C0BA; margin: 12px 0 0; }
